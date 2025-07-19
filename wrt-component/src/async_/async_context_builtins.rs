@@ -74,7 +74,7 @@ impl ContextKey {
         #[cfg(feature = "std")]
         return &self.0;
         #[cfg(not(any(feature = "std", )))]
-        return self.0.as_str(;
+        return self.0.as_str);
     }
 }
 
@@ -179,7 +179,7 @@ impl AsyncContext {
     }
 
     pub fn clear(&mut self) {
-        self.data.clear(;
+        self.data.clear);
     }
 }
 
@@ -193,7 +193,7 @@ impl Default for AsyncContext {
 #[cfg(feature = "std")]
 thread_local! {
     static ASYNC_CONTEXT_STACK: AtomicRefCell<Vec<AsyncContext>> = 
-        AtomicRefCell::new(Vec::new(;
+        AtomicRefCell::new(Vec::new);
 }
 
 /// Global context storage for no_std environments
@@ -279,7 +279,7 @@ impl AsyncContextManager {
 
     /// Set a value in the current context by key
     pub fn set_context_value(key: ContextKey, value: ContextValue) -> Result<()> {
-        let mut context = Self::context_get()?.unwrap_or_default(;
+        let mut context = Self::context_get()?.unwrap_or_default);
         context.set(key, value)?;
         Self::context_set(context)
     }
@@ -298,7 +298,7 @@ impl AsyncContextManager {
     /// Clear all values from the current context
     pub fn clear_context() -> Result<()> {
         if let Some(mut context) = Self::context_get()? {
-            context.clear(;
+            context.clear);
             Self::context_set(context)?;
         }
         Ok(())
@@ -329,7 +329,7 @@ pub mod canonical_builtins {
         match value {
             ComponentValue::Bool(true) => {
                 // Create a new empty context
-                let context = AsyncContext::new(;
+                let context = AsyncContext::new);
                 AsyncContextManager::context_set(context)
             }
             ComponentValue::Bool(false) => {
@@ -407,7 +407,7 @@ impl AsyncContextScope {
 impl Drop for AsyncContextScope {
     fn drop(&mut self) {
         // Automatically pop context when scope ends
-        let _ = AsyncContextManager::context_pop(;
+        let _ = AsyncContextManager::context_pop);
     }
 }
 
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn test_async_context_operations() {
-        let mut context = AsyncContext::new(;
+        let mut context = AsyncContext::new);
         assert!(context.is_empty();
 
         #[cfg(feature = "std")]
@@ -473,14 +473,14 @@ mod tests {
     #[test]
     fn test_context_manager_operations() {
         // Clear any existing context
-        let _ = AsyncContextManager::context_pop(;
+        let _ = AsyncContextManager::context_pop);
 
         // Test getting empty context
         let context = AsyncContextManager::context_get().unwrap();
         assert!(context.is_none();
 
         // Test setting context
-        let new_context = AsyncContext::new(;
+        let new_context = AsyncContext::new);
         AsyncContextManager::context_set(new_context).unwrap();
 
         // Test getting set context
@@ -491,7 +491,7 @@ mod tests {
     #[test]
     fn test_canonical_builtins() {
         // Clear any existing context
-        let _ = AsyncContextManager::context_pop(;
+        let _ = AsyncContextManager::context_pop);
 
         // Test context.get when no context
         let result = canonical_builtins::canon_context_get().unwrap();
@@ -508,10 +508,10 @@ mod tests {
     #[test]
     fn test_async_context_scope() {
         // Clear any existing context
-        let _ = AsyncContextManager::context_pop(;
+        let _ = AsyncContextManager::context_pop);
 
         {
-            let context = AsyncContext::new(;
+            let context = AsyncContext::new);
             let _scope = AsyncContextScope::enter(context).unwrap();
             
             // Context should be available in scope

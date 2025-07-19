@@ -125,7 +125,7 @@ fn create_truncated_module() -> Vec<u8> {
 #[test]
 fn test_full_module_parsing() {
     // Create a test module with multiple section types
-    let module = create_complex_test_module(;
+    let module = create_complex_test_module);
 
     // Verify parsing of the entire module works without errors
     let parser = Parser::new(&module;
@@ -146,7 +146,7 @@ fn test_full_module_parsing() {
 
 #[test]
 fn test_invalid_section_size() {
-    let module = create_invalid_section_size_module(;
+    let module = create_invalid_section_size_module);
 
     // The parser should detect the invalid section size
     let parser = Parser::new(&module;
@@ -158,7 +158,7 @@ fn test_invalid_section_size() {
 
 #[test]
 fn test_truncated_module() {
-    let module = create_truncated_module(;
+    let module = create_truncated_module);
 
     // The parser should detect the truncated module
     let parser = Parser::new(&module;
@@ -199,7 +199,7 @@ fn test_empty_module() {
 
 #[test]
 fn test_section_access_api() {
-    let module = create_complex_test_module(;
+    let module = create_complex_test_module);
 
     // Test that we can find import sections directly
     let import_section = wrt_decoder::find_import_section(&module;

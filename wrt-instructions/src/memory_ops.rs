@@ -670,19 +670,19 @@ impl MemoryStore {
         // Perform the store based on the type and width
         match (self.value_type, self.width, value) {
             (ValueType::I32, 32, Value::I32(v)) => {
-                let bytes = v.to_le_bytes(;
+                let bytes = v.to_le_bytes);
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I64, 64, Value::I64(v)) => {
-                let bytes = v.to_le_bytes(;
+                let bytes = v.to_le_bytes);
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::F32, 32, Value::F32(v)) => {
-                let bytes = v.to_bits().to_le_bytes(;
+                let bytes = v.to_bits().to_le_bytes);
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::F64, 64, Value::F64(v)) => {
-                let bytes = v.to_bits().to_le_bytes(;
+                let bytes = v.to_bits().to_le_bytes);
                 memory.write_bytes(effective_addr, &bytes)
             }
 
@@ -695,15 +695,15 @@ impl MemoryStore {
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I32, 16, Value::I32(v)) => {
-                let bytes = (*v as u16).to_le_bytes(;
+                let bytes = (*v as u16).to_le_bytes);
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I64, 16, Value::I64(v)) => {
-                let bytes = (*v as u16).to_le_bytes(;
+                let bytes = (*v as u16).to_le_bytes);
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I64, 32, Value::I64(v)) => {
-                let bytes = (*v as u32).to_le_bytes(;
+                let bytes = (*v as u32).to_le_bytes);
                 memory.write_bytes(effective_addr, &bytes)
             }
             _ => Err(Error::type_error(
@@ -1286,7 +1286,7 @@ mod tests {
         #[cfg(feature = "std")]
         fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
             let start = offset as usize;
-            let end = start + bytes.len(;
+            let end = start + bytes.len);
 
             if end > self.data.len() {
                 return Err(Error::memory_error("Memory access out of bounds";
@@ -1299,7 +1299,7 @@ mod tests {
         #[cfg(not(feature = "std"))]
         fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
             let start = offset as usize;
-            let end = start + bytes.len(;
+            let end = start + bytes.len);
 
             if end > self.data.len() {
                 return Err(Error::memory_error("Memory access out of bounds";
@@ -1331,7 +1331,7 @@ mod tests {
 
         #[cfg(not(feature = "std"))]
         fn grow(&mut self, bytes: usize) -> Result<()> {
-            let current_len = self.data.len(;
+            let current_len = self.data.len);
             let new_size = current_len + bytes;
             
             // Check if we can fit the new size in our bounded capacity
@@ -1388,7 +1388,7 @@ mod tests {
 
             // Handle overlapping regions correctly by copying to a temporary buffer
             if size > 0 {
-                let temp: Vec<u8> = self.data[src_start..src_end].to_vec(;
+                let temp: Vec<u8> = self.data[src_start..src_end].to_vec);
                 self.data[dest_start..dest_end].copy_from_slice(&temp;
             }
             Ok(())
@@ -1583,10 +1583,10 @@ mod tests {
         fn new() -> Self {
             #[cfg(feature = "std")]
             {
-                let mut segments = Vec::new(;
-                let mut seg1 = Vec::new(;
+                let mut segments = Vec::new);
+                let mut seg1 = Vec::new);
                 for val in [1, 2, 3, 4, 5] { seg1.push(val); }
-                let mut seg2 = Vec::new(;
+                let mut seg2 = Vec::new);
                 for val in [0xAA, 0xBB, 0xCC, 0xDD] { seg2.push(val); }
                 segments.push(Some(seg1);
                 segments.push(Some(seg2);
@@ -1595,15 +1595,15 @@ mod tests {
             }
             #[cfg(not(any(feature = "std", )))]
             {
-                let mut segments = wrt_foundation::BoundedVec::new(;
+                let mut segments = wrt_foundation::BoundedVec::new);
                 
-                let mut seg1 = wrt_foundation::BoundedVec::new(;
+                let mut seg1 = wrt_foundation::BoundedVec::new);
                 for &b in &[1, 2, 3, 4, 5] {
                     seg1.push(b).unwrap();
                 }
                 segments.push(Some(seg1)).unwrap();
                 
-                let mut seg2 = wrt_foundation::BoundedVec::new(;
+                let mut seg2 = wrt_foundation::BoundedVec::new);
                 for &b in &[0xAA, 0xBB, 0xCC, 0xDD] {
                     seg2.push(b).unwrap();
                 }
@@ -1637,9 +1637,9 @@ mod tests {
 
         fn drop_data_segment(&mut self, data_index: u32) -> Result<()> {
             #[cfg(feature = "std")]
-            let segments_len = self.segments.len(;
+            let segments_len = self.segments.len);
             #[cfg(not(feature = "std"))]
-            let segments_len = self.segments.len(;
+            let segments_len = self.segments.len);
 
             if (data_index as usize) < segments_len {
                 #[cfg(feature = "std")]
@@ -1741,7 +1741,7 @@ mod tests {
     #[test]
     fn test_memory_init() {
         let mut memory = MockMemory::new(1024).unwrap();
-        let data_segments = MockDataSegments::new(;
+        let data_segments = MockDataSegments::new);
         let init_op = MemoryInit::new(0, 0;
 
         // Copy 3 bytes from data segment 0 (starting at offset 1) to memory at offset 100
@@ -1773,7 +1773,7 @@ mod tests {
 
     #[test]
     fn test_data_drop() {
-        let mut data_segments = MockDataSegments::new(;
+        let mut data_segments = MockDataSegments::new);
         let drop_op = DataDrop::new(0;
 
         // Verify segment 0 exists initially
@@ -1789,7 +1789,7 @@ mod tests {
     #[test]
     fn test_memory_init_dropped_segment() {
         let mut memory = MockMemory::new(1024).unwrap();
-        let mut data_segments = MockDataSegments::new(;
+        let mut data_segments = MockDataSegments::new);
         
         // Drop segment 0 first
         data_segments.drop_data_segment(0).unwrap();

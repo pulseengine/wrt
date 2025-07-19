@@ -48,8 +48,8 @@ use wrt_foundation::{
 #[cfg(kani)]
 pub fn verify_asil_error_classification() {
     // Generate arbitrary error conditions
-    let error_code: u8 = kani::any(;
-    let asil_level: u8 = kani::any(;
+    let error_code: u8 = kani::any);
+    let asil_level: u8 = kani::any);
     
     // Constrain to valid ASIL levels (0-4: QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D)
     kani::assume(asil_level <= 4;
@@ -112,12 +112,12 @@ pub fn verify_asil_error_classification() {
 #[cfg(kani)]
 pub fn verify_error_propagation() {
     // Simulate a memory allocation that might fail
-    let allocation_size: usize = kani::any(;
+    let allocation_size: usize = kani::any);
     kani::assume(allocation_size > 0;
     kani::assume(allocation_size <= 1024 * 1024); // 1MB max
     
     // Generate arbitrary crate ID (use safe match instead of transmute)
-    let crate_id_val: u8 = kani::any(;
+    let crate_id_val: u8 = kani::any);
     kani::assume(crate_id_val < 19;
     let crate_id = match crate_id_val % 19 {
         0 => CrateId::Foundation,
@@ -185,7 +185,7 @@ pub fn verify_error_propagation() {
 #[cfg(kani)]
 pub fn verify_graceful_degradation() {
     // Simulate various error conditions that should trigger graceful degradation
-    let failure_mode: u8 = kani::any(;
+    let failure_mode: u8 = kani::any);
     kani::assume(failure_mode < 4;
     
     match failure_mode {
@@ -276,7 +276,7 @@ pub fn verify_graceful_degradation() {
 #[cfg(kani)]
 pub fn verify_error_recovery() {
     // Test recovery from various error conditions
-    let recovery_scenario: u8 = kani::any(;
+    let recovery_scenario: u8 = kani::any);
     kani::assume(recovery_scenario < 3;
     
     match recovery_scenario {
@@ -461,38 +461,38 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for error handling properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_asil_error_classification(;
-    verify_error_propagation(;
-    verify_graceful_degradation(;
-    verify_error_recovery(;
+    verify_asil_error_classification);
+    verify_error_propagation);
+    verify_graceful_degradation);
+    verify_error_recovery);
 }
 
 /// KANI harness for ASIL error classification verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_asil_error_classification() {
-    verify_asil_error_classification(;
+    verify_asil_error_classification);
 }
 
 /// KANI harness for error propagation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_error_propagation() {
-    verify_error_propagation(;
+    verify_error_propagation);
 }
 
 /// KANI harness for graceful degradation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_graceful_degradation() {
-    verify_graceful_degradation(;
+    verify_graceful_degradation);
 }
 
 /// KANI harness for error recovery verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_error_recovery() {
-    verify_error_recovery(;
+    verify_error_recovery);
 }
 
 #[cfg(test)]
@@ -501,7 +501,7 @@ mod tests {
     
     #[test]
     fn test_error_handling_verification() {
-        let registry = TestRegistry::global(;
+        let registry = TestRegistry::global);
         let result = register_tests(registry;
         assert!(result.is_ok();
         assert_eq!(property_count(), 4;

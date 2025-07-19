@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_basic_detection() {
-        let detector = LazyDetector::new(;
+        let detector = LazyDetector::new);
 
         // Core module header
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_invalid_magic() {
-        let detector = LazyDetector::new(;
+        let detector = LazyDetector::new);
         let invalid = [0x00, 0x61, 0x73, 0x6E, 0x01, 0x00, 0x00, 0x00];
         let result = detector.detect_format(&invalid).unwrap();
         assert_eq!(result, ComponentDetection::Invalid;
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_too_small() {
-        let detector = LazyDetector::new(;
+        let detector = LazyDetector::new);
         let too_small = [0x00, 0x61, 0x73];
         let result = detector.detect_format(&too_small).unwrap();
         assert_eq!(result, ComponentDetection::Invalid;
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_fast_detector() {
-        let detector = create_fast_detector(;
+        let detector = create_fast_detector);
         assert_eq!(detector.config.max_scan_bytes, 1024;
         assert_eq!(detector.config.max_sections, 5;
         assert!(!detector.config.use_heuristics);
@@ -473,7 +473,7 @@ mod tests {
 
     #[test]
     fn test_thorough_detector() {
-        let detector = create_thorough_detector(;
+        let detector = create_thorough_detector);
         assert_eq!(detector.config.max_scan_bytes, 16384;
         assert_eq!(detector.config.max_sections, 20;
         assert!(detector.config.use_heuristics);
@@ -481,7 +481,7 @@ mod tests {
 
     #[test]
     fn test_needs_component_processing() {
-        let detector = LazyDetector::new(;
+        let detector = LazyDetector::new);
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
         // Should handle safely even with ambiguous detection

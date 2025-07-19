@@ -87,7 +87,7 @@ fn test_canonical_abi_conversion() -> Result<()> {
 #[test]
 fn test_resource_handling() -> Result<()> {
     // Create a resource table
-    let mut table = ResourceTable::new(;
+    let mut table = ResourceTable::new);
 
     // Define a resource type
     let resource_type = ResourceType {

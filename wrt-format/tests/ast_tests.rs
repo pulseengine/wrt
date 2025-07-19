@@ -13,7 +13,7 @@ fn test_source_span() {
     assert_eq!(span.len(), 10;
     assert!(!span.is_empty();
     
-    let empty = SourceSpan::empty(;
+    let empty = SourceSpan::empty);
     assert!(empty.is_empty();
 }
 
@@ -35,11 +35,11 @@ fn test_identifier() {
 #[cfg(feature = "std")]
 #[test]
 fn test_wit_document() {
-    let doc = WitDocument::default(;
+    let doc = WitDocument::default);
     assert!(doc.package.is_none();
     assert!(doc.use_items.is_empty();
     assert!(doc.items.is_empty();
-    assert_eq!(doc.span, SourceSpan::empty(;
+    assert_eq!(doc.span, SourceSpan::empty);
 }
 
 #[cfg(feature = "std")]
@@ -68,7 +68,7 @@ fn test_type_expr() {
         span: SourceSpan::empty(),
     };
     
-    assert_eq!(primitive.span(), SourceSpan::empty(;
+    assert_eq!(primitive.span(), SourceSpan::empty);
     
     // Test that we can create a named type
     use wrt_format::wit_parser::WitBoundedString;

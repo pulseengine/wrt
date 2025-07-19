@@ -47,12 +47,12 @@ use wrt_foundation::{
 #[cfg(kani)]
 pub fn verify_memory_budget_never_exceeded() {
     // Generate arbitrary allocation sizes within reasonable bounds
-    let size: usize = kani::any(;
+    let size: usize = kani::any);
     kani::assume(size > 0;
     kani::assume(size <= 1024 * 1024); // 1MB max for bounded verification
     
     // Generate arbitrary crate ID
-    let crate_id: u8 = kani::any(;
+    let crate_id: u8 = kani::any);
     kani::assume(crate_id < 19); // Max crate count
     let crate_id = unsafe { core::mem::transmute::<u8, CrateId>(crate_id) };
     
@@ -63,7 +63,7 @@ pub fn verify_memory_budget_never_exceeded() {
             assert!(provider.available_memory() <= 65536);
             
             // Test bounded allocation with generated size
-            let allocation_size = size.min(provider.available_memory(;
+            let allocation_size = size.min(provider.available_memory);
             if allocation_size > 0 {
                 match BoundedVec::<u8, 1024, _>::new(provider.clone()) {
                     Ok(mut vec) => {
@@ -99,8 +99,8 @@ pub fn verify_memory_budget_never_exceeded() {
 #[cfg(kani)]
 pub fn verify_hierarchical_budget_consistency() {
     // Test different parent-child budget scenarios
-    let parent_budget: u16 = kani::any(;
-    let child_budget: u16 = kani::any(;
+    let parent_budget: u16 = kani::any);
+    let child_budget: u16 = kani::any);
     
     kani::assume(parent_budget > 0;
     kani::assume(child_budget > 0;
@@ -113,7 +113,7 @@ pub fn verify_hierarchical_budget_consistency() {
             assert!(parent_provider.available_memory() <= 65536);
             
             // Create child allocation within parent budget
-            let child_size = (child_budget as usize).min(parent_provider.available_memory(;
+            let child_size = (child_budget as usize).min(parent_provider.available_memory);
             if child_size > 0 {
                 match BoundedVec::<u64, 128, _>::new(parent_provider.clone()) {
                     Ok(child_vec) => {
@@ -235,9 +235,9 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for memory safety properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_memory_budget_never_exceeded(;
-    verify_hierarchical_budget_consistency(;
-    verify_cross_component_isolation(;
+    verify_memory_budget_never_exceeded);
+    verify_hierarchical_budget_consistency);
+    verify_cross_component_isolation);
 }
 
 /// KANI harness for memory budget verification
@@ -246,7 +246,7 @@ pub fn run_all_proofs() {
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_memory_budget_never_exceeded() {
-    verify_memory_budget_never_exceeded(;
+    verify_memory_budget_never_exceeded);
 }
 
 /// KANI harness for hierarchical budget verification
@@ -255,7 +255,7 @@ fn kani_verify_memory_budget_never_exceeded() {
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_hierarchical_budget_consistency() {
-    verify_hierarchical_budget_consistency(;
+    verify_hierarchical_budget_consistency);
 }
 
 /// KANI harness for cross-component isolation verification
@@ -264,7 +264,7 @@ fn kani_verify_hierarchical_budget_consistency() {
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_cross_component_isolation() {
-    verify_cross_component_isolation(;
+    verify_cross_component_isolation);
 }
 
 #[cfg(test)]
@@ -273,7 +273,7 @@ mod tests {
     
     #[test]
     fn test_traditional_memory_verification() {
-        let registry = TestRegistry::global(;
+        let registry = TestRegistry::global);
         let result = register_tests(registry;
         assert!(result.is_ok();
         assert_eq!(property_count(), 3;

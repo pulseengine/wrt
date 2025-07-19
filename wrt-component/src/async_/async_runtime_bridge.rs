@@ -64,7 +64,7 @@ pub mod rust_async_bridge {
                     // Register waker with task manager
                     // In a real implementation, this would notify the task manager
                     // to wake this future when the Component Model future completes
-                    cx.waker().wake_by_ref(;
+                    cx.waker().wake_by_ref);
                     Poll::Pending
                 }
             }
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_component_model_async_without_rust_futures() {
-        let mut task_manager = TaskManager::new(;
+        let mut task_manager = TaskManager::new);
         let component_id = ComponentInstanceId::new(1;
 
         // Create a Component Model future - no Rust Future trait needed!
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_component_model_stream_without_rust_futures() {
-        let mut task_manager = TaskManager::new(;
+        let mut task_manager = TaskManager::new);
 
         // Create a Component Model stream - no Rust Stream trait needed!
         let stream_handle = StreamHandle(1;

@@ -19,7 +19,7 @@ use wrt_foundation::values::{
 /// Tests for encoding/decoding simple primitive types
 #[test]
 fn test_encode_decode_primitives() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Test i32
     let i32_value = ComponentValue::I32(42;
@@ -61,7 +61,7 @@ fn test_encode_decode_primitives() {
 /// Tests for encoding/decoding string values
 #[test]
 fn test_encode_decode_strings() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Empty string
     let empty_string = ComponentValue::String("".to_string();
@@ -91,7 +91,7 @@ fn test_encode_decode_strings() {
 /// Tests for encoding/decoding lists
 #[test]
 fn test_encode_decode_lists() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Empty list
     let empty_list = ComponentValue::List(vec![];
@@ -127,7 +127,7 @@ fn test_encode_decode_lists() {
 /// Tests for encoding/decoding records
 #[test]
 fn test_encode_decode_records() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Simple record
     let record = ComponentValue::Record(vec![
@@ -168,7 +168,7 @@ fn test_encode_decode_records() {
 /// Tests for encoding/decoding variants
 #[test]
 fn test_encode_decode_variants() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Simple variant
     let variant = ComponentValue::Variant {
@@ -211,7 +211,7 @@ fn test_encode_decode_variants() {
 /// Tests for encoding/decoding tuples
 #[test]
 fn test_encode_decode_tuples() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Simple tuple (i32, string)
     let tuple = ComponentValue::Tuple(vec![
@@ -257,7 +257,7 @@ fn test_encode_decode_tuples() {
 /// Tests for encoding/decoding options
 #[test]
 fn test_encode_decode_options() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Some value
     let some_value = ComponentValue::Option(Some(Box::new(ComponentValue::I32(42));
@@ -291,7 +291,7 @@ fn test_encode_decode_options() {
 /// Tests for encoding/decoding results
 #[test]
 fn test_encode_decode_results() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Ok result
     let ok_result = ComponentValue::Result {
@@ -344,7 +344,7 @@ fn test_resource_handling() {
 /// Tests for handling errors
 #[test]
 fn test_error_handling() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Attempt to decode with wrong type
     let i32_value = ComponentValue::I32(42;
@@ -405,7 +405,7 @@ fn test_memory_limits() {
 /// Tests conversions from/to Rust native types
 #[test]
 fn test_rust_native_conversions() {
-    let abi = CanonicalABI::default(;
+    let abi = CanonicalABI::default);
 
     // Convert from Rust i32
     let rust_i32: i32 = 42;
@@ -863,13 +863,13 @@ fn test_conversion_traits() {
         results: vec![FormatValType::S32],
     };
 
-    let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type(;
+    let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type);
     assert!(runtime_func.is_ok();
 
     // Test IntoFormatType for TypesExternType
     let func_type = TypesFuncType::new(vec![ValueType::I32], vec![ValueType::F32];
     let extern_type = TypesExternType::Function(func_type;
 
-    let format_type: Result<FormatExternType, _> = extern_type.into_format_type(;
+    let format_type: Result<FormatExternType, _> = extern_type.into_format_type);
     assert!(format_type.is_ok();
 }

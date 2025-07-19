@@ -187,7 +187,7 @@ impl LinuxAllocator {
     /// Binary std/no_std choice
     unsafe fn setup_guard_pages(&self, base_ptr: *mut u8, total_size: usize) -> Result<()> {
         if !self.use_guard_pages {
-            return Ok((;
+            return Ok();
         }
 
         // Binary std/no_std choice
@@ -325,7 +325,7 @@ impl PageAllocator for LinuxAllocator {
         };
 
         if additional_pages == 0 {
-            return Ok((;
+            return Ok();
         }
 
         let current_bytes_from_arg = Self::pages_to_bytes(current_pages)?;

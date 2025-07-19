@@ -583,7 +583,7 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_resource_type_builder() {
         // Test Record type
-        let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new(;
+        let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new);
         let resource_type = builder.as_record(vec!["field1", "field2"]).unwrap().build().unwrap();
 
         match resource_type {
@@ -596,7 +596,7 @@ mod tests {
         }
 
         // Test Aggregate type
-        let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new(;
+        let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new);
         let resource_type = builder.as_aggregate(vec![1, 2, 3]).build().unwrap();
 
         match resource_type {
@@ -647,13 +647,13 @@ mod tests {
             .with_init_size(256)
             .with_verification_level(VerificationLevel::Full;
 
-        let result = builder.build(;
+        let result = builder.build);
         assert!(result.is_err(), "Deprecated builder should return an error");
 
         // Verify the error message contains migration guidance
         #[cfg(feature = "std")]
         {
-            let error_msg = format!("{}", result.unwrap_err(;
+            let error_msg = format!("{}", result.unwrap_err);
             assert!(
                 error_msg.contains("WrtProviderFactory"),
                 "Error should mention WrtProviderFactory"
@@ -668,13 +668,13 @@ mod tests {
             .with_size(1024)
             .with_verification_level(VerificationLevel::Full;
 
-        let result = builder.build(;
+        let result = builder.build);
         assert!(result.is_err(), "Deprecated legacy builder should return an error");
 
         // Verify the error message contains migration guidance
         #[cfg(feature = "std")]
         {
-            let error_msg = format!("{}", result.unwrap_err(;
+            let error_msg = format!("{}", result.unwrap_err);
             assert!(
                 error_msg.contains("WrtProviderFactory"),
                 "Error should mention WrtProviderFactory"

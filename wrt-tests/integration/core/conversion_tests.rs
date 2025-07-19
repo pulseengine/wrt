@@ -121,7 +121,7 @@ impl TypeConversionRegistry {
         To: Convertible + 'static,
         F: Fn(&From) -> Result<To, ConversionError> + Send + Sync + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+        let key = (TypeId::of::<From>(), TypeId::of::<To>);
         let conversion = TypedConversion {
             convert_fn: converter,
             _phantom: std::marker::PhantomData,
@@ -137,7 +137,7 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+        let key = (TypeId::of::<From>(), TypeId::of::<To>);
         
         let conversion = self.conversions.get(&key).ok_or_else(|| ConversionError {
             kind: ConversionErrorKind::NotImplemented,
@@ -165,7 +165,7 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+        let key = (TypeId::of::<From>(), TypeId::of::<To>);
         self.conversions.contains_key(&key)
     }
 }
@@ -196,7 +196,7 @@ pub struct ComponentLoader {
 
 impl ComponentLoader {
     pub fn new() -> Self {
-        let mut registry = TypeConversionRegistry::new(;
+        let mut registry = TypeConversionRegistry::new);
         
         // Register default conversions for testing
         registry.register(|format: &FormatValType| -> Result<RuntimeValType, ConversionError> {
@@ -219,7 +219,7 @@ mod tests {
     
     #[test]
     fn test_conversion_registry() {
-        let mut registry = TypeConversionRegistry::new(;
+        let mut registry = TypeConversionRegistry::new);
         
         // Register a conversion from FormatValType to RuntimeValType
         registry.register(|format: &FormatValType| -> Result<RuntimeValType, ConversionError> {
@@ -235,7 +235,7 @@ mod tests {
     
     #[test]
     fn test_component_loader() {
-        let loader = ComponentLoader::new(;
+        let loader = ComponentLoader::new);
         
         // Test loading a component
         let format_type = FormatValType("i32".to_string();
@@ -246,7 +246,7 @@ mod tests {
     
     #[test]
     fn test_missing_conversion() {
-        let registry = TypeConversionRegistry::new(;
+        let registry = TypeConversionRegistry::new);
         
         // Try to convert without registering a conversion
         let format_type = FormatValType("i32".to_string();

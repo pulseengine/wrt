@@ -67,7 +67,7 @@ impl ComponentRegistry {
         }
 
         // Add the component to the store and get its index
-        let component_idx = self.component_store.len(;
+        let component_idx = self.component_store.len);
         self.component_store.push(component).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_registry_registration() {
-        let component = create_test_component(;
+        let component = create_test_component);
         let mut registry = ComponentRegistry::new().unwrap();
 
         // Register a component
@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_registry_removal() {
-        let component = create_test_component(;
+        let component = create_test_component);
         let mut registry = ComponentRegistry::new().unwrap();
 
         // Register and then remove
@@ -222,12 +222,12 @@ mod tests {
 
         // Fill the registry to capacity
         for i in 0..MAX_COMPONENTS {
-            let component = create_test_component(;
+            let component = create_test_component);
             registry.register(&format!("component_{}", i), component).unwrap();
         }
 
         // Try to add one more - should fail
-        let component = create_test_component(;
+        let component = create_test_component);
         assert!(registry.register("overflow", component).is_err();
     }
 
@@ -250,8 +250,8 @@ mod tests {
 
     #[test]
     fn test_registry_replace() {
-        let component1 = create_test_component(;
-        let component2 = create_test_component(;
+        let component1 = create_test_component);
+        let component2 = create_test_component);
         let mut registry = ComponentRegistry::new().unwrap();
 
         // Register a component

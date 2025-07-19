@@ -80,7 +80,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i8x16_neg(&self, a: &[u8); 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let result = _mm_sub_epi8(zero, a_vec;
             
             let mut output = [0u8; 16];
@@ -129,7 +129,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i16x8_neg(&self, a: &[u8); 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let result = _mm_sub_epi16(zero, a_vec;
             
             let mut output = [0u8; 16];
@@ -196,7 +196,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i32x4_neg(&self, a: &[u8); 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let result = _mm_sub_epi32(zero, a_vec;
             
             let mut output = [0u8; 16];
@@ -245,8 +245,8 @@ impl SimdProvider for X86SimdProvider {
         let r1 = a1.wrapping_mul(b1;
         
         // Store back
-        result[0..8].copy_from_slice(&r0.to_le_bytes(;
-        result[8..16].copy_from_slice(&r1.to_le_bytes(;
+        result[0..8].copy_from_slice(&r0.to_le_bytes);
+        result[8..16].copy_from_slice(&r1.to_le_bytes);
         
         result
     }
@@ -254,7 +254,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i64x2_neg(&self, a: &[u8); 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let result = _mm_sub_epi64(zero, a_vec;
             
             let mut output = [0u8; 16];
@@ -493,7 +493,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_any_true(&self, a: &[u8); 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let cmp = _mm_cmpeq_epi8(a_vec, zero;
             // If all bytes are zero, movemask will be 0xFFFF
             let mask = _mm_movemask_epi8(cmp;
@@ -504,7 +504,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i8x16_all_true(&self, a: &[u8); 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let cmp = _mm_cmpeq_epi8(a_vec, zero;
             // If any byte is zero, movemask will have at least one bit set
             let mask = _mm_movemask_epi8(cmp;
@@ -515,7 +515,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i16x8_all_true(&self, a: &[u8); 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let cmp = _mm_cmpeq_epi16(a_vec, zero;
             // Convert 16-bit comparison to byte mask
             let mask = _mm_movemask_epi8(cmp;
@@ -527,7 +527,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i32x4_all_true(&self, a: &[u8); 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let cmp = _mm_cmpeq_epi32(a_vec, zero;
             // Use floating-point movemask for 32-bit values
             let mask = _mm_movemask_ps(_mm_castsi128_ps(cmp;
@@ -610,7 +610,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 8 {
             let offset = (idx as usize) * 2;
-            let bytes = val.to_le_bytes(;
+            let bytes = val.to_le_bytes);
             result[offset] = bytes[0];
             result[offset + 1] = bytes[1];
         }
@@ -621,7 +621,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 4 {
             let offset = (idx as usize) * 4;
-            let bytes = val.to_le_bytes(;
+            let bytes = val.to_le_bytes);
             result[offset..offset + 4].copy_from_slice(&bytes;
         }
         result
@@ -631,7 +631,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 2 {
             let offset = (idx as usize) * 8;
-            let bytes = val.to_le_bytes(;
+            let bytes = val.to_le_bytes);
             result[offset..offset + 8].copy_from_slice(&bytes;
         }
         result
@@ -641,7 +641,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 4 {
             let offset = (idx as usize) * 4;
-            let bytes = val.to_bits().to_le_bytes(;
+            let bytes = val.to_bits().to_le_bytes);
             result[offset..offset + 4].copy_from_slice(&bytes;
         }
         result
@@ -651,7 +651,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 2 {
             let offset = (idx as usize) * 8;
-            let bytes = val.to_bits().to_le_bytes(;
+            let bytes = val.to_bits().to_le_bytes);
             result[offset..offset + 8].copy_from_slice(&bytes;
         }
         result
@@ -664,7 +664,7 @@ impl SimdProvider for X86SimdProvider {
 
     fn v128_i16x8_splat(&self, val: i16) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_le_bytes(;
+        let bytes = val.to_le_bytes);
         for i in 0..8 {
             let offset = i * 2;
             result[offset..offset + 2].copy_from_slice(&bytes;
@@ -674,7 +674,7 @@ impl SimdProvider for X86SimdProvider {
 
     fn v128_i32x4_splat(&self, val: i32) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_le_bytes(;
+        let bytes = val.to_le_bytes);
         for i in 0..4 {
             let offset = i * 4;
             result[offset..offset + 4].copy_from_slice(&bytes;
@@ -684,7 +684,7 @@ impl SimdProvider for X86SimdProvider {
 
     fn v128_i64x2_splat(&self, val: i64) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_le_bytes(;
+        let bytes = val.to_le_bytes);
         result[0..8].copy_from_slice(&bytes;
         result[8..16].copy_from_slice(&bytes;
         result
@@ -692,7 +692,7 @@ impl SimdProvider for X86SimdProvider {
 
     fn v128_f32x4_splat(&self, val: f32) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_bits().to_le_bytes(;
+        let bytes = val.to_bits().to_le_bytes);
         for i in 0..4 {
             let offset = i * 4;
             result[offset..offset + 4].copy_from_slice(&bytes;
@@ -702,7 +702,7 @@ impl SimdProvider for X86SimdProvider {
 
     fn v128_f64x2_splat(&self, val: f64) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_bits().to_le_bytes(;
+        let bytes = val.to_bits().to_le_bytes);
         result[0..8].copy_from_slice(&bytes;
         result[8..16].copy_from_slice(&bytes;
         result
@@ -964,8 +964,8 @@ impl SimdProvider for X86SimdProvider {
         let r1 = if a1 == b1 { -1i64 } else { 0i64 };
         
         let mut result = [0u8; 16];
-        result[0..8].copy_from_slice(&r0.to_le_bytes(;
-        result[8..16].copy_from_slice(&r1.to_le_bytes(;
+        result[0..8].copy_from_slice(&r0.to_le_bytes);
+        result[8..16].copy_from_slice(&r1.to_le_bytes);
         result
     }
 
@@ -984,8 +984,8 @@ impl SimdProvider for X86SimdProvider {
         let r1 = if a1 < b1 { -1i64 } else { 0i64 };
         
         let mut result = [0u8; 16];
-        result[0..8].copy_from_slice(&r0.to_le_bytes(;
-        result[8..16].copy_from_slice(&r1.to_le_bytes(;
+        result[0..8].copy_from_slice(&r0.to_le_bytes);
+        result[8..16].copy_from_slice(&r1.to_le_bytes);
         result
     }
 
@@ -1153,7 +1153,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i8x16_abs(&self, a: &[u8); 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let neg = _mm_sub_epi8(zero, a_vec;
             let result = _mm_max_epi8(a_vec, neg;
             
@@ -1166,7 +1166,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i16x8_abs(&self, a: &[u8); 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i;
-            let zero = _mm_setzero_si128(;
+            let zero = _mm_setzero_si128);
             let neg = _mm_sub_epi16(zero, a_vec;
             let result = _mm_max_epi16(a_vec, neg;
             
@@ -1182,8 +1182,8 @@ impl SimdProvider for X86SimdProvider {
         for i in 0..4 {
             let offset = i * 4;
             let val = i32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
-            let abs_val = val.abs(;
-            result[offset..offset + 4].copy_from_slice(&abs_val.to_le_bytes(;
+            let abs_val = val.abs);
+            result[offset..offset + 4].copy_from_slice(&abs_val.to_le_bytes);
         }
         result
     }
@@ -1196,8 +1196,8 @@ impl SimdProvider for X86SimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3],
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
-            let abs_val = val.abs(;
-            result[offset..offset + 8].copy_from_slice(&abs_val.to_le_bytes(;
+            let abs_val = val.abs);
+            result[offset..offset + 8].copy_from_slice(&abs_val.to_le_bytes);
         }
         result
     }
@@ -1408,7 +1408,7 @@ impl SimdProvider for X86SimdProvider {
             let a_val = i32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let b_val = i32::from_le_bytes([b[offset], b[offset + 1], b[offset + 2], b[offset + 3]];
             let min_val = a_val.min(b_val;
-            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes);
         }
         result
     }
@@ -1420,7 +1420,7 @@ impl SimdProvider for X86SimdProvider {
             let a_val = u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let b_val = u32::from_le_bytes([b[offset], b[offset + 1], b[offset + 2], b[offset + 3]];
             let min_val = a_val.min(b_val;
-            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes);
         }
         result
     }
@@ -1432,7 +1432,7 @@ impl SimdProvider for X86SimdProvider {
             let a_val = i32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let b_val = i32::from_le_bytes([b[offset], b[offset + 1], b[offset + 2], b[offset + 3]];
             let max_val = a_val.max(b_val;
-            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes);
         }
         result
     }
@@ -1444,7 +1444,7 @@ impl SimdProvider for X86SimdProvider {
             let a_val = u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let b_val = u32::from_le_bytes([b[offset], b[offset + 1], b[offset + 2], b[offset + 3]];
             let max_val = a_val.max(b_val;
-            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes);
         }
         result
     }
@@ -1457,7 +1457,7 @@ impl SimdProvider for X86SimdProvider {
             let f_bits = u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let f_val = f32::from_bits(f_bits;
             let i_val = if f_val.is_nan() { 0 } else { f_val as i32 };
-            result[offset..offset + 4].copy_from_slice(&i_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&i_val.to_le_bytes);
         }
         result
     }
@@ -1469,7 +1469,7 @@ impl SimdProvider for X86SimdProvider {
             let f_bits = u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let f_val = f32::from_bits(f_bits;
             let u_val = if f_val.is_nan() || f_val < 0.0 { 0u32 } else { f_val as u32 };
-            result[offset..offset + 4].copy_from_slice(&u_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&u_val.to_le_bytes);
         }
         result
     }
@@ -1492,7 +1492,7 @@ impl SimdProvider for X86SimdProvider {
             let offset = i * 4;
             let u_val = u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let f_val = u_val as f32;
-            result[offset..offset + 4].copy_from_slice(&f_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&f_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1622,7 +1622,7 @@ impl SimdProvider for X86SimdProvider {
             let offset = i * 2;
             let val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let shifted = val.wrapping_shl(shift;
-            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1634,7 +1634,7 @@ impl SimdProvider for X86SimdProvider {
             let offset = i * 2;
             let val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let shifted = val.wrapping_shr(shift;
-            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1646,7 +1646,7 @@ impl SimdProvider for X86SimdProvider {
             let offset = i * 2;
             let val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let shifted = val.wrapping_shr(shift;
-            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1658,7 +1658,7 @@ impl SimdProvider for X86SimdProvider {
             let offset = i * 4;
             let val = i32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let shifted = val.wrapping_shl(shift;
-            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1670,7 +1670,7 @@ impl SimdProvider for X86SimdProvider {
             let offset = i * 4;
             let val = i32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let shifted = val.wrapping_shr(shift;
-            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1682,7 +1682,7 @@ impl SimdProvider for X86SimdProvider {
             let offset = i * 4;
             let val = u32::from_le_bytes([a[offset], a[offset + 1], a[offset + 2], a[offset + 3]];
             let shifted = val.wrapping_shr(shift;
-            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1697,7 +1697,7 @@ impl SimdProvider for X86SimdProvider {
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
             let shifted = val.wrapping_shl(shift;
-            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1712,7 +1712,7 @@ impl SimdProvider for X86SimdProvider {
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
             let shifted = val >> (count & 63;
-            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1727,7 +1727,7 @@ impl SimdProvider for X86SimdProvider {
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
             let shifted = val.wrapping_shr(shift;
-            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -1769,7 +1769,7 @@ mod tests {
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_x86_simd_i32x4_add() {
-        let provider = X86SimdProvider::new_sse2(;
+        let provider = X86SimdProvider::new_sse2);
         let a = [1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0]; // [1, 2, 3, 4]
         let b = [5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0, 8, 0, 0, 0]; // [5, 6, 7, 8]
         let result = provider.v128_i32x4_add(&a, &b;
@@ -1784,21 +1784,21 @@ mod tests {
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_x86_simd_f32x4_mul() {
-        let provider = X86SimdProvider::new_sse2(;
+        let provider = X86SimdProvider::new_sse2);
         
         // Create f32x4 vectors [2.0, 3.0, 4.0, 5.0] and [0.5, 2.0, 0.25, 0.2]
         let mut a = [0u8; 16];
         let mut b = [0u8; 16];
         
-        a[0..4].copy_from_slice(&2.0f32.to_bits().to_le_bytes(;
-        a[4..8].copy_from_slice(&3.0f32.to_bits().to_le_bytes(;
-        a[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes(;
-        a[12..16].copy_from_slice(&5.0f32.to_bits().to_le_bytes(;
+        a[0..4].copy_from_slice(&2.0f32.to_bits().to_le_bytes);
+        a[4..8].copy_from_slice(&3.0f32.to_bits().to_le_bytes);
+        a[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes);
+        a[12..16].copy_from_slice(&5.0f32.to_bits().to_le_bytes);
         
-        b[0..4].copy_from_slice(&0.5f32.to_bits().to_le_bytes(;
-        b[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes(;
-        b[8..12].copy_from_slice(&0.25f32.to_bits().to_le_bytes(;
-        b[12..16].copy_from_slice(&0.2f32.to_bits().to_le_bytes(;
+        b[0..4].copy_from_slice(&0.5f32.to_bits().to_le_bytes);
+        b[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes);
+        b[8..12].copy_from_slice(&0.25f32.to_bits().to_le_bytes);
+        b[12..16].copy_from_slice(&0.2f32.to_bits().to_le_bytes);
         
         let result = provider.v128_f32x4_mul(&a, &b;
         
@@ -1818,7 +1818,7 @@ mod tests {
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_x86_simd_bitwise_ops() {
-        let provider = X86SimdProvider::new_sse2(;
+        let provider = X86SimdProvider::new_sse2);
         
         let a = [0xFF; 16];
         let b = [0xAA; 16];
@@ -1843,7 +1843,7 @@ mod tests {
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_x86_simd_any_true() {
-        let provider = X86SimdProvider::new_sse2(;
+        let provider = X86SimdProvider::new_sse2);
         
         assert!(!provider.v128_any_true(&[0x00); 16];
         assert!(provider.v128_any_true(&[0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,

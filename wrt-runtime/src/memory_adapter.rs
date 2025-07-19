@@ -245,7 +245,7 @@ impl SafeMemoryAdapter {
         };
         
         #[cfg(not(feature = "std"))]
-        let provider = StdMemoryProvider::default(;
+        let provider = StdMemoryProvider::default);
 
         // Return a Memory adapter
         let adapter = SafeMemoryAdapter { memory: arc_memory, provider };
@@ -308,7 +308,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     fn grow(&self, pages: u32) -> Result<u32> {
         // Get the current size
-        let result = self.memory.size(;
+        let result = self.memory.size);
 
         // Grow the memory - this should handle interior mutability internally
         ArcMemoryExt::grow_via_callback(&self.memory, pages)?;
@@ -319,7 +319,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     fn byte_size(&self) -> Result<usize> {
         // Convert WebAssembly page count to byte size safely
-        let pages = self.memory.size(;
+        let pages = self.memory.size);
         let page_size_bytes = wasm_offset_to_usize(pages)? * 65_536;
         Ok(page_size_bytes)
     }

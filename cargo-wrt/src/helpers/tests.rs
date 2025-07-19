@@ -50,7 +50,7 @@ mod progress_tests {
 
     #[test]
     fn test_progress_config_default() {
-        let config = ProgressConfig::default(;
+        let config = ProgressConfig::default);
         assert!(matches!(config.style, ProgressStyle::Spinner);
         assert_eq!(config.message, "Processing...";
         assert!(config.show_elapsed);
@@ -85,7 +85,7 @@ mod progress_tests {
         ];
 
         let mut progress = MultiStepProgress::new(steps, OutputFormat::Human, false;
-        progress.start(;
+        progress.start);
 
         progress.begin_step("Starting step 1";
         progress.update_operation("Doing work";
@@ -116,7 +116,7 @@ mod smart_defaults_tests {
     #[test]
     fn test_project_context_detection() {
         let temp_dir = TempDir::new().unwrap();
-        let workspace_root = temp_dir.path().to_path_buf(;
+        let workspace_root = temp_dir.path().to_path_buf);
 
         // Create a basic Rust crate
         fs::write(
@@ -143,7 +143,7 @@ edition = "2021"
     #[test]
     fn test_project_features_detection() {
         let temp_dir = TempDir::new().unwrap();
-        let workspace_root = temp_dir.path().to_path_buf(;
+        let workspace_root = temp_dir.path().to_path_buf);
 
         // Create structure with features
         fs::create_dir_all(workspace_root.join("tests")).unwrap();
@@ -171,13 +171,13 @@ edition = "2021"
 
         let defaults = SmartDefaults::new(context;
 
-        let default_command = defaults.suggest_default_command(;
+        let default_command = defaults.suggest_default_command);
         assert_eq!(default_command, Some("build".to_string();
 
-        let output_format = defaults.suggest_output_format(;
+        let output_format = defaults.suggest_output_format);
         assert_eq!(output_format, "human";
 
-        let cache_settings = defaults.suggest_cache_settings(;
+        let cache_settings = defaults.suggest_cache_settings);
         assert!(cache_settings)); // WRT workspace should use cache
     }
 
@@ -205,13 +205,13 @@ mod command_suggestions_tests {
 
     #[test]
     fn test_suggestion_engine_creation() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
         // Should create without panicking
     }
 
     #[test]
     fn test_exact_command_match() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
         let suggestions = engine.suggest("build", None;
 
         assert!(!suggestions.is_empty();
@@ -222,7 +222,7 @@ mod command_suggestions_tests {
 
     #[test]
     fn test_typo_correction() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
 
         // Test common typos
         let typos = vec![
@@ -245,7 +245,7 @@ mod command_suggestions_tests {
 
     #[test]
     fn test_similarity_matching() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
         let suggestions = engine.suggest("bui", None;
 
         // Should find similar commands like "build"
@@ -261,7 +261,7 @@ mod command_suggestions_tests {
 
     #[test]
     fn test_empty_input() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
         let suggestions = engine.suggest("", None;
 
         // Should handle empty input gracefully
@@ -270,7 +270,7 @@ mod command_suggestions_tests {
 
     #[test]
     fn test_suggestion_formatting() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
         let suggestions = engine.suggest("buld", None;
 
         let formatted = engine.format_suggestions(&suggestions, false;
@@ -282,7 +282,7 @@ mod command_suggestions_tests {
 
     #[test]
     fn test_levenshtein_distance() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
 
         // Test similarity calculation
         let similarity1 = engine.calculate_similarity("build", "build";
@@ -304,7 +304,7 @@ mod performance_tests {
 
     #[test]
     fn test_performance_config_default() {
-        let config = PerformanceConfig::default(;
+        let config = PerformanceConfig::default);
         assert!(config.parallel_execution);
         assert!(config.max_parallel_jobs > 0);
         assert!(config.aggressive_caching);
@@ -313,19 +313,19 @@ mod performance_tests {
 
     #[test]
     fn test_performance_optimizer_creation() {
-        let optimizer = PerformanceOptimizer::with_defaults(;
+        let optimizer = PerformanceOptimizer::with_defaults);
         // Should create without panicking
     }
 
     #[test]
     fn test_timer_functionality() {
-        let mut optimizer = PerformanceOptimizer::with_defaults(;
+        let mut optimizer = PerformanceOptimizer::with_defaults);
 
         optimizer.start_timer("test_command";
         std::thread::sleep(Duration::from_millis(10;
         optimizer.stop_timer("test_command";
 
-        let report = optimizer.generate_report(;
+        let report = optimizer.generate_report);
         assert!(report.metrics.command_times.contains_key("test_command");
 
         let duration = report.metrics.command_times["test_command"];
@@ -334,36 +334,36 @@ mod performance_tests {
 
     #[test]
     fn test_cache_tracking() {
-        let mut optimizer = PerformanceOptimizer::with_defaults(;
+        let mut optimizer = PerformanceOptimizer::with_defaults);
 
         // Initially no cache data
         assert_eq!(optimizer.cache_hit_ratio(), 0.0;
 
         // Add some cache data
-        optimizer.record_cache_hit(;
-        optimizer.record_cache_miss(;
-        optimizer.record_cache_hit(;
+        optimizer.record_cache_hit);
+        optimizer.record_cache_miss);
+        optimizer.record_cache_hit);
 
-        let ratio = optimizer.cache_hit_ratio(;
+        let ratio = optimizer.cache_hit_ratio);
         assert!((ratio - 0.666).abs() < 0.01)); // 2/3 ≈ 0.666
     }
 
     #[test]
     fn test_performance_recommendations() {
-        let mut optimizer = PerformanceOptimizer::with_defaults(;
+        let mut optimizer = PerformanceOptimizer::with_defaults);
 
         // Add data that should trigger recommendations
-        optimizer.record_cache_miss(;
-        optimizer.record_cache_miss(;
-        optimizer.record_cache_miss(;
-        optimizer.record_cache_hit(;
+        optimizer.record_cache_miss);
+        optimizer.record_cache_miss);
+        optimizer.record_cache_miss);
+        optimizer.record_cache_hit);
 
         // Add a slow command
         optimizer.start_timer("slow_command";
         std::thread::sleep(Duration::from_millis(100;
         optimizer.stop_timer("slow_command";
 
-        let recommendations = optimizer.get_recommendations(;
+        let recommendations = optimizer.get_recommendations);
         // Should have some recommendations based on the data
 
         // Check for cache-related recommendation
@@ -375,12 +375,12 @@ mod performance_tests {
 
     #[test]
     fn test_performance_report_formatting() {
-        let mut optimizer = PerformanceOptimizer::with_defaults(;
+        let mut optimizer = PerformanceOptimizer::with_defaults);
         optimizer.start_timer("test";
         std::thread::sleep(Duration::from_millis(10;
         optimizer.stop_timer("test";
 
-        let report = optimizer.generate_report(;
+        let report = optimizer.generate_report);
 
         let human_format = report.format_human(false;
         assert!(human_format.contains("Performance Report");
@@ -470,7 +470,7 @@ mod error_handling_tests {
         )
         .with_suggestion("Use valid input";
 
-        let json = error.format_json(;
+        let json = error.format_json);
         assert!(json.is_object();
 
         let json_str = serde_json::to_string(&json).unwrap();
@@ -543,13 +543,13 @@ mod help_system_tests {
 
     #[test]
     fn test_help_system_creation() {
-        let help_system = HelpSystem::new(;
+        let help_system = HelpSystem::new);
         // Should create without panicking and have built-in commands
     }
 
     #[test]
     fn test_command_registration() {
-        let mut help_system = HelpSystem::new(;
+        let mut help_system = HelpSystem::new);
 
         let test_doc = CommandDoc {
             name:        "test-command",
@@ -573,7 +573,7 @@ mod help_system_tests {
 
     #[test]
     fn test_command_help_formatting() {
-        let help_system = HelpSystem::new(;
+        let help_system = HelpSystem::new);
 
         // Test with built-in command
         let help_text = help_system.format_command_help("build", false;
@@ -591,7 +591,7 @@ mod help_system_tests {
 
     #[test]
     fn test_overview_help() {
-        let help_system = HelpSystem::new(;
+        let help_system = HelpSystem::new);
 
         let overview = help_system.format_overview_help(false;
         assert!(overview.contains("cargo-wrt");

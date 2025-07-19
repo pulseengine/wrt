@@ -561,8 +561,8 @@ pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     }
 
     // Create an empty module with the binary stored
-    let mut module = Module::new(;
-    module.binary = Some(bytes.to_vec(;
+    let mut module = Module::new);
+    module.binary = Some(bytes.to_vec);
 
     // For now, we don't actually parse the module
     // This will be implemented in Phase 1
@@ -758,7 +758,7 @@ pub mod with_alloc {
 
         // Create a minimal valid module with bounded allocation
         #[cfg(feature = "safety-critical")]
-        let mut binary: WrtVec<u8, { CrateId::Format as u8 }, { 4 * 1024 * 1024 }> = WrtVec::new(;
+        let mut binary: WrtVec<u8, { CrateId::Format as u8 }, { 4 * 1024 * 1024 }> = WrtVec::new);
 
         #[cfg(not(feature = "safety-critical"))]
         let mut binary = Vec::with_capacity(8;
@@ -794,7 +794,7 @@ pub mod with_alloc {
 
         // Convert to Vec<u8> for return
         #[cfg(feature = "safety-critical")]
-        let result = binary.to_vec(;
+        let result = binary.to_vec);
         #[cfg(not(feature = "safety-critical"))]
         let result = binary;
 
@@ -926,7 +926,7 @@ pub mod with_alloc {
             return vec![0];
         }
 
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let mut value = value;
 
         while value != 0 {
@@ -948,7 +948,7 @@ pub mod with_alloc {
     /// This function will be used when implementing the full binary generator.
     #[cfg(feature = "std")]
     pub fn write_leb128_i32(value: i32) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let mut value = value;
         let mut more = true;
 
@@ -983,7 +983,7 @@ pub mod with_alloc {
     /// This function will be used when implementing the full binary formatter.
     #[cfg(feature = "std")]
     pub fn write_leb128_i64(value: i64) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let mut value = value;
         let mut more = true;
 
@@ -1076,7 +1076,7 @@ pub mod with_alloc {
     /// Write a LEB128 unsigned 64-bit integer to a byte array
     #[cfg(feature = "std")]
     pub fn write_leb128_u64(value: u64) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let mut value = value;
 
         loop {
@@ -1128,14 +1128,14 @@ pub mod with_alloc {
     /// Write a 32-bit IEEE 754 float to a byte array
     #[cfg(feature = "std")]
     pub fn write_f32(value: f32) -> Vec<u8> {
-        let bytes = value.to_le_bytes(;
+        let bytes = value.to_le_bytes);
         bytes.to_vec()
     }
 
     /// Write a 64-bit IEEE 754 float to a byte array
     #[cfg(feature = "std")]
     pub fn write_f64(value: f64) -> Vec<u8> {
-        let bytes = value.to_le_bytes(;
+        let bytes = value.to_le_bytes);
         bytes.to_vec()
     }
 
@@ -1188,14 +1188,14 @@ pub mod with_alloc {
     /// Write a WebAssembly UTF-8 string (length prefixed)
     #[cfg(feature = "std")]
     pub fn write_string(value: &str) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
 
         // Write the length as LEB128
         let length = value.len() as u32;
         result.extend_from_slice(&write_leb128_u32(length;
 
         // Write the string bytes
-        result.extend_from_slice(value.as_bytes(;
+        result.extend_from_slice(value.as_bytes);
 
         result
     }
@@ -1232,7 +1232,7 @@ pub mod with_alloc {
     where
         F: Fn(&T) -> Vec<u8>,
     {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
 
         // Write the vector length
         result.extend_from_slice(&write_leb128_u32(elements.len() as u32;
@@ -1265,7 +1265,7 @@ pub mod with_alloc {
     /// Writes the section ID and content size as a LEB128 unsigned integer.
     #[cfg(feature = "std")]
     pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
 
         // Write section ID
         result.push(id);
@@ -1622,8 +1622,8 @@ pub mod with_alloc {
         }
 
         // Create an empty component with the binary stored
-        let mut component = crate::component::Component::new(;
-        component.binary = Some(bytes.to_vec(;
+        let mut component = crate::component::Component::new);
+        component.binary = Some(bytes.to_vec);
 
         // In a real implementation, we would parse the sections here
         // This will be fully implemented in the future
@@ -2251,7 +2251,7 @@ pub mod with_alloc {
                         "Data segment init bytes extend beyond data",
                     ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec);
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2274,7 +2274,7 @@ pub mod with_alloc {
                         "Passive data segment init bytes extend beyond data",
                     ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec);
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2303,7 +2303,7 @@ pub mod with_alloc {
                         "Data segment init bytes extend beyond data",
                     ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec);
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2350,7 +2350,7 @@ pub mod with_alloc {
                         "Data segment init bytes extend beyond data",
                     ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec);
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2375,7 +2375,7 @@ pub mod with_alloc {
                         "Passive data segment init bytes extend beyond data",
                     ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec);
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2403,7 +2403,7 @@ pub mod with_alloc {
                         "Data segment init bytes extend beyond data",
                     ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec);
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2518,7 +2518,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Passive;
-                offset_expr = Vec::new(;
+                offset_expr = Vec::new);
             },
             0x02 => {
                 // Active with tableidx: tableidx expr elemkind vec(expr) end
@@ -2608,7 +2608,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Declared;
-                offset_expr = Vec::new(;
+                offset_expr = Vec::new);
             },
             0x04 => {
                 // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
@@ -2684,7 +2684,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Passive;
-                offset_expr = Vec::new(;
+                offset_expr = Vec::new);
             },
             0x06 => {
                 // Active with tableidx: tableidx expr reftype vec(expr) end
@@ -2780,7 +2780,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Declared;
-                offset_expr = Vec::new(;
+                offset_expr = Vec::new);
             },
             _ => {
                 return Err(crate::error::parse_error_dynamic(format!(
@@ -2844,7 +2844,7 @@ pub fn write_leb128_u32_to_slice(value: u32, buffer: &mut [u8]) -> wrt_error::Re
 /// Returns the number of bytes written.
 #[cfg(not(any(feature = "std")))]
 pub fn write_string_to_slice(value: &str, buffer: &mut [u8]) -> wrt_error::Result<usize> {
-    let str_bytes = value.as_bytes(;
+    let str_bytes = value.as_bytes);
     let length = str_bytes.len() as u32;
 
     // First calculate how many bytes we need for the length
@@ -2852,7 +2852,7 @@ pub fn write_string_to_slice(value: &str, buffer: &mut [u8]) -> wrt_error::Resul
     let length_bytes = write_leb128_u32_to_slice(length, &mut length_buffer)?;
 
     // Check if buffer is large enough
-    let total_size = length_bytes + str_bytes.len(;
+    let total_size = length_bytes + str_bytes.len);
     if buffer.len() < total_size {
         return Err(parse_error("Buffer too small for string encoding";
     }
@@ -2999,7 +2999,7 @@ mod tests {
             return vec![0];
         }
 
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let mut value = value;
 
         while value != 0 {
@@ -3018,28 +3018,28 @@ mod tests {
 
     #[cfg(feature = "std")]
     fn write_f32_test(value: f32) -> Vec<u8> {
-        let bytes = value.to_le_bytes(;
+        let bytes = value.to_le_bytes);
         bytes.to_vec()
     }
 
     #[cfg(feature = "std")]
     fn write_f64_test(value: f64) -> Vec<u8> {
-        let bytes = value.to_le_bytes(;
+        let bytes = value.to_le_bytes);
         bytes.to_vec()
     }
 
     #[cfg(feature = "std")]
     fn write_string_test(value: &str) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let length = value.len() as u32;
         result.extend_from_slice(&write_leb128_u32_test(length;
-        result.extend_from_slice(value.as_bytes(;
+        result.extend_from_slice(value.as_bytes);
         result
     }
 
     #[cfg(feature = "std")]
     fn write_leb128_u64_test(value: u64) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let mut value = value;
 
         loop {
@@ -3065,7 +3065,7 @@ mod tests {
     where
         F: Fn(&T) -> Vec<u8>,
     {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         result.extend_from_slice(&write_leb128_u32_test(elements.len() as u32;
         for elem in elements {
             result.extend_from_slice(&write_elem(elem;
@@ -3075,7 +3075,7 @@ mod tests {
 
     #[cfg(feature = "std")]
     fn write_section_header_test(id: u8, content_size: u32) -> Vec<u8> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         result.push(id);
         result.extend_from_slice(&write_leb128_u32_test(content_size;
         result

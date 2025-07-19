@@ -188,7 +188,7 @@ impl PostReturnContext {
         #[cfg(not(feature = "std"))]
         {
             // Simple bubble sort for no_std
-            let len = self.entries.len(;
+            let len = self.entries.len);
             for i in 0..len {
                 for j in 0..len - 1 - i {
                     if self.entries.get(j).unwrap().priority < self.entries.get(j + 1).unwrap().priority {
@@ -215,13 +215,13 @@ impl PostReturnContext {
         }
 
         self.is_executing = true;
-        let start_time = current_time_us(;
-        let mut errors = Vec::new(;
+        let start_time = current_time_us);
+        let mut errors = Vec::new);
 
         // Execute each cleanup operation in priority order
         let entries = mem::take(&mut self.entries;
         for entry in entries {
-            let operation_start = current_time_us(;
+            let operation_start = current_time_us);
             
             match self.execute_cleanup_entry(instance, memory, &entry) {
                 Ok(()) => {
@@ -260,7 +260,7 @@ impl PostReturnContext {
     /// Execute a single cleanup entry
     fn execute_cleanup_entry(&self, instance: &mut Instance, memory: &mut Memory, entry: &PostReturnEntry) -> Result<()> {
         // Convert ComponentValue args to raw values for function call
-        let mut raw_args = Vec::new(;
+        let mut raw_args = Vec::new);
         
         #[cfg(feature = "std")]
         {
@@ -325,7 +325,7 @@ impl PostReturnContext {
 
     /// Reset statistics
     pub fn reset_stats(&mut self) {
-        self.stats = PostReturnStats::default(;
+        self.stats = PostReturnStats::default);
     }
 
     /// Check if post-return is currently executing
@@ -493,7 +493,7 @@ mod tests {
 
     #[test]
     fn test_error_recovery_modes() {
-        let mut context = PostReturnContext::new(;
+        let mut context = PostReturnContext::new);
         
         context.set_error_recovery(ErrorRecoveryMode::StopOnError;
         assert_eq!(context.error_recovery, ErrorRecoveryMode::StopOnError;

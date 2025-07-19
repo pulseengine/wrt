@@ -23,14 +23,14 @@ mod complete_debug_tests {
     #[cfg(all(feature = "debug-info", feature = "function-info"))]
     fn test_parameter_parsing() {
         // Test that we can parse function parameters
-        let params = ParameterList::new(;
+        let params = ParameterList::new);
 
         // Verify parameter list functionality
         assert_eq!(params.count(), 0;
         assert!(!params.is_variadic();
 
         // Test parameter display
-        let mut output = String::new(;
+        let mut output = String::new);
         params
             .display(|s| {
                 output.push_str(s;
@@ -57,7 +57,7 @@ mod complete_debug_tests {
 
     #[test]
     fn test_inline_function_detection() {
-        let mut inlined = wrt_debug::parameter::InlinedFunctions::new(;
+        let mut inlined = wrt_debug::parameter::InlinedFunctions::new);
 
         // Add an inlined function
         let func = InlinedFunction {
@@ -86,7 +86,7 @@ mod complete_debug_tests {
     #[test]
     fn test_file_path_resolution() {
         // Create a file table
-        let mut file_table = FileTable::new(;
+        let mut file_table = FileTable::new);
 
         // Add some directories
         let string_data = b"\0src\0tests\0lib.rs\0test.rs\0";
@@ -139,7 +139,7 @@ mod complete_debug_tests {
         };
 
         // Create file table with test data
-        let mut file_table = FileTable::new(;
+        let mut file_table = FileTable::new);
         let string_data = b"\0src\0main.rs\0";
         let string_table = StringTable::new(string_data;
 
@@ -154,7 +154,7 @@ mod complete_debug_tests {
         file_table.add_file(main_rs).unwrap();
 
         // Test location formatting
-        let mut output = String::new(;
+        let mut output = String::new);
         line_info
             .format_location(&file_table)
             .display(|s| {
@@ -170,10 +170,10 @@ mod complete_debug_tests {
     #[cfg(all(feature = "line-info", feature = "function-info"))]
     fn test_stack_trace_with_parameters() {
         // This tests the integration of all components
-        let mut trace = StackTrace::new(;
+        let mut trace = StackTrace::new);
 
         // Create a mock function with parameters
-        let params = ParameterList::new(;
+        let params = ParameterList::new);
         // In real usage, parameters would be populated from DWARF
 
         let frame = StackFrame {
@@ -211,7 +211,7 @@ mod complete_debug_tests {
         use wrt_debug::parameter::*;
 
         // Create a parameter list
-        let mut params = ParameterList::new(;
+        let mut params = ParameterList::new);
 
         let param1 = Parameter {
             name:        None,
@@ -244,7 +244,7 @@ mod complete_debug_tests {
     #[test]
     fn test_inline_function_depth() {
         // Test nested inline functions
-        let mut inlined = wrt_debug::parameter::InlinedFunctions::new(;
+        let mut inlined = wrt_debug::parameter::InlinedFunctions::new);
 
         // Add multiple levels of inlining
         let func1 = InlinedFunction {

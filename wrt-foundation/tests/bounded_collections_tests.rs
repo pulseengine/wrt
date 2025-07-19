@@ -304,7 +304,7 @@ fn test_bounded_deque_operations() {
 
 #[test]
 fn test_bounded_bitset_operations() {
-    let mut bitset = BoundedBitSet::<100>::new(;
+    let mut bitset = BoundedBitSet::<100>::new);
 
     // Check empty bitset properties
     assert_eq!(bitset.len(), 0;
@@ -349,7 +349,7 @@ fn test_bounded_bitset_operations() {
     assert!(bitset.toggle(100).is_err();
 
     // Test set_all and clear_all
-    bitset.set_all(;
+    bitset.set_all);
     assert_eq!(bitset.len(), 100;
     assert!(bitset.is_full();
 
@@ -357,7 +357,7 @@ fn test_bounded_bitset_operations() {
         assert!(bitset.contains(i).unwrap();
     }
 
-    bitset.clear_all(;
+    bitset.clear_all);
     assert_eq!(bitset.len(), 0;
     assert!(bitset.is_empty();
 
@@ -503,10 +503,10 @@ fn test_bounded_collections_performance() {
     )
     .unwrap();
 
-    let mut bitset = BoundedBitSet::<100_000>::new(;
+    let mut bitset = BoundedBitSet::<100_000>::new);
 
     // Measure deque performance
-    let start = Instant::now(;
+    let start = Instant::now);
 
     for i in 0..5000 {
         deque.push_back(i).unwrap();
@@ -520,10 +520,10 @@ fn test_bounded_collections_performance() {
         deque.push_front(i).unwrap();
     }
 
-    let deque_duration = start.elapsed(;
+    let deque_duration = start.elapsed);
 
     // Measure bitset performance
-    let start = Instant::now(;
+    let start = Instant::now);
 
     for i in 0..50_000 {
         bitset.set(i % 100_000).unwrap();
@@ -537,7 +537,7 @@ fn test_bounded_collections_performance() {
         bitset.toggle(i % 100_000).unwrap();
     }
 
-    let bitset_duration = start.elapsed(;
+    let bitset_duration = start.elapsed);
 
     // Print performance results (not checking specific values)
     println!("BoundedDeque operations took: {:?}", deque_duration;

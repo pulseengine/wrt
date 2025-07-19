@@ -426,14 +426,14 @@ mod tests {
     
     #[test]
     fn test_simd_operations_creation() {
-        let simd_ops = SimdOperations::new(;
+        let simd_ops = SimdOperations::new);
         // Just verify we can create the operations
-        let _ = simd_ops.runtime(;
+        let _ = simd_ops.runtime);
     }
     
     #[test]
     fn test_i8x16_add() {
-        let simd_ops = SimdOperations::new(;
+        let simd_ops = SimdOperations::new);
         let a = [1u8; 16];
         let b = [2u8; 16];
         let result = simd_ops.i8x16_add(&a, &b).unwrap();
@@ -446,7 +446,7 @@ mod tests {
     
     #[test]
     fn test_v128_and() {
-        let simd_ops = SimdOperations::new(;
+        let simd_ops = SimdOperations::new);
         let a = [0xFFu8; 16];
         let b = [0xF0u8; 16];
         let result = simd_ops.v128_and(&a, &b).unwrap();
@@ -459,7 +459,7 @@ mod tests {
     
     #[test]
     fn test_v128_any_true() {
-        let simd_ops = SimdOperations::new(;
+        let simd_ops = SimdOperations::new);
         
         // Test with all zeros
         let zeros = [0u8; 16];

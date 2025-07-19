@@ -205,10 +205,10 @@ impl TelemetryConfig {
 }
 
 /// Global telemetry buffer (1024 events)
-static TELEMETRY_BUFFER: TelemetryBuffer<1024> = TelemetryBuffer::new(;
+static TELEMETRY_BUFFER: TelemetryBuffer<1024> = TelemetryBuffer::new);
 
 /// Global telemetry configuration
-static TELEMETRY_CONFIG: TelemetryConfig = TelemetryConfig::new(;
+static TELEMETRY_CONFIG: TelemetryConfig = TelemetryConfig::new);
 
 /// Record a telemetry event
 pub fn record_event(
@@ -333,7 +333,7 @@ mod tests {
             12, // error code
         ;
         
-        let stats = get_telemetry_stats(;
+        let stats = get_telemetry_stats);
         assert!(stats.events_recorded > initial_count);
         assert!(stats.telemetry_enabled);
     }
@@ -362,7 +362,7 @@ mod tests {
             0,
         ;
         
-        let stats = get_telemetry_stats(;
+        let stats = get_telemetry_stats);
         assert_eq!(stats.events_recorded, initial_count + 1;
     }
     
@@ -381,7 +381,7 @@ mod tests {
             0,
         ;
         
-        let stats = get_telemetry_stats(;
+        let stats = get_telemetry_stats);
         assert_eq!(stats.events_recorded, initial_count;
         assert!(!stats.telemetry_enabled);
     }

@@ -21,7 +21,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
-//!     let config = ContainerConfig::default(;
+//!     let config = ContainerConfig::default);
 //!     let pipeline = DaggerPipeline::new(config).await?;
 //!
 //!     // Run cargo-wrt build in container
@@ -69,7 +69,7 @@ pub struct ContainerConfig {
 
 impl Default for ContainerConfig {
     fn default() -> Self {
-        let mut environment = HashMap::new(;
+        let mut environment = HashMap::new);
         environment.insert("RUST_LOG".to_string(), "info".to_string();
         environment.insert("CARGO_INCREMENTAL".to_string(), "0".to_string();
 
@@ -269,7 +269,7 @@ pub mod utils {
             .env("CI", "true")
             .env("CARGO_TERM_COLOR", "always")
             .timeout(7200) // 2 hours for CI
-            .build(;
+            .build);
 
         DaggerPipeline::new(config).await
     }
@@ -280,7 +280,7 @@ pub mod utils {
             .cache_dependencies(true)
             .env("RUST_LOG", "debug")
             .timeout(1800) // 30 minutes for dev
-            .build(;
+            .build);
 
         DaggerPipeline::new(config).await
     }
@@ -293,7 +293,7 @@ pub mod utils {
             .env("KANI_REACH_CHECKS", "1")
             .env("ASIL_LEVEL", "D")
             .timeout(10800) // 3 hours for formal verification
-            .build(;
+            .build);
 
         DaggerPipeline::new(config).await
     }
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn test_container_config_default() {
-        let config = ContainerConfig::default(;
+        let config = ContainerConfig::default);
         assert_eq!(config.base_image, "ubuntu:22.04";
         assert_eq!(config.rust_version, "1.86.0";
         assert!(!config.system_packages.is_empty();
@@ -320,7 +320,7 @@ mod tests {
             .env("DEBUG", "1")
             .work_dir("/app")
             .timeout(1200)
-            .build(;
+            .build);
 
         assert_eq!(config.base_image, "alpine:latest";
         assert_eq!(config.rust_version, "1.85.0";
@@ -332,7 +332,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_pipeline_creation() {
-        let config = ContainerConfig::default(;
+        let config = ContainerConfig::default);
         let result = DaggerPipeline::new(config).await;
         assert!(result.is_ok();
     }

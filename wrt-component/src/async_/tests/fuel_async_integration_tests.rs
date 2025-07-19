@@ -191,7 +191,7 @@ mod tests {
         let mut runtime = FuelAsyncRuntime::new(config).unwrap();
         
         // Create mock component
-        let component = Arc::new(ComponentInstance::new(;
+        let component = Arc::new(ComponentInstance::new);
         runtime.register_component(1, component.clone()).unwrap();
         
         // Spawn multiple tasks
@@ -206,7 +206,7 @@ mod tests {
         }).collect();
         
         // Run runtime for a limited time
-        let start_fuel = global_fuel_consumed(;
+        let start_fuel = global_fuel_consumed);
         
         // Poll a few times instead of running to completion
         for _ in 0..10 {
@@ -216,7 +216,7 @@ mod tests {
             runtime.poll_tasks().unwrap();
         }
         
-        let end_fuel = global_fuel_consumed(;
+        let end_fuel = global_fuel_consumed);
         assert!(end_fuel > start_fuel);
         
         // Check task results
@@ -377,7 +377,7 @@ mod tests {
         let mut runtime = FuelAsyncRuntime::new(config).unwrap();
         
         // Register component
-        let component = Arc::new(ComponentInstance::new(;
+        let component = Arc::new(ComponentInstance::new);
         runtime.register_component(1, component).unwrap();
         
         // Spawn tasks that would share resources
@@ -418,7 +418,7 @@ mod tests {
         }
         
         // Check total fuel consumption
-        let stats = runtime.stats(;
+        let stats = runtime.stats);
         assert!(stats.total_fuel_consumed > 0);
         assert!(stats.polling_cycles > 0);
     }

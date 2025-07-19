@@ -127,7 +127,7 @@ impl<T> FuelStream<T> {
         // Wake any waiting consumers
         if let Some(waker) = self.waker.take() {
             self.state = StreamState::Active;
-            waker.wake(;
+            waker.wake);
         }
         
         Ok(())
@@ -140,7 +140,7 @@ impl<T> FuelStream<T> {
         
         // Wake any waiting consumers
         if let Some(waker) = self.waker.take() {
-            waker.wake(;
+            waker.wake);
         }
         
         Ok(())
@@ -152,11 +152,11 @@ impl<T> FuelStream<T> {
         self.state = StreamState::Cancelled;
         
         // Clear buffer
-        self.buffer.clear(;
+        self.buffer.clear);
         
         // Wake any waiting consumers
         if let Some(waker) = self.waker.take() {
-            waker.wake(;
+            waker.wake);
         }
         
         Ok(())
@@ -392,7 +392,7 @@ mod tests {
         assert!(stream.yield_item(43).is_ok();
         
         // Poll items
-        let waker = futures_task::noop_waker(;
+        let waker = futures_task::noop_waker);
         let mut cx = Context::from_waker(&waker;
         
         match stream.poll_next(&mut cx) {
@@ -428,7 +428,7 @@ mod tests {
         let mut stream = FuelStream::<u32>::new(1, 20, VerificationLevel::Basic).unwrap();
         
         // Consume most of the fuel
-        let waker = futures_task::noop_waker(;
+        let waker = futures_task::noop_waker);
         let mut cx = Context::from_waker(&waker;
         
         // Poll multiple times to exhaust fuel

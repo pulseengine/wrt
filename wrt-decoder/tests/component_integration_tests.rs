@@ -26,7 +26,7 @@ mod tests {
     }
 
     fn create_mock_component() -> Result<wrt_format::component::Component> {
-        let mut component = wrt_format::component::Component::new(;
+        let mut component = wrt_format::component::Component::new);
 
         // Add a simple function import
         component.imports.push(wrt_format::component::Import {

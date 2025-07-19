@@ -212,11 +212,11 @@ impl StartFunctionValidator {
         }
 
         validation.validation_state = ValidationState::InProgress;
-        let start_time = self.get_current_time(;
+        let start_time = self.get_current_time);
 
         let result = self.perform_validation(component_id, &validation.descriptor;
 
-        let end_time = self.get_current_time(;
+        let end_time = self.get_current_time);
         let duration = end_time.saturating_sub(start_time;
 
         match result {
@@ -278,7 +278,7 @@ impl StartFunctionValidator {
     }
 
     pub fn get_validation_summary(&self) -> ValidationSummary {
-        let mut summary = ValidationSummary::default(;
+        let mut summary = ValidationSummary::default);
 
         for validation in self.validations.values() {
             summary.total += 1;
@@ -370,7 +370,7 @@ impl StartFunctionValidator {
         component_id: ComponentInstanceId,
         descriptor: &StartFunctionDescriptor,
     ) -> StartFunctionResult<StartFunctionExecutionResult> {
-        let start_time = self.get_current_time(;
+        let start_time = self.get_current_time);
 
         // Check dependencies first
         self.validate_dependencies(component_id, descriptor)?;
@@ -389,7 +389,7 @@ impl StartFunctionValidator {
             descriptor.timeout_ms,
         )?;
 
-        let end_time = self.get_current_time(;
+        let end_time = self.get_current_time);
         let execution_time = end_time.saturating_sub(start_time;
 
         // Analyze side effects
@@ -471,7 +471,7 @@ impl StartFunctionValidator {
         timeout_ms: u64,
     ) -> StartFunctionResult<Option<ComponentValue>> {
         // Create execution state
-        let mut execution_state = ExecutionState::new(;
+        let mut execution_state = ExecutionState::new);
         execution_state.set_timeout(Duration::from_millis(timeout_ms;
 
         // Execute through the execution engine
@@ -660,7 +660,7 @@ mod tests {
 
     #[test]
     fn test_start_function_validator_creation() {
-        let validator = StartFunctionValidator::new(;
+        let validator = StartFunctionValidator::new);
         assert_eq!(validator.default_timeout_ms, DEFAULT_START_TIMEOUT_MS;
         assert_eq!(validator.default_validation_level, ValidationLevel::Standard;
     }
@@ -684,7 +684,7 @@ mod tests {
 
     #[test]
     fn test_descriptor_validation() {
-        let validator = StartFunctionValidator::new(;
+        let validator = StartFunctionValidator::new);
 
         // Valid descriptor
         let valid_descriptor = create_start_function_descriptor("_start").unwrap();
@@ -710,7 +710,7 @@ mod tests {
 
     #[test]
     fn test_validation_summary() {
-        let summary = ValidationSummary::default(;
+        let summary = ValidationSummary::default);
         assert_eq!(summary.total, 0;
         assert_eq!(summary.passed, 0;
         assert_eq!(summary.failed, 0;

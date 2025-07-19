@@ -203,7 +203,7 @@ where
     Provider: MemoryProvider + Default + Clone + PartialEq + Eq,
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.id.as_u32().to_le_bytes(;
+        checksum.update_slice(&self.id.as_u32().to_le_bytes);
         self.component_type.update_checksum(checksum;
         self.exports.update_checksum(checksum;
         self.imports.update_checksum(checksum;
@@ -396,7 +396,7 @@ where
     /// Create a new unified component runtime with default limits
     #[cfg(not(feature = "comprehensive-limits"))]
     pub fn new_default() -> core::result::Result<Self, wrt_error::Error> {
-        let memory_budget = ComponentMemoryBudget::default(;
+        let memory_budget = ComponentMemoryBudget::default);
         let global_memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
             .map_err(|_| Error::memory_error("Failed to create memory adapter"))?; // 64MB default
         
@@ -594,16 +594,16 @@ mod tests {
     
     #[test]
     fn test_component_id_generation() {
-        let id1 = ComponentId::new(;
-        let id2 = ComponentId::new(;
+        let id1 = ComponentId::new);
+        let id2 = ComponentId::new);
         
         assert_ne!(id1, id2;
-        assert_ne!(id1.as_u32(), id2.as_u32(;
+        assert_ne!(id1.as_u32(), id2.as_u32);
     }
     
     #[test]
     fn test_component_memory_budget() {
-        let budget = ComponentMemoryBudget::default(;
+        let budget = ComponentMemoryBudget::default);
         
         assert!(budget.total_memory > 0);
         assert!(budget.available_component_memory <= budget.total_memory);
@@ -636,7 +636,7 @@ mod tests {
     
     #[test]
     fn test_unified_component_runtime_creation() {
-        let runtime = UnifiedComponentRuntime::<DefaultRuntimeProvider>::new_default(;
+        let runtime = UnifiedComponentRuntime::<DefaultRuntimeProvider>::new_default);
         assert!(runtime.is_ok();
         
         let runtime = runtime.unwrap();

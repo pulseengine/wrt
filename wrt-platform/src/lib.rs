@@ -89,7 +89,7 @@ extern crate wrt_panic;
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     // Simple infinite loop for minimal panic handling
     loop {
-        core::hint::spin_loop(;
+        core::hint::spin_loop);
     }
 }
 // Module declarations
@@ -368,7 +368,7 @@ mod tests {
             .with_maximum_pages(100)
             .with_guard_pages(true)
             .with_memory_tagging(true)
-            .build(;
+            .build);
 
         // Binary std/no_std choice
         // We can't test its settings without accessing private fields
@@ -379,7 +379,7 @@ mod tests {
     #[test]
     fn test_linux_allocator_builder() {
         let allocator =
-            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build(;
+            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build);
 
         // Binary std/no_std choice
         // We can't test its settings without accessing private fields
@@ -398,7 +398,7 @@ mod tests {
             .with_maximum_pages(100)
             .with_guard_pages(true)
             .with_mte_mode(MteMode::Synchronous)
-            .build(;
+            .build);
 
         // Binary std/no_std choice
         // We can't test its settings without accessing private fields
@@ -408,7 +408,7 @@ mod tests {
     #[cfg(all(feature = "platform-linux", target_os = "linux"))]
     #[test]
     fn test_linux_futex_builder() {
-        let futex = LinuxFutexBuilder::new().with_initial_value(42).build(;
+        let futex = LinuxFutexBuilder::new().with_initial_value(42).build);
 
         // Test that the futex was created successfully
         assert_eq!(core::mem::size_of_val(&futex) > 0, true;
@@ -421,7 +421,7 @@ mod tests {
             .with_maximum_pages(100)
             .with_memory_domains(true)
             .with_guard_regions(true)
-            .build(;
+            .build);
 
         // Binary std/no_std choice
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true;
@@ -430,7 +430,7 @@ mod tests {
     #[cfg(feature = "platform-zephyr")]
     #[test]
     fn test_zephyr_futex_builder() {
-        let futex = ZephyrFutexBuilder::new().with_initial_value(42).build(;
+        let futex = ZephyrFutexBuilder::new().with_initial_value(42).build);
 
         // Test that the futex was created successfully
         assert_eq!(core::mem::size_of_val(&futex) > 0, true;
@@ -493,7 +493,7 @@ mod tests {
         use crate::platform_abstraction::platform_select;
 
         // Test that we can create auto-selected platform
-        let _platform = platform_select::create_auto_platform(;
+        let _platform = platform_select::create_auto_platform);
 
         // The actual type will depend on which features are enabled
         // This test mainly ensures the compilation works
@@ -503,14 +503,14 @@ mod tests {
     fn test_runtime_detection() {
         use crate::runtime_detection::PlatformDetector;
 
-        let mut detector = PlatformDetector::new(;
+        let mut detector = PlatformDetector::new);
         let capabilities = detector.detect().unwrap();
 
         // Test that we can detect basic capabilities
         assert!(capabilities.memory.allocation_granularity > 0);
         assert!(capabilities.supports_wasm_runtime();
 
-        let paradigm = capabilities.recommended_paradigm(;
+        let paradigm = capabilities.recommended_paradigm);
         assert!(paradigm == "SecurityFirst" || paradigm == "RealTime" || paradigm == "Posix");
 
         // Test caching works
@@ -529,7 +529,7 @@ mod tests {
             .max_pages(512)
             .use_dedicated_partition(true)
             .enable_guard_pages(true)
-            .build(;
+            .build);
 
         assert!(allocator.is_ok();
     }
@@ -539,7 +539,7 @@ mod tests {
     fn test_vxworks_futex_builder() {
         let futex = VxWorksFutexBuilder::new(VxWorksContext::Rtp)
             .initial_value(42)
-            .build(;
+            .build);
 
         assert!(futex.is_ok();
     }

@@ -111,14 +111,14 @@ mod debug_info_analysis {
         ;
 
         // Analyze what information we can extract
-        analyze_line_numbers(;
-        analyze_function_info(;
-        analyze_string_data(;
-        analyze_type_information(;
-        analyze_variable_information(;
+        analyze_line_numbers);
+        analyze_function_info);
+        analyze_string_data);
+        analyze_type_information);
+        analyze_variable_information);
 
         println!("\n=== Summary ===";
-        print_capabilities_summary(;
+        print_capabilities_summary);
     }
 
     fn analyze_line_numbers() {
@@ -231,7 +231,7 @@ mod debug_info_analysis {
 
     // Helper function to extract null-terminated strings
     fn extract_null_terminated_str(data: &[u8]) -> &str {
-        let end = data.iter().position(|&b| b == 0).unwrap_or(data.len(;
+        let end = data.iter().position(|&b| b == 0).unwrap_or(data.len);
         core::str::from_utf8(&data[..end]).unwrap_or("<invalid utf8>")
     }
 

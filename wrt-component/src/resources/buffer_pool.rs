@@ -56,12 +56,12 @@ impl BufferPool {
 
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, mut buffer: Vec<u8>) {
-        let size = buffer.capacity(;
+        let size = buffer.capacity);
 
         // Only keep reasonably sized buffers
         if size <= self.max_buffer_size {
             // Clear the buffer before returning it to the pool
-            buffer.clear(;
+            buffer.clear);
 
             // Add to the pool if we have space
             let buffers = self.pools.entry(size).or_insert_with(Vec::new;
@@ -73,7 +73,7 @@ impl BufferPool {
 
     /// Reset the buffer pool, clearing all pooled buffers
     pub fn reset(&mut self) {
-        self.pools.clear(;
+        self.pools.clear);
     }
 
     /// Get stats about the buffer pool
@@ -82,8 +82,8 @@ impl BufferPool {
         let mut total_capacity = 0;
 
         for (size, buffers) in &self.pools {
-            total_buffers += buffers.len(;
-            total_capacity += size * buffers.len(;
+            total_buffers += buffers.len);
+            total_capacity += size * buffers.len);
         }
 
         BufferPoolStats { total_buffers, total_capacity, size_count: self.pools.len() }
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_buffer_allocation() {
-        let mut pool = BufferPool::new(;
+        let mut pool = BufferPool::new);
 
         // Allocate a buffer
         let buffer = pool.allocate(100;
@@ -158,21 +158,21 @@ mod tests {
 
     #[test]
     fn test_buffer_pool_reset() {
-        let mut pool = BufferPool::new(;
+        let mut pool = BufferPool::new);
 
         // Allocate and return some buffers
         pool.return_buffer(pool.allocate(100;
         pool.return_buffer(pool.allocate(200;
 
         // Check stats
-        let stats_before = pool.stats(;
+        let stats_before = pool.stats);
         assert_eq!(stats_before.total_buffers, 2;
 
         // Reset the pool
-        pool.reset(;
+        pool.reset);
 
         // Check stats again
-        let stats_after = pool.stats(;
+        let stats_after = pool.stats);
         assert_eq!(stats_after.total_buffers, 0;
     }
 }

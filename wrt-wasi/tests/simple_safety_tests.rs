@@ -5,7 +5,7 @@ use wrt_foundation::{safe_managed_alloc, CrateId, memory_init::{init_wrt_memory,
 
 #[test]
 fn test_safety_level_detection() {
-    let level = wasi_safety_level(;
+    let level = wasi_safety_level);
     println!("Current safety level: {}", level;
     
     // The level depends on which feature is enabled at compile time
@@ -27,7 +27,7 @@ fn test_safety_level_detection() {
 
 #[test]
 fn test_allocation_limits() {
-    let max_size = wasi_max_allocation_size(;
+    let max_size = wasi_max_allocation_size);
     println!("Maximum allocation size: {} bytes", max_size;
     
     #[cfg(feature = "asil-d")]
@@ -54,7 +54,7 @@ fn test_safety_aware_allocation() {
     assert!(small_result.is_ok(), "Small allocation should succeed");
     
     // Test allocation at various sizes
-    let max_allowed = wasi_max_allocation_size(;
+    let max_allowed = wasi_max_allocation_size);
     
     // Test 8KB allocation
     {
@@ -136,8 +136,8 @@ fn test_qm_no_limits() {
 #[test]
 fn test_feature_combinations() {
     // Test that multiple features are handled correctly
-    let level = wasi_safety_level(;
-    let max_size = wasi_max_allocation_size(;
+    let level = wasi_safety_level);
+    let max_size = wasi_max_allocation_size);
     
     println!("Active features:";
     #[cfg(feature = "qm")]

@@ -191,7 +191,7 @@ impl ZephyrAllocator {
     /// Set up memory domain isolation if enabled
     unsafe fn setup_memory_domain(&mut self, ptr: *mut u8, size: usize) -> Result<()> {
         if !self.config.use_memory_domains {
-            return Ok((;
+            return Ok();
         }
 
         // Binary std/no_std choice
@@ -202,7 +202,7 @@ impl ZephyrAllocator {
         // Note: In real usage, domain would be a static or stack variable:
         // static K_MEM_DOMAIN_DEFINE(my_domain;
         // For now, we'll use a null pointer to indicate this limitation
-        let domain: *mut ZephyrMemDomain = core::ptr::null_mut(;
+        let domain: *mut ZephyrMemDomain = core::ptr::null_mut);
 
         if domain.is_null() {
             // Memory domains not available - log this for debugging in real
@@ -246,7 +246,7 @@ impl ZephyrAllocator {
     /// Binary std/no_std choice
     unsafe fn setup_guard_regions(&self, _base_ptr: *mut u8, _total_size: usize) -> Result<()> {
         if !self.config.use_guard_regions {
-            return Ok((;
+            return Ok();
         }
 
         // In a real implementation, this would set up MPU/MMU regions
@@ -378,7 +378,7 @@ impl PageAllocator for ZephyrAllocator {
         unsafe {
             if let Err(e) = self.setup_guard_regions(ptr, reserve_bytes) {
                 // Binary std/no_std choice
-                let _ = self.cleanup_memory_domain(;
+                let _ = self.cleanup_memory_domain);
                 k_heap_free(self.heap, ptr;
                 return Err(e;
             }
@@ -397,7 +397,7 @@ impl PageAllocator for ZephyrAllocator {
         };
 
         if additional_pages == 0 {
-            return Ok((;
+            return Ok();
         }
 
         let current_bytes_from_arg = Self::pages_to_bytes(current_pages)?;
@@ -447,7 +447,7 @@ impl PageAllocator for ZephyrAllocator {
 
         // Free the memory using Zephyr's heap API
         // Binary std/no_std choice
-        k_heap_free(self.heap, ptr.as_ptr(;
+        k_heap_free(self.heap, ptr.as_ptr);
 
         // Reset internal state
         self.total_reserved_bytes = 0;
@@ -461,8 +461,8 @@ impl Drop for ZephyrAllocator {
         // Binary std/no_std choice
         if let Some(base_ptr) = self.base_ptr.take() {
             unsafe {
-                let _ = self.cleanup_memory_domain(;
-                k_heap_free(self.heap, base_ptr.as_ptr(;
+                let _ = self.cleanup_memory_domain);
+                k_heap_free(self.heap, base_ptr.as_ptr);
             }
         }
     }

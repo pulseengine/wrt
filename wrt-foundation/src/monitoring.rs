@@ -132,7 +132,7 @@ impl MemoryStatistics {
 }
 
 /// Global memory monitor instance
-pub static MEMORY_MONITOR: MemoryMonitor = MemoryMonitor::new(;
+pub static MEMORY_MONITOR: MemoryMonitor = MemoryMonitor::new);
 
 /// Per-crate monitoring
 pub struct CrateMonitor {
@@ -208,7 +208,7 @@ pub fn debug_track_allocation(crate_id: CrateId, size: usize, purpose: &str) {
         use std::collections::HashMap;
         use std::sync::{Mutex, OnceLock};
 
-        static DEBUG_TRACKER: OnceLock<Mutex<HashMap<String, (usize, usize)>>> = OnceLock::new(;
+        static DEBUG_TRACKER: OnceLock<Mutex<HashMap<String, (usize, usize)>>> = OnceLock::new);
 
         let tracker = DEBUG_TRACKER.get_or_init(|| Mutex::new(HashMap::new();
         if let Ok(mut map) = tracker.lock() {
@@ -222,7 +222,7 @@ pub fn debug_track_allocation(crate_id: CrateId, size: usize, purpose: &str) {
 
 /// Get comprehensive system report
 pub fn get_system_report() -> SystemReport {
-    let global_stats = MEMORY_MONITOR.get_statistics(;
+    let global_stats = MEMORY_MONITOR.get_statistics);
 
     SystemReport {
         global_statistics: global_stats,
@@ -245,8 +245,8 @@ pub enum SystemHealth {
 }
 
 fn calculate_system_health(stats: &MemoryStatistics) -> SystemHealth {
-    let success_rate = stats.success_rate(;
-    let has_leaks = stats.has_leaks(;
+    let success_rate = stats.success_rate);
+    let has_leaks = stats.has_leaks);
 
     if success_rate > 0.95 && !has_leaks {
         SystemHealth::Excellent

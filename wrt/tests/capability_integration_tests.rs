@@ -105,7 +105,7 @@ mod tests {
 
         // Should fail due to capability constraints
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert!(
             err.to_string().contains("capability")
                 || err.to_string().contains("Allocate")

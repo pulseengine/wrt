@@ -46,8 +46,8 @@ use crate::utils::{any_asil_level, any_sil_level};
 #[cfg(kani)]
 pub fn verify_asil_monotonicity() {
     // Generate two arbitrary ASIL levels
-    let level1 = any_asil_level(;
-    let level2 = any_asil_level(;
+    let level1 = any_asil_level);
+    let level2 = any_asil_level);
     
     // Test the ordering relationship
     if level1.safety_criticality() <= level2.safety_criticality() {
@@ -84,28 +84,28 @@ pub fn verify_asil_monotonicity() {
 #[cfg(kani)]
 pub fn verify_violation_count_monotonicity() {
     // Create a safety system to test
-    let mut system = SafetySystem::new(;
+    let mut system = SafetySystem::new);
     
     // Generate arbitrary violation counts
-    let initial_violations = system.get_violation_count(;
+    let initial_violations = system.get_violation_count);
     
     // Generate arbitrary operations that might add violations
-    let operation_count: u8 = kani::any(;
+    let operation_count: u8 = kani::any);
     kani::assume(operation_count <= 10); // Reasonable bound for verification
     
     for _ in 0..operation_count {
-        let violation_level = any_asil_level(;
+        let violation_level = any_asil_level);
         
         // Record a violation
         system.record_violation(violation_level;
         
         // Verify count never decreases
-        let current_violations = system.get_violation_count(;
+        let current_violations = system.get_violation_count);
         assert!(current_violations >= initial_violations);
     }
     
     // Final verification - count should be at least initial + operations
-    let final_violations = system.get_violation_count(;
+    let final_violations = system.get_violation_count);
     assert!(final_violations >= initial_violations);
     assert!(final_violations >= initial_violations + operation_count as usize);
 }
@@ -117,14 +117,14 @@ pub fn verify_violation_count_monotonicity() {
 #[cfg(kani)]
 pub fn verify_cross_standard_safety_conversion() {
     // Generate arbitrary safety levels for both standards
-    let asil_level = any_asil_level(;
-    let sil_level = any_sil_level(;
+    let asil_level = any_asil_level);
+    let sil_level = any_sil_level);
     
     // Test ASIL to SIL conversion
     if let Some(converted_sil) = asil_level.to_sil_equivalent() {
         // Verify the conversion preserves safety criticality
-        let asil_criticality = asil_level.safety_criticality(;
-        let sil_criticality = converted_sil.safety_criticality(;
+        let asil_criticality = asil_level.safety_criticality);
+        let sil_criticality = converted_sil.safety_criticality);
         
         // Allow for some tolerance in conversion (±1 level)
         let diff = if asil_criticality > sil_criticality {
@@ -163,20 +163,20 @@ pub fn verify_cross_standard_safety_conversion() {
 #[cfg(kani)]
 pub fn verify_safety_context_consistency() {
     // Create safety systems for different standards
-    let mut iso_system = SafetySystem::new(;
-    let mut iec_system = Iec61508System::new(;
+    let mut iso_system = SafetySystem::new);
+    let mut iec_system = Iec61508System::new);
     
     // Generate arbitrary safety operations
-    let operation_count: u8 = kani::any(;
+    let operation_count: u8 = kani::any);
     kani::assume(operation_count <= 5); // Reasonable bound for verification
     
     for _ in 0..operation_count {
-        let asil_level = any_asil_level(;
-        let sil_level = any_sil_level(;
+        let asil_level = any_asil_level);
+        let sil_level = any_sil_level);
         
         // Record violations in both systems
-        let iso_violations_before = iso_system.get_violation_count(;
-        let iec_violations_before = iec_system.get_violation_count(;
+        let iso_violations_before = iso_system.get_violation_count);
+        let iec_violations_before = iec_system.get_violation_count);
         
         iso_system.record_violation(asil_level;
         iec_system.record_violation(sil_level;
@@ -186,8 +186,8 @@ pub fn verify_safety_context_consistency() {
         assert!(iec_system.get_violation_count() > iec_violations_before);
         
         // Verify current safety level is updated appropriately
-        let iso_current = iso_system.get_current_safety_level(;
-        let iec_current = iec_system.get_current_safety_level(;
+        let iso_current = iso_system.get_current_safety_level);
+        let iec_current = iec_system.get_current_safety_level);
         
         // Current safety level should be at least as critical as the violation level
         assert!(iso_current.safety_criticality() >= asil_level.safety_criticality();
@@ -229,13 +229,13 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("violation_count_basic", || {
         // Basic violation count test
-        let mut system = SafetySystem::new(;
-        let initial_count = system.get_violation_count(;
+        let mut system = SafetySystem::new);
+        let initial_count = system.get_violation_count);
         
         system.record_violation(AsilLevel::AsilB;
         assert!(system.get_violation_count() > initial_count);
         
-        let after_one = system.get_violation_count(;
+        let after_one = system.get_violation_count);
         system.record_violation(AsilLevel::AsilC;
         assert!(system.get_violation_count() > after_one);
         
@@ -261,8 +261,8 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("safety_context_consistency_basic", || {
         // Basic safety context consistency test
-        let mut iso_system = SafetySystem::new(;
-        let mut iec_system = Iec61508System::new(;
+        let mut iso_system = SafetySystem::new);
+        let mut iec_system = Iec61508System::new);
         
         iso_system.record_violation(AsilLevel::AsilB;
         iec_system.record_violation(SilLevel::Sil2;
@@ -291,10 +291,10 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for safety invariant properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_asil_monotonicity(;
-    verify_violation_count_monotonicity(;
-    verify_cross_standard_safety_conversion(;
-    verify_safety_context_consistency(;
+    verify_asil_monotonicity);
+    verify_violation_count_monotonicity);
+    verify_cross_standard_safety_conversion);
+    verify_safety_context_consistency);
 }
 
 /// KANI harness for ASIL monotonicity verification
@@ -303,7 +303,7 @@ pub fn run_all_proofs() {
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_asil_monotonicity() {
-    verify_asil_monotonicity(;
+    verify_asil_monotonicity);
 }
 
 /// KANI harness for violation count monotonicity verification
@@ -312,7 +312,7 @@ fn kani_verify_asil_monotonicity() {
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_violation_count_monotonicity() {
-    verify_violation_count_monotonicity(;
+    verify_violation_count_monotonicity);
 }
 
 /// KANI harness for cross-standard safety conversion verification
@@ -321,7 +321,7 @@ fn kani_verify_violation_count_monotonicity() {
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_cross_standard_safety_conversion() {
-    verify_cross_standard_safety_conversion(;
+    verify_cross_standard_safety_conversion);
 }
 
 /// KANI harness for safety context consistency verification
@@ -330,7 +330,7 @@ fn kani_verify_cross_standard_safety_conversion() {
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_safety_context_consistency() {
-    verify_safety_context_consistency(;
+    verify_safety_context_consistency);
 }
 
 #[cfg(test)]
@@ -339,7 +339,7 @@ mod tests {
     
     #[test]
     fn test_safety_invariants_verification() {
-        let registry = TestRegistry::global(;
+        let registry = TestRegistry::global);
         let result = register_tests(registry;
         assert!(result.is_ok();
         assert_eq!(property_count(), 4;
@@ -359,8 +359,8 @@ mod tests {
     
     #[test]
     fn test_safety_system_violations() {
-        let mut system = SafetySystem::new(;
-        let initial = system.get_violation_count(;
+        let mut system = SafetySystem::new);
+        let initial = system.get_violation_count);
         
         system.record_violation(AsilLevel::AsilB;
         assert!(system.get_violation_count() > initial);
@@ -375,8 +375,8 @@ mod tests {
         let sil_2 = SilLevel::Sil2;
         
         // Test that conversions exist (may return None for some combinations)
-        let _sil_equiv = asil_c.to_sil_equivalent(;
-        let _asil_equiv = sil_2.to_asil_equivalent(;
+        let _sil_equiv = asil_c.to_sil_equivalent);
+        let _asil_equiv = sil_2.to_asil_equivalent);
         
         // Both should have similar safety criticality levels
         assert!(asil_c.safety_criticality() > 2);

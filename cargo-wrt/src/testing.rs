@@ -103,7 +103,7 @@ impl TestContext {
     /// Create a test context with specific configuration
     pub fn with_config(config: TestConfig) -> Result<Self> {
         let temp_dir = TempDir::new()?;
-        let workspace_root = temp_dir.path().to_path_buf(;
+        let workspace_root = temp_dir.path().to_path_buf);
 
         // Set up workspace structure based on type
         Self::setup_workspace(&workspace_root, &config)?;
@@ -443,7 +443,7 @@ impl MockBuildSystem {
 
     /// Clear call log
     pub fn clear_log(&mut self) {
-        self.call_log.clear(;
+        self.call_log.clear);
     }
 }
 
@@ -467,10 +467,10 @@ impl TestValidator {
             self.context.config.output_format.clone(),
             self.context.config.use_colors,
         ;
-        spinner.start(;
+        spinner.start);
         std::thread::sleep(std::time::Duration::from_millis(100;
-        spinner.tick(;
-        spinner.finish(;
+        spinner.tick);
+        spinner.finish);
         report.add_success("Spinner progress indicator works";
 
         // Test progress bar
@@ -480,14 +480,14 @@ impl TestValidator {
             self.context.config.output_format.clone(),
             self.context.config.use_colors,
         ;
-        bar.start(;
+        bar.start);
         for i in 0..=100 {
             bar.update(i;
             if i % 20 == 0 {
                 std::thread::sleep(std::time::Duration::from_millis(10;
             }
         }
-        bar.finish(;
+        bar.finish);
         report.add_success("Progress bar works";
 
         Ok(report)
@@ -497,7 +497,7 @@ impl TestValidator {
     pub fn validate_command_suggestions(&self) -> Result<ValidationReport> {
         let mut report = ValidationReport::new("Command Suggestions";
 
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
 
         // Test exact match
         let suggestions = engine.suggest("build", None;
@@ -530,7 +530,7 @@ impl TestValidator {
     pub fn validate_performance_optimization(&self) -> Result<ValidationReport> {
         let mut report = ValidationReport::new("Performance Optimization";
 
-        let mut optimizer = PerformanceOptimizer::with_defaults(;
+        let mut optimizer = PerformanceOptimizer::with_defaults);
 
         // Test timer functionality
         optimizer.start_timer("test_command";
@@ -544,9 +544,9 @@ impl TestValidator {
         }
 
         // Test cache tracking
-        optimizer.record_cache_hit(;
-        optimizer.record_cache_miss(;
-        let ratio = optimizer.cache_hit_ratio(;
+        optimizer.record_cache_hit);
+        optimizer.record_cache_miss);
+        let ratio = optimizer.cache_hit_ratio);
         if ratio == 0.5 {
             report.add_success("Cache tracking works";
         } else {
@@ -558,7 +558,7 @@ impl TestValidator {
 
     /// Run comprehensive validation
     pub fn validate_all(&self) -> Result<Vec<ValidationReport>> {
-        let mut reports = Vec::new(;
+        let mut reports = Vec::new);
 
         reports.push(self.validate_progress_indicators()?;
         reports.push(self.validate_command_suggestions()?;
@@ -611,7 +611,7 @@ impl ValidationReport {
     pub fn format(&self, use_colors: bool) -> String {
         use colored::Colorize;
 
-        let mut output = String::new(;
+        let mut output = String::new);
 
         if use_colors {
             output.push_str(&format!(

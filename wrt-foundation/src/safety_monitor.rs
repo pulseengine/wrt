@@ -177,46 +177,46 @@ impl SafetyMonitor {
             self.allocation_monitor.peak_allocated = self.allocation_monitor.current_allocated;
         }
         
-        self.increment_operations(;
+        self.increment_operations);
     }
 
     /// Record memory deallocation
     pub fn record_deallocation(&mut self, size: usize) {
         self.allocation_monitor.current_allocated = 
             self.allocation_monitor.current_allocated.saturating_sub(size;
-        self.increment_operations(;
+        self.increment_operations);
     }
 
     /// Record failed allocation
     pub fn record_allocation_failure(&mut self, size: usize) {
         self.allocation_monitor.failed_allocations += 1;
         self.error_monitor.errors_by_level[1] += 1; // High severity
-        self.update_error_rate(;
-        self.increment_operations(;
+        self.update_error_rate);
+        self.increment_operations);
     }
 
     /// Record budget violation
     pub fn record_budget_violation(&mut self, crate_id: CrateId, requested: usize, budget: usize) {
         self.allocation_monitor.budget_violations += 1;
         self.error_monitor.errors_by_level[0] += 1; // Critical severity
-        self.update_error_rate(;
-        self.increment_operations(;
+        self.update_error_rate);
+        self.increment_operations);
     }
 
     /// Record capability violation
     pub fn record_capability_violation(&mut self, crate_id: CrateId) {
         self.capability_monitor.access_violations += 1;
         self.error_monitor.errors_by_level[0] += 1; // Critical severity
-        self.update_error_rate(;
-        self.increment_operations(;
+        self.update_error_rate);
+        self.increment_operations);
     }
 
     /// Record double-free attempt
     pub fn record_double_free(&mut self) {
         self.capability_monitor.double_free_attempts += 1;
         self.error_monitor.errors_by_level[0] += 1; // Critical severity
-        self.update_error_rate(;
-        self.increment_operations(;
+        self.update_error_rate);
+        self.increment_operations);
     }
 
     /// Record slow allocation
@@ -224,29 +224,29 @@ impl SafetyMonitor {
         if duration_us > self.performance_monitor.slow_threshold_us {
             self.performance_monitor.slow_allocations += 1;
         }
-        self.increment_operations(;
+        self.increment_operations);
     }
 
     /// Record memory pressure event
     pub fn record_memory_pressure(&mut self) {
         self.performance_monitor.memory_pressure_events += 1;
         self.error_monitor.errors_by_level[2] += 1; // Medium severity
-        self.update_error_rate(;
-        self.increment_operations(;
+        self.update_error_rate);
+        self.increment_operations);
     }
 
     /// Record successful error recovery
     pub fn record_recovery_success(&mut self) {
         self.error_monitor.recovery_successes += 1;
-        self.increment_operations(;
+        self.increment_operations);
     }
 
     /// Record fatal error
     pub fn record_fatal_error(&mut self) {
         self.error_monitor.fatal_errors += 1;
         self.error_monitor.errors_by_level[0] += 1; // Critical severity
-        self.update_error_rate(;
-        self.increment_operations(;
+        self.update_error_rate);
+        self.increment_operations);
     }
 
     /// Get safety report
@@ -280,7 +280,7 @@ impl SafetyMonitor {
     /// Reset counters (for testing)
     #[cfg(test)]
     pub fn reset(&mut self) {
-        *self = Self::new(;
+        *self = Self::new);
     }
 
     /// Calculate system health score (0-100)
@@ -329,7 +329,7 @@ impl SafetyMonitor {
 }
 
 /// Global safety monitor instance
-static mut SAFETY_MONITOR: SafetyMonitor = SafetyMonitor::new(;
+static mut SAFETY_MONITOR: SafetyMonitor = SafetyMonitor::new);
 
 /// Safety monitor lock for thread safety
 static mut MONITOR_LOCK: bool = false;
@@ -361,7 +361,7 @@ where
     // Simple spinlock for thread safety
     // SAFETY: Volatile read ensures visibility across threads
     while unsafe { core::ptr::read_volatile(&raw const MONITOR_LOCK) } {
-        core::hint::spin_loop(;
+        core::hint::spin_loop);
     }
     
     // SAFETY: This unsafe block implements a critical section for thread-safe access:
@@ -398,10 +398,10 @@ macro_rules! safety_assert {
                         monitor.record_capability_violation(0;
                     }
                     $crate::safety_monitor::ViolationType::DoubleFree => {
-                        monitor.record_double_free(;
+                        monitor.record_double_free);
                     }
                     _ => {
-                        monitor.record_fatal_error(;
+                        monitor.record_fatal_error);
                     }
                 }
             };
@@ -416,7 +416,7 @@ mod tests {
 
     #[test]
     fn test_health_score_calculation() {
-        let mut monitor = SafetyMonitor::new(;
+        let mut monitor = SafetyMonitor::new);
         
         // Perfect health
         assert_eq!(monitor.calculate_health_score(), 100;
@@ -436,13 +436,13 @@ mod tests {
         assert!(monitor.calculate_health_score() >= 60);
         
         // Add fatal error
-        monitor.record_fatal_error(;
+        monitor.record_fatal_error);
         assert!(monitor.calculate_health_score() <= 50);
     }
 
     #[test]
     fn test_memory_tracking() {
-        let mut monitor = SafetyMonitor::new(;
+        let mut monitor = SafetyMonitor::new);
         
         // Track allocations
         monitor.record_allocation(1024;
@@ -458,16 +458,16 @@ mod tests {
 
     #[test]
     fn test_violation_tracking() {
-        let mut monitor = SafetyMonitor::new(;
+        let mut monitor = SafetyMonitor::new);
         
         // Record various violations
         monitor.record_capability_violation(CrateId::Foundation;
-        monitor.record_double_free(;
+        monitor.record_double_free);
         monitor.record_budget_violation(CrateId::Foundation, 8192, 4096;
         
         assert_eq!(monitor.get_critical_violations(), 3;
         
-        let report = monitor.get_safety_report(;
+        let report = monitor.get_safety_report);
         assert_eq!(report.capability_violations, 1;
         assert_eq!(report.budget_violations, 1;
     }
@@ -479,7 +479,7 @@ mod tests {
         };
         
         with_safety_monitor(|monitor| {
-            let report = monitor.get_safety_report(;
+            let report = monitor.get_safety_report);
             assert_eq!(report.total_allocations, 1;
         };
     }

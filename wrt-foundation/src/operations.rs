@@ -26,7 +26,7 @@ use crate::traits::importance; // Added this import
 use crate::verification::VerificationLevel;
 
 // Global operation counter for use when a local counter isn't available
-static GLOBAL_COUNTER: WrtOnce<Counter> = WrtOnce::new(;
+static GLOBAL_COUNTER: WrtOnce<Counter> = WrtOnce::new);
 
 /// Enum representing different types of operations that can be tracked
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -251,7 +251,7 @@ impl Type {
         op_type: Type,
         verification_level: VerificationLevel,
     ) -> Result<u64, WrtError> {
-        let base_cost = u64::from(op_type.cost(;
+        let base_cost = u64::from(op_type.cost);
 
         // Adjust cost based on verification level using scaled integer math
         // Multiplier is scaled by 100 (e.g., 1.25 becomes 125)
@@ -692,7 +692,7 @@ pub fn global_operation_summary() -> Summary {
 /// Clears all operation counts and fuel consumption in the global counter.
 /// This is useful for benchmarking or when starting a new measurement period.
 pub fn reset_global_operations() {
-    global_counter().reset(;
+    global_counter().reset);
 }
 
 /// Get the global fuel consumed count.
@@ -733,14 +733,14 @@ mod tests {
 
     #[test]
     fn test_operation_counter() {
-        let counter = Counter::new(;
+        let counter = Counter::new);
         let vl_full = VerificationLevel::Full;
 
         counter.record_operation(Type::MemoryRead, vl_full;
         counter.record_operation(Type::MemoryWrite, vl_full;
         counter.record_operation(Type::CollectionPush, vl_full;
 
-        let summary = counter.get_summary(;
+        let summary = counter.get_summary);
         assert_eq!(summary.memory_reads, 1;
         assert_eq!(summary.memory_writes, 1;
         assert_eq!(summary.collection_pushes, 1;
@@ -750,15 +750,15 @@ mod tests {
             + Type::fuel_cost_for_operation(Type::CollectionPush, vl_full).unwrap();
         assert_eq!(summary.fuel_consumed, expected_fuel;
 
-        counter.reset(;
-        let summary_after_reset = counter.get_summary(;
+        counter.reset);
+        let summary_after_reset = counter.get_summary);
         assert_eq!(summary_after_reset.memory_reads, 0;
         assert_eq!(summary_after_reset.fuel_consumed, 0;
     }
 
     #[test]
     fn test_verification_level_impact() {
-        let counter = Counter::new(;
+        let counter = Counter::new);
         let vl_off = VerificationLevel::Off;
         let vl_sampling = VerificationLevel::default(); // Sampling
         let vl_full = VerificationLevel::Full;
@@ -767,7 +767,7 @@ mod tests {
         counter.record_operation(Type::MemoryRead, vl_sampling;
         counter.record_operation(Type::MemoryRead, vl_full;
 
-        let summary = counter.get_summary(;
+        let summary = counter.get_summary);
         assert_eq!(summary.memory_reads, 3;
 
         let expected_fuel = Type::fuel_cost_for_operation(Type::MemoryRead, vl_off).unwrap()
@@ -778,20 +778,20 @@ mod tests {
 
     #[test]
     fn test_global_counter() {
-        reset_global_operations(;
+        reset_global_operations);
         let vl_full = VerificationLevel::Full;
 
         record_global_operation(Type::FunctionCall, vl_full); // Was Standard
         record_global_operation(Type::CollectionValidate, vl_full); // Was Standard
 
-        let summary = global_operation_summary(;
+        let summary = global_operation_summary);
         assert_eq!(summary.function_calls, 1;
         assert_eq!(summary.collection_validates, 1;
 
-        let fuel = global_fuel_consumed(;
+        let fuel = global_fuel_consumed);
         assert_eq!(fuel, summary.fuel_consumed;
 
-        reset_global_operations(;
+        reset_global_operations);
         assert_eq!(global_fuel_consumed(), 0;
     }
 }

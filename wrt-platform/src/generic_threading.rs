@@ -127,7 +127,7 @@ impl PlatformThreadPool for GenericThreadPool {
         }
 
         // Check thread limit
-        let active_count = self.active_threads.read().len(;
+        let active_count = self.active_threads.read().len);
         if active_count >= self.config.max_threads {
             return Err(Error::new(
                 ErrorCategory::Resource,
@@ -184,7 +184,7 @@ impl PlatformThreadPool for GenericThreadPool {
 
         // Update statistics
         {
-            let mut stats = self.stats.lock(;
+            let mut stats = self.stats.lock);
             stats.active_threads += 1;
             stats.total_spawned += 1;
         }
@@ -201,7 +201,7 @@ impl PlatformThreadPool for GenericThreadPool {
         self.shutdown.store(true, Ordering::Release;
 
         // Wait for threads to complete
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         while self.active_threads.read().len() > 0 && start.elapsed() < timeout {
             std::thread::sleep(Duration::from_millis(10;
         }
@@ -263,7 +263,7 @@ mod tests {
         assert_eq!(result, vec![1, 2, 3, 4];
 
         // Check stats
-        let stats = pool.get_stats(;
+        let stats = pool.get_stats);
         assert_eq!(stats.total_spawned, 1;
     }
 

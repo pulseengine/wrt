@@ -207,7 +207,7 @@ impl WaitableSetImpl {
             ;
         }
 
-        let id = WaitableId::new(;
+        let id = WaitableId::new);
         let entry = WaitableEntry::new(id, waitable;
 
         #[cfg(feature = "std")]
@@ -251,7 +251,7 @@ impl WaitableSetImpl {
     /// Check all waitables and return those that are ready
     #[cfg(feature = "std")]
     pub fn check_ready(&mut self) -> Vec<WaitableEntry> {
-        let mut ready = Vec::new(;
+        let mut ready = Vec::new);
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
                 ready.push(entry.clone();
@@ -374,7 +374,7 @@ impl WaitableSetBuiltins {
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
                 "Error message needed"))?;
-        *registry_ref = Some(WaitableSetRegistry::new(;
+        *registry_ref = Some(WaitableSetRegistry::new);
         Ok(()
     }
 
@@ -413,7 +413,7 @@ impl WaitableSetBuiltins {
     /// `waitable-set.new` canonical built-in
     /// Creates a new waitable set
     pub fn waitable_set_new() -> Result<WaitableSetId> {
-        let set = WaitableSetImpl::new(;
+        let set = WaitableSetImpl::new);
         Self::with_registry_mut(|registry| {
             registry.register_set(set)
         })?
@@ -486,7 +486,7 @@ impl WaitableSetBuiltins {
     pub fn waitable_set_close(set_id: WaitableSetId) -> Result<()> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
-                set.close(;
+                set.close);
                 Ok(()
             } else {
                 Err(Error::new(
@@ -566,7 +566,7 @@ pub mod waitable_set_helpers {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_any_future(futures: &[Future]) -> Result<WaitResult> {
-        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new(;
+        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new);
         for future in futures {
             waitables.push(Waitable::Future(future.clone())
                 .map_err(|_| Error::runtime_execution_error("Error occurred"
@@ -588,7 +588,7 @@ pub mod waitable_set_helpers {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_any_stream(streams: &[Stream]) -> Result<WaitResult> {
-        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new(;
+        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new);
         for stream in streams {
             waitables.push(Waitable::Stream(stream.clone())
                 .map_err(|_| Error::runtime_execution_error("Error occurred"
@@ -622,8 +622,8 @@ mod tests {
 
     #[test]
     fn test_waitable_set_id_generation() {
-        let id1 = WaitableSetId::new(;
-        let id2 = WaitableSetId::new(;
+        let id1 = WaitableSetId::new);
+        let id2 = WaitableSetId::new);
         assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
@@ -631,8 +631,8 @@ mod tests {
 
     #[test]
     fn test_waitable_id_generation() {
-        let id1 = WaitableId::new(;
-        let id2 = WaitableId::new(;
+        let id1 = WaitableId::new);
+        let id2 = WaitableId::new);
         assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
@@ -697,7 +697,7 @@ mod tests {
 
     #[test]
     fn test_waitable_set_operations() {
-        let mut set = WaitableSetImpl::new(;
+        let mut set = WaitableSetImpl::new);
         assert!(set.is_empty();
         assert!(!set.is_closed();
 
@@ -719,7 +719,7 @@ mod tests {
         assert!(!set.contains_waitable(waitable_id);
 
         // Close the set
-        set.close(;
+        set.close);
         assert!(set.is_closed();
 
         // Try to add to closed set
@@ -733,7 +733,7 @@ mod tests {
 
     #[test]
     fn test_waitable_set_ready_checking() {
-        let mut set = WaitableSetImpl::new(;
+        let mut set = WaitableSetImpl::new);
 
         // Add pending future
         let pending_future = Future {
@@ -752,7 +752,7 @@ mod tests {
         // Check for ready waitables
         #[cfg(feature = "std")]
         {
-            let ready = set.check_ready(;
+            let ready = set.check_ready);
             assert_eq!(ready.len(), 1;
         }
         #[cfg(not(any(feature = "std", )))]
@@ -762,17 +762,17 @@ mod tests {
         }
 
         // Poll for first ready
-        let first_ready = set.get_first_ready(;
+        let first_ready = set.get_first_ready);
         assert!(first_ready.is_some();
         assert!(first_ready.unwrap().is_ready();
     }
 
     #[test]
     fn test_waitable_set_registry() {
-        let mut registry = WaitableSetRegistry::new(;
+        let mut registry = WaitableSetRegistry::new);
         assert_eq!(registry.set_count(), 0;
 
-        let set = WaitableSetImpl::new(;
+        let set = WaitableSetImpl::new);
         let set_id = set.id;
         registry.register_set(set).unwrap();
         assert_eq!(registry.set_count(), 1;
@@ -825,11 +825,11 @@ mod tests {
         WaitableSetBuiltins::initialize().unwrap();
 
         // Test waitable creation helpers
-        let future_handle = FutureHandle::new(;
+        let future_handle = FutureHandle::new);
         let waitable = waitable_set_helpers::waitable_from_future_handle(future_handle;
         assert!(matches!(waitable, Waitable::Future(_);
 
-        let stream_handle = StreamHandle::new(;
+        let stream_handle = StreamHandle::new);
         let waitable = waitable_set_helpers::waitable_from_stream_handle(stream_handle;
         assert!(matches!(waitable, Waitable::Stream(_);
     }

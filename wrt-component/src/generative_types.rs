@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_generative_type_registry_creation() {
-        let mut registry = GenerativeTypeRegistry::new(;
+        let mut registry = GenerativeTypeRegistry::new);
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance_id = ComponentInstanceId(1;
 
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn test_unique_type_ids_across_instances() {
-        let mut registry = GenerativeTypeRegistry::new(;
+        let mut registry = GenerativeTypeRegistry::new);
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance1 = ComponentInstanceId(1;
         let instance2 = ComponentInstanceId(2;
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_type_bounds() {
-        let mut registry = GenerativeTypeRegistry::new(;
+        let mut registry = GenerativeTypeRegistry::new);
         let type_id = TypeId(1;
         let target_type = TypeId(2;
 
@@ -315,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_resource_handle_registration() {
-        let mut registry = GenerativeTypeRegistry::new(;
+        let mut registry = GenerativeTypeRegistry::new);
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance_id = ComponentInstanceId(1;
         let handle = ResourceHandle::new(100;
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn test_instance_cleanup() {
-        let mut registry = GenerativeTypeRegistry::new(;
+        let mut registry = GenerativeTypeRegistry::new);
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance_id = ComponentInstanceId(1;
 
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_transitive_type_bounds() {
-        let mut registry = GenerativeTypeRegistry::new(;
+        let mut registry = GenerativeTypeRegistry::new);
         let type_a = TypeId(1;
         let type_b = TypeId(2;
         let type_c = TypeId(3;
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_type_consistency_validation() {
-        let mut registry = GenerativeTypeRegistry::new(;
+        let mut registry = GenerativeTypeRegistry::new);
         assert!(registry.validate_type_consistency().is_ok();
 
         let type_a = TypeId(1;

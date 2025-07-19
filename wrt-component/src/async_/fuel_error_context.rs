@@ -155,7 +155,7 @@ impl ContextualError {
     
     /// Format the error with full context chain
     pub fn format_with_context(&self) -> Result<String> {
-        let mut output = String::new(;
+        let mut output = String::new);
         
         // Start with the main error
         output.push_str(&format!("Error: {}\n", self.error.message();

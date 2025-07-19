@@ -82,7 +82,7 @@ impl AtomicMemoryModel {
         
         // Record operation timing
         #[cfg(feature = "std")]
-        let start_time = Instant::now(;
+        let start_time = Instant::now);
         
         // Execute the atomic operation
         let result = match &operation {
@@ -128,7 +128,7 @@ impl AtomicMemoryModel {
         // Record operation timing
         #[cfg(feature = "std")]
         {
-            let duration = start_time.elapsed(;
+            let duration = start_time.elapsed);
             self.model_stats.total_execution_time += duration.as_nanos() as u64;
             if duration.as_nanos() as u64 > self.model_stats.max_operation_time {
                 self.model_stats.max_operation_time = duration.as_nanos() as u64;
@@ -163,7 +163,7 @@ impl AtomicMemoryModel {
         result.is_consistent = result.data_races.is_empty() 
             && result.ordering_violations.is_empty()
             && result.potential_deadlocks.is_empty()
-            && result.sync_violations.is_empty(;
+            && result.sync_violations.is_empty);
         
         Ok(result)
     }
@@ -181,10 +181,10 @@ impl AtomicMemoryModel {
     
     /// Optimize memory model based on usage patterns
     pub fn optimize_memory_model(&mut self) -> Result<OptimizationResult> {
-        let mut result = OptimizationResult::new(;
+        let mut result = OptimizationResult::new);
         
         // Analyze operation patterns
-        let patterns = self.analyze_operation_patterns(;
+        let patterns = self.analyze_operation_patterns);
         
         // Optimize memory ordering policy based on patterns
         if patterns.mostly_sequential {
@@ -557,7 +557,7 @@ pub struct DataRaceReport {
 
 impl wrt_foundation::traits::Checksummable for DataRaceReport {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.memory_address.to_le_bytes(;
+        checksum.update_slice(&self.memory_address.to_le_bytes);
     }
 }
 
@@ -714,7 +714,7 @@ mod tests {
     
     #[test]
     fn test_memory_model_stats() {
-        let stats = MemoryModelStats::new(;
+        let stats = MemoryModelStats::new);
         assert_eq!(stats.total_operations, 0;
         assert_eq!(stats.total_execution_time, 0;
     }

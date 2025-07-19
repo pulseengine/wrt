@@ -98,7 +98,7 @@ impl Graph {
         let hash = calculate_sha256(data;
         
         // For higher safety levels, verify the model is approved
-        let verification_level = capability.verification_level(;
+        let verification_level = capability.verification_level);
         if matches!(verification_level, VerificationLevel::Continuous | VerificationLevel::Redundant | VerificationLevel::Formal) {
             if !capability.is_model_approved(&hash) {
                 return Err(Error::wasi_verification_failed("Model hash not in approved list";
@@ -181,7 +181,7 @@ impl GraphStore {
     
     /// Add a graph to the store
     pub fn add(&mut self, graph: Graph) -> Result<u32> {
-        let id = graph.id(;
+        let id = graph.id);
         if self.graphs.len() >= MAX_GRAPHS {
             return Err(Error::wasi_resource_exhausted("Maximum number of graphs reached";
         }
@@ -242,7 +242,7 @@ fn calculate_sha256(data: &[u8]) -> [u8; 32] {
 }
 
 /// Global graph store instance
-static GRAPH_STORE: OnceLock<Mutex<GraphStore>> = OnceLock::new(;
+static GRAPH_STORE: OnceLock<Mutex<GraphStore>> = OnceLock::new);
 
 /// Initialize the graph store
 pub fn initialize_graph_store() -> Result<()> {

@@ -115,8 +115,8 @@ pub fn execute_bulk_memory_operation(
 /// Validate input count for bulk memory operation
 #[inline]
 fn validate_input_count(op: &BulkMemoryOp, inputs: &[Value]) -> Result<()> {
-    let expected = op.input_count(;
-    let actual = inputs.len(;
+    let expected = op.input_count);
+    let actual = inputs.len);
 
     if actual != expected {
         return Err(Error::runtime_execution_error(
@@ -130,8 +130,8 @@ fn validate_input_count(op: &BulkMemoryOp, inputs: &[Value]) -> Result<()> {
 /// Validate bulk memory operation result
 #[inline]
 fn validate_bulk_memory_result(op: &BulkMemoryOp, result: &Option<Value>) -> Result<()> {
-    let expects_result = op.produces_result(;
-    let has_result = result.is_some(;
+    let expects_result = op.produces_result);
+    let has_result = result.is_some);
 
     if expects_result && !has_result {
         return Err(Error::runtime_execution_error(

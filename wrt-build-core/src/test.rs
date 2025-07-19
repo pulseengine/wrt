@@ -78,7 +78,7 @@ impl BuildSystem {
         &self,
         options: &TestOptions,
     ) -> BuildResult<DiagnosticCollection> {
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
         let mut collection =
             DiagnosticCollection::new(self.workspace.root.clone(), "test".to_string();
 
@@ -180,15 +180,15 @@ impl BuildSystem {
             ;
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         Ok(collection.finalize(duration.as_millis() as u64))
     }
 
     /// Run tests with specific options
     pub fn run_tests_with_options(&self, options: &TestOptions) -> BuildResult<TestResults> {
-        println!("{} Running WRT test suite...", "🧪".bright_blue(;
+        println!("{} Running WRT test suite...", "🧪".bright_blue);
 
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
 
         // Run unit tests
         let unit_results = self.run_unit_tests(options)?;
@@ -223,7 +223,7 @@ impl BuildSystem {
             output.push_str(&doc.output;
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         let success = failed == 0;
 
         if success {
@@ -257,7 +257,7 @@ impl BuildSystem {
     /// Run unit tests
     fn run_unit_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running unit tests...", "🔬".bright_cyan(;
+            println!("  {} Running unit tests...", "🔬".bright_cyan);
         }
 
         self.execute_cargo_test("test", options)
@@ -266,7 +266,7 @@ impl BuildSystem {
     /// Run integration tests
     fn run_integration_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running integration tests...", "🔗".bright_cyan(;
+            println!("  {} Running integration tests...", "🔗".bright_cyan);
         }
 
         // Check if integration tests exist
@@ -289,7 +289,7 @@ impl BuildSystem {
     /// Run documentation tests
     fn run_doc_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running documentation tests...", "📚".bright_cyan(;
+            println!("  {} Running documentation tests...", "📚".bright_cyan);
         }
 
         self.execute_cargo_test("test --doc", options)
@@ -379,12 +379,12 @@ impl BuildSystem {
                 line.starts_with("test ")
                     && (line.contains("... ok") || line.contains("... FAILED"))
             })
-            .count(;
+            .count);
 
         let failed_lines = output
             .lines()
             .filter(|line| line.starts_with("test ") && line.contains("... FAILED"))
-            .count(;
+            .count);
 
         (test_lines, test_lines - failed_lines, failed_lines)
     }
@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_options_default() {
-        let options = TestOptions::default(;
+        let options = TestOptions::default);
         assert!(options.integration);
         assert!(options.doc_tests);
         assert!(!options.nocapture);

@@ -104,7 +104,7 @@ impl TensorDimensions {
         // Validate total element count using checked arithmetic
         let _ = Self::calculate_elements_checked(dims)?;
         
-        let dims = dims.to_vec(;
+        let dims = dims.to_vec);
         
         Ok(Self { dims })
     }
@@ -186,13 +186,13 @@ impl Tensor {
             .ok_or_else(|| Error::wasi_resource_exhausted("Tensor size calculation overflow"))?;
         
         // Verify against capability limits
-        let limits = capability.resource_limits(;
+        let limits = capability.resource_limits);
         if size_bytes > limits.max_tensor_memory {
             return Err(Error::wasi_resource_exhausted("Tensor size exceeds memory limit";
         }
         
         // Allocate data buffer
-        let verification_level = capability.verification_level(;
+        let verification_level = capability.verification_level);
         let data = match verification_level {
             VerificationLevel::Standard => {
                 // Dynamic allocation
@@ -200,7 +200,7 @@ impl Tensor {
             }
             VerificationLevel::Sampling | VerificationLevel::Continuous => {
                 // Bounded allocation with pre-checking
-                let mut vec = Vec::new(;
+                let mut vec = Vec::new);
                 vec.try_reserve_exact(size_bytes)
                     .map_err(|_| Error::wasi_resource_exhausted("Failed to allocate tensor memory"))?;
                 vec.resize(size_bytes, 0;
@@ -241,12 +241,12 @@ impl Tensor {
         }
         
         // Verify against capability limits
-        let limits = capability.resource_limits(;
+        let limits = capability.resource_limits);
         if data.len() > limits.max_tensor_memory {
             return Err(Error::wasi_resource_exhausted("Tensor data exceeds memory limit";
         }
         
-        let verification_level = capability.verification_level(;
+        let verification_level = capability.verification_level);
         Ok(Self {
             dimensions,
             data_type,
@@ -386,7 +386,7 @@ mod tests {
     
     #[test]
     fn test_tensor_creation() {
-        let capability = DynamicNNCapability::new(;
+        let capability = DynamicNNCapability::new);
         let dims = TensorDimensions::new(&[10, 10]).unwrap();
         let tensor = Tensor::new(dims, TensorType::F32, &capability).unwrap();
         
@@ -396,7 +396,7 @@ mod tests {
     
     #[test]
     fn test_tensor_builder() {
-        let capability = DynamicNNCapability::new(;
+        let capability = DynamicNNCapability::new);
         let tensor = TensorBuilder::new()
             .dimensions(&[5, 5]).unwrap()
             .data_type(TensorType::U8)

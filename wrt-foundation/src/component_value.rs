@@ -1009,7 +1009,7 @@ where
         let mut reader = crate::traits::ReadStream::new(slice;
         match ComponentValue::<P>::from_bytes_with_provider(&mut reader, &P::default()) {
             Ok(cv) => {
-                let bytes_read = reader.position(;
+                let bytes_read = reader.position);
                 // TODO: Validate `cv` against `value_type` here.
                 // This is a crucial step for safety and correctness.
                 // Temporarily commenting out until matches_type method is implemented

@@ -106,7 +106,7 @@ pub mod std_runtime {
         
         /// Execute a WebAssembly module (placeholder implementation)
         pub fn execute_module(&self, module_path: &str, function: &str) -> Result<String, String> {
-            let start = Instant::now(;
+            let start = Instant::now);
             
             // Load module (placeholder)
             let module_bytes = match fs::read(module_path) {
@@ -115,7 +115,7 @@ pub mod std_runtime {
             };
             
             if self.config.verbose {
-                println!("Loaded module: {} bytes", module_bytes.len(;
+                println!("Loaded module: {} bytes", module_bytes.len);
             }
             
             // Cache the module
@@ -168,7 +168,7 @@ pub mod std_runtime {
         let args: Vec<String> = env::args().collect();
         if args.len() < 3 {
             println!("Usage: {} <module.wasm> <function>", args[0];
-            return Ok((;
+            return Ok();
         }
         
         let module_path = &args[1];
@@ -185,7 +185,7 @@ pub mod std_runtime {
         match runtime.execute_module(module_path, function) {
             Ok(result) => {
                 println!("✓ {}", result;
-                let stats = runtime.stats(;
+                let stats = runtime.stats);
                 println!("📊 Stats: {} modules, {} fuel, {}KB peak memory", 
                         stats.modules_executed, stats.fuel_consumed, stats.peak_memory / 1024;
             }
@@ -229,7 +229,7 @@ pub mod alloc_runtime {
             }
             
             let fuel_used = module_data.len() as u64 / 50; // More conservative than std
-            let memory_used = module_data.len(;
+            let memory_used = module_data.len);
             
             if fuel_used > self.config.max_fuel {
                 return Err("Fuel limit exceeded".to_string();
@@ -271,7 +271,7 @@ pub mod alloc_runtime {
         
         match runtime.execute_module(&fake_module, "start") {
             Ok(_) => {
-                let stats = runtime.stats(;
+                let stats = runtime.stats);
                 // Success - in real implementation this would signal back to host
                 Ok(())
             }
@@ -307,7 +307,7 @@ pub mod nostd_runtime {
         pub fn execute_module(&mut self, module_data: &[u8], _function: &str) -> Result<u32, u8> {
             // Very conservative limits for bare metal
             let fuel_used = module_data.len() as u64 / 10;
-            let memory_used = module_data.len(;
+            let memory_used = module_data.len);
             
             if fuel_used > self.config.max_fuel {
                 return Err(1); // Error code: fuel exceeded

@@ -86,7 +86,7 @@ impl Default for CfiControlFlowProtection {
 impl CfiControlFlowProtection {
     /// Create CFI protection with specific level
     pub fn new_with_level(level: CfiProtectionLevel) -> Self {
-        let mut config = Self::default(;
+        let mut config = Self::default);
         config.protection_level = level;
         
         // Adjust software config based on protection level
@@ -416,15 +416,15 @@ impl wrt_foundation::traits::Checksummable for CfiExpectedValue {
             Self::None => checksum.update_slice(&[0u8]),
             Self::FunctionSignatureHash(hash) => {
                 checksum.update_slice(&[1u8];
-                checksum.update_slice(&hash.to_le_bytes(;
+                checksum.update_slice(&hash.to_le_bytes);
             }
             Self::ReturnAddress(addr) => {
                 checksum.update_slice(&[2u8];
-                checksum.update_slice(&addr.to_le_bytes(;
+                checksum.update_slice(&addr.to_le_bytes);
             }
             Self::CallSiteId(id) => {
                 checksum.update_slice(&[3u8];
-                checksum.update_slice(&id.to_le_bytes(;
+                checksum.update_slice(&id.to_le_bytes);
             }
         }
     }
@@ -542,20 +542,20 @@ impl wrt_foundation::traits::Checksummable for CfiValidationRequirement {
         match self {
             Self::TypeSignatureCheck { expected_type_index, signature_hash } => {
                 checksum.update_slice(&[0u8];
-                checksum.update_slice(&expected_type_index.to_le_bytes(;
-                checksum.update_slice(&signature_hash.to_le_bytes(;
+                checksum.update_slice(&expected_type_index.to_le_bytes);
+                checksum.update_slice(&signature_hash.to_le_bytes);
             }
             Self::ShadowStackCheck => checksum.update_slice(&[1u8]),
             Self::ControlFlowTargetCheck { valid_targets } => {
                 checksum.update_slice(&[2u8];
                 for target in valid_targets.iter() {
-                    checksum.update_slice(&target.to_le_bytes(;
+                    checksum.update_slice(&target.to_le_bytes);
                 }
             }
             Self::CallingConventionCheck => checksum.update_slice(&[3u8]),
             Self::TemporalCheck { max_duration } => {
                 checksum.update_slice(&[4u8];
-                checksum.update_slice(&max_duration.to_le_bytes(;
+                checksum.update_slice(&max_duration.to_le_bytes);
             }
         }
     }
@@ -885,11 +885,11 @@ pub struct ShadowStackEntry {
 
 impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.return_address.0.to_le_bytes(;
-        checksum.update_slice(&self.return_address.1.to_le_bytes(;
-        checksum.update_slice(&self.signature_hash.to_le_bytes(;
-        checksum.update_slice(&self.timestamp.to_le_bytes(;
-        checksum.update_slice(&self.call_site_id.to_le_bytes(;
+        checksum.update_slice(&self.return_address.0.to_le_bytes);
+        checksum.update_slice(&self.return_address.1.to_le_bytes);
+        checksum.update_slice(&self.signature_hash.to_le_bytes);
+        checksum.update_slice(&self.timestamp.to_le_bytes);
+        checksum.update_slice(&self.call_site_id.to_le_bytes);
     }
 }
 
@@ -970,12 +970,12 @@ impl Default for LandingPadExpectation {
 
 impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes(;
-        checksum.update_slice(&self.instruction_offset.to_le_bytes(;
+        checksum.update_slice(&self.function_index.to_le_bytes);
+        checksum.update_slice(&self.instruction_offset.to_le_bytes);
         self.target_type.update_checksum(checksum;
         if let Some(deadline) = self.deadline {
             checksum.update_slice(&[1u8]); // has deadline
-            checksum.update_slice(&deadline.to_le_bytes(;
+            checksum.update_slice(&deadline.to_le_bytes);
         } else {
             checksum.update_slice(&[0u8]); // no deadline
         }
@@ -1193,7 +1193,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
         context: &mut CfiExecutionContext,
     ) -> Result<()> {
         if !cfi_protection.enabled {
-            return Ok((;
+            return Ok();
         }
 
         // Validate shadow stack for enhanced/maximum protection
@@ -1374,9 +1374,9 @@ impl DefaultCfiControlFlowOps {
 
     fn validate_shadow_stack_return(&self, context: &mut CfiExecutionContext) -> Result<()> {
         #[cfg(feature = "std")]
-        let shadow_entry_opt = context.shadow_stack.pop(;
+        let shadow_entry_opt = context.shadow_stack.pop);
         #[cfg(not(feature = "std"))]
-        let shadow_entry_opt = context.shadow_stack.pop().ok().flatten(;
+        let shadow_entry_opt = context.shadow_stack.pop().ok().flatten);
         
         if let Some(shadow_entry) = shadow_entry_opt {
             let expected_return = (context.current_function, context.current_instruction;
@@ -1749,7 +1749,7 @@ mod tests {
 
     #[test]
     fn test_cfi_control_flow_protection_default() {
-        let protection = CfiControlFlowProtection::default(;
+        let protection = CfiControlFlowProtection::default);
         assert!(protection.enabled);
         assert_eq!(protection.protection_level, CfiProtectionLevel::Enhanced;
         assert!(protection.software_config.shadow_stack_enabled);
@@ -1757,7 +1757,7 @@ mod tests {
 
     #[test]
     fn test_cfi_execution_context_default() {
-        let context = CfiExecutionContext::default(;
+        let context = CfiExecutionContext::default);
         assert_eq!(context.current_function, 0;
         assert_eq!(context.current_instruction, 0;
         assert!(context.shadow_stack.is_empty();
@@ -1767,8 +1767,8 @@ mod tests {
     #[test]
     fn test_default_cfi_ops_call_indirect() {
         let ops = DefaultCfiControlFlowOps;
-        let protection = CfiControlFlowProtection::default(;
-        let mut context = CfiExecutionContext::default(;
+        let protection = CfiControlFlowProtection::default);
+        let mut context = CfiExecutionContext::default);
 
         let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
         assert!(result.is_ok();
@@ -1782,9 +1782,9 @@ mod tests {
     #[test]
     fn test_cfi_disabled() {
         let ops = DefaultCfiControlFlowOps;
-        let mut protection = CfiControlFlowProtection::default(;
+        let mut protection = CfiControlFlowProtection::default);
         protection.enabled = false;
-        let mut context = CfiExecutionContext::default(;
+        let mut context = CfiExecutionContext::default);
 
         let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
         assert!(result.is_ok();
@@ -1799,7 +1799,7 @@ mod tests {
 
     #[test]
     fn test_software_cfi_config_default() {
-        let config = SoftwareCfiConfig::default(;
+        let config = SoftwareCfiConfig::default);
         assert!(config.shadow_stack_enabled);
         assert_eq!(config.max_shadow_stack_depth, 1024;
         assert!(config.landing_pad_simulation);

@@ -174,7 +174,7 @@ impl Default for CustomSection {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for CustomSection {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.name.as_bytes(;
+        checksum.update_slice(self.name.as_bytes);
         checksum.update_slice(&self.data;
     }
 }
@@ -259,13 +259,13 @@ impl CustomSection {
     /// Serialize the custom section to binary
     #[cfg(feature = "std")]
     pub fn to_binary(&self) -> core::result::Result<Vec<u8>, wrt_error::Error> {
-        let mut section_data = Vec::new(;
+        let mut section_data = Vec::new);
 
         // Add name as encoded string (name length + name bytes)
         let name_len = self.name.len() as u32;
         let name_len_bytes = crate::binary::with_alloc::write_leb128_u32(name_len;
         section_data.extend_from_slice(&name_len_bytes;
-        section_data.extend_from_slice(self.name.as_bytes(;
+        section_data.extend_from_slice(self.name.as_bytes);
 
         // Add the section data
         section_data.extend_from_slice(&self.data;
@@ -302,7 +302,7 @@ impl CustomSection {
 
     /// Copy section data to a slice
     pub fn copy_data_to_slice(&self, dest: &mut [u8]) -> usize {
-        let copy_len = core::cmp::min(dest.len(), self.data.len(;
+        let copy_len = core::cmp::min(dest.len(), self.data.len);
         dest[..copy_len].copy_from_slice(&self.data[..copy_len];
         copy_len
     }
@@ -401,7 +401,7 @@ pub fn write_component_section_header(
     section_type: ComponentSectionType,
     content_size: u32,
 ) -> Vec<u8> {
-    let mut bytes = Vec::new(;
+    let mut bytes = Vec::new);
     bytes.push(section_type.id();
     bytes.extend_from_slice(&crate::binary::with_alloc::write_leb128_u32(content_size;
     bytes
@@ -413,7 +413,7 @@ pub fn format_component_section<F>(section_type: ComponentSectionType, content_f
 where
     F: FnOnce() -> Vec<u8>,
 {
-    let content = content_fn(;
+    let content = content_fn);
     let content_size = content.len() as u32;
 
     let mut result = write_component_section_header(section_type, content_size;
@@ -483,7 +483,7 @@ mod tests {
         let binary = section.to_binary().unwrap();
 
         // Check that the binary data contains the section name
-        let name_bytes = "test-section".as_bytes(;
+        let name_bytes = "test-section".as_bytes);
         let mut found_name = false;
 
         for i in 0..binary.len() - name_bytes.len() + 1 {
@@ -559,7 +559,7 @@ mod tests {
         let content_slice = &section_bytes[content_pos..content_pos + header.size as usize];
 
         // Check individually to avoid ordering issues
-        assert_eq!(content_slice.len(), section_content.len(;
+        assert_eq!(content_slice.len(), section_content.len);
         for i in 0..section_content.len() {
             assert!(content_slice.contains(&section_content[i]);
         }
@@ -569,7 +569,7 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_invalid_component_section_id() {
         // Create an invalid section ID
-        let mut header_bytes = Vec::new(;
+        let mut header_bytes = Vec::new);
         header_bytes.push(255); // Invalid section ID
         // Use a manual LEB128 encoding for 42
         header_bytes.push(42); // 42 fits in one byte for LEB128

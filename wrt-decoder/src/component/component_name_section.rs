@@ -101,13 +101,13 @@ mod sort_type {
 /// Generate binary data for a component name section
 #[cfg(feature = "std")]
 pub fn generate_component_name_section(section: &ComponentNameSection) -> Result<Vec<u8>> {
-    let mut result = Vec::new(;
+    let mut result = Vec::new);
 
     // Write component name if present
     if let Some(name) = &section.component_name {
         result.push(subsection::COMPONENT_NAME);
         let name_string_bytes = write_string(name;
-        let mut name_data = Vec::new(;
+        let mut name_data = Vec::new);
         name_data.extend_from_slice(&name_string_bytes;
         let len_bytes = write_leb128_u32(name_data.len() as u32;
         result.extend_from_slice(&len_bytes;
@@ -118,7 +118,7 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
     // Write sort names
     if !section.sort_names.is_empty() {
         result.push(subsection::SORT_NAMES);
-        let mut sort_data = Vec::new(;
+        let mut sort_data = Vec::new);
 
         // Write number of sorts
         sort_data.extend_from_slice(&write_leb128_u32(section.sort_names.len() as u32;
@@ -205,7 +205,7 @@ pub fn generate_component_name_section(
         })?;
 
         // In no_std mode, use simplified string writing
-        let name_bytes = name.as_bytes(;
+        let name_bytes = name.as_bytes);
         let name_len = name_bytes.len() as u32;
 
         // Simple LEB128 encoding for length (simplified for no_std)
@@ -244,7 +244,7 @@ pub fn generate_component_name_section(
 /// Parse a component name section from binary data
 #[cfg(feature = "std")]
 pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection> {
-    let mut result = ComponentNameSection::default(;
+    let mut result = ComponentNameSection::default);
     let mut pos = 0;
 
     while pos < data.len() {
@@ -311,7 +311,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                     let (num_names, bytes_read) = read_leb128_u32(&data[subsection_pos..], 0)?;
                     subsection_pos += bytes_read;
 
-                    let mut names = Vec::new(;
+                    let mut names = Vec::new);
 
                     // Read each name
                     for _ in 0..num_names {
@@ -364,7 +364,7 @@ pub fn parse_component_name_section(_data: &[u8]) -> Result<ComponentNameSection
 #[cfg(feature = "std")]
 fn write_name_map(result: &mut Vec<u8>, subsection_id: u8, names: &[(u32, String)]) {
     result.push(subsection_id);
-    let mut map_data = Vec::new(;
+    let mut map_data = Vec::new);
 
     // Write number of entries
     map_data.extend_from_slice(&write_leb128_u32(names.len() as u32;
@@ -383,7 +383,7 @@ fn write_name_map(result: &mut Vec<u8>, subsection_id: u8, names: &[(u32, String
 /// Helper function to read a name map
 #[cfg(feature = "std")]
 fn read_name_map(data: &[u8]) -> Result<Vec<(u32, String)>> {
-    let mut result = Vec::new(;
+    let mut result = Vec::new);
     let mut pos = 0;
 
     // Read number of entries

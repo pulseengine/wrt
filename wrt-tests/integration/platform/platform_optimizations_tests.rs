@@ -28,9 +28,9 @@ fn benchmark_operations<F>(name: &str, operations: F) -> Duration
 where
     F: FnOnce(),
 {
-    let start = Instant::now(;
-    operations(;
-    let duration = start.elapsed(;
+    let start = Instant::now);
+    operations);
+    let duration = start.elapsed);
     println!("{} took: {:?}", name, duration;
     duration
 }
@@ -100,10 +100,10 @@ fn test_bounded_collections_with_standard_provider() {
 #[test]
 fn test_memory_optimizer() {
     // Test the PlatformMemoryOptimizer
-    let optimizer = PlatformMemoryOptimizer::new(;
+    let optimizer = PlatformMemoryOptimizer::new);
     
     // Check available optimizations
-    let available = optimizer.available_optimizations(;
+    let available = optimizer.available_optimizations);
     println!("Available optimizations: {:?}", available;
     
     // The optimizer should support at least basic optimizations

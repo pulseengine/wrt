@@ -172,7 +172,7 @@ impl Limits {
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         #[cfg(feature = "std")]
         {
-            let mut bytes = Vec::new(;
+            let mut bytes = Vec::new);
             // Encode min
             bytes.extend(&self.min.to_le_bytes();
             // Encode max (1 byte for Some/None, then 8 bytes if Some)
@@ -291,10 +291,10 @@ impl Limits {
 // Implement Checksummable trait for Limits
 impl wrt_foundation::traits::Checksummable for Limits {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.min.to_le_bytes(;
+        checksum.update_slice(&self.min.to_le_bytes);
         if let Some(max) = self.max {
             checksum.update_slice(&[1];
-            checksum.update_slice(&max.to_le_bytes(;
+            checksum.update_slice(&max.to_le_bytes);
         } else {
             checksum.update_slice(&[0];
         }

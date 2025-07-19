@@ -62,16 +62,16 @@ fn test_memory_adapter_property_invariants() {
                         }
                     }
                     MemoryOp::Size => {
-                        let _ = adapter.size(;
+                        let _ = adapter.size);
                     }
                     MemoryOp::ByteSize => {
-                        let _ = adapter.byte_size(;
+                        let _ = adapter.byte_size);
                     }
                     MemoryOp::Grow { pages } => {
                         let _ = adapter.grow(pages;
                     }
                     MemoryOp::VerifyIntegrity => {
-                        let _ = adapter.verify_integrity(;
+                        let _ = adapter.verify_integrity);
                     }
                 }
             };
@@ -81,7 +81,7 @@ fn test_memory_adapter_property_invariants() {
         }
         
         // Final validation should succeed for properly used adapters
-        let final_integrity = adapter.verify_integrity(;
+        let final_integrity = adapter.verify_integrity);
         assert!(final_integrity.is_ok(), "Final integrity check failed for memory adapter");
     }
 }

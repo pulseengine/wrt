@@ -61,8 +61,8 @@ impl SimdProvider for AArch64SimdProvider {
     fn v128_i8x16_add(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
-            let a_vec = vld1q_u8(a.as_ptr(;
-            let b_vec = vld1q_u8(b.as_ptr(;
+            let a_vec = vld1q_u8(a.as_ptr);
+            let b_vec = vld1q_u8(b.as_ptr);
             let result = vaddq_u8(a_vec, b_vec;
             
             let mut output = [0u8; 16];
@@ -78,8 +78,8 @@ impl SimdProvider for AArch64SimdProvider {
     fn v128_i8x16_sub(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
-            let a_vec = vld1q_u8(a.as_ptr(;
-            let b_vec = vld1q_u8(b.as_ptr(;
+            let a_vec = vld1q_u8(a.as_ptr);
+            let b_vec = vld1q_u8(b.as_ptr);
             let result = vsubq_u8(a_vec, b_vec;
             
             let mut output = [0u8; 16];

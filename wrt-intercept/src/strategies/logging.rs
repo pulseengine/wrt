@@ -135,7 +135,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
 
         // Add arguments if configured
         if self.config.log_args && !args.is_empty() {
-            let mut args_str = String::new(;
+            let mut args_str = String::new);
             let limit = if self.config.max_args > 0 {
                 self.config.max_args.min(args.len())
             } else {
@@ -162,7 +162,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         // Store start time if timing is enabled
         if self.config.log_timing {
             if let Ok(mut timing) = self.timing.lock() {
-                *timing = Some(Instant::now(;
+                *timing = Some(Instant::now);
             }
         }
 
@@ -185,7 +185,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         if self.config.log_timing {
             if let Ok(mut timing) = self.timing.lock() {
                 if let Some(start_time) = timing.take() {
-                    let elapsed = start_time.elapsed(;
+                    let elapsed = start_time.elapsed);
                     log_entry.push_str(&format!(" elapsed: {:?}", elapsed;
                 }
             }
@@ -196,7 +196,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
             match &result {
                 Ok(values) => {
                     if !values.is_empty() {
-                        let mut result_str = String::new(;
+                        let mut result_str = String::new);
                         let limit = if self.config.max_results > 0 {
                             self.config.max_results.min(values.len())
                         } else {

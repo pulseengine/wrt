@@ -133,21 +133,21 @@ pub mod kani_verification {
     pub fn verify_bounded_collections_memory_safety() {
         // Use DefaultNoStdProvider for verification
         #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::default(;
+        let memory_provider = DefaultNoStdProvider::default);
         let handler = SafeMemoryHandler::new(memory_provider;
 
         // Generate constrained capacity for verification
-        let capacity: usize = kani::any(;
+        let capacity: usize = kani::any);
         kani::assume(capacity > 0 && capacity <= 64); // Smaller bounds for Kani verification
 
         let mut bounded_vec: BoundedVec<u32, 64, DefaultNoStdProvider> = BoundedVec::new(handler;
 
         // Verify push operations never overflow capacity
-        let push_count: usize = kani::any(;
+        let push_count: usize = kani::any);
         kani::assume(push_count <= capacity;
 
         for i in 0..push_count {
-            let value: u32 = kani::any(;
+            let value: u32 = kani::any);
             let result = bounded_vec.push(value);
             assert!(result.is_ok(), "Push should succeed within capacity");
             assert_eq!(bounded_vec.len(), i + 1;
@@ -155,20 +155,20 @@ pub mod kani_verification {
 
         // Verify that exceeding capacity fails safely
         if bounded_vec.len() == capacity {
-            let overflow_value: u32 = kani::any(;
+            let overflow_value: u32 = kani::any);
             let result = bounded_vec.push(overflow_value);
             assert!(result.is_err(), "Push should fail when at capacity");
             assert_eq!(bounded_vec.len(), capacity); // Length unchanged
         }
 
         // Verify pop operations maintain invariants
-        let initial_len = bounded_vec.len(;
+        let initial_len = bounded_vec.len);
         if initial_len > 0 {
-            let pop_count: usize = kani::any(;
+            let pop_count: usize = kani::any);
             kani::assume(pop_count <= initial_len;
 
             for i in 0..pop_count {
-                let popped = bounded_vec.pop(;
+                let popped = bounded_vec.pop);
                 assert!(popped.is_some(), "Pop should succeed when not empty");
                 assert_eq!(bounded_vec.len(), initial_len - i - 1;
             }
@@ -185,22 +185,22 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::unwind(8))]
     pub fn verify_safe_memory_bounds() {
         // Test with a constrained NoStdProvider
-        let size: usize = kani::any(;
+        let size: usize = kani::any);
         kani::assume(size > 0 && size <= 256); // Constrained for verification
 
         #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::default(;
+        let mut memory_provider = DefaultNoStdProvider::default);
         memory_provider.resize(size).unwrap();
 
         // Verify access within bounds
-        let access_count: usize = kani::any(;
+        let access_count: usize = kani::any);
         kani::assume(access_count <= 8); // Limit iterations for bounded verification
 
         for _ in 0..access_count {
-            let index: usize = kani::any(;
+            let index: usize = kani::any);
             kani::assume(index < size); // Only valid indices
 
-            let write_len: usize = kani::any(;
+            let write_len: usize = kani::any);
             kani::assume(write_len > 0 && write_len <= 4 && index + write_len <= size;
 
             // Test valid access
@@ -209,10 +209,10 @@ pub mod kani_verification {
         }
 
         // Verify out-of-bounds operations fail safely
-        let invalid_index: usize = kani::any(;
+        let invalid_index: usize = kani::any);
         kani::assume(invalid_index >= size;
 
-        let invalid_len: usize = kani::any(;
+        let invalid_len: usize = kani::any);
         kani::assume(invalid_len > 0 && invalid_len <= 4;
 
         // Out-of-bounds access should fail
@@ -226,7 +226,7 @@ pub mod kani_verification {
     pub fn verify_atomic_memory_operations() {
         // Create AtomicMemoryOps with a DefaultNoStdProvider
         #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::default(;
+        let memory_provider = DefaultNoStdProvider::default);
         let handler = SafeMemoryHandler::new(memory_provider;
         let atomic_mem_ops = AtomicMemoryOps::new(handler;
 
@@ -239,14 +239,14 @@ pub mod kani_verification {
         assert!(write_result.is_ok(), "Atomic write should succeed");
 
         // Verify atomic read operation
-        let read_result = atomic_mem_ops.atomic_read(offset, test_data.len(;
+        let read_result = atomic_mem_ops.atomic_read(offset, test_data.len);
         assert!(read_result.is_ok(), "Atomic read should succeed");
 
         let read_data = read_result.unwrap();
         assert_eq!(read_data.len(), test_data.len(), "Read data length should match";
 
         // Verify integrity
-        let integrity_result = atomic_mem_ops.verify_integrity(;
+        let integrity_result = atomic_mem_ops.verify_integrity);
         assert!(integrity_result.is_ok(), "Integrity check should pass");
     }
 
@@ -258,7 +258,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::unwind(5))]
     pub fn verify_component_value_type_safety() {
         // Test integer values
-        let int_val: i32 = kani::any(;
+        let int_val: i32 = kani::any);
         let component_int = ComponentValue::I32(int_val;
 
         match component_int {
@@ -270,7 +270,7 @@ pub mod kani_verification {
         assert_eq!(component_int.value_type(), ValueType::I32;
 
         // Test i64 values
-        let long_val: i64 = kani::any(;
+        let long_val: i64 = kani::any);
         let component_long = ComponentValue::I64(long_val;
 
         match component_long {
@@ -285,7 +285,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(3))]
     pub fn verify_value_type_validation() {
-        let val_type: ValueType = kani::any(;
+        let val_type: ValueType = kani::any);
 
         // Verify type validation is consistent
         match val_type {
@@ -320,8 +320,8 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(3))]
     pub fn verify_arithmetic_safety() {
-        let a: u32 = kani::any(;
-        let b: u32 = kani::any(;
+        let a: u32 = kani::any);
+        let b: u32 = kani::any);
 
         // Verify safe addition
         let add_result = a.checked_add(b;
@@ -355,18 +355,18 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(5))]
     pub fn verify_bounds_checking() {
-        let buffer_size: usize = kani::any(;
+        let buffer_size: usize = kani::any);
         kani::assume(buffer_size > 0 && buffer_size <= 64;
 
         #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::default(;
+        let mut memory_provider = DefaultNoStdProvider::default);
         memory_provider.resize(buffer_size).unwrap();
 
         // Test valid accesses
-        let valid_index: usize = kani::any(;
+        let valid_index: usize = kani::any);
         kani::assume(valid_index < buffer_size;
 
-        let access_len: usize = kani::any(;
+        let access_len: usize = kani::any);
         kani::assume(access_len > 0 && access_len <= 4 && valid_index + access_len <= buffer_size;
 
         // Valid access should succeed
@@ -374,10 +374,10 @@ pub mod kani_verification {
         assert!(access_result.is_ok(), "Valid access should succeed");
 
         // Test invalid accesses
-        let invalid_index: usize = kani::any(;
+        let invalid_index: usize = kani::any);
         kani::assume(invalid_index >= buffer_size;
 
-        let invalid_len: usize = kani::any(;
+        let invalid_len: usize = kani::any);
         kani::assume(invalid_len > 0 && invalid_len <= 4;
 
         // Invalid access should fail

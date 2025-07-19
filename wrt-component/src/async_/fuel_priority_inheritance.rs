@@ -276,7 +276,7 @@ impl FuelPriorityInheritanceProtocol {
         self.protocol_stats.inversions_prevented.fetch_add(1, Ordering::AcqRel;
 
         // Update max chain length
-        let chain_length = chain.waiters.len(;
+        let chain_length = chain.waiters.len);
         let current_max = self.protocol_stats.max_chain_length.load(Ordering::Acquire;
         if chain_length > current_max {
             self.protocol_stats.max_chain_length.store(chain_length, Ordering::Release;
@@ -317,7 +317,7 @@ impl FuelPriorityInheritanceProtocol {
         }
 
         // Determine the next task to get the resource (highest priority waiter)
-        let next_holder = chain.waiters.first().copied(;
+        let next_holder = chain.waiters.first().copied);
 
         // Remove blocking relationships for all waiters
         for &waiter in chain.waiters.iter() {
@@ -383,7 +383,7 @@ impl FuelPriorityInheritanceProtocol {
         record_global_operation(OperationType::CollectionMutate, self.verification_level;
         
         let mut cleaned_count = 0;
-        let mut expired_resources = Vec::new(;
+        let mut expired_resources = Vec::new);
 
         // Find expired inheritance chains
         for (resource_id, chain) in self.inheritance_chains.iter() {
@@ -449,7 +449,7 @@ impl FuelPriorityInheritanceProtocol {
 
     fn sort_waiters_by_priority(&self, waiters: &mut BoundedVec<TaskId, MAX_INHERITANCE_CHAIN_LENGTH>) -> Result<(), Error> {
         // Simple bubble sort for small collections
-        let len = waiters.len(;
+        let len = waiters.len);
         for i in 0..len {
             for j in 0..len.saturating_sub(1 + i) {
                 if self.should_swap_by_priority(waiters[j], waiters[j + 1])? {
@@ -491,7 +491,7 @@ mod tests {
     #[test]
     fn test_protocol_creation() {
         let protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
-        let stats = protocol.get_statistics(;
+        let stats = protocol.get_statistics);
         
         assert_eq!(stats.total_inheritances.load(Ordering::Acquire), 0;
         assert_eq!(stats.active_chains.load(Ordering::Acquire), 0;
@@ -515,7 +515,7 @@ mod tests {
         
         assert!(result.is_ok();
         
-        let stats = protocol.get_statistics(;
+        let stats = protocol.get_statistics);
         assert_eq!(stats.active_chains.load(Ordering::Acquire), 1;
         assert_eq!(stats.total_inheritances.load(Ordering::Acquire), 1;
     }
@@ -564,7 +564,7 @@ mod tests {
         
         assert_eq!(next_holder, Some(blocked_task;
         
-        let stats = protocol.get_statistics(;
+        let stats = protocol.get_statistics);
         assert_eq!(stats.active_chains.load(Ordering::Acquire), 0;
     }
 

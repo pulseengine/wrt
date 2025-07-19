@@ -53,13 +53,13 @@ fn main() {
     // 3. Demonstrate memory pool efficiency
     println!("\n3. Memory Pool Efficiency:";
 
-    let provider = NoStdProvider::<4096>::default(;
+    let provider = NoStdProvider::<4096>::default);
     let mut pool = MemoryPool::new(provider;
 
     // Simulate parsing multiple functions - reusing vectors
     println!("Parsing 5 functions with vector reuse:";
     for i in 1..=5 {
-        let mut instruction_vec = pool.get_instruction_vector(;
+        let mut instruction_vec = pool.get_instruction_vector);
 
         // Simulate adding some instructions
         for j in 0..10 {

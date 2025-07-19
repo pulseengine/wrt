@@ -18,8 +18,8 @@ mod tests {
 
     #[test]
     fn test_module_handle_uniqueness() {
-        let h1 = ModuleHandle::new(;
-        let h2 = ModuleHandle::new(;
+        let h1 = ModuleHandle::new);
+        let h2 = ModuleHandle::new);
         assert_ne!(h1, h2;
     }
 

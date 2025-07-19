@@ -274,8 +274,8 @@ impl WitComponentContext {
     
     /// Process an interface declaration
     fn process_interface(&mut self, interface: &InterfaceDecl) -> Result<()> {
-        let mut functions = Vec::new(;
-        let mut types = Vec::new(;
+        let mut functions = Vec::new);
+        let mut types = Vec::new);
         
         // Process interface items
         for item in &interface.items {
@@ -321,8 +321,8 @@ impl WitComponentContext {
     
     /// Process a function declaration
     fn process_function(&mut self, func: &FunctionDecl) -> Result<FunctionMapping> {
-        let mut param_types = Vec::new(;
-        let mut return_types = Vec::new(;
+        let mut param_types = Vec::new);
+        let mut return_types = Vec::new);
         
         // Process parameters
         for param in &func.func.params {
@@ -653,7 +653,7 @@ mod tests {
     
     #[test]
     fn test_component_config() {
-        let config = ComponentConfig::default(;
+        let config = ComponentConfig::default);
         assert!(config.debug_info);
         assert!(!config.optimize);
         assert_eq!(config.memory_limit, Some(1024 * 1024;

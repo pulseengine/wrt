@@ -29,7 +29,7 @@ struct ComplexTarget {
 #[test]
 fn test_basic_registry_functionality() {
     // Create a registry
-    let mut registry = TypeConversionRegistry::new(;
+    let mut registry = TypeConversionRegistry::new);
 
     // Register a simple conversion
     registry.register(
@@ -47,7 +47,7 @@ fn test_basic_registry_functionality() {
 
 #[test]
 fn test_complex_conversion() {
-    let mut registry = TypeConversionRegistry::new(;
+    let mut registry = TypeConversionRegistry::new);
 
     // Register a more complex conversion
     registry.register(
@@ -78,7 +78,7 @@ fn test_complex_conversion() {
 
 #[test]
 fn test_conversion_error_handling() {
-    let mut registry = TypeConversionRegistry::new(;
+    let mut registry = TypeConversionRegistry::new);
 
     // Register a conversion that can fail
     registry.register(
@@ -107,14 +107,14 @@ fn test_conversion_error_handling() {
     let error_result = registry.convert::<SimpleSource, SimpleTarget>(&bad_source;
 
     assert!(error_result.is_err();
-    let error = error_result.unwrap_err(;
+    let error = error_result.unwrap_err);
     assert!(matches!(error.kind, ConversionErrorKind::OutOfRange);
     assert!(error.context.unwrap().contains("non-negative");
 }
 
 #[test]
 fn test_bidirectional_conversions() {
-    let mut registry = TypeConversionRegistry::new(;
+    let mut registry = TypeConversionRegistry::new);
 
     // Register conversions in both directions
     registry.register(
@@ -137,20 +137,20 @@ fn test_bidirectional_conversions() {
 
 #[test]
 fn test_missing_conversion() {
-    let registry = TypeConversionRegistry::new(;
+    let registry = TypeConversionRegistry::new);
 
     // Try a conversion that doesn't exist
     let source = SimpleSource(42;
     let result = registry.convert::<SimpleSource, SimpleTarget>(&source;
 
     assert!(result.is_err();
-    let error = result.unwrap_err(;
+    let error = result.unwrap_err);
     assert!(matches!(error.kind, ConversionErrorKind::NoConverterFound);
 }
 
 #[test]
 fn test_chained_conversion_errors() {
-    let mut registry = TypeConversionRegistry::new(;
+    let mut registry = TypeConversionRegistry::new);
 
     // Create a nested error
     let nested_error = ConversionError {
@@ -179,7 +179,7 @@ fn test_chained_conversion_errors() {
     let result = registry.convert::<SimpleSource, SimpleTarget>(&source;
 
     assert!(result.is_err();
-    let error = result.unwrap_err(;
+    let error = result.unwrap_err);
 
     // Check outer error
     assert!(matches!(error.kind, ConversionErrorKind::ConversionFailed);
@@ -196,7 +196,7 @@ fn test_chained_conversion_errors() {
 
 #[test]
 fn test_can_convert_check() {
-    let mut registry = TypeConversionRegistry::new(;
+    let mut registry = TypeConversionRegistry::new);
 
     // Initially no conversions are registered
     assert!(!registry.can_convert::<SimpleSource, SimpleTarget>();

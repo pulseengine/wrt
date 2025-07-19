@@ -58,7 +58,7 @@ pub fn string_byte_length(s: &str, encoding: StringEncoding) -> usize {
 
 /// Encode to UTF-16 Little Endian
 fn encode_utf16_le(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new(;
+    let mut bytes = Vec::new);
 
     for code_unit in s.encode_utf16() {
         bytes.push((code_unit & 0xFF) as u8;
@@ -70,7 +70,7 @@ fn encode_utf16_le(s: &str) -> Result<Vec<u8>> {
 
 /// Encode to UTF-16 Big Endian
 fn encode_utf16_be(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new(;
+    let mut bytes = Vec::new);
 
     for code_unit in s.encode_utf16() {
         bytes.push((code_unit >> 8) as u8;
@@ -82,7 +82,7 @@ fn encode_utf16_be(s: &str) -> Result<Vec<u8>> {
 
 /// Encode to Latin-1 (ISO-8859-1)
 fn encode_latin1(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new(;
+    let mut bytes = Vec::new);
 
     for c in s.chars() {
         let code_point = c as u32;
@@ -108,7 +108,7 @@ fn decode_utf16_le(bytes: &[u8]) -> Result<String> {
         return Err(Error::runtime_execution_error("Error occurred";
     }
 
-    let mut code_units = Vec::new(;
+    let mut code_units = Vec::new);
     for chunk in bytes.chunks_exact(2) {
         let code_unit = u16::from_le_bytes([chunk[0], chunk[1]];
         code_units.push(code_unit);
@@ -125,7 +125,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
         return Err(Error::runtime_execution_error("Error occurred";
     }
 
-    let mut code_units = Vec::new(;
+    let mut code_units = Vec::new);
     for chunk in bytes.chunks_exact(2) {
         let code_unit = u16::from_be_bytes([chunk[0], chunk[1]];
         code_units.push(code_unit);
@@ -161,7 +161,7 @@ impl StringTranscoder {
     pub fn transcode(&self, input: &[u8]) -> Result<Vec<u8>> {
         if self.source_encoding == self.target_encoding {
             // No transcoding needed
-            return Ok(input.to_vec(;
+            return Ok(input.to_vec);
         }
 
         // First decode from source encoding
@@ -287,13 +287,13 @@ pub fn lower_string_with_options(
     }
 
     // Check bounds
-    let total_size = 4 + encoded.len(;
+    let total_size = 4 + encoded.len);
     if addr as usize + total_size > memory.len() {
         return Err(Error::runtime_out_of_bounds("String data exceeds memory bounds";
     }
 
     // Write length prefix
-    let len_bytes = (encoded.len() as u32).to_le_bytes(;
+    let len_bytes = (encoded.len() as u32).to_le_bytes);
     memory[addr as usize..addr as usize + 4].copy_from_slice(&len_bytes;
 
     // Write string data
@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn test_transcoder() {
         let text = "Hello, World!";
-        let utf8_bytes = text.as_bytes(;
+        let utf8_bytes = text.as_bytes);
 
         // UTF-8 to UTF-16LE
         let transcoder = StringTranscoder::new(StringEncoding::Utf8, StringEncoding::Utf16Le;

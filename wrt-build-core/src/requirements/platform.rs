@@ -277,7 +277,7 @@ impl PlatformVerificationEngine {
 
         // ASIL-specific validation
         let asil_requirements = self.get_asil_requirements(asil_level;
-        let mut violations = Vec::new(;
+        let mut violations = Vec::new);
 
         // Check memory requirements
         if limits.max_total_memory < asil_requirements.min_total_memory {
@@ -365,12 +365,12 @@ impl PlatformVerificationEngine {
                     ViolationSeverity::Medium => 15.0,
                     ViolationSeverity::Low => 5.0,
                 })
-                .sum(;
+                .sum);
             (100.0 - penalty).max(0.0)
         };
 
-        let is_compliant = violations.is_empty(;
-        let violations_count = violations.len(;
+        let is_compliant = violations.is_empty);
+        let violations_count = violations.len);
         let result = PlatformVerificationResult {
             asil_level,
             platform_limits: limits.clone(),
@@ -474,10 +474,10 @@ impl PlatformVerificationEngine {
         &self,
         diagnostics: &mut DiagnosticCollection,
     ) -> BuildResult<ComprehensivePlatformLimits> {
-        let mut limits = ComprehensivePlatformLimits::default(;
+        let mut limits = ComprehensivePlatformLimits::default);
 
         // Detect platform
-        limits.platform_id = self.detect_platform_id(;
+        limits.platform_id = self.detect_platform_id);
 
         // Platform-specific adjustments
         match limits.platform_id {
@@ -654,7 +654,7 @@ impl PlatformVerificationEngine {
 
                 // Simple key=value parser
                 for line in config_content.lines() {
-                    let line = line.trim(;
+                    let line = line.trim);
                     if line.is_empty() || line.starts_with('#') {
                         continue;
                     }
@@ -939,7 +939,7 @@ impl PlatformVerificationConfigBuilder {
 
         // Auto-detect container runtime
         if self.config.sources.container_runtime == ContainerRuntime::None {
-            self.config.sources.container_runtime = detect_container_runtime(;
+            self.config.sources.container_runtime = detect_container_runtime);
         }
 
         self.config
@@ -1006,7 +1006,7 @@ fn parse_number_arg(arg: &str, prefix: &str) -> Option<usize> {
 
 /// Parse memory string with units (e.g., "256MB", "1GB")
 fn parse_memory_string(value: &str) -> Result<usize, BuildError> {
-    let value = value.trim().to_uppercase(;
+    let value = value.trim().to_uppercase);
 
     if let Some(stripped) = value.strip_suffix("KB") {
         stripped
@@ -1065,7 +1065,7 @@ mod tests {
             .with_cli_args(vec!["--max-memory=1GB".to_string()])
             .with_strict_validation(true)
             .with_container_runtime(ContainerRuntime::Docker)
-            .build(;
+            .build);
 
         assert!(config.strict_validation);
         assert_eq!(config.sources.container_runtime, ContainerRuntime::Docker;
@@ -1074,7 +1074,7 @@ mod tests {
 
     #[test]
     fn test_verification_engine() {
-        let config = PlatformVerificationConfigBuilder::new().with_strict_validation(false).build(;
+        let config = PlatformVerificationConfigBuilder::new().with_strict_validation(false).build);
 
         let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
         let (limits, _diagnostics) = engine.discover_limits().unwrap();
@@ -1088,7 +1088,7 @@ mod tests {
     #[test]
     fn test_container_detection() {
         // This test would depend on the actual runtime environment
-        let runtime = detect_container_runtime(;
+        let runtime = detect_container_runtime);
         // Just ensure it returns a valid value
         assert!(matches!(
             runtime,
@@ -1103,7 +1103,7 @@ mod tests {
 
     #[test]
     fn test_asil_platform_verification() {
-        let config = PlatformVerificationConfigBuilder::new().build(;
+        let config = PlatformVerificationConfigBuilder::new().build);
         let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
 
         let (result, _diagnostics) = engine.verify_for_asil(AsilLevel::A).unwrap();

@@ -42,8 +42,8 @@ pub mod annotations {
     /// Assert that a pointer is valid and aligned
     #[cfg(kani)]
     pub fn assert_valid_ptr<T>(ptr: *const T) {
-        kani::assume(!ptr.is_null(;
-        kani::assume(ptr.is_aligned(;
+        kani::assume(!ptr.is_null);
+        kani::assume(ptr.is_aligned);
     }
 
     /// Assert that a memory region is valid
@@ -151,7 +151,7 @@ pub mod memory_verification {
     #[kani::proof]
     fn verify_wasm_page_allocation() {
         // Create symbolic inputs
-        let num_pages: usize = kani::any(;
+        let num_pages: usize = kani::any);
         kani::assume(num_pages > 0 && num_pages <= 1024;
 
         // Binary std/no_std choice
@@ -170,7 +170,7 @@ pub mod concurrency_verification {
 
     /// Verify lock-free data structure safety
     pub fn verify_lockfree_safety() {
-        assert_no_data_races(;
+        assert_no_data_races);
         assert_bounded_execution(1000); // Bounded by retry limit
     }
 
@@ -237,8 +237,8 @@ pub mod concurrency_verification {
         // This would verify the MPSC queue implementation
         // For brevity, we verify key properties symbolically
 
-        let head_ptr: usize = kani::any(;
-        let tail_ptr: usize = kani::any(;
+        let head_ptr: usize = kani::any);
+        let tail_ptr: usize = kani::any);
 
         // Queue invariants
         kani::assume(head_ptr != 0); // Non-null
@@ -268,14 +268,14 @@ pub mod realtime_verification {
 
         #[cfg(kani)]
         {
-            let result = operation(;
+            let result = operation);
             kani::cover!(result.is_ok(), "Operation completes successfully";
             kani::cover!(result.is_err(), "Operation fails gracefully";
         }
 
         #[cfg(not(kani))]
         {
-            let _ = operation(;
+            let _ = operation);
         }
     }
 
@@ -384,8 +384,8 @@ pub mod security_verification {
     #[cfg(kani)]
     #[kani::proof]
     fn verify_bounds_checking() {
-        let buffer_size: usize = kani::any(;
-        let access_index: usize = kani::any(;
+        let buffer_size: usize = kani::any);
+        let access_index: usize = kani::any);
 
         kani::assume(buffer_size > 0 && buffer_size <= 4096;
 
@@ -413,10 +413,10 @@ pub mod integration_verification {
         ;
 
         // Verify concurrency subsystem
-        concurrency_verification::verify_lockfree_safety(;
+        concurrency_verification::verify_lockfree_safety);
 
         // Verify real-time properties
-        realtime_verification::verify_deterministic_behavior(;
+        realtime_verification::verify_deterministic_behavior);
 
         // Verify security properties
         security_verification::verify_constant_time_operation(false;
@@ -427,7 +427,7 @@ pub mod integration_verification {
     #[cfg(kani)]
     #[kani::proof]
     fn comprehensive_safety_proof() {
-        let result = verify_platform_safety(;
+        let result = verify_platform_safety);
         kani::assert(result.is_ok(), "Platform safety verification passes";
     }
 }
@@ -451,13 +451,13 @@ pub mod cbmc_integration {
 
         pub fn cbmc_assert(condition: bool, description: &str) {
             unsafe {
-                __CPROVER_assert(condition, description.as_ptr(;
+                __CPROVER_assert(condition, description.as_ptr);
             }
         }
 
         pub fn cbmc_cover(condition: bool, description: &str) {
             unsafe {
-                __CPROVER_cover(condition, description.as_ptr(;
+                __CPROVER_cover(condition, description.as_ptr);
             }
         }
     }
@@ -477,7 +477,7 @@ pub mod cbmc_integration {
 
     /// Verify low-level memory operations with CBMC
     pub fn verify_memory_operations(ptr: *mut u8, size: usize) {
-        cbmc_assume(!ptr.is_null(;
+        cbmc_assume(!ptr.is_null);
         cbmc_assume(size > 0;
         cbmc_assume(size <= 1024 * 1024); // Reasonable upper bound
 
@@ -498,7 +498,7 @@ pub mod verification_harnesses {
     #[kani::proof]
     #[kani::unwind(10)]
     fn verify_memory_safety() {
-        let size: usize = kani::any(;
+        let size: usize = kani::any);
         kani::assume(size > 0 && size <= 16 * WASM_PAGE_SIZE;
 
         // Binary std/no_std choice
@@ -514,8 +514,8 @@ pub mod verification_harnesses {
         let shared_data = AtomicU32::new(0;
 
         // Simulate concurrent access
-        let thread1_value: u32 = kani::any(;
-        let thread2_value: u32 = kani::any(;
+        let thread1_value: u32 = kani::any);
+        let thread2_value: u32 = kani::any);
 
         // Both threads try to update
         shared_data.store(thread1_value, Ordering::SeqCst;
@@ -532,8 +532,8 @@ pub mod verification_harnesses {
     #[kani::proof]
     #[kani::unwind(3)]
     fn verify_bounds_checking() {
-        let buffer_size: usize = kani::any(;
-        let index: usize = kani::any(;
+        let buffer_size: usize = kani::any);
+        let index: usize = kani::any);
 
         kani::assume(buffer_size > 0 && buffer_size <= 1024;
 
@@ -562,7 +562,7 @@ mod tests {
         annotations::assert_valid_memory(0x1000 as *const u8, 4096;
         annotations::assert_bounds(5, 0, 10;
         annotations::assert_bounded_execution(100;
-        annotations::assert_no_data_races(;
+        annotations::assert_no_data_races);
     }
 
     #[test]
@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     fn test_integration_verification() {
-        let result = integration_verification::verify_platform_safety(;
+        let result = integration_verification::verify_platform_safety);
         assert!(result.is_ok();
     }
 }

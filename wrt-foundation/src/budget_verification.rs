@@ -86,12 +86,12 @@ pub const fn check_allocation_fits(crate_id: CrateId, size: usize) -> bool {
 /// Static assertion for total budget validation
 /// This will cause a compile error if budgets exceed system memory
 const fn validate_total_budget() {
-    let total = calculate_total_budget(;
+    let total = calculate_total_budget);
     assert!(total <= TOTAL_MEMORY_BUDGET, "Total crate budgets exceed system memory budget!");
 }
 
 // Force evaluation at compile time
-const _: () = validate_total_budget(;
+const _: () = validate_total_budget);
 
 /// Macro to verify crate budget at compile time
 ///
@@ -203,13 +203,13 @@ mod tests {
 
     #[test]
     fn test_budget_calculation() {
-        let total = calculate_total_budget(;
+        let total = calculate_total_budget);
         assert!(total <= TOTAL_MEMORY_BUDGET);
     }
 
     #[test]
     fn test_budget_report() {
-        let report = generate_budget_report(;
+        let report = generate_budget_report);
         assert!(!report.is_over_allocated();
         assert!(report.allocation_percentage() <= 100);
     }

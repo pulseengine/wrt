@@ -267,16 +267,16 @@ mod tests {
     
     #[test]
     fn test_atomic_stats() {
-        let mut stats = CapabilityAtomicStats::new(;
+        let mut stats = CapabilityAtomicStats::new);
         
-        stats.record_success(;
+        stats.record_success);
         assert_eq!(stats.success_rate(), 100.0;
         
-        stats.record_capability_violation(;
+        stats.record_capability_violation);
         assert_eq!(stats.success_rate(), 50.0;
         
-        stats.record_alignment_failure(;
-        stats.record_bounds_violation(;
+        stats.record_alignment_failure);
+        stats.record_bounds_violation);
         assert_eq!(stats.successful_operations, 1;
         assert_eq!(stats.total_operations, 4;
     }

@@ -269,7 +269,7 @@ impl ResourceManager {
     /// Clear all resources (legacy API)
     pub fn clear(&self) -> Result<()> {
         let mut table = self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
-        let _ = table.cleanup_unused_resources(;
+        let _ = table.cleanup_unused_resources);
         Ok(())
     }
 
@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     fn test_resource_creation() {
-        let manager = ResourceManager::new(;
+        let manager = ResourceManager::new);
 
         // Create a string resource
         let data = Arc::new(String::from("test";
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_add_and_get_host_resource() {
-        let manager = ResourceManager::new(;
+        let manager = ResourceManager::new);
 
         // Add a string resource using the legacy API
         let id = manager.add_host_resource(String::from("test")).unwrap();
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_named_resource() {
-        let manager = ResourceManager::new(;
+        let manager = ResourceManager::new);
 
         // Create a named resource
         let data = Arc::new(42i32;
@@ -372,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_resource_lifecycle() {
-        let manager = ResourceManager::new(;
+        let manager = ResourceManager::new);
 
         // Add a resource
         let data = Arc::new(42i32;
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_borrow_resource() {
-        let manager = ResourceManager::new(;
+        let manager = ResourceManager::new);
 
         // Create a resource
         let data = Arc::new(42i32;

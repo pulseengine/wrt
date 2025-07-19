@@ -227,10 +227,10 @@ impl ComponentModelAsyncOps {
     /// Process wait operations and wake tasks when waitables are ready
     pub fn process_wait_operations(&mut self) -> Result<usize, Error> {
         let mut woken_count = 0;
-        let current_time = self.get_current_time(;
+        let current_time = self.get_current_time);
         
         // Check all active wait operations
-        let mut completed_waits = Vec::new(;
+        let mut completed_waits = Vec::new);
         
         for (task_id, wait_op) in self.active_waits.iter_mut() {
             // Check for timeout

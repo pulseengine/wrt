@@ -86,9 +86,9 @@ pub struct ShadowStackEntry {
     
     impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            checksum.update_slice(&self.return_address.to_le_bytes(;
-            checksum.update_slice(&self.stack_pointer.to_le_bytes(;
-            checksum.update_slice(&self.function_index.to_le_bytes(;
+            checksum.update_slice(&self.return_address.to_le_bytes);
+            checksum.update_slice(&self.stack_pointer.to_le_bytes);
+            checksum.update_slice(&self.function_index.to_le_bytes);
         }
     }
     
@@ -336,10 +336,10 @@ pub struct LandingPadExpectation {
 
 impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes(;
-        checksum.update_slice(&self.instruction_offset.to_le_bytes(;
+        checksum.update_slice(&self.function_index.to_le_bytes);
+        checksum.update_slice(&self.instruction_offset.to_le_bytes);
         if let Some(deadline) = self.deadline {
-            checksum.update_slice(&deadline.to_le_bytes(;
+            checksum.update_slice(&deadline.to_le_bytes);
         }
     }
 }
@@ -502,7 +502,7 @@ impl CfiExecutionEngine {
         instruction: &crate::prelude::Instruction,
         execution_context: &mut ExecutionContext,
     ) -> Result<CfiExecutionResult> {
-        let start_time = self.get_timestamp(;
+        let start_time = self.get_timestamp);
 
         // Update CFI context with current execution state
         self.update_cfi_context(execution_context)?;
@@ -552,7 +552,7 @@ impl CfiExecutionEngine {
         self.validate_post_execution(instruction, &result)?;
 
         // Update statistics
-        let end_time = self.get_timestamp(;
+        let end_time = self.get_timestamp);
         self.statistics.instructions_protected += 1;
         self.statistics.cfi_overhead_ns += end_time.saturating_sub(start_time;
 
@@ -705,7 +705,7 @@ impl CfiExecutionEngine {
 
         // Update peak shadow stack depth tracking
         if self.cfi_context.shadow_stack.len() > self.statistics.peak_shadow_stack_depth {
-            self.statistics.peak_shadow_stack_depth = self.cfi_context.shadow_stack.len(;
+            self.statistics.peak_shadow_stack_depth = self.cfi_context.shadow_stack.len);
         }
 
         Ok(())
@@ -713,7 +713,7 @@ impl CfiExecutionEngine {
 
     /// Check for expected landing pads
     fn check_landing_pad_expectations(&mut self) -> Result<()> {
-        let current_time = self.get_timestamp(;
+        let current_time = self.get_timestamp);
 
         // Check if we're at an expected landing pad
         let current_location =
@@ -973,7 +973,7 @@ impl CfiExecutionEngine {
     ) -> Result<ExecutionResult> {
         // use crate::stackless::StacklessExecutionState; // TEMPORARILY DISABLED
 
-        execution_context.exit_function(;
+        execution_context.exit_function);
         execution_context.stats.increment_instructions(1;
 
         // Update stackless engine state for return - TEMPORARILY DISABLED
@@ -1045,7 +1045,7 @@ impl CfiExecutionEngine {
     /// Reset CFI state (for testing or recovery)
     pub fn reset_cfi_state(&mut self) -> Result<()> {
         self.cfi_context = CfiExecutionContext::new()?;
-        self.statistics = CfiEngineStatistics::default(;
+        self.statistics = CfiEngineStatistics::default);
         Ok(())
     }
 }
@@ -1147,7 +1147,7 @@ mod tests {
 
     #[test]
     fn test_cfi_engine_creation() {
-        let protection = CfiControlFlowProtection::default(;
+        let protection = CfiControlFlowProtection::default);
         let engine = CfiExecutionEngine::new(protection).expect("Ok");
 
         assert_eq!(engine.violation_policy, CfiViolationPolicy::ReturnError;
@@ -1157,7 +1157,7 @@ mod tests {
 
     #[test]
     fn test_cfi_engine_with_policy() {
-        let protection = CfiControlFlowProtection::default(;
+        let protection = CfiControlFlowProtection::default);
         let policy = CfiViolationPolicy::LogAndContinue;
         let engine = CfiExecutionEngine::new_with_policy(protection, policy).expect("Ok");
 
@@ -1166,7 +1166,7 @@ mod tests {
 
     #[test]
     fn test_cfi_statistics_default() {
-        let stats = CfiEngineStatistics::default(;
+        let stats = CfiEngineStatistics::default);
         assert_eq!(stats.instructions_protected, 0;
         assert_eq!(stats.violations_detected, 0;
         assert_eq!(stats.peak_shadow_stack_depth, 0;
@@ -1174,7 +1174,7 @@ mod tests {
 
     #[test]
     fn test_cfi_violation_handling() {
-        let protection = CfiControlFlowProtection::default(;
+        let protection = CfiControlFlowProtection::default);
         let mut engine =
             CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue).expect("Ok");
 

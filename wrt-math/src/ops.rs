@@ -82,7 +82,7 @@ mod no_std_math_trunc {
         if d_val.is_nan() || d_val.is_infinite() || d_val == 0.0 {
             return d_val;
         }
-        let bits = d_val.to_bits(;
+        let bits = d_val.to_bits);
         let sign_mask = 0x8000_0000_0000_0000u64;
         let exponent_mask = 0x7FF0_0000_0000_0000u64;
         let mantissa_mask = 0x000F_FFFF_FFFF_FFFFu64;
@@ -254,11 +254,11 @@ mod no_std_math_sqrt {
         if f_val.is_nan() {
             // Wasm spec: "if z is a NaN, then return a canonical NaN".
             // Our FloatBits32::NAN.value() should be a canonical NaN.
-            return FloatBits32::NAN.value(;
+            return FloatBits32::NAN.value);
         }
         if f_val < 0.0 {
             // sqrt of negative number (excluding -0.0) is NaN.
-            return FloatBits32::NAN.value(;
+            return FloatBits32::NAN.value);
         }
         if f_val == 0.0 {
             // Handles +0.0 and -0.0. sqrt(+0)=+0, sqrt(-0)=-0.
@@ -309,10 +309,10 @@ mod no_std_math_sqrt {
     // Polyfill for f64::sqrt using Newton-Raphson method
     pub(super) fn sqrt_f64_polyfill(d_val: f64) -> f64 {
         if d_val.is_nan() {
-            return FloatBits64::NAN.value(;
+            return FloatBits64::NAN.value);
         }
         if d_val < 0.0 {
-            return FloatBits64::NAN.value(;
+            return FloatBits64::NAN.value);
         }
         if d_val == 0.0 {
             return d_val;
@@ -1275,7 +1275,7 @@ pub fn f32_div(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
 /// This function does not currently return an error.
 #[inline]
 pub fn wasm_f32_abs(val: FloatBits32) -> Result<FloatBits32> {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         // Wasm spec: "if z is a NaN, then return a canonical NaN"
         Ok(FloatBits32::NAN)
@@ -1369,8 +1369,8 @@ pub fn wasm_f32_sqrt(val: FloatBits32) -> Result<FloatBits32> {
 /// This function does not currently return an error.
 #[inline]
 pub fn wasm_f32_min(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
 
     if l.is_nan() || r.is_nan() {
         Ok(FloatBits32::NAN)
@@ -1399,8 +1399,8 @@ pub fn wasm_f32_min(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
 /// This function does not currently return an error.
 #[inline]
 pub fn wasm_f32_max(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
 
     if l.is_nan() || r.is_nan() {
         Ok(FloatBits32::NAN)
@@ -1450,7 +1450,7 @@ pub fn f64_div(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
 /// canonical `NaN`.
 #[inline]
 pub fn wasm_f64_abs(val: FloatBits64) -> Result<FloatBits64> {
-    let d = val.value(;
+    let d = val.value);
     if d.is_nan() {
         Ok(FloatBits64::NAN)
     } else {
@@ -1492,7 +1492,7 @@ pub fn wasm_f64_trunc(val: FloatBits64) -> Result<FloatBits64> {
 /// Follows IEEE 754-2008 `roundToIntegralTiesToEven`.
 #[inline]
 pub fn wasm_f64_nearest(val: FloatBits64) -> Result<FloatBits64> {
-    let x = val.value(;
+    let x = val.value);
     // Wasm spec: NaN -> canonical NaN; +/-Inf -> +/-Inf; +/-0 -> +/-0
     if x.is_nan() {
         return Ok(FloatBits64::NAN;
@@ -1513,8 +1513,8 @@ pub fn wasm_f64_sqrt(val: FloatBits64) -> Result<FloatBits64> {
 /// f64.min: Minimum of two f64 values (WASM semantics).
 #[inline]
 pub fn wasm_f64_min(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     if l.is_nan() || r.is_nan() {
         Ok(FloatBits64::NAN)
     } else if l == r && l == 0.0 {
@@ -1531,8 +1531,8 @@ pub fn wasm_f64_min(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
 /// f64.max: Maximum of two f64 values (WASM semantics).
 #[inline]
 pub fn wasm_f64_max(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     if l.is_nan() || r.is_nan() {
         Ok(FloatBits64::NAN)
     } else if l == r && l == 0.0 {
@@ -1552,8 +1552,8 @@ pub fn wasm_f64_max(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
 /// WebAssembly f32.eq operation.
 #[inline]
 pub fn f32_eq(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     // Wasm: NaN == X is false. NaN == NaN is false.
     // Standard Rust `l == r` handles this correctly for non-NaNs.
     // If either is NaN, `l == r` is false.
@@ -1563,8 +1563,8 @@ pub fn f32_eq(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
 /// WebAssembly f32.ne operation.
 #[inline]
 pub fn f32_ne(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     // Wasm: NaN != X is true. NaN != NaN is true.
     // Standard Rust `l != r` handles this correctly.
     Ok(i32::from(l != r))
@@ -1573,8 +1573,8 @@ pub fn f32_ne(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
 /// WebAssembly f32.lt operation.
 #[inline]
 pub fn f32_lt(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     // Wasm: if either is NaN, result is false.
     // Rust `l < r` is false if either is NaN.
     Ok(i32::from(l < r))
@@ -1583,24 +1583,24 @@ pub fn f32_lt(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
 /// WebAssembly f32.gt operation.
 #[inline]
 pub fn f32_gt(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l > r))
 }
 
 /// WebAssembly f32.le operation.
 #[inline]
 pub fn f32_le(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l <= r))
 }
 
 /// WebAssembly f32.ge operation.
 #[inline]
 pub fn f32_ge(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l >= r))
 }
 
@@ -1608,48 +1608,48 @@ pub fn f32_ge(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
 /// WebAssembly f64.eq operation.
 #[inline]
 pub fn f64_eq(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l == r))
 }
 
 /// WebAssembly f64.ne operation.
 #[inline]
 pub fn f64_ne(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l != r))
 }
 
 /// WebAssembly f64.lt operation.
 #[inline]
 pub fn f64_lt(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l < r))
 }
 
 /// WebAssembly f64.gt operation.
 #[inline]
 pub fn f64_gt(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l > r))
 }
 
 /// WebAssembly f64.le operation.
 #[inline]
 pub fn f64_le(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l <= r))
 }
 
 /// WebAssembly f64.ge operation.
 #[inline]
 pub fn f64_ge(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
-    let l = lhs.value(;
-    let r = rhs.value(;
+    let l = lhs.value);
+    let r = rhs.value);
     Ok(i32::from(l >= r))
 }
 
@@ -1663,7 +1663,7 @@ pub fn f64_ge(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
 pub fn i32_trunc_sat_f32_s(val: FloatBits32) -> i32 {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1711,7 +1711,7 @@ pub fn i32_trunc_sat_f32_s(val: FloatBits32) -> i32 {
 #[must_use = "Saturating conversion result must be used"]
 pub fn i32_trunc_sat_f32_u(val: FloatBits32) -> i32 {
     // Wasm returns i32
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1753,7 +1753,7 @@ pub fn i32_trunc_sat_f32_u(val: FloatBits32) -> i32 {
 #[must_use = "Saturating conversion result must be used"]
 pub fn i64_trunc_sat_f32_s(val: FloatBits32) -> i64 {
     // Wasm returns i64
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1790,7 +1790,7 @@ pub fn i64_trunc_sat_f32_s(val: FloatBits32) -> i64 {
 #[must_use = "Saturating conversion result must be used"]
 pub fn i64_trunc_sat_f32_u(val: FloatBits32) -> i64 {
     // Wasm returns i64
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1821,7 +1821,7 @@ pub fn i64_trunc_sat_f32_u(val: FloatBits32) -> i64 {
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
 pub fn i32_trunc_sat_f64_s(val: FloatBits64) -> i32 {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1853,7 +1853,7 @@ pub fn i32_trunc_sat_f64_s(val: FloatBits64) -> i32 {
 #[must_use = "Saturating conversion result must be used"]
 pub fn i32_trunc_sat_f64_u(val: FloatBits64) -> i32 {
     // Wasm returns i32
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1881,7 +1881,7 @@ pub fn i32_trunc_sat_f64_u(val: FloatBits64) -> i32 {
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
 pub fn i64_trunc_sat_f64_s(val: FloatBits64) -> i64 {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1924,7 +1924,7 @@ pub fn i64_trunc_sat_f64_s(val: FloatBits64) -> i64 {
 #[must_use = "Saturating conversion result must be used"]
 pub fn i64_trunc_sat_f64_u(val: FloatBits64) -> i64 {
     // Wasm returns i64
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() {
         0
     } else if f.is_infinite() {
@@ -1969,7 +1969,7 @@ pub fn i64_trunc_sat_f64_u(val: FloatBits64) -> i64 {
 ///   range.
 #[inline]
 pub fn i32_trunc_f32_s(val: FloatBits32) -> Result<i32> {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }
@@ -2003,7 +2003,7 @@ pub fn i32_trunc_f32_s(val: FloatBits32) -> Result<i32> {
 ///   range.
 #[inline]
 pub fn i32_trunc_f32_u(val: FloatBits32) -> Result<u32> {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }
@@ -2031,7 +2031,7 @@ pub fn i32_trunc_f32_u(val: FloatBits32) -> Result<u32> {
 ///   range.
 #[inline]
 pub fn i32_trunc_f64_s(val: FloatBits64) -> Result<i32> {
-    let d = val.value(;
+    let d = val.value);
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }
@@ -2056,7 +2056,7 @@ pub fn i32_trunc_f64_s(val: FloatBits64) -> Result<i32> {
 ///   range.
 #[inline]
 pub fn i32_trunc_f64_u(val: FloatBits64) -> Result<u32> {
-    let d = val.value(;
+    let d = val.value);
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }
@@ -2080,7 +2080,7 @@ pub fn i32_trunc_f64_u(val: FloatBits64) -> Result<u32> {
 ///   range.
 #[inline]
 pub fn i64_trunc_f32_s(val: FloatBits32) -> Result<i64> {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }
@@ -2110,7 +2110,7 @@ pub fn i64_trunc_f32_s(val: FloatBits32) -> Result<i64> {
 ///   range.
 #[inline]
 pub fn i64_trunc_f32_u(val: FloatBits32) -> Result<u64> {
-    let f = val.value(;
+    let f = val.value);
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }
@@ -2135,7 +2135,7 @@ pub fn i64_trunc_f32_u(val: FloatBits32) -> Result<u64> {
 ///   range.
 #[inline]
 pub fn i64_trunc_f64_s(val: FloatBits64) -> Result<i64> {
-    let d = val.value(;
+    let d = val.value);
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }
@@ -2169,7 +2169,7 @@ pub fn i64_trunc_f64_s(val: FloatBits64) -> Result<i64> {
 ///   range.
 #[inline]
 pub fn i64_trunc_f64_u(val: FloatBits64) -> Result<u64> {
-    let d = val.value(;
+    let d = val.value);
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger;
     }

@@ -213,7 +213,7 @@ impl ArcMemoryExt for Arc<Memory> {
         let mut safe_stack = wrt_foundation::safe_memory::SafeStack::new(provider)?;
 
         // Set verification level to match memory's level
-        let verification_level = self.as_ref().verification_level(;
+        let verification_level = self.as_ref().verification_level);
         safe_stack.set_verification_level(verification_level;
 
         // Get data from the safe slice with integrity verification built in
@@ -241,7 +241,7 @@ impl ArcMemoryExt for Arc<Memory> {
     fn read_exact(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Early return for zero-length reads
         if len == 0 {
-            return Ok(Vec::new(;
+            return Ok(Vec::new);
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer
@@ -251,7 +251,7 @@ impl ArcMemoryExt for Arc<Memory> {
         let data = safe_slice.data()?;
 
         // Create a Vec from the verified slice data
-        let mut buffer = Vec::new(;
+        let mut buffer = Vec::new);
         for &byte in data {
             buffer.push(byte);
         }
@@ -457,7 +457,7 @@ impl ArcMemoryExt for Arc<Memory> {
         let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
 
         // Set verification level to match memory's level
-        let verification_level = self.as_ref().verification_level(;
+        let verification_level = self.as_ref().verification_level);
         result.set_verification_level(verification_level;
 
         // Calculate size of each value in bytes
@@ -499,7 +499,7 @@ impl ArcMemoryExt for Arc<Memory> {
             // Clone and modify through interior mutability
             let mut current_buffer = self.buffer()?;
             let start = offset as usize;
-            let end = start + buffer.len(;
+            let end = start + buffer.len);
 
             if end > current_buffer.len() {
                 return Err(Error::memory_error("Memory access out of bounds";
@@ -662,7 +662,7 @@ mod tests {
         let memory_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
         let memory = Arc::new(Memory::new(memory_type).unwrap();
-        let initial_size = memory.size(;
+        let initial_size = memory.size);
 
         // Grow memory
         let previous_size = memory.grow_via_callback(1).unwrap();

@@ -147,10 +147,10 @@ impl<'a> wrt_foundation::traits::Checksummable for Parameter<'a> {
         } else {
             checksum.update(0;
         }
-        checksum.update(self.param_type.to_u8(;
-        checksum.update_slice(&self.file_index.to_le_bytes(;
-        checksum.update_slice(&self.line.to_le_bytes(;
-        checksum.update_slice(&self.position.to_le_bytes(;
+        checksum.update(self.param_type.to_u8);
+        checksum.update_slice(&self.file_index.to_le_bytes);
+        checksum.update_slice(&self.line.to_le_bytes);
+        checksum.update_slice(&self.position.to_le_bytes);
         checksum.update(self.is_variadic as u8;
     }
 }
@@ -344,12 +344,12 @@ impl<'a> wrt_foundation::traits::Checksummable for InlinedFunction<'a> {
         } else {
             checksum.update(0;
         }
-        checksum.update_slice(&self.abstract_origin.to_le_bytes(;
-        checksum.update_slice(&self.low_pc.to_le_bytes(;
-        checksum.update_slice(&self.high_pc.to_le_bytes(;
-        checksum.update_slice(&self.call_file.to_le_bytes(;
-        checksum.update_slice(&self.call_line.to_le_bytes(;
-        checksum.update_slice(&self.call_column.to_le_bytes(;
+        checksum.update_slice(&self.abstract_origin.to_le_bytes);
+        checksum.update_slice(&self.low_pc.to_le_bytes);
+        checksum.update_slice(&self.high_pc.to_le_bytes);
+        checksum.update_slice(&self.call_file.to_le_bytes);
+        checksum.update_slice(&self.call_line.to_le_bytes);
+        checksum.update_slice(&self.call_column.to_le_bytes);
         checksum.update(self.depth;
     }
 }
@@ -426,7 +426,7 @@ impl<'a> InlinedFunctions<'a> {
             entries: {
                 let provider =
                     safe_managed_alloc!({ MAX_DWARF_ABBREV_CACHE * 128 }, CrateId::Debug)
-                        .unwrap_or_else(|_| LargeProvider::default(;
+                        .unwrap_or_else(|_| LargeProvider::default);
                 BoundedVec::new(provider).expect("Failed to create entries BoundedVec")
             },
         }
@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn test_parameter_list_display() {
-        let mut params = ParameterList::new(;
+        let mut params = ParameterList::new);
 
         // Add some test parameters
         let param1 = Parameter {
@@ -499,7 +499,7 @@ mod tests {
         params.add_parameter(param1).unwrap();
         params.add_parameter(param2).unwrap();
 
-        let mut output = String::new(;
+        let mut output = String::new);
         params
             .display(|s| {
                 output.push_str(s;
@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_inlined_functions() {
-        let mut inlined = InlinedFunctions::new(;
+        let mut inlined = InlinedFunctions::new);
 
         let func = InlinedFunction {
             name:            None,

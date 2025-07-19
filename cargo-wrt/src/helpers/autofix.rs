@@ -31,7 +31,7 @@ impl AutoFixManager {
     /// Apply auto-fixes to a collection of diagnostics
     #[must_use]
     pub fn apply_fixes(&self, diagnostics: &DiagnosticCollection) -> Result<AutoFixResult> {
-        let mut result = AutoFixResult::default(;
+        let mut result = AutoFixResult::default);
 
         for diagnostic in &diagnostics.diagnostics {
             if let Some(fix) = self.get_fix_for_diagnostic(diagnostic) {
@@ -94,7 +94,7 @@ impl AutoFixManager {
     fn apply_fix(&self, fix: &AutoFix) -> Result<()> {
         if self.dry_run {
             self.output.info(&format!("[DRY RUN] Would apply: {}", fix.description;
-            return Ok((;
+            return Ok();
         }
 
         match &fix.fix_type {

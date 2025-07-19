@@ -173,7 +173,7 @@ impl MemoryFactory {
 
         // Create the underlying provider directly to avoid circular dependency
         // The capability verification above ensures this allocation is authorized
-        let provider = NoStdProvider::<N>::default(;
+        let provider = NoStdProvider::<N>::default);
 
         // Wrap with capability verification
         Ok(CapabilityAwareProvider::new(
@@ -268,7 +268,7 @@ impl MemoryFactory {
     /// * `SafetyReport` - Current safety metrics including health score
     pub fn get_safety_report() -> crate::safety_monitor::SafetyReport {
         with_safety_monitor(|monitor| {
-            let report = monitor.get_safety_report(;
+            let report = monitor.get_safety_report);
             
             // Record telemetry for health status
             if report.health_score < 80 {
@@ -342,7 +342,7 @@ impl MemoryFactory {
     ///
     /// // Check system health
     /// if !MemoryFactory::is_system_healthy() {
-    ///     let report = MemoryFactory::get_safety_report(;
+    ///     let report = MemoryFactory::get_safety_report);
     ///     eprintln!("System health degraded: score={}", report.health_score;
     /// }
     ///
@@ -350,7 +350,7 @@ impl MemoryFactory {
     /// MemoryFactory::record_deallocation(4096;
     ///
     /// // Get comprehensive safety metrics
-    /// let report = MemoryFactory::get_safety_report(;
+    /// let report = MemoryFactory::get_safety_report);
     /// println!("Allocations: {}, Failures: {}, Health: {}",
     ///          report.total_allocations,
     ///          report.failed_allocations,
@@ -387,7 +387,7 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset(;
+            monitor.reset);
         };
 
         // Initial state should be healthy
@@ -395,7 +395,7 @@ mod tests {
         assert_eq!(MemoryFactory::get_critical_violations(), 0;
 
         // Test safety monitoring access
-        let initial_report = MemoryFactory::get_safety_report(;
+        let initial_report = MemoryFactory::get_safety_report);
         assert_eq!(initial_report.total_allocations, 0;
         assert_eq!(initial_report.health_score, 100;
     }
@@ -405,7 +405,7 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset(;
+            monitor.reset);
         };
 
         // Create a capability context for testing
@@ -421,7 +421,7 @@ mod tests {
         assert!(result.is_ok();
 
         // Verify safety monitoring recorded the allocation
-        let report = MemoryFactory::get_safety_report(;
+        let report = MemoryFactory::get_safety_report);
         assert_eq!(report.total_allocations, 1;
         assert_eq!(report.failed_allocations, 0;
         assert_eq!(report.current_memory_bytes, 1024;
@@ -429,7 +429,7 @@ mod tests {
 
         // Test deallocation tracking
         MemoryFactory::record_deallocation(1024;
-        let report = MemoryFactory::get_safety_report(;
+        let report = MemoryFactory::get_safety_report);
         assert_eq!(report.current_memory_bytes, 0;
     }
 
@@ -438,7 +438,7 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset(;
+            monitor.reset);
         };
 
         // Create a capability context with no capabilities
@@ -451,7 +451,7 @@ mod tests {
         assert!(result.is_err();
 
         // Verify safety monitoring recorded the failure
-        let report = MemoryFactory::get_safety_report(;
+        let report = MemoryFactory::get_safety_report);
         assert_eq!(report.total_allocations, 0); // No successful allocations
         assert_eq!(report.failed_allocations, 1;
         assert_eq!(report.capability_violations, 1;
@@ -466,7 +466,7 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset(;
+            monitor.reset);
         };
 
         // Create a capability context with low verification level
@@ -486,7 +486,7 @@ mod tests {
         assert!(result.is_err();
 
         // Verify safety monitoring recorded the violation
-        let report = MemoryFactory::get_safety_report(;
+        let report = MemoryFactory::get_safety_report);
         assert_eq!(report.failed_allocations, 1;
         assert_eq!(report.capability_violations, 1;
     }

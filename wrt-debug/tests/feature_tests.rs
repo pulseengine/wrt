@@ -28,7 +28,7 @@ fn test_no_features_basic_functionality() {
     debug_info.add_section(".debug_abbrev", 300, 30;
 
     // Basic query should work
-    let has_debug = debug_info.has_debug_info(;
+    let has_debug = debug_info.has_debug_info);
 
     // With no features, this depends on what's compiled in
     #[cfg(any(feature = "line-info", feature = "debug-info"))]
@@ -63,7 +63,7 @@ fn test_debug_info_feature() {
     debug_info.add_section(".debug_abbrev", 300, 30;
 
     // Debug info parser initialization should be available
-    let result = debug_info.init_info_parser(;
+    let result = debug_info.init_info_parser);
 
     // May fail due to invalid test data, but method should exist
     match result {
@@ -80,7 +80,7 @@ fn test_function_info_feature() {
     debug_info.add_section(".debug_abbrev", 300, 30;
 
     // Initialize parser (may fail with test data)
-    let _ = debug_info.init_info_parser(;
+    let _ = debug_info.init_info_parser);
 
     // Function info queries should be available
     let result = debug_info.find_function_info(0x42;
@@ -89,7 +89,7 @@ fn test_function_info_feature() {
     assert!(result.is_none();
 
     // Get all functions should be available
-    let functions = debug_info.get_functions(;
+    let functions = debug_info.get_functions);
     match functions {
         Some(funcs) => assert!(funcs.is_empty()), // No functions in test data
         None => (),                               // Parser may not be initialized
@@ -197,7 +197,7 @@ fn test_section_management() {
     // Unknown sections should be ignored
     debug_info.add_section(".unknown_section", 600, 10;
 
-    let has_debug = debug_info.has_debug_info(;
+    let has_debug = debug_info.has_debug_info);
 
     // Should recognize debug sections if features are enabled
     #[cfg(any(feature = "line-info", feature = "debug-info"))]

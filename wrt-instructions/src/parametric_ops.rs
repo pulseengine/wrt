@@ -75,8 +75,8 @@ impl<T: ParametricContext> PureInstruction<T, Error> for ParametricOp {
                 let val1 = context.pop_value()?;
                 
                 // Type check against expected type
-                let val1_type = val1.value_type(;
-                let val2_type = val2.value_type(;
+                let val1_type = val1.value_type);
+                let val2_type = val2.value_type);
                 
                 if val1_type != *expected_type || val2_type != *expected_type {
                     return Err(Error::type_error("Select operands must match expected type";
@@ -132,7 +132,7 @@ mod tests {
     
     #[test]
     fn test_drop() {
-        let mut context = MockParametricContext::new(;
+        let mut context = MockParametricContext::new);
         
         // Push a value
         context.push_value(Value::I32(42)).unwrap();
@@ -149,7 +149,7 @@ mod tests {
     
     #[test]
     fn test_select() {
-        let mut context = MockParametricContext::new(;
+        let mut context = MockParametricContext::new);
         
         // Test selecting first value (condition true)
         context.push_value(Value::I32(10)).unwrap(); // val1
@@ -178,7 +178,7 @@ mod tests {
     
     #[test]
     fn test_select_type_mismatch() {
-        let mut context = MockParametricContext::new(;
+        let mut context = MockParametricContext::new);
         
         // Push values of different types
         context.push_value(Value::I32(10)).unwrap();  // val1
@@ -191,7 +191,7 @@ mod tests {
     
     #[test]
     fn test_select_typed() {
-        let mut context = MockParametricContext::new(;
+        let mut context = MockParametricContext::new);
         
         // Test with correct types
         context.push_value(Value::I64(100)).unwrap(); // val1

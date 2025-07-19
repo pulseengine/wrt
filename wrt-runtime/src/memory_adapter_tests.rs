@@ -32,23 +32,23 @@ mod tests {
 
     #[test]
     fn test_safe_memory_adapter_creation() {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let adapter = SafeMemoryAdapter::new(mem_type;
         assert!(adapter.is_ok();
     }
 
     #[test]
     fn test_safe_memory_adapter_basic_operations() {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let adapter = SafeMemoryAdapter::new(mem_type).unwrap();
         
         // Test size
-        let size = adapter.size(;
+        let size = adapter.size);
         assert!(size.is_ok();
         assert_eq!(size.unwrap(), 1); // 1 page
         
         // Test byte size
-        let byte_size = adapter.byte_size(;
+        let byte_size = adapter.byte_size);
         assert!(byte_size.is_ok();
         assert_eq!(byte_size.unwrap(), 65536); // 64KB
         
@@ -66,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_adapter_bounds_checking() {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let adapter = SafeMemoryAdapter::new(mem_type).unwrap();
         
         // Test out of bounds read
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_adapter_growth() {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let adapter = SafeMemoryAdapter::new(mem_type).unwrap();
         
         // Initial size

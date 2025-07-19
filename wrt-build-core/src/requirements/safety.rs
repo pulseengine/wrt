@@ -123,8 +123,8 @@ impl SafetyVerificationFramework {
         ;
 
         // Generate standard safety requirements based on WRT needs
-        let standard_requirements = self.generate_wrt_safety_requirements(;
-        let count = standard_requirements.len(;
+        let standard_requirements = self.generate_wrt_safety_requirements);
+        let count = standard_requirements.len);
 
         for req in standard_requirements {
             self.requirement_registry.add_requirement(req;
@@ -148,12 +148,12 @@ impl SafetyVerificationFramework {
             DiagnosticCollection::new(self.workspace_root.clone(), "asil-compliance".to_string();
 
         let requirements = self.requirement_registry.get_requirements_by_asil(target_asil;
-        let total_requirements = requirements.len(;
+        let total_requirements = requirements.len);
 
         let mut verified_count = 0;
         let mut missing_implementation_count = 0;
         let mut missing_testing_count = 0;
-        let mut violations = Vec::new(;
+        let mut violations = Vec::new);
 
         for requirement in requirements {
             if requirement.is_verified() {
@@ -381,7 +381,7 @@ impl SafetyVerificationFramework {
         let mut diagnostics =
             DiagnosticCollection::new(self.workspace_root.clone(), "safety-report".to_string();
 
-        let overall_compliance = self.requirement_registry.overall_compliance(;
+        let overall_compliance = self.requirement_registry.overall_compliance);
 
         let asil_compliance = [
             AsilLevel::QM,
@@ -411,8 +411,8 @@ impl SafetyVerificationFramework {
             platform_results:   self.platform_verifications.clone(),
         };
 
-        let critical_violations = self.get_critical_violations(;
-        let recommendations = self.generate_recommendations(;
+        let critical_violations = self.get_critical_violations);
+        let recommendations = self.generate_recommendations);
 
         // Generate diagnostics for report
         diagnostics.add_info(
@@ -470,7 +470,7 @@ impl SafetyVerificationFramework {
 
         let is_ready = compliance_result.compliance_percentage >= required_threshold
             && self.coverage_data.overall_coverage() >= coverage_threshold
-            && blocking_issues.is_empty(;
+            && blocking_issues.is_empty);
 
         if is_ready {
             diagnostics.add_info(
@@ -698,8 +698,8 @@ impl SafetyVerificationFramework {
         target_asil: AsilLevel,
     ) -> ComplianceVerificationResult {
         let requirements = self.requirement_registry.get_requirements_by_asil(target_asil;
-        let total_requirements = requirements.len(;
-        let verified_count = requirements.iter().filter(|r| r.is_verified()).count(;
+        let total_requirements = requirements.len);
+        let verified_count = requirements.iter().filter(|r| r.is_verified()).count);
 
         let compliance_percentage = if total_requirements > 0 {
             (verified_count as f64 / total_requirements as f64) * 100.0
@@ -721,7 +721,7 @@ impl SafetyVerificationFramework {
 
     fn get_critical_violations(&self) -> Vec<ComplianceViolation> {
         // Analyze current state for critical violations
-        let mut violations = Vec::new(;
+        let mut violations = Vec::new);
 
         for req in &self.requirement_registry.requirements {
             if matches!(req.asil_level, AsilLevel::D | AsilLevel::C) && !req.is_verified() {
@@ -738,10 +738,10 @@ impl SafetyVerificationFramework {
     }
 
     fn get_blocking_issues_for_asil(&self, asil_level: AsilLevel) -> Vec<String> {
-        let mut issues = Vec::new(;
+        let mut issues = Vec::new);
 
         let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
-        let unverified = requirements.iter().filter(|r| !r.is_verified()).count(;
+        let unverified = requirements.iter().filter(|r| !r.is_verified()).count);
 
         if unverified > 0 {
             issues.push(format!(
@@ -763,7 +763,7 @@ impl SafetyVerificationFramework {
     }
 
     fn generate_recommendations(&self) -> Vec<String> {
-        let mut recommendations = Vec::new(;
+        let mut recommendations = Vec::new);
 
         if self.requirement_registry.overall_compliance() < 0.9 {
             recommendations.push("Increase test coverage for unverified requirements".to_string();
@@ -773,7 +773,7 @@ impl SafetyVerificationFramework {
             recommendations.push("Improve code coverage through additional testing".to_string();
         }
 
-        let unverified = self.requirement_registry.get_unverified_requirements(;
+        let unverified = self.requirement_registry.get_unverified_requirements);
         if !unverified.is_empty() {
             recommendations.push(format!(
                 "Address {} unverified requirements",
@@ -1014,7 +1014,7 @@ mod tests {
     #[test]
     fn test_safety_verification_framework_creation() {
         let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
-        let (report, _diagnostics) = framework.generate_safety_report(;
+        let (report, _diagnostics) = framework.generate_safety_report);
 
         assert_eq!(report.overall_compliance, 1.0); // 100% if no requirements
         assert_eq!(report.test_summary.total_tests, 0;
@@ -1061,7 +1061,7 @@ mod tests {
 
         let _diagnostics = framework.record_test_result(test_result;
 
-        let (report, _diagnostics) = framework.generate_safety_report(;
+        let (report, _diagnostics) = framework.generate_safety_report);
         assert_eq!(report.test_summary.total_tests, 1;
         assert_eq!(report.test_summary.passed_tests, 1;
     }
@@ -1080,7 +1080,7 @@ mod tests {
     #[test]
     fn test_wrt_safety_requirements_generation() {
         let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
-        let requirements = framework.generate_wrt_safety_requirements(;
+        let requirements = framework.generate_wrt_safety_requirements);
 
         assert!(!requirements.is_empty();
         assert!(requirements.iter().any(|r| r.id.as_str() == "WRT_MEM_001");

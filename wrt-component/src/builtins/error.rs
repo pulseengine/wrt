@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_error_context_store() {
-        let mut store = ErrorContextStore::new(;
+        let mut store = ErrorContextStore::new);
 
         // Create an error context
         let id = store.create_error("Test error";
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_create_error_handlers() {
-        let handlers = create_error_handlers(;
+        let handlers = create_error_handlers);
         assert_eq!(handlers.len(), 2;
         assert_eq!(handlers[0].builtin_type(), BuiltinType::ErrorNew;
         assert_eq!(handlers[1].builtin_type(), BuiltinType::ErrorTrace;

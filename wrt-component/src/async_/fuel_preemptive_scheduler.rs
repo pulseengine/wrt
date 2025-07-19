@@ -547,7 +547,7 @@ impl FuelPreemptiveScheduler {
                 queue.tasks.push(task_id).map_err(|_| {
                     Error::resource_limit_exceeded("Priority queue is full")
                 })?;
-                return Ok((;
+                return Ok();
             }
         }
         Err(Error::resource_not_found("Priority queue not found"))
@@ -575,7 +575,7 @@ impl FuelPreemptiveScheduler {
             if !queue.tasks.is_empty() {
                 // Round-robin within the same priority level
                 let position = queue.round_robin_position.load(Ordering::Acquire;
-                let queue_len = queue.tasks.len(;
+                let queue_len = queue.tasks.len);
                 
                 for i in 0..queue_len {
                     let index = (position + i) % queue_len;
@@ -620,17 +620,17 @@ mod tests {
 
     #[test]
     fn test_preemptive_scheduler_creation() {
-        let config = PreemptiveSchedulerConfig::default(;
+        let config = PreemptiveSchedulerConfig::default);
         let scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
         
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.active_tasks.load(Ordering::Acquire), 0;
         assert_eq!(stats.total_preemptions.load(Ordering::Acquire), 0;
     }
 
     #[test]
     fn test_task_addition() {
-        let config = PreemptiveSchedulerConfig::default(;
+        let config = PreemptiveSchedulerConfig::default);
         let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
         
         let result = scheduler.add_task(
@@ -644,14 +644,14 @@ mod tests {
         
         assert!(result.is_ok();
         
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.active_tasks.load(Ordering::Acquire), 1;
         assert_eq!(stats.total_tasks_scheduled.load(Ordering::Acquire), 1;
     }
 
     #[test]
     fn test_priority_scheduling() {
-        let config = PreemptiveSchedulerConfig::default(;
+        let config = PreemptiveSchedulerConfig::default);
         let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
         
         // Add low priority task
@@ -707,7 +707,7 @@ mod tests {
         ).unwrap();
         
         // Task should be preempted
-        let running_context = scheduler.current_task.as_ref(;
+        let running_context = scheduler.current_task.as_ref);
         if let Some(context) = running_context {
             let should_preempt = scheduler.should_preempt_current_task(
                 context,

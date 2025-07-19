@@ -39,7 +39,7 @@ impl AsyncRuntime {
     ) -> Result<F::Output, ExecutorError> {
         // For the simple version, we just poll once
         // This is not a real async executor, but enough for basic usage
-        let waker = create_noop_waker(;
+        let waker = create_noop_waker);
         let mut cx = Context::from_waker(&waker;
 
         // Pin the future safely
@@ -58,7 +58,7 @@ pub fn with_async<F, T>(future: F) -> Result<T, ExecutorError>
 where
     F: Future<Output = T> + core::marker::Unpin,
 {
-    let runtime = AsyncRuntime::new(;
+    let runtime = AsyncRuntime::new);
     runtime.block_on(future)
 }
 

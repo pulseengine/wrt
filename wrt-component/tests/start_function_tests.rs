@@ -203,15 +203,15 @@ impl Component {
 
 #[test]
 fn test_execute_start_basic() {
-    let component = MockComponentBuilder::new().build(;
-    let result = component.execute_start(;
+    let component = MockComponentBuilder::new().build);
+    let result = component.execute_start);
     assert!(result.is_ok(), "Start function should execute successfully");
 }
 
 #[test]
 fn test_execute_start_no_start_function() {
-    let component = MockComponentBuilder::new().with_start(false).build(;
-    let result = component.execute_start(;
+    let component = MockComponentBuilder::new().with_start(false).build);
+    let result = component.execute_start);
     assert!(
         result.is_ok(),
         "Component without start function should return Ok"
@@ -220,8 +220,8 @@ fn test_execute_start_no_start_function() {
 
 #[test]
 fn test_execute_start_failure() {
-    let component = MockComponentBuilder::new().with_failing_start().build(;
-    let result = component.execute_start(;
+    let component = MockComponentBuilder::new().with_failing_start().build);
+    let result = component.execute_start);
     assert!(
         result.is_err(),
         "Failing start function should return error"
@@ -235,10 +235,10 @@ fn test_execute_start_failure() {
 
 #[test]
 fn test_execute_start_timeout() {
-    let component = MockComponentBuilder::new().with_timeout(10).build(;
-    let result = component.execute_start(;
+    let component = MockComponentBuilder::new().with_timeout(10).build);
+    let result = component.execute_start);
     assert!(result.is_err(), "Start function should timeout");
-    let err = result.unwrap_err(;
+    let err = result.unwrap_err);
     assert!(
         err.to_string().contains("timed out"),
         "Error should indicate timeout: {}",
@@ -248,22 +248,22 @@ fn test_execute_start_timeout() {
 
 #[test]
 fn test_execute_start_with_interceptor_pass_through() {
-    let component = MockComponentBuilder::new().build(;
+    let component = MockComponentBuilder::new().build);
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::PassThrough;
 
-    let mut options = ComponentOptions::default(;
+    let mut options = ComponentOptions::default);
     options.interceptor = Some(interceptor.clone();
 
     let mut component = component;
     component.options = options;
 
-    let result = component.execute_start(;
+    let result = component.execute_start);
     assert!(
         result.is_ok(),
         "Start execution with pass-through interceptor should succeed"
     ;
 
-    let calls = interceptor.get_calls(;
+    let calls = interceptor.get_calls);
     assert_eq!(
         calls.len(),
         2,
@@ -281,16 +281,16 @@ fn test_execute_start_with_interceptor_pass_through() {
 
 #[test]
 fn test_execute_start_with_interceptor_error() {
-    let component = MockComponentBuilder::new().build(;
+    let component = MockComponentBuilder::new().build);
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::ThrowError;
 
-    let mut options = ComponentOptions::default(;
+    let mut options = ComponentOptions::default);
     options.interceptor = Some(interceptor.clone();
 
     let mut component = component;
     component.options = options;
 
-    let result = component.execute_start(;
+    let result = component.execute_start);
     assert!(
         result.is_err(),
         "Start execution with error interceptor should fail"
@@ -301,7 +301,7 @@ fn test_execute_start_with_interceptor_error() {
         "Error message should match"
     ;
 
-    let calls = interceptor.get_calls(;
+    let calls = interceptor.get_calls);
     assert_eq!(
         calls.len(),
         1,
@@ -311,22 +311,22 @@ fn test_execute_start_with_interceptor_error() {
 
 #[test]
 fn test_execute_start_with_interceptor_handle_call() {
-    let component = MockComponentBuilder::new().build(;
+    let component = MockComponentBuilder::new().build);
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::HandleCall;
 
-    let mut options = ComponentOptions::default(;
+    let mut options = ComponentOptions::default);
     options.interceptor = Some(interceptor.clone();
 
     let mut component = component;
     component.options = options;
 
-    let result = component.execute_start(;
+    let result = component.execute_start);
     assert!(
         result.is_ok(),
         "Start execution with handling interceptor should succeed"
     ;
 
-    let calls = interceptor.get_calls(;
+    let calls = interceptor.get_calls);
     assert_eq!(
         calls.len(),
         1,
@@ -338,10 +338,10 @@ fn test_execute_start_with_interceptor_handle_call() {
 #[test]
 fn test_memory_strategy_selection() {
     // Test that the interceptor's memory strategy is respected
-    let component = MockComponentBuilder::new().build(;
-    let interceptor = Arc::new(TestInterceptor::default(;
+    let component = MockComponentBuilder::new().build);
+    let interceptor = Arc::new(TestInterceptor::default);
 
-    let mut options = ComponentOptions::default(;
+    let mut options = ComponentOptions::default);
     options.interceptor = Some(interceptor;
 
     let mut component = component;
@@ -350,7 +350,7 @@ fn test_memory_strategy_selection() {
     // This is an indirect test through execute_start
     // In a real implementation, the memory strategy would be applied during
     // execution
-    let result = component.execute_start(;
+    let result = component.execute_start);
     assert!(result.is_ok();
 }
 
@@ -358,23 +358,23 @@ fn test_memory_strategy_selection() {
 #[test]
 fn test_integration_workflow() {
     // Create a component with a start function
-    let mut component = MockComponentBuilder::new().build(;
+    let mut component = MockComponentBuilder::new().build);
 
     // Set an interceptor that modifies args and results
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::ModifyArgs;
 
-    let mut options = ComponentOptions::default(;
+    let mut options = ComponentOptions::default);
     options.execution_timeout = Some(Duration::from_secs(5;
     options.interceptor = Some(interceptor.clone();
 
     component.options = options;
 
     // Execute start function
-    let result = component.execute_start(;
+    let result = component.execute_start);
     assert!(result.is_ok(), "Integrated execution should succeed");
 
     // Verify interceptor was called
-    let calls = interceptor.get_calls(;
+    let calls = interceptor.get_calls);
     assert_eq!(
         calls.len(),
         2,

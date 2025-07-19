@@ -99,7 +99,7 @@ pub fn execute(args: EmbedLimitsArgs, output: &OutputManager) -> Result<()> {
             // actual fields
         } else {
             // Note: TomlQualification structure may need updating
-            // config.qualification = Some(TomlQualification::default(;
+            // config.qualification = Some(TomlQualification::default);
         }
     }
 
@@ -110,7 +110,7 @@ pub fn execute(args: EmbedLimitsArgs, output: &OutputManager) -> Result<()> {
             // actual fields
         } else {
             // Note: TomlQualification structure may need updating
-            // config.qualification = Some(TomlQualification::default(;
+            // config.qualification = Some(TomlQualification::default);
         }
     }
 
@@ -194,7 +194,7 @@ fn add_custom_section(
     section_name: &str,
     section_data: &[u8],
 ) -> Result<Vec<u8>> {
-    let mut output = Vec::new(;
+    let mut output = Vec::new);
 
     // Copy magic number and version
     if wasm_bytes.len() < 8 {
@@ -217,7 +217,7 @@ fn replace_custom_section(
     section_name: &str,
     section_data: &[u8],
 ) -> Result<Vec<u8>> {
-    let mut output = Vec::new(;
+    let mut output = Vec::new);
 
     // Copy magic number and version
     if wasm_bytes.len() < 8 {
@@ -274,7 +274,7 @@ fn replace_custom_section(
     if !found {
         // We need to insert it after the header but before other sections
         // For simplicity, we'll recreate the binary with the custom section first
-        let mut new_output = Vec::new(;
+        let mut new_output = Vec::new);
         new_output.extend_from_slice(&wasm_bytes[0..8];
         append_custom_section(&mut new_output, section_name, section_data;
         new_output.extend_from_slice(&output[8..];
@@ -292,14 +292,14 @@ fn append_custom_section(output: &mut Vec<u8>, name: &str, data: &[u8]) {
     // Calculate section size
     let name_len = name.len() as u32;
     let name_len_encoded = encode_leb128_u32(name_len;
-    let section_size = name_len_encoded.len() + name.len() + data.len(;
+    let section_size = name_len_encoded.len() + name.len() + data.len);
 
     // Write section size
     output.extend_from_slice(&encode_leb128_u32(section_size as u32;
 
     // Write name length and name
     output.extend_from_slice(&name_len_encoded;
-    output.extend_from_slice(name.as_bytes(;
+    output.extend_from_slice(name.as_bytes);
 
     // Write section data
     output.extend_from_slice(data;
@@ -337,7 +337,7 @@ fn read_leb128_u32(bytes: &[u8]) -> Result<(u32, usize)> {
 
 /// Encode u32 as LEB128
 fn encode_leb128_u32(mut value: u32) -> Vec<u8> {
-    let mut result = Vec::new(;
+    let mut result = Vec::new);
 
     loop {
         let mut byte = (value & 0x7F) as u8;
@@ -369,7 +369,7 @@ mod tests {
             let encoded = encode_leb128_u32(value;
             let (decoded, len) = read_leb128_u32(&encoded).unwrap();
             assert_eq!(decoded, value;
-            assert_eq!(len, encoded.len(;
+            assert_eq!(len, encoded.len);
         }
     }
 }

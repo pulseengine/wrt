@@ -79,7 +79,7 @@ extern crate alloc;
 //     loop {
 //         // Use spin_loop hint for power efficiency and better behavior
 //         // in virtualized environments
-//         core::hint::spin_loop(;
+//         core::hint::spin_loop);
 //     }
 // }
 

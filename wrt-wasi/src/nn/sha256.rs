@@ -64,7 +64,7 @@ impl Sha256 {
         
         // If we have buffered data, fill the buffer first
         if self.buffer_len > 0 {
-            let copy_len = (64 - self.buffer_len).min(data.len(;
+            let copy_len = (64 - self.buffer_len).min(data.len);
             self.buffer[self.buffer_len..self.buffer_len + copy_len]
                 .copy_from_slice(&data[..copy_len];
             self.buffer_len += copy_len;
@@ -99,12 +99,12 @@ impl Sha256 {
     /// Finalize the hash and return the result
     pub fn finalize(mut self) -> [u8; 32] {
         // Pad the message
-        self.pad(;
+        self.pad);
         
         // Convert state to bytes
         let mut result = [0u8; 32];
         for (i, &word) in self.state.iter().enumerate() {
-            result[i * 4..(i + 1) * 4].copy_from_slice(&word.to_be_bytes(;
+            result[i * 4..(i + 1) * 4].copy_from_slice(&word.to_be_bytes);
         }
         result
     }
@@ -199,7 +199,7 @@ impl Sha256 {
         }
         
         // Append length in bits as 64-bit big-endian
-        self.buffer[56..64].copy_from_slice(&self.bit_len.to_be_bytes(;
+        self.buffer[56..64].copy_from_slice(&self.bit_len.to_be_bytes);
         let mut final_block = [0u8; 64];
         final_block.copy_from_slice(&self.buffer;
         self.process_block(&final_block;
@@ -208,7 +208,7 @@ impl Sha256 {
 
 /// Compute SHA-256 hash of data in one shot
 pub fn sha256(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new(;
+    let mut hasher = Sha256::new);
     hasher.update(data;
     hasher.finalize()
 }
@@ -272,11 +272,11 @@ mod tests {
         let hash1 = sha256(data;
         
         // Incremental
-        let mut hasher = Sha256::new(;
+        let mut hasher = Sha256::new);
         hasher.update(&data[..10];
         hasher.update(&data[10..20];
         hasher.update(&data[20..];
-        let hash2 = hasher.finalize(;
+        let hash2 = hasher.finalize);
         
         assert_eq!(hash1, hash2;
     }

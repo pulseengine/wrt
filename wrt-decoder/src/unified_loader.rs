@@ -199,7 +199,7 @@ pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
         },
     };
 
-    let mut info = WasmInfo::new(format_type, binary.len(;
+    let mut info = WasmInfo::new(format_type, binary.len);
 
     match format_type {
         WasmFormat::CoreModule => {
@@ -536,7 +536,7 @@ fn extract_component_info(_binary: &[u8]) -> Result<ComponentInfo> {
 
 /// Extract built-in imports from WASM binary
 fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
-    let mut builtin_imports = Vec::new(;
+    let mut builtin_imports = Vec::new);
     let mut offset = 8; // Skip header
 
     // Find and parse import section

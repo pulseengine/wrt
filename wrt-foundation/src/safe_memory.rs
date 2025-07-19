@@ -102,7 +102,7 @@ impl<'a> Slice<'a> {
         record_global_operation(OperationType::ChecksumCalculation, level;
 
         let checksum = Checksum::compute(data;
-        let length = data.len(;
+        let length = data.len);
 
         let slice = Self { data, checksum, length, verification_level: level };
 
@@ -178,7 +178,7 @@ impl<'a> Slice<'a> {
     pub fn verify_integrity_with_importance(&self, importance: u8) -> Result<()> {
         // Skip verification if the level indicates we shouldn't verify
         if !self.verification_level.should_verify(importance) {
-            return Ok((;
+            return Ok();
         }
 
         // If length doesn't match stored value, memory is corrupt
@@ -204,7 +204,7 @@ impl<'a> Slice<'a> {
 
             // Skip detailed checks for low importance non-redundant checks
             if !self.verification_level.should_verify_redundant() && importance < 200 {
-                return Ok((;
+                return Ok();
             }
 
             // Compute current checksum and compare with stored checksum
@@ -298,7 +298,7 @@ impl<'a> SliceMut<'a> {
     pub fn with_verification_level(data: &'a mut [u8], level: VerificationLevel) -> Result<Self> {
         record_global_operation(OperationType::ChecksumCalculation, level;
         let checksum = Checksum::compute(data;
-        let length = data.len(;
+        let length = data.len);
         let slice = Self { data, checksum, length, verification_level: level };
 
         // Verify on creation
@@ -386,7 +386,7 @@ impl<'a> SliceMut<'a> {
     /// verification level and the provided importance.
     pub fn verify_integrity_with_importance(&self, importance: u8) -> Result<()> {
         if !self.verification_level.should_verify(importance) {
-            return Ok((;
+            return Ok();
         }
         if self.data.len() != self.length {
             return Err(Error::validation_error(
@@ -407,7 +407,7 @@ impl<'a> SliceMut<'a> {
                 ;
             }
             if !self.verification_level.should_verify_redundant() && importance < 200 {
-                return Ok((;
+                return Ok();
             }
             let current_checksum = Checksum::compute(self.data;
             if current_checksum == self.checksum {
@@ -759,12 +759,12 @@ impl StdProvider {
 
     /// Clears the provider's buffer and resets tracking.
     pub fn clear(&mut self) {
-        self.data.clear(;
+        self.data.clear);
         if let Ok(mut log) = self.access_log.lock() {
-            log.clear(;
+            log.clear);
         }
         if let Ok(mut hash) = self.regions_hash.lock() {
-            hash.clear(;
+            hash.clear);
         }
         self.access_count.store(0, Ordering::Relaxed;
         self.max_access_size.store(0, Ordering::Relaxed;
@@ -813,14 +813,14 @@ impl StdProvider {
                 "Mutex poisoned during access log lock in clear_access_tracking",
             ))
         })?;
-        log.clear(;
+        log.clear);
 
         let mut hashes = self.regions_hash.lock().map_err(|_| {
             Error::from(crate::kinds::PoisonedLockError(
                 "Mutex poisoned during regions_hash lock in clear_access_tracking",
             ))
         })?;
-        hashes.clear(;
+        hashes.clear);
 
         self.access_count.store(0, Ordering::Relaxed;
         self.max_access_size.store(0, Ordering::Relaxed;
@@ -897,7 +897,7 @@ impl Provider for StdProvider {
     /// creation ensure.
     fn write_data(&mut self, offset: usize, data_to_write: &[u8]) -> Result<()> {
         self.verify_access(offset, data_to_write.len())?;
-        self.track_access(offset, data_to_write.len(;
+        self.track_access(offset, data_to_write.len);
         debug_assert!(
             offset.checked_add(data_to_write.len()).map_or(false, |end| end <= self.data.len()),
             "StdProvider::write_data: offset+len must be <= self.data.len() after verify_access. \
@@ -1018,7 +1018,7 @@ impl Provider for StdProvider {
             let additional = byte_offset - self.data.len(); // Only reserve if truly needed beyond current length.
             if additional > 0 && byte_offset > self.data.capacity() {
                 // Calculate needed additional capacity beyond current capacity.
-                let needed_cap_increase = byte_offset - self.data.capacity(;
+                let needed_cap_increase = byte_offset - self.data.capacity);
                 self.data.reserve(needed_cap_increase;
             }
         }
@@ -1305,7 +1305,7 @@ impl<const N: usize> NoStdProvider<N> {
         for (i, &byte) in data.iter().enumerate() {
             self.data[i] = byte;
         }
-        self.used = data.len(;
+        self.used = data.len);
 
         // Reset access metrics
         self.access_count.store(0, Ordering::SeqCst;
@@ -1418,7 +1418,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
             return Err(Error::memory_out_of_bounds("Write data overflows capacity";
         }
         self.data[offset..offset + data_to_write.len()].copy_from_slice(data_to_write;
-        self.used = core::cmp::max(self.used, offset + data_to_write.len(;
+        self.used = core::cmp::max(self.used, offset + data_to_write.len);
         // TODO: Consider if checksum/integrity of Slice/SliceMut needs update here if
         // they are live. This provider itself doesn't maintain a checksum over
         // its raw data array. Individual Slices/SliceMuts do.
@@ -1440,7 +1440,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
             if offset > N {
                 return Err(Error::memory_out_of_bounds("Zero-length access out of capacity";
             }
-            return Ok((;
+            return Ok();
         }
 
         if offset >= N || offset + len > N {
@@ -1718,9 +1718,9 @@ impl<P: Provider> SafeMemoryHandler<P> {
     /// ```
     #[cfg(feature = "std")]
     pub fn to_vec(&self) -> Result<std::vec::Vec<u8>> {
-        let size = self.provider.size(;
+        let size = self.provider.size);
         if size == 0 {
-            return Ok(std::vec::Vec::new(;
+            return Ok(std::vec::Vec::new);
         }
 
         let slice = self.provider.borrow_slice(0, size)?;
@@ -1739,7 +1739,7 @@ impl<P: Provider> SafeMemoryHandler<P> {
         #[allow(deprecated)]
         use crate::wrt_memory_system::CapabilityWrtFactory;
 
-        let size = self.provider.size(;
+        let size = self.provider.size);
         if size == 0 {
             let provider = crate::safe_managed_alloc!(4096, crate::budget_aware_provider::CrateId::Foundation)?;
             return crate::bounded::BoundedVec::new(provider;
@@ -1804,7 +1804,7 @@ impl<P: Provider> SafeMemoryHandler<P> {
         // we implement clearing by overwriting the memory with zeros in chunks
         // This effectively clears the data while maintaining the provider's integrity
 
-        let current_size = self.provider.size(;
+        let current_size = self.provider.size);
         if current_size > 0 {
             // Clear in chunks to avoid large allocations
             const CHUNK_SIZE: usize = 256;
@@ -1829,7 +1829,7 @@ impl<P: Provider> SafeMemoryHandler<P> {
     ///
     /// Returns an error if there's insufficient capacity or if the write fails.
     pub fn add_data(&mut self, data: &[u8]) -> Result<()> {
-        let current_size = self.provider.size(;
+        let current_size = self.provider.size);
         self.provider.write_data(current_size, data)
     }
 

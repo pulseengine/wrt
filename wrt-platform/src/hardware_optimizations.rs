@@ -203,7 +203,7 @@ pub mod arm {
 
         fn optimize_memory(&self, ptr: *mut u8, size: usize) -> Result<(), Error> {
             if size == 0 {
-                return Ok((;
+                return Ok();
             }
 
             // Tag memory region with MTE tags
@@ -288,7 +288,7 @@ pub mod arm {
 
         fn optimize_memory(&self, ptr: *mut u8, size: usize) -> Result<(), Error> {
             if size == 0 {
-                return Ok((;
+                return Ok();
             }
 
             // Mark memory region as BTI-compatible
@@ -622,7 +622,7 @@ pub mod riscv {
 
         fn optimize_memory(&self, ptr: *mut u8, size: usize) -> Result<(), Error> {
             if size == 0 {
-                return Ok((;
+                return Ok();
             }
 
             // Configure CFI protection for memory region
@@ -703,16 +703,16 @@ mod tests {
 
     #[test]
     fn test_compile_time_detection() {
-        let level = compile_time::detect_security_level(;
+        let level = compile_time::detect_security_level);
         assert!(matches!(level, SecurityLevel::Basic | SecurityLevel::Advanced);
 
         // Test should compile regardless of available features
-        let _ = compile_time::has_advanced_security(;
+        let _ = compile_time::has_advanced_security);
     }
 
     #[test]
     fn test_hardware_optimizer() {
-        let mut optimizer = HardwareOptimizer::<arch::Arm>::new(;
+        let mut optimizer = HardwareOptimizer::<arch::Arm>::new);
         assert_eq!(optimizer.security_level(), SecurityLevel::None;
 
         optimizer.detect_optimizations().unwrap();
@@ -726,23 +726,23 @@ mod tests {
     #[test]
     fn test_arm_optimizations() {
         // Test PAC availability detection
-        let pac_available = arm::PointerAuthentication::is_available(;
-        let mte_available = arm::MemoryTagging::is_available(;
-        let bti_available = arm::BranchTargetIdentification::is_available(;
+        let pac_available = arm::PointerAuthentication::is_available);
+        let mte_available = arm::MemoryTagging::is_available);
+        let bti_available = arm::BranchTargetIdentification::is_available);
 
         // These might be false on systems without the features
         // but the test ensures the detection code compiles
         let _ = (pac_available, mte_available, bti_available;
 
         // Test configuration creation
-        let pac_config = arm::PointerAuthentication::default(;
+        let pac_config = arm::PointerAuthentication::default);
         assert!(pac_config.pac_ia);
         assert!(pac_config.pac_da);
 
-        let mte_config = arm::MemoryTagging::default(;
+        let mte_config = arm::MemoryTagging::default);
         assert_eq!(mte_config.mode, arm::MteMode::Synchronous;
 
-        let bti_config = arm::BranchTargetIdentification::default(;
+        let bti_config = arm::BranchTargetIdentification::default);
         assert!(bti_config.enable_bti);
         assert_eq!(bti_config.bti_mode, arm::BtiMode::CallAndJump;
         assert_eq!(bti_config.exception_level, arm::BtiExceptionLevel::Both;
@@ -753,17 +753,17 @@ mod tests {
     #[ignore] // Temporarily ignore - cfg attribute causing compiler issue
     fn test_intel_optimizations() {
         // Test CET availability detection
-        let cet_available = intel::ControlFlowEnforcement::is_available(;
-        let mpk_available = intel::MemoryProtectionKeys::is_available(;
+        let cet_available = intel::ControlFlowEnforcement::is_available);
+        let mpk_available = intel::MemoryProtectionKeys::is_available);
 
         let _ = (cet_available, mpk_available;
 
         // Test configuration creation
-        let cet_config = intel::ControlFlowEnforcement::default(;
+        let cet_config = intel::ControlFlowEnforcement::default);
         assert!(cet_config.shadow_stack);
         assert!(cet_config.indirect_branch_tracking);
 
-        let mpk_config = intel::MemoryProtectionKeys::default(;
+        let mpk_config = intel::MemoryProtectionKeys::default);
         assert_eq!(mpk_config.key_assignments.len(), 16;
     }
 
@@ -771,16 +771,16 @@ mod tests {
     #[test]
     fn test_riscv_optimizations() {
         // Test PMP availability detection
-        let pmp_available = riscv::PhysicalMemoryProtection::is_available(;
-        let cfi_available = riscv::ControlFlowIntegrity::is_available(;
+        let pmp_available = riscv::PhysicalMemoryProtection::is_available);
+        let cfi_available = riscv::ControlFlowIntegrity::is_available);
         assert!(pmp_available)); // PMP is required by RISC-V spec
 
         // Test configuration creation
-        let pmp_config = riscv::PhysicalMemoryProtection::default(;
+        let pmp_config = riscv::PhysicalMemoryProtection::default);
         assert_eq!(pmp_config.active_entries, 0;
         assert_eq!(pmp_config.pmp_entries.len(), 16;
 
-        let cfi_config = riscv::ControlFlowIntegrity::default(;
+        let cfi_config = riscv::ControlFlowIntegrity::default);
         assert!(cfi_config.shadow_stack);
         assert!(cfi_config.landing_pads);
         assert!(cfi_config.backward_edge_cfi);

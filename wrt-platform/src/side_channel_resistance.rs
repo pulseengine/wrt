@@ -249,9 +249,9 @@ pub mod constant_time {
         // In practice, would use specialized implementations for different types
         unsafe {
             let a_bytes =
-                core::slice::from_raw_parts(&a as *const T as *const u8, core::mem::size_of::<T>(;
+                core::slice::from_raw_parts(&a as *const T as *const u8, core::mem::size_of::<T>);
             let b_bytes =
-                core::slice::from_raw_parts(&b as *const T as *const u8, core::mem::size_of::<T>(;
+                core::slice::from_raw_parts(&b as *const T as *const u8, core::mem::size_of::<T>);
             let mut result_bytes = [0u8; 32]; // Assume T fits in 32 bytes
 
             for i in 0..core::mem::size_of::<T>() {
@@ -271,7 +271,7 @@ pub mod constant_time {
             return Err(wrt_error::Error::runtime_execution_error("Source and destination lengths must match";
         }
 
-        let len = dst.len(;
+        let len = dst.len);
 
         // Copy in cache-line sized chunks for consistent timing
         const CACHE_LINE_SIZE: usize = 64;
@@ -351,7 +351,7 @@ pub mod cache_aware_allocation {
         /// Binary std/no_std choice
         /// Binary std/no_std choice
         pub unsafe fn new(pool: &'static mut [CacheBlock]) -> Self {
-            let total_blocks = pool.len(;
+            let total_blocks = pool.len);
 
             // Initialize free list in constant time
             for i in 0..total_blocks.saturating_sub(1) {
@@ -386,7 +386,7 @@ pub mod cache_aware_allocation {
 
                 if free_bit >= self.total_blocks {
                     // Binary std/no_std choice
-                    self.dummy_allocation_work(;
+                    self.dummy_allocation_work);
                     return None;
                 }
 
@@ -444,7 +444,7 @@ pub mod cache_aware_allocation {
             }
 
             // Always do the same amount of work regardless of success
-            self.dummy_deallocation_work(;
+            self.dummy_deallocation_work);
         }
 
         /// Find free bit using constant-time bit operations
@@ -531,7 +531,7 @@ pub mod access_obfuscation {
         /// - Timing independent of memory content
         /// - Resists cache-based side-channel attacks
         pub fn oblivious_read(&self, index: usize) -> u8 {
-            let len = self.memory.len(;
+            let len = self.memory.len);
             if len == 0 {
                 return 0;
             }
@@ -567,7 +567,7 @@ pub mod access_obfuscation {
         /// - Timing independent of write location
         /// - Prevents write pattern analysis
         pub fn oblivious_write(&mut self, index: usize, value: u8) {
-            let len = self.memory.len(;
+            let len = self.memory.len);
             if len == 0 {
                 return;
             }
@@ -759,13 +759,13 @@ mod tests {
 
     #[test]
     fn test_side_channel_config() {
-        let config = platform_integration::security_first_side_channel_config(;
+        let config = platform_integration::security_first_side_channel_config);
         assert_eq!(config.resistance_level, ResistanceLevel::Comprehensive;
         assert!(config.protected_vectors.contains(&AttackVector::Timing);
         assert!(config.protected_vectors.contains(&AttackVector::Cache);
         assert!(config.verify_timing);
 
-        let rt_config = platform_integration::realtime_side_channel_config(;
+        let rt_config = platform_integration::realtime_side_channel_config);
         assert_eq!(rt_config.resistance_level, ResistanceLevel::Advanced;
         assert!(rt_config.performance_tolerance < 0.2);
     }
@@ -774,17 +774,17 @@ mod tests {
     fn test_integration_analysis() {
         // Test that integration analysis functions return meaningful descriptions
         let memory_analysis =
-            integration_analysis::MemorySubsystemIntegration::analyze_allocation_timing(;
+            integration_analysis::MemorySubsystemIntegration::analyze_allocation_timing);
         assert!(memory_analysis.contains("Cache-aware");
         assert!(memory_analysis.contains("constant-time");
 
         let hw_analysis =
-            integration_analysis::HardwareOptimizationIntegration::analyze_arm_mte_integration(;
+            integration_analysis::HardwareOptimizationIntegration::analyze_arm_mte_integration);
         assert!(hw_analysis.contains("Memory Tagging Extension");
         assert!(hw_analysis.contains("constant-time");
 
         let sync_analysis =
-            integration_analysis::SynchronizationIntegration::analyze_lockfree_timing(;
+            integration_analysis::SynchronizationIntegration::analyze_lockfree_timing);
         assert!(sync_analysis.contains("Lock-free");
         assert!(sync_analysis.contains("bounded timing");
     }

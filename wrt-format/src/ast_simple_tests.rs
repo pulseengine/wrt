@@ -38,7 +38,7 @@ mod tests {
 
     #[test]
     fn test_source_span_empty() {
-        let empty = SourceSpan::empty(;
+        let empty = SourceSpan::empty);
         assert_eq!(empty.start, 0;
         assert_eq!(empty.end, 0;
         assert_eq!(empty.file_id, 0;
@@ -197,14 +197,14 @@ mod tests {
     fn test_ast_structure_without_strings() {
         // Test that we can work with the AST structure even without BoundedString
         // creation
-        let interface_items: Vec<InterfaceItem> = Vec::new(;
+        let interface_items: Vec<InterfaceItem> = Vec::new);
         assert!(interface_items.is_empty();
 
-        let top_level_items: Vec<TopLevelItem> = Vec::new(;
+        let top_level_items: Vec<TopLevelItem> = Vec::new);
         assert!(top_level_items.is_empty();
 
         // Test that default implementations work
-        let function_results = FunctionResults::default(;
+        let function_results = FunctionResults::default);
         match function_results {
             FunctionResults::None => {}, // Expected default
             _ => panic!("Expected None as default for FunctionResults"),

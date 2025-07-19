@@ -46,7 +46,7 @@ mod tests {
     #[cfg(all(feature = "disabled"))]
     fn test_error_source() {
         // Create an error with a source
-        let stack_error = kinds::stack_underflow(;
+        let stack_error = kinds::stack_underflow);
         let error = Error::from(stack_error;
 
         // Just verify the error was created with the correct message

@@ -128,7 +128,7 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
     ) -> wrt_foundation::WrtResult<Self> {
         let index = reader.read_u32_le()?;
         #[cfg(feature = "std")]
-        let mut bytes = std::vec::Vec::new(;
+        let mut bytes = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
         let mut bytes: wrt_foundation::BoundedVec<
             u8,
@@ -167,11 +167,11 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
 
 impl wrt_foundation::traits::Checksummable for NameMapEntry {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.index.to_le_bytes(;
+        checksum.update_slice(&self.index.to_le_bytes);
         #[cfg(feature = "std")]
-        checksum.update_slice(self.name.as_bytes(;
+        checksum.update_slice(self.name.as_bytes);
         #[cfg(not(feature = "std"))]
-        checksum.update_slice(self.name.as_bytes(;
+        checksum.update_slice(self.name.as_bytes);
     }
 }
 
@@ -233,9 +233,9 @@ pub struct NameMap {
 impl NameMap {
     pub fn new() -> Self {
         #[cfg(feature = "std")]
-        let entries = std::vec::Vec::new(;
+        let entries = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
-        let entries = wrt_foundation::BoundedVec::default(;
+        let entries = wrt_foundation::BoundedVec::default);
 
         Self { entries }
     }
@@ -246,7 +246,7 @@ impl NameMap {
 
         let mut current_offset = offset + count_len;
         #[cfg(feature = "std")]
-        let mut entries = std::vec::Vec::new(;
+        let mut entries = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
         let mut entries = {
             let provider = crate::prelude::create_decoder_provider::<4096>()
@@ -274,7 +274,7 @@ impl NameMap {
             current_offset += name_len;
 
             #[cfg(feature = "std")]
-            let name = std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default(;
+            let name = std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default);
             #[cfg(not(feature = "std"))]
             let name = ""; // Simplified for no_std
 
@@ -317,7 +317,7 @@ impl wrt_foundation::traits::FromBytes for NameMap {
     ) -> wrt_foundation::WrtResult<Self> {
         let count = reader.read_u32_le()?;
         #[cfg(feature = "std")]
-        let mut entries = std::vec::Vec::new(;
+        let mut entries = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
         let mut entries = {
             let provider = crate::prelude::create_decoder_provider::<4096>().map_err(|_| {
@@ -346,7 +346,7 @@ impl wrt_foundation::traits::FromBytes for NameMap {
 
 impl wrt_foundation::traits::Checksummable for NameMap {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&(self.entries.len() as u32).to_le_bytes(;
+        checksum.update_slice(&(self.entries.len() as u32).to_le_bytes);
         for entry in &self.entries {
             entry.update_checksum(checksum;
         }
@@ -386,7 +386,7 @@ pub struct ComponentNameSection {
 
 /// Parse a WebAssembly Component Model name section
 pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection> {
-    let mut name_section = ComponentNameSection::default(;
+    let mut name_section = ComponentNameSection::default);
     let mut offset = 0;
 
     while offset < data.len() {
@@ -421,7 +421,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                     #[cfg(feature = "std")]
                     {
                         let name =
-                            std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default(;
+                            std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default);
                         name_section.component_name = Some(name;
                     }
                     #[cfg(not(feature = "std"))]
@@ -534,7 +534,7 @@ pub fn generate_component_name_section(
     name_section: &ComponentNameSection,
 ) -> Result<GeneratedNameSectionData> {
     #[cfg(feature = "std")]
-    let mut data = std::vec::Vec::new(;
+    let mut data = std::vec::Vec::new);
     #[cfg(not(feature = "std"))]
     let mut data = {
         let provider = wrt_foundation::safe_managed_alloc!(
@@ -552,7 +552,7 @@ pub fn generate_component_name_section(
 
         // Generate data for name
         #[cfg(feature = "std")]
-        let mut subsection_data = std::vec::Vec::new(;
+        let mut subsection_data = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
         let mut subsection_data: wrt_foundation::BoundedVec<
             u8,
@@ -607,7 +607,7 @@ pub fn generate_component_name_section(
 
     // Sort names
     #[cfg(feature = "std")]
-    let sort_names_empty = name_section.sort_names.is_empty(;
+    let sort_names_empty = name_section.sort_names.is_empty);
     #[cfg(not(feature = "std"))]
     let sort_names_empty =
         wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.sort_names;
@@ -618,7 +618,7 @@ pub fn generate_component_name_section(
 
         // Generate data for sorts
         #[cfg(feature = "std")]
-        let mut subsection_data = std::vec::Vec::new(;
+        let mut subsection_data = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
         let mut subsection_data: wrt_foundation::BoundedVec<
             u8,
@@ -679,7 +679,7 @@ pub fn generate_component_name_section(
 
     // Import names
     #[cfg(feature = "std")]
-    let import_names_empty = name_section.import_names.entries.is_empty(;
+    let import_names_empty = name_section.import_names.entries.is_empty);
     #[cfg(not(feature = "std"))]
     let import_names_empty =
         wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.import_names.entries;
@@ -715,7 +715,7 @@ pub fn generate_component_name_section(
 
     // Export names
     #[cfg(feature = "std")]
-    let export_names_empty = name_section.export_names.entries.is_empty(;
+    let export_names_empty = name_section.export_names.entries.is_empty);
     #[cfg(not(feature = "std"))]
     let export_names_empty =
         wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.export_names.entries;
@@ -751,7 +751,7 @@ pub fn generate_component_name_section(
 
     // Canonical names
     #[cfg(feature = "std")]
-    let canonical_names_empty = name_section.canonical_names.entries.is_empty(;
+    let canonical_names_empty = name_section.canonical_names.entries.is_empty);
     #[cfg(not(feature = "std"))]
     let canonical_names_empty =
         wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.canonical_names.entries;
@@ -787,7 +787,7 @@ pub fn generate_component_name_section(
 
     // Type names
     #[cfg(feature = "std")]
-    let type_names_empty = name_section.type_names.entries.is_empty(;
+    let type_names_empty = name_section.type_names.entries.is_empty);
     #[cfg(not(feature = "std"))]
     let type_names_empty =
         wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.type_names.entries;
@@ -826,7 +826,7 @@ pub fn generate_component_name_section(
 
 #[cfg(feature = "std")]
 fn generate_sort(sort: &SortIdentifier) -> Result<std::vec::Vec<u8>> {
-    let mut data = std::vec::Vec::new(;
+    let mut data = std::vec::Vec::new);
     match sort {
         SortIdentifier::Module => data.push(0),
         SortIdentifier::Function => data.push(1),
@@ -877,7 +877,7 @@ fn generate_sort(
 
 #[cfg(feature = "std")]
 fn generate_name_map(names: &NameMap) -> Result<std::vec::Vec<u8>> {
-    let mut data = std::vec::Vec::new(;
+    let mut data = std::vec::Vec::new);
 
     // Number of entries
     data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32;
@@ -1020,7 +1020,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip_component_name() {
-        let mut name_section = ComponentNameSection::default(;
+        let mut name_section = ComponentNameSection::default);
         #[cfg(feature = "std")]
         {
             name_section.component_name = Some("test_component".to_string();
@@ -1051,9 +1051,9 @@ mod tests {
 
     #[test]
     fn test_roundtrip_sort_names() {
-        let mut name_section = ComponentNameSection::default(;
+        let mut name_section = ComponentNameSection::default);
 
-        let mut name_map = NameMap::new(;
+        let mut name_map = NameMap::new);
         #[cfg(feature = "std")]
         {
             name_map.entries.push(NameMapEntry {

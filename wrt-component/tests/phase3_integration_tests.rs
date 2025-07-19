@@ -242,8 +242,8 @@ mod tests {
         };
         let mut wcet_analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Full).unwrap();
 
-        let control_task = DeadlineConstrainedTask::new_asil_c_control_task(;
-        let monitoring_task = DeadlineConstrainedTask::new_asil_b_monitoring_task(;
+        let control_task = DeadlineConstrainedTask::new_asil_c_control_task);
+        let monitoring_task = DeadlineConstrainedTask::new_asil_b_monitoring_task);
 
         // Register control flow paths for ASIL-C control task
         wcet_analyzer
@@ -314,9 +314,9 @@ mod tests {
 
         let mut scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Full).unwrap();
 
-        let control_task = DeadlineConstrainedTask::new_asil_c_control_task(;
-        let monitoring_task = DeadlineConstrainedTask::new_asil_b_monitoring_task(;
-        let background_task = DeadlineConstrainedTask::new_background_task(;
+        let control_task = DeadlineConstrainedTask::new_asil_c_control_task);
+        let monitoring_task = DeadlineConstrainedTask::new_asil_b_monitoring_task);
+        let background_task = DeadlineConstrainedTask::new_background_task);
 
         // Add tasks with WCET constraints
         let result1 = scheduler.add_deadline_task(
@@ -353,7 +353,7 @@ mod tests {
         assert!(result3.is_ok();
 
         // Verify tasks were added
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(
             stats.total_tasks.load(core::sync::atomic::Ordering::Acquire),
             3
@@ -443,7 +443,7 @@ mod tests {
         let next_task = scheduler.schedule_next_task().unwrap();
         assert_eq!(next_task, Some(medium_period_task;
 
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(
             stats.successful_deadlines.load(core::sync::atomic::Ordering::Acquire),
             1
@@ -528,7 +528,7 @@ mod tests {
             .unwrap();
 
         // Initially in Low mode - all tasks active
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(
             stats.active_tasks.load(core::sync::atomic::Ordering::Acquire),
             5
@@ -538,7 +538,7 @@ mod tests {
         scheduler.switch_criticality_mode(CriticalityMode::High).unwrap();
 
         // ASIL-A and QM tasks should be dropped
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(
             stats.tasks_dropped.load(core::sync::atomic::Ordering::Acquire),
             2
@@ -552,7 +552,7 @@ mod tests {
         scheduler.switch_criticality_mode(CriticalityMode::Critical).unwrap();
 
         // ASIL-B task should also be dropped
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(
             stats.tasks_dropped.load(core::sync::atomic::Ordering::Acquire),
             3
@@ -638,7 +638,7 @@ mod tests {
         let exceeds_estimate = wcet_analyzer.validate_wcet_estimate(task_id, 150).unwrap();
         assert!(!exceeds_estimate);
 
-        let wcet_stats = wcet_analyzer.get_statistics(;
+        let wcet_stats = wcet_analyzer.get_statistics);
         assert_eq!(
             wcet_stats.total_samples.load(core::sync::atomic::Ordering::Acquire),
             7
@@ -842,8 +842,8 @@ mod tests {
         }
 
         // 7. Verify ASIL-C compliance metrics
-        let scheduler_stats = scheduler.get_statistics(;
-        let wcet_stats = wcet_analyzer.get_statistics(;
+        let scheduler_stats = scheduler.get_statistics);
+        let wcet_stats = wcet_analyzer.get_statistics);
 
         // No deadline misses allowed for ASIL-C
         assert_eq!(
@@ -901,7 +901,7 @@ mod tests {
     #[test]
     fn test_phase3_constrained_deadline_validation() {
         // Test that deadline ≤ period constraint is enforced
-        let config = DeadlineSchedulerConfig::default(;
+        let config = DeadlineSchedulerConfig::default);
         let mut scheduler =
             FuelDeadlineScheduler::new(config, VerificationLevel::Standard).unwrap();
 

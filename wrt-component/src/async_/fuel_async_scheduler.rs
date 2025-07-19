@@ -98,8 +98,8 @@ impl FuelAsyncScheduler {
     pub fn set_policy(&mut self, policy: SchedulingPolicy) {
         self.policy = policy;
         // Clear queues when policy changes
-        self.priority_queue.clear(;
-        self.round_robin_queue.clear(;
+        self.priority_queue.clear);
+        self.round_robin_queue.clear);
         self.round_robin_position.store(0, Ordering::SeqCst;
     }
 
@@ -220,7 +220,7 @@ impl FuelAsyncScheduler {
 
     /// Check for deadline violations
     pub fn check_deadlines(&self, current_time: u64) -> Vec<TaskId> {
-        let mut violations = Vec::new(;
+        let mut violations = Vec::new);
 
         for (task_id, task) in self.scheduled_tasks.iter() {
             if let Some(deadline) = task.deadline {
@@ -323,7 +323,7 @@ impl FuelAsyncScheduler {
         }
 
         let start_pos = self.round_robin_position.load(Ordering::Acquire;
-        let queue_len = self.round_robin_queue.len(;
+        let queue_len = self.round_robin_queue.len);
 
         for i in 0..queue_len {
             let pos = (start_pos + i) % queue_len;
@@ -347,7 +347,7 @@ impl FuelAsyncScheduler {
             .unwrap_or(Priority::Normal;
 
         // Insert in priority order (higher priority first)
-        let mut insert_pos = self.priority_queue.len(;
+        let mut insert_pos = self.priority_queue.len);
         for (i, &existing_id) in self.priority_queue.iter().enumerate() {
             if let Some(existing_task) = self.scheduled_tasks.get(&existing_id) {
                 if task_priority > existing_task.priority {
@@ -369,13 +369,13 @@ impl FuelAsyncScheduler {
         })?;
 
         // Sort by deadline (earliest first)
-        self.sort_deadline_queue(;
+        self.sort_deadline_queue);
         Ok(())
     }
 
     fn sort_deadline_queue(&mut self) {
         // Simple bubble sort for small queues
-        let len = self.priority_queue.len(;
+        let len = self.priority_queue.len);
         for i in 0..len {
             for j in 0..len.saturating_sub(1 + i) {
                 if self.should_swap_deadline_tasks(j, j + 1) {
@@ -420,7 +420,7 @@ impl FuelAsyncScheduler {
         record_global_operation(OperationType::CollectionMutate, self.verification_level;
 
         // Re-sort the entire deadline queue
-        self.sort_deadline_queue(;
+        self.sort_deadline_queue);
         Ok(())
     }
 }
@@ -467,7 +467,7 @@ mod tests {
             VerificationLevel::Standard,
         ).unwrap();
 
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.policy, SchedulingPolicy::Cooperative;
         assert_eq!(stats.total_tasks, 0;
     }
@@ -488,7 +488,7 @@ mod tests {
             None,
         ).unwrap();
 
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.total_tasks, 1;
         assert_eq!(stats.ready_tasks, 1;
     }
@@ -509,7 +509,7 @@ mod tests {
         scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::High, 1000, None).unwrap();
 
         // High priority task should be scheduled first
-        let next = scheduler.next_task(;
+        let next = scheduler.next_task);
         assert_eq!(next, Some(task2;
     }
 

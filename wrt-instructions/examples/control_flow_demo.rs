@@ -153,11 +153,11 @@ impl FunctionOperations for DemoContext {
 fn main() -> Result<()> {
     println!("=== WebAssembly Control Flow Operations Demo ===\n";
     
-    let mut context = DemoContext::new(;
+    let mut context = DemoContext::new);
     
     // 1. Demonstrate Return instruction
     println!("1. Return Operation:";
-    let return_op = Return::new(;
+    let return_op = Return::new);
     return_op.execute(&mut context)?;
     println!("   Executed return instruction";
     println!("   Function returned: {}", context.returned;

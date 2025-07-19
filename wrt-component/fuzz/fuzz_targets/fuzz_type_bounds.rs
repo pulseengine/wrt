@@ -12,8 +12,8 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     
-    let mut type_registry = GenerativeTypeRegistry::new(;
-    let mut bounds_checker = TypeBoundsChecker::new(;
+    let mut type_registry = GenerativeTypeRegistry::new);
+    let mut bounds_checker = TypeBoundsChecker::new);
     
     // Use fuzzer data to create component IDs and type operations
     let component_id = ComponentInstanceId::new((data[0] as u32) % 100;
@@ -21,7 +21,7 @@ fuzz_target!(|data: &[u8]| {
     let num_bounds = (data[2] % 20) as usize;
     
     // Create some resource types
-    let mut type_ids = Vec::new(;
+    let mut type_ids = Vec::new);
     for i in 0..num_types.min(data.len() / 4) {
         let name = format!("type_{}", i;
         if let Ok(resource_type) = type_registry.create_resource_type(component_id, &name) {
@@ -36,8 +36,8 @@ fuzz_target!(|data: &[u8]| {
             break;
         }
         
-        let sub_idx = (data[data_offset] as usize) % type_ids.len(;
-        let super_idx = (data[data_offset + 1] as usize) % type_ids.len(;
+        let sub_idx = (data[data_offset] as usize) % type_ids.len);
+        let super_idx = (data[data_offset + 1] as usize) % type_ids.len);
         
         if sub_idx != super_idx {
             let kind = if data[data_offset + 2] & 0x01 == 0 {
@@ -69,7 +69,7 @@ fuzz_target!(|data: &[u8]| {
     }
     
     // Test transitive relations
-    let _ = bounds_checker.compute_transitive_closure(;
+    let _ = bounds_checker.compute_transitive_closure);
     
     // Test with direct TypeId values from fuzzer data
     if data_offset + 4 < data.len() {
@@ -94,12 +94,12 @@ fuzz_target!(|data: &[u8]| {
     
     // Test removing bounds
     if !type_ids.is_empty() && data.len() > data_offset {
-        let remove_idx = (data[data_offset] as usize) % type_ids.len(;
+        let remove_idx = (data[data_offset] as usize) % type_ids.len);
         let _ = bounds_checker.remove_bounds_for_type(type_ids[remove_idx];
     }
     
     // Clear and verify empty state
-    bounds_checker.clear(;
+    bounds_checker.clear);
     for i in 0..type_ids.len().min(2) {
         for j in 0..type_ids.len().min(2) {
             if i != j {

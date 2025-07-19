@@ -134,7 +134,7 @@ impl WasmApplicationManager {
         function_name: &str,
         args: Vec<Value>,
     ) -> Result<ComponentResult, Box<dyn std::error::Error>> {
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
 
         // Get the agent for this component
         let agent_id = self
@@ -156,7 +156,7 @@ impl WasmApplicationManager {
         let result =
             self.agent_registry.call_function(*agent_id, instance_id, function_index, &args;
 
-        let execution_time = start_time.elapsed(;
+        let execution_time = start_time.elapsed);
 
         // Create result
         let component_result = ComponentResult {
@@ -187,7 +187,7 @@ impl WasmApplicationManager {
     ) -> Result<Vec<ComponentResult>, Box<dyn std::error::Error>> {
         println!("\n🚀 Executing workflow: {}", workflow_name;
 
-        let mut results = Vec::new(;
+        let mut results = Vec::new);
 
         match workflow_name {
             "user_data_processing" => {
@@ -241,20 +241,20 @@ impl WasmApplicationManager {
             _ => return Err(format!("Unknown workflow: {}", workflow_name).into()),
         }
 
-        let total_time: u64 = results.iter().map(|r| r.execution_time_ms).sum(;
-        let success_count = results.iter().filter(|r| r.success).count(;
+        let total_time: u64 = results.iter().map(|r| r.execution_time_ms).sum);
+        let success_count = results.iter().filter(|r| r.success).count);
 
         println!("📊 Workflow '{}' completed:", workflow_name;
         println!("   Total execution time: {}ms", total_time;
-        println!("   Successful steps: {}/{}", success_count, results.len(;
+        println!("   Successful steps: {}/{}", success_count, results.len);
 
         Ok(results)
     }
 
     /// Get application statistics
     pub fn get_statistics(&self) -> ApplicationStatistics {
-        let registry_stats = self.agent_registry.statistics(;
-        let migration_stats = self.agent_registry.migration_status(;
+        let registry_stats = self.agent_registry.statistics);
+        let migration_stats = self.agent_registry.migration_status);
 
         ApplicationStatistics {
             total_components:     self.component_agents.len(),
@@ -338,7 +338,7 @@ impl WasmApplicationManager {
             },
         };
 
-        let mut hasher = DefaultHasher::new(;
+        let mut hasher = DefaultHasher::new);
         function_name.hash(&mut hasher;
         (hasher.finish() % 1000) as u32
     }
@@ -388,7 +388,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app_manager.register_component("security".to_string(), ComponentType::SecurityCritical)?;
 
     // Show initial statistics
-    let stats = app_manager.get_statistics(;
+    let stats = app_manager.get_statistics);
     println!("\n📈 Initial Statistics:";
     println!("   Components registered: {}", stats.total_components;
     println!("   Active agents: {}", stats.active_agents;
@@ -420,7 +420,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let batch_results = app_manager.execute_workflow("batch_data_processing", Value::U32(1000))?;
 
     // Show final statistics
-    let final_stats = app_manager.get_statistics(;
+    let final_stats = app_manager.get_statistics);
     println!("\n📊 Final Statistics:";
     println!("   Total components: {}", final_stats.total_components;
     println!("   Active agents: {}", final_stats.active_agents;

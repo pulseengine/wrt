@@ -34,34 +34,34 @@ fn main() {
 
     // Warm up
     println!("Warming up...";
-    warmup(;
+    warmup);
 
     // Test 1: Agent creation performance
-    test_agent_creation_performance(;
+    test_agent_creation_performance);
 
     // Test 2: Function execution performance
-    test_execution_performance(;
+    test_execution_performance);
 
     // Test 3: Memory usage comparison
-    test_memory_usage(;
+    test_memory_usage);
 
     // Test 4: Context switching performance
-    test_context_switching(;
+    test_context_switching);
 
     // Test 5: Resource management performance
-    test_resource_management(;
+    test_resource_management);
 
     // Summary
-    print_summary(;
+    print_summary);
 }
 
 fn warmup() {
     // Warm up the system with a few iterations
     for _ in 0..WARMUP_ITERATIONS {
-        let mut agent = UnifiedExecutionAgent::new_default(;
+        let mut agent = UnifiedExecutionAgent::new_default);
         let _ = agent.call_function(1, 1, &[Value::U32(1)];
 
-        let mut legacy = ComponentExecutionEngine::new(;
+        let mut legacy = ComponentExecutionEngine::new);
         let _ = legacy.call_function(1, 1, &[Value::U32(1)];
     }
 }
@@ -71,18 +71,18 @@ fn test_agent_creation_performance() {
     println!("----------------------------";
 
     // Measure unified agent creation
-    let start = Instant::now(;
+    let start = Instant::now);
     for _ in 0..ITERATIONS {
-        let _ = UnifiedExecutionAgent::new_default(;
+        let _ = UnifiedExecutionAgent::new_default);
     }
-    let unified_duration = start.elapsed(;
+    let unified_duration = start.elapsed);
 
     // Measure legacy agent creation
-    let start = Instant::now(;
+    let start = Instant::now);
     for _ in 0..ITERATIONS {
-        let _ = ComponentExecutionEngine::new(;
+        let _ = ComponentExecutionEngine::new);
     }
-    let legacy_duration = start.elapsed(;
+    let legacy_duration = start.elapsed);
 
     // Results
     println!(
@@ -105,28 +105,28 @@ fn test_execution_performance() {
     println!("--------------------------------";
 
     // Create agents
-    let mut unified_agent = UnifiedExecutionAgent::new_default(;
-    let mut legacy_agent = ComponentExecutionEngine::new(;
+    let mut unified_agent = UnifiedExecutionAgent::new_default);
+    let mut legacy_agent = ComponentExecutionEngine::new);
 
     let args = vec![Value::U32(42), Value::Bool(true)];
 
     // Measure unified execution
-    let start = Instant::now(;
+    let start = Instant::now);
     for i in 0..ITERATIONS {
         let _ = unified_agent.call_function(1, i as u32, &args;
     }
-    let unified_duration = start.elapsed(;
+    let unified_duration = start.elapsed);
 
     // Reset agents
-    unified_agent.reset(;
-    legacy_agent.reset(;
+    unified_agent.reset);
+    legacy_agent.reset);
 
     // Measure legacy execution
-    let start = Instant::now(;
+    let start = Instant::now);
     for i in 0..ITERATIONS {
         let _ = legacy_agent.call_function(1, i as u32, &args;
     }
-    let legacy_duration = start.elapsed(;
+    let legacy_duration = start.elapsed);
 
     // Results
     println!(
@@ -149,8 +149,8 @@ fn test_memory_usage() {
     println!("-------------------------";
 
     // Estimate memory usage (simplified)
-    let unified_size = std::mem::size_of::<UnifiedExecutionAgent>(;
-    let legacy_component_size = std::mem::size_of::<ComponentExecutionEngine>(;
+    let unified_size = std::mem::size_of::<UnifiedExecutionAgent>);
+    let legacy_component_size = std::mem::size_of::<ComponentExecutionEngine>);
 
     // For hybrid mode (which would require multiple legacy agents)
     let hybrid_legacy_size = legacy_component_size * 3; // Component + Async + CFI
@@ -175,35 +175,35 @@ fn test_context_switching() {
     println!("-------------------------------";
 
     // Create agents with different modes
-    let mut sync_agent = UnifiedExecutionAgent::new_default(;
+    let mut sync_agent = UnifiedExecutionAgent::new_default);
     let mut async_agent = UnifiedExecutionAgent::new(AgentConfiguration {
         execution_mode: ExecutionMode::Asynchronous,
         ..AgentConfiguration::default()
     };
-    let mut stackless_agent = UnifiedExecutionAgent::new_stackless(;
+    let mut stackless_agent = UnifiedExecutionAgent::new_stackless);
 
     let args = vec![Value::U32(100)];
 
     // Measure unified agent mode switching
-    let start = Instant::now(;
+    let start = Instant::now);
     for i in 0..ITERATIONS / 3 {
         // Switch between different execution modes
         let _ = sync_agent.call_function(1, i as u32, &args;
         let _ = async_agent.call_function(1, i as u32, &args;
         let _ = stackless_agent.call_function(1, i as u32, &args;
     }
-    let unified_duration = start.elapsed(;
+    let unified_duration = start.elapsed);
 
     // With legacy agents, you would need separate instances
-    let mut legacy_comp = ComponentExecutionEngine::new(;
+    let mut legacy_comp = ComponentExecutionEngine::new);
     // AsyncExecutionEngine and StacklessEngine would be separate
 
-    let start = Instant::now(;
+    let start = Instant::now);
     for i in 0..ITERATIONS {
         // Only one mode available per legacy agent
         let _ = legacy_comp.call_function(1, i as u32, &args;
     }
-    let legacy_duration = start.elapsed(;
+    let legacy_duration = start.elapsed);
 
     println!("Unified multi-mode execution: {:?}", unified_duration;
     println!("Legacy single-mode execution: {:?}", legacy_duration;
@@ -215,11 +215,11 @@ fn test_resource_management() {
     println!("---------------------------------";
 
     // Test resource creation and cleanup
-    let mut unified_agent = UnifiedExecutionAgent::new_default(;
-    let mut legacy_agent = ComponentExecutionEngine::new(;
+    let mut unified_agent = UnifiedExecutionAgent::new_default);
+    let mut legacy_agent = ComponentExecutionEngine::new);
 
     // Measure unified resource management
-    let start = Instant::now(;
+    let start = Instant::now);
     for i in 0..ITERATIONS {
         let handle = unified_agent.create_resource(
             i as u32,
@@ -229,10 +229,10 @@ fn test_resource_management() {
             let _ = unified_agent.drop_resource(h;
         }
     }
-    let unified_duration = start.elapsed(;
+    let unified_duration = start.elapsed);
 
     // Measure legacy resource management
-    let start = Instant::now(;
+    let start = Instant::now);
     for i in 0..ITERATIONS {
         let handle = legacy_agent.create_resource(
             i as u32,
@@ -242,7 +242,7 @@ fn test_resource_management() {
             let _ = legacy_agent.drop_resource(h;
         }
     }
-    let legacy_duration = start.elapsed(;
+    let legacy_duration = start.elapsed);
 
     println!("Unified resource ops: {:?}", unified_duration;
     println!("Legacy resource ops:  {:?}", legacy_duration;

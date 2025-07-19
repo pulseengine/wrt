@@ -18,7 +18,7 @@ pub fn wasi_monotonic_clock_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get monotonic time using platform abstraction
-    let nanoseconds: u64 = PlatformTime::monotonic_ns(;
+    let nanoseconds: u64 = PlatformTime::monotonic_ns);
     
     Ok(vec![Value::U64(nanoseconds)])
 }

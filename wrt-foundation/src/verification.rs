@@ -166,7 +166,7 @@ impl Checksum {
     /// Compute a checksum for a byte slice
     #[must_use]
     pub fn compute(data: &[u8]) -> Self {
-        let mut checksum = Self::new(;
+        let mut checksum = Self::new);
         for &byte in data {
             checksum.update(byte;
         }
@@ -296,9 +296,9 @@ mod tests {
 
     #[test]
     fn test_hasher() {
-        let mut hasher = Hasher::new(;
+        let mut hasher = Hasher::new);
         hasher.update(b"test";
-        let hash = hasher.finalize(;
+        let hash = hasher.finalize);
         // Verify against known good value
         assert_eq!(hash, 0xafd0_71e5;
     }

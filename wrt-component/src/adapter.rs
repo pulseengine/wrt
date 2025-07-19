@@ -296,7 +296,7 @@ impl CoreModuleAdapter {
 
     /// Convert this adapter to a component
     pub fn to_component(&self) -> Result<Component> {
-        let mut component = Component::new(WrtComponentType::default(;
+        let mut component = Component::new(WrtComponentType::default);
 
         // Convert function adapters to component functions
         for func_adapter in &self.functions {
@@ -410,7 +410,7 @@ impl CoreModuleAdapter {
         }
         #[cfg(not(feature = "std"))]
         {
-            let mut result = Vec::new(;
+            let mut result = Vec::new);
             for arg in args {
                 result.push(arg.clone();
             }
@@ -600,15 +600,15 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to all adapter types
-impl_basic_traits!(FunctionAdapter, FunctionAdapter::default(;
-impl_basic_traits!(MemoryAdapter, MemoryAdapter::default(;
-impl_basic_traits!(TableAdapter, TableAdapter::default(;
-impl_basic_traits!(GlobalAdapter, GlobalAdapter::default(;
-impl_basic_traits!(MemoryLimits, MemoryLimits::default(;
-impl_basic_traits!(TableLimits, TableLimits::default(;
-impl_basic_traits!(CoreValType, CoreValType::default(;
-impl_basic_traits!(AdaptationMode, AdaptationMode::default(;
-impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default(;
+impl_basic_traits!(FunctionAdapter, FunctionAdapter::default);
+impl_basic_traits!(MemoryAdapter, MemoryAdapter::default);
+impl_basic_traits!(TableAdapter, TableAdapter::default);
+impl_basic_traits!(GlobalAdapter, GlobalAdapter::default);
+impl_basic_traits!(MemoryLimits, MemoryLimits::default);
+impl_basic_traits!(TableLimits, TableLimits::default);
+impl_basic_traits!(CoreValType, CoreValType::default);
+impl_basic_traits!(AdaptationMode, AdaptationMode::default);
+impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default);
 
 mod tests {
     use super::*;

@@ -204,41 +204,41 @@ mod comprehensive_tests {
 
     #[test]
     fn test_full_featured_module_parsing() {
-        let module = create_full_featured_module(;
+        let module = create_full_featured_module);
         
         let mut parser = Parser::new(&module;
-        let mut sections = HashMap::new(;
+        let mut sections = HashMap::new);
         
         loop {
             match parser.parse() {
                 Ok(payload) => {
                     match payload {
                         Payload::TypeSection(reader) => {
-                            sections.insert("type", reader.get_count(;
+                            sections.insert("type", reader.get_count);
                         }
                         Payload::ImportSection(reader) => {
-                            sections.insert("import", reader.get_count(;
+                            sections.insert("import", reader.get_count);
                         }
                         Payload::FunctionSection(reader) => {
-                            sections.insert("function", reader.get_count(;
+                            sections.insert("function", reader.get_count);
                         }
                         Payload::MemorySection(reader) => {
-                            sections.insert("memory", reader.get_count(;
+                            sections.insert("memory", reader.get_count);
                         }
                         Payload::TableSection(reader) => {
-                            sections.insert("table", reader.get_count(;
+                            sections.insert("table", reader.get_count);
                         }
                         Payload::GlobalSection(reader) => {
-                            sections.insert("global", reader.get_count(;
+                            sections.insert("global", reader.get_count);
                         }
                         Payload::ExportSection(reader) => {
-                            sections.insert("export", reader.get_count(;
+                            sections.insert("export", reader.get_count);
                         }
                         Payload::ElementSection(reader) => {
-                            sections.insert("element", reader.get_count(;
+                            sections.insert("element", reader.get_count);
                         }
                         Payload::DataSection(reader) => {
-                            sections.insert("data", reader.get_count(;
+                            sections.insert("data", reader.get_count);
                         }
                         Payload::StartSection { .. } => {
                             sections.insert("start", 1;
@@ -272,7 +272,7 @@ mod comprehensive_tests {
 
     #[test]
     fn test_builtin_detection_in_complex_module() {
-        let module = create_full_featured_module(;
+        let module = create_full_featured_module);
         
         let builtins = parser::scan_for_builtins(&module).unwrap();
         
@@ -284,7 +284,7 @@ mod comprehensive_tests {
 
     #[test]
     fn test_edge_case_module_parsing() {
-        let module = create_edge_case_module(;
+        let module = create_edge_case_module);
         
         let mut parser = Parser::new(&module;
         let mut function_count = 0;
@@ -295,10 +295,10 @@ mod comprehensive_tests {
                 Ok(payload) => {
                     match payload {
                         Payload::FunctionSection(reader) => {
-                            function_count = reader.get_count(;
+                            function_count = reader.get_count);
                         }
                         Payload::ExportSection(reader) => {
-                            export_count = reader.get_count(;
+                            export_count = reader.get_count);
                         }
                         Payload::End => break,
                         _ => {}
@@ -314,7 +314,7 @@ mod comprehensive_tests {
 
     #[test]
     fn test_stress_module_parsing() {
-        let module = create_stress_test_module(;
+        let module = create_stress_test_module);
         
         let mut parser = Parser::new(&module;
         let mut type_count = 0;
@@ -327,16 +327,16 @@ mod comprehensive_tests {
                 Ok(payload) => {
                     match payload {
                         Payload::TypeSection(reader) => {
-                            type_count = reader.get_count(;
+                            type_count = reader.get_count);
                         }
                         Payload::ImportSection(reader) => {
-                            import_count = reader.get_count(;
+                            import_count = reader.get_count);
                         }
                         Payload::FunctionSection(reader) => {
-                            function_count = reader.get_count(;
+                            function_count = reader.get_count);
                         }
                         Payload::ExportSection(reader) => {
-                            export_count = reader.get_count(;
+                            export_count = reader.get_count);
                         }
                         Payload::End => break,
                         _ => {}
@@ -377,7 +377,7 @@ mod validation_tests {
         
         // Parser should handle sections regardless of order
         let mut parser = Parser::new(&module;
-        let mut sections_seen = Vec::new(;
+        let mut sections_seen = Vec::new);
         
         loop {
             match parser.parse() {
@@ -401,10 +401,10 @@ mod validation_tests {
 
     #[test]
     fn test_import_validation_comprehensive() {
-        let module = create_full_featured_module(;
+        let module = create_full_featured_module);
         
         let mut parser = Parser::new(&module;
-        let mut imports = Vec::new(;
+        let mut imports = Vec::new);
         
         loop {
             match parser.parse() {
@@ -432,10 +432,10 @@ mod validation_tests {
 
     #[test]
     fn test_export_validation_comprehensive() {
-        let module = create_full_featured_module(;
+        let module = create_full_featured_module);
         
         let mut parser = Parser::new(&module;
-        let mut exports = Vec::new(;
+        let mut exports = Vec::new);
         
         loop {
             match parser.parse() {
@@ -465,7 +465,7 @@ mod validation_tests {
     #[test]
     fn test_malformed_section_handling() {
         // Create a module and then corrupt it
-        let mut module = create_full_featured_module(;
+        let mut module = create_full_featured_module);
         
         // Corrupt the module by changing a section size
         if module.len() > 20 {
@@ -473,7 +473,7 @@ mod validation_tests {
         }
         
         let mut parser = Parser::new(&module;
-        let mut parsing_result = Ok((;
+        let mut parsing_result = Ok();
         
         loop {
             match parser.parse() {
@@ -504,9 +504,9 @@ mod performance_tests {
 
     #[test]
     fn test_comprehensive_parsing_performance() {
-        let module = create_full_featured_module(;
+        let module = create_full_featured_module);
         
-        let start = Instant::now(;
+        let start = Instant::now);
         
         for _ in 0..1000 {
             let mut parser = Parser::new(&module;
@@ -519,15 +519,15 @@ mod performance_tests {
             }
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         assert!(duration.as_secs() < 1, "Comprehensive parsing performance regression");
     }
 
     #[test]
     fn test_stress_parsing_performance() {
-        let module = create_stress_test_module(;
+        let module = create_stress_test_module);
         
-        let start = Instant::now(;
+        let start = Instant::now);
         
         let mut parser = Parser::new(&module;
         loop {
@@ -538,28 +538,28 @@ mod performance_tests {
             }
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         assert!(duration.as_millis() < 500, "Stress test parsing too slow");
     }
 
     #[test]
     fn test_builtin_scanning_performance() {
-        let module = create_stress_test_module(;
+        let module = create_stress_test_module);
         
-        let start = Instant::now(;
+        let start = Instant::now);
         
         for _ in 0..100 {
             let _builtins = parser::scan_for_builtins(&module).unwrap();
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         assert!(duration.as_millis() < 100, "Builtin scanning performance regression");
     }
 
     #[test]
     fn test_memory_usage_scalability() {
         // This test ensures that parsing doesn't consume excessive memory
-        let module = create_stress_test_module(;
+        let module = create_stress_test_module);
         
         // Parse the same module multiple times to check for memory leaks
         for _ in 0..100 {
@@ -600,7 +600,7 @@ mod integration_tests {
 
     #[test]
     fn test_parser_consistency_across_crates() {
-        let module = create_full_featured_module(;
+        let module = create_full_featured_module);
         
         // Test with wrt-component parser
         let component_builtins = parser::scan_for_builtins(&module).unwrap();
@@ -633,7 +633,7 @@ mod integration_tests {
 
     #[test]
     fn test_format_compatibility() {
-        let module = create_comprehensive_test_module(;
+        let module = create_comprehensive_test_module);
         
         // Test that the module can be parsed by different parser implementations
         let mut decoder_parser = Parser::new(&module;
@@ -671,7 +671,7 @@ mod integration_tests {
         
         // Test decoder parser error handling
         let mut decoder_parser = Parser::new(&module;
-        let decoder_result = decoder_parser.parse(;
+        let decoder_result = decoder_parser.parse);
         
         // Both should handle the error gracefully (may succeed or fail differently)
         // The key is that neither should panic or crash

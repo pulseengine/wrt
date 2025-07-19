@@ -206,7 +206,7 @@ impl BreakpointManager {
 
     /// Clear all breakpoints
     pub fn clear_all(&mut self) {
-        self.breakpoints.clear(;
+        self.breakpoints.clear);
     }
 
     /// Get breakpoint by ID
@@ -364,7 +364,7 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
         return "0";
     }
 
-    let mut i = buf.len(;
+    let mut i = buf.len);
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
@@ -389,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_breakpoint_management() {
-        let mut manager = BreakpointManager::new(;
+        let mut manager = BreakpointManager::new);
 
         // Add breakpoint
         let id1 = manager.add_breakpoint(0x1000).unwrap();
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_breakpoint_conditions() {
-        let mut manager = BreakpointManager::new(;
+        let mut manager = BreakpointManager::new);
 
         let id = manager.add_breakpoint(0x1000).unwrap();
 

@@ -106,8 +106,8 @@ impl TestRunner {
 
     /// Run tests for the current ASIL configuration
     pub fn run(&self) -> Result<TestSummary> {
-        let start = Instant::now(;
-        let mut results = Vec::new(;
+        let start = Instant::now);
+        let mut results = Vec::new);
 
         // Get test packages based on ASIL level
         let packages = self.get_test_packages()?;
@@ -125,7 +125,7 @@ impl TestRunner {
         }
 
         // Generate summary
-        let summary = TestSummary::from_results(&results, start.elapsed(;
+        let summary = TestSummary::from_results(&results, start.elapsed);
 
         // Output results
         self.output_results(&summary)?;
@@ -177,7 +177,7 @@ impl TestRunner {
 
     /// Run tests for a specific package
     fn run_package_tests(&self, package: &str) -> Result<TestResult> {
-        let start = Instant::now(;
+        let start = Instant::now);
 
         // Check if package should be skipped for no_std
         if self.config.no_std_only && self.requires_std(package) {
@@ -207,7 +207,7 @@ impl TestRunner {
         }
 
         // Add ASIL-specific features
-        let asil_features = self.get_asil_features(;
+        let asil_features = self.get_asil_features);
         if !asil_features.is_empty() {
             cmd.arg("--features").arg(asil_features.join(",";
         }
@@ -219,8 +219,8 @@ impl TestRunner {
 
         let output = cmd.output().context(format!("Failed to run tests for {}", package))?;
 
-        let duration = start.elapsed(;
-        let success = output.status.success(;
+        let duration = start.elapsed);
+        let success = output.status.success);
 
         let error = if !success {
             Some(String::from_utf8_lossy(&output.stderr).to_string())
@@ -271,7 +271,7 @@ impl TestRunner {
 
     /// Output human-readable results
     fn output_human_results(&self, summary: &TestSummary) {
-        println!("\n{}", "Test Results".bold(;
+        println!("\n{}", "Test Results".bold);
         println!("{}", "=".repeat(50;
 
         // Summary stats
@@ -286,14 +286,14 @@ impl TestRunner {
 
         // Failed tests details
         if summary.failed > 0 {
-            println!("\n{}", "Failed Tests:".red().bold(;
+            println!("\n{}", "Failed Tests:".red().bold);
             for (package, error) in &summary.failures {
-                println!("  {} {}", "❌".red(), package.red(;
+                println!("  {} {}", "❌".red(), package.red);
                 if let Some(err) = error {
                     // Show first few lines of error
                     let lines: Vec<&str> = err.lines().take(3).collect();
                     for line in lines {
-                        println!("     {}", line.dimmed(;
+                        println!("     {}", line.dimmed);
                     }
                 }
             }
@@ -301,9 +301,9 @@ impl TestRunner {
 
         // Skipped tests
         if summary.skipped > 0 {
-            println!("\n{}", "Skipped Tests:".yellow().bold(;
+            println!("\n{}", "Skipped Tests:".yellow().bold);
             for (package, reason) in &summary.skipped_tests {
-                println!("  {} {} - {}", "⚠".yellow(), package, reason.dimmed(;
+                println!("  {} {} - {}", "⚠".yellow(), package, reason.dimmed);
             }
         }
     }

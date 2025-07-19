@@ -892,7 +892,7 @@ mod tests {
     #[test]
     fn test_handle_conversion() {
         let handle: OwnHandle<u32> = OwnHandle::new(123, 1;
-        let value = handle.to_value(;
+        let value = handle.to_value);
         
         assert!(matches!(value, Value::Own(123);
         

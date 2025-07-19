@@ -175,11 +175,11 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
 
 // Serialization and deserialization functions for ComponentValue
 pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<u8>, Error> {
-    let common_type = value.get_type(;
+    let common_type = value.get_type);
     let format_type = convert_common_to_format_valtype(&common_type;
 
     // Serialize the value based on its type
-    let mut buffer = Vec::new(;
+    let mut buffer = Vec::new);
 
     match value {
         ComponentComponentValue::Bool(b) => {
@@ -192,28 +192,28 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
             buffer.push(*v);
         }
         ComponentComponentValue::S16(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes(;
+            buffer.extend_from_slice(&v.to_le_bytes);
         }
         ComponentComponentValue::U16(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes(;
+            buffer.extend_from_slice(&v.to_le_bytes);
         }
         ComponentComponentValue::S32(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes(;
+            buffer.extend_from_slice(&v.to_le_bytes);
         }
         ComponentComponentValue::U32(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes(;
+            buffer.extend_from_slice(&v.to_le_bytes);
         }
         ComponentComponentValue::S64(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes(;
+            buffer.extend_from_slice(&v.to_le_bytes);
         }
         ComponentComponentValue::U64(v) => {
-            buffer.extend_from_slice(&v.to_le_bytes(;
+            buffer.extend_from_slice(&v.to_le_bytes);
         }
         ComponentComponentValue::F32(v) => {
-            buffer.extend_from_slice(&v.to_bits().to_le_bytes(;
+            buffer.extend_from_slice(&v.to_bits().to_le_bytes);
         }
         ComponentComponentValue::F64(v) => {
-            buffer.extend_from_slice(&v.to_bits().to_le_bytes(;
+            buffer.extend_from_slice(&v.to_bits().to_le_bytes);
         }
         ComponentComponentValue::Char(c) => {
             let bytes = [
@@ -226,19 +226,19 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         }
         ComponentComponentValue::String(s) => {
             // String is encoded as length followed by UTF-8 bytes
-            let bytes = s.as_bytes(;
+            let bytes = s.as_bytes);
             let len = bytes.len() as u32;
-            buffer.extend_from_slice(&len.to_le_bytes(;
+            buffer.extend_from_slice(&len.to_le_bytes);
             buffer.extend_from_slice(bytes;
         }
         ComponentComponentValue::List(items) => {
             // Serialize list items
             let count = items.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes(;
+            buffer.extend_from_slice(&count.to_le_bytes);
 
             // If there are items, use the first item to determine the type
             if let Some(first_item) = items.first() {
-                let item_type = first_item.get_type(;
+                let item_type = first_item.get_type);
                 let format_type = convert_common_to_format_valtype(&item_type;
 
                 // Serialize each item
@@ -251,14 +251,14 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         ComponentComponentValue::Record(fields) => {
             // Serialize the record fields
             let field_count = fields.len() as u32;
-            buffer.extend_from_slice(&field_count.to_le_bytes(;
+            buffer.extend_from_slice(&field_count.to_le_bytes);
 
             // Serialize each field
             for (name, value) in fields {
                 // Serialize the field name
-                let name_bytes = name.as_bytes(;
+                let name_bytes = name.as_bytes);
                 let name_len = name_bytes.len() as u32;
-                buffer.extend_from_slice(&name_len.to_le_bytes(;
+                buffer.extend_from_slice(&name_len.to_le_bytes);
                 buffer.extend_from_slice(name_bytes;
 
                 // Serialize the field value
@@ -269,7 +269,7 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         ComponentComponentValue::Tuple(items) => {
             // Serialize tuple items
             let count = items.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes(;
+            buffer.extend_from_slice(&count.to_le_bytes);
 
             // Serialize each item
             for item in items {
@@ -279,9 +279,9 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         }
         ComponentComponentValue::Variant(case_name, value_opt) => {
             // Serialize the case name
-            let name_bytes = case_name.as_bytes(;
+            let name_bytes = case_name.as_bytes);
             let name_len = name_bytes.len() as u32;
-            buffer.extend_from_slice(&name_len.to_le_bytes(;
+            buffer.extend_from_slice(&name_len.to_le_bytes);
             buffer.extend_from_slice(name_bytes;
 
             // Serialize presence flag for the value
@@ -295,9 +295,9 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         }
         ComponentComponentValue::Enum(variant) => {
             // Serialize the enum variant
-            let variant_bytes = variant.as_bytes(;
+            let variant_bytes = variant.as_bytes);
             let variant_len = variant_bytes.len() as u32;
-            buffer.extend_from_slice(&variant_len.to_le_bytes(;
+            buffer.extend_from_slice(&variant_len.to_le_bytes);
             buffer.extend_from_slice(variant_bytes;
         }
         ComponentComponentValue::Option(value_opt) => {
@@ -331,16 +331,16 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         }
         ComponentComponentValue::Handle(idx) => {
             // Serialize the handle index (from Own)
-            buffer.extend_from_slice(&idx.to_le_bytes(;
+            buffer.extend_from_slice(&idx.to_le_bytes);
         }
         ComponentComponentValue::Borrow(idx) => {
             // Serialize the borrow index
-            buffer.extend_from_slice(&idx.to_le_bytes(;
+            buffer.extend_from_slice(&idx.to_le_bytes);
         }
         ComponentComponentValue::Flags(flags) => {
             // Get the number of flags
             let count = flags.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes(;
+            buffer.extend_from_slice(&count.to_le_bytes);
 
             // Calculate the flag byte (up to 8 flags in a byte)
             let mut flag_byte: u8 = 0;
@@ -353,21 +353,21 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
 
             // Serialize each flag name
             for (name, _) in flags {
-                let name_bytes = name.as_bytes(;
+                let name_bytes = name.as_bytes);
                 let name_len = name_bytes.len() as u32;
-                buffer.extend_from_slice(&name_len.to_le_bytes(;
+                buffer.extend_from_slice(&name_len.to_le_bytes);
                 buffer.extend_from_slice(name_bytes;
             }
         }
         ComponentComponentValue::FixedList(items, size) => {
             // Serialize fixed list items
             let count = items.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes(;
+            buffer.extend_from_slice(&count.to_le_bytes);
             buffer.extend_from_slice(&size.to_le_bytes()); // Store the size
 
             // If there are items, use the first item to determine the type
             if let Some(first_item) = items.first() {
-                let item_type = first_item.get_type(;
+                let item_type = first_item.get_type);
                 let format_type = convert_common_to_format_valtype(&item_type;
 
                 // Serialize each item
@@ -380,7 +380,7 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
         ComponentComponentValue::ErrorContext(ctx) => {
             // Serialize error context items
             let count = ctx.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes(;
+            buffer.extend_from_slice(&count.to_le_bytes);
 
             // Serialize each context value
             for item in ctx {
@@ -442,7 +442,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         }
         ComponentComponentValue::String(s) => {
             // String is encoded as length followed by UTF-8 bytes
-            let bytes = s.as_bytes(;
+            let bytes = s.as_bytes);
             writer.write_u32_le(bytes.len() as u32)?;
             writer.write_all(bytes)?;
         }
@@ -462,7 +462,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
             // Serialize each field
             for (name, value) in fields {
                 // Serialize the field name
-                let name_bytes = name.as_bytes(;
+                let name_bytes = name.as_bytes);
                 writer.write_u32_le(name_bytes.len() as u32)?;
                 writer.write_all(name_bytes)?;
 
@@ -481,7 +481,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         }
         ComponentComponentValue::Variant(case_name, value_opt) => {
             // Serialize the case name
-            let name_bytes = case_name.as_bytes(;
+            let name_bytes = case_name.as_bytes);
             writer.write_u32_le(name_bytes.len() as u32)?;
             writer.write_all(name_bytes)?;
 
@@ -495,7 +495,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
         }
         ComponentComponentValue::Enum(variant) => {
             // Serialize the enum variant
-            let variant_bytes = variant.as_bytes(;
+            let variant_bytes = variant.as_bytes);
             writer.write_u32_le(variant_bytes.len() as u32)?;
             writer.write_all(variant_bytes)?;
         }
@@ -546,7 +546,7 @@ pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvid
 
             // Serialize each flag name
             for (name, _) in flags {
-                let name_bytes = name.as_bytes(;
+                let name_bytes = name.as_bytes);
                 writer.write_u32_le(name_bytes.len() as u32)?;
                 writer.write_all(name_bytes)?;
             }
@@ -758,7 +758,7 @@ pub fn deserialize_component_value(
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize Record";
             }
-            let mut values = Vec::new(;
+            let mut values = Vec::new);
             for (name, val_type) in fields {
                 let value = deserialize_component_value(&data[offset..], val_type)?;
                 values.push((name.clone(), value;
@@ -770,7 +770,7 @@ pub fn deserialize_component_value(
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize Tuple";
             }
-            let mut values = Vec::with_capacity(types.len(;
+            let mut values = Vec::with_capacity(types.len);
             for val_type in types {
                 let value = deserialize_component_value(&data[offset..], val_type)?;
                 values.push(value);
@@ -892,7 +892,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
 
             // Convert names to (String, bool) pairs based on the flag_byte
-            let mut flags = Vec::new(;
+            let mut flags = Vec::new);
             for (i, name) in names.iter().enumerate() {
                 if i < 8 {
                     // Only process up to 8 flags (one byte)
@@ -1239,11 +1239,11 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
 /// Serialize multiple component values
 pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<Vec<u8>, Error> {
-    let mut buffer = Vec::new(;
+    let mut buffer = Vec::new);
 
     // Write the number of values
     let count = values.len() as u32;
-    buffer.extend_from_slice(&count.to_le_bytes(;
+    buffer.extend_from_slice(&count.to_le_bytes);
 
     // Serialize each value
     for value in values {
@@ -1251,7 +1251,7 @@ pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<
 
         // Write the size of this value's bytes
         let size = value_bytes.len() as u32;
-        buffer.extend_from_slice(&size.to_le_bytes(;
+        buffer.extend_from_slice(&size.to_le_bytes);
 
         // Write the value bytes
         buffer.extend_from_slice(&value_bytes;
@@ -1446,7 +1446,7 @@ mod tests {
 
         for value in values {
             let encoded = serialize_component_value(&value).unwrap();
-            let format_type = convert_common_to_format_valtype(&value.get_type(;
+            let format_type = convert_common_to_format_valtype(&value.get_type);
             let decoded = deserialize_component_value(&encoded, &format_type).unwrap();
 
             // Only check bools since we only implemented deserialization for a subset of
@@ -1474,7 +1474,7 @@ mod tests {
         serialize_component_value_with_stream(&value, &mut writer, &handler).unwrap();
 
         // Read back
-        let position = writer.position(;
+        let position = writer.position);
         drop(writer); // Release mutable borrow
 
         let slice = handler.borrow_slice(0, position).unwrap();
@@ -1510,7 +1510,7 @@ mod tests {
         serialize_component_values_with_stream(&values, &mut writer, &handler).unwrap();
 
         // Read back
-        let position = writer.position(;
+        let position = writer.position);
         drop(writer); // Release mutable borrow
 
         let slice = handler.borrow_slice(0, position).unwrap();
@@ -1524,7 +1524,7 @@ mod tests {
             deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap();
 
         // Verify count
-        assert_eq!(values.len(), decoded.len(;
+        assert_eq!(values.len(), decoded.len);
 
         // Verify individual values
         assert_eq!(values[0], decoded[0];

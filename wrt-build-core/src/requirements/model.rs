@@ -352,7 +352,7 @@ impl RequirementRegistry {
             return 1.0; // 100% compliant if no requirements
         }
 
-        let total_score: f64 = self.requirements.iter().map(|r| r.compliance_score()).sum(;
+        let total_score: f64 = self.requirements.iter().map(|r| r.compliance_score()).sum);
 
         total_score / self.requirements.len() as f64
     }
@@ -365,14 +365,14 @@ impl RequirementRegistry {
             return 1.0;
         }
 
-        let total_score: f64 = asil_requirements.iter().map(|r| r.compliance_score()).sum(;
+        let total_score: f64 = asil_requirements.iter().map(|r| r.compliance_score()).sum);
 
         total_score / asil_requirements.len() as f64
     }
 
     /// Generate compliance report
     pub fn generate_compliance_report(&self) -> ComplianceReport {
-        let mut asil_compliance = HashMap::new(;
+        let mut asil_compliance = HashMap::new);
 
         for asil in &[
             AsilLevel::QM,
@@ -431,7 +431,7 @@ impl ComplianceReport {
 
     /// Format report as human-readable text
     pub fn format_human(&self) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         output.push_str(&format!("📊 Requirements Compliance Report\n";
         output.push_str(&format!("═══════════════════════════════\n\n";

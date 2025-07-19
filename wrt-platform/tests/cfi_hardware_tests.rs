@@ -11,7 +11,7 @@ use wrt_platform::{
 #[test]
 fn test_arm_bti_availability() {
     // Test BTI hardware detection
-    let bti_available = BranchTargetIdentification::is_available(;
+    let bti_available = BranchTargetIdentification::is_available);
 
     // On non-ARM64 platforms, BTI should not be available
     #[cfg(not(target_arch = "aarch64"))]
@@ -60,7 +60,7 @@ fn test_arm_bti_exception_levels() {
 #[test]
 fn test_riscv_cfi_availability() {
     // Test RISC-V CFI hardware detection
-    let cfi_available = ControlFlowIntegrity::is_available(;
+    let cfi_available = ControlFlowIntegrity::is_available);
 
     // On non-RISC-V platforms, CFI should not be available
     #[cfg(not(target_arch = "riscv64"))]
@@ -93,18 +93,18 @@ fn test_hardware_optimization_interface() {
     let bti = BranchTargetIdentification::new(BtiMode::Standard, BtiExceptionLevel::El1;
 
     // Test security level
-    let security_level = bti.security_level(;
+    let security_level = bti.security_level);
     assert!(
         matches!(security_level, SecurityLevel::High | SecurityLevel::Maximum),
         "BTI should provide high security level"
     ;
 
     // Test overhead estimation
-    let overhead = bti.estimated_overhead_percentage(;
+    let overhead = bti.estimated_overhead_percentage);
     assert!(overhead >= 0.0 && overhead <= 10.0, "BTI overhead should be reasonable (0-10%)");
 
     // Test description
-    let description = bti.description(;
+    let description = bti.description);
     assert!(description.contains("Branch Target Identification");
 }
 
@@ -114,18 +114,18 @@ fn test_cfi_hardware_optimization_interface() {
     let cfi = ControlFlowIntegrity::new(CfiExceptionMode::Synchronous;
 
     // Test security level
-    let security_level = cfi.security_level(;
+    let security_level = cfi.security_level);
     assert!(
         matches!(security_level, SecurityLevel::High | SecurityLevel::Maximum),
         "CFI should provide high security level"
     ;
 
     // Test overhead estimation
-    let overhead = cfi.estimated_overhead_percentage(;
+    let overhead = cfi.estimated_overhead_percentage);
     assert!(overhead >= 0.0 && overhead <= 15.0, "CFI overhead should be reasonable (0-15%)");
 
     // Test description
-    let description = cfi.description(;
+    let description = cfi.description);
     assert!(description.contains("Control Flow Integrity");
 }
 
@@ -134,7 +134,7 @@ fn test_bti_enable_disable() {
     let bti = BranchTargetIdentification::new(BtiMode::Standard, BtiExceptionLevel::El1;
 
     // Test enable operation
-    let enable_result = bti.enable(;
+    let enable_result = bti.enable);
 
     #[cfg(target_arch = "aarch64")]
     {
@@ -152,7 +152,7 @@ fn test_bti_enable_disable() {
     }
 
     // Test disable operation
-    let disable_result = bti.disable(;
+    let disable_result = bti.disable);
 
     #[cfg(target_arch = "aarch64")]
     {
@@ -175,7 +175,7 @@ fn test_cfi_enable_disable() {
     let cfi = ControlFlowIntegrity::new(CfiExceptionMode::Synchronous;
 
     // Test enable operation
-    let enable_result = cfi.enable(;
+    let enable_result = cfi.enable);
 
     #[cfg(target_arch = "riscv64")]
     {
@@ -193,7 +193,7 @@ fn test_cfi_enable_disable() {
     }
 
     // Test disable operation
-    let disable_result = cfi.disable(;
+    let disable_result = cfi.disable);
 
     #[cfg(target_arch = "riscv64")]
     {
@@ -227,7 +227,7 @@ fn test_cfi_configuration_combinations() {
         assert_eq!(bti.exception_level(), level;
 
         // Test that configuration is consistent
-        let description = bti.description(;
+        let description = bti.description);
         assert!(!description.is_empty();
     }
 
@@ -240,7 +240,7 @@ fn test_cfi_configuration_combinations() {
         assert_eq!(cfi.exception_mode(), mode;
 
         // Test that configuration is consistent
-        let description = cfi.description(;
+        let description = cfi.description);
         assert!(!description.is_empty();
     }
 }
@@ -281,7 +281,7 @@ fn test_x86_cet_placeholder() {
 #[test]
 fn test_cross_platform_cfi_detection() {
     // Test comprehensive CFI feature detection across platforms
-    let mut cfi_features = Vec::new(;
+    let mut cfi_features = Vec::new);
 
     if BranchTargetIdentification::is_available() {
         cfi_features.push("ARM BTI");
@@ -297,7 +297,7 @@ fn test_cross_platform_cfi_detection() {
 
     // At least one of these should work on any platform that supports CFI
     // (though none may be available in test environments)
-    let total_features = cfi_features.len(;
+    let total_features = cfi_features.len);
     assert!(total_features >= 0, "CFI feature detection should complete successfully");
 }
 

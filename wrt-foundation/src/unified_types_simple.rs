@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_platform_capacities_validation() {
-        let valid_caps = PlatformCapacities::default(;
+        let valid_caps = PlatformCapacities::default);
         assert!(valid_caps.validate();
 
         let invalid_caps = PlatformCapacities {
@@ -129,12 +129,12 @@ mod tests {
 
     #[test]
     fn test_capacities() {
-        let default_caps = DefaultTypes::capacities(;
+        let default_caps = DefaultTypes::capacities);
         assert_eq!(default_caps.small_capacity, 64;
         assert_eq!(default_caps.medium_capacity, 1024;
         assert_eq!(default_caps.large_capacity, 65536;
 
-        let embedded_caps = EmbeddedTypes::capacities(;
+        let embedded_caps = EmbeddedTypes::capacities);
         assert_eq!(embedded_caps.small_capacity, 16;
         assert_eq!(embedded_caps.medium_capacity, 128;
         assert_eq!(embedded_caps.large_capacity, 1024;

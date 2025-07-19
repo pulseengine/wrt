@@ -300,13 +300,13 @@ impl Clone for Memory {
             #[cfg(feature = "std")]
             {
                 // Use LargeMemoryProvider for consistency with struct definition
-                let new_provider = LargeMemoryProvider::default(;
+                let new_provider = LargeMemoryProvider::default);
                 SafeMemoryHandler::new(new_provider)
             }
             #[cfg(not(feature = "std"))]
             {
                 // Use LargeMemoryProvider for consistency with struct definition
-                let new_provider = LargeMemoryProvider::default(;
+                let new_provider = LargeMemoryProvider::default);
                 SafeMemoryHandler::new(new_provider)
             }
         };
@@ -328,7 +328,7 @@ impl Clone for Memory {
 
         #[cfg(not(feature = "std"))]
         let cloned_metrics = {
-            let guard = self.metrics.read(;
+            let guard = self.metrics.read);
             RwLock::new((*guard).clone()) // Assuming MemoryMetrics is Clone
         };
 
@@ -368,9 +368,9 @@ impl Default for Memory {
 
 impl wrt_foundation::traits::Checksummable for Memory {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.ty.limits.min.to_le_bytes(;
+        checksum.update_slice(&self.ty.limits.min.to_le_bytes);
         if let Some(max) = self.ty.limits.max {
-            checksum.update_slice(&max.to_le_bytes(;
+            checksum.update_slice(&max.to_le_bytes);
         }
     }
 }
@@ -451,13 +451,13 @@ impl Memory {
         // Create memory provider based on available features
         #[cfg(feature = "std")]
         let data_handler = {
-            let provider = LargeMemoryProvider::default(;
+            let provider = LargeMemoryProvider::default);
             SafeMemoryHandler::new(provider)
         };
 
         #[cfg(not(feature = "std"))]
         let data_handler = {
-            let provider = LargeMemoryProvider::default(;
+            let provider = LargeMemoryProvider::default);
             SafeMemoryHandler::new(provider)
         };
 
@@ -562,9 +562,9 @@ impl Memory {
     pub fn buffer(&self) -> Result<Vec<u8>> {
         // Use the SafeMemoryHandler to get data through a safe slice to ensure
         // memory integrity is verified during the operation
-        let data_size = self.data.size(;
+        let data_size = self.data.size);
         if data_size == 0 {
-            return Ok(Vec::new(;
+            return Ok(Vec::new);
         }
 
         // Get a safe slice over the entire memory
@@ -592,7 +592,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.peak_usage
         }
 
@@ -606,7 +606,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.access_count
         }
 
@@ -623,7 +623,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use write() method with WrtRwLock
-            let mut metrics = self.metrics.write(;
+            let mut metrics = self.metrics.write);
             metrics.access_count += 1;
             metrics.max_access_size = metrics.max_access_size.max(len;
             metrics.last_access_offset = offset;
@@ -632,7 +632,7 @@ impl Memory {
 
     /// Update the peak memory usage statistic
     fn update_peak_memory(&self) {
-        let current_size = self.size_in_bytes(;
+        let current_size = self.size_in_bytes);
 
         #[cfg(feature = "std")]
         {
@@ -652,7 +652,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use write() method with WrtRwLock
-            let mut metrics = self.metrics.write(;
+            let mut metrics = self.metrics.write);
             metrics.peak_usage = metrics.peak_usage.max(current_size;
         }
 
@@ -666,7 +666,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.max_access_size
         }
 
@@ -680,7 +680,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.unique_regions
         }
 
@@ -694,7 +694,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.last_access_offset
         }
 
@@ -708,7 +708,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.last_access_length
         }
 
@@ -750,7 +750,7 @@ impl Memory {
         }
 
         // Calculate the new size in bytes
-        let old_size = self.data.size(;
+        let old_size = self.data.size);
         let new_size = wasm_offset_to_usize(new_page_count)? * PAGE_SIZE;
 
         // Resize the underlying data
@@ -760,7 +760,7 @@ impl Memory {
         let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed;
 
         // Update peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(old_pages)
     }
@@ -782,12 +782,12 @@ impl Memory {
     pub fn read(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
         // Empty read is always successful
         if buffer.is_empty() {
-            return Ok((;
+            return Ok();
         }
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len(;
+        let size = buffer.len);
 
         // Track this access for profiling
         self.increment_access_count(offset_usize, size;
@@ -818,12 +818,12 @@ impl Memory {
     pub fn write(&mut self, offset: u32, buffer: &[u8]) -> Result<()> {
         // Empty write is always successful
         if buffer.is_empty() {
-            return Ok((;
+            return Ok();
         }
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len(;
+        let size = buffer.len);
         let end = offset_usize.checked_add(size).ok_or_else(|| {
             Error::memory_out_of_bounds("Memory write would overflow")
         })?;
@@ -840,7 +840,7 @@ impl Memory {
         self.data.write_data(offset_usize, buffer)?;
 
         // Update the peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(())
     }
@@ -915,7 +915,7 @@ impl Memory {
         }
 
         // Get current data size
-        let data_size = self.data.len(;
+        let data_size = self.data.len);
 
         // Get the last byte that would be accessed
         let end_offset = match offset.checked_add(len) {

@@ -255,7 +255,7 @@ impl FuelDynamicManager {
     pub fn rebalance_allocations(&mut self) -> Result<(), Error> {
         let total_active_tasks = self.system_load.total_active_tasks.load(Ordering::Acquire;
         if total_active_tasks == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Calculate total available fuel
@@ -370,9 +370,9 @@ impl FuelDynamicManager {
     }
 
     fn update_task_statistics(&self, history: &mut TaskExecutionHistory) {
-        let total_fuel: u64 = history.fuel_samples.iter().map(|s| s.fuel_consumed).sum(;
-        let total_polls: u32 = history.fuel_samples.iter().map(|s| s.poll_count).sum(;
-        let completed_count = history.fuel_samples.iter().filter(|s| s.completed).count(;
+        let total_fuel: u64 = history.fuel_samples.iter().map(|s| s.fuel_consumed).sum);
+        let total_polls: u32 = history.fuel_samples.iter().map(|s| s.poll_count).sum);
+        let completed_count = history.fuel_samples.iter().filter(|s| s.completed).count);
 
         if total_polls > 0 {
             history.avg_fuel_per_poll = total_fuel as f64 / total_polls as f64;
@@ -407,7 +407,7 @@ impl FuelDynamicManager {
 
     fn rebalance_fair_share(&mut self, total_available: u64, total_tasks: u32) -> Result<(), Error> {
         if total_tasks == 0 {
-            return Ok((;
+            return Ok();
         }
 
         let per_task_allocation = total_available / total_tasks as u64;
@@ -426,7 +426,7 @@ impl FuelDynamicManager {
     fn rebalance_priority_adaptive(&mut self, total_available: u64) -> Result<(), Error> {
         // Calculate priority weights
         let mut total_weight = 0.0;
-        let mut weights = Vec::new(;
+        let mut weights = Vec::new);
 
         for (id, quota) in self.component_quotas.iter() {
             let active = quota.active_tasks.load(Ordering::Acquire) as f64;
@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn test_dynamic_manager_creation() {
         let manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap();
-        let stats = manager.get_allocation_stats(;
+        let stats = manager.get_allocation_stats);
         assert_eq!(stats.reserve_fuel, 10000;
         assert_eq!(stats.policy, FuelAllocationPolicy::Adaptive;
     }
@@ -561,7 +561,7 @@ mod tests {
         assert!(emergency >= MIN_FUEL_ALLOCATION);
         
         // Check reserve was reduced
-        let stats = manager.get_allocation_stats(;
+        let stats = manager.get_allocation_stats);
         assert!(stats.reserve_fuel < 10000);
     }
 }

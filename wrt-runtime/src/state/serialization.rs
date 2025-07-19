@@ -118,7 +118,7 @@ pub fn create_state_section(
     header.extend_from_slice(STATE_MAGIC;
 
     // Version
-    header.extend_from_slice(&STATE_VERSION.to_le_bytes(;
+    header.extend_from_slice(&STATE_VERSION.to_le_bytes);
 
     // Section type
     header.push(section_type as u8);
@@ -128,7 +128,7 @@ pub fn create_state_section(
 
     // Original uncompressed size
     let uncompressed_size = data.len() as u32;
-    header.extend_from_slice(&uncompressed_size.to_le_bytes(;
+    header.extend_from_slice(&uncompressed_size.to_le_bytes);
 
     // Compress data
     let compressed_data = match compression_type {
@@ -138,10 +138,10 @@ pub fn create_state_section(
 
     // Serialized data size
     let compressed_size = compressed_data.len() as u32;
-    header.extend_from_slice(&compressed_size.to_le_bytes(;
+    header.extend_from_slice(&compressed_size.to_le_bytes);
 
     // Create complete section contents: header + compressed data
-    let mut section_data = Vec::with_capacity(header.len() + compressed_data.len(;
+    let mut section_data = Vec::with_capacity(header.len() + compressed_data.len);
     section_data.extend_from_slice(&header;
     section_data.extend_from_slice(&compressed_data;
 

@@ -14,7 +14,7 @@ mod serialization_tests {
     #[test]
     fn test_serialization_functions_return_unimplemented() -> Result<()> {
         // Test that serialization functions correctly return an "unimplemented" error
-        let engine = wrt::stackless::StacklessEngine::new(;
+        let engine = wrt::stackless::StacklessEngine::new);
         let result = serialization::serialize_to_json(&engine;
         assert!(result.is_err();
 

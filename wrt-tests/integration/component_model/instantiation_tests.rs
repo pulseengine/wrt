@@ -20,11 +20,11 @@ pub fn run_tests() -> TestResult {
 
 fn test_basic_instantiation() -> TestResult {
     // Create a minimal component
-    let component_factory = ComponentFactory::new(;
+    let component_factory = ComponentFactory::new);
     let component = component_factory.create_empty_component("test_component")?;
     
     // Test instantiation
-    let mut context = InstantiationContext::new(;
+    let mut context = InstantiationContext::new);
     let instance = component.instantiate(&mut context)?;
     
     assert_eq!(instance.component.name, "test_component";

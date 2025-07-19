@@ -199,7 +199,7 @@ pub fn create_memory_provider(
     }
 
     // Create a no_std provider with the maximum module size
-    let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default(;
+    let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default);
 
     // Write the bytes to the provider
     use wrt_foundation::safe_memory::Provider;
@@ -565,7 +565,7 @@ pub fn validate_module_no_alloc(bytes: &[u8], validator: ValidatorType) -> Resul
 
     // For Basic validation, we just check the header and section structure
     if validator == ValidatorType::Basic {
-        return Ok((;
+        return Ok();
     }
 
     // For Standard validation, check each section based on the WebAssembly

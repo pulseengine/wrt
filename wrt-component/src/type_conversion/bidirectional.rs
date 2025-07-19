@@ -515,7 +515,7 @@ pub fn runtime_to_format_extern_type(
                 (0..func_type.params.len()).map(|i| format!("param{}", i)).collect();
 
             // Create param_types manually to handle errors gracefully
-            let mut param_types = Vec::new(;
+            let mut param_types = Vec::new);
             for (i, value_type) in func_type.params.iter().enumerate() {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => {
@@ -526,7 +526,7 @@ pub fn runtime_to_format_extern_type(
             }
 
             // Create result_types manually to handle errors gracefully
-            let mut result_types = Vec::new(;
+            let mut result_types = Vec::new);
             for value_type in &func_type.results {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => result_types.push(format_val_type),
@@ -877,7 +877,7 @@ pub fn complete_types_to_format_extern_type(
                 (0..func_type.params.len()).map(|i| format!("param{}", i)).collect();
 
             // Create param_types manually to handle errors gracefully
-            let mut param_types = Vec::new(;
+            let mut param_types = Vec::new);
             for (i, value_type) in func_type.params.iter().enumerate() {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => {
@@ -888,7 +888,7 @@ pub fn complete_types_to_format_extern_type(
             }
 
             // Create result_types manually to handle errors gracefully
-            let mut result_types = Vec::new(;
+            let mut result_types = Vec::new);
             for value_type in &func_type.results {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => result_types.push(format_val_type),
@@ -965,7 +965,7 @@ pub fn complete_format_to_types_extern_type(
         FormatExternType::Function { params, results } => {
             // Convert parameter types - create an empty vector and then convert and add
             // each parameter
-            let mut param_types = Vec::new(;
+            let mut param_types = Vec::new);
             for (_, format_val_type) in params {
                 // First convert to WrtTypesValType, then to ValueType if needed
                 let types_val_type = convert_format_to_types_valtype(format_val_type;
@@ -983,7 +983,7 @@ pub fn complete_format_to_types_extern_type(
 
             // Convert result types - create an empty vector and then convert and add each
             // result
-            let mut result_types = Vec::new(;
+            let mut result_types = Vec::new);
             for format_val_type in results {
                 // First convert to WrtTypesValType, then to ValueType if needed
                 let types_val_type = convert_format_to_types_valtype(format_val_type;

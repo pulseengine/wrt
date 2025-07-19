@@ -43,7 +43,7 @@ impl HeapProvider {
     /// Create a new heap provider with specified capacity and verification level
     pub fn new_with_verification(capacity: usize, verification_level: VerificationLevel) -> Result<Self> {
         // Allocate on heap
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
         data.try_reserve_exact(capacity)
             .map_err(|_| Error::memory_error("Failed to allocate heap memory"))?;
         data.resize(capacity, 0;
@@ -83,7 +83,7 @@ impl Provider for HeapProvider {
         self.last_access_length.store(data.len(), Ordering::Relaxed;
         
         self.data[offset..offset + data.len()].copy_from_slice(data;
-        self.used = core::cmp::max(self.used, offset + data.len(;
+        self.used = core::cmp::max(self.used, offset + data.len);
         Ok(())
     }
     
@@ -199,7 +199,7 @@ impl Allocator for HeapProvider {
 
 impl Clone for HeapProvider {
     fn clone(&self) -> Self {
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
         data.try_reserve_exact(self.data.len())
             .expect("Failed to allocate for clone");
         data.extend_from_slice(&self.data;

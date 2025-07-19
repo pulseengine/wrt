@@ -91,7 +91,7 @@ impl<T> LockFreeMpscQueue<T> {
     /// Create a new empty MPSC queue
     #[cfg(feature = "std")]
     pub fn new() -> Self {
-        let stub = Box::new(Node::stub(;
+        let stub = Box::new(Node::stub);
         let stub_ptr = Box::as_ref(&stub) as *const Node<T> as *mut Node<T>;
 
         Self { head: AtomicPtr::new(stub_ptr), tail: AtomicPtr::new(stub_ptr), stub }
@@ -143,7 +143,7 @@ impl<T> LockFreeMpscQueue<T> {
             self.head.store(next, Ordering::Release;
 
             // Extract data from the old head
-            let data = (*next).data.take(;
+            let data = (*next).data.take);
 
             // Binary std/no_std choice
             if head != Box::as_ref(&self.stub) as *const Node<T> as *mut Node<T> {
@@ -212,7 +212,7 @@ impl LockFreeAllocator {
             (*current).next = next;
             current = next;
         }
-        (*current).next = core::ptr::null_mut(;
+        (*current).next = core::ptr::null_mut);
 
         Ok(Self {
             free_list: AtomicPtr::new(pool as *mut FreeBlock),
@@ -360,7 +360,7 @@ impl<T> PriorityInheritanceMutex<T> {
                     }
 
                     // Yield and retry (in real implementation, would use futex or similar)
-                    core::hint::spin_loop(;
+                    core::hint::spin_loop);
                 }
             }
         }
@@ -452,7 +452,7 @@ impl<T> AdvancedRwLock<T> {
         loop {
             // Check if writer is waiting or active
             if self.writer_waiting.load(Ordering::Acquire) {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
                 continue;
             }
 
@@ -460,7 +460,7 @@ impl<T> AdvancedRwLock<T> {
 
             // Check if writer is active
             if current & WRITER_MASK != 0 {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
                 continue;
             }
 
@@ -468,7 +468,7 @@ impl<T> AdvancedRwLock<T> {
             let new_count = (current & READER_MASK) + 1;
             if new_count > READER_MASK {
                 // Too many readers
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
                 continue;
             }
 
@@ -638,9 +638,9 @@ impl<T> WaitFreeSpscQueue<T> {
     /// Create queue with specified capacity (rounded up to power of 2)
     #[cfg(feature = "std")]
     pub fn new(capacity: usize) -> Self {
-        let capacity = capacity.next_power_of_two(;
+        let capacity = capacity.next_power_of_two);
         let buffer =
-            (0..capacity).map(|_| UnsafeCell::new(None)).collect::<Vec<_>>().into_boxed_slice(;
+            (0..capacity).map(|_| UnsafeCell::new(None)).collect::<Vec<_>>().into_boxed_slice);
 
         Self {
             buffer,
@@ -729,7 +729,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_mpsc_queue() {
-        let queue = LockFreeMpscQueue::new(;
+        let queue = LockFreeMpscQueue::new);
 
         // Test enqueue/dequeue
         queue.enqueue(42).unwrap();
@@ -757,7 +757,7 @@ mod tests {
         let ptr1 = allocator.allocate().unwrap();
         let ptr2 = allocator.allocate().unwrap();
 
-        assert_ne!(ptr1.as_ptr(), ptr2.as_ptr(;
+        assert_ne!(ptr1.as_ptr(), ptr2.as_ptr);
 
         // Binary std/no_std choice
         unsafe {
@@ -798,8 +798,8 @@ mod tests {
 
         // Test read locks
         {
-            let read1 = lock.read(;
-            let read2 = lock.read(;
+            let read1 = lock.read);
+            let read2 = lock.read);
             assert_eq!(*read1, 42;
             assert_eq!(*read2, 42;
             assert_eq!(lock.reader_count(), 2;
@@ -808,14 +808,14 @@ mod tests {
 
         // Test write lock
         {
-            let mut write = lock.write(;
+            let mut write = lock.write);
             *write = 84;
             assert!(lock.has_writer();
             assert_eq!(lock.reader_count(), 0;
         }
 
         // Verify write persisted
-        let read = lock.read(;
+        let read = lock.read);
         assert_eq!(*read, 84;
     }
 

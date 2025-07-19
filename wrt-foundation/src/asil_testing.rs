@@ -62,9 +62,9 @@ impl crate::traits::Checksummable for AsilTestMetadata {
         // Include ASIL level in checksum (as discriminant)
         (self.asil_level as u8).update_checksum(checksum;
         // Include string contents (not pointers) for stable checksums
-        checksum.update_slice(self.requirement_id.as_bytes(;
+        checksum.update_slice(self.requirement_id.as_bytes);
         (self.category as u8).update_checksum(checksum;
-        checksum.update_slice(self.description.as_bytes(;
+        checksum.update_slice(self.description.as_bytes);
     }
 }
 
@@ -121,7 +121,7 @@ fn init_test_registry() {
     if !REGISTRY_INIT.swap(true, Ordering::AcqRel) {
         unsafe {
             // Initialize with regular Vec
-            TEST_REGISTRY = Some(Vec::new(;
+            TEST_REGISTRY = Some(Vec::new);
         }
     }
 }
@@ -132,7 +132,7 @@ pub fn register_asil_test(metadata: AsilTestMetadata) {
     {
         let mut registry = TEST_REGISTRY.lock().expect("Failed to lock test registry");
         if registry.is_none() {
-            *registry = Some(Vec::new(;
+            *registry = Some(Vec::new);
         }
         if let Some(ref mut reg) = *registry {
             reg.push(metadata);
@@ -141,7 +141,7 @@ pub fn register_asil_test(metadata: AsilTestMetadata) {
 
     #[cfg(all(feature = "alloc", not(feature = "std")))]
     {
-        init_test_registry(;
+        init_test_registry);
         unsafe {
             if let Some(ref mut registry) = TEST_REGISTRY {
                 registry.push(metadata);
@@ -151,7 +151,7 @@ pub fn register_asil_test(metadata: AsilTestMetadata) {
 
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     {
-        init_test_registry(;
+        init_test_registry);
         unsafe {
             if let Some(ref mut registry) = TEST_REGISTRY {
                 // Find first empty slot
@@ -177,7 +177,7 @@ pub fn get_asil_tests() -> Vec<AsilTestMetadata> {
 
     #[cfg(all(feature = "alloc", not(feature = "std")))]
     {
-        init_test_registry(;
+        init_test_registry);
         unsafe {
             if let Some(ref registry) = TEST_REGISTRY {
                 registry.clone()
@@ -191,7 +191,7 @@ pub fn get_asil_tests() -> Vec<AsilTestMetadata> {
 /// Get all registered ASIL tests (no_std version)
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub fn get_asil_tests() -> [Option<AsilTestMetadata>; MAX_TESTS_NO_STD] {
-    init_test_registry(;
+    init_test_registry);
     unsafe {
         if let Some(ref registry) = TEST_REGISTRY {
             *registry
@@ -210,7 +210,7 @@ pub fn get_tests_by_asil(level: AsilLevel) -> Vec<AsilTestMetadata> {
 /// Get tests by ASIL level (no_std version)
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub fn get_tests_by_asil(level: AsilLevel) -> [Option<AsilTestMetadata>; MAX_TESTS_NO_STD] {
-    let all_tests = get_asil_tests(;
+    let all_tests = get_asil_tests);
     let mut result = [None; MAX_TESTS_NO_STD];
     let mut result_idx = 0;
 
@@ -236,7 +236,7 @@ pub fn get_tests_by_category(category: TestCategory) -> Vec<AsilTestMetadata> {
 pub fn get_tests_by_category(
     category: TestCategory,
 ) -> [Option<AsilTestMetadata>; MAX_TESTS_NO_STD] {
-    let all_tests = get_asil_tests(;
+    let all_tests = get_asil_tests);
     let mut result = [None; MAX_TESTS_NO_STD];
     let mut result_idx = 0;
 
@@ -255,8 +255,8 @@ pub fn get_tests_by_category(
 pub fn get_test_statistics() -> TestStatistics {
     #[cfg(any(feature = "std", feature = "alloc"))]
     {
-        let tests = get_asil_tests(;
-        let mut stats = TestStatistics::default(;
+        let tests = get_asil_tests);
+        let mut stats = TestStatistics::default);
 
         for test in tests {
             stats.total_count += 1;
@@ -284,8 +284,8 @@ pub fn get_test_statistics() -> TestStatistics {
 
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     {
-        let tests = get_asil_tests(;
-        let mut stats = TestStatistics::default(;
+        let tests = get_asil_tests);
+        let mut stats = TestStatistics::default);
 
         for test_opt in tests.iter() {
             if let Some(test) = test_opt {
@@ -468,7 +468,7 @@ mod tests {
         };
 
         register_asil_test(metadata.clone();
-        let tests = get_asil_tests(;
+        let tests = get_asil_tests);
 
         assert_eq!(tests.len(), 1;
         assert_eq!(tests[0], metadata;
@@ -538,7 +538,7 @@ mod tests {
     #[test]
     fn test_statistics_generation() {
         // This test relies on the example tests above being registered
-        let stats = get_test_statistics(;
+        let stats = get_test_statistics);
 
         // Should have at least the tests from this module
         assert!(stats.total_count >= 2);

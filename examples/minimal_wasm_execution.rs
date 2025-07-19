@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("1. Creating WRT Engine...";
     let mut engine = Engine::new()?;
     
-    println!("2. Loading WASM module ({} bytes)...", wasm_bytes.len(;
+    println!("2. Loading WASM module ({} bytes)...", wasm_bytes.len);
     let module = engine.load_module(wasm_bytes)?;
     
     println!("3. Instantiating module...";

@@ -11,7 +11,7 @@ use crate::nn::*;
 /// Property: Tensor dimension calculations never overflow
 #[kani::proof]
 fn verify_tensor_dimension_no_overflow() {
-    let dims: Vec<u32> = kani::any(;
+    let dims: Vec<u32> = kani::any);
     kani::assume(dims.len() > 0 && dims.len() <= 8); // Reasonable tensor rank limit
     
     for &dim in &dims {
@@ -22,7 +22,7 @@ fn verify_tensor_dimension_no_overflow() {
     match TensorDimensions::new(&dims) {
         Ok(tensor_dims) => {
             // If successful, num_elements should be calculable
-            let result = tensor_dims.checked_num_elements(;
+            let result = tensor_dims.checked_num_elements);
             kani::assert(result.is_ok(), "Valid dimensions should have calculable element count";
         }
         Err(_) => {
@@ -34,15 +34,15 @@ fn verify_tensor_dimension_no_overflow() {
 /// Property: Resource IDs never wrap around to reuse active IDs
 #[kani::proof]
 fn verify_resource_id_no_wraparound() {
-    let initial_id: u32 = kani::any(;
+    let initial_id: u32 = kani::any);
     kani::assume(initial_id < u32::MAX - 1000); // Leave room for operations
     
     let mut id_counter = initial_id;
-    let mut active_ids = std::collections::HashSet::new(;
+    let mut active_ids = std::collections::HashSet::new);
     
     // Simulate allocating and deallocating resources
     for _ in 0..100 {
-        let allocate: bool = kani::any(;
+        let allocate: bool = kani::any);
         
         if allocate && active_ids.len() < 50 {
             // Allocate new ID
@@ -65,9 +65,9 @@ fn verify_resource_id_no_wraparound() {
 /// Property: Model size limits are enforced
 #[kani::proof]
 fn verify_model_size_limits() {
-    let model_size: usize = kani::any(;
-    let capability = DynamicNNCapability::new(;
-    let limits = capability.resource_limits(;
+    let model_size: usize = kani::any);
+    let capability = DynamicNNCapability::new);
+    let limits = capability.resource_limits);
     
     let operation = NNOperation::Load {
         size: model_size,
@@ -93,16 +93,16 @@ fn verify_model_size_limits() {
 /// Property: Tensor memory allocation is bounded
 #[kani::proof]
 fn verify_tensor_memory_bounded() {
-    let dims: Vec<u32> = kani::any(;
+    let dims: Vec<u32> = kani::any);
     kani::assume(dims.len() > 0 && dims.len() <= 8;
     
-    let tensor_type: u8 = kani::any(;
+    let tensor_type: u8 = kani::any);
     kani::assume(tensor_type <= 8); // Valid tensor type range
     
     if let Ok(tensor_type) = TensorType::from_wit(tensor_type) {
         if let Ok(tensor_dims) = TensorDimensions::new(&dims) {
             if let Ok(num_elements) = tensor_dims.checked_num_elements() {
-                let size_bytes = num_elements.saturating_mul(tensor_type.size_bytes(;
+                let size_bytes = num_elements.saturating_mul(tensor_type.size_bytes);
                 
                 kani::assert(
                     size_bytes <= 1024 * 1024 * 1024, // 1GB max tensor
@@ -116,7 +116,7 @@ fn verify_tensor_memory_bounded() {
 /// Property: Capability verification is consistent
 #[kani::proof]
 fn verify_capability_consistency() {
-    let model_size: usize = kani::any(;
+    let model_size: usize = kani::any);
     kani::assume(model_size > 0 && model_size <= 500 * 1024 * 1024;
     
     let capability = BoundedNNCapability::new().unwrap();
@@ -179,8 +179,8 @@ fn verify_context_isolation() {
     // This would verify that execution contexts are properly isolated
     // and cannot access each other's data
     
-    let context_id1: u32 = kani::any(;
-    let context_id2: u32 = kani::any(;
+    let context_id1: u32 = kani::any);
+    let context_id2: u32 = kani::any);
     kani::assume(context_id1 != context_id2;
     
     // Property: Operations on context1 cannot affect context2
@@ -222,10 +222,10 @@ fn verify_error_categorization() {
 /// Property: Model validation prevents malformed inputs
 #[kani::proof]
 fn verify_model_validation() {
-    let model_data: Vec<u8> = kani::any(;
+    let model_data: Vec<u8> = kani::any);
     kani::assume(model_data.len() <= 1024); // Small test model
     
-    let encoding: u8 = kani::any(;
+    let encoding: u8 = kani::any);
     kani::assume(encoding <= 4); // Valid encoding range
     
     // If model is accepted, it must pass format validation
@@ -257,7 +257,7 @@ fn verify_resource_cleanup() {
     
     // Create and drop a resource
     {
-        let capability = DynamicNNCapability::new(;
+        let capability = DynamicNNCapability::new);
         // Resource is created
         kani::assert(true, "Resource created successfully");
     }

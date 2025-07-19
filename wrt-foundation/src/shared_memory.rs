@@ -156,18 +156,18 @@ impl Checksummable for MemoryType {
         match self {
             MemoryType::Linear { min, max } => {
                 checksum.update(0); // Linear type indicator
-                checksum.update_slice(&min.to_le_bytes(;
+                checksum.update_slice(&min.to_le_bytes);
                 if let Some(max_val) = max {
                     checksum.update(1); // Has max indicator
-                    checksum.update_slice(&max_val.to_le_bytes(;
+                    checksum.update_slice(&max_val.to_le_bytes);
                 } else {
                     checksum.update(0); // No max indicator
                 }
             }
             MemoryType::Shared { min, max } => {
                 checksum.update(1); // Shared type indicator
-                checksum.update_slice(&min.to_le_bytes(;
-                checksum.update_slice(&max.to_le_bytes(;
+                checksum.update_slice(&min.to_le_bytes);
+                checksum.update_slice(&max.to_le_bytes);
             }
         }
     }
@@ -332,7 +332,7 @@ impl SharedMemoryManager {
                 }
             }
 
-            let id = self.segments.len(;
+            let id = self.segments.len);
             self.segments.push(segment);
             self.stats.registered_segments += 1;
             Ok(id)
@@ -505,7 +505,7 @@ mod tests {
 
     #[test]
     fn test_shared_memory_manager() {
-        let mut manager = SharedMemoryManager::new(;
+        let mut manager = SharedMemoryManager::new);
 
         let segment1 = SharedMemorySegment::new(
             MemoryType::Shared { min: 1, max: 10 },

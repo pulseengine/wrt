@@ -168,7 +168,7 @@ mod tests {
         // Test valid function type creation using slices from arrays
         let params: [CoreValueType; 2] = [CoreValueType::I32, CoreValueType::I64];
         let results: [CoreValueType; 1] = [CoreValueType::F32];
-        let provider = TinyProvider::default(;
+        let provider = TinyProvider::default);
         let func_type = func_type::create(provider.clone(), &params, &results).unwrap();
 
         assert_eq!(func_type.params(), &[CoreValueType::I32, CoreValueType::I64];
@@ -191,6 +191,6 @@ mod tests {
         // assume it's small for demonstration if we wanted to test failure.
         // let too_many_params: [CoreValueType; 260] = [CoreValueType::I32;
         // 260]; // Example if MAX is 256 assert!(func_type::create(&
-        // too_many_params, &empty_results).is_err(;
+        // too_many_params, &empty_results).is_err);
     }
 }

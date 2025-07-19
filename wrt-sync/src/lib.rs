@@ -54,7 +54,7 @@ pub mod mutex;
 ///
 /// ```
 /// use wrt_sync::{prelude::*, WrtOnce};
-/// static SOME_STATIC: WrtOnce<Vec<i32>> = WrtOnce::new(;
+/// static SOME_STATIC: WrtOnce<Vec<i32>> = WrtOnce::new);
 /// fn main() {
 ///     let data = SOME_STATIC.get_or_init(|| vec![1,2,3];
 ///     assert_eq!(data, &vec![1,2,3];

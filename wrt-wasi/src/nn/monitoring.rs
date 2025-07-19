@@ -209,7 +209,7 @@ impl LogEntry {
     /// Format as human-readable string
     pub fn to_human_readable(&self) -> String {
         let timestamp = format_timestamp(self.timestamp;
-        let event_desc = self.event_description(;
+        let event_desc = self.event_description);
         
         let mut result = format!("[{}] {} [{}] {}", 
             timestamp, self.level, self.component, event_desc;
@@ -317,7 +317,7 @@ impl Logger {
             if let Ok(mut entries) = self.entries.lock() {
                 // Maintain maximum entry count
                 while entries.len() >= self.config.max_entries {
-                    entries.pop_front(;
+                    entries.pop_front);
                 }
                 
                 entries.push_back(entry.clone();
@@ -408,7 +408,7 @@ impl Logger {
     /// Clear all log entries
     pub fn clear(&self) {
         if let Ok(mut entries) = self.entries.lock() {
-            entries.clear(;
+            entries.clear);
         }
     }
     
@@ -443,7 +443,7 @@ pub struct LoggingStats {
 }
 
 /// Global logger instance
-static LOGGER: std::sync::OnceLock<Arc<Logger>> = std::sync::OnceLock::new(;
+static LOGGER: std::sync::OnceLock<Arc<Logger>> = std::sync::OnceLock::new);
 
 /// Initialize the global logger
 pub fn initialize_logger(config: LoggerConfig) -> Result<()> {
@@ -693,7 +693,7 @@ mod tests {
         };
         
         let entry = LogEntry::new(LogLevel::Info, EventType::Performance(event), "wasi-nn";
-        let json = entry.to_json(;
+        let json = entry.to_json);
         
         assert!(json.contains("\"level\":\"INFO\"");
         assert!(json.contains("\"component\":\"wasi-nn\"");
@@ -703,7 +703,7 @@ mod tests {
     
     #[test]
     fn test_logger_stats() {
-        let logger = Logger::new(;
+        let logger = Logger::new);
         
         let error_event = ErrorEvent::ValidationError {
             field: "model_size".to_string(),
@@ -714,7 +714,7 @@ mod tests {
         let entry = LogEntry::new(LogLevel::Critical, EventType::Error(error_event), "validation";
         logger.log(entry;
         
-        let stats = logger.get_stats(;
+        let stats = logger.get_stats);
         assert_eq!(stats.total_operations, 1;
         assert_eq!(stats.total_errors, 1;
         assert_eq!(stats.error_rate, 100.0;

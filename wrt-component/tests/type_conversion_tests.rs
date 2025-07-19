@@ -368,14 +368,14 @@ fn test_conversion_traits() {
         results: vec![FormatValType::S32],
     };
 
-    let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type(;
+    let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type);
     assert!(runtime_func.is_ok();
 
     // Test IntoFormatType for TypesExternType
     let func_type = TypesFuncType::new(vec![ValueType::I32], vec![ValueType::F32];
     let extern_type = TypesExternType::Function(func_type;
 
-    let format_type: Result<FormatExternType, _> = extern_type.into_format_type(;
+    let format_type: Result<FormatExternType, _> = extern_type.into_format_type);
     assert!(format_type.is_ok();
 }
 

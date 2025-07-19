@@ -39,7 +39,7 @@ mod budget_enforcement_integration_tests {
         })?;
 
         // Enable memory analysis
-        MemoryAnalyzer::enable(;
+        MemoryAnalyzer::enable);
 
         Ok(())
     }
@@ -80,7 +80,7 @@ mod budget_enforcement_integration_tests {
         // Each crate should have its own budget
         let crates = [CrateId::Runtime, CrateId::Component, CrateId::Decoder, CrateId::Format];
 
-        let mut providers = Vec::new(;
+        let mut providers = Vec::new);
 
         // Allocate from each crate
         for &crate_id in &crates {
@@ -121,7 +121,7 @@ mod budget_enforcement_integration_tests {
         let budget = stats.budget_limit;
 
         // Try to allocate more than the budget allows
-        let mut allocations = Vec::new(;
+        let mut allocations = Vec::new);
         let allocation_size = 65536; // 64KB chunks
 
         // Allocate until we hit the limit
@@ -163,7 +163,7 @@ mod budget_enforcement_integration_tests {
         init_test_env()?;
 
         // Migration providers should still be tracked
-        let provider = migration_provider::<1024>(;
+        let provider = migration_provider::<1024>);
         let vec = BoundedVec::<u8, 100, _>::new(provider)?;
 
         // Check that some allocation is tracked
@@ -190,7 +190,7 @@ mod budget_enforcement_integration_tests {
 
         // Test shared pool limits
         let pool_size = stats.total_size;
-        let mut shared_allocations = Vec::new(;
+        let mut shared_allocations = Vec::new);
 
         // Try to exhaust shared pool
         let chunk_size = 4096;
@@ -202,7 +202,7 @@ mod budget_enforcement_integration_tests {
         }
 
         // Verify we can't allocate more
-        let result = BudgetAwareProviderFactory::create_shared_provider::<4096>(;
+        let result = BudgetAwareProviderFactory::create_shared_provider::<4096>);
         assert!(result.is_err(), "Shared pool limit not enforced");
 
         Ok(())
@@ -213,7 +213,7 @@ mod budget_enforcement_integration_tests {
         init_test_env()?;
 
         // Allocate significant memory to trigger alerts
-        let mut providers = Vec::new(;
+        let mut providers = Vec::new);
 
         // Allocate 70% of Runtime budget
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime)?;
@@ -268,7 +268,7 @@ mod budget_enforcement_integration_tests {
         // Modern system: no unsafe memory extraction possible
         // let bad_vec = BoundedVec::<u32, 10, _>::new(bad_provider)?;
 
-        assert_eq!(vec1.capacity(), vec2.capacity(;
+        assert_eq!(vec1.capacity(), vec2.capacity);
 
         Ok(())
     }
@@ -326,7 +326,7 @@ mod budget_enforcement_integration_tests {
             // Re-initialize for platform
             init_test_env()?;
 
-            let discovery = PlatformDiscovery::new(;
+            let discovery = PlatformDiscovery::new);
             let caps = discovery.discover_extended()?;
 
             // Verify platform-appropriate limits
@@ -379,7 +379,7 @@ mod budget_enforcement_integration_tests {
         // This compiles but is deprecated
 
         // 2. Migration providers are tracked
-        let migration = migration_provider::<1024>(;
+        let migration = migration_provider::<1024>);
         let stats_before = BudgetAwareProviderFactory::get_global_stats()?;
         let _vec = BoundedVec::<u8, 100, _>::new(migration)?;
         let stats_after = BudgetAwareProviderFactory::get_global_stats()?;
@@ -387,7 +387,7 @@ mod budget_enforcement_integration_tests {
 
         // 3. Type constraints prevent misuse in generic contexts
         fn only_budget_provider<P: wrt_foundation::enforcement::BudgetProviderOnly>(p: P) {
-            let _ = p.crate_id(;
+            let _ = p.crate_id);
         }
 
         let good = BudgetProvider::<1024>::new(CrateId::Foundation)?;
@@ -424,7 +424,7 @@ mod budget_enforcement_integration_tests {
                         Ok(_provider) => {
                             success.fetch_add(1, Ordering::Relaxed;
                             // Hold provider briefly
-                            thread::yield_now(;
+                            thread::yield_now);
                         }
                         Err(_) => {
                             fail.fetch_add(1, Ordering::Relaxed;

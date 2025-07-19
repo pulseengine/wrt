@@ -302,11 +302,11 @@ impl ComponentExecutionEngine {
         // Pop the frame
         #[cfg(feature = "std")]
         {
-            self.call_stack.pop(;
+            self.call_stack.pop);
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let _ = self.call_stack.pop(;
+            let _ = self.call_stack.pop);
         }
 
         // Update state based on result
@@ -341,7 +341,7 @@ impl ComponentExecutionEngine {
             }
             #[cfg(not(any(feature = "std", )))]
             {
-                let mut name = wrt_foundation::bounded::BoundedString::new(;
+                let mut name = wrt_foundation::bounded::BoundedString::new);
                 let _ = name.push_str("func_";
                 name
             }
@@ -417,16 +417,16 @@ impl ComponentExecutionEngine {
     pub fn reset(&mut self) {
         #[cfg(feature = "std")]
         {
-            self.call_stack.clear(;
+            self.call_stack.clear);
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.call_stack.clear(;
+            self.call_stack.clear);
         }
 
         self.current_instance = None;
         self.state = ExecutionState::Ready;
-        self.resource_manager = ResourceLifecycleManager::new(;
+        self.resource_manager = ResourceLifecycleManager::new);
     }
 
     /// Get canonical ABI processor
@@ -462,7 +462,7 @@ impl ComponentExecutionEngine {
     /// Convert engine values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<crate::canonical_abi::ComponentValue>> {
-        let mut component_values = Vec::new(;
+        let mut component_values = Vec::new);
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
             component_values.push(component_value);

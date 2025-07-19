@@ -209,7 +209,7 @@ fn test_wast_file(path: &Path) -> Result<(), Error> {
 /// Load tests from the wast_passed.md file
 fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
     println!("Loading tests from wast_passed.md...";
-    let mut passing_tests = std::collections::HashSet::new(;
+    let mut passing_tests = std::collections::HashSet::new);
 
     // Get the path to the cargo manifest directory (wrt/)
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR";
@@ -229,7 +229,7 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
     }
 
     // Read file content
-    let mut content = String::new(;
+    let mut content = String::new);
     if let Ok(mut file) = std::fs::File::open(&passed_file) {
         if std::io::Read::read_to_string(&mut file, &mut content).is_err() {
             println!("Failed to read wast_passed.md file. No tests will be run.";
@@ -243,13 +243,13 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
     // Extract test paths from markdown file (format: "- `path/to/test.wast`")
     for line in content.lines() {
         if line.starts_with("- `") && line.contains("` - ") {
-            let path_str = line[3..line.find("` - ").unwrap()].trim(;
+            let path_str = line[3..line.find("` - ").unwrap()].trim);
             passing_tests.insert(PathBuf::from(path_str;
             println!("  Added test: {}", path_str;
         }
     }
 
-    println!("Loaded {} tests from wast_passed.md", passing_tests.len(;
+    println!("Loaded {} tests from wast_passed.md", passing_tests.len);
 
     // Another potential issue: relative paths in wast_passed.md are relative to the
     // workspace root Let's make sure we're using absolute paths by resolving
@@ -263,7 +263,7 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
 #[test]
 fn test_wast_files() -> Result<(), Error> {
     // Register WAST tests with the test registry
-    wast_test_runner::register_wast_tests(;
+    wast_test_runner::register_wast_tests);
 
     // Get the path to the cargo manifest directory (wrt/)
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR";
@@ -282,7 +282,7 @@ fn test_wast_files() -> Result<(), Error> {
         let external_dir = workspace_root.join("external/testsuite";
         if !external_dir.exists() {
             println!("No external testsuite found either. Skipping WAST tests.";
-            return Ok((;
+            return Ok();
         }
 
         return test_external_testsuite(&external_dir;
@@ -290,13 +290,13 @@ fn test_wast_files() -> Result<(), Error> {
 
     // Print the path and if it exists for debugging
     println!("Checking testsuite at path: {}", test_dir.display();
-    println!("Directory exists: {}", test_dir.exists(;
+    println!("Directory exists: {}", test_dir.exists);
 
     // Load the list of passing tests from wast_passed.md
-    let passing_tests = load_passing_tests(;
+    let passing_tests = load_passing_tests);
 
     // Create a new WAST test runner
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     // If there are no passing tests, run a small subset for testing
     if passing_tests.is_empty() {
@@ -353,7 +353,7 @@ fn test_wast_files() -> Result<(), Error> {
 fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
     println!("Testing external testsuite at: {}", testsuite_dir.display();
 
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     // Basic test files that should work with minimal implementation
     let basic_tests = [
@@ -410,7 +410,7 @@ fn run_basic_wast_tests(runner: &mut WastTestRunner, test_dir: &Path) -> Result<
 
     // List available files and pick a few basic ones
     if let Ok(entries) = fs::read_dir(test_dir) {
-        let mut available_files = Vec::new(;
+        let mut available_files = Vec::new);
         for entry in entries {
             if let Ok(entry) = entry {
                 if entry.path().extension().is_some_and(|ext| ext == "wast") {
@@ -420,10 +420,10 @@ fn run_basic_wast_tests(runner: &mut WastTestRunner, test_dir: &Path) -> Result<
         }
 
         // Sort and take first few files for basic testing
-        available_files.sort(;
+        available_files.sort);
         for path in available_files.iter().take(5) {
             tests_run += 1;
-            let file_name = path.file_name().unwrap().to_string_lossy(;
+            let file_name = path.file_name().unwrap().to_string_lossy);
             println!("Running basic test {}: {}", tests_run, file_name;
 
             match runner.run_wast_file(path) {

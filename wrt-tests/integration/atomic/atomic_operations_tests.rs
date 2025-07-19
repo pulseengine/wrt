@@ -280,7 +280,7 @@ mod tests {
             atomic_model.execute_atomic_operation(0, store_op.clone(), &[i])?;
         }
         
-        let metrics = atomic_model.get_performance_metrics(;
+        let metrics = atomic_model.get_performance_metrics);
         assert!(metrics.operations_per_second >= 0.0);
         assert!(metrics.average_operation_time >= 0.0);
         assert!(metrics.memory_utilization >= 0.0);
@@ -317,7 +317,7 @@ mod tests {
             let barrier = Arc::clone(&barrier);
             
             let handle = thread::spawn(move || -> Result<()> {
-                barrier.wait(;
+                barrier.wait);
                 
                 for i in 0..operations_per_thread {
                     let offset = (thread_id * operations_per_thread + i) * 4;
@@ -458,7 +458,7 @@ mod tests {
         )?;
         
         let num_operations = 10000;
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
         
         for i in 0..num_operations {
             let offset = (i % 1000) * 4; // Cycle through different memory locations
@@ -469,8 +469,8 @@ mod tests {
             atomic_model.execute_atomic_operation(0, store_op, &[i as u64])?;
         }
         
-        let duration = start_time.elapsed(;
-        let ops_per_second = num_operations as f64 / duration.as_secs_f64(;
+        let duration = start_time.elapsed);
+        let ops_per_second = num_operations as f64 / duration.as_secs_f64);
         
         println!("Atomic operations performance: {:.0} ops/sec", ops_per_second;
         assert!(ops_per_second > 1000.0)); // Should be reasonably fast

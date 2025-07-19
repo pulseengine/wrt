@@ -206,7 +206,7 @@ impl MemoryCapability for DynamicMemoryCapability {
             // Create raw provider without capability wrapping (we are the capability!)
             // Note: Direct provider creation is required here to avoid circular dependency
             // This is the lowest level of the memory system where capabilities are created
-            let mut provider = crate::safe_memory::NoStdProvider::<65536>::new(;
+            let mut provider = crate::safe_memory::NoStdProvider::<65536>::new);
             provider.resize(size)?;
             provider
         } else {

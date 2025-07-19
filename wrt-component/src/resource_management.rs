@@ -467,9 +467,9 @@ impl Default for ResourceData {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(ResourceHandle, ResourceHandle::default(;
-impl_basic_traits!(ResourceTypeId, ResourceTypeId::default(;
-impl_basic_traits!(ResourceData, ResourceData::default(;
+impl_basic_traits!(ResourceHandle, ResourceHandle::default);
+impl_basic_traits!(ResourceTypeId, ResourceTypeId::default);
+impl_basic_traits!(ResourceData, ResourceData::default);
 
 // Tests moved from resource_management_tests.rs
 #[cfg(test)]

@@ -100,7 +100,7 @@ pub struct LinuxLimitProvider;
 
 impl ComprehensiveLimitProvider for LinuxLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default(;
+        let mut limits = ComprehensivePlatformLimits::default);
         limits.platform_id = PlatformId::Linux;
         
         #[cfg(feature = "std")]
@@ -174,7 +174,7 @@ pub struct MacOsLimitProvider;
 
 impl ComprehensiveLimitProvider for MacOsLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default(;
+        let mut limits = ComprehensivePlatformLimits::default);
         limits.platform_id = PlatformId::MacOS;
         
         #[cfg(all(feature = "std", target_os = "macos"))]
@@ -325,7 +325,7 @@ mod tests {
     
     #[test]
     fn test_default_limits() {
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         assert_eq!(limits.platform_id, PlatformId::Unknown;
         assert!(limits.max_total_memory > 0);
         assert!(limits.max_wasm_linear_memory > 0);
@@ -346,7 +346,7 @@ mod tests {
     
     #[test]
     fn test_discoverer() {
-        let mut discoverer = PlatformLimitDiscoverer::new(;
+        let mut discoverer = PlatformLimitDiscoverer::new);
         let limits1 = discoverer.discover().unwrap();
         let limits2 = discoverer.discover().unwrap();
         

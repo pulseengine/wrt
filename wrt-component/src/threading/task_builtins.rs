@@ -210,7 +210,7 @@ impl Task {
     pub fn cancel(&mut self) {
         if self.status.is_active() {
             self.status = TaskStatus::Cancelled;
-            self.cancellation_token.cancel(;
+            self.cancellation_token.cancel);
         }
     }
 
@@ -321,12 +321,12 @@ impl TaskRegistry {
     pub fn cleanup_finished_tasks(&mut self) {
         #[cfg(feature = "std")]
         {
-            self.tasks.retain(|_, task| !task.status.is_finished(;
+            self.tasks.retain(|_, task| !task.status.is_finished);
         }
         #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, we need to collect keys first
-            let mut finished_keys = BoundedVec::<TaskId, MAX_TASKS>::new(;
+            let mut finished_keys = BoundedVec::<TaskId, MAX_TASKS>::new);
             for (id, task) in self.tasks.iter() {
                 if task.status.is_finished() {
                     let _ = finished_keys.push(*id);
@@ -354,7 +354,7 @@ impl TaskBuiltins {
         let mut registry_ref = TASK_REGISTRY.try_borrow_mut()
             .map_err(|_| Error::runtime_execution_error("Error occurred"
             ))?;
-        *registry_ref = Some(TaskRegistry::new(;
+        *registry_ref = Some(TaskRegistry::new);
         Ok(())
     }
 
@@ -393,12 +393,12 @@ impl TaskBuiltins {
     /// `task.start` canonical built-in
     /// Creates and starts a new task
     pub fn task_start() -> Result<TaskId> {
-        let task = Task::new(;
+        let task = Task::new);
         Self::with_registry_mut(|registry| {
             let id = registry.register_task(task)?;
             // Start the task immediately
             if let Some(task) = registry.get_task_mut(id) {
-                task.start(;
+                task.start);
             }
             Ok(id)
         })?
@@ -437,7 +437,7 @@ impl TaskBuiltins {
     pub fn task_cancel(task_id: TaskId) -> Result<()> {
         Self::with_registry_mut(|registry| {
             if let Some(task) = registry.get_task_mut(task_id) {
-                task.cancel(;
+                task.cancel);
                 Ok(())
             } else {
                 Err(Error::runtime_execution_error("Error occurred"))
@@ -496,7 +496,7 @@ impl TaskBuiltins {
     /// Cleanup finished tasks
     pub fn cleanup_finished_tasks() -> Result<()> {
         Self::with_registry_mut(|registry| {
-            registry.cleanup_finished_tasks(;
+            registry.cleanup_finished_tasks);
             Ok(())
         })?
     }
@@ -537,7 +537,7 @@ pub mod task_helpers {
         F: FnOnce(CancellationToken) -> Result<R>,
         R: Into<TaskReturn>,
     {
-        let token = CancellationToken::new(;
+        let token = CancellationToken::new);
         let task_id = TaskBuiltins::task_start()?;
         
         // Execute within cancellation scope
@@ -558,7 +558,7 @@ pub mod task_helpers {
     /// Wait for multiple tasks to complete
     #[cfg(feature = "std")]
     pub fn wait_for_tasks(task_ids: Vec<TaskId>) -> Result<Vec<Option<TaskReturn>>> {
-        let mut results = Vec::new(;
+        let mut results = Vec::new);
         for task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results.push(result);
@@ -630,8 +630,8 @@ mod tests {
 
     #[test]
     fn test_task_id_generation() {
-        let id1 = TaskId::new(;
-        let id2 = TaskId::new(;
+        let id1 = TaskId::new);
+        let id2 = TaskId::new);
         assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
@@ -658,18 +658,18 @@ mod tests {
         assert!(value_return.as_component_value().is_some();
         assert_eq!(value_return.as_component_value().unwrap(), &ComponentValue::I32(42;
 
-        let void_return = TaskReturn::void(;
+        let void_return = TaskReturn::void);
         assert!(void_return.is_void();
         assert!(void_return.as_component_value().is_none();
     }
 
     #[test]
     fn test_task_lifecycle() {
-        let mut task = Task::new(;
+        let mut task = Task::new);
         assert_eq!(task.status, TaskStatus::Pending;
         assert!(task.return_value.is_none();
 
-        task.start(;
+        task.start);
         assert_eq!(task.status, TaskStatus::Running;
 
         let return_value = TaskReturn::from_component_value(ComponentValue::Bool(true;
@@ -680,21 +680,21 @@ mod tests {
 
     #[test]
     fn test_task_cancellation() {
-        let mut task = Task::new(;
+        let mut task = Task::new);
         assert!(!task.is_cancelled();
 
-        task.start(;
-        task.cancel(;
+        task.start);
+        task.cancel);
         assert_eq!(task.status, TaskStatus::Cancelled;
         assert!(task.is_cancelled();
     }
 
     #[test]
     fn test_task_registry_operations() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         assert_eq!(registry.task_count(), 0;
 
-        let task = Task::new(;
+        let task = Task::new);
         let task_id = task.id;
         registry.register_task(task).unwrap();
         assert_eq!(registry.task_count(), 1;

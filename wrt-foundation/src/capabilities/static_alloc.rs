@@ -354,7 +354,7 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
             ;
         }
 
-        let buffer = self.region.buffer(;
+        let buffer = self.region.buffer);
         Ok(&buffer[offset..offset + len])
     }
 
@@ -369,7 +369,7 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
                 "Write range exceeds static memory region bounds";
         }
 
-        let buffer = self.region.buffer_mut(;
+        let buffer = self.region.buffer_mut);
         buffer[offset..offset + data.len()].copy_from_slice(data;
         Ok(())
     }

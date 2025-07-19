@@ -85,7 +85,7 @@ mod memory_budget_tests {
         let _ = memory_system_initializer::presets::production()?;
 
         // Enable memory analysis
-        MemoryAnalyzer::enable(;
+        MemoryAnalyzer::enable);
 
         // Generate health report
         let health = MemoryAnalyzer::generate_health_report()?;
@@ -136,7 +136,7 @@ mod memory_budget_tests {
         use wrt_foundation::memory_analysis::{MemoryReportBuilder, ReportFormat};
 
         let _ = memory_system_initializer::presets::production()?;
-        MemoryAnalyzer::enable(;
+        MemoryAnalyzer::enable);
 
         // Test different report formats
         let text_report = MemoryReportBuilder::new().format(ReportFormat::Text).build()?;

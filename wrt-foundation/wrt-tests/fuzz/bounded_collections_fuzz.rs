@@ -52,7 +52,7 @@ fn test_bounded_vec_property_invariants() {
                         let _ = vec.push(value);
                     }
                     BoundedVecOp::Pop => {
-                        let _ = vec.pop(;
+                        let _ = vec.pop);
                     }
                     BoundedVecOp::Get(index) => {
                         if index < vec.len() {
@@ -65,13 +65,13 @@ fn test_bounded_vec_property_invariants() {
                         }
                     }
                     BoundedVecOp::Clear => {
-                        vec.clear(;
+                        vec.clear);
                     }
                     BoundedVecOp::Reserve(additional) => {
                         let _ = vec.reserve(additional;
                     }
                     BoundedVecOp::Validate => {
-                        let _ = vec.validate(;
+                        let _ = vec.validate);
                     }
                 }
             };
@@ -81,7 +81,7 @@ fn test_bounded_vec_property_invariants() {
         }
         
         // Final validation should always succeed for properly used collections
-        let final_validation = vec.validate(;
+        let final_validation = vec.validate);
         assert!(final_validation.is_ok(), "Final validation failed for BoundedVec");
     }
 }
@@ -127,21 +127,21 @@ fn test_bounded_stack_property_invariants() {
                         let _ = stack.push(value);
                     }
                     BoundedStackOp::Pop => {
-                        let _ = stack.pop(;
+                        let _ = stack.pop);
                     }
                     BoundedStackOp::Peek => {
-                        let _ = stack.peek(;
+                        let _ = stack.peek);
                     }
                     BoundedStackOp::Clear => {
-                        stack.clear(;
+                        stack.clear);
                     }
                     BoundedStackOp::Validate => {
-                        let _ = stack.validate(;
+                        let _ = stack.validate);
                     }
                     BoundedStackOp::CheckCapacity => {
-                        let _ = stack.available_capacity(;
-                        let _ = stack.is_full(;
-                        let _ = stack.len(;
+                        let _ = stack.available_capacity);
+                        let _ = stack.is_full);
+                        let _ = stack.len);
                     }
                 }
             };
@@ -151,7 +151,7 @@ fn test_bounded_stack_property_invariants() {
         }
         
         // Final validation should always succeed for properly used collections
-        let final_validation = stack.validate(;
+        let final_validation = stack.validate);
         assert!(final_validation.is_ok(), "Final validation failed for BoundedStack");
     }
 }

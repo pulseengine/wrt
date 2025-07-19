@@ -408,10 +408,10 @@ mod tests {
         futex.set(0;
 
         // Test wake operations
-        let result = futex.wake_one(;
+        let result = futex.wake_one);
         assert!(result.is_ok();
 
-        let result = futex.wake_all(;
+        let result = futex.wake_all);
         assert!(result.is_ok();
     }
 

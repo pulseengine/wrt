@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn test_complex_type_conversion() {
         // Create a registry with default conversions
-        let registry = TypeConversionRegistry::with_defaults(;
+        let registry = TypeConversionRegistry::with_defaults);
 
         // Create a complex nested type
         let format_type = FormatValType::Record(vec![
@@ -92,7 +92,7 @@ mod tests {
         let types_val_via_bidirectional = format_valtype_to_types_valtype(&format_val;
         
         // Use registry conversion
-        let registry = TypeConversionRegistry::with_defaults(;
+        let registry = TypeConversionRegistry::with_defaults);
         let types_val_via_registry = registry.convert::<FormatValType, TypesValType>(&format_val).unwrap();
         
         // They should produce the same result

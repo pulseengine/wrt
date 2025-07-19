@@ -22,10 +22,10 @@ use wrt_runtime::RuntimeInstance;
 
 fn main() -> Result<()> {
     // Create a mock component type
-    let component_type = ComponentType::new(;
+    let component_type = ComponentType::new);
 
     // Create a callback registry with a test function
-    let mut registry = CallbackRegistry::new(;
+    let mut registry = CallbackRegistry::new);
     registry.register_host_function(
         "test",
         "double",
@@ -42,10 +42,10 @@ fn main() -> Result<()> {
     // Create a firewall interceptor
     let firewall = FirewallBuilder::new(false)
         .allow_function("component", "test::double", "test.double")
-        .build(;
+        .build);
 
     // Create a statistics interceptor
-    let stats = StatisticsStrategy::new(;
+    let stats = StatisticsStrategy::new);
     let stats_rc = Arc::new(stats;
 
     // Create an interceptor and add strategies

@@ -20,14 +20,14 @@ fn main() -> Result<()> {
         0x0b                                              // End
     ];
     
-    println!("1. Parsing WASM module ({} bytes)...", wasm_bytes.len(;
+    println!("1. Parsing WASM module ({} bytes)...", wasm_bytes.len);
     
     // Parse WASM format using the decoder  
     let format_module = wrt_decoder::decode_module(wasm_bytes)?;
     println!("✓ Module parsed successfully";
-    println!("  - {} function types", format_module.types.len(;
-    println!("  - {} functions", format_module.functions.len(;
-    println!("  - {} exports", format_module.exports.len(;
+    println!("  - {} function types", format_module.types.len);
+    println!("  - {} functions", format_module.functions.len);
+    println!("  - {} exports", format_module.exports.len);
     
     // Convert to runtime module
     println!("\n2. Converting to runtime module...";

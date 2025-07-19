@@ -198,7 +198,7 @@ impl TomlResourceLimits {
 /// Parse memory size with optional suffix (K, M, G)
 #[cfg(feature = "std")]
 fn parse_memory_size(s: &str) -> Result<u64, Error> {
-    let s = s.trim(;
+    let s = s.trim);
     if s.is_empty() {
         return Err(Error::parse_error("Empty memory size";
     }

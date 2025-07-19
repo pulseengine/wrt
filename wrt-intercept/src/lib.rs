@@ -608,7 +608,7 @@ impl LinkInterceptor {
         serialized_data: &[u8],
         modifications: &[Modification],
     ) -> Result<Vec<u8>> {
-        let mut modified_data = serialized_data.to_vec(;
+        let mut modified_data = serialized_data.to_vec);
 
         for modification in modifications {
             match modification {
@@ -616,14 +616,14 @@ impl LinkInterceptor {
                     // No modification needed
                 }
                 Modification::Replace { offset, data } => {
-                    let end_offset = offset + data.len(;
+                    let end_offset = offset + data.len);
                     if end_offset > modified_data.len() {
                         return Err(Error::runtime_execution_error("Replace range exceeds data length";
                     }
 
                     // Fixed version without borrowing issues
                     let start = *offset;
-                    let end = start + data.len(;
+                    let end = start + data.len);
                     modified_data[start..end].copy_from_slice(data;
                 }
                 Modification::Insert { offset, data } => {
@@ -635,7 +635,7 @@ impl LinkInterceptor {
                             "Insert offset exceeds data length";
                     }
 
-                    modified_data.splice(start..start, data.iter().cloned(;
+                    modified_data.splice(start..start, data.iter().cloned);
                 }
                 Modification::Remove { offset, length } => {
                     let start = *offset;
@@ -716,7 +716,7 @@ impl wrt_foundation::traits::Checksummable for Modification {
                 checksum.update_slice(&[0u8];
             },
             Modification::Replace { offset, data } => {
-                checksum.update_slice(&offset.to_le_bytes(;
+                checksum.update_slice(&offset.to_le_bytes);
                 checksum.update_slice(&[1u8]); // tag for Replace variant
                 #[cfg(feature = "std")]
                 checksum.update_slice(data;
@@ -728,7 +728,7 @@ impl wrt_foundation::traits::Checksummable for Modification {
                 }
             },
             Modification::Insert { offset, data } => {
-                checksum.update_slice(&offset.to_le_bytes(;
+                checksum.update_slice(&offset.to_le_bytes);
                 checksum.update_slice(&[2u8]); // tag for Insert variant
                 #[cfg(feature = "std")]
                 checksum.update_slice(data;
@@ -740,8 +740,8 @@ impl wrt_foundation::traits::Checksummable for Modification {
                 }
             },
             Modification::Remove { offset, length } => {
-                checksum.update_slice(&offset.to_le_bytes(;
-                checksum.update_slice(&length.to_le_bytes(;
+                checksum.update_slice(&offset.to_le_bytes);
+                checksum.update_slice(&length.to_le_bytes);
                 checksum.update_slice(&[3u8]); // tag for Remove variant
             },
         }

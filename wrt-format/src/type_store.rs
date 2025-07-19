@@ -81,7 +81,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> TypeStore<P> {
     
     /// Clear all stored types
     pub fn clear(&mut self) {
-        let _ = self.types.clear(;
+        let _ = self.types.clear);
     }
 }
 
@@ -146,7 +146,7 @@ mod tests {
     
     #[test]
     fn test_type_store_basic() {
-        let provider = DefaultMemoryProvider::default(;
+        let provider = DefaultMemoryProvider::default);
         let mut store = TypeStore::new(provider.clone()).unwrap();
         
         // Store a simple type
@@ -164,7 +164,7 @@ mod tests {
     
     #[test]
     fn test_type_builder() {
-        let provider = DefaultMemoryProvider::default(;
+        let provider = DefaultMemoryProvider::default);
         let mut store = TypeStore::new(provider.clone()).unwrap();
         let mut builder = TypeBuilder::new(&mut store, provider;
         

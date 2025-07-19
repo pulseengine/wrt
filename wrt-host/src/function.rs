@@ -290,7 +290,7 @@ mod tests {
         };
         let f2 = f.clone();
 
-        let mut target = (;
+        let mut target = );
 
         #[cfg(feature = "std")]
         let empty_args = vec![];
@@ -330,7 +330,7 @@ mod tests {
             }
         };
 
-        let mut target = (;
+        let mut target = );
 
         #[cfg(feature = "std")]
         let empty_args = vec![];

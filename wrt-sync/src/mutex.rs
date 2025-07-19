@@ -77,7 +77,7 @@ impl<T: ?Sized> WrtMutex<T> {
             .is_err()
         {
             // Hint to the CPU that we are spinning.
-            core::hint::spin_loop(;
+            core::hint::spin_loop);
         }
         WrtMutexGuard { mutex: self }
     }
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn test_mutex_creation() {
         let mutex = WrtMutex::new(42;
-        let guard = mutex.lock(;
+        let guard = mutex.lock);
         assert_eq!(*guard, 42;
     }
 
@@ -187,10 +187,10 @@ mod tests {
         
         let mutex = WrtMutex::new(vec![1, 2, 3];
         {
-            let mut guard = mutex.lock(;
+            let mut guard = mutex.lock);
             guard.push(4);
         }
-        let guard = mutex.lock(;
+        let guard = mutex.lock);
         assert_eq!(*guard, vec![1, 2, 3, 4];
     }
 
@@ -201,14 +201,14 @@ mod tests {
         
         let mutex = WrtMutex::new(String::from("test";
         {
-            let mut guard = mutex.lock(;
+            let mut guard = mutex.lock);
             guard.push_str("_1";
         }
         {
-            let mut guard = mutex.lock(;
+            let mut guard = mutex.lock);
             guard.push_str("_2";
         }
-        let guard = mutex.lock(;
+        let guard = mutex.lock);
         assert_eq!(*guard, "test_1_2";
     }
 
@@ -217,14 +217,14 @@ mod tests {
         // This test verifies that WrtMutex implements Send and Sync
         // by checking trait bounds (compile-time check)
         fn assert_send_sync<T: Send + Sync>() {}
-        assert_send_sync::<WrtMutex<i32>>(;
+        assert_send_sync::<WrtMutex<i32>>);
     }
 
     #[test]
     fn test_mutex_guard_drop() {
         let mutex = WrtMutex::new(42;
         {
-            let mut guard = mutex.lock(;
+            let mut guard = mutex.lock);
             *guard = 100;
         } // guard is dropped here, releasing the lock
         let guard = mutex.lock(); // Should be able to re-acquire lock
@@ -242,7 +242,7 @@ mod tests {
             let mutex_clone = Arc::clone(&mutex);
             let handle = thread::spawn(move || {
                 for _ in 0..1000 {
-                    let mut guard = mutex_clone.lock(;
+                    let mut guard = mutex_clone.lock);
                     *guard += 1;
                 }
             };
@@ -253,7 +253,7 @@ mod tests {
             handle.join().unwrap();
         }
 
-        let guard = mutex.lock(;
+        let guard = mutex.lock);
         assert_eq!(*guard, 10 * 1000;
     }
 }

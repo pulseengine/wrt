@@ -34,7 +34,7 @@
 //! use wrt_component::ComponentLinker;
 //!
 //! // Create WASI capabilities
-//! let mut capabilities = WasiCapabilities::minimal(;
+//! let mut capabilities = WasiCapabilities::minimal);
 //! capabilities.filesystem.add_allowed_path("/tmp";
 //! capabilities.environment.args_access = true;
 //!

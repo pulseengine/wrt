@@ -88,17 +88,17 @@ fuzz_target!(|input: FuzzInput| {
                     }
                 }
                 Operation::Size => {
-                    let _ = adapter.size(;
+                    let _ = adapter.size);
                 }
                 Operation::ByteSize => {
-                    let _ = adapter.byte_size(;
+                    let _ = adapter.byte_size);
                 }
                 Operation::Grow { pages } => {
                     let pages = std::cmp::min(*pages, 5); // Limit growth
                     let _ = adapter.grow(pages;
                 }
                 Operation::VerifyIntegrity => {
-                    let _ = adapter.verify_integrity(;
+                    let _ = adapter.verify_integrity);
                 }
                 Operation::CorruptMemory { offset, value } => {
                     // Only try corruption with full verification to test detection
@@ -119,7 +119,7 @@ fuzz_target!(|input: FuzzInput| {
                                 }
                                 
                                 // Check if verification detects the corruption
-                                let integrity_result = adapter.verify_integrity(;
+                                let integrity_result = adapter.verify_integrity);
                                 
                                 // With full verification, this should detect the corruption
                                 if integrity_result.is_ok() {
@@ -136,5 +136,5 @@ fuzz_target!(|input: FuzzInput| {
     }
     
     // Final validation
-    let _ = adapter.verify_integrity(;
+    let _ = adapter.verify_integrity);
 };

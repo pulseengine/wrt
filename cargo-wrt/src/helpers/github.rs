@@ -65,7 +65,7 @@ pub async fn post_safety_report_comment(
         return Err(anyhow::anyhow!("Not running in a PR context";
     }
 
-    let formatter = MarkdownFormatter::github(;
+    let formatter = MarkdownFormatter::github);
     let report_markdown = MarkdownReportGenerator::safety_report(report, &formatter)?;
 
     // Create sections for collapsible details
@@ -122,7 +122,7 @@ pub async fn post_requirements_comment(
         return Err(anyhow::anyhow!("Not running in a PR context";
     }
 
-    let formatter = MarkdownFormatter::github(;
+    let formatter = MarkdownFormatter::github);
     let matrix_markdown = MarkdownReportGenerator::requirements_matrix(requirements, &formatter)?;
 
     // For large matrices, truncate and provide a link
@@ -149,7 +149,7 @@ pub async fn post_documentation_comment(
         return Err(anyhow::anyhow!("Not running in a PR context";
     }
 
-    let formatter = MarkdownFormatter::github(;
+    let formatter = MarkdownFormatter::github);
     let report_markdown = MarkdownReportGenerator::documentation_report(report, &formatter)?;
 
     post_pr_comment(context, &report_markdown).await
@@ -173,7 +173,7 @@ async fn post_pr_comment(context: &GitHubContext, comment: &str) -> Result<()> {
         body: comment.to_string(),
     };
 
-    let client = reqwest::Client::new(;
+    let client = reqwest::Client::new);
     let response = client
         .post(&url)
         .header("Authorization", format!("token {}", context.token))
@@ -184,7 +184,7 @@ async fn post_pr_comment(context: &GitHubContext, comment: &str) -> Result<()> {
         .await
         .context("Failed to post GitHub comment")?;
 
-    let status = response.status(;
+    let status = response.status);
     if !status.is_success() {
         let error_text = response.text().await?;
         return Err(anyhow::anyhow!(
@@ -214,14 +214,14 @@ pub fn generate_workflow_summary(
     safety_report: Option<&SafetyReportData>,
     documentation_report: Option<&DocumentationReportData>,
 ) -> Result<String> {
-    let mut summary = String::new(;
+    let mut summary = String::new);
 
     summary.push_str("# WRT Verification Summary\n\n";
 
     // Requirements summary
     if let Some(reqs) = requirements {
-        let total = reqs.len(;
-        let implemented = reqs.iter().filter(|r| !r.implementations.is_empty()).count(;
+        let total = reqs.len);
+        let implemented = reqs.iter().filter(|r| !r.implementations.is_empty()).count);
         let coverage = if total > 0 { (implemented as f64 / total as f64) * 100.0 } else { 0.0 };
 
         summary.push_str(&format!(

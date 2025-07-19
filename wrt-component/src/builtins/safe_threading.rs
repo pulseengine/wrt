@@ -51,7 +51,7 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
         };
 
         // Extract function arguments
-        let function_args = args[1..].to_vec(;
+        let function_args = args[1..].to_vec);
 
         // Extract optional priority (if provided as second argument)
         let priority = if args.len() > 1 {
@@ -247,7 +247,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                 }
             }
             "stats" => {
-                let stats = self.thread_manager.get_stats(;
+                let stats = self.thread_manager.get_stats);
                 Ok(vec![
                     ComponentValue::U32(stats.total_threads as u32),
                     ComponentValue::U64(stats.pool_stats.total_spawned),
@@ -345,8 +345,8 @@ mod tests {
 
     #[test]
     fn test_safe_threading_handlers_creation() {
-        let executor = create_test_executor(;
-        let module = create_test_module(;
+        let executor = create_test_executor);
+        let module = create_test_module);
 
         let result = create_safe_threading_handlers(executor, module;
         assert!(result.is_ok();
@@ -357,8 +357,8 @@ mod tests {
 
     #[test]
     fn test_safe_spawn_handler() {
-        let executor = create_test_executor(;
-        let module = create_test_module(;
+        let executor = create_test_executor);
+        let module = create_test_module);
 
         let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
         let spawn_handler = &handlers[0];
@@ -377,8 +377,8 @@ mod tests {
 
     #[test]
     fn test_safe_status_handler() {
-        let executor = create_test_executor(;
-        let module = create_test_module(;
+        let executor = create_test_executor);
+        let module = create_test_module);
 
         let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
         let status_handler = &handlers[2];

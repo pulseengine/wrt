@@ -27,11 +27,11 @@ static MEMORY_INITIALIZED: AtomicBool = AtomicBool::new(false;
 
 /// ASIL-D safe initialization error storage
 /// ASIL-D safe error storage using atomic pointer instead of static mut
-static INIT_ERROR_PTR: core::sync::atomic::AtomicPtr<&'static str> = core::sync::atomic::AtomicPtr::new(core::ptr::null_mut(;
+static INIT_ERROR_PTR: core::sync::atomic::AtomicPtr<&'static str> = core::sync::atomic::AtomicPtr::new(core::ptr::null_mut);
 
 /// Global capability context for modern memory management
 #[cfg(feature = "std")]
-static GLOBAL_CAPABILITY_CONTEXT: OnceLock<MemoryCapabilityContext> = OnceLock::new(;
+static GLOBAL_CAPABILITY_CONTEXT: OnceLock<MemoryCapabilityContext> = OnceLock::new);
 
 #[cfg(not(feature = "std"))]
 static mut GLOBAL_CAPABILITY_CONTEXT: Option<MemoryCapabilityContext> = None;
@@ -196,7 +196,7 @@ macro_rules! memory_safe {
 #[cfg(feature = "ctor")]
 #[ctor::ctor]
 fn init_wrt_memory() {
-    drop(MemoryInitializer::initialize(;
+    drop(MemoryInitializer::initialize);
 }
 
 /// Manual initialization function for platforms without ctor
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_memory_initialization() {
-        MemoryInitializer::reset(;
+        MemoryInitializer::reset);
 
         assert!(!MemoryInitializer::is_initialized();
 
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_crate_initialization() {
-        MemoryInitializer::reset(;
+        MemoryInitializer::reset);
 
         init_crate_memory(CrateId::Component).unwrap();
 

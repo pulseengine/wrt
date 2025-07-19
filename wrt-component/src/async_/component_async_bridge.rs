@@ -165,7 +165,7 @@ impl ComponentAsyncBridge {
 
     /// Poll async tasks and advance execution
     pub fn poll_async_tasks(&mut self) -> Result<PollResult, Error> {
-        let mut result = PollResult::default(;
+        let mut result = PollResult::default);
 
         // Poll the fuel executor
         let tasks_polled = {
@@ -175,7 +175,7 @@ impl ComponentAsyncBridge {
         result.tasks_polled = tasks_polled;
 
         // Update component task states based on executor state
-        let mut completed_tasks = Vec::new(;
+        let mut completed_tasks = Vec::new);
         for (comp_task_id, exec_task_id) in self.task_mapping.iter() {
             let exec = self.executor.lock()?;
             if let Some(status) = exec.get_task_status(*exec_task_id) {
@@ -203,9 +203,9 @@ impl ComponentAsyncBridge {
 
         // Collect fuel statistics
         let exec = self.executor.lock()?;
-        let fuel_status = exec.get_global_fuel_status(;
+        let fuel_status = exec.get_global_fuel_status);
         result.total_fuel_consumed = fuel_status.consumed;
-        result.fuel_remaining = fuel_status.remaining(;
+        result.fuel_remaining = fuel_status.remaining);
 
         Ok(result)
     }
@@ -249,7 +249,7 @@ impl ComponentAsyncBridge {
                 if let Some(task) = tm.get_task(task_id) {
                     ComponentInstanceId::new(task.context.component_instance)
                 } else {
-                    return Ok((;
+                    return Ok();
                 }
             };
 

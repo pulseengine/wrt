@@ -49,11 +49,11 @@ pub fn verify_atomic_compare_and_swap() {
     let memory_size = any_memory_size(MAX_VERIFICATION_MEMORY;
     
     // Create memory provider (simplified for verification)
-    let provider = NoStdProvider::<1024>::default(;
+    let provider = NoStdProvider::<1024>::default);
     
     // Generate arbitrary values for testing (simplified verification)
-    let value1: u32 = kani::any(;
-    let value2: u32 = kani::any(;
+    let value1: u32 = kani::any);
+    let value2: u32 = kani::any);
     
     // Basic atomic-like properties verification (simplified)
     // In the absence of actual atomic operations, we verify memory consistency
@@ -74,11 +74,11 @@ pub fn verify_atomic_compare_and_swap() {
 #[cfg(kani)]
 pub fn verify_atomic_fetch_and_add() {
     let memory_size = any_memory_size(MAX_VERIFICATION_MEMORY;
-    let provider = NoStdProvider::<1024>::default(;
+    let provider = NoStdProvider::<1024>::default);
     
     // Generate arbitrary values
-    let initial_value: u32 = kani::any(;
-    let add_value: u32 = kani::any(;
+    let initial_value: u32 = kani::any);
+    let add_value: u32 = kani::any);
     
     // Assume reasonable bounds to prevent overflow
     kani::assume(initial_value <= u32::MAX / 2;
@@ -99,11 +99,11 @@ pub fn verify_atomic_fetch_and_add() {
 #[cfg(kani)]
 pub fn verify_mutex_mutual_exclusion() {
     // Simulate mutex-like behavior with sequential operations
-    let shared_data: u32 = kani::any(;
+    let shared_data: u32 = kani::any);
     
     // Simulate two sequential operations (simplified for verification)
-    let operation1_increment: u32 = kani::any(;
-    let operation2_increment: u32 = kani::any(;
+    let operation1_increment: u32 = kani::any);
+    let operation2_increment: u32 = kani::any);
     
     // Assume reasonable bounds
     kani::assume(operation1_increment <= 1000;
@@ -124,8 +124,8 @@ pub fn verify_mutex_mutual_exclusion() {
 /// readers while preventing writers during read operations.
 #[cfg(kani)]
 pub fn verify_rwlock_concurrent_reads() {
-    let shared_data: u32 = kani::any(;
-    let new_value: u32 = kani::any(;
+    let shared_data: u32 = kani::any);
+    let new_value: u32 = kani::any);
     
     // Simulate reader-writer behavior patterns
     // Multiple readers see consistent data
@@ -151,12 +151,12 @@ pub fn verify_rwlock_concurrent_reads() {
 #[cfg(kani)]
 pub fn verify_memory_ordering() {
     let memory_size = any_memory_size(MAX_VERIFICATION_MEMORY;
-    let provider = NoStdProvider::<1024>::default(;
+    let provider = NoStdProvider::<1024>::default);
     
     // Simulate ordering verification
     if memory_size >= 8 {
-        let value1: u32 = kani::any(;
-        let value2: u32 = kani::any(;
+        let value1: u32 = kani::any);
+        let value2: u32 = kani::any);
         
         // Simulate ordered operations
         let stored_value1 = value1;
@@ -177,8 +177,8 @@ pub fn verify_memory_ordering() {
 /// through consistent lock ordering.
 #[cfg(kani)]
 pub fn verify_deadlock_prevention() {
-    let data1: u32 = kani::any(;
-    let data2: u32 = kani::any(;
+    let data1: u32 = kani::any);
+    let data2: u32 = kani::any);
     
     // Simulate nested resource access patterns
     let resource1_value = data1;
@@ -213,7 +213,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     // Register simplified test versions of the concurrency proofs
     registry.register_test("atomic_cas_basic", || {
         // Basic memory consistency test
-        let provider = NoStdProvider::<1024>::default(;
+        let provider = NoStdProvider::<1024>::default);
         
         // Test basic provider properties
         assert!(provider.capacity() > 0);
@@ -231,7 +231,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("atomic_fetch_add_basic", || {
         // Basic arithmetic consistency test
-        let provider = NoStdProvider::<1024>::default(;
+        let provider = NoStdProvider::<1024>::default);
         
         assert!(provider.capacity() > 0);
         
@@ -280,7 +280,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("memory_ordering_basic", || {
         // Basic memory consistency test
-        let provider = NoStdProvider::<1024>::default(;
+        let provider = NoStdProvider::<1024>::default);
         
         assert!(provider.capacity() > 0);
         
@@ -310,54 +310,54 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for concurrency properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_atomic_compare_and_swap(;
-    verify_atomic_fetch_and_add(;
-    verify_mutex_mutual_exclusion(;
-    verify_rwlock_concurrent_reads(;
-    verify_memory_ordering(;
-    verify_deadlock_prevention(;
+    verify_atomic_compare_and_swap);
+    verify_atomic_fetch_and_add);
+    verify_mutex_mutual_exclusion);
+    verify_rwlock_concurrent_reads);
+    verify_memory_ordering);
+    verify_deadlock_prevention);
 }
 
 /// KANI harness for atomic compare-and-swap verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_atomic_compare_and_swap() {
-    verify_atomic_compare_and_swap(;
+    verify_atomic_compare_and_swap);
 }
 
 /// KANI harness for atomic fetch-and-add verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_atomic_fetch_and_add() {
-    verify_atomic_fetch_and_add(;
+    verify_atomic_fetch_and_add);
 }
 
 /// KANI harness for mutex mutual exclusion verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_mutex_mutual_exclusion() {
-    verify_mutex_mutual_exclusion(;
+    verify_mutex_mutual_exclusion);
 }
 
 /// KANI harness for RwLock concurrent reads verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_rwlock_concurrent_reads() {
-    verify_rwlock_concurrent_reads(;
+    verify_rwlock_concurrent_reads);
 }
 
 /// KANI harness for memory ordering verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_memory_ordering() {
-    verify_memory_ordering(;
+    verify_memory_ordering);
 }
 
 /// KANI harness for deadlock prevention verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_deadlock_prevention() {
-    verify_deadlock_prevention(;
+    verify_deadlock_prevention);
 }
 
 #[cfg(test)]
@@ -366,7 +366,7 @@ mod tests {
     
     #[test]
     fn test_concurrency_verification() {
-        let registry = TestRegistry::global(;
+        let registry = TestRegistry::global);
         let result = register_tests(registry;
         assert!(result.is_ok();
         assert_eq!(property_count(), 6;
@@ -374,7 +374,7 @@ mod tests {
     
     #[test]
     fn test_atomic_operations() {
-        let provider = NoStdProvider::<1024>::default(;
+        let provider = NoStdProvider::<1024>::default);
         
         // Test basic provider operations
         assert!(provider.capacity() > 0);

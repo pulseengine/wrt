@@ -874,7 +874,7 @@ mod tests {
             priority: Some(5),
         };
         
-        let parent_id = AdvancedThreadId::new(;
+        let parent_id = AdvancedThreadId::new);
         let mut parent = AdvancedThread::new(config.clone()).unwrap();
         parent.id = parent_id;
 
@@ -893,7 +893,7 @@ mod tests {
 
     #[test]
     fn test_advanced_thread_registry() {
-        let mut registry = AdvancedThreadRegistry::new(;
+        let mut registry = AdvancedThreadRegistry::new);
         assert_eq!(registry.thread_count(), 0);
 
         let config = ThreadSpawnConfig {

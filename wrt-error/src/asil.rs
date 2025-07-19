@@ -273,14 +273,14 @@ mod tests {
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     #[test]
     fn test_safety_monitor() {
-        let monitor = SafetyMonitor::new(;
+        let monitor = SafetyMonitor::new);
         assert_eq!(monitor.error_count(), 0;
 
         let error = Error::new(ErrorCategory::Memory, 4000, "Test error";
         monitor.record_error(&error;
         assert_eq!(monitor.error_count(), 1;
 
-        monitor.reset(;
+        monitor.reset);
         assert_eq!(monitor.error_count(), 0;
     }
 

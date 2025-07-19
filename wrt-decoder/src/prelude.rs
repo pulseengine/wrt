@@ -472,7 +472,7 @@ where
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         // For std mode, read all items without provider
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         // Read count first (assuming LEB128 u32 count prefix)
         let mut count_bytes = [0u8; 4];
         reader.read_exact(&mut count_bytes)?;
@@ -590,7 +590,7 @@ impl DecoderStringExt for String {
     }
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.as_bytes(;
+        checksum.update_slice(self.as_bytes);
     }
 
     fn serialized_size(&self) -> usize {

@@ -28,7 +28,7 @@
 //! use wrt_component::resource_management::{ResourceManager, ResourceType, ResourceHandle};
 //!
 //! // Create a resource manager
-//! let mut manager = ResourceManager::new(;
+//! let mut manager = ResourceManager::new);
 //!
 //! // Register a resource type
 //! let file_type = manager.register_resource_type("file")?;
@@ -516,8 +516,8 @@ impl ResourceTable {
     /// Clear all resources (for instance termination)
     pub fn clear_all(&mut self) {
         let handle_count = self.resources.len() as u64;
-        self.resources.clear(;
-        self.type_mappings.clear(;
+        self.resources.clear);
+        self.type_mappings.clear);
         self.stats.resources_dropped += handle_count;
         self.stats.active_resources = 0;
         self.stats.borrowed_resources = 0;
@@ -597,7 +597,7 @@ impl ResourceManager {
     pub fn remove_instance_table(&mut self, instance_id: InstanceId) -> Result<()> {
         if let Some(mut table) = self.instance_tables.remove(&instance_id) {
             // Clean up all resources
-            table.clear_all(;
+            table.clear_all);
             if self.stats.instances_managed > 0 {
                 self.stats.instances_managed -= 1;
             }
@@ -797,7 +797,7 @@ impl ResourceManager {
     /// Validate all resources
     pub fn validate_all_resources(&self) -> Result<()> {
         if self.config.validation_level == ResourceValidationLevel::None {
-            return Ok((;
+            return Ok();
         }
 
         for table in self.instance_tables.values() {
@@ -917,14 +917,14 @@ mod tests {
 
     #[test]
     fn test_resource_manager_creation() {
-        let manager = ResourceManager::new(;
+        let manager = ResourceManager::new);
         assert_eq!(manager.resource_types.len(), 0;
         assert_eq!(manager.stats.types_registered, 0;
     }
 
     #[test]
     fn test_resource_type_registration() {
-        let mut manager = ResourceManager::new(;
+        let mut manager = ResourceManager::new);
 
         let type_id = manager
             .register_resource_type("file".to_string(), "File handle".to_string(), true, true)
@@ -941,7 +941,7 @@ mod tests {
 
     #[test]
     fn test_instance_table_management() {
-        let mut manager = ResourceManager::new(;
+        let mut manager = ResourceManager::new);
 
         let result = manager.create_instance_table(1;
         assert!(result.is_ok();
@@ -957,7 +957,7 @@ mod tests {
 
     #[test]
     fn test_resource_creation_and_cleanup() {
-        let mut manager = ResourceManager::new(;
+        let mut manager = ResourceManager::new);
 
         // Register resource type
         let file_type = manager
@@ -986,7 +986,7 @@ mod tests {
 
     #[test]
     fn test_resource_borrowing() {
-        let mut manager = ResourceManager::new(;
+        let mut manager = ResourceManager::new);
 
         // Register borrowable resource type
         let file_type = manager
@@ -1022,7 +1022,7 @@ mod tests {
 
     #[test]
     fn test_resource_ownership_transfer() {
-        let mut manager = ResourceManager::new(;
+        let mut manager = ResourceManager::new);
 
         // Register resource type
         let file_type = manager
@@ -1069,7 +1069,7 @@ mod tests {
 
     #[test]
     fn test_resource_validation() {
-        let mut manager = ResourceManager::new(;
+        let mut manager = ResourceManager::new);
 
         // Register resource type
         let file_type = manager
@@ -1084,13 +1084,13 @@ mod tests {
         manager.create_resource(1, file_type, data).unwrap();
 
         // Validate all resources
-        let result = manager.validate_all_resources(;
+        let result = manager.validate_all_resources);
         assert!(result.is_ok();
     }
 
     #[test]
     fn test_garbage_collection() {
-        let mut manager = ResourceManager::new(;
+        let mut manager = ResourceManager::new);
 
         // Register resource type
         let file_type = manager

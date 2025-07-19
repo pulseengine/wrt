@@ -11,7 +11,7 @@ mod tests {
     fn run_wrtd(wasm_file: &str, fuel: Option<u64>, call: Option<&str>) -> (bool, String) {
         // Find the wrtd binary in the target directory from the workspace root
         let project_root =
-            PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_path_buf(;
+            PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_path_buf);
 
         let wrtd_path = project_root.join("target/debug/wrtd";
         println!("Using wrtd at: {}", wrtd_path.display();
@@ -29,9 +29,9 @@ mod tests {
         }
 
         let output = cmd.output().expect("Failed to execute wrtd");
-        let success = output.status.success(;
-        let output_str = String::from_utf8_lossy(&output.stdout).into_owned(;
-        let error_str = String::from_utf8_lossy(&output.stderr).into_owned(;
+        let success = output.status.success);
+        let output_str = String::from_utf8_lossy(&output.stdout).into_owned);
+        let error_str = String::from_utf8_lossy(&output.stderr).into_owned);
 
         if !error_str.is_empty() {
             println!("Error output: {}", error_str;
@@ -70,7 +70,7 @@ mod tests {
         // Execute with a high fuel limit and stats enabled
         // We'll use the standard run_wrtd function but enhance the Command with --stats
         let project_root =
-            PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_path_buf(;
+            PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).parent().unwrap().to_path_buf);
 
         let wrtd_path = project_root.join("target/debug/wrtd";
         println!("Using wrtd at: {}", wrtd_path.display();
@@ -83,9 +83,9 @@ mod tests {
         cmd.arg("--stats";
 
         let output = cmd.output().expect("Failed to execute wrtd");
-        let success = output.status.success(;
-        let output_str = String::from_utf8_lossy(&output.stdout).into_owned(;
-        let error_str = String::from_utf8_lossy(&output.stderr).into_owned(;
+        let success = output.status.success);
+        let output_str = String::from_utf8_lossy(&output.stdout).into_owned);
+        let error_str = String::from_utf8_lossy(&output.stderr).into_owned);
 
         if !error_str.is_empty() {
             println!("Error output: {}", error_str;

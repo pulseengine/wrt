@@ -142,12 +142,12 @@ fn test_atomic_wait_timeout() -> Result<()> {
     // Set initial value
     memory.atomic_store_i32(0, 42)?;
     
-    let start = std::time::Instant::now(;
+    let start = std::time::Instant::now);
     
     // Test wait with correct expected value but timeout
     let result = memory.atomic_wait32(0, 42, Some(10_000_000))?; // 10ms timeout
     
-    let elapsed = start.elapsed(;
+    let elapsed = start.elapsed);
     
     // Should timeout (return 2) and take approximately the timeout duration
     assert_eq!(result, 2;
@@ -191,7 +191,7 @@ fn test_atomic_bounds_checking() -> Result<()> {
     let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
     let mut memory = Memory::new(mem_type)?;
     
-    let memory_size = memory.size_in_bytes(;
+    let memory_size = memory.size_in_bytes);
     
     // Test access at the very end of memory (should fail)
     assert!(memory.atomic_load_i32((memory_size - 3) as u32).is_err();
@@ -214,8 +214,8 @@ fn test_atomic_bounds_checking() -> Result<()> {
 fn test_atomic_thread_manager_integration() -> Result<()> {
     use std::sync::Arc;
     
-    let config = ThreadPoolConfig::default(;
-    let limits = ThreadingLimits::default(;
+    let config = ThreadPoolConfig::default);
+    let limits = ThreadingLimits::default);
     let executor = Arc::new(|_function_id: u32, args: Vec<u8>| -> Result<Vec<u8>> {
         Ok(args) // Echo the arguments back
     };
@@ -231,7 +231,7 @@ fn test_atomic_thread_manager_integration() -> Result<()> {
     // Note: This might return different values depending on the implementation
     assert!(result == 0 || result == 1 || result == 2)); // Valid return codes
     
-    let stats = manager.get_stats(;
+    let stats = manager.get_stats);
     println!("Atomic-aware thread manager stats: {:?}", stats;
     
     Ok(())
@@ -253,7 +253,7 @@ fn test_concurrent_atomic_operations() -> Result<()> {
     const NUM_THREADS: usize = 4;
     const INCREMENTS_PER_THREAD: i32 = 1000;
     
-    let mut handles = Vec::new(;
+    let mut handles = Vec::new);
     
     // Spawn threads that increment the counter
     for _i in 0..NUM_THREADS {
@@ -338,26 +338,26 @@ fn benchmark_atomic_operations() -> Result<()> {
     
     // Benchmark atomic loads
     memory.atomic_store_i32(0, 42)?;
-    let start = std::time::Instant::now(;
+    let start = std::time::Instant::now);
     for _i in 0..NUM_OPERATIONS {
         let _value = memory.atomic_load_i32(0)?;
     }
-    let load_duration = start.elapsed(;
+    let load_duration = start.elapsed);
     
     // Benchmark atomic stores
-    let start = std::time::Instant::now(;
+    let start = std::time::Instant::now);
     for i in 0..NUM_OPERATIONS {
         memory.atomic_store_i32(0, i as i32)?;
     }
-    let store_duration = start.elapsed(;
+    let store_duration = start.elapsed);
     
     // Benchmark atomic RMW operations
     memory.atomic_store_i32(0, 0)?;
-    let start = std::time::Instant::now(;
+    let start = std::time::Instant::now);
     for _i in 0..NUM_OPERATIONS {
         memory.atomic_rmw_add_i32(0, 1)?;
     }
-    let rmw_duration = start.elapsed(;
+    let rmw_duration = start.elapsed);
     
     println!("Atomic operations benchmark:";
     println!("  Load:  {:?} ({:.2} ns/op)", load_duration, load_duration.as_nanos() as f64 / NUM_OPERATIONS as f64;
@@ -384,7 +384,7 @@ fn test_atomic_error_handling() -> Result<()> {
     assert!(memory.atomic_load_i64(4).is_err();
     
     // Out of bounds access
-    let memory_size = memory.size_in_bytes(;
+    let memory_size = memory.size_in_bytes);
     assert!(memory.atomic_load_i32(memory_size as u32).is_err();
     assert!(memory.atomic_load_i64(memory_size as u32).is_err();
     

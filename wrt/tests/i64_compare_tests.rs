@@ -8,7 +8,7 @@ use wrt::{
 
 #[test]
 fn test_direct_i64_comparison() -> Result<()> {
-    let mut frame = NullBehavior::default(;
+    let mut frame = NullBehavior::default);
 
     // Test i64.eq (equality)
     let mut values_eq_true = vec![Value::I64(100), Value::I64(100)];

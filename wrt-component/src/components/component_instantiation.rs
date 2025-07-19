@@ -26,7 +26,7 @@
 //! use wrt_component::component_instantiation::{ComponentLinker, InstanceConfig};
 //!
 //! // Create a linker for component composition
-//! let mut linker = ComponentLinker::new(;
+//! let mut linker = ComponentLinker::new);
 //!
 //! // Add a component with exports
 //! linker.add_component("math", &math_component_binary)?;
@@ -433,9 +433,9 @@ impl ComponentInstance {
     pub fn terminate(&mut self) {
         self.state = InstanceState::Terminated;
         // Cleanup resources
-        self.functions.clear(;
+        self.functions.clear);
         if let Some(memory) = &mut self.memory {
-            memory.clear(;
+            memory.clear);
         }
         // Clean up resource manager
         if let Some(resource_manager) = &mut self.resource_manager {
@@ -610,7 +610,7 @@ impl ComponentMemory {
 
     /// Clear memory (for cleanup)
     pub fn clear(&mut self) {
-        self.data.clear(;
+        self.data.clear);
         self.current_size = 0;
     }
 }
@@ -629,7 +629,7 @@ impl CanonicalMemory for ComponentMemory {
 
     fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len(;
+        let end = start + data.len);
 
         if end > self.data.len() {
             return Err(Error::memory_out_of_bounds("Memory write out of bounds";
@@ -707,7 +707,7 @@ mod tests {
 
     #[test]
     fn test_instance_creation() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let exports = vec![create_component_export(
             "add".to_string(),
             ExportType::Function(create_function_signature(
@@ -730,7 +730,7 @@ mod tests {
 
     #[test]
     fn test_instance_initialization() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let exports = vec![create_component_export(
             "add".to_string(),
             ExportType::Function(create_function_signature(
@@ -773,7 +773,7 @@ mod tests {
 
     #[test]
     fn test_memory_bounds_checking() {
-        let config = MemoryConfig::default(;
+        let config = MemoryConfig::default);
         let memory = ComponentMemory::new(0, config).unwrap();
 
         // Try to read beyond bounds
@@ -947,10 +947,10 @@ impl Default for ResolvedImport {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(ComponentFunction, ComponentFunction::default(;
-impl_basic_traits!(ComponentExport, ComponentExport::default(;
-impl_basic_traits!(ComponentImport, ComponentImport::default(;
-impl_basic_traits!(ResolvedImport, ResolvedImport::default(;
+impl_basic_traits!(ComponentFunction, ComponentFunction::default);
+impl_basic_traits!(ComponentExport, ComponentExport::default);
+impl_basic_traits!(ComponentImport, ComponentImport::default);
+impl_basic_traits!(ResolvedImport, ResolvedImport::default);
 
 // Tests moved from component_instantiation_tests.rs
 #[cfg(test)]
@@ -964,7 +964,7 @@ mod tests {
 
     #[test]
     fn test_instance_creation_with_exports() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let exports = vec![
             create_component_export(
                 "add".to_string(),
@@ -997,7 +997,7 @@ mod tests {
 
     #[test]
     fn test_instance_creation_with_imports() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let imports = vec![
             create_component_import(
                 "log".to_string(),
@@ -1030,7 +1030,7 @@ mod tests {
 
     #[test]
     fn test_instance_initialization() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1046,14 +1046,14 @@ mod tests {
 
         assert_eq!(instance.state, InstanceState::Initializing;
 
-        let result = instance.initialize(;
+        let result = instance.initialize);
         assert!(result.is_ok();
         assert_eq!(instance.state, InstanceState::Ready;
     }
 
     #[test]
     fn test_instance_function_call() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1079,7 +1079,7 @@ mod tests {
 
     #[test]
     fn test_instance_function_call_invalid_state() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1101,7 +1101,7 @@ mod tests {
 
     #[test]
     fn test_instance_function_call_not_found() {
-        let config = InstanceConfig::default(;
+        let config = InstanceConfig::default);
         let mut instance =
             ComponentInstance::new(6, "test_component".to_string(), config, vec![], vec![])
                 .unwrap();

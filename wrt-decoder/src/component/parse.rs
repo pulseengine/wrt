@@ -416,9 +416,9 @@ mod std_parsing {
                     let provider = crate::prelude::create_decoder_provider::<512>()?;
                     // Use standard Vec for std mode, explicit types for no_std
                     #[cfg(feature = "std")]
-                    let empty_params = Vec::new(;
+                    let empty_params = Vec::new);
                     #[cfg(feature = "std")]
-                    let empty_results = Vec::new(;
+                    let empty_results = Vec::new);
 
                     #[cfg(not(feature = "std"))]
                     let empty_params = {
@@ -1820,7 +1820,7 @@ mod std_parsing {
 
             // Check if there are nested namespaces or package information
             let provider = crate::prelude::create_decoder_provider::<1024>()?;
-            let mut nested = crate::prelude::Vec::new(;
+            let mut nested = crate::prelude::Vec::new);
             let mut package = None;
 
             // Read nested namespace flag if present
@@ -1958,7 +1958,7 @@ mod std_parsing {
                 let (nested_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut nested_names = Vec::new(;
+                let mut nested_names = Vec::new);
                 for _ in 0..nested_count {
                     let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
@@ -2048,7 +2048,7 @@ mod std_parsing {
 
             // Extract the value data
             let data_end = offset + data_size as usize;
-            let data = bytes[offset..data_end].to_vec(;
+            let data = bytes[offset..data_end].to_vec);
             offset = data_end;
 
             // Check for expression flag
@@ -2300,7 +2300,7 @@ mod std_parsing {
                 // Convert bytes to string and validate that it's a single Unicode scalar value
                 let value_string = core::str::from_utf8(value_str)
                     .map_err(|_| Error::parse_error("Invalid UTF-8 in char value "))?;
-                let mut chars = value_string.chars(;
+                let mut chars = value_string.chars);
                 let first_char = chars.next().ok_or_else(|| {
                     Error::from(kinds::ParseError(
                         "Empty string found when parsing char value",
@@ -2714,71 +2714,71 @@ mod no_std_parsing {
         }
 
         // Return empty parsed result - complex module parsing requires std
-        let empty_vec = create_empty_parse_vec::<Module>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Module>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     /// No_std parse core instance section with safety bounds
     pub fn parse_core_instance_section(_bytes: &[u8]) -> Result<(ParseVec<CoreInstance>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<CoreInstance>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<CoreInstance>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     /// No_std parse core type section with safety bounds
     pub fn parse_core_type_section(_bytes: &[u8]) -> Result<(ParseVec<CoreType>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<CoreType>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<CoreType>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     /// No_std parse component section with safety bounds
     pub fn parse_component_section(_bytes: &[u8]) -> Result<(ParseVec<Component>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<Component>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Component>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     /// No_std parse instance section with safety bounds
     pub fn parse_instance_section(_bytes: &[u8]) -> Result<(ParseVec<Instance>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<Instance>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Instance>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     /// Additional parsing functions required by other modules
     pub fn parse_component_type_section(_bytes: &[u8]) -> Result<(ParseVec<ComponentType>, usize)> {
-        let empty_vec = create_empty_parse_vec::<ComponentType>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<ComponentType>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     pub fn parse_import_section(_bytes: &[u8]) -> Result<(ParseVec<Import>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Import>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Import>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     pub fn parse_export_section(_bytes: &[u8]) -> Result<(ParseVec<Export>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Export>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Export>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     pub fn parse_start_section(_bytes: &[u8]) -> Result<(ParseVec<Start>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Start>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Start>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     pub fn parse_alias_section(_bytes: &[u8]) -> Result<(ParseVec<Alias>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Alias>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Alias>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     pub fn parse_canon_section(_bytes: &[u8]) -> Result<(ParseVec<Canon>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Canon>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Canon>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 
     pub fn parse_value_section(_bytes: &[u8]) -> Result<(ParseVec<Value>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Value>().unwrap_or_default(;
+        let empty_vec = create_empty_parse_vec::<Value>().unwrap_or_default);
         Ok((empty_vec, 0))
     }
 }

@@ -147,7 +147,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         use crate::module::{Function, WrtExpr};
         
         // Convert BoundedVec to slice for parsing
-        let bytecode_slice = body.as_slice(;
+        let bytecode_slice = body.as_slice);
         
         // For now, create empty function with proper types
         // TODO: Implement proper bytecode parsing with compatible types

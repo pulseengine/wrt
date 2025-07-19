@@ -207,7 +207,7 @@ mod macro_enforcement_tests {
 
         // This should compile but with deprecation warning
         #[allow(deprecated)]
-        let old_style = wrt_foundation::safe_memory::NoStdProvider::<1024>::default(;
+        let old_style = wrt_foundation::safe_memory::NoStdProvider::<1024>::default);
 
         // Can still be used (for now)
         #[allow(deprecated)]

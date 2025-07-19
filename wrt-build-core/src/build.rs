@@ -81,7 +81,7 @@ pub fn execute_command(
 /// Format a command for display
 #[cfg(feature = "std")]
 fn format_command(cmd: &Command) -> String {
-    let program = cmd.get_program().to_string_lossy(;
+    let program = cmd.get_program().to_string_lossy);
     let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect();
 
     if args.is_empty() {
@@ -131,7 +131,7 @@ pub mod xtask_port {
             return Err(BuildError::Test("Coverage tests failed".to_string();
         }
 
-        println!("{} Coverage analysis completed", "✅".bright_green(;
+        println!("{} Coverage analysis completed", "✅".bright_green);
         Ok(())
     }
 
@@ -152,7 +152,7 @@ pub mod xtask_port {
         open_docs: bool,
         output_dir: Option<String>,
     ) -> BuildResult<()> {
-        println!("{} Generating documentation...", "📚".bright_blue(;
+        println!("{} Generating documentation...", "📚".bright_blue);
 
         // 1. Generate Rust API documentation
         println!("  📖 Building Rust API documentation...";
@@ -282,7 +282,7 @@ pub mod xtask_port {
 
         let check_cmd = Command::new(python_cmd)
             .args(["-c", "import sphinx, myst_parser); print('OK')"])
-            .output(;
+            .output);
 
         match check_cmd {
             Ok(output) => {
@@ -411,7 +411,7 @@ pub mod xtask_port {
                     "xdg-open"
                 };
 
-                let _ = Command::new(open_cmd).arg(docs_path).spawn(;
+                let _ = Command::new(open_cmd).arg(docs_path).spawn);
                 println!("    🌐 Opened documentation at {}", docs_path;
                 break;
             }
@@ -422,7 +422,7 @@ pub mod xtask_port {
 
     /// Validate no_std compatibility (ported from xtask no_std_verification)
     pub fn verify_no_std_compatibility() -> BuildResult<()> {
-        println!("{} Verifying no_std compatibility...", "🔧".bright_blue(;
+        println!("{} Verifying no_std compatibility...", "🔧".bright_blue);
 
         // Build each crate with no_std features
         let no_std_crates = [
@@ -462,13 +462,13 @@ pub mod xtask_port {
             ;
         }
 
-        println!("{} All crates are no_std compatible", "✅".bright_green(;
+        println!("{} All crates are no_std compatible", "✅".bright_green);
         Ok(())
     }
 
     /// Run static analysis checks (ported from xtask ci_static_analysis)
     pub fn run_static_analysis() -> BuildResult<()> {
-        println!("{} Running static analysis...", "🔍".bright_blue(;
+        println!("{} Running static analysis...", "🔍".bright_blue);
 
         // Run clippy with basic settings (avoid strict settings that might fail)
         let mut clippy_cmd = Command::new("cargo";
@@ -514,13 +514,13 @@ pub mod xtask_port {
             println!("  ✅ Format check passed";
         }
 
-        println!("{} Static analysis completed", "✅".bright_green(;
+        println!("{} Static analysis completed", "✅".bright_green);
         Ok(())
     }
 
     /// Run advanced test suite (ported from xtask ci_advanced_tests)
     pub fn run_advanced_tests() -> BuildResult<()> {
-        println!("{} Running advanced test suite...", "🧪".bright_blue(;
+        println!("{} Running advanced test suite...", "🧪".bright_blue);
 
         // Run all tests with verbose output
         let mut cmd = Command::new("cargo";
@@ -556,23 +556,23 @@ pub mod xtask_port {
             }
         }
 
-        println!("{} Advanced tests passed", "✅".bright_green(;
+        println!("{} Advanced tests passed", "✅".bright_green);
         Ok(())
     }
 
     /// Run integrity checks (ported from xtask ci_integrity_checks)
     pub fn run_integrity_checks() -> BuildResult<()> {
-        println!("{} Running integrity checks...", "🔒".bright_blue(;
+        println!("{} Running integrity checks...", "🔒".bright_blue);
 
         // Check for unsafe code
         let unsafe_check =
-            Command::new("grep").args(["-r", "unsafe", "--include=*.rs", "src/"]).output(;
+            Command::new("grep").args(["-r", "unsafe", "--include=*.rs", "src/"]).output);
 
         if let Ok(unsafe_output) = unsafe_check {
             let unsafe_count = String::from_utf8_lossy(&unsafe_output.stdout)
                 .lines()
                 .filter(|line| !line.contains("//") && line.contains("unsafe"))
-                .count(;
+                .count);
 
             if unsafe_count > 0 {
                 println!("  ⚠️ Found {} unsafe code blocks", unsafe_count;
@@ -583,13 +583,13 @@ pub mod xtask_port {
 
         // Check for panic usage
         let panic_check =
-            Command::new("grep").args(["-r", "panic!", "--include=*.rs", "src/"]).output(;
+            Command::new("grep").args(["-r", "panic!", "--include=*.rs", "src/"]).output);
 
         if let Ok(panic_output) = panic_check {
             let panic_count = String::from_utf8_lossy(&panic_output.stdout)
                 .lines()
                 .filter(|line| !line.contains("//") && line.contains("panic!"))
-                .count(;
+                .count);
 
             if panic_count > 0 {
                 println!("  ⚠️ Found {} panic! macros", panic_count;
@@ -598,7 +598,7 @@ pub mod xtask_port {
             }
         }
 
-        println!("{} Integrity checks completed", "✅".bright_green(;
+        println!("{} Integrity checks completed", "✅".bright_green);
         Ok(())
     }
 
@@ -619,7 +619,7 @@ pub mod xtask_port {
         std::fs::create_dir_all(&temp_dir)
             .map_err(|e| BuildError::Build(format!("Failed to create temp docs dir: {}", e)))?;
 
-        let mut switcher_entries = Vec::new(;
+        let mut switcher_entries = Vec::new);
 
         // Get current branch to return to
         let current_branch_cmd = Command::new("git")
@@ -735,7 +735,7 @@ pub mod xtask_port {
                     let entry = entry.map_err(|e| {
                         BuildError::Build(format!("Failed to read dir entry: {}", e))
                     })?;
-                    let dest = version_dir.join(entry.file_name(;
+                    let dest = version_dir.join(entry.file_name);
 
                     std::fs::rename(entry.path(), dest)
                         .map_err(|e| BuildError::Build(format!("Failed to move file: {}", e)))?;
@@ -766,7 +766,7 @@ pub mod xtask_port {
     /// Build WRTD (WebAssembly Runtime Daemon) binaries (ported from xtask
     /// wrtd_build)
     pub fn build_wrtd_binaries() -> BuildResult<()> {
-        println!("{} Building WRTD binaries...", "🏗️".bright_blue(;
+        println!("{} Building WRTD binaries...", "🏗️".bright_blue);
 
         let wrtd_targets = [
             (
@@ -849,7 +849,7 @@ impl BuildSystem {
     /// Create a new build system instance
     pub fn new(workspace_root: PathBuf) -> BuildResult<Self> {
         let workspace = WorkspaceConfig::load(&workspace_root)?;
-        let config = BuildConfig::default(;
+        let config = BuildConfig::default);
 
         Ok(Self { workspace, config })
     }
@@ -870,11 +870,11 @@ impl BuildSystem {
 
     /// Build all components in the workspace
     pub fn build_all(&self) -> BuildResult<BuildResults> {
-        println!("{} Building all WRT components...", "🔨".bright_blue(;
+        println!("{} Building all WRT components...", "🔨".bright_blue);
 
-        let start_time = std::time::Instant::now(;
-        let mut artifacts = Vec::new(;
-        let mut warnings = Vec::new(;
+        let start_time = std::time::Instant::now);
+        let mut artifacts = Vec::new);
+        let mut warnings = Vec::new);
 
         // Build each crate in dependency order
         for crate_path in self.workspace.crate_paths() {
@@ -907,7 +907,7 @@ impl BuildSystem {
             }
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         println!(
             "{} Build completed in {:.2}s",
             "✅".bright_green(),
@@ -971,7 +971,7 @@ impl BuildSystem {
         &self,
         strict: bool,
     ) -> BuildResult<DiagnosticCollection> {
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
         let mut collection =
             DiagnosticCollection::new(self.workspace.root.clone(), "check".to_string();
 
@@ -1081,7 +1081,7 @@ impl BuildSystem {
             ;
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         Ok(collection.finalize(duration.as_millis() as u64))
     }
 
@@ -1115,7 +1115,7 @@ impl BuildSystem {
                 req_path.display()
             ;
             println!("  Use 'cargo-wrt init-requirements' to create a sample file";
-            return Ok((;
+            return Ok();
         }
 
         println!(
@@ -1126,7 +1126,7 @@ impl BuildSystem {
         let requirements = Requirements::load(&req_path)?;
         let results = requirements.verify(&self.workspace.root)?;
 
-        println!(;
+        println!);
         println!("📊 Requirements Summary:";
         println!("  Total requirements: {}", results.total_requirements;
         println!("  Verified requirements: {}", results.verified_requirements;
@@ -1136,26 +1136,26 @@ impl BuildSystem {
         ;
 
         if !results.missing_files.is_empty() {
-            println!(;
-            println!("{} Missing files:", "⚠️".bright_yellow(;
+            println!);
+            println!("{} Missing files:", "⚠️".bright_yellow);
             for file in &results.missing_files {
                 println!("  - {}", file;
             }
         }
 
         if !results.incomplete_requirements.is_empty() {
-            println!(;
-            println!("{} Incomplete requirements:", "❌".bright_red(;
+            println!);
+            println!("{} Incomplete requirements:", "❌".bright_red);
             for req in &results.incomplete_requirements {
                 println!("  - {}", req;
             }
         }
 
         if results.certification_readiness >= 80.0 {
-            println!(;
-            println!("{} Requirements verification passed!", "✅".bright_green(;
+            println!);
+            println!("{} Requirements verification passed!", "✅".bright_green);
         } else {
-            println!(;
+            println!);
             println!(
                 "{} Requirements need attention for certification",
                 "⚠️".bright_yellow()
@@ -1244,7 +1244,7 @@ impl BuildSystem {
         &self,
         package_name: &str,
     ) -> BuildResult<DiagnosticCollection> {
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
         let mut collection =
             DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string();
 
@@ -1312,13 +1312,13 @@ impl BuildSystem {
             ;
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         Ok(collection.finalize(duration.as_millis() as u64))
     }
 
     /// Build all components with diagnostic output
     pub fn build_all_with_diagnostics(&self) -> BuildResult<DiagnosticCollection> {
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
         let mut collection =
             DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string();
 
@@ -1386,7 +1386,7 @@ impl BuildSystem {
             ;
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         Ok(collection.finalize(duration.as_millis() as u64))
     }
 
@@ -1400,8 +1400,8 @@ impl BuildSystem {
             ;
         }
 
-        let start_time = std::time::Instant::now(;
-        let mut warnings = Vec::new(;
+        let start_time = std::time::Instant::now);
+        let mut warnings = Vec::new);
 
         let mut cmd = Command::new("cargo";
         cmd.arg("build").current_dir(&self.workspace.root;
@@ -1443,7 +1443,7 @@ impl BuildSystem {
             warnings.push(format!("Package {} has build warnings", package_name);
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
 
         Ok(BuildResults {
             success: true,
@@ -1459,8 +1459,8 @@ impl BuildSystem {
             println!("  {} Testing package: {}", "🧪".bright_cyan(), package_name;
         }
 
-        let start_time = std::time::Instant::now(;
-        let mut warnings = Vec::new(;
+        let start_time = std::time::Instant::now);
+        let mut warnings = Vec::new);
 
         let mut cmd = Command::new("cargo";
         cmd.arg("test").current_dir(&self.workspace.root;
@@ -1491,7 +1491,7 @@ impl BuildSystem {
             warnings.push(format!("Package {} has test warnings", package_name);
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
 
         Ok(BuildResults {
             success: true,
@@ -1504,7 +1504,7 @@ impl BuildSystem {
     /// Run clippy checks on the workspace
     pub fn run_clippy(&self) -> BuildResult<Vec<String>> {
         if self.config.verbose {
-            println!("  {} Running clippy checks...", "📎".bright_yellow(;
+            println!("  {} Running clippy checks...", "📎".bright_yellow);
         }
 
         let mut cmd = Command::new("cargo";
@@ -1534,7 +1534,7 @@ impl BuildSystem {
     /// Check code formatting
     pub fn check_formatting(&self) -> BuildResult<()> {
         if self.config.verbose {
-            println!("  {} Checking code formatting...", "🎨".bright_magenta(;
+            println!("  {} Checking code formatting...", "🎨".bright_magenta);
         }
 
         let mut cmd = Command::new("cargo";
@@ -1548,7 +1548,7 @@ impl BuildSystem {
             let stderr = String::from_utf8_lossy(&output.stderr;
             if stderr.contains("not installed") || stderr.contains("not found") {
                 println!("  ⚠️ cargo fmt not available, skipping format check";
-                return Ok((;
+                return Ok();
             }
             return Err(BuildError::Tool(format!(
                 "Code formatting check failed: {}",
@@ -1658,7 +1658,7 @@ mod tests {
 
     #[test]
     fn test_build_system_for_current_dir() {
-        let build_system = BuildSystem::for_current_dir(;
+        let build_system = BuildSystem::for_current_dir);
         assert!(build_system.is_ok();
     }
 

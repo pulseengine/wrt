@@ -78,7 +78,7 @@ impl TimeBoundedContext {
 
         #[cfg(feature = "std")]
         if let Some(time_limit_ms) = self.config.time_limit_ms {
-            let elapsed = self.start_time.elapsed(;
+            let elapsed = self.start_time.elapsed);
             let elapsed_ms = elapsed.as_millis() as u64;
 
             if elapsed_ms > time_limit_ms {
@@ -286,7 +286,7 @@ mod tests {
 
         let (result, outcome) = run_with_time_bounds(config, |ctx| {
             // Terminate execution
-            ctx.terminate(;
+            ctx.terminate);
 
             // This check should fail
             ctx.check_time_bounds()?;

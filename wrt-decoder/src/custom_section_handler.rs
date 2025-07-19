@@ -259,7 +259,7 @@ pub fn extract_custom_section(section_data: &[u8]) -> Result<(String, &[u8])> {
         ;
     }
 
-    let name_bytes = section_data[offset..offset + name_len as usize].to_vec(;
+    let name_bytes = section_data[offset..offset + name_len as usize].to_vec);
     let name = String::from_utf8(name_bytes)
         .map_err(|_| Error::parse_error("Invalid UTF-8 in custom section name"))?;
 
@@ -280,10 +280,10 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_custom_section_handler() {
-        let mut handler = CustomSectionHandler::new(;
+        let mut handler = CustomSectionHandler::new);
 
         // Create test branch hint data
-        let mut section = BranchHintSection::new(;
+        let mut section = BranchHintSection::new);
         let mut func_hints = FunctionBranchHints::new(0;
         func_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
         section.add_function_hints(func_hints).unwrap();
@@ -306,7 +306,7 @@ mod tests {
         handler.add_section("unknown", &[1, 2, 3, 4]).unwrap();
 
         assert_eq!(handler.section_count(), 2;
-        let names = handler.section_names(;
+        let names = handler.section_names);
         assert!(names.contains(&BRANCH_HINT_SECTION_NAME.to_string());
         assert!(names.contains(&"unknown".to_string());
     }
@@ -317,7 +317,7 @@ mod tests {
         let mut section_data = Vec::with_capacity(0;
         let name = "test";
         section_data.push(name.len() as u8); // LEB128 encoding of length
-        section_data.extend_from_slice(name.as_bytes(;
+        section_data.extend_from_slice(name.as_bytes);
         section_data.extend_from_slice(&[1, 2, 3, 4]); // test data
 
         let (extracted_name, data) = extract_custom_section(&section_data).unwrap();

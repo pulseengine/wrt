@@ -297,7 +297,7 @@ impl ResourceRepresentationManager {
         &mut self,
         representation: Box<dyn ResourceRepresentation>,
     ) -> Result<()> {
-        let type_id = TypeId::of::<T>(;
+        let type_id = TypeId::of::<T>);
         
         #[cfg(feature = "std")]
         {
@@ -351,7 +351,7 @@ impl ResourceRepresentationManager {
             if result.is_ok() {
                 // Update access metadata
                 if let Ok(entry) = self.find_resource_entry_mut(handle) {
-                    entry.metadata.last_accessed = self.get_current_time(;
+                    entry.metadata.last_accessed = self.get_current_time);
                     entry.metadata.access_count += 1;
                 }
             } else {
@@ -420,7 +420,7 @@ impl ResourceRepresentationManager {
                 // Update the cached representation
                 if let Ok(entry) = self.find_resource_entry_mut(handle) {
                     entry.representation = value;
-                    entry.metadata.last_accessed = self.get_current_time(;
+                    entry.metadata.last_accessed = self.get_current_time);
                 }
             } else {
                 self.stats.failed_operations += 1;
@@ -456,7 +456,7 @@ impl ResourceRepresentationManager {
             // Update resource entry
             if let Ok(entry) = self.find_resource_entry_mut(handle) {
                 entry.representation = value;
-                entry.metadata.last_accessed = self.get_current_time(;
+                entry.metadata.last_accessed = self.get_current_time);
             }
             
             self.stats.set_operations += 1;
@@ -935,7 +935,7 @@ pub fn canon_resource_new<T: 'static>(
     let handle = manager.next_representation_id;
     manager.next_representation_id += 1;
     
-    let type_id = TypeId::of::<T>(;
+    let type_id = TypeId::of::<T>);
     let resource_type = ResourceType::Custom(type_id.into()); // Simplified
     
     manager.register_resource_handle(
@@ -994,7 +994,7 @@ mod tests {
     
     #[test]
     fn test_resource_representation_manager() {
-        let mut manager = ResourceRepresentationManager::new(;
+        let mut manager = ResourceRepresentationManager::new);
         
         // Register file handle representation
         manager.register_representation::<FileHandle>(
@@ -1006,7 +1006,7 @@ mod tests {
     
     #[test]
     fn test_file_handle_representation() {
-        let mut manager = ResourceRepresentationManager::new(;
+        let mut manager = ResourceRepresentationManager::new);
         manager.register_representation::<FileHandle>(
             Box::new(FileHandleRepresentation::new()
         ).unwrap();
@@ -1014,7 +1014,7 @@ mod tests {
         let handle = 123;
         let resource_id = ResourceId(1;
         let owner = ComponentId(1;
-        let type_id = TypeId::of::<FileHandle>(;
+        let type_id = TypeId::of::<FileHandle>);
         
         manager.register_resource_handle(
             handle,
@@ -1032,7 +1032,7 @@ mod tests {
     
     #[test]
     fn test_memory_buffer_representation() {
-        let mut manager = ResourceRepresentationManager::new(;
+        let mut manager = ResourceRepresentationManager::new);
         manager.register_representation::<MemoryBuffer>(
             Box::new(MemoryBufferRepresentation::new()
         ).unwrap();
@@ -1040,7 +1040,7 @@ mod tests {
         let handle = 456;
         let resource_id = ResourceId(2;
         let owner = ComponentId(1;
-        let type_id = TypeId::of::<MemoryBuffer>(;
+        let type_id = TypeId::of::<MemoryBuffer>);
         
         let buffer_repr = RepresentationValue::Structured(vec![
             ("pointer".to_string(), RepresentationValue::U64(0x12345678)),
@@ -1063,7 +1063,7 @@ mod tests {
     
     #[test]
     fn test_canon_resource_rep() {
-        let mut manager = ResourceRepresentationManager::with_builtin_representations(;
+        let mut manager = ResourceRepresentationManager::with_builtin_representations);
         
         let handle = canon_resource_new::<FileHandle>(
             &mut manager,
@@ -1080,7 +1080,7 @@ mod tests {
     
     #[test]
     fn test_representation_validation() {
-        let mut manager = ResourceRepresentationManager::new(;
+        let mut manager = ResourceRepresentationManager::new);
         
         let is_valid = manager.validate_handle(999).unwrap();
         assert!(!is_valid);

@@ -366,7 +366,7 @@ impl AsyncRuntime {
             return Ok(false;
         }
 
-        let start_time = self.get_current_time(;
+        let start_time = self.get_current_time);
         
         // Process reactor events
         self.reactor.process_events(&mut self.scheduler)?;
@@ -384,7 +384,7 @@ impl AsyncRuntime {
 
     /// Run the runtime until all tasks complete or timeout
     pub fn run_to_completion(&mut self, timeout_us: Option<u64>) -> Result<()> {
-        let start_time = self.get_current_time(;
+        let start_time = self.get_current_time);
         
         while self.is_running {
             let has_work = self.tick()?;
@@ -525,7 +525,7 @@ impl TaskScheduler {
             let insert_pos = self.ready_queue
                 .iter()
                 .position(|t| t.priority > task.priority)
-                .unwrap_or(self.ready_queue.len(;
+                .unwrap_or(self.ready_queue.len);
             
             self.ready_queue.insert(insert_pos, task;
         }
@@ -600,8 +600,8 @@ impl TaskScheduler {
 
     /// Clean up all tasks
     pub fn cleanup_all_tasks(&mut self) -> Result<()> {
-        self.ready_queue.clear(;
-        self.waiting_tasks.clear(;
+        self.ready_queue.clear);
+        self.waiting_tasks.clear);
         Ok(())
     }
 
@@ -916,7 +916,7 @@ mod tests {
 
     #[test]
     fn test_runtime_config() {
-        let mut config = RuntimeConfig::default(;
+        let mut config = RuntimeConfig::default);
         config.max_concurrent_tasks = 64;
         config.task_time_slice_us = 500;
         
@@ -928,7 +928,7 @@ mod tests {
     #[test]
     fn test_runtime_stats() {
         let runtime = AsyncRuntime::new().unwrap();
-        let stats = runtime.get_stats(;
+        let stats = runtime.get_stats);
         
         assert_eq!(stats.tasks_created, 0;
         assert_eq!(stats.tasks_completed, 0;

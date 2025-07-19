@@ -76,9 +76,9 @@ impl CommandSuggestionEngine {
             workflows:        Vec::new(),
         };
 
-        engine.initialize_commands(;
-        engine.initialize_typo_corrections(;
-        engine.initialize_workflows(;
+        engine.initialize_commands);
+        engine.initialize_typo_corrections);
+        engine.initialize_workflows);
         engine
     }
 
@@ -219,8 +219,8 @@ impl CommandSuggestionEngine {
 
     /// Suggest commands based on input
     pub fn suggest(&self, input: &str, context: Option<&ProjectContext>) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new(;
-        let input_lower = input.to_lowercase(;
+        let mut suggestions = Vec::new);
+        let input_lower = input.to_lowercase);
 
         // Exact match
         if let Some(cmd) = self.commands.get(&input_lower) {
@@ -292,7 +292,7 @@ impl CommandSuggestionEngine {
 
     /// Calculate similarity between two strings
     fn calculate_similarity(&self, a: &str, b: &str) -> f64 {
-        let max_len = a.len().max(b.len(;
+        let max_len = a.len().max(b.len);
         if max_len == 0 {
             return 1.0;
         }
@@ -305,8 +305,8 @@ impl CommandSuggestionEngine {
     fn levenshtein_distance(&self, a: &str, b: &str) -> usize {
         let a_chars: Vec<char> = a.chars().collect();
         let b_chars: Vec<char> = b.chars().collect();
-        let a_len = a_chars.len(;
-        let b_len = b_chars.len(;
+        let a_len = a_chars.len);
+        let b_len = b_chars.len);
 
         let mut dp = vec![vec![0; b_len + 1]; a_len + 1];
 
@@ -329,7 +329,7 @@ impl CommandSuggestionEngine {
 
     /// Suggest commands based on project context
     fn suggest_from_context(&self, context: &ProjectContext) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new(;
+        let mut suggestions = Vec::new);
 
         // Suggest based on recommendations
         for rec in &context.recommendations {
@@ -360,7 +360,7 @@ impl CommandSuggestionEngine {
 
     /// Suggest workflow patterns
     fn suggest_workflows(&self, input: &str) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new(;
+        let mut suggestions = Vec::new);
 
         for workflow in &self.workflows {
             // Check if input matches workflow triggers
@@ -400,7 +400,7 @@ impl CommandSuggestionEngine {
             };
         }
 
-        let mut output = String::new(;
+        let mut output = String::new);
 
         if use_colors {
             output.push_str(&format!("{}\n", "Did you mean:".bright_yellow().bold();

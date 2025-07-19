@@ -345,7 +345,7 @@ impl SharedMemoryInstance {
             .stats
             .lock()
             .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
-        stats.record_atomic_operation(;
+        stats.record_atomic_operation);
 
         Ok(())
     }

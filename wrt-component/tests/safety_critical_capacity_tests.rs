@@ -30,7 +30,7 @@ mod capacity_limit_tests {
     #[test]
     fn test_bounded_vec_capacity_limit() {
         // Test component instance vector
-        let result = new_component_vec::<u32>(;
+        let result = new_component_vec::<u32>);
         assert!(result.is_ok(), "Failed to create component vector");
 
         let mut vec = result.unwrap();
@@ -63,7 +63,7 @@ mod capacity_limit_tests {
     /// Test export vector capacity enforcement
     #[test]
     fn test_export_vec_capacity() {
-        let result = new_export_vec::<u32>(;
+        let result = new_export_vec::<u32>);
         assert!(result.is_ok();
 
         let mut vec = result.unwrap();
@@ -93,7 +93,7 @@ mod capacity_limit_tests {
     /// Test resource handle vector limits
     #[test]
     fn test_resource_vec_limits() {
-        let result = new_resource_vec::<u64>(;
+        let result = new_resource_vec::<u64>);
         assert!(result.is_ok();
 
         let mut vec = result.unwrap();
@@ -128,7 +128,7 @@ mod capacity_limit_tests {
             return_addr: u32,
         }
 
-        let result = new_call_stack::<CallFrame>(;
+        let result = new_call_stack::<CallFrame>);
         assert!(result.is_ok();
 
         let mut stack = result.unwrap();
@@ -160,7 +160,7 @@ mod capacity_limit_tests {
     #[test]
     fn test_bounded_string_limits() {
         // Test component name
-        let name_result = new_component_name(;
+        let name_result = new_component_name);
         assert!(name_result.is_ok();
 
         let mut name = name_result.unwrap();
@@ -181,7 +181,7 @@ mod capacity_limit_tests {
     #[test]
     fn test_export_map_capacity() {
         // Test with simple u32 keys instead of BoundedString
-        let map_result = new_type_map::<String>(;
+        let map_result = new_type_map::<String>);
         assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
@@ -203,7 +203,7 @@ mod capacity_limit_tests {
     /// Test type map limits
     #[test]
     fn test_type_map_limits() {
-        let map_result = new_type_map::<String>(;
+        let map_result = new_type_map::<String>);
         assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
@@ -221,7 +221,7 @@ mod capacity_limit_tests {
     /// Test operand stack limits
     #[test]
     fn test_operand_stack_limits() {
-        let stack_result = new_operand_stack::<i64>(;
+        let stack_result = new_operand_stack::<i64>);
         assert!(stack_result.is_ok();
 
         let mut stack = stack_result.unwrap();
@@ -237,7 +237,7 @@ mod capacity_limit_tests {
 
         // Pop all values
         for i in (0..MAX_OPERAND_STACK_SIZE).rev() {
-            let popped = stack.pop(;
+            let popped = stack.pop);
             assert_eq!(popped, Some((i as i64) * 2;
         }
 
@@ -253,7 +253,7 @@ mod capacity_limit_tests {
             size: u32,
         }
 
-        let vec_result = new_memory_vec::<MockMemory>(;
+        let vec_result = new_memory_vec::<MockMemory>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
@@ -274,7 +274,7 @@ mod capacity_limit_tests {
     fn test_post_return_callback_limits() {
         type Callback = fn() -> WrtResult<()>;
 
-        let vec_result = new_post_return_vec::<Callback>(;
+        let vec_result = new_post_return_vec::<Callback>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
@@ -298,7 +298,7 @@ mod capacity_limit_tests {
     /// Test that clear operations work correctly
     #[test]
     fn test_clear_operations() {
-        let vec_result = new_component_vec::<u32>(;
+        let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
@@ -311,7 +311,7 @@ mod capacity_limit_tests {
         assert_eq!(vec.len(), 10;
 
         // Clear
-        vec.clear(;
+        vec.clear);
         assert_eq!(vec.len(), 0;
         assert!(vec.is_empty();
 
@@ -323,13 +323,13 @@ mod capacity_limit_tests {
     /// Test capacity after operations
     #[test]
     fn test_capacity_invariants() {
-        let vec_result = new_import_vec::<String>(;
+        let vec_result = new_import_vec::<String>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
 
         // Capacity should remain constant
-        let initial_capacity = vec.capacity(;
+        let initial_capacity = vec.capacity);
         assert_eq!(initial_capacity, MAX_COMPONENT_IMPORTS;
 
         // Add some elements
@@ -341,13 +341,13 @@ mod capacity_limit_tests {
 
         // Remove some elements
         for _ in 0..50 {
-            vec.pop(;
+            vec.pop);
         }
 
         assert_eq!(vec.capacity(), initial_capacity;
 
         // Clear all
-        vec.clear(;
+        vec.clear);
         assert_eq!(vec.capacity(), initial_capacity;
     }
 
@@ -360,7 +360,7 @@ mod capacity_limit_tests {
             size: usize,
         }
 
-        let map_result = new_resource_type_map::<ResourceTypeInfo>(;
+        let map_result = new_resource_type_map::<ResourceTypeInfo>);
         assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
@@ -393,7 +393,7 @@ mod safety_critical_feature_tests {
     #[test]
     fn test_safety_critical_enforcement() {
         // In safety-critical mode, all allocations should use WRT allocator
-        let vec_result = new_component_vec::<u32>(;
+        let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok();
 
         let vec = vec_result.unwrap();

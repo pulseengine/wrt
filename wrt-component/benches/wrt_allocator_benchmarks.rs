@@ -56,7 +56,7 @@ fn bench_vec_push(c: &mut Criterion) {
         #[cfg(feature = "safety-critical")]
         group.bench_with_input(BenchmarkId::new("wrt_vec", size), size, |b, &size| {
             b.iter(|| {
-                let mut vec: WrtVec<usize, { CrateId::Component as u8 }, VEC_LIMIT> = WrtVec::new(;
+                let mut vec: WrtVec<usize, { CrateId::Component as u8 }, VEC_LIMIT> = WrtVec::new);
                 for i in 0..size {
                     let _ = vec.push(black_box(i);
                 }
@@ -65,7 +65,7 @@ fn bench_vec_push(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark vector iteration
@@ -76,7 +76,7 @@ fn bench_vec_iteration(c: &mut Criterion) {
         // Setup data
         let mut std_vec = StdVec::with_capacity(*size;
         #[cfg(feature = "safety-critical")]
-        let mut wrt_vec: WrtVec<usize, { CrateId::Component as u8 }, VEC_LIMIT> = WrtVec::new(;
+        let mut wrt_vec: WrtVec<usize, { CrateId::Component as u8 }, VEC_LIMIT> = WrtVec::new);
 
         for i in 0..*size {
             std_vec.push(i);
@@ -108,7 +108,7 @@ fn bench_vec_iteration(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark map insertion
@@ -132,7 +132,7 @@ fn bench_map_insert(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("wrt_hashmap", size), size, |b, &size| {
             b.iter(|| {
                 let mut map: WrtHashMap<u32, usize, { CrateId::Component as u8 }, MAP_LIMIT> =
-                    WrtHashMap::new(;
+                    WrtHashMap::new);
                 for i in 0..size {
                     let _ = map.insert(black_box(i as u32), black_box(i * 2;
                 }
@@ -141,7 +141,7 @@ fn bench_map_insert(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark map lookup
@@ -153,7 +153,7 @@ fn bench_map_lookup(c: &mut Criterion) {
         let mut std_map = StdHashMap::with_capacity(*size;
         #[cfg(feature = "safety-critical")]
         let mut wrt_map: WrtHashMap<u32, usize, { CrateId::Component as u8 }, MAP_LIMIT> =
-            WrtHashMap::new(;
+            WrtHashMap::new);
 
         for i in 0..*size {
             std_map.insert(i as u32, i * 2;
@@ -189,7 +189,7 @@ fn bench_map_lookup(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark mixed operations simulating component workloads
@@ -199,9 +199,9 @@ fn bench_component_workload(c: &mut Criterion) {
     // Simulate typical component operations
     group.bench_function("std_component_ops", |b| {
         b.iter(|| {
-            let mut exports = StdHashMap::new(;
-            let mut imports = StdVec::new(;
-            let mut resources = StdHashMap::new(;
+            let mut exports = StdHashMap::new);
+            let mut imports = StdVec::new);
+            let mut resources = StdHashMap::new);
 
             // Simulate component initialization
             for i in 0..50 {
@@ -220,7 +220,7 @@ fn bench_component_workload(c: &mut Criterion) {
 
                 // Import access
                 if i < imports.len() {
-                    sum += imports[i].len(;
+                    sum += imports[i].len);
                 }
 
                 // Resource management
@@ -240,10 +240,10 @@ fn bench_component_workload(c: &mut Criterion) {
     group.bench_function("wrt_component_ops", |b| {
         b.iter(|| {
             let mut exports: WrtHashMap<String, usize, { CrateId::Component as u8 }, 256> =
-                WrtHashMap::new(;
-            let mut imports: WrtVec<String, { CrateId::Component as u8 }, 256> = WrtVec::new(;
+                WrtHashMap::new);
+            let mut imports: WrtVec<String, { CrateId::Component as u8 }, 256> = WrtVec::new);
             let mut resources: WrtHashMap<u32, String, { CrateId::Component as u8 }, 1024> =
-                WrtHashMap::new(;
+                WrtHashMap::new);
 
             // Simulate component initialization
             for i in 0..50 {
@@ -262,7 +262,7 @@ fn bench_component_workload(c: &mut Criterion) {
 
                 // Import access
                 if i < imports.len() {
-                    sum += imports[i].len(;
+                    sum += imports[i].len);
                 }
 
                 // Resource management
@@ -278,7 +278,7 @@ fn bench_component_workload(c: &mut Criterion) {
         };
     };
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark capacity error handling
@@ -292,7 +292,7 @@ fn bench_capacity_handling(c: &mut Criterion) {
     group.bench_function("wrt_vec_capacity_check", |b| {
         b.iter(|| {
             let mut vec: WrtVec<usize, { CrateId::Component as u8 }, SMALL_CAPACITY> =
-                WrtVec::new(;
+                WrtVec::new);
             let mut errors = 0;
 
             for i in 0..50 {
@@ -308,7 +308,7 @@ fn bench_capacity_handling(c: &mut Criterion) {
     group.bench_function("wrt_map_capacity_check", |b| {
         b.iter(|| {
             let mut map: WrtHashMap<u32, usize, { CrateId::Component as u8 }, SMALL_CAPACITY> =
-                WrtHashMap::new(;
+                WrtHashMap::new);
             let mut errors = 0;
 
             for i in 0..50 {
@@ -321,7 +321,7 @@ fn bench_capacity_handling(c: &mut Criterion) {
         };
     };
 
-    group.finish(;
+    group.finish);
 }
 
 // Define benchmark groups

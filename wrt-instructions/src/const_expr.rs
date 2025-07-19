@@ -121,7 +121,7 @@ impl ConstExprSequence {
     /// Evaluate the constant expression sequence
     pub fn evaluate(&self, context: &dyn ConstExprContext) -> Result<Value> {
         #[cfg(feature = "std")]
-        let mut stack = Vec::new(;
+        let mut stack = Vec::new);
         
         #[cfg(not(feature = "std"))]
         let mut stack = {
@@ -437,7 +437,7 @@ mod tests {
     
     #[test]
     fn test_simple_const_expr() {
-        let mut expr = ConstExprSequence::new(;
+        let mut expr = ConstExprSequence::new);
         expr.push(ConstExpr::I32Const(42)).unwrap();
         expr.push(ConstExpr::End).unwrap();
         
@@ -452,7 +452,7 @@ mod tests {
     
     #[test]
     fn test_arithmetic_const_expr() {
-        let mut expr = ConstExprSequence::new(;
+        let mut expr = ConstExprSequence::new);
         expr.push(ConstExpr::I32Const(10)).unwrap();
         expr.push(ConstExpr::I32Const(32)).unwrap();
         expr.push(ConstExpr::I32Add).unwrap();
@@ -469,13 +469,13 @@ mod tests {
     
     #[test]
     fn test_global_get_const_expr() {
-        let mut expr = ConstExprSequence::new(;
+        let mut expr = ConstExprSequence::new);
         expr.push(ConstExpr::GlobalGet(0)).unwrap();
         expr.push(ConstExpr::End).unwrap();
         
         let context = TestConstExprContext {
             globals: {
-                let mut v = Vec::new(;
+                let mut v = Vec::new);
                 v.push(Value::I32(100);
                 v
             },

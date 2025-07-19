@@ -182,7 +182,7 @@ impl ReallocManager {
         // Update metrics
         self.metrics.total_allocations += 1;
         self.metrics.total_bytes_allocated += size as u64;
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(ptr)
     }
@@ -232,7 +232,7 @@ impl ReallocManager {
             self.metrics.total_bytes_allocated += (new_size - old_size).max(0) as u64;
         }
 
-        self.update_peak_memory(;
+        self.update_peak_memory);
         Ok(new_ptr)
     }
 
@@ -293,7 +293,7 @@ impl ReallocManager {
 
     /// Update peak memory usage
     fn update_peak_memory(&mut self) {
-        let current_usage: u64 = self.allocations.iter().map(|(_, a)| a.total_bytes as u64).sum(;
+        let current_usage: u64 = self.allocations.iter().map(|(_, a)| a.total_bytes as u64).sum);
 
         if current_usage > self.metrics.peak_memory_usage {
             self.metrics.peak_memory_usage = current_usage;
@@ -326,7 +326,7 @@ impl ReallocManager {
 
     /// Reset metrics
     pub fn reset_metrics(&mut self) {
-        self.metrics = AllocationMetrics::default(;
+        self.metrics = AllocationMetrics::default);
     }
 }
 
@@ -548,6 +548,6 @@ impl Default for ReallocFunction {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(Allocation, Allocation::default(;
-impl_basic_traits!(InstanceAllocations, InstanceAllocations::default(;
-impl_basic_traits!(ReallocFunction, ReallocFunction::default(;
+impl_basic_traits!(Allocation, Allocation::default);
+impl_basic_traits!(InstanceAllocations, InstanceAllocations::default);
+impl_basic_traits!(ReallocFunction, ReallocFunction::default);

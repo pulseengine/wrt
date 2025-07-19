@@ -80,7 +80,7 @@ impl MemoryManager {
 
     /// Reset all strategies to default
     pub fn reset(&mut self) {
-        self.resource_strategies.clear(;
+        self.resource_strategies.clear);
     }
 }
 
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_memory_manager() {
-        let mut resource_manager = ResourceManager::new(;
+        let mut resource_manager = ResourceManager::new);
         let mut memory_manager = MemoryManager::new(MemoryStrategy::Copy;
 
         // Add a resource
@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_invalid_resource_registration() {
-        let resource_manager = ResourceManager::new(;
+        let resource_manager = ResourceManager::new);
         let mut memory_manager = MemoryManager::new(MemoryStrategy::Copy;
 
         // Try to register a non-existent resource

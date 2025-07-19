@@ -348,7 +348,7 @@ impl<'a> MemoryProfiler<'a> {
     /// Track a deallocation
     pub fn track_deallocation(&mut self, alloc_id: u32) -> WrtResult<()> {
         if !Self::is_allocation_tracking_enabled() {
-            return Ok((;
+            return Ok();
         }
 
         self.total_deallocations.fetch_add(1, Ordering::SeqCst;
@@ -373,7 +373,7 @@ impl<'a> MemoryProfiler<'a> {
         crate_id: CrateId,
     ) -> WrtResult<()> {
         if !Self::is_profiling_enabled() {
-            return Ok((;
+            return Ok();
         }
 
         let record = AccessRecord {
@@ -407,7 +407,7 @@ impl<'a> MemoryProfiler<'a> {
     /// Complete profiling and record sample
     pub fn complete_profiling(&mut self, handle: ProfilingHandle) -> WrtResult<()> {
         if !Self::is_profiling_enabled() {
-            return Ok((;
+            return Ok();
         }
 
         let duration = self.get_relative_timestamp() - handle.start_time;
@@ -437,7 +437,7 @@ impl<'a> MemoryProfiler<'a> {
     pub fn detect_leaks(&self) -> WrtResult<BoundedVec<LeakInfo, 16, NoStdProvider<{ 16 * 256 }>>> {
         let mut leaks =
             BoundedVec::new(wrt_provider!({ 16 * 256 }, CrateId::Debug).unwrap_or_default())?;
-        let current_time = self.get_relative_timestamp(;
+        let current_time = self.get_relative_timestamp);
 
         for alloc in self.allocations.iter() {
             if !alloc.active {
@@ -494,9 +494,9 @@ impl<'a> MemoryProfiler<'a> {
     pub fn generate_profile_report(&self) -> WrtResult<ProfileReport> {
         // Create bounded maps for stats
         #[cfg(feature = "std")]
-        let mut crate_stats = BTreeMap::new(;
+        let mut crate_stats = BTreeMap::new);
         #[cfg(feature = "std")]
-        let mut type_stats = BTreeMap::new(;
+        let mut type_stats = BTreeMap::new);
 
         #[cfg(not(feature = "std"))]
         let mut crate_stats = BoundedHashMap::<CrateId, usize, 32, NoStdProvider<{ 32 * 64 }>>::new(
@@ -601,7 +601,7 @@ impl<'a> MemoryProfiler<'a> {
 
         // Group accesses by address range
         #[cfg(feature = "std")]
-        let mut access_counts = BTreeMap::new(;
+        let mut access_counts = BTreeMap::new);
         #[cfg(not(feature = "std"))]
         let mut access_counts = BoundedHashMap::<usize, usize, 64, NoStdProvider<{ 64 * 32 }>>::new(
             wrt_provider!({ 64 * 32 }, CrateId::Debug).unwrap_or_default(),
@@ -651,7 +651,7 @@ impl<'a> MemoryProfiler<'a> {
         let mut total_deallocations = 0usize;
 
         #[cfg(feature = "std")]
-        let mut operation_times = BTreeMap::new(;
+        let mut operation_times = BTreeMap::new);
         #[cfg(not(feature = "std"))]
         let mut operation_times =
             BoundedHashMap::<
@@ -659,7 +659,7 @@ impl<'a> MemoryProfiler<'a> {
                 (u64, u32),
                 32,
                 NoStdProvider<{ 32 * 96 }>,
-            >::new(wrt_provider!({ 32 * 96 }, CrateId::Debug).unwrap_or_default(;
+            >::new(wrt_provider!({ 32 * 96 }, CrateId::Debug).unwrap_or_default);
 
         for sample in self.perf_samples.iter() {
             total_duration += sample.duration;
@@ -844,12 +844,12 @@ pub struct PerformanceAnalysis {
 /// Memory profiler instance
 // ASIL-D safe: Use thread-safe static with lazy initialization
 #[cfg(feature = "std")]
-static MEMORY_PROFILER: OnceLock<Mutex<MemoryProfiler<'static>>> = OnceLock::new(;
+static MEMORY_PROFILER: OnceLock<Mutex<MemoryProfiler<'static>>> = OnceLock::new);
 
 #[cfg(not(feature = "std"))]
 use core::sync::atomic::AtomicPtr;
 #[cfg(not(feature = "std"))]
-static MEMORY_PROFILER: AtomicPtr<MemoryProfiler<'static>> = AtomicPtr::new(core::ptr::null_mut(;
+static MEMORY_PROFILER: AtomicPtr<MemoryProfiler<'static>> = AtomicPtr::new(core::ptr::null_mut);
 
 /// Initialize the memory profiler (ASIL-D safe)
 pub fn init_profiler() -> WrtResult<()> {
@@ -950,7 +950,7 @@ mod tests {
     #[test]
     fn test_memory_profiler_basic() {
         init_profiler().unwrap();
-        MemoryProfiler::enable_allocation_tracking(;
+        MemoryProfiler::enable_allocation_tracking);
 
         // Track an allocation
         let alloc_id = with_profiler(|profiler| {
@@ -978,7 +978,7 @@ mod tests {
     #[test]
     fn test_leak_detection() {
         init_profiler().unwrap();
-        MemoryProfiler::enable_allocation_tracking(;
+        MemoryProfiler::enable_allocation_tracking);
 
         // Create allocation without deallocation
         let _alloc_id = with_profiler(|profiler| {
@@ -1001,7 +1001,7 @@ mod tests {
     #[test]
     fn test_profiling() {
         init_profiler().unwrap();
-        MemoryProfiler::enable_profiling(;
+        MemoryProfiler::enable_profiling);
 
         // Profile an operation
         let result = profile_operation!("test_operation", CrateId::Foundation, {

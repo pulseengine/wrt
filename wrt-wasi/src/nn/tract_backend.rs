@@ -178,8 +178,8 @@ impl fmt::Debug for TractContext {
         debug.field("encoding", &self.encoding;
         #[cfg(feature = "tract")]
         {
-            debug.field("has_inputs", &self.inputs.iter().filter(|i| i.is_some()).count(;
-            debug.field("has_outputs", &self.outputs.is_some(;
+            debug.field("has_inputs", &self.inputs.iter().filter(|i| i.is_some()).count);
+            debug.field("has_outputs", &self.outputs.is_some);
         }
         debug.finish()
     }
@@ -194,8 +194,8 @@ impl ComputeCapable for TractContext {
             
             for (idx, tensor) in inputs.iter().enumerate() {
                 // Get tensor metadata
-                let dims = tensor.dimensions(;
-                let dtype = tensor.data_type(;
+                let dims = tensor.dimensions);
+                let dtype = tensor.data_type);
                 
                 // Convert to Tract types
                 let datum_type = tensor_type_to_datum(dtype)?;
@@ -205,7 +205,7 @@ impl ComputeCapable for TractContext {
                     .collect();
                 
                 // Get tensor data
-                let data = tensor.as_bytes(;
+                let data = tensor.as_bytes);
                 
                 // Create Tract tensor using safe construction
                 // For ASIL compliance, we need to use safe tensor creation
@@ -235,7 +235,7 @@ impl ComputeCapable for TractContext {
                 .map_err(|_| Error::wasi_runtime_error("Inference failed"))?;
             
             // Convert outputs back to WASI-NN tensors
-            let mut result = Vec::new(;
+            let mut result = Vec::new);
             
             // Create capability based on the stored verification level
             use crate::nn::capabilities::{create_nn_capability, NNVerificationLevel};
@@ -253,7 +253,7 @@ impl ComputeCapable for TractContext {
                 let dimensions = TensorDimensions::new(&shape)?;
                 
                 // Create WASI-NN tensor with data
-                let data = tract_output.as_bytes().to_vec(;
+                let data = tract_output.as_bytes().to_vec);
                 let tensor = Tensor::from_data(dimensions, datum_type, data, capability.as_ref())?;
                 
                 result.push(tensor);
@@ -326,7 +326,7 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
         }
         
         // Verify model size against capability
-        let limits = self.capability.resource_limits(;
+        let limits = self.capability.resource_limits);
         if data.len() > limits.max_model_size {
             return Err(Error::wasi_resource_exhausted("Model exceeds size limit";
         }
@@ -356,8 +356,8 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
             };
             
             // Analyze the model to get input/output info
-            let mut input_info = Vec::new(;
-            let mut output_info = Vec::new(;
+            let mut input_info = Vec::new);
+            let mut output_info = Vec::new);
             
             // Get input facts
             for (idx, input) in model.inputs.iter().enumerate() {
@@ -417,7 +417,7 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
     fn create_context(&self, model: &Self::Model) -> Result<Self::Context> {
         #[cfg(feature = "tract")]
         {
-            let num_inputs = model.num_inputs(;
+            let num_inputs = model.num_inputs);
             Ok(TractContext {
                 model_id: model.id(),
                 encoding: GraphEncoding::ONNX, // We know this backend only supports ONNX
@@ -449,7 +449,7 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
             .ok_or_else(|| Error::wasi_resource_exhausted("Tensor size calculation overflow"))?;
         
         // Verify against capability limits
-        let limits = self.capability.resource_limits(;
+        let limits = self.capability.resource_limits);
         if size > limits.max_tensor_memory {
             return Err(Error::wasi_resource_exhausted("Tensor exceeds memory limit";
         }
@@ -567,7 +567,7 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
                 let dimensions = TensorDimensions::new(&shape)?;
                 
                 // Copy data
-                let data = tract_tensor.as_bytes().to_vec(;
+                let data = tract_tensor.as_bytes().to_vec);
                 
                 Ok(TractTensor {
                     dimensions,
@@ -618,7 +618,7 @@ impl BackendProvider for TractBackendProvider {
         match capability.verification_level() {
             super::VerificationLevel::Standard => {
                 use super::capabilities::DynamicNNCapability;
-                let cap = DynamicNNCapability::new(;
+                let cap = DynamicNNCapability::new);
                 Ok(Box::new(TractDynBackend::new(TractBackend::new(cap))))
             }
             super::VerificationLevel::Sampling => {
@@ -670,7 +670,7 @@ impl<B: NeuralNetworkBackend + 'static> DynBackend for TractDynBackend<B> {
         {
             // Try to downcast to TractModel
             if let Some(tract_model) = model.as_any().downcast_ref::<TractModel>() {
-                let num_inputs = tract_model.num_inputs(;
+                let num_inputs = tract_model.num_inputs);
                 let context = TractContext {
                     model_id: tract_model.id(),
                     encoding: GraphEncoding::ONNX,
@@ -689,7 +689,7 @@ impl<B: NeuralNetworkBackend + 'static> DynBackend for TractDynBackend<B> {
         
         #[cfg(not(feature = "tract"))]
         {
-            let num_inputs = model.num_inputs(;
+            let num_inputs = model.num_inputs);
             let context = TractContext {
                 model_id: model.id(),
                 encoding: GraphEncoding::ONNX,
@@ -721,14 +721,14 @@ mod tests {
     
     #[test]
     fn test_tract_backend_creation() {
-        let capability = DynamicNNCapability::new(;
+        let capability = DynamicNNCapability::new);
         let backend = TractBackend::new(capability;
         assert_eq!(backend.name(), "tract";
     }
     
     #[test]
     fn test_tract_supports_encoding() {
-        let capability = DynamicNNCapability::new(;
+        let capability = DynamicNNCapability::new);
         let backend = TractBackend::new(capability;
         
         assert!(backend.supports_encoding(GraphEncoding::ONNX);
@@ -738,7 +738,7 @@ mod tests {
     
     #[test]
     fn test_tract_tensor_creation() {
-        let capability = DynamicNNCapability::new(;
+        let capability = DynamicNNCapability::new);
         let backend = TractBackend::new(capability;
         
         let dims = TensorDimensions::new(&[10, 10]).unwrap();

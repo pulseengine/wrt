@@ -404,7 +404,7 @@ impl QnxMemoryPartition {
         self.activate()?;
 
         // Execute the function
-        let result = f(;
+        let result = f);
 
         // Restore the parent partition
         self.restore_parent()?;
@@ -471,7 +471,7 @@ impl<'a> PartitionGuard<'a> {
 impl<'a> Drop for PartitionGuard<'a> {
     fn drop(&mut self) {
         if self.active {
-            let _ = self.partition.restore_parent(;
+            let _ = self.partition.restore_parent);
         }
     }
 }
@@ -494,19 +494,19 @@ mod tests {
             .expect("Failed to create partition");
 
         // Get partition ID
-        let id = partition.id(;
+        let id = partition.id);
         assert!(id > 0);
 
         // Test activation
-        let result = partition.activate(;
+        let result = partition.activate);
         assert!(result.is_ok();
 
         // Test restoration
-        let result = partition.restore_parent(;
+        let result = partition.restore_parent);
         assert!(result.is_ok();
 
         // Clean up (handled by Drop, but can be done manually)
-        let result = partition.destroy(;
+        let result = partition.destroy);
         assert!(result.is_ok();
     }
 
@@ -534,7 +534,7 @@ mod tests {
             let mut guard = PartitionGuard::new(&partition).expect("Failed to create guard");
 
             // Manually deactivate
-            let result = guard.deactivate(;
+            let result = guard.deactivate);
             assert!(result.is_ok();
         }
     }

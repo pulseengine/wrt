@@ -90,7 +90,7 @@ pub struct PlatformServices {
 
 impl PlatformServices {
     pub fn minimal() -> Self {
-        static TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new(;
+        static TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new);
         Self {
             limits: PlatformLimits::minimal(),
             time_provider: &TIME_PROVIDER,
@@ -123,7 +123,7 @@ impl Default for PlatformServices {
 use core::sync::atomic::{AtomicPtr, Ordering};
 
 /// Global platform services instance using safer atomic pointer
-static PLATFORM_SERVICES: AtomicPtr<PlatformServices> = AtomicPtr::new(core::ptr::null_mut(;
+static PLATFORM_SERVICES: AtomicPtr<PlatformServices> = AtomicPtr::new(core::ptr::null_mut);
 
 /// Initialize platform services (call once at startup)
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -164,7 +164,7 @@ pub fn get_platform_services() -> &'static PlatformServices {
         }
     } else {
         // Return static minimal services as fallback
-        static MINIMAL_TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new(;
+        static MINIMAL_TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new);
         static MINIMAL_SERVICES: PlatformServices = PlatformServices {
             limits: PlatformLimits::minimal(),
             time_provider: &MINIMAL_TIME_PROVIDER,

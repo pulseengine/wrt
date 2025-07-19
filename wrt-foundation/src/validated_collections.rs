@@ -36,7 +36,7 @@ impl<T, const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedVec<T, CAPACIT
         T: crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
         // Use fixed size for compatibility - actual validation happens at usage site
-        let validator = CollectionBoundsValidator::<CAPACITY, 64>::validate(;
+        let validator = CollectionBoundsValidator::<CAPACITY, 64>::validate);
         
         // Create the underlying collection
         let inner = BoundedVec::new(provider)?;
@@ -55,10 +55,10 @@ impl<T, const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedVec<T, CAPACIT
         P: Default,
     {
         // Compile-time validation with fixed size
-        let _validator = CollectionBoundsValidator::<CAPACITY, 64>::validate(;
+        let _validator = CollectionBoundsValidator::<CAPACITY, 64>::validate);
         
         // Runtime allocation size validation - no compile-time constraints here
-        let allocation_size = CAPACITY * core::mem::size_of::<T>(;
+        let allocation_size = CAPACITY * core::mem::size_of::<T>);
         
         // Allocate memory through budget system
         let provider = safe_managed_alloc!(allocation_size, crate_id)?;
@@ -142,7 +142,7 @@ impl<K, V, const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedMap<K, V, C
         V: crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
         // Compile-time validation with fixed size
-        let validator = CollectionBoundsValidator::<CAPACITY, 128>::validate(;
+        let validator = CollectionBoundsValidator::<CAPACITY, 128>::validate);
         
         // Create the underlying collection
         let inner = BoundedMap::new(provider)?;
@@ -163,10 +163,10 @@ impl<K, V, const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedMap<K, V, C
         P: Default,
     {
         // Compile-time validation with fixed size
-        let _validator = CollectionBoundsValidator::<CAPACITY, 128>::validate(;
+        let _validator = CollectionBoundsValidator::<CAPACITY, 128>::validate);
         
         // Runtime allocation size calculation
-        let allocation_size = CAPACITY * core::mem::size_of::<(K, V)>(;
+        let allocation_size = CAPACITY * core::mem::size_of::<(K, V)>);
         
         // Allocate memory through budget system
         let provider = safe_managed_alloc!(allocation_size, crate_id)?;
@@ -195,7 +195,7 @@ impl<const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedString<CAPACITY, 
     /// Create a new validated bounded string
     pub fn new(provider: P) -> Self {
         // Compile-time validation
-        let validator = CollectionBoundsValidator::<CAPACITY, 1>::validate(;
+        let validator = CollectionBoundsValidator::<CAPACITY, 1>::validate);
         
         // Create the underlying string
         let inner = BoundedString::new(provider;
@@ -212,7 +212,7 @@ impl<const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedString<CAPACITY, 
         P: Default,
     {
         // Compile-time validation
-        let _validator = CollectionBoundsValidator::<CAPACITY, 1>::validate(;
+        let _validator = CollectionBoundsValidator::<CAPACITY, 1>::validate);
         
         // Capacity is compile-time constant, no runtime validation needed
         
@@ -225,7 +225,7 @@ impl<const CAPACITY: usize, P: MemoryProvider> ValidatedBoundedString<CAPACITY, 
     /// Create from string slice with validation
     pub fn from_str(s: &str, provider: P) -> WrtResult<Self> {
         // Compile-time validation
-        let validator = CollectionBoundsValidator::<CAPACITY, 1>::validate(;
+        let validator = CollectionBoundsValidator::<CAPACITY, 1>::validate);
         
         // Runtime validation
         if s.len() > CAPACITY {

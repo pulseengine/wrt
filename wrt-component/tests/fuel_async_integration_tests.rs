@@ -61,7 +61,7 @@ mod tests {
         executor.set_global_fuel_limit(10000;
 
         // Test executor creation and configuration
-        let status = executor.get_global_fuel_status(;
+        let status = executor.get_global_fuel_status);
         assert_eq!(status.active_tasks, 0;
         assert_eq!(status.ready_tasks, 0;
         assert!(status.enforcement_enabled);
@@ -69,7 +69,7 @@ mod tests {
 
         // Test fuel limit setting
         executor.set_global_fuel_limit(5000;
-        let updated_status = executor.get_global_fuel_status(;
+        let updated_status = executor.get_global_fuel_status);
         assert_eq!(updated_status.limit, 5000;
     }
 
@@ -80,7 +80,7 @@ mod tests {
             FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Standard)
                 .unwrap();
 
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.policy, SchedulingPolicy::Cooperative;
         assert_eq!(stats.total_tasks, 0;
 
@@ -89,7 +89,7 @@ mod tests {
             FuelAsyncScheduler::new(SchedulingPolicy::PriorityBased, VerificationLevel::Standard)
                 .unwrap();
 
-        let priority_stats = priority_scheduler.get_statistics(;
+        let priority_stats = priority_scheduler.get_statistics);
         assert_eq!(priority_stats.policy, SchedulingPolicy::PriorityBased;
 
         // Test round-robin scheduling
@@ -97,7 +97,7 @@ mod tests {
             FuelAsyncScheduler::new(SchedulingPolicy::RoundRobin, VerificationLevel::Standard)
                 .unwrap();
 
-        let rr_stats = rr_scheduler.get_statistics(;
+        let rr_stats = rr_scheduler.get_statistics);
         assert_eq!(rr_stats.policy, SchedulingPolicy::RoundRobin;
     }
 
@@ -121,17 +121,17 @@ mod tests {
             )
             .unwrap();
 
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.total_tasks, 1;
         assert_eq!(stats.ready_tasks, 1;
 
         // Get next task
-        let next_task = scheduler.next_task(;
+        let next_task = scheduler.next_task);
         assert_eq!(next_task, Some(task_id;
 
         // Remove task
         scheduler.remove_task(task_id).unwrap();
-        let final_stats = scheduler.get_statistics(;
+        let final_stats = scheduler.get_statistics);
         assert_eq!(final_stats.total_tasks, 0;
     }
 
@@ -197,7 +197,7 @@ mod tests {
 
         let bridge = FuelAsyncBridge::new(config.clone(), VerificationLevel::Standard).unwrap();
 
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
         assert_eq!(stats.total_bridges, 0;
         assert_eq!(stats.active_bridges, 0;
         assert_eq!(stats.completed_bridges, 0;
@@ -243,7 +243,7 @@ mod tests {
         ;
         assert!(task3.is_err();
 
-        let status = executor.get_global_fuel_status(;
+        let status = executor.get_global_fuel_status);
         assert_eq!(status.active_tasks, 2;
     }
 
@@ -260,8 +260,8 @@ mod tests {
 
         // Both should work but with different internal fuel costs
         // (fuel costs are handled by the operations module)
-        let basic_stats = basic_scheduler.get_statistics(;
-        let full_stats = full_scheduler.get_statistics(;
+        let basic_stats = basic_scheduler.get_statistics);
+        let full_stats = full_scheduler.get_statistics);
 
         assert_eq!(basic_stats.total_tasks, 0;
         assert_eq!(full_stats.total_tasks, 0;
@@ -287,14 +287,14 @@ mod tests {
             .spawn_task(component_id, 1000, Priority::Normal, TestFuture::new(5, 84))
             .unwrap();
 
-        let status_before = executor.get_global_fuel_status(;
+        let status_before = executor.get_global_fuel_status);
         assert_eq!(status_before.active_tasks, 2;
 
         // Shutdown should succeed
-        let shutdown_result = executor.shutdown(;
+        let shutdown_result = executor.shutdown);
         assert!(shutdown_result.is_ok();
 
-        let status_after = executor.get_global_fuel_status(;
+        let status_after = executor.get_global_fuel_status);
         assert_eq!(status_after.active_tasks, 0;
     }
 
@@ -304,7 +304,7 @@ mod tests {
             FuelAsyncBridge::new(AsyncBridgeConfig::default(), VerificationLevel::Standard)
                 .unwrap();
 
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
 
         // Test success rate calculation with no bridges
         assert_eq!(stats.success_rate(), 0.0;
@@ -324,7 +324,7 @@ mod tests {
             FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Standard)
                 .unwrap();
 
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
 
         // Test efficiency calculations with no tasks
         assert_eq!(stats.average_fuel_per_task(), 0.0;

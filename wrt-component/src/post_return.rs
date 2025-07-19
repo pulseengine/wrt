@@ -43,7 +43,7 @@ use crate::{
 use wrt_error::{Error, ErrorCategory, Result};
 
 /// Post-return function signature: () -> ()
-pub type PostReturnFn = fn(;
+pub type PostReturnFn = fn);
 
 /// Maximum number of cleanup tasks per instance in no_std
 const MAX_CLEANUP_TASKS_NO_STD: usize = 256;
@@ -316,7 +316,7 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             self.functions.insert(instance_id, post_return_fn;
-            self.pending_cleanups.insert(instance_id, Vec::new(;
+            self.pending_cleanups.insert(instance_id, Vec::new);
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -356,7 +356,7 @@ impl PostReturnRegistry {
             cleanup_tasks.push(task);
 
             // Update peak tasks metric
-            let total_pending: usize = self.pending_cleanups.values().map(|tasks| tasks.len()).sum(;
+            let total_pending: usize = self.pending_cleanups.values().map(|tasks| tasks.len()).sum);
             if total_pending > self.metrics.peak_pending_tasks {
                 self.metrics.peak_pending_tasks = total_pending;
             }
@@ -370,12 +370,12 @@ impl PostReturnRegistry {
                     })?;
                     
                     // Update peak tasks metric
-                    let total_pending: usize = self.pending_cleanups.iter().map(|(_, tasks)| tasks.len()).sum(;
+                    let total_pending: usize = self.pending_cleanups.iter().map(|(_, tasks)| tasks.len()).sum);
                     if total_pending > self.metrics.peak_pending_tasks {
                         self.metrics.peak_pending_tasks = total_pending;
                     }
                     
-                    return Ok((;
+                    return Ok();
                 }
             }
             
@@ -437,14 +437,14 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(cleanup_tasks) = self.pending_cleanups.get_mut(&instance_id) {
-                cleanup_tasks.clear(;
+                cleanup_tasks.clear);
             }
         }
         #[cfg(not(any(feature = "std", )))]
         {
             for (id, cleanup_tasks) in &mut self.pending_cleanups {
                 if *id == instance_id {
-                    cleanup_tasks.clear(;
+                    cleanup_tasks.clear);
                     break;
                 }
             }
@@ -468,7 +468,7 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(pending) = self.pending_cleanups.get(&instance_id) {
-                all_tasks.extend(pending.iter().cloned(;
+                all_tasks.extend(pending.iter().cloned);
             }
             all_tasks.sort_by(|a, b| b.priority.cmp(&a.priority;
         }
@@ -615,7 +615,7 @@ impl PostReturnRegistry {
             
             // Cancel operations if cancellation token is available
             if let Some(token) = cancellation_token {
-                let _ = token.cancel(;
+                let _ = token.cancel);
             }
             
             // Clean up async ABI resources
@@ -782,7 +782,7 @@ impl PostReturnRegistry {
 
     /// Reset metrics
     pub fn reset_metrics(&mut self) {
-        self.metrics = PostReturnMetrics::default(;
+        self.metrics = PostReturnMetrics::default);
     }
 }
 
@@ -1069,7 +1069,7 @@ mod tests {
     #[test]
     fn test_metrics() {
         let registry = PostReturnRegistry::new(100).unwrap();
-        let metrics = registry.metrics(;
+        let metrics = registry.metrics);
 
         assert_eq!(metrics.total_executions, 0;
         assert_eq!(metrics.total_cleanup_tasks, 0;

@@ -60,7 +60,7 @@ impl ExecutionStats {
 
     /// Reset all statistics to zero
     pub fn reset(&mut self) {
-        *self = Self::default(;
+        *self = Self::default);
     }
 
     /// Increment the instruction count

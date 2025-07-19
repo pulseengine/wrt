@@ -345,7 +345,7 @@ impl RuntimeInstance {
 
             // Type check arguments
             for (i, (arg, param_type)) in args.iter().zip(func_value.ty.params.iter()).enumerate() {
-                let arg_type = arg.value_type(;
+                let arg_type = arg.value_type);
                 let expected_type = &param_type;
 
                 if !self.is_type_compatible(&arg_type, expected_type) {
@@ -875,7 +875,7 @@ impl BuiltinRequirements {
 /// Scans a binary for required builtins
 pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
     // Helper to avoid boilerplate
-    let mut requirements = BuiltinRequirements::new(;
+    let mut requirements = BuiltinRequirements::new);
 
     // Try to decode as component or module
     #[cfg(feature = "std")]
@@ -1050,7 +1050,7 @@ mod tests {
 
     #[test]
     fn test_runtime_instance_creation() {
-        let runtime = RuntimeInstance::new(;
+        let runtime = RuntimeInstance::new);
         assert!(runtime.functions.is_empty();
         assert!(runtime.memories.is_empty();
         assert!(runtime.tables.is_empty();
@@ -1060,7 +1060,7 @@ mod tests {
 
     #[test]
     fn test_register_function() {
-        let mut runtime = RuntimeInstance::new(;
+        let mut runtime = RuntimeInstance::new);
         let func_type = wrt_runtime::func::FuncType {
             params: vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
@@ -1075,7 +1075,7 @@ mod tests {
 
     #[test]
     fn test_function_not_found() {
-        let runtime = RuntimeInstance::new(;
+        let runtime = RuntimeInstance::new);
 
         // Try to execute a non-existent function
         let args = vec![Value::I32(1)];
@@ -1094,7 +1094,7 @@ mod tests {
 
     #[test]
     fn test_argument_count_validation() {
-        let mut runtime = RuntimeInstance::new(;
+        let mut runtime = RuntimeInstance::new);
 
         // Create and register a function expecting 2 arguments
         let func_type = wrt_runtime::func::FuncType {
@@ -1123,7 +1123,7 @@ mod tests {
 
     #[test]
     fn test_argument_type_validation() {
-        let mut runtime = RuntimeInstance::new(;
+        let mut runtime = RuntimeInstance::new);
 
         // Create and register a function expecting I32 arguments
         let func_type = wrt_runtime::func::FuncType {
@@ -1152,7 +1152,7 @@ mod tests {
 
     #[test]
     fn test_function_not_implemented() {
-        let mut runtime = RuntimeInstance::new(;
+        let mut runtime = RuntimeInstance::new);
 
         // Create and register a function
         let func_type = wrt_runtime::func::FuncType {

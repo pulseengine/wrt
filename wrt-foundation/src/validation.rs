@@ -113,10 +113,10 @@ where
     K: AsRef<[u8]>,
     V: AsRef<[u8]>,
 {
-    let mut checksum = crate::verification::Checksum::new(;
+    let mut checksum = crate::verification::Checksum::new);
     for (key, value) in items {
-        checksum.update_slice(key.as_ref(;
-        checksum.update_slice(value.as_ref(;
+        checksum.update_slice(key.as_ref);
+        checksum.update_slice(value.as_ref);
     }
     checksum
 }
@@ -202,11 +202,11 @@ mod tests {
         let checksum = calculate_keyed_checksum(&items;
 
         // Calculate manually to verify
-        let mut expected = Checksum::new(;
-        expected.update_slice("key1".as_bytes(;
-        expected.update_slice("value1".as_bytes(;
-        expected.update_slice("key2".as_bytes(;
-        expected.update_slice("value2".as_bytes(;
+        let mut expected = Checksum::new);
+        expected.update_slice("key1".as_bytes);
+        expected.update_slice("value1".as_bytes);
+        expected.update_slice("key2".as_bytes);
+        expected.update_slice("value2".as_bytes);
 
         assert_eq!(checksum, expected;
     }
@@ -214,8 +214,8 @@ mod tests {
     // #[cfg(feature = "std")] // Test should run always now
     #[test]
     fn test_validate_checksum() {
-        let checksum1 = Checksum::new(;
-        let mut checksum2_val = Checksum::new(;
+        let checksum1 = Checksum::new);
+        let mut checksum2_val = Checksum::new);
         checksum2_val.update(1); // Make it different
         let checksum2 = checksum2_val;
 

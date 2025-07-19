@@ -128,7 +128,7 @@ impl AtomicMemoryContext {
         
         // Update thread statistics
         if let Ok(context) = self.thread_manager.get_thread_context_mut(thread_id) {
-            context.stats.record_atomic_operation(;
+            context.stats.record_atomic_operation);
         }
         
         match op {
@@ -164,7 +164,7 @@ impl AtomicMemoryContext {
         
         // Update thread statistics
         if let Ok(context) = self.thread_manager.get_thread_context_mut(thread_id) {
-            context.stats.record_atomic_operation(;
+            context.stats.record_atomic_operation);
         }
         
         match op {
@@ -647,7 +647,7 @@ impl AtomicMemoryContext {
         #[cfg(feature = "std")]
         {
             if let Ok(Some(queue)) = self.wait_queues.get_mut(&(addr as u64)) {
-                let to_notify = core::cmp::min(count as usize, queue.len(;
+                let to_notify = core::cmp::min(count as usize, queue.len);
                 for _ in 0..to_notify {
                     if let Ok(Some(_thread_id)) = queue.pop() {
                         // In real implementation, would wake up the thread
@@ -749,7 +749,7 @@ mod tests {
     
     #[test]
     fn test_atomic_execution_stats() {
-        let stats = AtomicExecutionStats::new(;
+        let stats = AtomicExecutionStats::new);
         assert_eq!(stats.total_operations, 0;
         assert_eq!(stats.throughput(), 0.0;
         assert!(!stats.is_healthy();

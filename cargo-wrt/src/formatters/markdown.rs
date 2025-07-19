@@ -118,17 +118,17 @@ impl MarkdownReportGenerator {
         requirements: &[RequirementData],
         formatter: &MarkdownFormatter,
     ) -> Result<String> {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Header
         writeln!(output, "# 📋 Requirements Traceability Matrix\n")?;
 
         // Summary section
         if formatter.include_summary {
-            let total = requirements.len(;
-            let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count(;
-            let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count(;
-            let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count(;
+            let total = requirements.len);
+            let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count);
+            let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count);
+            let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count);
 
             let coverage =
                 if total > 0 { (implemented as f64 / total as f64) * 100.0 } else { 0.0 };
@@ -195,7 +195,7 @@ impl MarkdownReportGenerator {
         report: &SafetyReportData,
         formatter: &MarkdownFormatter,
     ) -> Result<String> {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Header
         writeln!(output, "# 🛡️ Safety Verification Report\n")?;
@@ -253,7 +253,7 @@ impl MarkdownReportGenerator {
         report: &DocumentationReportData,
         formatter: &MarkdownFormatter,
     ) -> Result<String> {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Header
         writeln!(output, "# 📚 Documentation Compliance Report\n")?;
@@ -324,7 +324,7 @@ fn format_requirements_table(
     requirements: &[RequirementData],
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut output = String::new(;
+    let mut output = String::new);
 
     // Table header
     writeln!(
@@ -374,7 +374,7 @@ fn generate_asil_breakdown(
     requirements: &[RequirementData],
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut asil_counts: HashMap<&str, (usize, usize, usize, usize)> = HashMap::new(;
+    let mut asil_counts: HashMap<&str, (usize, usize, usize, usize)> = HashMap::new);
 
     for req in requirements {
         let entry = asil_counts.entry(&req.asil_level).or_insert((0, 0, 0, 0;
@@ -391,10 +391,10 @@ fn generate_asil_breakdown(
     }
 
     if asil_counts.is_empty() {
-        return Ok(String::new(;
+        return Ok(String::new);
     }
 
-    let mut output = String::new(;
+    let mut output = String::new);
 
     writeln!(
         output,
@@ -406,7 +406,7 @@ fn generate_asil_breakdown(
     )?;
 
     let mut levels: Vec<_> = asil_counts.keys().collect();
-    levels.sort(;
+    levels.sort);
 
     for level in levels {
         let (total, impl_count, test_count, doc_count) = asil_counts[level];
@@ -431,13 +431,13 @@ fn format_asil_compliance_table(
     compliance: &HashMap<String, f64>,
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut output = String::new(;
+    let mut output = String::new);
 
     writeln!(output, "| ASIL Level | Compliance |")?;
     writeln!(output, "|:-----------|:-----------|")?;
 
     let mut levels: Vec<_> = compliance.keys().collect();
-    levels.sort(;
+    levels.sort);
 
     for level in levels {
         let percentage = compliance[level];
@@ -454,7 +454,7 @@ fn format_asil_compliance_table(
 }
 
 fn format_test_summary(summary: &TestSummaryData, formatter: &MarkdownFormatter) -> Result<String> {
-    let mut output = String::new(;
+    let mut output = String::new);
 
     if formatter.github_flavor {
         writeln!(output, "- **Total Tests**: {} tests", summary.total_tests)?;
@@ -485,7 +485,7 @@ fn format_test_summary(summary: &TestSummaryData, formatter: &MarkdownFormatter)
 }
 
 fn format_recommendations(recommendations: &[String]) -> Result<String> {
-    let mut output = String::new(;
+    let mut output = String::new);
 
     for (i, rec) in recommendations.iter().enumerate() {
         writeln!(output, "{}. {}", i + 1, rec)?;
@@ -498,13 +498,13 @@ fn format_asil_documentation(
     compliance: &HashMap<String, f64>,
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut output = String::new(;
+    let mut output = String::new);
 
     writeln!(output, "| ASIL Level | Documentation Compliance |")?;
     writeln!(output, "|:-----------|:------------------------|")?;
 
     let mut levels: Vec<_> = compliance.keys().collect();
-    levels.sort(;
+    levels.sort);
 
     for level in levels {
         let percentage = compliance[level];
@@ -534,7 +534,7 @@ pub fn create_github_pr_comment(
     summary: &str,
     details: Vec<(&str, &str)>, // (section_title, section_content)
 ) -> String {
-    let mut output = String::new(;
+    let mut output = String::new);
 
     // Main title and summary
     output.push_str(&format!("## {}\n\n", title;

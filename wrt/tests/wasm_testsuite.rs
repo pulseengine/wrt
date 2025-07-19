@@ -97,7 +97,7 @@ fn test_basic_simd_operations() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let mut empty_module = Module::new(;
+    let mut empty_module = Module::new);
     let module = empty_module?.load_from_binary(&wasm_binary)?;
 
     // Create an engine with the loaded module
@@ -237,7 +237,7 @@ fn test_simd_dot_product() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let mut empty_module = Module::new(;
+    let mut empty_module = Module::new);
     let module = empty_module?.load_from_binary(&wasm_binary)?;
 
     // Create an engine with the loaded module

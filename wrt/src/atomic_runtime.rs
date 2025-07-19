@@ -106,8 +106,8 @@ pub fn execute_atomic_operation(
 /// Validate input count for atomic operation
 #[inline]
 fn validate_input_count(op: &AtomicOp, inputs: &[Value]) -> Result<()> {
-    let expected = op.input_count(;
-    let actual = inputs.len(;
+    let expected = op.input_count);
+    let actual = inputs.len);
 
     if actual != expected {
         return Err(Error::runtime_execution_error(
@@ -121,8 +121,8 @@ fn validate_input_count(op: &AtomicOp, inputs: &[Value]) -> Result<()> {
 /// Validate atomic operation result
 #[inline]
 fn validate_atomic_result(op: &AtomicOp, result: &Option<Value>) -> Result<()> {
-    let expects_result = op.produces_result(;
-    let has_result = result.is_some(;
+    let expects_result = op.produces_result);
+    let has_result = result.is_some);
 
     if expects_result && !has_result {
         return Err(Error::runtime_execution_error(

@@ -22,7 +22,7 @@ pub mod kani_verification {
         let decoded = rle_decode(&encoded;
 
         // Verify round-trip correctness
-        assert_eq!(original, decoded.as_slice(;
+        assert_eq!(original, decoded.as_slice);
     }
 
     /// Verify binary module version detection
@@ -42,7 +42,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     pub fn verify_state_section_roundtrip() {
         // Create a minimal state section
-        let state = StateSection::new(;
+        let state = StateSection::new);
 
         // Serialize to bytes
         let state_bytes = create_state_section(&state;
@@ -68,7 +68,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     pub fn verify_feature_detection() {
         // Create version info for standard binary
-        let info = VersionInfo::default(;
+        let info = VersionInfo::default);
 
         // Check core feature availability
         let core_available = is_feature_available(&info, ComponentModelFeature::Core;

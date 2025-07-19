@@ -483,7 +483,7 @@ impl QnxArenaAllocator {
 impl Drop for QnxArenaAllocator {
     fn drop(&mut self) {
         // Binary std/no_std choice
-        let _ = self.free_current_allocation(;
+        let _ = self.free_current_allocation);
     }
 }
 
@@ -521,7 +521,7 @@ impl PageAllocator for QnxArenaAllocator {
         }
 
         // Allocate memory using arenas (posix_memalign for alignment)
-        let mut ptr: *mut core::ffi::c_void = core::ptr::null_mut(;
+        let mut ptr: *mut core::ffi::c_void = core::ptr::null_mut);
         let alignment = if self.config.use_guard_pages {
             WASM_PAGE_SIZE // Align to WASM page size for guard pages
         } else {
@@ -642,7 +642,7 @@ impl PageAllocator for QnxArenaAllocator {
 
         // Binary std/no_std choice
         // Get the current base pointer (before guard page if any)
-        let current_ptr = self.current_allocation.unwrap().as_ptr(;
+        let current_ptr = self.current_allocation.unwrap().as_ptr);
         let base_ptr = if self.config.use_guard_pages {
             unsafe { current_ptr.sub(WASM_PAGE_SIZE) }
         } else {
@@ -879,7 +879,7 @@ mod tests {
         println!("Allocated space: {}", info.uordblks;
 
         // Clean up
-        let free_result = allocator.free(;
+        let free_result = allocator.free);
         assert!(free_result.is_ok();
     }
 
@@ -920,7 +920,7 @@ mod tests {
         assert_eq!(preserved_data, test_pattern;
 
         // Clean up
-        let free_result = allocator.free(;
+        let free_result = allocator.free);
         assert!(free_result.is_ok();
     }
 
@@ -946,7 +946,7 @@ mod tests {
         assert!(protect_result.is_ok();
 
         // Clean up
-        let free_result = allocator.free(;
+        let free_result = allocator.free);
         assert!(free_result.is_ok();
     }
 

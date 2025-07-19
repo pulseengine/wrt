@@ -506,17 +506,17 @@ impl SubtaskManager {
         // Update statistics based on state transition
         match (old_state, new_state) {
             (_, SubtaskState::Completed) => {
-                subtask.completed_at = Some(self.get_current_time(;
+                subtask.completed_at = Some(self.get_current_time);
                 self.stats.completed += 1;
                 self.stats.active -= 1;
             }
             (_, SubtaskState::Failed) => {
-                subtask.completed_at = Some(self.get_current_time(;
+                subtask.completed_at = Some(self.get_current_time);
                 self.stats.failed += 1;
                 self.stats.active -= 1;
             }
             (_, SubtaskState::Cancelled) => {
-                subtask.completed_at = Some(self.get_current_time(;
+                subtask.completed_at = Some(self.get_current_time);
                 self.stats.cancelled += 1;
                 self.stats.active -= 1;
             }
@@ -558,7 +558,7 @@ impl SubtaskManager {
     /// Cancel all subtasks
     pub fn cancel_all_subtasks(&mut self) -> Result<()> {
         for subtask in &self.subtasks {
-            let _ = subtask.cancellation_token.cancel(;
+            let _ = subtask.cancellation_token.cancel);
         }
         
         for subtask in &mut self.subtasks {
@@ -602,7 +602,7 @@ impl SubtaskManager {
     pub fn wait_all(&self) -> Result<Vec<SubtaskResult>> {
         // In a real implementation, this would block until all subtasks complete
         // For now, we return current results
-        let mut results = Vec::new(;
+        let mut results = Vec::new);
         
         for subtask in &self.subtasks {
             if let Some(ref result) = subtask.result {
@@ -724,7 +724,7 @@ where
     
     // Auto-cancel if requested
     if auto_cancel {
-        let _ = token.cancel(;
+        let _ = token.cancel);
     }
     
     result

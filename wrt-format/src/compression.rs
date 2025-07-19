@@ -60,7 +60,7 @@ impl CompressionType {
 /// Where count is a single byte (0-255)
 #[cfg(feature = "std")]
 pub fn rle_encode(data: &[u8]) -> Vec<u8> {
-    let mut result = Vec::new(;
+    let mut result = Vec::new);
     let mut i = 0;
 
     while i < data.len() {
@@ -103,10 +103,10 @@ pub fn rle_encode(data: &[u8]) -> Vec<u8> {
 #[cfg(feature = "std")]
 pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
     if input.is_empty() {
-        return Ok(Vec::new(;
+        return Ok(Vec::new);
     }
 
-    let mut result = Vec::new(;
+    let mut result = Vec::new);
     let mut i = 0;
 
     while i < input.len() {

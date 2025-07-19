@@ -191,7 +191,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<DiagnosticCollection> {
-        let start_time = std::time::Instant::now(;
+        let start_time = std::time::Instant::now);
         let mut collection =
             DiagnosticCollection::new(self.workspace.root.clone(), "verify".to_string();
 
@@ -254,7 +254,7 @@ impl BuildSystem {
             }
         }
 
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         Ok(collection.finalize(duration.as_millis() as u64))
     }
 
@@ -268,9 +268,9 @@ impl BuildSystem {
             "🛡️".bright_blue()
         ;
 
-        let start_time = std::time::Instant::now(;
-        let mut checks = Vec::new(;
-        let mut report_sections: Vec<String> = Vec::new(;
+        let start_time = std::time::Instant::now);
+        let mut checks = Vec::new);
+        let mut report_sections: Vec<String> = Vec::new);
 
         // 1. Basic safety checks
         checks.extend(self.run_basic_safety_checks_with_options(options)?;
@@ -326,16 +326,16 @@ impl BuildSystem {
         }
 
         // Calculate overall results
-        let duration = start_time.elapsed(;
+        let duration = start_time.elapsed);
         let critical_failures = checks
             .iter()
             .filter(|c| !c.passed && matches!(c.severity, VerificationSeverity::Critical))
-            .count(;
+            .count);
 
         let major_failures = checks
             .iter()
             .filter(|c| !c.passed && matches!(c.severity, VerificationSeverity::Major))
-            .count(;
+            .count);
 
         let success = critical_failures == 0 && major_failures == 0;
         let achieved_asil = self.calculate_asil_level(&checks, &options.target_asil;
@@ -378,7 +378,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<VerificationCheck>> {
-        let mut checks = Vec::new(;
+        let mut checks = Vec::new);
 
         // Check for unsafe code usage
         checks.push(self.check_unsafe_code_usage_with_options(options)?;
@@ -405,7 +405,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new(;
+        let searcher = TextSearcher::new);
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
 
         // Filter out allowed unsafe blocks if configuration is provided
@@ -440,7 +440,7 @@ impl BuildSystem {
 
     /// Check for panic usage
     fn check_panic_usage(&self) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new(;
+        let searcher = TextSearcher::new);
         let matches = searcher.search_panic_usage(&self.workspace.root)?;
         let panic_count = count_production_matches(&matches;
 
@@ -458,7 +458,7 @@ impl BuildSystem {
 
     /// Check for unwrap usage
     fn check_unwrap_usage(&self) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new(;
+        let searcher = TextSearcher::new);
         let matches = searcher.search_unwrap_usage(&self.workspace.root)?;
         let unwrap_count = count_production_matches(&matches;
 
@@ -539,10 +539,10 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         // Check for unsafe code usage
-        let searcher = TextSearcher::new(;
+        let searcher = TextSearcher::new);
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
 
         // Filter matches based on allowed unsafe configuration
@@ -669,7 +669,7 @@ impl BuildSystem {
     /// Run Kani formal verification with diagnostic output
     fn run_kani_verification_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         // Check if kani is available
-        let kani_check = Command::new("cargo").arg("kani").arg("--version").output(;
+        let kani_check = Command::new("cargo").arg("kani").arg("--version").output);
 
         match kani_check {
             Err(_) => {
@@ -808,7 +808,7 @@ impl BuildSystem {
         asil_level: &AsilLevel,
         duration: core::time::Duration,
     ) -> BuildResult<String> {
-        let mut report = String::new(;
+        let mut report = String::new);
 
         report.push_str("# Safety Verification Report\n\n";
         report.push_str(&format!(
@@ -819,8 +819,8 @@ impl BuildSystem {
         report.push_str(&format!("**ASIL Level Achieved:** {:?}\n\n", asil_level;
 
         // Summary
-        let passed = checks.iter().filter(|c| c.passed).count(;
-        let total = checks.len(;
+        let passed = checks.iter().filter(|c| c.passed).count);
+        let total = checks.len);
         report.push_str("## Summary\n\n";
         report.push_str(&format!("- **Total Checks:** {}\n", total;
         report.push_str(&format!("- **Passed:** {}\n", passed;
@@ -845,7 +845,7 @@ mod tests {
 
     #[test]
     fn test_verification_options() {
-        let options = VerificationOptions::default(;
+        let options = VerificationOptions::default);
         assert!(options.kani);
         assert!(options.memory_safety);
     }

@@ -210,8 +210,8 @@ impl CapabilityAwareEngine {
     pub fn with_context_and_preset(context: MemoryCapabilityContext, preset: EnginePreset) -> Result<Self> {
         // Use simple NoStdProvider directly for internal structures to avoid recursion
         // These are internal engine data structures and don't need full capability checking
-        let modules_provider = BaseRuntimeProvider::default(;
-        let instances_provider = BaseRuntimeProvider::default(;
+        let modules_provider = BaseRuntimeProvider::default);
+        let instances_provider = BaseRuntimeProvider::default);
 
         // Initialize host integration based on preset
         let (host_registry, host_manager) = Self::create_host_integration(&preset)?;
@@ -221,7 +221,7 @@ impl CapabilityAwareEngine {
         let instances = BoundedMap::new(instances_provider)?;
 
         // Create the inner stackless engine
-        let inner_engine = StacklessEngine::new(;
+        let inner_engine = StacklessEngine::new);
         
         Ok(Self {
             inner: inner_engine,
@@ -261,26 +261,26 @@ impl CapabilityAwareEngine {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let limits = HostIntegrationLimits::qnx(;
+                    let limits = HostIntegrationLimits::qnx);
                     let manager = BoundedHostIntegrationManager::new(limits)?;
                     Ok((None, Some(manager)))
                 }
             }
             EnginePreset::AsilA => {
                 // ASIL-A: Bounded host functions with embedded limits
-                let limits = HostIntegrationLimits::embedded(;
+                let limits = HostIntegrationLimits::embedded);
                 let manager = BoundedHostIntegrationManager::new(limits)?;
                 Ok((None, Some(manager)))
             }
             EnginePreset::AsilB | EnginePreset::AsilC => {
                 // ASIL-B/C: Restricted host functions with strict limits
-                let limits = HostIntegrationLimits::embedded(;
+                let limits = HostIntegrationLimits::embedded);
                 let manager = BoundedHostIntegrationManager::new(limits)?;
                 Ok((None, Some(manager)))
             }
             EnginePreset::AsilD => {
                 // ASIL-D: Minimal or no host functions for maximum safety
-                let limits = HostIntegrationLimits::embedded(;
+                let limits = HostIntegrationLimits::embedded);
                 let manager = BoundedHostIntegrationManager::new(limits)?;
                 Ok((None, Some(manager)))
             }
@@ -370,7 +370,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         self.context.verify_operation(CrateId::Runtime, &operation)?;
 
         // Extract resource limits from binary if available
-        let asil_mode = self.preset_to_asil_mode(;
+        let asil_mode = self.preset_to_asil_mode);
         let _resource_config = extract_resource_limits_from_binary(binary, asil_mode)
             .unwrap_or(None); // Ignore errors, use defaults if extraction fails
 
@@ -384,7 +384,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let runtime_module = Module::from_wrt_module(&decoded)?;
 
         // Create and store with unique handle
-        let handle = ModuleHandle::new(;
+        let handle = ModuleHandle::new);
         self.modules.insert(handle, runtime_module)?;
 
         Ok(handle)
@@ -457,7 +457,7 @@ impl CapabilityAwareEngine {
             .get(&instance_handle)?
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
-        let mut functions = Vec::new(;
+        let mut functions = Vec::new);
         // TODO: BoundedMap doesn't support iteration, so we can't list all exports
         // For now, return an empty list as a placeholder
         // In a real implementation, we'd need an iterator interface on BoundedMap
@@ -506,8 +506,8 @@ mod tests {
 
     #[test]
     fn test_module_handle_creation() {
-        let handle1 = ModuleHandle::new(;
-        let handle2 = ModuleHandle::new(;
+        let handle1 = ModuleHandle::new);
+        let handle2 = ModuleHandle::new);
         assert_ne!(handle1, handle2;
     }
 

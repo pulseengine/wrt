@@ -141,7 +141,7 @@ mod tests {
                 ]))
             } else {
                 self.polls_remaining -= 1;
-                cx.waker().wake_by_ref(;
+                cx.waker().wake_by_ref);
                 Poll::Pending
             }
         }
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_full_system_integration() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         
         // Initialize multiple components
         let component1 = ComponentInstanceId::new(1;
@@ -201,7 +201,7 @@ mod tests {
                 }
             }
 
-            let stats = bridge.get_bridge_statistics(;
+            let stats = bridge.get_bridge_statistics);
             assert!(stats.total_async_tasks >= 2);
             assert_eq!(stats.active_components, 2;
         }
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_async_combinators_with_channels() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
         harness.initialize_component(component_id).unwrap();
 
@@ -256,13 +256,13 @@ mod tests {
             }
         }
 
-        let stats = harness.combinators.get_combinator_statistics(;
+        let stats = harness.combinators.get_combinator_statistics);
         assert_eq!(stats.total_joins, 1;
     }
 
     #[test]
     fn test_timer_with_sync_primitives() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
         harness.initialize_component(component_id).unwrap();
 
@@ -308,17 +308,17 @@ mod tests {
             }
         }
 
-        let timer_stats = harness.timers.get_timer_statistics(;
+        let timer_stats = harness.timers.get_timer_statistics);
         assert!(timer_stats.total_timers_created >= 2);
 
-        let sync_stats = harness.sync_primitives.get_sync_statistics(;
+        let sync_stats = harness.sync_primitives.get_sync_statistics);
         assert_eq!(sync_stats.total_mutexes_created, 1;
         assert_eq!(sync_stats.total_semaphores_created, 1;
     }
 
     #[test]
     fn test_resource_operations_with_combinators() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
         harness.initialize_component(component_id).unwrap();
 
@@ -351,7 +351,7 @@ mod tests {
 
         // Poll everything
         for _ in 0..30 {
-            let _ = harness.resource_ops.poll_resource_operations(;
+            let _ = harness.resource_ops.poll_resource_operations);
             let combinator_result = harness.combinators.poll_combinators().unwrap();
             
             if combinator_result.completed_combinators > 0 {
@@ -359,16 +359,16 @@ mod tests {
             }
         }
 
-        let resource_stats = harness.resource_ops.get_resource_statistics(;
+        let resource_stats = harness.resource_ops.get_resource_statistics);
         assert_eq!(resource_stats.total_creates, 2;
 
-        let combinator_stats = harness.combinators.get_combinator_statistics(;
+        let combinator_stats = harness.combinators.get_combinator_statistics);
         assert_eq!(combinator_stats.total_races, 1;
     }
 
     #[test]
     fn test_component_isolation_under_load() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         
         // Create multiple components
         let components: Vec<ComponentInstanceId> = (1..=5)
@@ -421,15 +421,15 @@ mod tests {
             // Poll all subsystems
             {
                 let mut bridge = harness.bridge.lock().unwrap();
-                let _ = bridge.poll_async_tasks(;
+                let _ = bridge.poll_async_tasks);
             }
             
-            let _ = harness.combinators.poll_combinators(;
-            let _ = harness.resource_ops.poll_resource_operations(;
+            let _ = harness.combinators.poll_combinators);
+            let _ = harness.resource_ops.poll_resource_operations);
             
             // Advance time and process timers
             harness.timers.advance_time(10;
-            let _ = harness.timers.process_timers(;
+            let _ = harness.timers.process_timers);
 
             // Verify component isolation
             let bridge_stats = {
@@ -441,9 +441,9 @@ mod tests {
             
             if round % 20 == 0 {
                 // Check that all components are still functional
-                let timer_stats = harness.timers.get_timer_statistics(;
-                let sync_stats = harness.sync_primitives.get_sync_statistics(;
-                let channel_stats = harness.channels.get_channel_statistics(;
+                let timer_stats = harness.timers.get_timer_statistics);
+                let sync_stats = harness.sync_primitives.get_sync_statistics);
+                let channel_stats = harness.channels.get_channel_statistics);
                 
                 assert!(timer_stats.active_timers <= 5);
                 assert!(sync_stats.active_primitives <= 10)); // 2 per component
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_error_propagation_and_recovery() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
         harness.initialize_component(component_id).unwrap();
 
@@ -480,7 +480,7 @@ mod tests {
 
         // 2. Component limits exceeded
         // Try to create too many timers
-        let mut timer_ids = Vec::new(;
+        let mut timer_ids = Vec::new);
         for i in 0..200 { // Exceed limit
             match harness.timers.create_timer(
                 component_id,
@@ -531,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_fuel_consumption_and_limits() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
         harness.initialize_component(component_id).unwrap();
 
@@ -551,7 +551,7 @@ mod tests {
         ).unwrap();
         
         harness.timers.advance_time(150;
-        let _ = harness.timers.process_timers(;
+        let _ = harness.timers.process_timers);
 
         // 2. Channel operations
         let (sender, receiver) = harness.channels.create_channel(
@@ -592,10 +592,10 @@ mod tests {
         ;
 
         // Check fuel consumption
-        let timer_stats = harness.timers.get_timer_statistics(;
-        let channel_stats = harness.channels.get_channel_statistics(;
-        let sync_stats = harness.sync_primitives.get_sync_statistics(;
-        let abi_stats = harness.abi_support.get_abi_statistics(;
+        let timer_stats = harness.timers.get_timer_statistics);
+        let channel_stats = harness.channels.get_channel_statistics);
+        let sync_stats = harness.sync_primitives.get_sync_statistics);
+        let abi_stats = harness.abi_support.get_abi_statistics);
 
         // All operations should have consumed fuel
         assert!(timer_stats.total_fuel_consumed > 0);
@@ -614,7 +614,7 @@ mod tests {
 
     #[test]
     fn test_concurrent_primitive_usage() {
-        let mut harness = AsyncSystemTestHarness::new(;
+        let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
         harness.initialize_component(component_id).unwrap();
 
@@ -632,7 +632,7 @@ mod tests {
         let task_ids: Vec<_> = (1..=5).map(|i| crate::threading::task_manager::TaskId::new(i)).collect();
 
         // Test concurrent mutex access
-        let mut mutex_results = Vec::new(;
+        let mut mutex_results = Vec::new);
         for &task_id in &task_ids {
             let result = harness.sync_primitives.lock_async_mutex(
                 mutex_id,
@@ -645,11 +645,11 @@ mod tests {
         // Only one should acquire, others should block
         let acquired_count = mutex_results.iter()
             .filter(|&&r| r == MutexLockResult::Acquired)
-            .count(;
+            .count);
         assert_eq!(acquired_count, 1;
 
         // Test concurrent semaphore access
-        let mut sem_results = Vec::new(;
+        let mut sem_results = Vec::new);
         for &task_id in &task_ids {
             let result = harness.sync_primitives.acquire_semaphore(
                 semaphore_id,
@@ -662,7 +662,7 @@ mod tests {
         // Up to 3 should acquire (semaphore permits), others should block
         let sem_acquired_count = sem_results.iter()
             .filter(|&&r| r == SemaphoreAcquireResult::Acquired)
-            .count(;
+            .count);
         assert!(sem_acquired_count <= 3);
 
         // Test concurrent channel access
@@ -697,8 +697,8 @@ mod tests {
         assert!(received_count > 0);
 
         // Verify system state is consistent
-        let sync_stats = harness.sync_primitives.get_sync_statistics(;
-        let channel_stats = harness.channels.get_channel_statistics(;
+        let sync_stats = harness.sync_primitives.get_sync_statistics);
+        let channel_stats = harness.channels.get_channel_statistics);
 
         assert!(sync_stats.total_mutex_locks > 0);
         assert!(sync_stats.total_semaphore_acquires > 0);

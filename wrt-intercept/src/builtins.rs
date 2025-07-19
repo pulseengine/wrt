@@ -105,7 +105,7 @@ impl BuiltinSerialization {
         values: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> wrt_error::Result<Vec<u8>> {
         // Simple implementation for now - convert to bytes
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         for value in values {
             let bytes = match value {
                 ComponentValue::S32(v) => v.to_le_bytes().to_vec(),
@@ -136,7 +136,7 @@ impl BuiltinSerialization {
         bytes: &[u8],
         types: &[ValType<wrt_foundation::NoStdProvider<64>>],
     ) -> wrt_error::Result<Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         let mut offset = 0;
 
         for ty in types {
@@ -212,28 +212,28 @@ impl BuiltinSerialization {
     // args: &[ComponentValue],
     // types: &[ValType],
     // ) -> Result<Vec<u8>> {
-    // let mut bytes = Vec::new(;
+    // let mut bytes = Vec::new);
     // for (index, value) in args.iter().enumerate() {
     // match types.get(index) {
     // Some(ty) => match ty {
     // ValType::S32 => {
     // if let Some(ComponentValue::S32(val)) = args.get(index) {
-    // bytes.extend_from_slice(&val.to_le_bytes(;
+    // bytes.extend_from_slice(&val.to_le_bytes);
     // }
     // }
     // ValType::S64 => {
     // if let Some(ComponentValue::S64(val)) = args.get(index) {
-    // bytes.extend_from_slice(&val.to_le_bytes(;
+    // bytes.extend_from_slice(&val.to_le_bytes);
     // }
     // }
     // ValType::F32 => {
     // if let Some(ComponentValue::F32(val)) = args.get(index) {
-    // bytes.extend_from_slice(&val.to_le_bytes(;
+    // bytes.extend_from_slice(&val.to_le_bytes);
     // }
     // }
     // ValType::F64 => {
     // if let Some(ComponentValue::F64(val)) = args.get(index) {
-    // bytes.extend_from_slice(&val.to_le_bytes(;
+    // bytes.extend_from_slice(&val.to_le_bytes);
     // }
     // }
     // _ => {
@@ -371,7 +371,7 @@ mod tests {
         let deserialized_values =
             BuiltinSerialization::deserialize(&serialized_bytes, &types).unwrap();
 
-        assert_eq!(deserialized_values.len(), values.len(;
+        assert_eq!(deserialized_values.len(), values.len);
         assert_eq!(deserialized_values[0], values[0];
         assert_eq!(deserialized_values[1], values[1];
         // For floating point, we need to handle potential rounding issues

@@ -86,9 +86,9 @@ use wrt_error::{Error, AsilLevel};
 #[cfg(kani)]
 pub fn verify_memory_violation_detection() {
     // Generate arbitrary memory access patterns
-    let buffer_size: usize = kani::any(;
-    let access_index: usize = kani::any(;
-    let write_value: u8 = kani::any(;
+    let buffer_size: usize = kani::any);
+    let access_index: usize = kani::any);
+    let write_value: u8 = kani::any);
     
     // Constrain to reasonable bounds for verification
     kani::assume(buffer_size > 0;
@@ -122,7 +122,7 @@ pub fn verify_memory_violation_detection() {
                     
                     // Test safe access patterns
                     if vec.len() > 0 {
-                        let safe_index = access_index % vec.len(;
+                        let safe_index = access_index % vec.len);
                         let _value = vec[safe_index]; // Should not panic
                     }
                     
@@ -149,7 +149,7 @@ pub fn verify_memory_violation_detection() {
 #[cfg(kani)]
 pub fn verify_budget_violation_detection() {
     // Test various budget violation scenarios
-    let allocation_size: u32 = kani::any(;
+    let allocation_size: u32 = kani::any);
     kani::assume(allocation_size > 0;
     
     // Test reasonable allocation sizes vs. unreasonable ones
@@ -162,7 +162,7 @@ pub fn verify_budget_violation_detection() {
     };
     
     // Generate crate ID for testing
-    let crate_id: u8 = kani::any(;
+    let crate_id: u8 = kani::any);
     kani::assume(crate_id < 19;
     let crate_id = unsafe { core::mem::transmute::<u8, CrateId>(crate_id) };
     
@@ -177,7 +177,7 @@ pub fn verify_budget_violation_detection() {
             match vec_result {
                 Ok(vec) => {
                     // Vector creation succeeded
-                    let element_size = core::mem::size_of::<u64>(;
+                    let element_size = core::mem::size_of::<u64>);
                     let max_elements = test_size / element_size;
                     assert!(vec.capacity() <= 1024.min(max_elements);
                 }
@@ -216,10 +216,10 @@ pub fn verify_budget_violation_detection() {
 #[cfg(kani)]
 pub fn verify_fault_isolation() {
     // Simulate faults in different components
-    let fault_component: u8 = kani::any(;
+    let fault_component: u8 = kani::any);
     kani::assume(fault_component < 4;
     
-    let fault_type: u8 = kani::any(;
+    let fault_type: u8 = kani::any);
     kani::assume(fault_type < 3;
     
     // Create allocations for multiple components
@@ -354,7 +354,7 @@ pub fn verify_fault_isolation() {
 #[cfg(kani)]
 pub fn verify_safe_state_maintenance() {
     // Generate various fault scenarios
-    let fault_scenario: u8 = kani::any(;
+    let fault_scenario: u8 = kani::any);
     kani::assume(fault_scenario < 5;
     
     // Track system state through fault scenarios
@@ -650,38 +650,38 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for fault detection properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_memory_violation_detection(;
-    verify_budget_violation_detection(;
-    verify_fault_isolation(;
-    verify_safe_state_maintenance(;
+    verify_memory_violation_detection);
+    verify_budget_violation_detection);
+    verify_fault_isolation);
+    verify_safe_state_maintenance);
 }
 
 /// KANI harness for memory violation detection verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_memory_violation_detection() {
-    verify_memory_violation_detection(;
+    verify_memory_violation_detection);
 }
 
 /// KANI harness for budget violation detection verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_budget_violation_detection() {
-    verify_budget_violation_detection(;
+    verify_budget_violation_detection);
 }
 
 /// KANI harness for fault isolation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_fault_isolation() {
-    verify_fault_isolation(;
+    verify_fault_isolation);
 }
 
 /// KANI harness for safe state maintenance verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_safe_state_maintenance() {
-    verify_safe_state_maintenance(;
+    verify_safe_state_maintenance);
 }
 
 #[cfg(test)]
@@ -690,7 +690,7 @@ mod tests {
     
     #[test]
     fn test_fault_detection_verification() {
-        let registry = TestRegistry::global(;
+        let registry = TestRegistry::global);
         let result = register_tests(registry;
         assert!(result.is_ok();
         assert_eq!(property_count(), 4;

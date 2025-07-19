@@ -148,7 +148,7 @@ struct QnxThreadHandle {
 impl PlatformThreadHandle for QnxThreadHandle {
     fn join(self: Box<Self>) -> Result<Vec<u8>> {
         // Join the thread
-        let mut retval: *mut core::ffi::c_void = core::ptr::null_mut(;
+        let mut retval: *mut core::ffi::c_void = core::ptr::null_mut);
         let result = unsafe { ffi::pthread_join(self.tid, &mut retval) };
 
         if result != 0 {
@@ -156,7 +156,7 @@ impl PlatformThreadHandle for QnxThreadHandle {
         }
 
         // Get the result
-        let result = self.result.lock(;
+        let result = self.result.lock);
         match &*result {
             Some(Ok(data)) => Ok(data.clone()),
             Some(Err(e)) => Err(e.clone()),
@@ -336,7 +336,7 @@ extern "C" fn thread_entry(arg: *mut core::ffi::c_void) -> *mut core::ffi::c_voi
     // Set CPU affinity if specified
     if let Some(ref cpu_set) = context.task.cpu_affinity {
         unsafe {
-            ffi::pthread_setrunmask_np(cpu_set.as_mask(;
+            ffi::pthread_setrunmask_np(cpu_set.as_mask);
         }
     }
 
@@ -368,7 +368,7 @@ impl PlatformThreadPool for QnxThreadPool {
         }
 
         // Check thread limit
-        let active_count = self.active_threads.read().len(;
+        let active_count = self.active_threads.read().len);
         if active_count >= self.config.max_threads {
             return Err(Error::new(
                 ErrorCategory::Resource,
@@ -443,7 +443,7 @@ impl PlatformThreadPool for QnxThreadPool {
 
         // Update statistics
         {
-            let mut stats = self.stats.lock(;
+            let mut stats = self.stats.lock);
             stats.active_threads += 1;
             stats.total_spawned += 1;
         }
@@ -463,7 +463,7 @@ impl PlatformThreadPool for QnxThreadPool {
         self.shutdown.store(true, Ordering::Release;
 
         // Cancel all threads
-        let threads = self.active_threads.read(;
+        let threads = self.active_threads.read);
         for (_id, handle) in threads.iter() {
             if handle.is_running() {
                 // QNX doesn't have a safe way to force-terminate threads
@@ -472,7 +472,7 @@ impl PlatformThreadPool for QnxThreadPool {
         }
 
         // Wait for threads to complete (simplified)
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         while self.active_threads.read().len() > 0 && start.elapsed() < timeout {
             std::thread::sleep(Duration::from_millis(10;
         }
@@ -520,20 +520,20 @@ mod tests {
         assert_eq!(result, vec![1, 2, 3, 4];
 
         // Check stats
-        let stats = pool.get_stats(;
+        let stats = pool.get_stats);
         assert_eq!(stats.total_spawned, 1;
     }
 
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_thread_pool_with_cpu_affinity() {
-        let config = ThreadPoolConfig::default(;
+        let config = ThreadPoolConfig::default);
         let mut pool = QnxThreadPool::new(config).unwrap();
 
         pool.set_executor(|_| Ok(vec![];
 
         // Create CPU set for CPUs 0 and 1
-        let mut cpu_set = CpuSet::new(;
+        let mut cpu_set = CpuSet::new);
         cpu_set.add(0;
         cpu_set.add(1;
 

@@ -172,7 +172,7 @@ impl FutexLike for SpinFutex {
         // Check if the current value matches the expected value
         if self.value.load(Ordering::Acquire) != expected {
             // Value has changed, no need to wait
-            return Ok((;
+            return Ok();
         }
 
         // Calculate timeout in iterations (very rough estimation)
@@ -190,12 +190,12 @@ impl FutexLike for SpinFutex {
         for _ in 0..max_iterations {
             // Small delay to reduce CPU usage
             for _ in 0..100 {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
 
             // Check if value has changed
             if self.value.load(Ordering::Acquire) != expected {
-                return Ok((;
+                return Ok();
             }
         }
 
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn test_spin_futex_builder() {
-        let futex = SpinFutexBuilder::new().with_initial_value(42).build(;
+        let futex = SpinFutexBuilder::new().with_initial_value(42).build);
 
         assert_eq!(futex.get(), 42;
     }

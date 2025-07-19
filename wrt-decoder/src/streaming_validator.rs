@@ -339,7 +339,7 @@ impl StreamingWasmValidator {
     pub fn validate_single_pass(&mut self, wasm_bytes: &[u8]) -> Result<WasmConfiguration, Error> {
         // Reset state
         self.state = ValidationState::Header;
-        self.requirements = WasmRequirements::default(;
+        self.requirements = WasmRequirements::default);
 
         // Validate header first
         self.validate_header(wasm_bytes)?;
@@ -619,7 +619,7 @@ impl PlatformWasmValidatorFactory {
     /// Create validator for current platform
     pub fn create_for_platform() -> Result<StreamingWasmValidator, Error> {
         // In a real implementation, this would detect the current platform
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         Ok(StreamingWasmValidator::new(limits))
     }
 
@@ -647,14 +647,14 @@ mod tests {
 
     #[test]
     fn test_validator_creation() {
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         let validator = StreamingWasmValidator::new(limits;
         assert_eq!(validator.state(), ValidationState::Header;
     }
 
     #[test]
     fn test_header_validation() {
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         let validator = StreamingWasmValidator::new(limits;
 
         // Valid WASM header
@@ -672,7 +672,7 @@ mod tests {
 
     #[test]
     fn test_memory_section_parsing() {
-        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default(;
+        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default);
 
         // Memory section: count=1, limits=0, initial=1
         let memory_data = [0x01, 0x00, 0x01];
@@ -688,7 +688,7 @@ mod tests {
 
     #[test]
     fn test_leb128_reading() {
-        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default(;
+        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default);
 
         // Test reading simple values
         let data = [0x01]; // 1
@@ -721,7 +721,7 @@ mod tests {
 
     #[test]
     fn test_requirements_validation() {
-        let mut limits = ComprehensivePlatformLimits::default(;
+        let mut limits = ComprehensivePlatformLimits::default);
         limits.max_wasm_linear_memory = 64 * 1024; // 64KB limit
 
         let mut validator = StreamingWasmValidator::new(limits;

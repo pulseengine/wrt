@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn test_i32_equality() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test i32.eq (equal)
         context.push_comparison_value(Value::I32(5)).unwrap();
@@ -498,7 +498,7 @@ mod tests {
 
     #[test]
     fn test_i32_relational_signed() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test i32.lt_s (less than, signed)
         context.push_comparison_value(Value::I32(-5)).unwrap();
@@ -527,7 +527,7 @@ mod tests {
 
     #[test]
     fn test_i32_relational_unsigned() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test i32.lt_u (less than, unsigned)
         // Note: -1 as unsigned is 0xFFFFFFFF, which is larger than 7
@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn test_i64_comparisons() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test i64.eq (equal)
         context.push_comparison_value(Value::I64(0x123456789ABCDEF0)).unwrap();
@@ -580,7 +580,7 @@ mod tests {
 
     #[test]
     fn test_f32_comparisons() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test f32.eq (equal)
         context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap();
@@ -621,7 +621,7 @@ mod tests {
 
     #[test]
     fn test_f64_comparisons() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test f64.eq (equal)
         context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793))).unwrap();
@@ -638,7 +638,7 @@ mod tests {
 
     #[test]
     fn test_eqz_operations() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test i32.eqz with zero
         context.push_comparison_value(Value::I32(0)).unwrap();
@@ -663,7 +663,7 @@ mod tests {
 
     #[test]
     fn test_nan_handling() {
-        let mut context = MockComparisonContext::new(;
+        let mut context = MockComparisonContext::new);
 
         // Test f32 NaN equality (should be false)
         context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap();

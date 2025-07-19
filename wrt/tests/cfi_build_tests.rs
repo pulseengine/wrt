@@ -33,7 +33,7 @@ mod cfi_build_tests {
         }
 
         // Test configuration creation
-        let config = TestCfiConfiguration::default(;
+        let config = TestCfiConfiguration::default);
         assert_eq!(config.protection_level, TestProtectionLevel::Hybrid;
         assert_eq!(config.max_shadow_stack_depth, 1024;
         assert!(config.enable_temporal_validation);
@@ -49,7 +49,7 @@ mod cfi_build_tests {
             pub validations_performed:  u64,
         }
 
-        let stats = TestCfiStatistics::default(;
+        let stats = TestCfiStatistics::default);
         assert_eq!(stats.instructions_protected, 0;
         assert_eq!(stats.violations_detected, 0;
         assert_eq!(stats.validations_performed, 0;
@@ -72,7 +72,7 @@ mod cfi_build_tests {
             }
         }
 
-        let policy = TestCfiViolationPolicy::default(;
+        let policy = TestCfiViolationPolicy::default);
         assert_eq!(policy, TestCfiViolationPolicy::ReturnError;
     }
 
@@ -87,7 +87,7 @@ mod cfi_build_tests {
             pub auto_detect: bool,
         }
 
-        let features = TestCfiHardwareFeatures::default(;
+        let features = TestCfiHardwareFeatures::default);
         assert!(!features.arm_bti);
         assert!(!features.riscv_cfi);
         assert!(!features.x86_cet);

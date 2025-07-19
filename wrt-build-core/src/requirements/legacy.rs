@@ -116,10 +116,10 @@ impl Requirements {
 
     /// Convert to enhanced requirement registry
     pub fn to_registry(&self) -> RequirementRegistry {
-        let mut registry = RequirementRegistry::new(;
+        let mut registry = RequirementRegistry::new);
 
         for req in &self.requirement {
-            let safety_req = req.to_safety_requirement(;
+            let safety_req = req.to_safety_requirement);
             registry.add_requirement(safety_req;
         }
 
@@ -175,8 +175,8 @@ platform = ["all"]
 
     /// Verify all requirements
     pub fn verify(&self, workspace_root: &Path) -> BuildResult<RequirementsVerificationResult> {
-        let mut missing_files = Vec::new(;
-        let mut incomplete_requirements = Vec::new(;
+        let mut missing_files = Vec::new);
+        let mut incomplete_requirements = Vec::new);
         let mut verified_count = 0;
 
         for req in &self.requirement {
@@ -230,7 +230,7 @@ platform = ["all"]
 
     /// Generate requirements traceability matrix
     pub fn generate_traceability_matrix(&self) -> String {
-        let mut matrix = String::new(;
+        let mut matrix = String::new);
 
         matrix.push_str("# Requirements Traceability Matrix\n\n";
         matrix.push_str("| ID | Name | ASIL | Status | Sources | Tests | Docs |\n";
@@ -265,7 +265,7 @@ impl Requirement {
         ;
 
         // Set verification method
-        req.verification_method = self.parse_verification_method(;
+        req.verification_method = self.parse_verification_method);
 
         // Add source files as implementations
         for src in &self.source_files {
@@ -331,7 +331,7 @@ impl Requirement {
 
     /// Parse verification method from string
     fn parse_verification_method(&self) -> VerificationMethod {
-        let method = self.verification_method.to_lowercase(;
+        let method = self.verification_method.to_lowercase);
         if method.contains("inspection") || method.contains("review") {
             VerificationMethod::Inspection
         } else if method.contains("analysis") {
@@ -370,7 +370,7 @@ impl EnhancedRequirementsVerifier {
     /// Load requirements from file and convert to enhanced model
     pub fn load_requirements(&mut self, path: &Path) -> BuildResult<()> {
         let requirements = Requirements::load(path)?;
-        self.registry = requirements.to_registry(;
+        self.registry = requirements.to_registry);
         Ok(())
     }
 
@@ -380,7 +380,7 @@ impl EnhancedRequirementsVerifier {
         self.verify_file_references()?;
 
         // Then update status based on verification results
-        self.update_verification_status(;
+        self.update_verification_status);
 
         Ok(())
     }

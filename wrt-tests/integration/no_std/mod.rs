@@ -37,7 +37,7 @@ mod tests {
     
     #[test]
     fn no_std_integration() {
-        let result = run_tests(;
+        let result = run_tests);
         assert!(result.is_success(), "No-std integration tests failed: {:?}", result);
     }
 }

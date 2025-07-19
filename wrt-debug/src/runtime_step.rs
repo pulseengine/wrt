@@ -165,7 +165,7 @@ impl StepController {
     /// Handle function exit
     pub fn on_function_exit(&mut self) {
         // Pop frame
-        self.call_stack.pop(;
+        self.call_stack.pop);
 
         match self.mode {
             StepMode::Over => {
@@ -188,7 +188,7 @@ impl StepController {
         self.target_line = None;
         self.target_file = None;
         self.step_over_depth = 0;
-        self.call_stack.clear(;
+        self.call_stack.clear);
     }
 
     /// Get current stepping mode
@@ -320,13 +320,13 @@ impl SteppingDebugger {
 
     /// Start stepping
     pub fn step(&mut self, mode: StepMode, pc: u32) {
-        let current_line = self.find_line(pc).copied(;
+        let current_line = self.find_line(pc).copied);
         self.controller.start_step(mode, current_line;
     }
 
     /// Check if we should break
     pub fn should_break(&mut self, pc: u32, state: &(dyn RuntimeState + 'static)) -> DebugAction {
-        let current_line = self.find_line(pc).copied(;
+        let current_line = self.find_line(pc).copied);
         self.controller.should_break(pc, state, current_line)
     }
 
@@ -337,7 +337,7 @@ impl SteppingDebugger {
 
     /// Handle function exit  
     pub fn on_function_exit(&mut self) {
-        self.controller.on_function_exit(;
+        self.controller.on_function_exit);
     }
 
     /// Get controller for direct access
@@ -382,7 +382,7 @@ mod tests {
 
     #[test]
     fn test_instruction_stepping() {
-        let mut controller = StepController::new(;
+        let mut controller = StepController::new);
         let state = MockState { pc: 0x1000 };
 
         // Start instruction step
@@ -398,7 +398,7 @@ mod tests {
 
     #[test]
     fn test_line_stepping() {
-        let mut controller = StepController::new(;
+        let mut controller = StepController::new);
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {
@@ -431,7 +431,7 @@ mod tests {
 
     #[test]
     fn test_step_over() {
-        let mut controller = StepController::new(;
+        let mut controller = StepController::new);
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {
@@ -453,7 +453,7 @@ mod tests {
         assert_eq!(action, DebugAction::Continue;
 
         // Exit function
-        controller.on_function_exit(;
+        controller.on_function_exit);
 
         // Back at original depth with new line - break
         let line2 = LineInfo {

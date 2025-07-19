@@ -108,16 +108,16 @@ impl HtmlReportGenerator {
         requirements: &[RequirementData],
         formatter: &HtmlFormatter,
     ) -> Result<String> {
-        let mut content = String::new(;
+        let mut content = String::new);
 
         content.push_str(r#"<div class="requirements-matrix">"#;
         content.push_str(r#"<h2>Requirements Traceability Matrix</h2>"#;
 
         // Summary statistics
-        let total = requirements.len(;
-        let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count(;
-        let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count(;
-        let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count(;
+        let total = requirements.len);
+        let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count);
+        let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count);
+        let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count);
 
         content.push_str(&format!(
             r#"<div class="summary">
@@ -198,7 +198,7 @@ impl HtmlReportGenerator {
 
     /// Generate safety verification report HTML
     pub fn safety_report(report: &SafetyReportData, formatter: &HtmlFormatter) -> Result<String> {
-        let mut content = String::new(;
+        let mut content = String::new);
 
         content.push_str(r#"<div class="safety-report">"#;
         content.push_str(r#"<h2>Safety Verification Report</h2>"#;
@@ -295,7 +295,7 @@ impl HtmlReportGenerator {
         report: &DocumentationReportData,
         formatter: &HtmlFormatter,
     ) -> Result<String> {
-        let mut content = String::new(;
+        let mut content = String::new);
 
         content.push_str(r#"<div class="documentation-report">"#;
         content.push_str(r#"<h2>Documentation Compliance Report</h2>"#;

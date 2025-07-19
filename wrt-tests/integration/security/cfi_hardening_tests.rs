@@ -183,7 +183,7 @@ fn test_cfi_bypass_prevention() -> RegistryTestResult {
 // ===========================
 
 fn test_cfi_configuration_default() -> RegistryTestResult {
-    let config = CfiConfiguration::default(;
+    let config = CfiConfiguration::default);
     assert_eq!(config.protection_level, CfiProtectionLevel::Hybrid;
     assert_eq!(config.max_shadow_stack_depth, 1024;
     assert_eq!(config.landing_pad_timeout_ns, Some(1_000_000;
@@ -193,7 +193,7 @@ fn test_cfi_configuration_default() -> RegistryTestResult {
 }
 
 fn test_cfi_configuration_serialization() -> RegistryTestResult {
-    let config = CfiConfiguration::default(;
+    let config = CfiConfiguration::default);
     let json = serde_json::to_string(&config).unwrap();
     let deserialized: CfiConfiguration = serde_json::from_str(&json).unwrap();
     
@@ -220,7 +220,7 @@ fn test_cfi_protection_levels() -> RegistryTestResult {
 }
 
 fn test_cfi_violation_policy() -> RegistryTestResult {
-    let policy = CfiViolationPolicy::default(;
+    let policy = CfiViolationPolicy::default);
     assert_eq!(policy, CfiViolationPolicy::ReturnError;
     
     let policies = [
@@ -239,7 +239,7 @@ fn test_cfi_violation_policy() -> RegistryTestResult {
 }
 
 fn test_cfi_statistics() -> RegistryTestResult {
-    let mut stats = CfiStatistics::default(;
+    let mut stats = CfiStatistics::default);
     assert_eq!(stats.instructions_protected, 0;
     assert_eq!(stats.violations_detected, 0;
     
@@ -318,7 +318,7 @@ fn test_arm_bti_modes() -> RegistryTestResult {
 }
 
 fn test_cfi_hardware_features() -> RegistryTestResult {
-    let mut features = CfiHardwareFeatures::default(;
+    let mut features = CfiHardwareFeatures::default);
     assert!(!features.arm_bti);
     assert!(!features.riscv_cfi);
     assert!(!features.x86_cet);

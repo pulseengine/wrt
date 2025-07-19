@@ -23,7 +23,7 @@ use crate::Cli;
 
 /// Parse severity strings to Severity enum
 fn parse_severities(severity_strings: &[String]) -> Result<Vec<Severity>> {
-    let mut severities = Vec::new(;
+    let mut severities = Vec::new);
     for s in severity_strings {
         match s.to_lowercase().as_str() {
             "error" => severities.push(Severity::Error),
@@ -74,7 +74,7 @@ where
 
     // Apply caching if enabled
     if cli.cache {
-        let workspace_root = build_system.workspace_root(;
+        let workspace_root = build_system.workspace_root);
         let cache_path = get_cache_path(workspace_root;
         let mut cache_manager = CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
@@ -91,7 +91,7 @@ where
 
     // Apply filtering if requested
     if cli.filter_severity.is_some() || cli.filter_source.is_some() || cli.filter_file.is_some() {
-        let mut filter_builder = FilterOptionsBuilder::new(;
+        let mut filter_builder = FilterOptionsBuilder::new);
 
         if let Some(ref severity_strings) = cli.filter_severity {
             let severities = parse_severities(severity_strings)?;
@@ -106,7 +106,7 @@ where
             filter_builder = filter_builder.file_patterns(patterns;
         }
 
-        let filter_options = filter_builder.build(;
+        let filter_options = filter_builder.build);
         // TODO: Implement filtering manually if needed
     }
 

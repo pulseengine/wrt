@@ -3,7 +3,7 @@
 
 // Mock the dependencies that are failing
 mod mock_deps {
-    pub type NoStdProvider = (;
+    pub type NoStdProvider = );
 
     pub struct BoundedVec<T, const N: usize, P> {
         _phantom: std::marker::PhantomData<(T, P)>,

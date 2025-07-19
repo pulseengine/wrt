@@ -137,7 +137,7 @@ mod tests {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
         
         // Create a capability context for testing
-        let mut context = MemoryCapabilityContext::default(;
+        let mut context = MemoryCapabilityContext::default);
         context.register_dynamic_capability(CrateId::Foundation, 1024).unwrap();
 
         let token = AllocationToken::<512>::new(CrateId::Foundation;
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_memory_region() {
-        let region = MemoryRegion::<0, 1024>::new(;
+        let region = MemoryRegion::<0, 1024>::new);
         assert_eq!(region.size(), 1024;
         assert_eq!(region.start(), 0;
     }

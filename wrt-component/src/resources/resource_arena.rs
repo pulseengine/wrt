@@ -145,7 +145,7 @@ impl ResourceArena {
     /// Release all resources managed by this arena
     pub fn release_all(&mut self) -> Result<()> {
         if self.resources.is_empty() {
-            return Ok((;
+            return Ok();
         }
 
         let mut table = self.table.lock().map_err(|e| {
@@ -196,7 +196,7 @@ impl ResourceArena {
 impl Drop for ResourceArena {
     fn drop(&mut self) {
         // Try to release all resources, ignoring errors
-        let _ = self.release_all(;
+        let _ = self.release_all);
     }
 }
 

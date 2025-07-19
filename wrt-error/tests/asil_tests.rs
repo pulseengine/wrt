@@ -27,7 +27,7 @@ fn test_basic_error_creation() {
 #[test]
 fn test_asil_level_detection() {
     let error = Error::safety_violation("Safety violation";
-    let asil_level = error.asil_level(;
+    let asil_level = error.asil_level);
 
     // Safety errors should be ASIL-D
     assert_eq!(asil_level, "ASIL-D";
@@ -98,7 +98,7 @@ fn test_asil_error_context() {
 fn test_safety_monitor() {
     use wrt_error::SafetyMonitor;
 
-    let monitor = SafetyMonitor::new(;
+    let monitor = SafetyMonitor::new);
     assert_eq!(monitor.error_count(), 0;
 
     // Record some errors
@@ -114,7 +114,7 @@ fn test_safety_monitor() {
     assert_eq!(monitor.error_count(), 2;
 
     // Reset monitor
-    monitor.reset(;
+    monitor.reset);
     assert_eq!(monitor.error_count(), 0;
 }
 
@@ -148,7 +148,7 @@ fn test_error_display_format() {
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
 #[test]
 fn test_current_asil_level() {
-    let current = AsilLevel::current(;
+    let current = AsilLevel::current);
 
     #[cfg(feature = "asil-d")]
     assert_eq!(current, AsilLevel::AsilD;

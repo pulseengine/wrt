@@ -18,8 +18,8 @@ fn main() {
     init_profiler().unwrap();
 
     // Enable allocation tracking and profiling
-    MemoryProfiler::enable_allocation_tracking(;
-    MemoryProfiler::enable_profiling(;
+    MemoryProfiler::enable_allocation_tracking);
+    MemoryProfiler::enable_profiling);
 
     // Track some allocations
     let alloc_id1 = with_profiler(|profiler| {

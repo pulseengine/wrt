@@ -192,7 +192,7 @@ impl OutputManager {
     pub fn header(&self, title: &str) {
         if !self.is_json_mode() {
             if self.colored {
-                println!("{}", title.bright_cyan().bold(;
+                println!("{}", title.bright_cyan().bold);
             } else {
                 println!("{}", title;
             }
@@ -203,7 +203,7 @@ impl OutputManager {
     pub fn subheader(&self, title: &str) {
         if !self.is_json_mode() {
             if self.colored {
-                println!("  {}", title.cyan(;
+                println!("  {}", title.cyan);
             } else {
                 println!("  {}", title;
             }

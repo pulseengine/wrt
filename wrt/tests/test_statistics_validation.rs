@@ -147,7 +147,7 @@ mod statistics_tests {
     /// Test that validates auto-pass detection
     #[test]
     fn test_auto_pass_detection() {
-        let stats = EnhancedTestStats::new(;
+        let stats = EnhancedTestStats::new);
 
         // Simulate running tests with our enhanced statistics
 
@@ -167,7 +167,7 @@ mod statistics_tests {
         )
         .unwrap();
 
-        let engine = wrt::StacklessEngine::new(;
+        let engine = wrt::StacklessEngine::new);
         match engine.load_module(Some("add_test"), &real_test_wasm) {
             Ok(_) => {
                 stats.real_execution_passed.fetch_add(1, Ordering::Relaxed;
@@ -214,7 +214,7 @@ mod statistics_tests {
         println!("⚠️  Simulated 5 skipped tests";
 
         // Print the detailed report
-        stats.print_detailed_report(;
+        stats.print_detailed_report);
 
         // Validate statistics
         assert!(
@@ -253,7 +253,7 @@ mod statistics_tests {
             ),
         ];
 
-        let engine = wrt::StacklessEngine::new(;
+        let engine = wrt::StacklessEngine::new);
 
         for (name, wat_code, should_pass) in test_cases {
             actual_tests_run += 1;

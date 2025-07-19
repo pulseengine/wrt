@@ -88,7 +88,7 @@ impl TextSearcher {
         }
         .map_err(|e| BuildError::Tool(format!("Invalid regex pattern '{}': {}", pattern, e)))?;
 
-        let mut matches = Vec::new(;
+        let mut matches = Vec::new);
 
         // Walk directory structure
         let walker = if self.options.recursive {
@@ -98,7 +98,7 @@ impl TextSearcher {
         };
 
         for entry in walker.into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path(;
+            let path = entry.path);
 
             // Skip directories
             if !path.is_file() {
@@ -126,7 +126,7 @@ impl TextSearcher {
         let matches = self.search(pattern, search_dir)?;
 
         // Filter out comments and focus on actual unsafe code
-        let mut filtered_matches = Vec::new(;
+        let mut filtered_matches = Vec::new);
         let mut i = 0;
 
         while i < matches.len() {
@@ -185,7 +185,7 @@ impl TextSearcher {
                         && unsafe_match.line_number.saturating_sub(prev_match.line_number) <= 5
                     {
                         // Check for SAFETY comment patterns
-                        let line = prev_match.line_content.trim(;
+                        let line = prev_match.line_content.trim);
                         if line.contains("SAFETY:")
                             || line.contains("Safety:")
                             || line.contains("# Safety")
@@ -209,7 +209,7 @@ impl TextSearcher {
                 if unsafe_line_idx >= offset {
                     let prev_line_idx = unsafe_line_idx - offset;
                     if prev_line_idx < lines.len() {
-                        let line = lines[prev_line_idx].trim(;
+                        let line = lines[prev_line_idx].trim);
                         if line.contains("SAFETY:")
                             || line.contains("Safety:")
                             || line.contains("# Safety")
@@ -248,7 +248,7 @@ impl TextSearcher {
                 if unsafe_line_idx >= offset {
                     let prev_line_idx = unsafe_line_idx - offset;
                     if prev_line_idx < lines.len() {
-                        let line = lines[prev_line_idx].trim(;
+                        let line = lines[prev_line_idx].trim);
                         if line.contains("#[allow(unsafe_code)]") {
                             return Ok(true;
                         }
@@ -330,7 +330,7 @@ impl TextSearcher {
             ))
         })?;
 
-        let mut matches = Vec::new(;
+        let mut matches = Vec::new);
         let mut in_test_module = false;
         let mut brace_depth = 0;
 
@@ -368,7 +368,7 @@ impl TextSearcher {
 
     /// Check if a line is a comment
     fn is_comment_line(&self, line: &str) -> bool {
-        let trimmed = line.trim(;
+        let trimmed = line.trim);
         trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*")
     }
 
@@ -390,9 +390,9 @@ pub fn count_production_matches(matches: &[SearchMatch]) -> usize {
 
 /// Format search results for display
 pub fn format_matches(matches: &[SearchMatch], max_display: Option<usize>) -> String {
-    let mut output = String::new(;
+    let mut output = String::new);
 
-    let display_count = max_display.unwrap_or(matches.len()).min(matches.len(;
+    let display_count = max_display.unwrap_or(matches.len()).min(matches.len);
 
     for (i, search_match) in matches.iter().take(display_count).enumerate() {
         output.push_str(&format!(
@@ -421,7 +421,7 @@ mod tests {
 
     #[test]
     fn test_search_options_default() {
-        let options = SearchOptions::default(;
+        let options = SearchOptions::default);
         assert!(options.recursive);
         assert!(options.case_sensitive);
         assert_eq!(options.include_patterns, vec!["*.rs"];
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn test_glob_pattern_matching() {
-        let searcher = TextSearcher::new(;
+        let searcher = TextSearcher::new);
 
         assert!(searcher.matches_glob_pattern("test.rs", "*.rs");
         assert!(searcher.matches_glob_pattern("main.rs", "*.rs");
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_comment_detection() {
-        let searcher = TextSearcher::new(;
+        let searcher = TextSearcher::new);
 
         assert!(searcher.is_comment_line("// This is a comment");
         assert!(searcher.is_comment_line("    // Indented comment");
@@ -468,7 +468,7 @@ fn main() {
 "#,
         )?;
 
-        let searcher = TextSearcher::new(;
+        let searcher = TextSearcher::new);
 
         // Test unsafe search
         let unsafe_matches = searcher.search_unsafe_code(temp_dir.path())?;

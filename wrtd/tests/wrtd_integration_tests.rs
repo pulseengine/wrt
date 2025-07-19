@@ -55,7 +55,7 @@ fn create_test_config() -> WrtdConfig {
 
 #[test]
 fn test_wrtd_creation() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let daemon = WrtDaemon::new(config)?;
     
     // Daemon should be created successfully
@@ -66,7 +66,7 @@ fn test_wrtd_creation() -> Result<()> {
 
 #[test]
 fn test_wrtd_module_execution() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let mut daemon = WrtDaemon::new(config)?;
     
     // Execute the test module
@@ -81,7 +81,7 @@ fn test_wrtd_module_execution() -> Result<()> {
 #[test]
 #[cfg(feature = "wasi")]
 fn test_wrtd_with_wasi_enabled() -> Result<()> {
-    let mut config = create_test_config(;
+    let mut config = create_test_config);
     config.enable_wasi = true;
     
     let mut daemon = WrtDaemon::new(config)?;
@@ -97,7 +97,7 @@ fn test_wrtd_with_wasi_enabled() -> Result<()> {
 
 #[test]
 fn test_wrtd_error_handling() -> Result<()> {
-    let mut config = create_test_config(;
+    let mut config = create_test_config);
     
     // Test with invalid WebAssembly binary
     config.module_data = Some(&[0x00, 0x01, 0x02, 0x03];
@@ -105,7 +105,7 @@ fn test_wrtd_error_handling() -> Result<()> {
     let mut daemon = WrtDaemon::new(config)?;
     
     // Should handle invalid module gracefully
-    let result = daemon.run(;
+    let result = daemon.run);
     assert!(result.is_err();
     
     Ok(())
@@ -113,13 +113,13 @@ fn test_wrtd_error_handling() -> Result<()> {
 
 #[test]
 fn test_wrtd_function_not_found() -> Result<()> {
-    let mut config = create_test_config(;
+    let mut config = create_test_config);
     config.function_name = Some("nonexistent_function";
     
     let mut daemon = WrtDaemon::new(config)?;
     
     // Should handle missing function gracefully
-    let result = daemon.run(;
+    let result = daemon.run);
     assert!(result.is_err();
     
     Ok(())
@@ -127,7 +127,7 @@ fn test_wrtd_function_not_found() -> Result<()> {
 
 #[test]
 fn test_wrtd_memory_limits() -> Result<()> {
-    let mut config = create_test_config(;
+    let mut config = create_test_config);
     config.max_memory = 1024; // Very small memory limit
     
     let daemon = WrtDaemon::new(config)?;
@@ -141,13 +141,13 @@ fn test_wrtd_memory_limits() -> Result<()> {
 
 #[test]
 fn test_wrtd_fuel_limits() -> Result<()> {
-    let mut config = create_test_config(;
+    let mut config = create_test_config);
     config.max_fuel = 10; // Very small fuel limit
     
     let mut daemon = WrtDaemon::new(config)?;
     
     // Should handle fuel exhaustion gracefully
-    let result = daemon.run(;
+    let result = daemon.run);
     // May succeed if the function is very simple, or fail with fuel exhaustion
     // Either is acceptable behavior
     
@@ -156,7 +156,7 @@ fn test_wrtd_fuel_limits() -> Result<()> {
 
 #[test]
 fn test_wrtd_logging() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let mut daemon = WrtDaemon::new(config)?;
     
     // Test that logging doesn't crash
@@ -170,7 +170,7 @@ fn test_wrtd_logging() -> Result<()> {
 
 #[test]
 fn test_wrtd_statistics_collection() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let mut daemon = WrtDaemon::new(config)?;
     
     let initial_stats = daemon.stats().clone();
@@ -178,7 +178,7 @@ fn test_wrtd_statistics_collection() -> Result<()> {
     // Execute module
     daemon.run()?;
     
-    let final_stats = daemon.stats(;
+    let final_stats = daemon.stats);
     
     // Statistics should be updated
     assert!(final_stats.modules_executed > initial_stats.modules_executed);
@@ -188,7 +188,7 @@ fn test_wrtd_statistics_collection() -> Result<()> {
 
 #[test]
 fn test_wrtd_multiple_executions() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let mut daemon = WrtDaemon::new(config)?;
     
     // Execute multiple times
@@ -208,7 +208,7 @@ fn test_wrtd_multiple_executions() -> Result<()> {
 #[test]
 #[cfg(feature = "wrt-execution")]
 fn test_asil_configurations() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     
     // All ASIL levels should be able to execute simple modules
     // (The specific ASIL level is determined by compile-time features)
@@ -224,7 +224,7 @@ fn test_asil_configurations() -> Result<()> {
 #[test]
 #[cfg(feature = "wrt-execution")]
 fn test_capability_based_execution() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let mut daemon = WrtDaemon::new(config)?;
     
     // The capability-based engine should handle execution properly
@@ -241,7 +241,7 @@ fn test_capability_based_execution() -> Result<()> {
 #[test]
 #[cfg(feature = "wrt-execution")]
 fn test_host_function_integration() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let mut daemon = WrtDaemon::new(config)?;
     
     // Even though our test module doesn't call host functions,
@@ -256,7 +256,7 @@ fn test_host_function_integration() -> Result<()> {
 /// Comprehensive integration test
 #[test]
 fn test_full_wrtd_integration() -> Result<()> {
-    let config = create_test_config(;
+    let config = create_test_config);
     let mut daemon = WrtDaemon::new(config)?;
     
     // Test complete workflow
@@ -265,7 +265,7 @@ fn test_full_wrtd_integration() -> Result<()> {
     // Execute
     daemon.run()?;
     
-    let final_stats = daemon.stats(;
+    let final_stats = daemon.stats);
     
     // Verify all aspects worked
     assert!(final_stats.modules_executed > initial_stats.modules_executed);

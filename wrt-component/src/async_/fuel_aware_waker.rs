@@ -104,7 +104,7 @@ impl WakerData {
         // ASIL-D requires deterministic wake ordering
         if let ASILExecutionMode::D { deterministic_execution: true, .. } = self.asil_mode {
             // Record wake timestamp for deterministic ordering
-            let timestamp = self.get_deterministic_timestamp(;
+            let timestamp = self.get_deterministic_timestamp);
             self.wake_timestamp.store(timestamp, Ordering::SeqCst;
         }
 
@@ -126,19 +126,19 @@ impl WakerData {
         match self.asil_mode {
             ASILExecutionMode::D { .. } => {
                 // ASIL-D: Deterministic wake with strict ordering
-                self.wake_deterministic(;
+                self.wake_deterministic);
             },
             ASILExecutionMode::C { temporal_isolation: true, .. } => {
                 // ASIL-C: Wake with temporal isolation guarantees
-                self.wake_with_temporal_isolation(;
+                self.wake_with_temporal_isolation);
             },
             ASILExecutionMode::B { strict_resource_limits: true, .. } => {
                 // ASIL-B: Wake with resource limit checks
-                self.wake_with_resource_limits(;
+                self.wake_with_resource_limits);
             },
             ASILExecutionMode::A { .. } => {
                 // ASIL-A: Basic wake with error detection
-                self.wake_basic(;
+                self.wake_basic);
             },
         }
 
@@ -165,7 +165,7 @@ impl WakerData {
             // For ASIL-D, maintain deterministic task ordering
             let insert_position = queue.iter()
                 .position(|&id| id.0 > self.task_id.0)
-                .unwrap_or(queue.len(;
+                .unwrap_or(queue.len);
             
             // Insert at the correct position for deterministic ordering
             if !queue.iter().any(|&id| id == self.task_id) {
@@ -211,7 +211,7 @@ impl WakerData {
             if !queue.iter().any(|&id| id == self.task_id) {
                 if queue.push(self.task_id).is_err() {
                     // Basic error detection - queue full
-                    queue.dedup(;
+                    queue.dedup);
                     let _ = queue.push(self.task_id);
                 }
             }
@@ -253,7 +253,7 @@ mod unsafe_waker {
     /// Raw waker clone implementation (unsafe - only for non-ASIL-D builds)
     pub unsafe fn waker_clone(data: *const ()) -> RawWaker {
         let waker_data = &*(data as *const WakerData;
-        let cloned = Box::new(waker_data.clone_data(;
+        let cloned = Box::new(waker_data.clone_data);
         RawWaker::new(
             Box::into_raw(cloned) as *const (),
             &WAKER_VTABLE,
@@ -263,13 +263,13 @@ mod unsafe_waker {
     /// Raw waker wake implementation (unsafe - only for non-ASIL-D builds)
     pub unsafe fn waker_wake(data: *const ()) {
         let waker_data = Box::from_raw(data as *mut WakerData;
-        waker_data.wake(;
+        waker_data.wake);
     }
 
     /// Raw waker wake by ref implementation (unsafe - only for non-ASIL-D builds)
     pub unsafe fn waker_wake_by_ref(data: *const ()) {
         let waker_data = &*(data as *const WakerData;
-        waker_data.wake(;
+        waker_data.wake);
     }
 
     /// Raw waker drop implementation (unsafe - only for non-ASIL-D builds)
@@ -462,13 +462,13 @@ mod tests {
     }
 
     impl Future for TestFuture {
-        type Output = (;
+        type Output = );
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if self.woken.load(Ordering::Acquire) {
                 Poll::Ready(())
             } else {
-                cx.waker().wake_by_ref(;
+                cx.waker().wake_by_ref);
                 self.woken.store(true, Ordering::Release;
                 Poll::Pending
             }
@@ -479,7 +479,7 @@ mod tests {
     fn test_waker_creation() {
         let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
         let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap();
-        let executor_ref = Weak::new(;
+        let executor_ref = Weak::new);
         
         let waker = create_fuel_aware_waker(
             TaskId::new(1),
@@ -498,7 +498,7 @@ mod tests {
     fn test_wake_adds_to_ready_queue() {
         let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
         let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap();
-        let executor_ref = Weak::new(;
+        let executor_ref = Weak::new);
         
         let task_id = TaskId::new(42;
         let waker = create_fuel_aware_waker(
@@ -508,7 +508,7 @@ mod tests {
         ;
 
         // Wake the task
-        waker.wake(;
+        waker.wake);
 
         // Check that task was added to ready queue
         let queue = ready_queue.lock().unwrap();
@@ -520,7 +520,7 @@ mod tests {
     fn test_wake_coalescing() {
         let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
         let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap();
-        let executor_ref = Weak::new(;
+        let executor_ref = Weak::new);
         
         let task_id = TaskId::new(42;
         let waker = create_fuel_aware_waker(
@@ -530,9 +530,9 @@ mod tests {
         ;
 
         // Wake multiple times
-        waker.wake_by_ref(;
-        waker.wake_by_ref(;
-        waker.wake_by_ref(;
+        waker.wake_by_ref);
+        waker.wake_by_ref);
+        waker.wake_by_ref);
 
         // Should only be in queue once due to is_woken flag
         let queue = ready_queue.lock().unwrap();

@@ -71,7 +71,7 @@ impl HelpSystem {
         let mut system = Self {
             commands: HashMap::new(),
         };
-        system.register_builtin_commands(;
+        system.register_builtin_commands);
         system
     }
 
@@ -199,7 +199,7 @@ impl HelpSystem {
     /// Generate formatted help for a command
     pub fn format_command_help(&self, name: &str, use_colors: bool) -> Option<String> {
         let doc = self.get_command_doc(name)?;
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Command header
         if use_colors {
@@ -275,7 +275,7 @@ impl HelpSystem {
 
     /// Generate overview help showing all commands by category
     pub fn format_overview_help(&self, use_colors: bool) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Header
         if use_colors {
@@ -289,7 +289,7 @@ impl HelpSystem {
         }
 
         // Group commands by category
-        let mut by_category: HashMap<CommandCategory, Vec<&CommandDoc>> = HashMap::new(;
+        let mut by_category: HashMap<CommandCategory, Vec<&CommandDoc>> = HashMap::new);
         for doc in self.commands.values() {
             by_category.entry(doc.category).or_insert_with(Vec::new).push(doc);
         }

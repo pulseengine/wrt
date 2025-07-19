@@ -20,7 +20,7 @@ pub fn nn_load(
     encoding: u8,
     target: u8,
 ) -> Result<u32> {
-    let start_time = get_current_time_us(;
+    let start_time = get_current_time_us);
     let operation_id = if let Some(logger) = crate::nn::monitoring::get_logger() {
         logger.next_operation_id()
     } else {
@@ -284,7 +284,7 @@ pub fn nn_set_input(
 ///
 /// Implements `wasi:nn/inference.compute`
 pub fn nn_compute(context_id: u32) -> Result<()> {
-    let start_time = get_current_time_us(;
+    let start_time = get_current_time_us);
     let operation_id = if let Some(logger) = crate::nn::monitoring::get_logger() {
         logger.next_operation_id()
     } else {
@@ -382,9 +382,9 @@ pub fn nn_get_output(
         let tensor = context.get_output(index_usize)?;
         
         // Convert to WIT types
-        let data = tensor.as_bytes().to_vec(;
-        let dimensions = tensor.dimensions().as_slice().to_vec(;
-        let tensor_type = tensor.data_type().to_wit(;
+        let data = tensor.as_bytes().to_vec);
+        let dimensions = tensor.dimensions().as_slice().to_vec);
+        let tensor_type = tensor.data_type().to_wit);
         
         Ok((data, dimensions, tensor_type))
     })

@@ -290,7 +290,7 @@ impl BuiltinHost {
         let provider = create_host_provider().expect("Failed to create host provider");
         let name = HostString::from_str(builtin_type.name(), provider)
             .expect("Failed to create builtin name");
-        let _ = self.handlers.insert(name, HandlerData::default(;
+        let _ = self.handlers.insert(name, HandlerData::default);
     }
 
     /// Register a fallback for a critical built-in function
@@ -314,7 +314,7 @@ impl BuiltinHost {
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
     {
         // In no_std mode, we can't store function handlers dynamically
-        let _ = self.critical_builtins.insert(builtin_type, HandlerData::default(;
+        let _ = self.critical_builtins.insert(builtin_type, HandlerData::default);
     }
 
     /// Check if a built-in type is implemented
@@ -436,7 +436,7 @@ impl BuiltinHost {
         builtin_type: BuiltinType,
         args: ValueVec,
     ) -> Result<ValueVec> {
-        let builtin_name = builtin_type.name(;
+        let builtin_name = builtin_type.name);
 
         // Try to find the handler
         if let Some(handler) = self.handlers.get(builtin_name) {
@@ -519,7 +519,7 @@ mod tests {
 
         assert!(host.is_implemented(BuiltinType::ResourceCreate);
 
-        let mut engine = (;
+        let mut engine = );
         let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
         assert!(result.is_ok();
@@ -536,7 +536,7 @@ mod tests {
         assert!(!host.is_implemented(BuiltinType::ResourceCreate);
         assert!(host.has_fallback(BuiltinType::ResourceCreate);
 
-        let mut engine = (;
+        let mut engine = );
         let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
         // Should use the fallback
@@ -557,7 +557,7 @@ mod tests {
     fn test_nonexistent_builtin() {
         let host = BuiltinHost::new("test-component", "test-host";
 
-        let mut engine = (;
+        let mut engine = );
         let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
         // Should fail because the built-in is not implemented

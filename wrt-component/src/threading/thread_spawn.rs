@@ -380,7 +380,7 @@ impl ComponentThreadManager {
         let component_id = request.component_id;
         let return_type = request.return_type.clone();
 
-        let mut builder = thread::Builder::new(;
+        let mut builder = thread::Builder::new);
 
         if let Some(ref name) = request.configuration.name {
             builder = builder.name(name.clone();
@@ -410,7 +410,7 @@ impl ComponentThreadManager {
                 }
 
                 // Wake up any joiners
-                handle.join_futex.wake_one(;
+                handle.join_futex.wake_one);
             })
             .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
@@ -605,7 +605,7 @@ impl ThreadSpawnBuiltins {
     pub fn thread_yield(&self) -> ThreadSpawnResult<()> {
         #[cfg(feature = "std")]
         {
-            thread::yield_now(;
+            thread::yield_now);
         }
         Ok(()
     }
@@ -637,13 +637,13 @@ mod tests {
 
     #[test]
     fn test_thread_manager_creation() {
-        let manager = ComponentThreadManager::new(;
+        let manager = ComponentThreadManager::new);
         assert_eq!(manager.get_active_thread_count(), 0;
     }
 
     #[test]
     fn test_thread_configuration() {
-        let config = ThreadConfiguration::default(;
+        let config = ThreadConfiguration::default);
         assert_eq!(config.stack_size, DEFAULT_STACK_SIZE;
         assert!(!config.detached);
         assert!(config.name.is_none();
@@ -658,7 +658,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_thread_spawn_and_join() {
-        let mut manager = ComponentThreadManager::new(;
+        let mut manager = ComponentThreadManager::new);
         let component_id = ComponentInstanceId::new(1;
 
         let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
@@ -684,7 +684,7 @@ mod tests {
 
     #[test]
     fn test_thread_limits() {
-        let manager = ComponentThreadManager::new(;
+        let manager = ComponentThreadManager::new);
         let component_id = ComponentInstanceId::new(1;
 
         assert_eq!(manager.get_component_thread_count(component_id), 0;

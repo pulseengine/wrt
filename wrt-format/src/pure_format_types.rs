@@ -211,8 +211,8 @@ impl wrt_foundation::traits::Checksummable for PureDataMode {
         match self {
             PureDataMode::Active { memory_index, offset_expr_len } => {
                 checksum.update_slice(&[0u8]); // Discriminant
-                checksum.update_slice(&memory_index.to_le_bytes(;
-                checksum.update_slice(&offset_expr_len.to_le_bytes(;
+                checksum.update_slice(&memory_index.to_le_bytes);
+                checksum.update_slice(&offset_expr_len.to_le_bytes);
             },
             PureDataMode::Passive => {
                 checksum.update_slice(&[1u8]); // Discriminant
@@ -279,8 +279,8 @@ impl wrt_foundation::traits::Checksummable for PureElementMode {
         match self {
             PureElementMode::Active { table_index, offset_expr_len } => {
                 checksum.update_slice(&[0u8]); // Discriminant
-                checksum.update_slice(&table_index.to_le_bytes(;
-                checksum.update_slice(&offset_expr_len.to_le_bytes(;
+                checksum.update_slice(&table_index.to_le_bytes);
+                checksum.update_slice(&offset_expr_len.to_le_bytes);
             },
             PureElementMode::Passive => {
                 checksum.update_slice(&[1u8]); // Discriminant
@@ -354,16 +354,16 @@ impl wrt_foundation::traits::Checksummable for PureElementInit {
         match self {
             PureElementInit::FunctionIndices(indices) => {
                 checksum.update_slice(&[0u8]); // Discriminant
-                checksum.update_slice(&(indices.len() as u32).to_le_bytes(;
+                checksum.update_slice(&(indices.len() as u32).to_le_bytes);
                 for index in indices {
-                    checksum.update_slice(&index.to_le_bytes(;
+                    checksum.update_slice(&index.to_le_bytes);
                 }
             },
             PureElementInit::ExpressionBytes(exprs) => {
                 checksum.update_slice(&[1u8]); // Discriminant
-                checksum.update_slice(&(exprs.len() as u32).to_le_bytes(;
+                checksum.update_slice(&(exprs.len() as u32).to_le_bytes);
                 for expr in exprs {
-                    checksum.update_slice(&(expr.len() as u32).to_le_bytes(;
+                    checksum.update_slice(&(expr.len() as u32).to_le_bytes);
                     checksum.update_slice(expr;
                 }
             },
@@ -454,9 +454,9 @@ impl wrt_foundation::traits::FromBytes for PureElementInit {
 impl wrt_foundation::traits::Checksummable for PureDataSegment {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.mode.update_checksum(checksum;
-        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes(;
+        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes);
         checksum.update_slice(&self.offset_expr_bytes;
-        checksum.update_slice(&(self.data_bytes.len() as u32).to_le_bytes(;
+        checksum.update_slice(&(self.data_bytes.len() as u32).to_le_bytes);
         checksum.update_slice(&self.data_bytes;
     }
 }
@@ -514,7 +514,7 @@ impl wrt_foundation::traits::Checksummable for PureElementSegment {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.element_type.update_checksum(checksum;
         self.mode.update_checksum(checksum;
-        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes(;
+        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes);
         checksum.update_slice(&self.offset_expr_bytes;
         self.init_data.update_checksum(checksum;
     }

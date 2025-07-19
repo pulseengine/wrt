@@ -31,9 +31,9 @@ pub struct ThreadBuiltins {
 impl ThreadBuiltins {
     /// Create new thread built-ins with default configuration
     pub fn new() -> Result<Self> {
-        let thread_config = ThreadConfig::default(;
+        let thread_config = ThreadConfig::default);
         let thread_manager = ThreadManager::new(thread_config)?;
-        let parallelism_info = ParallelismInfo::detect(;
+        let parallelism_info = ParallelismInfo::detect);
         
         Ok(Self {
             thread_manager,
@@ -59,7 +59,7 @@ impl ThreadBuiltins {
         args: &[Value],
         config: Option<ThreadSpawnConfig>,
     ) -> Result<ThreadId> {
-        let spawn_config = config.unwrap_or_default(;
+        let spawn_config = config.unwrap_or_default);
         
         // Validate function exists
         if !self.is_function_valid(function_index) {
@@ -147,7 +147,7 @@ impl ThreadBuiltins {
     pub fn thread_yield(&self) {
         #[cfg(feature = "std")]
         {
-            thread::yield_now(;
+            thread::yield_now);
         }
         #[cfg(not(feature = "std"))]
         {
@@ -257,12 +257,12 @@ impl ThreadBuiltins {
         // This prevents data races and ensures memory safety
         #[cfg(feature = "std")]
         {
-            context.stored_arguments = args.to_vec(;
+            context.stored_arguments = args.to_vec);
         }
         #[cfg(not(feature = "std"))]
         {
             // For no_std, use bounded storage
-            context.stored_arguments.clear(;
+            context.stored_arguments.clear);
             for arg in args {
                 context.stored_arguments.push(arg.clone())
                     .map_err(|_| Error::resource_exhausted("Error occurred"))?;
@@ -324,7 +324,7 @@ impl ThreadBuiltins {
         #[cfg(not(feature = "std"))]
         {
             // For no_std, create a bounded vec with results
-            let mut results = Vec::new(;
+            let mut results = Vec::new);
             for result in &context.execution_results {
                 results.push(result.clone();
             }
@@ -507,7 +507,7 @@ mod tests {
     
     #[test]
     fn test_parallelism_detection() {
-        let info = ParallelismInfo::detect(;
+        let info = ParallelismInfo::detect);
         assert!(info.available_parallelism > 0);
         assert!(info.physical_cores > 0);
         assert!(info.logical_cores > 0);
@@ -521,7 +521,7 @@ mod tests {
     
     #[test]
     fn test_thread_spawn_config() {
-        let config = ThreadSpawnConfig::default(;
+        let config = ThreadSpawnConfig::default);
         assert!(config.auto_start);
         assert_eq!(config.priority, 50;
         assert!(config.stack_size.is_none();

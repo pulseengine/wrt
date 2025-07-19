@@ -590,7 +590,7 @@ impl OptimizedAsyncChannels {
     fn wake_receivers(&mut self, channel: &mut AsyncChannel) -> Result<(), Error> {
         // Wake all receiver wakers
         for waker in channel.receiver_wakers.drain(..) {
-            waker.wake(;
+            waker.wake);
         }
         
         if self.global_config.wake_coalescing {
@@ -603,7 +603,7 @@ impl OptimizedAsyncChannels {
     fn wake_senders(&mut self, channel: &mut AsyncChannel) -> Result<(), Error> {
         // Wake all sender wakers
         for waker in channel.sender_wakers.drain(..) {
-            waker.wake(;
+            waker.wake);
         }
         
         Ok(())
@@ -771,7 +771,7 @@ mod tests {
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default(;
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default);
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -780,7 +780,7 @@ mod tests {
 
     #[test]
     fn test_channel_creation() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut channels = OptimizedAsyncChannels::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
@@ -797,10 +797,10 @@ mod tests {
 
     #[test]
     fn test_channel_statistics() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let channels = OptimizedAsyncChannels::new(bridge, None;
         
-        let stats = channels.get_channel_statistics(;
+        let stats = channels.get_channel_statistics);
         assert_eq!(stats.total_channels_created, 0;
         assert_eq!(stats.active_channels, 0;
     }

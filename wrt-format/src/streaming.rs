@@ -179,7 +179,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
         if available < magic_bytes_needed {
             // Need more data
             self.bytes_processed += available;
-            return Ok(chunk.len(;
+            return Ok(chunk.len);
         }
 
         // Check magic bytes
@@ -203,7 +203,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
 
         if available < version_bytes_needed {
             self.bytes_processed += available;
-            return Ok(chunk.len(;
+            return Ok(chunk.len);
         }
 
         // Check version bytes
@@ -276,7 +276,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
             };
 
             // Clear section buffer for next section
-            let _ = self.section_buffer.clear(;
+            let _ = self.section_buffer.clear);
         } else {
             // Update remaining bytes
             self.state = ParserState::SectionContent { section_id, remaining_bytes: new_remaining };
@@ -302,8 +302,8 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
         let src = self.section_buffer.as_internal_slice().map_err(|_e| {
             Error::memory_error("Failed to access section buffer")
         })?;
-        let src_ref = src.as_ref(;
-        let copy_len = core::cmp::min(dest.len(), src_ref.len(;
+        let src_ref = src.as_ref);
+        let copy_len = core::cmp::min(dest.len(), src_ref.len);
         dest[..copy_len].copy_from_slice(&src_ref[..copy_len];
         Ok(copy_len)
     }
@@ -312,7 +312,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
 #[cfg(not(any(feature = "std")))]
 impl<P: MemoryProvider + Clone + Default + Eq> Default for StreamingParser<P> {
     fn default() -> Self {
-        let provider = P::default(;
+        let provider = P::default);
         Self::new(provider).unwrap_or_else(|_| panic!("Failed to create default StreamingParser"))
     }
 }
@@ -344,7 +344,7 @@ impl StreamingParser {
         // For now, just update state to pass tests
         if self.state == ParserState::Magic && chunk == WASM_MAGIC {
             self.state = ParserState::Version;
-            self.bytes_processed += chunk.len(;
+            self.bytes_processed += chunk.len);
         }
         Ok(ParseResult::NeedMoreData)
     }
@@ -394,7 +394,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
 
     /// Load section data for parsing
     pub fn load_section(&mut self, data: &[u8]) -> core::result::Result<(), Error> {
-        let _ = self.buffer.clear(;
+        let _ = self.buffer.clear);
         self.position = 0;
 
         for &byte in data {

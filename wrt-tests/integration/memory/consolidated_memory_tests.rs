@@ -71,10 +71,10 @@ mod core_memory_tests {
 
     #[test]
     fn test_memory_safe_operations() -> Result<()> {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let mut memory = Memory::new(mem_type)?;
         
-        let test_data = create_test_data(;
+        let test_data = create_test_data);
         
         // Write the data
         memory.write(0, &test_data[..5])?;
@@ -108,7 +108,7 @@ mod core_memory_tests {
 
     #[test]
     fn test_table_safe_operations() -> Result<()> {
-        let table_type = create_test_table_type(;
+        let table_type = create_test_table_type);
         let mut table = Table::new(table_type)?;
         
         // Test setting and getting values
@@ -129,7 +129,7 @@ mod core_memory_tests {
     fn test_safe_memory_handler() -> Result<()> {
         let mut handler = SafeMemoryHandler::new(VerificationLevel::Full)?;
         
-        let test_data = create_test_data(;
+        let test_data = create_test_data);
         
         // Allocate memory
         let memory_id = handler.allocate(test_data.len())?;
@@ -161,20 +161,20 @@ mod foundation_memory_tests {
 
     #[test]
     fn test_safe_slice_creation() {
-        let data = create_test_data(;
+        let data = create_test_data);
         let slice_res = SafeSlice::new(&data;
         assert!(slice_res.is_ok(), "Slice creation failed");
         let slice = slice_res.unwrap();
 
         // Verify data access works
         assert_eq!(slice.data().unwrap(), &data;
-        assert_eq!(slice.len(), data.len(;
+        assert_eq!(slice.len(), data.len);
         assert!(!slice.is_empty();
     }
 
     #[test]
     fn test_safe_slice_verification_levels() {
-        let data = create_test_data(;
+        let data = create_test_data);
 
         test_all_verification_levels(|level| {
             let slice = SafeSlice::with_verification_level(&data, level)?;
@@ -186,7 +186,7 @@ mod foundation_memory_tests {
 
     #[test]
     fn test_safe_slice_bounds_checking() {
-        let data = create_test_data(;
+        let data = create_test_data);
         let slice = SafeSlice::new(&data).unwrap();
 
         // Test valid access
@@ -202,7 +202,7 @@ mod foundation_memory_tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_std_memory_provider() {
-        let data = create_test_data(;
+        let data = create_test_data);
         let provider = StdMemoryProvider::new(data.clone();
 
         // Test borrow_slice
@@ -221,7 +221,7 @@ mod foundation_memory_tests {
     #[cfg(not(feature = "std"))]
     #[test]
     fn test_nostd_memory_provider() {
-        let provider = NoStdMemoryProvider::<64>::new(;
+        let provider = NoStdMemoryProvider::<64>::new);
 
         // Binary std/no_std choice
         let memory_id = provider.allocate(32).unwrap();
@@ -249,7 +249,7 @@ mod foundation_memory_tests {
             stack.push(value).unwrap();
         }
 
-        assert_eq!(stack.len(), test_values.len(;
+        assert_eq!(stack.len(), test_values.len);
         assert!(!stack.is_empty();
 
         // Pop values (should be in reverse order)
@@ -291,7 +291,7 @@ mod runtime_memory_tests {
 
     #[test]
     fn test_memory_growth_safety() -> Result<()> {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let mut memory = Memory::new(mem_type)?;
         
         // Test initial size
@@ -310,10 +310,10 @@ mod runtime_memory_tests {
 
     #[test]
     fn test_memory_bounds_checking() -> Result<()> {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let memory = Memory::new(mem_type)?;
         
-        let test_data = create_test_data(;
+        let test_data = create_test_data);
         
         // Test valid write
         assert!(memory.write(0, &test_data[..5]).is_ok();
@@ -332,7 +332,7 @@ mod runtime_memory_tests {
 
     #[test]
     fn test_memory_integrity_verification() -> Result<()> {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let mut memory = Memory::new(mem_type)?;
         
         // Test with different verification levels
@@ -340,7 +340,7 @@ mod runtime_memory_tests {
             memory.set_verification_level(level;
             
             // Write some data
-            let test_data = create_test_data(;
+            let test_data = create_test_data);
             memory.write(0, &test_data[..5])?;
             
             // Verify integrity
@@ -359,7 +359,7 @@ mod runtime_memory_tests {
 
     #[test]
     fn test_table_bounds_and_growth() -> Result<()> {
-        let table_type = create_test_table_type(;
+        let table_type = create_test_table_type);
         let mut table = Table::new(table_type)?;
         
         // Test initial size
@@ -395,14 +395,14 @@ mod memory_integration_tests {
 
     #[test]
     fn test_memory_table_interaction() -> Result<()> {
-        let mem_type = create_test_memory_type(;
-        let table_type = create_test_table_type(;
+        let mem_type = create_test_memory_type);
+        let table_type = create_test_table_type);
         
         let memory = Memory::new(mem_type)?;
         let mut table = Table::new(table_type)?;
         
         // Write data to memory
-        let test_data = create_test_data(;
+        let test_data = create_test_data);
         memory.write(0, &test_data[..5])?;
         
         // Store function references in table
@@ -429,7 +429,7 @@ mod memory_integration_tests {
         let mut handler = SafeMemoryHandler::new(VerificationLevel::Full)?;
         let memory = Memory::new(create_test_memory_type())?;
         
-        let test_data = create_test_data(;
+        let test_data = create_test_data);
         
         // Use both memory systems
         let memory_id = handler.allocate(test_data.len())?;
@@ -469,7 +469,7 @@ mod memory_integration_tests {
         
         for level in &levels {
             // Test SafeSlice
-            let data = create_test_data(;
+            let data = create_test_data);
             let slice = SafeSlice::with_verification_level(&data, *level)?;
             assert_eq!(slice.verification_level(), *level;
             
@@ -501,12 +501,12 @@ mod memory_performance_tests {
 
     #[test]
     fn test_memory_operation_performance() -> Result<()> {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let memory = Memory::new(mem_type)?;
         
         let test_data = vec![0u8; 1024]; // 1KB test data
         
-        let start = Instant::now(;
+        let start = Instant::now);
         
         // Perform many memory operations
         for i in 0..1000 {
@@ -514,10 +514,10 @@ mod memory_performance_tests {
             memory.write(offset, &test_data)?;
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         assert!(duration.as_millis() < 100, "Memory write performance regression");
         
-        let start = Instant::now(;
+        let start = Instant::now);
         
         // Perform many read operations
         for i in 0..1000 {
@@ -526,7 +526,7 @@ mod memory_performance_tests {
             memory.read(offset, &mut buffer)?;
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         assert!(duration.as_millis() < 100, "Memory read performance regression");
         
         Ok(())
@@ -534,26 +534,26 @@ mod memory_performance_tests {
 
     #[test]
     fn test_verification_performance_impact() -> Result<()> {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let mut memory = Memory::new(mem_type)?;
         
         let test_data = vec![42u8; 1024];
         
         // Test with verification off
         memory.set_verification_level(VerificationLevel::Off;
-        let start = Instant::now(;
+        let start = Instant::now);
         for _ in 0..1000 {
             memory.write(0, &test_data)?;
         }
-        let off_duration = start.elapsed(;
+        let off_duration = start.elapsed);
         
         // Test with full verification
         memory.set_verification_level(VerificationLevel::Full;
-        let start = Instant::now(;
+        let start = Instant::now);
         for _ in 0..1000 {
             memory.write(0, &test_data)?;
         }
-        let full_duration = start.elapsed(;
+        let full_duration = start.elapsed);
         
         // Full verification should be slower but not excessively so
         assert!(full_duration > off_duration, "Full verification should have some overhead");
@@ -566,7 +566,7 @@ mod memory_performance_tests {
     fn test_safe_stack_performance() -> Result<()> {
         let mut stack = SafeStack::new(VerificationLevel::Standard;
         
-        let start = Instant::now(;
+        let start = Instant::now);
         
         // Push many values
         for i in 0..10000 {
@@ -578,7 +578,7 @@ mod memory_performance_tests {
             stack.pop()?;
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         assert!(duration.as_millis() < 100, "SafeStack performance regression");
         
         Ok(())
@@ -594,10 +594,10 @@ mod memory_error_tests {
 
     #[test]
     fn test_memory_error_recovery() -> Result<()> {
-        let mem_type = create_test_memory_type(;
+        let mem_type = create_test_memory_type);
         let memory = Memory::new(mem_type)?;
         
-        let test_data = create_test_data(;
+        let test_data = create_test_data);
         
         // Cause an error with out-of-bounds write
         let error_result = memory.write(100000, &test_data;
@@ -615,7 +615,7 @@ mod memory_error_tests {
 
     #[test]
     fn test_table_error_recovery() -> Result<()> {
-        let table_type = create_test_table_type(;
+        let table_type = create_test_table_type);
         let mut table = Table::new(table_type)?;
         
         let func_value = Value::FuncRef(42;

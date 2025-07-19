@@ -172,7 +172,7 @@ mod tests {
         assert!(socket.socket_path.contains("test_socket");
         
         // Clean up
-        let _ = socket.close(;
+        let _ = socket.close);
     }
 
     #[test]

@@ -540,13 +540,13 @@ mod tests {
 
     #[test]
     fn test_platform_detector_creation() {
-        let detector = PlatformDetector::new(;
+        let detector = PlatformDetector::new);
         assert!(detector.cached_capabilities.is_none();
     }
 
     #[test]
     fn test_capability_detection() {
-        let mut detector = PlatformDetector::new(;
+        let mut detector = PlatformDetector::new);
         let capabilities = detector.detect().unwrap();
 
         // Basic sanity checks
@@ -562,7 +562,7 @@ mod tests {
 
     #[test]
     fn test_wasm_runtime_support() {
-        let mut detector = PlatformDetector::new(;
+        let mut detector = PlatformDetector::new);
         let capabilities = detector.detect().unwrap();
 
         // Should support WebAssembly runtime on any reasonable platform
@@ -571,16 +571,16 @@ mod tests {
 
     #[test]
     fn test_paradigm_recommendation() {
-        let mut detector = PlatformDetector::new(;
+        let mut detector = PlatformDetector::new);
         let capabilities = detector.detect().unwrap();
 
-        let paradigm = capabilities.recommended_paradigm(;
+        let paradigm = capabilities.recommended_paradigm);
         assert!(paradigm == "SecurityFirst" || paradigm == "RealTime" || paradigm == "Posix");
     }
 
     #[test]
     fn test_refresh_detection() {
-        let mut detector = PlatformDetector::new(;
+        let mut detector = PlatformDetector::new);
 
         // Initial detection
         let _caps1 = detector.detect().unwrap();

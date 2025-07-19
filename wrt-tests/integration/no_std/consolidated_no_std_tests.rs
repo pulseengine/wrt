@@ -41,7 +41,7 @@ mod tests {
             let err_result: Result<i32> = Err(error;
             assert!(err_result.is_err();
 
-            let extracted_error = err_result.unwrap_err(;
+            let extracted_error = err_result.unwrap_err);
             assert_eq!(extracted_error.category, ErrorCategory::Core;
         }
 
@@ -82,7 +82,7 @@ mod tests {
         #[test]
         fn test_bounded_vec_no_alloc() {
             const CAPACITY: usize = 10;
-            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default(;
+            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default);
             let mut vec: BoundedVec<u32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
                 BoundedVec::new(provider).unwrap();
 
@@ -103,7 +103,7 @@ mod tests {
         #[test]
         fn test_bounded_string_no_alloc() {
             const CAPACITY: usize = 32;
-            let provider = NoStdProvider::<CAPACITY>::default(;
+            let provider = NoStdProvider::<CAPACITY>::default);
             let mut string: BoundedString<CAPACITY, NoStdProvider<CAPACITY>> =
                 BoundedString::from_str("", provider).unwrap();
 
@@ -120,7 +120,7 @@ mod tests {
         #[test]
         fn test_bounded_stack_no_alloc() {
             const CAPACITY: usize = 5;
-            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default(;
+            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default);
             let mut stack: BoundedStack<i32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
                 BoundedStack::new(provider).unwrap();
 
@@ -141,7 +141,7 @@ mod tests {
         #[test]
         fn test_bounded_queue_no_alloc() {
             const CAPACITY: usize = 4;
-            let provider = NoStdProvider::<{ CAPACITY * 16 }>::default(;
+            let provider = NoStdProvider::<{ CAPACITY * 16 }>::default);
             let mut queue: BoundedQueue<u8, CAPACITY, NoStdProvider<{ CAPACITY * 16 }>> =
                 BoundedQueue::new(provider).unwrap();
 
@@ -188,9 +188,9 @@ mod tests {
 
             const CAPACITY: usize = 16;
             const PROVIDER_SIZE: usize = CAPACITY * 32;
-            let provider = NoStdProvider::<PROVIDER_SIZE>::default(;
+            let provider = NoStdProvider::<PROVIDER_SIZE>::default);
             let mut map: BoundedMap<u32, u32, CAPACITY, NoStdProvider<PROVIDER_SIZE>> =
-                BoundedMap::new(;
+                BoundedMap::new);
 
             assert!(map.is_empty();
 
@@ -218,12 +218,12 @@ mod tests {
             let mutex = Mutex::new(42;
 
             {
-                let mut lock = mutex.lock(;
+                let mut lock = mutex.lock);
                 assert_eq!(*lock, 42;
                 *lock = 100;
             }
 
-            let lock = mutex.lock(;
+            let lock = mutex.lock);
             assert_eq!(*lock, 100;
         }
 
@@ -232,23 +232,23 @@ mod tests {
             let rwlock = RwLock::new(String::from("test";
 
             {
-                let read_lock = rwlock.read(;
+                let read_lock = rwlock.read);
                 assert_eq!(*read_lock, "test";
             }
 
             {
-                let mut write_lock = rwlock.write(;
+                let mut write_lock = rwlock.write);
                 write_lock.push_str("_modified";
             }
 
-            let read_lock = rwlock.read(;
+            let read_lock = rwlock.read);
             assert_eq!(*read_lock, "test_modified";
         }
 
         #[test]
         fn test_mutex_locking() {
             let mutex = Mutex::new(42;
-            let lock = mutex.lock(;
+            let lock = mutex.lock);
             assert_eq!(*lock, 42;
         }
 
@@ -257,17 +257,17 @@ mod tests {
             let rwlock = RwLock::new(42;
 
             {
-                let lock = rwlock.read(;
+                let lock = rwlock.read);
                 assert_eq!(*lock, 42;
             }
 
             {
-                let mut lock = rwlock.write(;
+                let mut lock = rwlock.write);
                 *lock = 100;
                 assert_eq!(*lock, 100;
             }
 
-            let lock = rwlock.read(;
+            let lock = rwlock.read);
             assert_eq!(*lock, 100;
         }
     }
@@ -288,7 +288,7 @@ mod tests {
         fn test_spin_futex_no_std() {
             let futex = SpinFutexBuilder::new()
                 .with_initial_value(42)
-                .build(;
+                .build);
 
             assert_eq!(futex.get(), 42;
             futex.set(100;
@@ -430,7 +430,7 @@ mod tests {
         #[test]
         fn test_format_module_creation() {
             // Test that we can create format structures in no_std
-            let _module = FormatModule::default(;
+            let _module = FormatModule::default);
         }
 
         #[test]
@@ -560,7 +560,7 @@ mod tests {
             assert_eq!(WASM_PAGE_SIZE, 65536;
 
             const CAPACITY: usize = 4;
-            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default(;
+            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default);
             let mut vec: BoundedVec<u32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
                 BoundedVec::new(provider).unwrap();
 

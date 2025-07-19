@@ -40,7 +40,7 @@
 //! use wrt_component::bounded_resource_management::*;
 //! 
 //! // Configure resource limits for embedded system
-//! let limits = BoundedResourceLimits::embedded(;
+//! let limits = BoundedResourceLimits::embedded);
 //! let mut manager = BoundedResourceManager::new(limits)?;
 //! 
 //! // Allocate resources for ASIL-C component
@@ -563,11 +563,11 @@ impl BoundedResourceManager {
     pub fn get_statistics(&self) -> ResourceManagerStatistics {
         let total_memory_used = self.global_resources.iter()
             .map(|resource| resource.data.len()
-            .sum(;
+            .sum);
         
         let active_resources = self.global_resources.iter()
             .filter(|resource| resource.state == ResourceState::Active)
-            .count(;
+            .count);
         
         ResourceManagerStatistics {
             registered_types: self.resource_types.len(),
@@ -658,15 +658,15 @@ mod tests {
     use crate::runtime_stubs::{ComponentId, InstanceId};
     
     fn create_test_manager() -> BoundedResourceManager {
-        let limits = ResourceLimits::default(;
+        let limits = ResourceLimits::default);
         let safety_context = SafetyContext::new(AsilLevel::QM;
         BoundedResourceManager::new(limits, safety_context).unwrap()
     }
     
     #[test]
     fn test_resource_manager_creation() {
-        let manager = create_test_manager(;
-        let stats = manager.get_statistics(;
+        let manager = create_test_manager);
+        let stats = manager.get_statistics);
         
         assert_eq!(stats.registered_types, 0;
         assert_eq!(stats.active_resources, 0;
@@ -675,7 +675,7 @@ mod tests {
     
     #[test]
     fn test_resource_type_registration() {
-        let mut manager = create_test_manager(;
+        let mut manager = create_test_manager);
         
         let type_id = manager.register_resource_type(
             "test-resource".into(),
@@ -686,13 +686,13 @@ mod tests {
         
         assert_eq!(type_id.0, 1;
         
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.registered_types, 1;
     }
     
     #[test]
     fn test_resource_creation() {
-        let mut manager = create_test_manager(;
+        let mut manager = create_test_manager);
         let instance_id = InstanceId(1;
         
         let type_id = manager.register_resource_type(
@@ -702,19 +702,19 @@ mod tests {
             AsilLevel::QM,
         ).unwrap();
         
-        let data = alloc::vec![0u8; 100].into_boxed_slice(;
+        let data = alloc::vec![0u8; 100].into_boxed_slice);
         let handle = manager.create_resource(type_id, data, instance_id).unwrap();
         
         assert!(manager.get_resource(handle).is_some();
         
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.active_resources, 1;
         assert_eq!(stats.memory_used, 100;
     }
     
     #[test]
     fn test_resource_transfer() {
-        let mut manager = create_test_manager(;
+        let mut manager = create_test_manager);
         let source_instance = InstanceId(1;
         let target_instance = InstanceId(2;
         
@@ -725,7 +725,7 @@ mod tests {
             AsilLevel::QM,
         ).unwrap();
         
-        let data = alloc::vec![0u8; 100].into_boxed_slice(;
+        let data = alloc::vec![0u8; 100].into_boxed_slice);
         let handle = manager.create_resource(type_id, data, source_instance).unwrap();
         
         manager.transfer_ownership(handle, target_instance).unwrap();
@@ -733,13 +733,13 @@ mod tests {
         let resource = manager.get_resource(handle).unwrap();
         assert_eq!(resource.instance_id, target_instance;
         
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.cross_component_shares, 1;
     }
     
     #[test]
     fn test_resource_borrowing() {
-        let mut manager = create_test_manager(;
+        let mut manager = create_test_manager);
         let source_instance = InstanceId(1;
         let target_instance = InstanceId(2;
         
@@ -750,7 +750,7 @@ mod tests {
             AsilLevel::QM,
         ).unwrap();
         
-        let data = alloc::vec![0u8; 100].into_boxed_slice(;
+        let data = alloc::vec![0u8; 100].into_boxed_slice);
         let handle = manager.create_resource(type_id, data, source_instance).unwrap();
         
         let borrowed_handle = manager.borrow_resource(handle, target_instance).unwrap();
@@ -758,13 +758,13 @@ mod tests {
         assert!(manager.get_resource(handle).is_some();
         assert!(manager.get_resource(borrowed_handle).is_some();
         
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.cross_component_shares, 1;
     }
     
     #[test]
     fn test_resource_cleanup() {
-        let mut manager = create_test_manager(;
+        let mut manager = create_test_manager);
         let instance_id = InstanceId(1;
         
         let type_id = manager.register_resource_type(
@@ -774,12 +774,12 @@ mod tests {
             AsilLevel::QM,
         ).unwrap();
         
-        let data = alloc::vec![0u8; 100].into_boxed_slice(;
+        let data = alloc::vec![0u8; 100].into_boxed_slice);
         let handle = manager.create_resource(type_id, data, instance_id).unwrap();
         
         manager.cleanup_instance(instance_id).unwrap();
         
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.active_resources, 0;
     }
     

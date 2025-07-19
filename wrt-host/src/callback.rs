@@ -300,7 +300,7 @@ impl CallbackRegistry {
     pub fn register_callback<T>(&mut self, callback_type: CallbackType, _callback: T) {
         // Binary std/no_std choice
         // This is a placeholder implementation
-        let _ = self.callbacks.insert(callback_type, CallbackData::default(;
+        let _ = self.callbacks.insert(callback_type, CallbackData::default);
     }
 
     /// Get a callback
@@ -346,7 +346,7 @@ impl CallbackRegistry {
         let module_name = module_name.to_string();
         let function_name = function_name.to_string();
 
-        let module_functions = self.host_functions.entry(module_name).or_default(;
+        let module_functions = self.host_functions.entry(module_name).or_default);
         module_functions.insert(function_name, handler;
     }
 
@@ -498,7 +498,7 @@ impl CallbackRegistry {
     pub fn get_available_builtins(&self) -> crate::prelude::HashSet<BuiltinType> {
         use crate::prelude::HashSet;
 
-        let mut builtins = HashSet::new(;
+        let mut builtins = HashSet::new);
 
         // Check for built-ins in the wasi_builtin module
         if let Some(builtin_funcs) = self.host_functions.get("wasi_builtin") {
@@ -558,7 +558,7 @@ impl CallbackRegistry {
         args: ValueVec,
     ) -> Result<ValueVec> {
         // First check if we have a direct host function registered
-        let builtin_name = builtin_type.name(;
+        let builtin_name = builtin_type.name);
         if self.has_host_function("wasi_builtin", builtin_name) {
             return self.call_host_function(engine, "wasi_builtin", builtin_name, args;
         }
@@ -571,7 +571,7 @@ impl CallbackRegistry {
 impl Clone for CallbackRegistry {
     fn clone(&self) -> Self {
         // Create a new registry
-        let mut new_registry = Self::new(;
+        let mut new_registry = Self::new);
 
         // Clone the interceptor if present
         #[cfg(feature = "std")]
@@ -615,7 +615,7 @@ mod tests {
 
     #[test]
     fn test_callback_registry() {
-        let mut registry = CallbackRegistry::new(;
+        let mut registry = CallbackRegistry::new);
 
         // Register a host function
         let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
@@ -626,7 +626,7 @@ mod tests {
         assert!(!registry.has_host_function("nonexistent", "function");
 
         // Call the function
-        let mut engine = (;
+        let mut engine = );
         let result =
             registry.call_host_function(&mut engine, "test_module", "test_function", vec![];
 
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn test_callback_registry_callback() {
-        let mut registry = CallbackRegistry::new(;
+        let mut registry = CallbackRegistry::new);
 
         // Register a callback
         registry.register_callback(CallbackType::Intercept, 42;
@@ -671,7 +671,7 @@ mod tests {
     #[test]
     fn test_call_builtin_function() {
         // Create a registry with a host function for resource.create
-        let mut registry = CallbackRegistry::new(;
+        let mut registry = CallbackRegistry::new);
         let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
         registry.register_host_function("wasi_builtin", "resource.create", handler;
 
@@ -680,7 +680,7 @@ mod tests {
         builtin_host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)];
 
         // Test calling via registry - should use the registry's implementation
-        let mut engine = (;
+        let mut engine = );
         let result = registry.call_builtin_function(
             &mut engine,
             &builtin_host,

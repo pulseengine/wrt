@@ -229,14 +229,14 @@ impl<T> FuelAsyncChannel<T> {
         if let Some(waiter) = self.waiting_receivers.pop() {
             // Wake up the receiver
             if let Some(waker) = waiter.waker {
-                waker.wake(;
+                waker.wake);
                 self.consume_fuel(CHANNEL_WAKER_FUEL;
             }
             
             // Message is immediately consumed by waiting receiver
             self.messages_sent.fetch_add(1, Ordering::AcqRel;
             self.messages_received.fetch_add(1, Ordering::AcqRel;
-            return Ok((;
+            return Ok();
         }
 
         // Try to add to buffer
@@ -267,7 +267,7 @@ impl<T> FuelAsyncChannel<T> {
             // Wake up waiting sender if any
             if let Some(waiter) = self.waiting_senders.pop() {
                 if let Some(waker) = waiter.waker {
-                    waker.wake(;
+                    waker.wake);
                     self.consume_fuel(CHANNEL_WAKER_FUEL;
                 }
             }
@@ -367,14 +367,14 @@ impl<T> FuelAsyncChannel<T> {
         // Wake up all waiting senders and receivers
         while let Some(waiter) = self.waiting_senders.pop() {
             if let Some(waker) = waiter.waker {
-                waker.wake(;
+                waker.wake);
                 self.consume_fuel(CHANNEL_WAKER_FUEL;
             }
         }
         
         while let Some(waiter) = self.waiting_receivers.pop() {
             if let Some(waker) = waiter.waker {
-                waker.wake(;
+                waker.wake);
                 self.consume_fuel(CHANNEL_WAKER_FUEL;
             }
         }
@@ -507,7 +507,7 @@ impl<T> FuelAsyncChannelManager<T> {
     /// Close a channel
     pub fn close_channel(&mut self, channel_id: ChannelId) -> Result<(), Error> {
         if let Some(channel) = self.channels.get_mut(&channel_id) {
-            channel.close(;
+            channel.close);
             Ok(())
         } else {
             Err(Error::resource_not_found("Channel not found"))
@@ -527,8 +527,8 @@ impl<T> FuelAsyncChannelManager<T> {
             total_sent += channel.messages_sent.load(Ordering::Acquire;
             total_received += channel.messages_received.load(Ordering::Acquire;
             total_fuel += channel.fuel_consumed.load(Ordering::Acquire;
-            total_blocked_senders += channel.waiting_senders.len(;
-            total_blocked_receivers += channel.waiting_receivers.len(;
+            total_blocked_senders += channel.waiting_senders.len);
+            total_blocked_receivers += channel.waiting_receivers.len);
         }
 
         let mut stats = self.global_stats.clone();
@@ -720,7 +720,7 @@ mod tests {
         
         assert!(result.is_ok();
         
-        let stats = manager.get_global_stats(;
+        let stats = manager.get_global_stats);
         assert_eq!(stats.total_channels_created.load(Ordering::Acquire), 1;
         assert_eq!(stats.active_channels.load(Ordering::Acquire), 1;
     }
@@ -741,7 +741,7 @@ mod tests {
         assert!(send_result.is_ok();
         
         // Receive the message
-        let receive_result = receiver.try_receive(;
+        let receive_result = receiver.try_receive);
         assert!(receive_result.is_ok();
         assert_eq!(receive_result.unwrap(), 42;
     }
@@ -784,7 +784,7 @@ mod tests {
         let send_result = sender.try_send(42;
         assert!(matches!(send_result, Err(ChannelError::Closed(_)));
         
-        let receive_result = receiver.try_receive(;
+        let receive_result = receiver.try_receive);
         assert!(matches!(receive_result, Err(ChannelError::Closed(_)));
     }
 }

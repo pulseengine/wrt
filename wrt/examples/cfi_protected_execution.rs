@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Simple CFI execution with default settings
     println!("\n1. Executing with default CFI protection...";
 
-    let simple_wasm = create_simple_wasm_module(;
+    let simple_wasm = create_simple_wasm_module);
     match execute_with_cfi_protection(&simple_wasm, "main") {
         Ok(result) => {
             println!("✓ CFI execution successful!";
@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     };
 
-    let complex_wasm = create_complex_wasm_module(;
+    let complex_wasm = create_complex_wasm_module);
     match wrt::execute_with_cfi_config(&complex_wasm, "fibonacci", custom_config) {
         Ok(result) => {
             println!("✓ Custom CFI execution successful!";
@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // Print CFI statistics
-                    let stats = engine.statistics(;
+                    let stats = engine.statistics);
                     println!("\nCFI Execution Statistics:";
                     println!(
                         "  Modules executed: {}",
@@ -149,7 +149,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let malicious_wasm = create_malicious_wasm_module(;
+    let malicious_wasm = create_malicious_wasm_module);
     match wrt::execute_with_cfi_config(&malicious_wasm, "exploit_attempt", malicious_config) {
         Ok(result) => {
             if result.violations_detected > 0 {

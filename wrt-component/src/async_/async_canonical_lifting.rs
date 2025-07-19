@@ -206,7 +206,7 @@ impl AsyncCanonicalEncoder {
     
     fn encode_string(&mut self, value: &str, options: &CanonicalOptions) -> Result<()> {
         // Encode as pointer and length
-        let bytes = value.as_bytes(;
+        let bytes = value.as_bytes);
         self.encode_u32(bytes.len() as u32)?;
         self.encode_u32(0)?; // Binary std/no_std choice
         Ok(())
@@ -466,7 +466,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     }
     
     fn decode_record(&mut self, fields: &[(String, ValType)], options: &CanonicalOptions) -> core::result::Result<Vec<(String, Value)>> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         for (name, field_type) in fields {
             let value = self.decode_value(field_type, options)?;
             result.push((name.clone(), value;
@@ -490,7 +490,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     }
     
     fn decode_tuple(&mut self, types: &[ValType], options: &CanonicalOptions) -> Result<Vec<Value>> {
-        let mut values = Vec::new(;
+        let mut values = Vec::new);
         for val_type in types {
             values.push(self.decode_value(val_type, options)?;
         }
@@ -520,7 +520,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     
     fn decode_flags(&mut self, count: usize) -> Result<Vec<bool>> {
         let packed = self.decode_u32()?;
-        let mut flags = Vec::new(;
+        let mut flags = Vec::new);
         
         for i in 0..count.min(32) {
             flags.push((packed & (1 << i)) != 0;
@@ -594,7 +594,7 @@ pub fn async_canonical_lift(
     options: &CanonicalOptions,
 ) -> Result<Vec<Value>> {
     let mut decoder = AsyncCanonicalDecoder::new(bytes;
-    let mut values = Vec::new(;
+    let mut values = Vec::new);
     
     for val_type in target_types {
         values.push(decoder.decode_value(val_type, options)?;
@@ -608,7 +608,7 @@ pub fn async_canonical_lower(
     values: &[Value],
     options: &CanonicalOptions,
 ) -> Result<Vec<u8>> {
-    let mut encoder = AsyncCanonicalEncoder::new(;
+    let mut encoder = AsyncCanonicalEncoder::new);
     
     for value in values {
         encoder.encode_value(value, options)?;
@@ -634,7 +634,7 @@ mod tests {
     
     #[test]
     fn test_encode_decode_primitives() {
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
         
         // Test u32
         let values = vec![Value::U32(42)];
@@ -651,7 +651,7 @@ mod tests {
     
     #[test]
     fn test_encode_decode_tuple() {
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
         
         let values = vec![Value::Tuple(vec![
             Value::U32(42),
@@ -671,7 +671,7 @@ mod tests {
     
     #[test]
     fn test_encode_decode_option() {
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
         
         // Test Some
         let values = vec![Value::Option(Some(Box::new(Value::U32(42))))];
@@ -696,7 +696,7 @@ mod tests {
     
     #[test]
     fn test_encode_decode_result() {
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
         
         // Test Ok
         let values = vec![Value::Result(Ok(Box::new(Value::U32(42))))];
@@ -714,7 +714,7 @@ mod tests {
     
     #[test]
     fn test_encode_decode_handles() {
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
         
         // Test stream handle
         let values = vec![Value::Stream(123)];

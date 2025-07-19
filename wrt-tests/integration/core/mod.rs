@@ -43,7 +43,7 @@ mod tests {
     
     #[test]
     fn core_integration() {
-        let result = run_tests(;
+        let result = run_tests);
         assert!(result.is_success(), "Core integration tests failed: {:?}", result);
     }
 }

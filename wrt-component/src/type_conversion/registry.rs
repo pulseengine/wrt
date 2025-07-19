@@ -223,7 +223,7 @@ impl TypeConversionRegistry {
             _phantom_to: PhantomData,
         };
 
-        let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+        let key = (TypeId::of::<From>(), TypeId::of::<To>);
         self.conversions.insert(key, Box::new(adapter;
         self
     }
@@ -234,7 +234,7 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+        let key = (TypeId::of::<From>(), TypeId::of::<To>);
         self.conversions.contains_key(&key)
     }
 
@@ -244,7 +244,7 @@ impl TypeConversionRegistry {
         From: Convertible + 'static,
         To: Convertible + 'static,
     {
-        let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+        let key = (TypeId::of::<From>(), TypeId::of::<To>);
 
         // Look up the converter in the registry
         let converter = self.conversions.get(&key).ok_or_else(|| ConversionError {
@@ -272,8 +272,8 @@ impl TypeConversionRegistry {
 
     /// Create a registry populated with default conversions
     pub fn with_defaults() -> Self {
-        let mut registry = Self::new(;
-        registry.register_defaults(;
+        let mut registry = Self::new);
+        registry.register_defaults);
         registry
     }
 
@@ -319,7 +319,7 @@ mod tests {
     #[test]
     fn test_registry_basic_conversion() {
         // Create a registry
-        let mut registry = TypeConversionRegistry::new(;
+        let mut registry = TypeConversionRegistry::new);
 
         // Register a simple conversion function
         registry.register(|src: &TestSourceType| -> core::result::Result<TestTargetType, ConversionError> {
@@ -338,7 +338,7 @@ mod tests {
         #[derive(Debug)]
         struct AnotherType(f64;
 
-        let registry = TypeConversionRegistry::new(;
+        let registry = TypeConversionRegistry::new);
 
         // Try a conversion that doesn't exist
         let source = TestSourceType(42;
@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_can_convert() {
-        let mut registry = TypeConversionRegistry::new(;
+        let mut registry = TypeConversionRegistry::new);
 
         // Register a conversion
         registry.register(|src: &TestSourceType| -> core::result::Result<TestTargetType, ConversionError> {
@@ -366,7 +366,7 @@ mod tests {
 
     #[test]
     fn test_conversion_error_handling() {
-        let mut registry = TypeConversionRegistry::new(;
+        let mut registry = TypeConversionRegistry::new);
 
         // Register a conversion that may fail
         registry.register(|src: &TestSourceType| -> core::result::Result<TestTargetType, ConversionError> {
@@ -404,7 +404,7 @@ mod tests {
         use wrt_format::component::ValType as FormatValType;
         use wrt_foundation::component_value::ValType as TypesValType;
 
-        let registry = TypeConversionRegistry::with_defaults(;
+        let registry = TypeConversionRegistry::with_defaults);
 
         // Test primitive types
         let bool_type = FormatValType::Bool;
@@ -421,7 +421,7 @@ mod tests {
         use wrt_format::component::ValType as FormatValType;
         use wrt_foundation::component_value::ValType as TypesValType;
 
-        let registry = TypeConversionRegistry::with_defaults(;
+        let registry = TypeConversionRegistry::with_defaults);
 
         // Test primitive types
         let bool_type = TypesValType::Bool;
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn test_basic_registry_functionality() {
         // Create a registry
-        let mut registry = TypeConversionRegistry::new(;
+        let mut registry = TypeConversionRegistry::new);
 
         // Register a simple conversion
         registry.register(|src: &SimpleSource| -> core::result::Result<SimpleTarget, ConversionError> {

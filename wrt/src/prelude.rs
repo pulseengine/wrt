@@ -138,7 +138,7 @@ macro_rules! vec {
         wrt_foundation::allocator::WrtVec::<_, {wrt_foundation::allocator::CrateId::Wrt as u8}, 256>::new()
     };
     ($($x:expr),*) => {{
-        let mut v = wrt_foundation::allocator::WrtVec::<_, {wrt_foundation::allocator::CrateId::Wrt as u8}, 256>::new(;
+        let mut v = wrt_foundation::allocator::WrtVec::<_, {wrt_foundation::allocator::CrateId::Wrt as u8}, 256>::new);
         $(let _ = v.push($x);)*
         v
     }};

@@ -211,7 +211,7 @@ impl ThreadExecutionContext {
     pub fn update_state(&mut self, new_state: ThreadState) {
         self.info.state = new_state;
         if new_state.is_completed() {
-            self.info.completed_at = Some(wrt_platform::time::current_time_ns(;
+            self.info.completed_at = Some(wrt_platform::time::current_time_ns);
         }
     }
     
@@ -489,7 +489,7 @@ impl ThreadManager {
     
     /// Cleanup completed threads
     pub fn cleanup_completed_threads(&mut self) -> usize {
-        let initial_count = self.thread_count(;
+        let initial_count = self.thread_count);
         
         #[cfg(feature = "std")]
         {
@@ -625,7 +625,7 @@ mod tests {
     
     #[test]
     fn test_thread_config_default() {
-        let config = ThreadConfig::default(;
+        let config = ThreadConfig::default);
         assert_eq!(config.max_threads, 128;
         assert_eq!(config.default_stack_size, 1024 * 1024;
         assert!(config.enable_tls);
@@ -643,7 +643,7 @@ mod tests {
     
     #[test]
     fn test_thread_manager_creation() {
-        let config = ThreadConfig::default(;
+        let config = ThreadConfig::default);
         let manager = ThreadManager::new(config).unwrap();
         assert_eq!(manager.thread_count(), 0;
         assert_eq!(manager.active_thread_count(), 0;
@@ -652,7 +652,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_thread_spawning() {
-        let mut manager = ThreadManager::default(;
+        let mut manager = ThreadManager::default);
         
         let thread_id = manager.spawn_thread(42, Some(2 * 1024 * 1024), None).unwrap();
         assert_eq!(thread_id, 1;
@@ -666,10 +666,10 @@ mod tests {
     
     #[test]
     fn test_thread_stats() {
-        let mut stats = ThreadExecutionStats::new(;
-        stats.record_instruction(;
-        stats.record_function_call(;
-        stats.record_atomic_operation(;
+        let mut stats = ThreadExecutionStats::new);
+        stats.record_instruction);
+        stats.record_function_call);
+        stats.record_atomic_operation);
         stats.update_memory_usage(1024;
         
         assert_eq!(stats.instructions_executed, 1;
@@ -680,7 +680,7 @@ mod tests {
     
     #[test]
     fn test_manager_stats() {
-        let stats = ThreadManagerStats::new(;
+        let stats = ThreadManagerStats::new);
         assert_eq!(stats.success_rate(), 0.0;
         assert!(!stats.is_healthy();
     }

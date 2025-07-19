@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn test_result_operations() {
-        let result: Result<()> = Ok((;
+        let result: Result<()> = Ok();
         assert!(result.is_ok();
         result.unwrap(); // Should not panic
 
@@ -67,7 +67,7 @@ mod tests {
 
         #[test]
         fn test_error_conversion_division() {
-            let div_error = kinds::division_by_zero_error(;
+            let div_error = kinds::division_by_zero_error);
             let error = Error::from(div_error;
             // In std mode, plain format! is from std.
             assert!(format!("{error}").contains("Division by zero");

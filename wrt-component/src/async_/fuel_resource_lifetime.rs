@@ -99,7 +99,7 @@ impl<T> TrackedResource<T> {
         type_name: String,
         verification_level: VerificationLevel,
     ) -> Result<Self> {
-        let created_at = wrt_foundation::operations::global_fuel_consumed(;
+        let created_at = wrt_foundation::operations::global_fuel_consumed);
         
         // Record resource creation
         record_global_operation(OperationType::Other)?;
@@ -208,7 +208,7 @@ impl<T> ResourceGuard<T> {
 impl<T> Drop for ResourceGuard<T> {
     fn drop(&mut self) {
         if !self.released {
-            let _ = self.resource.release(;
+            let _ = self.resource.release);
         }
     }
 }
@@ -365,7 +365,7 @@ impl ResourceLifetimeManager {
     /// Run all cleanup callbacks
     pub fn run_cleanup(&mut self) -> Result<()> {
         while let Some(callback) = self.cleanup_callbacks.pop() {
-            callback(;
+            callback);
         }
         Ok(())
     }

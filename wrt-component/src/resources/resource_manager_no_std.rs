@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_resource_creation() {
-        let table = Mutex::new(ResourceTable::new(;
+        let table = Mutex::new(ResourceTable::new);
         let manager = ResourceManager::new(&table;
 
         // Create a string resource
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_named_resource() {
-        let table = Mutex::new(ResourceTable::new(;
+        let table = Mutex::new(ResourceTable::new);
         let manager = ResourceManager::new(&table;
 
         // Create a named resource
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_resource_lifecycle() {
-        let table = Mutex::new(ResourceTable::new(;
+        let table = Mutex::new(ResourceTable::new);
         let manager = ResourceManager::new(&table;
 
         // Add a resource
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_with_arena() {
-        let table = Mutex::new(ResourceTable::new(;
+        let table = Mutex::new(ResourceTable::new);
         let manager = ResourceManager::new(&table;
 
         // Create an arena

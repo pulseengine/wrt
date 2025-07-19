@@ -498,7 +498,7 @@ pub mod verification {
     #[cfg(all(kani, any(feature = "std")))]
     #[kani::proof]
     fn verify_leb128_roundtrip() {
-        let value: u32 = kani::any(;
+        let value: u32 = kani::any);
         // Limit to reasonable values for test
         kani::assume(value <= 0xFFFF;
 
@@ -525,7 +525,7 @@ pub mod no_std_demo {
         };
 
         // Create a type registry
-        let mut registry = TypeRegistry::new(;
+        let mut registry = TypeRegistry::new);
 
         // Add a primitive type
         let bool_ref = registry.add_type(FormatValType::Bool)?;
@@ -609,7 +609,7 @@ pub mod no_std_demo {
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )?;
-        let _module = Module::<NoStdProvider<1024>>::default(;
+        let _module = Module::<NoStdProvider<1024>>::default);
 
         // Binary std/no_std choice
         Ok(())

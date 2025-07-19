@@ -84,7 +84,7 @@ fn bench_module_loading(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark instruction parsing performance
@@ -95,7 +95,7 @@ fn bench_instruction_parsing(c: &mut Criterion) {
         group.bench_function("function_instruction_count", |b| {
             b.iter(|| {
                 if let Ok(function) = runtime_module.functions.get(0) {
-                    let instruction_count = function.body.len(;
+                    let instruction_count = function.body.len);
                     black_box(instruction_count)
                 } else {
                     black_box(0)
@@ -120,7 +120,7 @@ fn bench_instruction_parsing(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark single execution performance
@@ -130,7 +130,7 @@ fn bench_single_execution(c: &mut Criterion) {
     if let Ok(runtime_module) = load_test_module() {
         group.bench_function("engine_instantiation", |b| {
             b.iter(|| {
-                let mut engine = StacklessEngine::new(;
+                let mut engine = StacklessEngine::new);
                 let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
                 let instance_arc = Arc::new(instance;
                 let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -139,7 +139,7 @@ fn bench_single_execution(c: &mut Criterion) {
         };
 
         group.bench_function("simple_add_execution", |b| {
-            let mut engine = StacklessEngine::new(;
+            let mut engine = StacklessEngine::new);
             let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
             let instance_arc = Arc::new(instance;
             let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -153,7 +153,7 @@ fn bench_single_execution(c: &mut Criterion) {
 
         group.bench_function("execution_with_setup", |b| {
             b.iter(|| {
-                let mut engine = StacklessEngine::new(;
+                let mut engine = StacklessEngine::new);
                 let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
                 let instance_arc = Arc::new(instance;
                 let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -165,7 +165,7 @@ fn bench_single_execution(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark repeated execution performance
@@ -173,7 +173,7 @@ fn bench_repeated_execution(c: &mut Criterion) {
     let mut group = c.benchmark_group("repeated_execution";
 
     if let Ok(runtime_module) = load_test_module() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         let instance = ModuleInstance::new(runtime_module, 0).unwrap();
         let instance_arc = Arc::new(instance;
         let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -199,7 +199,7 @@ fn bench_repeated_execution(c: &mut Criterion) {
         }
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark execution determinism and timing variance
@@ -208,7 +208,7 @@ fn bench_execution_determinism(c: &mut Criterion) {
     group.sample_size(500); // More samples for better variance analysis
 
     if let Ok(runtime_module) = load_test_module() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         let instance = ModuleInstance::new(runtime_module, 0).unwrap();
         let instance_arc = Arc::new(instance;
         let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -233,7 +233,7 @@ fn bench_execution_determinism(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark memory allocation patterns during execution
@@ -261,14 +261,14 @@ fn bench_memory_patterns(c: &mut Criterion) {
             let instance_arc = Arc::new(instance;
 
             b.iter(|| {
-                let mut engine = StacklessEngine::new(;
+                let mut engine = StacklessEngine::new);
                 let instance_idx = engine.set_current_module(instance_arc.clone()).unwrap();
                 black_box(instance_idx)
             };
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark ASIL-B compliance overhead
@@ -276,7 +276,7 @@ fn bench_asil_compliance_overhead(c: &mut Criterion) {
     let mut group = c.benchmark_group("asil_compliance_overhead";
 
     if let Ok(runtime_module) = load_test_module() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         let instance = ModuleInstance::new(runtime_module, 0).unwrap();
         let instance_arc = Arc::new(instance;
         let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -287,7 +287,7 @@ fn bench_asil_compliance_overhead(c: &mut Criterion) {
                 if let Ok(function) =
                     engine.current_module.as_ref().unwrap().module().functions.get(0)
                 {
-                    let instruction_count = function.body.len(;
+                    let instruction_count = function.body.len);
                     // Simulate bounds-checked instruction access
                     let mut valid_accesses = 0;
                     for i in 0..instruction_count {
@@ -331,7 +331,7 @@ fn bench_asil_compliance_overhead(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Benchmark execution vs simulation comparison
@@ -351,7 +351,7 @@ fn bench_execution_vs_simulation(c: &mut Criterion) {
 
     // Real execution benchmark (what we have now)
     if let Ok(runtime_module) = load_test_module() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         let instance = ModuleInstance::new(runtime_module, 0).unwrap();
         let instance_arc = Arc::new(instance;
         let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -365,7 +365,7 @@ fn bench_execution_vs_simulation(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 /// Comprehensive benchmark suite covering all execution aspects
@@ -376,7 +376,7 @@ fn bench_comprehensive_execution_suite(c: &mut Criterion) {
         group.bench_function("full_execution_pipeline", |b| {
             b.iter(|| {
                 // Complete execution pipeline from engine creation to result
-                let mut engine = StacklessEngine::new(;
+                let mut engine = StacklessEngine::new);
                 let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
                 let instance_arc = Arc::new(instance;
                 let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -396,7 +396,7 @@ fn bench_comprehensive_execution_suite(c: &mut Criterion) {
         };
 
         group.bench_function("production_workload_simulation", |b| {
-            let mut engine = StacklessEngine::new(;
+            let mut engine = StacklessEngine::new);
             let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
             let instance_arc = Arc::new(instance;
             let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -419,7 +419,7 @@ fn bench_comprehensive_execution_suite(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 // Define benchmark groups

@@ -83,12 +83,12 @@ mod enforcement_scenario_tests {
         // Write some data
         let data = b"Hello, WebAssembly!";
         let offset = handler.write(0, data)?;
-        assert_eq!(offset, data.len(;
+        assert_eq!(offset, data.len);
 
         // Read it back
         let mut buffer = [0u8; 32];
         let read = handler.read(0, &mut buffer)?;
-        assert_eq!(read, data.len(;
+        assert_eq!(read, data.len);
         assert_eq!(&buffer[..read], data;
 
         // Verify allocation is tracked
@@ -103,7 +103,7 @@ mod enforcement_scenario_tests {
         setup()?;
 
         // Get a small budget
-        let mut providers = Vec::new(;
+        let mut providers = Vec::new);
 
         // Allocate most of the budget
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Format)?;
@@ -127,7 +127,7 @@ mod enforcement_scenario_tests {
 
         // Verify no leaked allocation
         let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Format)?;
-        assert_eq!(final_stats.allocation_count as usize, providers.len(;
+        assert_eq!(final_stats.allocation_count as usize, providers.len);
 
         Ok(())
     }
@@ -261,7 +261,7 @@ mod enforcement_scenario_tests {
         assert!(crate_stats.current_allocation >= 4096);
 
         // Exhausting shared pool shouldn't affect crate budgets
-        let mut shared_providers = Vec::new(;
+        let mut shared_providers = Vec::new);
         while let Ok(p) = BudgetAwareProviderFactory::create_shared_provider::<65536>() {
             shared_providers.push(p);
             if shared_providers.len() > 100 {
@@ -281,7 +281,7 @@ mod enforcement_scenario_tests {
         setup()?;
 
         // Using migration helpers should work but be tracked
-        let provider = wrt_foundation::migration::migration_provider::<1024>(;
+        let provider = wrt_foundation::migration::migration_provider::<1024>);
 
         // Should work like a normal provider
         let vec = BoundedVec::<u8, 50, _>::new(provider)?;

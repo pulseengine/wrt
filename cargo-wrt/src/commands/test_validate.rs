@@ -160,10 +160,10 @@ async fn validate_progress_system(_args: &TestValidateArgs, global: &mut GlobalA
         global.output_format.clone(),
         output.is_colored(),
     ;
-    spinner.start(;
+    spinner.start);
 
     for _ in 0..10 {
-        spinner.tick(;
+        spinner.tick);
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
 
@@ -176,7 +176,7 @@ async fn validate_progress_system(_args: &TestValidateArgs, global: &mut GlobalA
         global.output_format.clone(),
         output.is_colored(),
     ;
-    bar.start(;
+    bar.start);
 
     for i in 0..=50 {
         bar.update(i;
@@ -185,7 +185,7 @@ async fn validate_progress_system(_args: &TestValidateArgs, global: &mut GlobalA
         }
     }
 
-    bar.finish(;
+    bar.finish);
 
     // Test multi-step progress
     let steps = vec![
@@ -195,8 +195,8 @@ async fn validate_progress_system(_args: &TestValidateArgs, global: &mut GlobalA
     ];
 
     let mut multi_progress =
-        MultiStepProgress::new(steps, global.output_format.clone(), output.is_colored(;
-    multi_progress.start(;
+        MultiStepProgress::new(steps, global.output_format.clone(), output.is_colored);
+    multi_progress.start);
 
     multi_progress.begin_step("Initializing system";
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -229,7 +229,7 @@ async fn validate_suggestion_system(
     let output = global.output.clone();
     output.info("Validating command suggestion system...";
 
-    let engine = CommandSuggestionEngine::new(;
+    let engine = CommandSuggestionEngine::new);
 
     // Test various inputs
     let test_cases = vec![
@@ -282,7 +282,7 @@ async fn validate_performance_system(
     let output = global.output.clone();
     output.info("Validating performance monitoring system...";
 
-    let mut optimizer = PerformanceOptimizer::with_defaults(;
+    let mut optimizer = PerformanceOptimizer::with_defaults);
 
     // Test timing functionality
     optimizer.start_timer("validation_test";
@@ -290,12 +290,12 @@ async fn validate_performance_system(
     optimizer.stop_timer("validation_test";
 
     // Test cache tracking
-    optimizer.record_cache_hit(;
-    optimizer.record_cache_miss(;
-    optimizer.record_cache_hit(;
-    optimizer.record_cache_hit(;
+    optimizer.record_cache_hit);
+    optimizer.record_cache_miss);
+    optimizer.record_cache_hit);
+    optimizer.record_cache_hit);
 
-    let report = optimizer.generate_report(;
+    let report = optimizer.generate_report);
 
     output.info(&format!(
         "  Command timing: {:.2}s",
@@ -312,7 +312,7 @@ async fn validate_performance_system(
         optimizer.cache_hit_ratio() * 100.0
     ;
 
-    let recommendations = optimizer.get_recommendations(;
+    let recommendations = optimizer.get_recommendations);
     if !recommendations.is_empty() {
         output.info(&format!(
             "  Performance recommendations: {}",
@@ -351,7 +351,7 @@ async fn validate_error_handling(_args: &TestValidateArgs, global: &mut GlobalAr
 
     output.info("  Testing error formatting...";
 
-    let human_format = test_error.format_human(output.is_colored(;
+    let human_format = test_error.format_human(output.is_colored);
     if global.verbose {
         output.indent("Human format:";
         for line in human_format.lines().take(5) {
@@ -359,7 +359,7 @@ async fn validate_error_handling(_args: &TestValidateArgs, global: &mut GlobalAr
         }
     }
 
-    let json_format = test_error.format_json(;
+    let json_format = test_error.format_json);
     output.info(&format!(
         "  JSON format generated: {} fields",
         json_format.as_object().map(|o| o.len()).unwrap_or(0)
@@ -452,8 +452,8 @@ async fn run_all_workspace_type_tests(
             .validate_all()
             .config_context(&format!("Failed to validate {}", name))?;
 
-        let total_tests: usize = reports.iter().map(|r| r.total_tests()).sum(;
-        let successful_tests: usize = reports.iter().map(|r| r.successes.len()).sum(;
+        let total_tests: usize = reports.iter().map(|r| r.total_tests()).sum);
+        let successful_tests: usize = reports.iter().map(|r| r.successes.len()).sum);
 
         output.indent(&format!(
             "    {}/{} tests passed",

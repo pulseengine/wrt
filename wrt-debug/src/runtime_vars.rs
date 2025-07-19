@@ -96,7 +96,7 @@ impl<'a> VariableInspector<'a> {
                 // Read from local variable slot
                 state.read_local(*index).map(|value| {
                     let mut bytes = [0u8; 8];
-                    bytes[0..8].copy_from_slice(&value.to_le_bytes(;
+                    bytes[0..8].copy_from_slice(&value.to_le_bytes);
                     VariableValue {
                         bytes,
                         size: size_for_type(&var.var_type),
@@ -155,7 +155,7 @@ impl<'a> VariableInspector<'a> {
         memory: &dyn DebugMemory,
     ) -> BoundedVec<LiveVariable<'a>, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>
     {
-        let mut live_vars = crate::bounded_debug_infra::create_debug_vec(;
+        let mut live_vars = crate::bounded_debug_infra::create_debug_vec);
 
         for var_def in self.find_variables_at_pc(pc) {
             let value = self.read_variable(var_def, state, memory;
@@ -233,7 +233,7 @@ impl<'a> ValueDisplay<'a> {
                 if let Some(val) = self.value.as_f64() {
                     // Simplified float display
                     writer("<f64:")?;
-                    let bits = val.to_bits(;
+                    let bits = val.to_bits);
                     let mut buf = [0u8; 16];
                     writer(format_hex_u64(bits, &mut buf))?;
                     writer(">")?;
@@ -269,7 +269,7 @@ impl<'a> ValueDisplay<'a> {
 
 // Binary std/no_std choice
 fn format_i32(mut n: i32, buf: &mut [u8]) -> &str {
-    let mut i = buf.len(;
+    let mut i = buf.len);
     let negative = n < 0;
 
     if negative {
@@ -299,7 +299,7 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
         return "0";
     }
 
-    let mut i = buf.len(;
+    let mut i = buf.len);
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
@@ -351,7 +351,7 @@ mod tests {
             address:  None,
         };
 
-        let mut output = String::new(;
+        let mut output = String::new);
         ValueDisplay { value: &value }
             .display(|s| {
                 output.push_str(s;
@@ -366,7 +366,7 @@ mod tests {
         value.size = 1;
         value.bytes[0] = 1;
 
-        output.clear(;
+        output.clear);
         ValueDisplay { value: &value }
             .display(|s| {
                 output.push_str(s;
@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn test_variable_scope() {
-        let mut inspector = VariableInspector::new(;
+        let mut inspector = VariableInspector::new);
 
         let var = VariableDefinition {
             name:       None,

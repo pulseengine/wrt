@@ -19,16 +19,16 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::unwind(5))]
     pub fn verify_component_type_safety() {
         // Generate arbitrary component structure
-        let import_count: usize = kani::any(;
-        let export_count: usize = kani::any(;
+        let import_count: usize = kani::any);
+        let export_count: usize = kani::any);
         kani::assume(import_count <= 8 && export_count <= 8); // Reasonable bounds
 
         #[cfg(feature = "std")]
         {
             use std::vec::Vec;
 
-            let mut imports = Vec::new(;
-            let mut exports = Vec::new(;
+            let mut imports = Vec::new);
+            let mut exports = Vec::new);
 
             // Add imports with type constraints
             for i in 0..import_count {
@@ -63,7 +63,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::unwind(4))]
     pub fn verify_namespace_operations() {
         // Test various namespace patterns
-        let namespace_type: u8 = kani::any(;
+        let namespace_type: u8 = kani::any);
 
         match namespace_type % 4 {
             0 => {
@@ -116,7 +116,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::unwind(6))]
     pub fn verify_import_export_consistency() {
         // Test that imports and exports maintain type safety
-        let operation: u8 = kani::any(;
+        let operation: u8 = kani::any);
 
         match operation % 3 {
             0 => {
@@ -126,10 +126,10 @@ pub mod kani_verification {
                     use std::vec::Vec;
 
                     // Create function type
-                    let param_count: usize = kani::any(;
+                    let param_count: usize = kani::any);
                     kani::assume(param_count <= 4;
 
-                    let mut params = Vec::new(;
+                    let mut params = Vec::new);
                     for _ in 0..param_count {
                         params.push(ValueType::I32); // Simplified for verification
                     }
@@ -145,14 +145,14 @@ pub mod kani_verification {
                         results: func_type.results.clone(),
                     };
 
-                    assert_eq!(func_type.params.len(), same_func_type.params.len(;
+                    assert_eq!(func_type.params.len(), same_func_type.params.len);
                 }
             }
             1 => {
                 // Memory type consistency
-                let min_pages: u32 = kani::any(;
+                let min_pages: u32 = kani::any);
                 let max_pages: Option<u32> = if kani::any::<bool>() {
-                    let max: u32 = kani::any(;
+                    let max: u32 = kani::any);
                     kani::assume(max >= min_pages && max <= 65536); // WebAssembly limits
                     Some(max)
                 } else {
@@ -170,9 +170,9 @@ pub mod kani_verification {
             }
             _ => {
                 // Table type consistency
-                let table_min: u32 = kani::any(;
+                let table_min: u32 = kani::any);
                 let table_max: Option<u32> = if kani::any::<bool>() {
-                    let max: u32 = kani::any(;
+                    let max: u32 = kani::any);
                     kani::assume(max >= table_min && max <= 0xFFFF_FFFF;
                     Some(max)
                 } else {
@@ -197,7 +197,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(3))]
     pub fn verify_value_type_safety() {
-        let value_type: ValueType = kani::any(;
+        let value_type: ValueType = kani::any);
 
         // Verify type properties are consistent
         match value_type {
@@ -234,8 +234,8 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::unwind(4))]
     pub fn verify_component_instance_safety() {
         // Test component instantiation with type checking
-        let has_imports: bool = kani::any(;
-        let has_exports: bool = kani::any(;
+        let has_imports: bool = kani::any);
+        let has_exports: bool = kani::any);
 
         #[cfg(feature = "std")]
         {
@@ -243,7 +243,7 @@ pub mod kani_verification {
 
             // Create a minimal component
             let imports = if has_imports {
-                let mut imp = Vec::new(;
+                let mut imp = Vec::new);
                 imp.push("required_func".to_string();
                 imp
             } else {
@@ -251,7 +251,7 @@ pub mod kani_verification {
             };
 
             let exports = if has_exports {
-                let mut exp = Vec::new(;
+                let mut exp = Vec::new);
                 exp.push("exported_func".to_string();
                 exp
             } else {

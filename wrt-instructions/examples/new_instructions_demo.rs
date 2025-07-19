@@ -67,7 +67,7 @@ fn main() -> Result<()> {
 
     // 1. Demonstrate DROP operation
     println!("1. DROP Operation:";
-    let mut ctx = SimpleContext::new(;
+    let mut ctx = SimpleContext::new);
     ctx.push_value(Value::I32(42))?;
     println!("   Stack before drop: {:?}", ctx.stack;
     ParametricOp::Drop.execute(&mut ctx)?;

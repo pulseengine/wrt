@@ -455,7 +455,7 @@ impl AsyncCanonicalAbi {
                 if *handle == stream_handle {
                     return match stream {
                         StreamValueEnum::Values(ref mut s) => {
-                            s.close_readable(;
+                            s.close_readable);
                             Ok(())
                         }
                     };
@@ -481,7 +481,7 @@ impl AsyncCanonicalAbi {
                 if *handle == stream_handle {
                     return match stream {
                         StreamValueEnum::Values(ref mut s) => {
-                            s.close_writable(;
+                            s.close_writable);
                             Ok(())
                         }
                     };
@@ -507,7 +507,7 @@ impl AsyncCanonicalAbi {
                 if *handle == stream_handle {
                     return match stream {
                         StreamValueEnum::Values(ref mut s) => {
-                            s.close_readable(;
+                            s.close_readable);
                             Ok(())
                         }
                     };
@@ -533,7 +533,7 @@ impl AsyncCanonicalAbi {
                 if *handle == stream_handle {
                     return match stream {
                         StreamValueEnum::Values(ref mut s) => {
-                            s.close_writable(;
+                            s.close_writable);
                             Ok(())
                         }
                     };
@@ -644,7 +644,7 @@ impl AsyncCanonicalAbi {
         let error_context = ErrorContext::new(handle, message.to_string();
         #[cfg(not(any(feature = "std", )))]
         let error_context =
-            ErrorContext::new(handle, BoundedString::from_str(message).unwrap_or_default(;
+            ErrorContext::new(handle, BoundedString::from_str(message).unwrap_or_default);
 
         #[cfg(feature = "std")]
         {
@@ -677,7 +677,7 @@ impl AsyncCanonicalAbi {
         {
             for (ctx_handle, error_context) in &self.error_contexts {
                 if *ctx_handle == handle {
-                    return Ok(error_context.debug_string(;
+                    return Ok(error_context.debug_string);
                 }
             }
             Err(wrt_error::Error::runtime_execution_error("Invalid handle"))
@@ -905,22 +905,22 @@ where
     }
 
     fn cancel_read(&mut self) -> WrtResult<()> {
-        self.inner.close_readable(;
+        self.inner.close_readable);
         Ok(())
     }
 
     fn cancel_write(&mut self) -> WrtResult<()> {
-        self.inner.close_writable(;
+        self.inner.close_writable);
         Ok(())
     }
 
     fn close_readable(&mut self) -> WrtResult<()> {
-        self.inner.close_readable(;
+        self.inner.close_readable);
         Ok(())
     }
 
     fn close_writable(&mut self) -> WrtResult<()> {
-        self.inner.close_writable(;
+        self.inner.close_writable);
         Ok(())
     }
 
@@ -966,12 +966,12 @@ where
     }
 
     fn cancel_read(&mut self) -> WrtResult<()> {
-        self.inner.cancel(;
+        self.inner.cancel);
         Ok(())
     }
 
     fn cancel_write(&mut self) -> WrtResult<()> {
-        self.inner.cancel(;
+        self.inner.cancel);
         Ok(())
     }
 
@@ -1122,7 +1122,7 @@ mod tests {
     #[test]
     fn test_async_lift_immediate() {
         let mut abi = AsyncCanonicalAbi::new().unwrap();
-        let context = CanonicalLiftContext::default(;
+        let context = CanonicalLiftContext::default);
         let values = vec![42u8, 0, 0, 0];
         let types = vec![ValType::U32];
 
@@ -1138,7 +1138,7 @@ mod tests {
     #[test]
     fn test_async_lift_stream() {
         let mut abi = AsyncCanonicalAbi::new().unwrap();
-        let context = CanonicalLiftContext::default(;
+        let context = CanonicalLiftContext::default);
         let values = vec![];
         let types = vec![ValType::Stream(Box::new(ValType::U32))];
 
@@ -1153,7 +1153,7 @@ mod tests {
     #[test]
     fn test_async_lower_immediate() {
         let mut abi = AsyncCanonicalAbi::new().unwrap();
-        let context = CanonicalLowerContext::default(;
+        let context = CanonicalLowerContext::default);
         let values = vec![Value::U32(42)];
 
         match abi.async_lower(&values, &context).unwrap() {
@@ -1167,7 +1167,7 @@ mod tests {
     #[test]
     fn test_async_lower_stream() {
         let mut abi = AsyncCanonicalAbi::new().unwrap();
-        let context = CanonicalLowerContext::default(;
+        let context = CanonicalLowerContext::default);
         let stream_handle = StreamHandle(42;
         let values = vec![Value::Stream(stream_handle)];
 

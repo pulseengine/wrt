@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     initialize_backends()?;
 
     // In a real implementation, this would be done in initialize_backends
-    let mut registry = BackendRegistry::new(;
+    let mut registry = BackendRegistry::new);
     registry.register(GraphEncoding::ONNX, Box::new(TractBackendProvider::new());
 
     println!("WASI-NN with Tract backend initialized successfully!";

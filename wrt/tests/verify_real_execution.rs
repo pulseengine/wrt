@@ -31,7 +31,7 @@ mod real_execution_tests {
         )
         .expect("Failed to parse WAT");
 
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         engine.load_module(Some("add_test"), &wasm).expect("Failed to load module");
 
         // Test various additions to prove real execution
@@ -82,7 +82,7 @@ mod real_execution_tests {
         )
         .expect("Failed to parse WAT");
 
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         engine.load_module(Some("mul_test"), &wasm).expect("Failed to load module");
 
         let test_cases = vec![(3, 4, 12), (7, 8, 56), (0, 100, 0), (-2, 5, -10)];
@@ -130,7 +130,7 @@ mod real_execution_tests {
         )
         .expect("Failed to parse WAT");
 
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         engine.load_module(Some("complex_test"), &wasm).expect("Failed to load module");
 
         // Test: (5 + 3) * 2 - 5 = 16 - 5 = 11
@@ -184,7 +184,7 @@ mod real_execution_tests {
         )
         .expect("Failed to parse WAT");
 
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         engine.load_module(Some("locals_test"), &wasm).expect("Failed to load module");
 
         match engine.call_function("locals_test", &[Value::I32(5)]) {
@@ -225,7 +225,7 @@ mod real_execution_tests {
         )
         .expect("Failed to parse WAT");
 
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         engine.load_module(Some("control_test"), &wasm).expect("Failed to load module");
 
         // Test max(10, 5) = 10
@@ -288,7 +288,7 @@ mod real_execution_tests {
         )
         .expect("Failed to parse WAT");
 
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         engine.load_module(Some("loop_test"), &wasm).expect("Failed to load module");
 
         // Test factorial(5) = 120
@@ -336,7 +336,7 @@ mod real_execution_tests {
         )
         .expect("Failed to parse WAT");
 
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         engine.load_module(Some("memory_test"), &wasm).expect("Failed to load module");
 
         // Store and load value 42 at address 0

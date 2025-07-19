@@ -104,7 +104,7 @@ impl LinuxArm64MteAllocator {
 
         // Check if MTE is available and configure it if requested
         if mte_mode != MteMode::Disabled {
-            allocator.mte_available = allocator.configure_mte().is_ok(;
+            allocator.mte_available = allocator.configure_mte().is_ok);
         }
 
         allocator
@@ -230,7 +230,7 @@ impl LinuxArm64MteAllocator {
     /// Set memory tags using MTE instructions
     unsafe fn set_memory_tags(&self, ptr: *mut u8, size: usize, tag: u8) -> Result<()> {
         if !self.mte_available {
-            return Ok((;
+            return Ok();
         }
 
         // Set memory tags in 16-byte chunks (MTE granule size)
@@ -254,7 +254,7 @@ impl LinuxArm64MteAllocator {
     /// Binary std/no_std choice
     unsafe fn setup_guard_pages(&self, base_ptr: *mut u8, total_size: usize) -> Result<()> {
         if !self.use_guard_pages {
-            return Ok((;
+            return Ok();
         }
 
         // Binary std/no_std choice
@@ -411,7 +411,7 @@ impl PageAllocator for LinuxArm64MteAllocator {
         };
 
         if additional_pages == 0 {
-            return Ok((;
+            return Ok();
         }
 
         let current_bytes_from_arg = Self::pages_to_bytes(current_pages)?;

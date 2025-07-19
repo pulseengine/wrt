@@ -282,7 +282,7 @@ impl TimerIntegration {
         }
 
         let timer_id = TimerId(self.next_timer_id.fetch_add(1, Ordering::AcqRel;
-        let current_time = self.get_current_time(;
+        let current_time = self.get_current_time);
         let expiration_time = current_time + duration_ms;
 
         let timer = Timer {
@@ -368,7 +368,7 @@ impl TimerIntegration {
             true,
             Ordering::AcqRel,
             Ordering::Acquire,
-        ).is_ok(;
+        ).is_ok);
 
         if was_cancelled {
             timer.fuel_consumed.fetch_add(TIMER_CANCEL_FUEL, Ordering::Relaxed;
@@ -387,9 +387,9 @@ impl TimerIntegration {
 
     /// Process expired timers
     pub fn process_timers(&mut self) -> Result<TimerProcessResult, Error> {
-        let current_time = self.get_current_time(;
-        let mut fired_timers = Vec::new(;
-        let mut timers_to_reschedule = Vec::new(;
+        let current_time = self.get_current_time);
+        let mut fired_timers = Vec::new);
+        let mut timers_to_reschedule = Vec::new);
 
         // Process expired timers
         while let Some(timer_entry) = self.timer_queue.peek() {
@@ -428,7 +428,7 @@ impl TimerIntegration {
 
                 // Wake the timer's waker if available
                 if let Some(waker) = timer.waker.take() {
-                    waker.wake(;
+                    waker.wake);
                 }
 
                 // Handle repeating timers
@@ -489,7 +489,7 @@ impl TimerIntegration {
             Error::validation_invalid_input("Timer not found")
         })?;
 
-        let current_time = self.get_current_time(;
+        let current_time = self.get_current_time);
         let time_remaining = if timer.expiration_time > current_time {
             Some(timer.expiration_time - current_time)
         } else {
@@ -533,7 +533,7 @@ impl TimerIntegration {
             Error::validation_invalid_input("Component not found")
         })?;
 
-        let current_time = self.get_current_time(;
+        let current_time = self.get_current_time);
         let period_start = context.rate_limit_state.period_start.load(Ordering::Acquire;
 
         // Check if we need to reset the period
@@ -617,7 +617,7 @@ impl CoreFuture for TimerFuture {
                         return Poll::Ready(Err(Error::runtime_execution_error("Timer cancelled");
                     }
 
-                    let current_time = timers.get_current_time(;
+                    let current_time = timers.get_current_time);
                     if current_time >= timer.expiration_time {
                         Poll::Ready(Ok(()))
                     } else {
@@ -670,7 +670,7 @@ mod tests {
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default(;
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default);
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -679,7 +679,7 @@ mod tests {
 
     #[test]
     fn test_timer_creation() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut timers = TimerIntegration::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
@@ -698,10 +698,10 @@ mod tests {
 
     #[test]
     fn test_timer_statistics() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let timers = TimerIntegration::new(bridge, None;
         
-        let stats = timers.get_timer_statistics(;
+        let stats = timers.get_timer_statistics);
         assert_eq!(stats.total_timers_created, 0;
         assert_eq!(stats.active_timers, 0;
     }
@@ -722,7 +722,7 @@ mod tests {
 
     #[test]
     fn test_timer_cancellation() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut timers = TimerIntegration::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;

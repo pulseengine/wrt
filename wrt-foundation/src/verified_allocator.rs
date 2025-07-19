@@ -103,7 +103,7 @@ impl VerifiedAllocator {
                 Ok(_) => {
                     // Success - check invariants in debug mode
                     #[cfg(debug_assertions)]
-                    self.check_invariants(;
+                    self.check_invariants);
                     
                     return Ok(VerifiedAllocation {
                         allocator: self,
@@ -137,7 +137,7 @@ impl VerifiedAllocator {
         ;
         
         #[cfg(debug_assertions)]
-        self.check_invariants(;
+        self.check_invariants);
     }
     
     /// Check all invariants

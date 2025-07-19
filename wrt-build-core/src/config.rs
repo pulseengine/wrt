@@ -141,12 +141,12 @@ impl WorkspaceConfig {
 
     /// Parse workspace members from Cargo.toml content
     fn parse_workspace_members(content: &str) -> BuildResult<Vec<String>> {
-        let mut members = Vec::new(;
+        let mut members = Vec::new);
         let mut in_workspace = false;
         let mut in_members = false;
 
         for line in content.lines() {
-            let line = line.trim(;
+            let line = line.trim);
 
             if line == "[workspace]" {
                 in_workspace = true;
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_default_build_config() {
-        let config = BuildConfig::default(;
+        let config = BuildConfig::default);
         assert!(!config.verbose);
         assert_eq!(config.jobs, -1;
         assert!(matches!(config.profile, BuildProfile::Dev);

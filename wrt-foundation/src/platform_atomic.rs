@@ -135,7 +135,7 @@ pub struct SafeAtomicOps<'a> {
 impl<'a> SafeAtomicOps<'a> {
     /// Create new safe atomic operations wrapper
     pub fn new(base: *mut u8, size: usize) -> Result<Self> {
-        let provider = get_platform_atomic_provider(;
+        let provider = get_platform_atomic_provider);
         let view = provider.create_atomic_view(base, size)?;
         Ok(Self { provider, view })
     }
@@ -208,7 +208,7 @@ mod tests {
     
     #[test]
     fn test_platform_provider() {
-        let provider = get_platform_atomic_provider(;
+        let provider = get_platform_atomic_provider);
         let result = provider.create_atomic_view(core::ptr::null_mut(), 0;
         assert!(result.is_err())); // NoAtomicProvider returns error
     }

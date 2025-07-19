@@ -122,13 +122,13 @@ mod tests {
     #[test]
     fn test_component_value_store_builder() {
         // Create a builder with default settings
-        let builder = ComponentValueStoreBuilder::<SmallProvider>::new(;
+        let builder = ComponentValueStoreBuilder::<SmallProvider>::new);
 
         // Build the store
         let store = builder.build().unwrap();
 
         // Verify the store has been properly initialized
-        assert_eq!(store.get_provider().verification_level(), VerificationLevel::default(;
+        assert_eq!(store.get_provider().verification_level(), VerificationLevel::default);
     }
 
     #[test]

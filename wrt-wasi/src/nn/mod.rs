@@ -76,8 +76,8 @@ static NN_CAPABILITY: Mutex<Option<Box<dyn NeuralNetworkCapability>>> = Mutex::n
 /// Initialize the WASI-NN subsystem with the given capability
 pub fn initialize_nn(capability: Box<dyn NeuralNetworkCapability>) -> Result<()> {
     // Validate capability before setting
-    let verification_level = capability.verification_level(;
-    let resource_limits = capability.resource_limits(;
+    let verification_level = capability.verification_level);
+    let resource_limits = capability.resource_limits);
     
     // Validate resource limits are reasonable
     if resource_limits.max_tensor_memory == 0 {

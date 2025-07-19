@@ -27,9 +27,9 @@ mod tests {
         let mut memory = SimpleMemory::new(4096;
 
         // Initialize with some test data
-        memory.data_mut()[0..4].copy_from_slice(&42u32.to_le_bytes(;
-        memory.data_mut()[4..8].copy_from_slice(&3.14f32.to_bits().to_le_bytes(;
-        memory.data_mut()[8..16].copy_from_slice(&(-123i64).to_le_bytes(;
+        memory.data_mut()[0..4].copy_from_slice(&42u32.to_le_bytes);
+        memory.data_mut()[4..8].copy_from_slice(&3.14f32.to_bits().to_le_bytes);
+        memory.data_mut()[8..16].copy_from_slice(&(-123i64).to_le_bytes);
 
         memory
     }
@@ -38,7 +38,7 @@ mod tests {
 
     #[test]
     fn test_bool_lifting_and_lowering() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test true
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_integer_lifting_and_lowering() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test i8
@@ -105,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_float_lifting_and_lowering() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test f32
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_char_lifting_and_lowering() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test ASCII character
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_char_invalid_code_point() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Write invalid Unicode code point
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_string_lifting_and_lowering() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test empty string
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_string_too_long() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Create a string that's too long
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_string_invalid_utf8() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Write invalid UTF-8 data
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_option_lifting_and_lowering() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test None
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_list_basic() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test empty list (simplified)
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_list_too_long() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Create a list that's too long
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_enum_lifting() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         let cases = vec!["red".to_string(), "green".to_string(), "blue".to_string()];
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_variant_lifting() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         let cases =
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_result_lifting() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         let ok_ty = Some(Box::new(ComponentType::S32;
@@ -337,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_flags_lifting() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         let flags = vec![
@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_size_calculations() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
 
         // Primitive types
         assert_eq!(abi.size_of(&ComponentType::Bool).unwrap(), 1;
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_alignment_calculations() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
 
         // Primitive types
         assert_eq!(abi.align_of(&ComponentType::Bool).unwrap(), 1;
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn test_memory_out_of_bounds() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let memory = SimpleMemory::new(100;
 
         // Try to read beyond memory bounds
@@ -471,7 +471,7 @@ mod tests {
 
     #[test]
     fn test_string_length_bounds_check() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Write a string pointer with length exceeding MAX_STRING_LENGTH
@@ -485,7 +485,7 @@ mod tests {
 
     #[test]
     fn test_list_length_bounds_check() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Write a list pointer with length exceeding MAX_LIST_LENGTH
@@ -502,7 +502,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_std_environment() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test basic operations work in std environment
@@ -514,7 +514,7 @@ mod tests {
     #[cfg(all(not(feature = "std")))]
     #[test]
     fn test_alloc_environment() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Binary std/no_std choice
@@ -526,7 +526,7 @@ mod tests {
     #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_no_std_environment() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         // Note: SimpleMemory is not available in pure no_std
         // This test verifies the API compiles in no_std
 
@@ -538,7 +538,7 @@ mod tests {
 
     #[test]
     fn test_primitive_round_trips() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test various primitive values
@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     fn test_batch_operations() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(4096;
 
         // Test batch lowering/lifting of many values
@@ -609,7 +609,7 @@ mod tests {
     #[test]
     fn test_abi_configuration() {
         // Test default configuration
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         assert_eq!(abi.string_encoding, StringEncoding::Utf8;
         assert_eq!(abi.alignment, 1;
 
@@ -667,14 +667,14 @@ mod tests {
         assert!(memory.write_u16_le(99, 0x1234).is_err();
         assert!(memory.write_u32_le(97, 0x12345678).is_err();
         assert!(memory.write_u64_le(93, 0x123456789ABCDEF0).is_err();
-        assert!(memory.write_bytes(50, &[1); 51]).is_err(;
+        assert!(memory.write_bytes(50, &[1); 51]).is_err);
     }
 
     // ====== EDGE CASE TESTS ======
 
     #[test]
     fn test_zero_sized_operations() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test empty string
@@ -698,7 +698,7 @@ mod tests {
 
     #[test]
     fn test_maximum_values() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test maximum integer values

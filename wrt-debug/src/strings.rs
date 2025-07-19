@@ -28,7 +28,7 @@ impl<'a> Default for DebugString<'a> {
 
 impl<'a> wrt_foundation::traits::Checksummable for DebugString<'a> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.data.as_bytes(;
+        checksum.update_slice(self.data.as_bytes);
     }
 }
 
@@ -185,7 +185,7 @@ pub fn read_string_ref(cursor: &mut DwarfCursor) -> DebugResult<u32> {
 /// Used for DW_FORM_string attributes
 #[allow(dead_code)]
 pub fn read_inline_string<'a>(cursor: &mut DwarfCursor<'a>) -> DebugResult<DebugString<'a>> {
-    let remaining = cursor.remaining_slice(;
+    let remaining = cursor.remaining_slice);
 
     let end = remaining.iter().position(|&b| b == 0).ok_or(DebugError::InvalidData)?;
 
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_string_table_creation() {
         let table = StringTable::new(TEST_STRING_DATA;
-        assert_eq!(table.size(), TEST_STRING_DATA.len(;
+        assert_eq!(table.size(), TEST_STRING_DATA.len);
         assert!(!table.is_empty();
     }
 

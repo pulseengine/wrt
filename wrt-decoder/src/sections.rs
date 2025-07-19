@@ -178,7 +178,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "type count")?;
         let count_usize = safe_usize_conversion(count, "type count")?;
 
-        let mut format_func_types = Vec::new(;
+        let mut format_func_types = Vec::new);
         format_func_types.reserve(count_usize.min(1024)); // Reserve conservatively
 
         for _ in 0..count {
@@ -198,7 +198,7 @@ pub mod parsers {
             check_bounds_u32(param_count, 1000, "param count")?;
             let param_count_usize = safe_usize_conversion(param_count, "param count")?;
 
-            let mut params = Vec::new(;
+            let mut params = Vec::new);
             params.reserve(param_count_usize.min(256)); // Conservative reservation
             for _ in 0..param_count {
                 if offset >= bytes.len() {
@@ -222,7 +222,7 @@ pub mod parsers {
             check_bounds_u32(result_count, 1000, "result count")?;
             let result_count_usize = safe_usize_conversion(result_count, "result count")?;
 
-            let mut results = Vec::new(;
+            let mut results = Vec::new);
             results.reserve(result_count_usize.min(256)); // Conservative reservation
             for _ in 0..result_count {
                 if offset >= bytes.len() {
@@ -272,7 +272,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "import count")?;
         let count_usize = safe_usize_conversion(count, "import count")?;
 
-        let mut format_imports = Vec::new(;
+        let mut format_imports = Vec::new);
         format_imports.reserve(count_usize.min(1024)); // Conservative reservation
 
         for _ in 0..count {
@@ -334,7 +334,7 @@ pub mod parsers {
         // Convert wrt_format::Import to wrt_foundation::Import
         // Since Table and Memory are now type aliases to foundation types, this should
         // work directly
-        let mut wrt_imports = Vec::with_capacity(format_imports.len(;
+        let mut wrt_imports = Vec::with_capacity(format_imports.len);
         let provider = wrt_foundation::safe_managed_alloc!(
             65536,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -596,7 +596,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "export count")?;
         let count_usize = safe_usize_conversion(count, "export count")?;
 
-        let mut format_exports = Vec::new(;
+        let mut format_exports = Vec::new);
         format_exports.reserve(count_usize.min(1024)); // Conservative reservation
 
         for _ in 0..count {
@@ -657,7 +657,7 @@ pub mod parsers {
         check_bounds_u32(count, 100000, "function count")?;
         let count_usize = safe_usize_conversion(count, "function count")?;
 
-        let mut bodies = Vec::new(;
+        let mut bodies = Vec::new);
         bodies.reserve(count_usize.min(10000)); // Conservative reservation
 
         for _ in 0..count {
@@ -674,7 +674,7 @@ pub mod parsers {
             }
 
             // Binary std/no_std choice
-            let mut body = Vec::new(;
+            let mut body = Vec::new);
             body.reserve_exact(body_size_usize;
             body.extend_from_slice(&bytes[offset..offset + body_size_usize];
             offset += body_size_usize;

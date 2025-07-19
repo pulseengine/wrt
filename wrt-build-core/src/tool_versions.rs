@@ -206,7 +206,7 @@ impl ToolVersionConfig {
             .map_err(|e| BuildError::Tool(format!("Failed to parse tool-versions.toml: {}", e)))?;
 
         // Convert from TOML format to internal format
-        let mut tools = HashMap::new(;
+        let mut tools = HashMap::new);
         for (name, toml_tool) in toml_config.tools {
             let requirement_type = match toml_tool.requirement_type.as_str() {
                 "Exact" => VersionRequirement::Exact,
@@ -217,7 +217,7 @@ impl ToolVersionConfig {
             };
 
             // Convert target-specific configurations
-            let mut target_specific = HashMap::new(;
+            let mut target_specific = HashMap::new);
             for (target, target_config) in toml_tool.target_specific {
                 target_specific.insert(
                     target,
@@ -296,7 +296,7 @@ impl ToolVersionConfig {
 
     /// Create fallback configuration when file is not available  
     pub fn create_fallback_config() -> Self {
-        let mut tools = HashMap::new(;
+        let mut tools = HashMap::new);
 
         // Kani formal verification
         tools.insert(
@@ -537,7 +537,7 @@ impl ToolVersionConfig {
     pub fn check_rustup_target_installed(&self, target: &str) -> bool {
         use std::process::Command;
 
-        let output = Command::new("rustup").args(["target", "list", "--installed"]).output(;
+        let output = Command::new("rustup").args(["target", "list", "--installed"]).output);
 
         match output {
             Ok(output) if output.status.success() => {
@@ -647,7 +647,7 @@ fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
     let v2_parts = parse_version(v2;
 
     // Pad to ensure same length
-    let max_len = v1_parts.len().max(v2_parts.len(;
+    let max_len = v1_parts.len().max(v2_parts.len);
     let v1_padded: Vec<u32> =
         v1_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect();
     let v2_padded: Vec<u32> =
@@ -706,7 +706,7 @@ mod tests {
 
     #[test]
     fn test_version_compatibility_check() {
-        let config = ToolVersionConfig::default(;
+        let config = ToolVersionConfig::default);
 
         // Test exact version requirement
         if let Some(kani_version) = config.get_tool_version("kani") {
@@ -730,12 +730,12 @@ mod tests {
 
     #[test]
     fn test_config_serialization() {
-        let config = ToolVersionConfig::default(;
+        let config = ToolVersionConfig::default);
         let toml_str = config.to_toml().expect("Should serialize to TOML");
         let loaded_config =
             ToolVersionConfig::from_toml(&toml_str).expect("Should deserialize from TOML");
 
-        assert_eq!(config.tools.len(), loaded_config.tools.len(;
+        assert_eq!(config.tools.len(), loaded_config.tools.len);
         assert_eq!(
             config.metadata.config_version,
             loaded_config.metadata.config_version

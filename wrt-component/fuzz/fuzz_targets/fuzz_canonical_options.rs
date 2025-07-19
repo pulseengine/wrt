@@ -30,7 +30,7 @@ fuzz_target!(|data: &[u8]| {
         .with_realloc(has_realloc)
         .with_post_return(has_post_return)
         .with_string_encoding(string_encoding)
-        .build(;
+        .build);
     
     // Test lift/lower contexts
     let component_id = ComponentInstanceId::new((data.get(1).copied().unwrap_or(1) as u32) % 1000;
@@ -64,7 +64,7 @@ fuzz_target!(|data: &[u8]| {
     
     // Test realloc manager if enabled
     if has_realloc {
-        let mut realloc_manager = ReallocManager::new(;
+        let mut realloc_manager = ReallocManager::new);
         
         if data.len() > 5 {
             let alloc_size = (data[5] as usize) % 512 + 1;

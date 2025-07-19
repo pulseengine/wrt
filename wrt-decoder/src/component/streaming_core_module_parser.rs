@@ -156,7 +156,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
         }
 
         // Initialize storage (simplified for now)
-        let mut modules = Vec::new(;
+        let mut modules = Vec::new);
 
         // Parse each core module
         for i in 0..module_count {
@@ -317,7 +317,7 @@ mod tests {
     fn test_invalid_module_count() {
         // Create data with too many modules
         let module_count = (MAX_MODULES_PER_COMPONENT + 1) as u32;
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
 
         // Write LEB128 encoded module count
         let mut count = module_count;
@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_invalid_module_size() {
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
         data.push(1); // One module
 
         // Write oversized module size

@@ -269,7 +269,7 @@ impl MemoryProvider for NoStdProvider {
         }
 
         let available = self.buffer.len() - offset;
-        let write_size = core::cmp::min(available, data.len(;
+        let write_size = core::cmp::min(available, data.len);
 
         self.buffer[offset..offset + write_size].copy_from_slice(&data[0..write_size];
 
@@ -284,7 +284,7 @@ impl MemoryProvider for NoStdProvider {
         }
 
         let available = self.buffer.len() - offset;
-        let read_size = core::cmp::min(available, buffer.len(;
+        let read_size = core::cmp::min(available, buffer.len);
 
         buffer[0..read_size].copy_from_slice(&self.buffer[offset..offset + read_size];
 

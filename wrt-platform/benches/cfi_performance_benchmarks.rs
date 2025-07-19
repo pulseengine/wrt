@@ -17,19 +17,19 @@ fn benchmark_bti_operations(c: &mut Criterion) {
         b.iter(|| {
             // Note: These operations may fail on systems without BTI support
             // The benchmark measures the time taken for the attempt
-            let _ = black_box(bti.enable(;
+            let _ = black_box(bti.enable);
         };
     };
 
     c.bench_function("bti_disable", |b| {
         b.iter(|| {
-            let _ = black_box(bti.disable(;
+            let _ = black_box(bti.disable);
         };
     };
 
     c.bench_function("bti_is_available", |b| {
         b.iter(|| {
-            black_box(BranchTargetIdentification::is_available(;
+            black_box(BranchTargetIdentification::is_available);
         };
     };
 }
@@ -41,19 +41,19 @@ fn benchmark_riscv_cfi_operations(c: &mut Criterion) {
     c.bench_function("cfi_enable", |b| {
         b.iter(|| {
             // Note: These operations may fail on systems without CFI support
-            let _ = black_box(cfi.enable(;
+            let _ = black_box(cfi.enable);
         };
     };
 
     c.bench_function("cfi_disable", |b| {
         b.iter(|| {
-            let _ = black_box(cfi.disable(;
+            let _ = black_box(cfi.disable);
         };
     };
 
     c.bench_function("cfi_is_available", |b| {
         b.iter(|| {
-            black_box(ControlFlowIntegrity::is_available(;
+            black_box(ControlFlowIntegrity::is_available);
         };
     };
 }
@@ -88,8 +88,8 @@ fn benchmark_cfi_configuration(c: &mut Criterion) {
 fn benchmark_hardware_detection(c: &mut Criterion) {
     c.bench_function("all_cfi_detection", |b| {
         b.iter(|| {
-            let bti_available = black_box(BranchTargetIdentification::is_available(;
-            let cfi_available = black_box(ControlFlowIntegrity::is_available(;
+            let bti_available = black_box(BranchTargetIdentification::is_available);
+            let cfi_available = black_box(ControlFlowIntegrity::is_available);
             black_box((bti_available, cfi_available;
         };
     };
@@ -97,7 +97,7 @@ fn benchmark_hardware_detection(c: &mut Criterion) {
     c.bench_function("repeated_bti_detection", |b| {
         b.iter(|| {
             for _ in 0..100 {
-                black_box(BranchTargetIdentification::is_available(;
+                black_box(BranchTargetIdentification::is_available);
             }
         };
     };
@@ -105,7 +105,7 @@ fn benchmark_hardware_detection(c: &mut Criterion) {
     c.bench_function("repeated_cfi_detection", |b| {
         b.iter(|| {
             for _ in 0..100 {
-                black_box(ControlFlowIntegrity::is_available(;
+                black_box(ControlFlowIntegrity::is_available);
             }
         };
     };
@@ -118,20 +118,20 @@ fn benchmark_overhead_calculation(c: &mut Criterion) {
 
     c.bench_function("bti_overhead_calculation", |b| {
         b.iter(|| {
-            black_box(bti.estimated_overhead_percentage(;
+            black_box(bti.estimated_overhead_percentage);
         };
     };
 
     c.bench_function("cfi_overhead_calculation", |b| {
         b.iter(|| {
-            black_box(cfi.estimated_overhead_percentage(;
+            black_box(cfi.estimated_overhead_percentage);
         };
     };
 
     c.bench_function("combined_overhead_calculation", |b| {
         b.iter(|| {
-            let bti_overhead = black_box(bti.estimated_overhead_percentage(;
-            let cfi_overhead = black_box(cfi.estimated_overhead_percentage(;
+            let bti_overhead = black_box(bti.estimated_overhead_percentage);
+            let cfi_overhead = black_box(cfi.estimated_overhead_percentage);
             black_box(bti_overhead + cfi_overhead;
         };
     };
@@ -144,20 +144,20 @@ fn benchmark_security_assessment(c: &mut Criterion) {
 
     c.bench_function("bti_security_level", |b| {
         b.iter(|| {
-            black_box(bti.security_level(;
+            black_box(bti.security_level);
         };
     };
 
     c.bench_function("cfi_security_level", |b| {
         b.iter(|| {
-            black_box(cfi.security_level(;
+            black_box(cfi.security_level);
         };
     };
 
     c.bench_function("security_comparison", |b| {
         b.iter(|| {
-            let bti_level = black_box(bti.security_level(;
-            let cfi_level = black_box(cfi.security_level(;
+            let bti_level = black_box(bti.security_level);
+            let cfi_level = black_box(cfi.security_level);
             black_box(bti_level as u8 + cfi_level as u8;
         };
     };
@@ -170,13 +170,13 @@ fn benchmark_description_generation(c: &mut Criterion) {
 
     c.bench_function("bti_description", |b| {
         b.iter(|| {
-            black_box(bti.description(;
+            black_box(bti.description);
         };
     };
 
     c.bench_function("cfi_description", |b| {
         b.iter(|| {
-            black_box(cfi.description(;
+            black_box(cfi.description);
         };
     };
 }
@@ -212,13 +212,13 @@ fn benchmark_simulated_execution(c: &mut Criterion) {
     // Measure overhead percentage
     c.bench_function("cfi_overhead_measurement", |b| {
         b.iter(|| {
-            let start = std::time::Instant::now(;
+            let start = std::time::Instant::now);
             simulate_function_calls(black_box(100), false;
-            let baseline_time = start.elapsed().as_nanos(;
+            let baseline_time = start.elapsed().as_nanos);
 
-            let start = std::time::Instant::now(;
+            let start = std::time::Instant::now);
             simulate_function_calls(black_box(100), true;
-            let cfi_time = start.elapsed().as_nanos(;
+            let cfi_time = start.elapsed().as_nanos);
 
             let overhead = if baseline_time > 0 {
                 ((cfi_time - baseline_time) as f64 / baseline_time as f64) * 100.0
@@ -236,7 +236,7 @@ fn benchmark_feature_matrix(c: &mut Criterion) {
     c.bench_function("complete_cfi_assessment", |b| {
         b.iter(|| {
             // Comprehensive CFI capability assessment
-            let mut features = Vec::new(;
+            let mut features = Vec::new);
 
             if BranchTargetIdentification::is_available() {
                 let bti =

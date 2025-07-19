@@ -56,7 +56,7 @@ impl StandardError {
 
 /// Validate a file path exists and is readable
 pub fn validate_file_path(path: impl AsRef<Path>) -> Result<PathBuf> {
-    let path = path.as_ref(;
+    let path = path.as_ref);
 
     if !path.exists() {
         return Err(ValidationError::FileNotFound {
@@ -77,7 +77,7 @@ pub fn validate_file_path(path: impl AsRef<Path>) -> Result<PathBuf> {
 
 /// Validate a directory path exists
 pub fn validate_directory_path(path: impl AsRef<Path>) -> Result<PathBuf> {
-    let path = path.as_ref(;
+    let path = path.as_ref);
 
     if !path.exists() {
         return Err(ValidationError::DirectoryNotFound {
@@ -143,7 +143,7 @@ pub fn validate_output_format(format: &str) -> Result<()> {
 
 /// Create a path that doesn't exist yet (useful for output files)
 pub fn prepare_output_path(path: impl AsRef<Path>, force: bool) -> Result<PathBuf> {
-    let path = path.as_ref(;
+    let path = path.as_ref);
 
     if path.exists() && !force {
         return Err(anyhow::anyhow!(

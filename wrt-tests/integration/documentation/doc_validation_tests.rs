@@ -12,7 +12,7 @@ mod doc_review_tests {
         assert!(path.exists(), "conversion_audit.md document not found");
         
         let mut file = File::open(path).unwrap();
-        let mut contents = String::new(;
+        let mut contents = String::new);
         file.read_to_string(&mut contents).unwrap();
         
         assert!(contents.contains("WebAssembly Runtime Type Conversion System Audit"), 
@@ -25,7 +25,7 @@ mod doc_review_tests {
         assert!(path.exists(), "conversion_architecture.md document not found");
         
         let mut file = File::open(path).unwrap();
-        let mut contents = String::new(;
+        let mut contents = String::new);
         file.read_to_string(&mut contents).unwrap();
         
         assert!(contents.contains("WebAssembly Runtime Type Conversion System Architecture"), 
@@ -38,7 +38,7 @@ mod doc_review_tests {
         assert!(path.exists(), "conversion_review_complete.md document not found");
         
         let mut file = File::open(path).unwrap();
-        let mut contents = String::new(;
+        let mut contents = String::new);
         file.read_to_string(&mut contents).unwrap();
         
         assert!(contents.contains("Conversion Documentation Review Completion"), 
@@ -50,12 +50,12 @@ mod doc_review_tests {
         // This test verifies that major issues identified in the audit are addressed in the architecture
         
         // Read audit document
-        let mut audit_contents = String::new(;
+        let mut audit_contents = String::new);
         File::open("docs/conversion_audit.md").unwrap()
             .read_to_string(&mut audit_contents).unwrap();
             
         // Read architecture document
-        let mut arch_contents = String::new(;
+        let mut arch_contents = String::new);
         File::open("docs/conversion_architecture.md").unwrap()
             .read_to_string(&mut arch_contents).unwrap();
             

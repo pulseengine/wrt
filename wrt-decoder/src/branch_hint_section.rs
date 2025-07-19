@@ -283,7 +283,7 @@ impl Default for BranchHintSection {
 /// Parse the branch hint custom section from binary data
 pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
     let mut offset = 0;
-    let mut section = BranchHintSection::new(;
+    let mut section = BranchHintSection::new);
 
     // Read function count
     let (func_count, consumed) = read_leb128_u32(data, offset)?;
@@ -325,7 +325,7 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
 #[cfg(feature = "std")]
 pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>> {
     use crate::prelude::write_leb128_u32 as format_write_leb128_u32;
-    let mut data = Vec::new(;
+    let mut data = Vec::new);
 
     // Write function count
     data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(
@@ -404,7 +404,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_branch_hint_section() {
-        let mut section = BranchHintSection::new(;
+        let mut section = BranchHintSection::new);
         assert!(section.is_empty();
 
         let mut func_hints = FunctionBranchHints::new(0;
@@ -430,7 +430,7 @@ mod tests {
     #[test]
     fn test_parse_encode_round_trip() {
         // Create a test section
-        let mut section = BranchHintSection::new(;
+        let mut section = BranchHintSection::new);
 
         let mut func0_hints = FunctionBranchHints::new(0;
         func0_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();

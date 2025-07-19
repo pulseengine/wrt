@@ -219,7 +219,7 @@ mod tests {
         engine.fuel = None;
 
         // Reset stats using Default
-        engine.execution_stats = ExecutionStats::default(;
+        engine.execution_stats = ExecutionStats::default);
         assert_eq!(engine.execution_stats.instructions_executed, 0;
         assert_eq!(engine.execution_stats.current_memory_bytes, 0); // Example access
         assert_eq!(engine.execution_stats.peak_memory_bytes, 0); // Example access
@@ -228,7 +228,7 @@ mod tests {
     // Module Tests
     #[test]
     fn test_module_new() {
-        let module_result = Module::new(;
+        let module_result = Module::new);
         assert!(module_result.is_ok();
         let module = module_result.unwrap(); // Unwrap here
         assert!(module.types.is_empty();
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn test_module_structure() {
-        let mut module_result = Module::new(;
+        let mut module_result = Module::new);
         assert!(module_result.is_ok();
         let mut module = module_result.unwrap(); // Unwrap here
 
@@ -366,7 +366,7 @@ mod tests {
     fn test_memory_type_checking() {
         let module = Module::new().expect("Module creation failed");
         let mem = module.get_memory(0)?;
-        let mem_type = mem.type_(;
+        let mem_type = mem.type_);
 
         // Check memory type
         assert_eq!(mem_type.limits.min, 1;

@@ -454,29 +454,29 @@ impl Checksummable for WasiResource {
             WasiResourceType::FileDescriptor { path, readable, writable } => {
                 checksum.update_slice(b"file";
                 if let Ok(path_str) = path.as_str() {
-                    checksum.update_slice(path_str.as_bytes(;
+                    checksum.update_slice(path_str.as_bytes);
                 }
                 checksum.update_slice(&[*readable as u8, *writable as u8];
             },
             WasiResourceType::DirectoryHandle { path } => {
                 checksum.update_slice(b"dir";
                 if let Ok(path_str) = path.as_str() {
-                    checksum.update_slice(path_str.as_bytes(;
+                    checksum.update_slice(path_str.as_bytes);
                 }
             },
             WasiResourceType::InputStream { name, position } => {
                 checksum.update_slice(b"in";
                 if let Ok(name_str) = name.as_str() {
-                    checksum.update_slice(name_str.as_bytes(;
+                    checksum.update_slice(name_str.as_bytes);
                 }
-                checksum.update_slice(&position.to_le_bytes(;
+                checksum.update_slice(&position.to_le_bytes);
             },
             WasiResourceType::OutputStream { name, position } => {
                 checksum.update_slice(b"out";
                 if let Ok(name_str) = name.as_str() {
-                    checksum.update_slice(name_str.as_bytes(;
+                    checksum.update_slice(name_str.as_bytes);
                 }
-                checksum.update_slice(&position.to_le_bytes(;
+                checksum.update_slice(&position.to_le_bytes);
             },
             WasiResourceType::ClockHandle { clock_type } => {
                 checksum.update_slice(b"clock";

@@ -91,7 +91,7 @@ fn find_custom_section(wasm_bytes: &[u8], section_name: &str) -> Result<Option<V
             if name == section_name {
                 // Found the section, extract data
                 let data_start = name_end;
-                let data = wasm_bytes[data_start..section_end].to_vec(;
+                let data = wasm_bytes[data_start..section_end].to_vec);
                 return Ok(Some(data;
             }
         }
@@ -201,7 +201,7 @@ mod tests {
         
         // Magic number and version
         wasm.extend_from_slice(b"\0asm";
-        wasm.extend_from_slice(&1u32.to_le_bytes(;
+        wasm.extend_from_slice(&1u32.to_le_bytes);
         
         // Custom section (type 0)
         wasm.push(0); // Section type
@@ -215,7 +215,7 @@ mod tests {
         
         // Name length and name
         wasm.push(name_len as u8); // Simple LEB128
-        wasm.extend_from_slice(section_name.as_bytes(;
+        wasm.extend_from_slice(section_name.as_bytes);
         
         // Section data
         wasm.extend_from_slice(section_data;

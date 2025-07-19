@@ -445,7 +445,7 @@ impl TaskRegistry {
 
 /// ASIL-D safe global task registry
 use std::sync::{Mutex, OnceLock};
-static GLOBAL_TASK_REGISTRY: OnceLock<Mutex<TaskRegistry>> = OnceLock::new(;
+static GLOBAL_TASK_REGISTRY: OnceLock<Mutex<TaskRegistry>> = OnceLock::new);
 
 /// Get the global task registry (ASIL-D safe)
 fn get_task_registry() -> Result<&'static Mutex<TaskRegistry>, Error> {
@@ -534,7 +534,7 @@ pub mod builtins {
     /// Gets the status of a task
     pub fn task_status(task_handle: u32) -> Result<ComponentValue> {
         let handle = TaskHandle(task_handle;
-        let registry = get_task_registry(;
+        let registry = get_task_registry);
         
         #[cfg(feature = "std")]
         {
@@ -571,7 +571,7 @@ pub mod builtins {
     /// Gets the status of a subtask
     pub fn subtask_status(subtask_handle: u32) -> Result<ComponentValue> {
         let handle = SubtaskHandle(subtask_handle;
-        let registry = get_task_registry(;
+        let registry = get_task_registry);
         
         #[cfg(feature = "std")]
         {
@@ -607,7 +607,7 @@ pub mod builtins {
     /// `context.get` canonical built-in
     /// Gets a value from the current task's context storage
     pub fn context_get(key: &str) -> Result<ComponentValue> {
-        let registry = get_task_registry(;
+        let registry = get_task_registry);
         
         // Get current task (simplified implementation)
         if let Some(current_task) = registry.get_current_task() {
@@ -625,7 +625,7 @@ pub mod builtins {
     /// `context.set` canonical built-in
     /// Sets a value in the current task's context storage
     pub fn context_set(key: &str, value: ComponentValue) -> Result<ComponentValue> {
-        let registry = get_task_registry(;
+        let registry = get_task_registry);
         
         // Get current task (simplified implementation)
         if let Some(current_task) = registry.get_current_task() {
@@ -642,10 +642,10 @@ pub mod builtins {
     /// `context.has` canonical built-in (bonus implementation)
     /// Checks if a key exists in the current task's context
     pub fn context_has(key: &str) -> Result<ComponentValue> {
-        let registry = get_task_registry(;
+        let registry = get_task_registry);
         
         if let Some(current_task) = registry.get_current_task() {
-            let has_key = registry.get_task_context(current_task, key).is_some(;
+            let has_key = registry.get_task_context(current_task, key).is_some);
             Ok(ComponentValue::Bool(has_key))
         } else {
             Err(Error::runtime_execution_error("No current task"))
@@ -655,20 +655,20 @@ pub mod builtins {
     /// `context.clear` canonical built-in (bonus implementation)
     /// Clears all values from the current task's context
     pub fn context_clear() -> Result<ComponentValue> {
-        let registry = get_task_registry(;
+        let registry = get_task_registry);
         
         if let Some(current_task) = registry.get_current_task() {
             #[cfg(feature = "std")]
             {
                 if let Some(task_info) = registry.tasks.get_mut(&current_task) {
-                    task_info.context.clear(;
+                    task_info.context.clear);
                 }
             }
             #[cfg(not(feature = "std"))]
             {
                 for (task_handle, task_info) in &mut registry.tasks {
                     if *task_handle == current_task {
-                        task_info.context.clear(;
+                        task_info.context.clear);
                         break;
                     }
                 }
@@ -686,14 +686,14 @@ mod tests {
 
     #[test]
     fn test_task_registry_creation() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         assert_eq!(registry.next_task_id, 1;
         assert_eq!(registry.next_subtask_id, 1;
     }
 
     #[test]
     fn test_task_registration() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         let handle = registry.register_task(None, None).unwrap();
         assert_eq!(handle.0, 1;
         assert_eq!(registry.next_task_id, 2;
@@ -701,7 +701,7 @@ mod tests {
 
     #[test]
     fn test_subtask_registration() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         let parent_handle = registry.register_task(None, None).unwrap();
         let subtask_handle = registry.register_subtask(parent_handle, None, None).unwrap();
         assert_eq!(subtask_handle.0, 1;
@@ -710,7 +710,7 @@ mod tests {
 
     #[test]
     fn test_task_cancellation() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         let handle = registry.register_task(None, None).unwrap();
         
         let result = registry.cancel_task(handle;
@@ -723,7 +723,7 @@ mod tests {
 
     #[test]
     fn test_subtask_cancellation() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         let parent_handle = registry.register_task(None, None).unwrap();
         let subtask_handle = registry.register_subtask(parent_handle, None, None).unwrap();
         
@@ -737,7 +737,7 @@ mod tests {
 
     #[test]
     fn test_task_completion() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         let handle = registry.register_task(None, None).unwrap();
         
         registry.complete_task(handle).unwrap();
@@ -760,7 +760,7 @@ mod tests {
 
     #[test]
     fn test_task_context_management() {
-        let mut registry = TaskRegistry::new(;
+        let mut registry = TaskRegistry::new);
         let handle = registry.register_task(None, None).unwrap();
         
         // Test setting and getting context
@@ -787,7 +787,7 @@ mod tests {
         let result = builtins::context_has("test_key";
         assert!(result.is_err();
         
-        let result = builtins::context_clear(;
+        let result = builtins::context_clear);
         assert!(result.is_err();
     }
 
@@ -798,7 +798,7 @@ mod tests {
         if let ComponentValue::U32(handle_id) = task_handle {
             // Note: In a real implementation, we'd set this task as current
             // For testing, we'll test the registry methods directly
-            let mut registry = TaskRegistry::new(;
+            let mut registry = TaskRegistry::new);
             let handle = TaskHandle(handle_id;
             registry.register_task(None, None).unwrap();
             

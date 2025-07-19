@@ -12,7 +12,7 @@ use wrt_test_registry::{TestRegistry, TestResult, assert_test, assert_eq_test};
 
 /// Create an integration test registry with comprehensive tests
 fn create_integration_test_registry() -> TestRegistry {
-    let registry = TestRegistry::new(;
+    let registry = TestRegistry::new);
     
     // Register all integration tests
     registry.register(Box::new(CoreFeaturesTest;
@@ -88,7 +88,7 @@ impl wrt_test_registry::TestCase for ComponentModelTest {
         #[cfg(feature = "std")]
         {
             // Create a basic component
-            let component = wrt::component::Component::new(;
+            let component = wrt::component::Component::new);
             
             // Verify component properties
             assert_test!(!component.is_initialized(), "New component should not be initialized";
@@ -121,7 +121,7 @@ impl wrt_test_registry::TestCase for StacklessEngineTest {
     
     fn run(&self) -> TestResult {
         // Create a stackless engine
-        let engine = wrt::new_stackless_engine(;
+        let engine = wrt::new_stackless_engine);
         
         // Verify engine is initialized properly
         assert_test!(!engine.is_executing(), "New engine should not be executing";
@@ -148,7 +148,7 @@ impl wrt_test_registry::TestCase for RuntimeFeaturesTest {
     
     fn run(&self) -> TestResult {
         // Create an execution engine
-        let engine = wrt::new_engine(;
+        let engine = wrt::new_engine);
         
         // Verify engine properties
         assert_test!(!engine.has_started(), "New engine should not have started";
@@ -237,12 +237,12 @@ impl wrt_test_registry::TestCase for DecoderTest {
 #[test]
 fn run_integration_tests() {
     // Create the test registry
-    let registry = create_integration_test_registry(;
+    let registry = create_integration_test_registry);
     
     // Run all tests
     #[cfg(feature = "std")]
     {
-        let failed_count = registry.run_all_tests(;
+        let failed_count = registry.run_all_tests);
         assert_eq!(failed_count, 0, "All integration tests should pass";
     }
     

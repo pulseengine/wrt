@@ -278,7 +278,7 @@ impl AdvancedSyncPrimitives {
                     false
                 }
             })
-            .count(;
+            .count);
 
         if current_mutexes >= context.sync_limits.max_mutexes {
             return Err(Error::resource_limit_exceeded("Component mutex limit exceeded";
@@ -518,7 +518,7 @@ impl AdvancedSyncPrimitives {
                     lock_count.fetch_sub(1, Ordering::AcqRel;
                     primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed;
                     self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed;
-                    return Ok((;
+                    return Ok();
                 }
 
                 // Release the lock
@@ -704,7 +704,7 @@ impl AdvancedSyncPrimitives {
         if let Some(index) = waiter_index {
             if let Some(waiter) = primitive.waiters.get(index) {
                 if let Some(waker) = &waiter.waker {
-                    waker.wake_by_ref(;
+                    waker.wake_by_ref);
                 }
             }
             primitive.waiters.remove(index;
@@ -726,7 +726,7 @@ impl AdvancedSyncPrimitives {
         if let Some(index) = waiter_index {
             if let Some(waiter) = primitive.waiters.get(index) {
                 if let Some(waker) = &waiter.waker {
-                    waker.wake_by_ref(;
+                    waker.wake_by_ref);
                 }
             }
             primitive.waiters.remove(index;
@@ -740,7 +740,7 @@ impl AdvancedSyncPrimitives {
         for waiter in primitive.waiters.iter() {
             if waiter.wait_type == WaitType::BarrierWait {
                 if let Some(waker) = &waiter.waker {
-                    waker.wake_by_ref(;
+                    waker.wake_by_ref);
                 }
             }
         }
@@ -891,7 +891,7 @@ mod tests {
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default(;
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default);
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -900,7 +900,7 @@ mod tests {
 
     #[test]
     fn test_sync_primitives_creation() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
@@ -915,7 +915,7 @@ mod tests {
         // Create barrier
         let barrier_id = sync_primitives.create_async_barrier(component_id, 2).unwrap();
         
-        let stats = sync_primitives.get_sync_statistics(;
+        let stats = sync_primitives.get_sync_statistics);
         assert_eq!(stats.total_mutexes_created, 1;
         assert_eq!(stats.total_semaphores_created, 1;
         assert_eq!(stats.total_barriers_created, 1;
@@ -923,7 +923,7 @@ mod tests {
 
     #[test]
     fn test_mutex_operations() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
@@ -944,14 +944,14 @@ mod tests {
         // Unlock
         sync_primitives.unlock_async_mutex(mutex_id, task_id).unwrap();
         
-        let stats = sync_primitives.get_sync_statistics(;
+        let stats = sync_primitives.get_sync_statistics);
         assert_eq!(stats.total_mutex_locks, 2;
         assert_eq!(stats.total_mutex_unlocks, 1;
     }
 
     #[test]
     fn test_semaphore_operations() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
@@ -974,7 +974,7 @@ mod tests {
         // Release permit
         sync_primitives.release_semaphore(semaphore_id).unwrap();
         
-        let stats = sync_primitives.get_sync_statistics(;
+        let stats = sync_primitives.get_sync_statistics);
         assert_eq!(stats.total_semaphore_acquires, 2;
         assert_eq!(stats.total_semaphore_releases, 1;
     }

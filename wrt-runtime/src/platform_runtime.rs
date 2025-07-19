@@ -121,7 +121,7 @@ impl PlatformAwareRuntime {
     /// Create new platform-aware runtime using platform discovery
     #[cfg(feature = "std")]
     pub fn new() -> Result<Self> {
-        let mut discoverer = PlatformLimitDiscoverer::new(;
+        let mut discoverer = PlatformLimitDiscoverer::new);
         let limits = discoverer.discover().map_err(|e| {
             Error::runtime_execution_error("Platform limit discovery failed")
         })?;
@@ -131,7 +131,7 @@ impl PlatformAwareRuntime {
     /// Create new platform-aware runtime for no_std environments
     #[cfg(not(feature = "std"))]
     pub fn new() -> Result<Self> {
-        let cfi_protection = Self::create_basic_cfi_protection(;
+        let cfi_protection = Self::create_basic_cfi_protection);
         let execution_engine = CfiExecutionEngine::new(cfi_protection;
         let safety_context = SafetyContext::new(AsilLevel::D); // Default to highest safety level for no_std
         
@@ -191,7 +191,7 @@ impl PlatformAwareRuntime {
         function: &RuntimeFunction,
         args: &[Value],
     ) -> Result<ValueVec> {
-        let start_time = self.get_timestamp(;
+        let start_time = self.get_timestamp);
         
         // Validate execution against platform limits
         #[cfg(feature = "std")]
@@ -214,11 +214,11 @@ impl PlatformAwareRuntime {
         )?;
         
         // Update metrics
-        let end_time = self.get_timestamp(;
+        let end_time = self.get_timestamp);
         self.metrics.instructions_executed += 1;
         self.metrics.execution_time_ns += end_time.saturating_sub(start_time;
         #[cfg(feature = "std")]
-        self.update_memory_metrics(;
+        self.update_memory_metrics);
         
         // Extract return values from CFI result
         self.extract_return_values(cfi_result, args.len())
@@ -320,21 +320,21 @@ impl PlatformAwareRuntime {
                 let allocator = wrt_platform::LinuxAllocatorBuilder::new()
                     .with_maximum_pages(max_pages as u32)
                     .with_guard_pages(true)
-                    .build(;
+                    .build);
                 Ok(Box::new(allocator))
             },
             #[cfg(all(feature = "platform-qnx", target_os = "nto"))]
             PlatformId::QNX => {
                 let allocator = wrt_platform::QnxAllocatorBuilder::new()
                     .with_maximum_pages(max_pages as u32)
-                    .build(;
+                    .build);
                 Ok(Box::new(allocator))
             },
             #[cfg(all(feature = "platform-macos", target_os = "macos"))]
             PlatformId::MacOS => {
                 let allocator = wrt_platform::MacOsAllocatorBuilder::new()
                     .with_maximum_pages(max_pages as u32)
-                    .build(;
+                    .build);
                 Ok(Box::new(allocator))
             },
             _ => {
@@ -444,7 +444,7 @@ impl PlatformAwareRuntime {
     /// Update memory usage metrics
     #[cfg(feature = "std")]
     fn update_memory_metrics(&mut self) {
-        let current_usage = self.total_memory() - self.available_memory(;
+        let current_usage = self.total_memory() - self.available_memory);
         self.metrics.memory_allocated = current_usage;
         if current_usage > self.metrics.peak_memory_usage {
             self.metrics.peak_memory_usage = current_usage;
@@ -519,13 +519,13 @@ mod tests {
 
     #[test]
     fn test_platform_runtime_creation() {
-        let runtime = PlatformAwareRuntime::new(;
+        let runtime = PlatformAwareRuntime::new);
         assert!(runtime.is_ok();
     }
     
     #[test]
     fn test_platform_runtime_with_limits() {
-        let mut discoverer = PlatformLimitDiscoverer::new(;
+        let mut discoverer = PlatformLimitDiscoverer::new);
         if let Ok(limits) = discoverer.discover_limits() {
             let runtime = PlatformAwareRuntime::new_with_limits(limits.clone();
             assert!(runtime.is_ok();
@@ -538,8 +538,8 @@ mod tests {
     #[test]
     fn test_memory_capacity() {
         if let Ok(runtime) = PlatformAwareRuntime::new() {
-            let total_memory = runtime.total_memory(;
-            let available_memory = runtime.available_memory(;
+            let total_memory = runtime.total_memory);
+            let available_memory = runtime.available_memory);
             assert!(total_memory > 0);
             assert!(available_memory <= total_memory);
         }

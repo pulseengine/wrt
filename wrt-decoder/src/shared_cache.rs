@@ -173,7 +173,7 @@ impl DecodedCache {
 
     /// Clear all cached data
     pub fn clear(&mut self) {
-        self.sections.clear(;
+        self.sections.clear);
         self.import_cache = None;
         self.export_cache = None;
         self.builtin_imports = None;
@@ -181,7 +181,7 @@ impl DecodedCache {
 
     /// Get cache memory usage estimate
     pub fn cache_size_estimate(&self) -> usize {
-        let mut size = core::mem::size_of::<Self>(;
+        let mut size = core::mem::size_of::<Self>);
 
         // Estimate section data size
         for (_, section) in &self.sections {
@@ -257,14 +257,14 @@ impl CacheManager {
                 WasmFormat::Unknown
             };
 
-            let cache = DecodedCache::new(format_type, binary.len(;
-            let cache_size = cache.cache_size_estimate(;
+            let cache = DecodedCache::new(format_type, binary.len);
+            let cache_size = cache.cache_size_estimate);
 
             // Check if we need to evict entries
             while self.current_cache_size + cache_size > self.max_cache_size
                 && !self.caches.is_empty()
             {
-                self.evict_lru_entry(;
+                self.evict_lru_entry);
             }
 
             self.current_cache_size += cache_size;
@@ -276,7 +276,7 @@ impl CacheManager {
 
     /// Clear all caches
     pub fn clear(&mut self) {
-        self.caches.clear(;
+        self.caches.clear);
         self.current_cache_size = 0;
     }
 
@@ -297,7 +297,7 @@ impl CacheManager {
             let key = key;
             if let Some(cache) = self.caches.remove(&key) {
                 self.current_cache_size =
-                    self.current_cache_size.saturating_sub(cache.cache_size_estimate(;
+                    self.current_cache_size.saturating_sub(cache.cache_size_estimate);
             }
         }
     }
@@ -340,7 +340,7 @@ fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
     use crate::unified_loader::parse_import_section_info;
 
     let mut offset = 8; // Skip header
-    let mut imports = Vec::new(;
+    let mut imports = Vec::new);
 
     // Find import section
     while offset < binary.len() {
@@ -385,7 +385,7 @@ fn parse_exports_from_binary(binary: &[u8]) -> Result<Vec<ExportInfo>> {
     use crate::unified_loader::parse_export_section_info;
 
     let mut offset = 8; // Skip header
-    let mut exports = Vec::new(;
+    let mut exports = Vec::new);
 
     // Find export section
     while offset < binary.len() {

@@ -191,7 +191,7 @@ mod control_flow_validation_tests {
 
         for block_bytes in valid_block_types {
             let (_, bytes_read) = parse_instruction(&block_bytes)?;
-            assert_eq!(bytes_read, block_bytes.len(;
+            assert_eq!(bytes_read, block_bytes.len);
         }
 
         Ok(())
@@ -214,7 +214,7 @@ mod control_flow_validation_tests {
         ];
 
         let (_, bytes_read) = parse_instruction(&nested_control)?;
-        assert_eq!(bytes_read, nested_control.len(;
+        assert_eq!(bytes_read, nested_control.len);
 
         Ok(())
     }
@@ -232,7 +232,7 @@ mod control_flow_validation_tests {
 
         for branch_bytes in branch_instructions {
             let (_, bytes_read) = parse_instruction(&branch_bytes)?;
-            assert_eq!(bytes_read, branch_bytes.len(;
+            assert_eq!(bytes_read, branch_bytes.len);
         }
 
         Ok(())
@@ -249,7 +249,7 @@ mod control_flow_validation_tests {
 
         for br_table_bytes in br_table_configs {
             let (_, bytes_read) = parse_instruction(&br_table_bytes)?;
-            assert_eq!(bytes_read, br_table_bytes.len(;
+            assert_eq!(bytes_read, br_table_bytes.len);
         }
 
         Ok(())
@@ -273,7 +273,7 @@ mod control_instruction_edge_cases {
 
         for block_bytes in empty_blocks {
             let (instr, bytes_read) = parse_instruction(&block_bytes)?;
-            assert_eq!(bytes_read, block_bytes.len(;
+            assert_eq!(bytes_read, block_bytes.len);
 
             let encoded = encode_instruction(&instr)?;
             assert_eq!(encoded, block_bytes;
@@ -296,7 +296,7 @@ mod control_instruction_edge_cases {
 
         for if_bytes in if_else_patterns {
             let (instr, bytes_read) = parse_instruction(&if_bytes)?;
-            assert_eq!(bytes_read, if_bytes.len(;
+            assert_eq!(bytes_read, if_bytes.len);
 
             let encoded = encode_instruction(&instr)?;
             assert_eq!(encoded, if_bytes;
@@ -316,7 +316,7 @@ mod control_instruction_edge_cases {
 
         for call_bytes in call_patterns {
             let (instr, bytes_read) = parse_instruction(&call_bytes)?;
-            assert_eq!(bytes_read, call_bytes.len(;
+            assert_eq!(bytes_read, call_bytes.len);
 
             let encoded = encode_instruction(&instr)?;
             assert_eq!(encoded, call_bytes;
@@ -334,7 +334,7 @@ mod control_instruction_edge_cases {
 
         for instr_bytes in simple_instructions {
             let (instr, bytes_read) = parse_instruction(&instr_bytes)?;
-            assert_eq!(bytes_read, instr_bytes.len(;
+            assert_eq!(bytes_read, instr_bytes.len);
 
             let encoded = encode_instruction(&instr)?;
             assert_eq!(encoded, instr_bytes;
@@ -356,7 +356,7 @@ mod control_instruction_edge_cases {
         br_table_bytes.push(0x0A); // default label
 
         let (instr, bytes_read) = parse_instruction(&br_table_bytes)?;
-        assert_eq!(bytes_read, br_table_bytes.len(;
+        assert_eq!(bytes_read, br_table_bytes.len);
 
         let encoded = encode_instruction(&instr)?;
         assert_eq!(encoded, br_table_bytes;

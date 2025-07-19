@@ -140,7 +140,7 @@ fn calculate_tuple_layout(types: &[FormatValType<ComponentProvider>]) -> MemoryL
 /// Calculate layout for a variant type
 fn calculate_variant_layout(cases: &[(String, Option<FormatValType<ComponentProvider>>)]) -> MemoryLayout {
     // Discriminant size based on number of cases
-    let discriminant_size = discriminant_size(cases.len(;
+    let discriminant_size = discriminant_size(cases.len);
     let discriminant_alignment = discriminant_size;
 
     // Find the largest payload
@@ -251,7 +251,7 @@ const fn align_to(value: usize, alignment: usize) -> usize {
 
 /// Calculate field offsets for a record or struct
 pub fn calculate_field_offsets(fields: &[(String, FormatValType<ComponentProvider>)]) -> Vec<(String, usize, MemoryLayout)> {
-    let mut result = Vec::new(;
+    let mut result = Vec::new);
     let mut offset = 0;
 
     for (name, field_type) in fields {
@@ -370,7 +370,7 @@ impl CanonicalMemoryPool {
 
             // Allocate new buffer
             let buffer_size = self.size_classes[class_idx];
-            let data = vec![0u8; buffer_size].into_boxed_slice(;
+            let data = vec![0u8; buffer_size].into_boxed_slice);
             self.pools[class_idx].push(MemoryBuffer { data, in_use: true });
 
             self.pools[class_idx].last_mut().map(|b| &mut b.data[..])

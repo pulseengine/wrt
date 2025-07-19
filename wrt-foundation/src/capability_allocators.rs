@@ -34,7 +34,7 @@ impl<T> CapabilityBox<T> {
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Box<T>> {
-        let size = core::mem::size_of::<T>(;
+        let size = core::mem::size_of::<T>);
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         
@@ -66,7 +66,7 @@ impl<T> CapabilityVec<T> {
         crate_id: CrateId,
         capacity: usize,
     ) -> Result<Vec<T>> {
-        let size = capacity * core::mem::size_of::<T>(;
+        let size = capacity * core::mem::size_of::<T>);
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         
@@ -79,7 +79,7 @@ impl<T> CapabilityVec<T> {
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Vec<T>> {
-        let size = elements.capacity() * core::mem::size_of::<T>(;
+        let size = elements.capacity() * core::mem::size_of::<T>);
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         
@@ -95,7 +95,7 @@ impl<T> CapabilityVec<T> {
     where
         T: Clone,
     {
-        let size = slice.len() * core::mem::size_of::<T>(;
+        let size = slice.len() * core::mem::size_of::<T>);
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         

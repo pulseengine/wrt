@@ -231,7 +231,7 @@ impl DiagnosticSummary {
         let mut warnings = 0;
         let mut infos = 0;
         let mut hints = 0;
-        let mut files = std::collections::HashSet::new(;
+        let mut files = std::collections::HashSet::new);
 
         for diagnostic in diagnostics {
             match diagnostic.severity {
@@ -285,7 +285,7 @@ pub struct DiagnosticCollection {
 impl DiagnosticCollection {
     /// Create a new diagnostic collection
     pub fn new(workspace_root: PathBuf, command: String) -> Self {
-        let timestamp = chrono::Utc::now().to_rfc3339(;
+        let timestamp = chrono::Utc::now().to_rfc3339);
         let workspace_root_str = workspace_root.to_string_lossy().to_string();
 
         Self {
@@ -339,7 +339,7 @@ impl DiagnosticCollection {
 
     /// Group diagnostics by file
     pub fn group_by_file(&self) -> HashMap<String, Vec<&Diagnostic>> {
-        let mut groups = HashMap::new(;
+        let mut groups = HashMap::new);
         for diagnostic in &self.diagnostics {
             groups.entry(diagnostic.file.clone()).or_insert_with(Vec::new).push(diagnostic);
         }

@@ -281,7 +281,7 @@ impl<'a> DebugInfoParser<'a> {
 
         // Parse children if this function has them (for parameters)
         if abbrev.has_children {
-            let mut params = ParameterList::new(;
+            let mut params = ParameterList::new);
             let mut param_position = 0u16;
 
             // Parse children until we hit a null entry

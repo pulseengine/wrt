@@ -36,7 +36,7 @@ fn load_test_module() -> Result<Module> {
 /// Helper function to create execution engine with module
 fn create_engine_with_module() -> Result<(StacklessEngine, usize)> {
     let runtime_module = load_test_module()?;
-    let mut engine = StacklessEngine::new(;
+    let mut engine = StacklessEngine::new);
     let instance = ModuleInstance::new(runtime_module, 0)?;
     let instance_arc = Arc::new(instance;
     let instance_idx = engine.set_current_module(instance_arc)?;
@@ -245,8 +245,8 @@ fn test_execution_determinism() -> Result<()> {
 #[test]
 fn test_multiple_engine_instances() -> Result<()> {
     // Test that multiple engine instances work independently
-    let mut engines = Vec::new(;
-    let mut instance_indices = Vec::new(;
+    let mut engines = Vec::new);
+    let mut instance_indices = Vec::new);
 
     // Create 5 independent engine instances
     for i in 0..5 {
@@ -413,7 +413,7 @@ fn test_memory_safety_execution() -> Result<()> {
 
     // Test with a large number of executions to catch memory issues
     for batch in 0..10 {
-        let mut results_in_batch = Vec::new(;
+        let mut results_in_batch = Vec::new);
 
         for i in 0..100 {
             let a = (batch * 100 + i) % 1000;
@@ -466,7 +466,7 @@ fn test_memory_safety_execution() -> Result<()> {
 #[test]
 fn test_error_handling_robustness() -> Result<()> {
     let runtime_module = load_test_module()?;
-    let mut engine = StacklessEngine::new(;
+    let mut engine = StacklessEngine::new);
     let instance = ModuleInstance::new(runtime_module, 0)?;
     let instance_arc = Arc::new(instance;
     let instance_idx = engine.set_current_module(instance_arc)?;
@@ -503,12 +503,12 @@ fn test_asil_b_compliance_validation() -> Result<()> {
     let mut execution_times = Vec::with_capacity(test_iterations;
 
     for i in 0..test_iterations {
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
 
         let args = create_test_args(i, i * 2;
         let results = engine.execute(instance_idx, 0, args)?;
 
-        let execution_time = start.elapsed(;
+        let execution_time = start.elapsed);
         execution_times.push(execution_time);
 
         // Validate result consistency

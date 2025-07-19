@@ -180,7 +180,7 @@ impl MemoryCapabilityContext {
         for (key, value) in self.capabilities.iter() {
             if *key == Some(crate_id) {
                 if let Some(ref cap) = value {
-                    return Ok(cap.as_ref(;
+                    return Ok(cap.as_ref);
                 }
             }
         }
@@ -362,14 +362,14 @@ mod tests {
 
     #[test]
     fn test_capability_context_creation() {
-        let context = MemoryCapabilityContext::default(;
+        let context = MemoryCapabilityContext::default);
         assert_eq!(context.capability_count(), 0;
         assert!(!context.has_capability(CrateId::Foundation);
     }
 
     #[test]
     fn test_dynamic_capability_registration() {
-        let mut context = MemoryCapabilityContext::default(;
+        let mut context = MemoryCapabilityContext::default);
 
         assert!(context.register_dynamic_capability(CrateId::Foundation, 1024).is_ok();
         assert!(context.has_capability(CrateId::Foundation);
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     fn test_static_capability_registration() {
-        let mut context = MemoryCapabilityContext::default(;
+        let mut context = MemoryCapabilityContext::default);
 
         assert!(context.register_static_capability::<4096>(CrateId::Runtime).is_ok();
         assert!(context.has_capability(CrateId::Runtime);
@@ -389,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_operation_verification() {
-        let mut context = MemoryCapabilityContext::default(;
+        let mut context = MemoryCapabilityContext::default);
         context.register_dynamic_capability(CrateId::Foundation, 1000).unwrap();
 
         let valid_op = MemoryOperation::Allocate { size: 500 };
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_capability_guarded_provider() {
-        let mut context = MemoryCapabilityContext::default(;
+        let mut context = MemoryCapabilityContext::default);
         context.register_dynamic_capability(CrateId::Foundation, 8192).unwrap();
 
         let provider = context.create_provider::<4096>(CrateId::Foundation;
@@ -416,7 +416,7 @@ mod tests {
         let context = CapabilityContextBuilder::new()
             .with_verification_level(VerificationLevel::Redundant)
             .with_runtime_verification(true)
-            .build(;
+            .build);
 
         assert_eq!(context.default_verification_level, VerificationLevel::Redundant;
         assert!(context.runtime_verification);

@@ -64,7 +64,7 @@ pub struct Resource {
 impl Resource {
     /// Create a new resource
     pub fn new(type_idx: u32, data_ptr: usize) -> Self {
-        let now = Instant::now(;
+        let now = Instant::now);
         Self {
             type_idx,
             data_ptr,
@@ -84,7 +84,7 @@ impl Resource {
 
     /// Record access to this resource
     pub fn record_access(&mut self) {
-        self.last_accessed = Instant::now(;
+        self.last_accessed = Instant::now);
         self.access_count += 1;
     }
 }
@@ -247,5 +247,5 @@ impl Default for ResourceTable {
 // Apply traits to the main types
 impl_basic_traits!(Resource, Resource::new(0, 0;
 impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap();
-impl_basic_traits!(MemoryStrategy, MemoryStrategy::default(;
-impl_basic_traits!(VerificationLevel, VerificationLevel::default(;
+impl_basic_traits!(MemoryStrategy, MemoryStrategy::default);
+impl_basic_traits!(VerificationLevel, VerificationLevel::default);

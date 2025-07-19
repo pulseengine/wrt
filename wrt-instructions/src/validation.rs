@@ -300,14 +300,14 @@ mod tests {
 
     #[test]
     fn test_validation_context_creation() {
-        let ctx = ValidationContext::new(;
+        let ctx = ValidationContext::new);
         assert_eq!(ctx.stack_depth, 0;
         assert!(!ctx.unreachable);
     }
 
     #[test]
     fn test_push_pop_types() {
-        let mut ctx = ValidationContext::new(;
+        let mut ctx = ValidationContext::new);
         
         // Push some types
         ctx.push_type(ValueType::I32).unwrap();
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_unreachable_handling() {
-        let mut ctx = ValidationContext::new(;
+        let mut ctx = ValidationContext::new);
         
         // Mark as unreachable
         ctx.mark_unreachable().unwrap();
@@ -337,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_validate_arithmetic() {
-        let mut ctx = ValidationContext::new(;
+        let mut ctx = ValidationContext::new);
         
         // Set up stack for i32.add
         ctx.push_type(ValueType::I32).unwrap();
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_validate_memory_load() {
-        let mut ctx = ValidationContext::new(;
+        let mut ctx = ValidationContext::new);
         
         // Push address
         ctx.push_type(ValueType::I32).unwrap();
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     fn test_validate_comparison() {
-        let mut ctx = ValidationContext::new(;
+        let mut ctx = ValidationContext::new);
         
         // Push two i32s
         ctx.push_type(ValueType::I32).unwrap();

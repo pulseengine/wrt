@@ -29,9 +29,9 @@ pub struct CallFrame {
 
 impl Checksummable for CallFrame {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes(;
-        checksum.update_slice(&self.instruction_pointer.to_le_bytes(;
-        checksum.update_slice(&(self.locals.len() as u32).to_le_bytes(;
+        checksum.update_slice(&self.function_index.to_le_bytes);
+        checksum.update_slice(&self.instruction_pointer.to_le_bytes);
+        checksum.update_slice(&(self.locals.len() as u32).to_le_bytes);
     }
 }
 
@@ -60,7 +60,7 @@ impl FromBytes for CallFrame {
         reader.read_exact(&mut ip_bytes)?;
         let instruction_pointer = u32::from_le_bytes(ip_bytes;
         
-        let provider_clone = RuntimeProvider::default(;
+        let provider_clone = RuntimeProvider::default);
         let locals = BoundedVec::new(provider_clone)?;
         
         Ok(CallFrame {
@@ -88,9 +88,9 @@ pub struct ComponentExecutionState {
 impl Checksummable for ComponentExecutionState {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         checksum.update_slice(&[if self.is_running { 1u8 } else { 0u8 }];
-        checksum.update_slice(&self.instruction_pointer.to_le_bytes(;
-        checksum.update_slice(&(self.stack_depth as u32).to_le_bytes(;
-        checksum.update_slice(&(self.gas_remaining as u32).to_le_bytes(;
+        checksum.update_slice(&self.instruction_pointer.to_le_bytes);
+        checksum.update_slice(&(self.stack_depth as u32).to_le_bytes);
+        checksum.update_slice(&(self.gas_remaining as u32).to_le_bytes);
     }
 }
 
@@ -154,7 +154,7 @@ pub struct ExecutionContext {
 impl ExecutionContext {
     /// Create a new execution context
     pub fn new() -> Result<Self> {
-        let provider = RuntimeProvider::default(;
+        let provider = RuntimeProvider::default);
         Ok(ExecutionContext {
             value_stack: BoundedVec::new(provider.clone())?,
             call_stack: BoundedVec::new(provider)?,

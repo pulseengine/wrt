@@ -46,7 +46,7 @@ pub struct Resource {
 impl Resource {
     /// Create a new resource
     pub fn new(type_idx: u32, data: Arc<dyn Any + Send + Sync>) -> Self {
-        let now = Instant::now(;
+        let now = Instant::now);
         Self {
             type_idx,
             data,
@@ -66,7 +66,7 @@ impl Resource {
 
     /// Record access to this resource
     pub fn record_access(&mut self) {
-        self.last_accessed = Instant::now(;
+        self.last_accessed = Instant::now);
         self.access_count += 1;
     }
 }
@@ -621,7 +621,7 @@ impl ResourceTable {
 
         // Record access
         if let Ok(mut resource) = entry.resource.lock() {
-            resource.record_access(;
+            resource.record_access);
         }
 
         // Notify interceptors about resource access
@@ -939,7 +939,7 @@ mod tests {
     #[test]
     fn test_resource_interceptor() {
         let mut table = ResourceTable::new().unwrap();
-        let interceptor = Arc::new(TestInterceptor::new(;
+        let interceptor = Arc::new(TestInterceptor::new);
 
         table.add_interceptor(interceptor.clone()).unwrap();
 
@@ -953,7 +953,7 @@ mod tests {
         table.apply_operation(handle, FormatResourceOperation::Rep).unwrap();
 
         // Check interceptor operations
-        let operations = interceptor.get_operations(;
+        let operations = interceptor.get_operations);
         assert!(operations.contains(&"create_1".to_string());
         assert!(operations.contains(&format!("access_{}", handle));
         assert!(operations.contains(&format!("operation_{}", handle));
@@ -961,7 +961,7 @@ mod tests {
 
     #[test]
     fn test_resource_interception() {
-        let interceptor = Arc::new(TestInterceptor::new(;
+        let interceptor = Arc::new(TestInterceptor::new);
 
         let mut table = ResourceTable::new().unwrap();
         table.add_interceptor(interceptor.clone()).unwrap();
@@ -994,7 +994,7 @@ mod tests {
         assert!(matches!(result, ComponentValue::U32(_));
 
         // Check that operations were recorded
-        let ops = interceptor.get_operations(;
+        let ops = interceptor.get_operations);
         assert!(ops.contains(&"create_1".to_string());
         assert!(ops.contains(&format!("operation_{}", handle));
         assert!(ops.contains(&"operation_42".to_string());
@@ -1003,7 +1003,7 @@ mod tests {
 
     #[test]
     fn test_memory_strategy_selection() {
-        let interceptor = Arc::new(TestInterceptor::new(;
+        let interceptor = Arc::new(TestInterceptor::new);
 
         let mut table = ResourceTable::new().unwrap();
         table.add_interceptor(interceptor.clone()).unwrap();

@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_bounded_component_creation() {
-        let provider = TestProvider::default(;
+        let provider = TestProvider::default);
         let component = BoundedComponent::new(provider;
         assert!(component.is_ok();
 

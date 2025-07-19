@@ -275,7 +275,7 @@ impl PlatformComponentRuntime {
         
         // Create component instance with bounded resources
         let instance = ComponentInstance::new(requirements.clone(), &self.limits)?;
-        let component_id = instance.id(;
+        let component_id = instance.id);
         
         // Reserve memory for this component
         self.memory_budget.allocate(
@@ -340,7 +340,7 @@ impl PlatformComponentRuntime {
         
         // Validate ASIL level compatibility
         let component_asil = instance.metadata().safety_level;
-        let runtime_asil = self.safety_context.effective_asil(;
+        let runtime_asil = self.safety_context.effective_asil);
         
         // Component can run if its ASIL level is <= runtime ASIL level
         Ok(component_asil as u8 <= runtime_asil as u8)
@@ -349,7 +349,7 @@ impl PlatformComponentRuntime {
     pub fn get_runtime_statistics(&self) -> RuntimeStatistics {
         let total_memory_used = self.memory_budget.allocations.iter()
             .map(|alloc| alloc.size)
-            .sum(;
+            .sum);
         
         RuntimeStatistics {
             active_components: self.instances.len(),
@@ -395,7 +395,7 @@ mod tests {
     
     #[test]
     fn test_component_runtime_creation() {
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         let runtime = PlatformComponentRuntime::new(limits).unwrap();
         
         assert_eq!(runtime.instance_count(), 0;
@@ -404,7 +404,7 @@ mod tests {
     
     #[test]
     fn test_component_instantiation() {
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         let mut runtime = PlatformComponentRuntime::new(limits).unwrap();
         
         let component_bytes = b"fake component";
@@ -416,7 +416,7 @@ mod tests {
     
     #[test]
     fn test_memory_budget_allocation() {
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         let mut budget = ComponentMemoryBudget::calculate(&limits).unwrap();
         
         let initial_available = budget.available_memory;
@@ -430,7 +430,7 @@ mod tests {
     
     #[test]
     fn test_component_termination() {
-        let limits = ComprehensivePlatformLimits::default(;
+        let limits = ComprehensivePlatformLimits::default);
         let mut runtime = PlatformComponentRuntime::new(limits).unwrap();
         
         let component_bytes = b"fake component";

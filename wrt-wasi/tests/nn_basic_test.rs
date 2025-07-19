@@ -40,7 +40,7 @@ fn test_nn_initialization() {
     assert!(result.is_ok();
     
     // Verify we can get the capability back
-    let retrieved_cap = get_nn_capability(;
+    let retrieved_cap = get_nn_capability);
     assert!(retrieved_cap.is_ok();
 }
 
@@ -50,7 +50,7 @@ fn test_graph_encoding_conversion() {
     
     // Test encoding conversions
     let encoding = GraphEncoding::ONNX;
-    let wit_value = encoding.to_wit(;
+    let wit_value = encoding.to_wit);
     let converted = GraphEncoding::from_wit(wit_value).unwrap();
     assert_eq!(encoding, converted;
     
@@ -62,7 +62,7 @@ fn test_graph_encoding_conversion() {
         GraphEncoding::OpenVINO,
         GraphEncoding::TractNative,
     ] {
-        let wit = enc.to_wit(;
+        let wit = enc.to_wit);
         let back = GraphEncoding::from_wit(wit).unwrap();
         assert_eq!(enc, back;
     }
@@ -74,7 +74,7 @@ fn test_tensor_type_conversion() {
     
     // Test tensor type conversions
     let tensor_type = TensorType::F32;
-    let wit_value = tensor_type.to_wit(;
+    let wit_value = tensor_type.to_wit);
     let converted = TensorType::from_wit(wit_value).unwrap();
     assert_eq!(tensor_type, converted;
 }
@@ -91,7 +91,7 @@ fn test_nn_load_without_backend() {
     
     // Try to load a model (will fail without backend initialized)
     let dummy_model = vec![0u8; 100];
-    let result = nn_load(dummy_model, GraphEncoding::ONNX.to_wit(), ExecutionTarget::CPU.to_wit(;
+    let result = nn_load(dummy_model, GraphEncoding::ONNX.to_wit(), ExecutionTarget::CPU.to_wit);
     
     // Should fail because backend registry isn't initialized
     assert!(result.is_err();
@@ -122,7 +122,7 @@ fn test_tensor_creation() {
     use wrt_wasi::nn::{Tensor, TensorDimensions, capabilities::DynamicNNCapability};
     
     // Create a capability
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     
     // Create a simple tensor
     let dims = TensorDimensions::new(&[2, 3]).unwrap();
@@ -157,12 +157,12 @@ fn test_tract_backend_creation() {
     };
     
     // Create a Tract backend
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     let backend = TractBackend::new(capability;
     assert_eq!(backend.name(), "tract";
     
     // Test backend provider
-    let provider = TractBackendProvider::new(;
+    let provider = TractBackendProvider::new);
     assert!(provider.supports_encoding(GraphEncoding::ONNX);
     assert!(provider.supports_encoding(GraphEncoding::TractNative);
     assert!(!provider.supports_encoding(GraphEncoding::TensorFlow);
@@ -174,7 +174,7 @@ fn test_capability_limits() {
     
     // Create bounded capability
     let capability = BoundedNNCapability::new().unwrap();
-    let _limits = capability.resource_limits(;
+    let _limits = capability.resource_limits);
     
     // Test model size limit
     let load_op = NNOperation::Load {

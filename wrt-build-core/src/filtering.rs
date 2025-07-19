@@ -196,7 +196,7 @@ impl DiagnosticProcessor {
         diagnostics: &[Diagnostic],
         filter: &DiagnosticFilter,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut filtered = Vec::new(;
+        let mut filtered = Vec::new);
 
         // Compile regex pattern if provided
         let message_regex = if let Some(pattern) = &filter.message_pattern {
@@ -274,7 +274,7 @@ impl DiagnosticProcessor {
         max_count: Option<usize>,
     ) -> Vec<Diagnostic> {
         // Group by file to count diagnostics per file
-        let mut file_counts: HashMap<String, Vec<Diagnostic>> = HashMap::new(;
+        let mut file_counts: HashMap<String, Vec<Diagnostic>> = HashMap::new);
         for diagnostic in diagnostics {
             file_counts
                 .entry(diagnostic.file.clone())
@@ -283,9 +283,9 @@ impl DiagnosticProcessor {
         }
 
         // Filter files based on count criteria
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         for (_, file_diagnostics) in file_counts {
-            let count = file_diagnostics.len(;
+            let count = file_diagnostics.len);
 
             if let Some(min) = min_count {
                 if count < min {
@@ -419,8 +419,8 @@ impl DiagnosticProcessor {
         diagnostics: Vec<Diagnostic>,
         group_by: GroupBy,
     ) -> GroupedDiagnostics {
-        let total_count = diagnostics.len(;
-        let mut groups: HashMap<String, Vec<Diagnostic>> = HashMap::new(;
+        let total_count = diagnostics.len);
+        let mut groups: HashMap<String, Vec<Diagnostic>> = HashMap::new);
 
         match group_by {
             GroupBy::File => {
@@ -453,7 +453,7 @@ impl DiagnosticProcessor {
             },
         }
 
-        let group_count = groups.len(;
+        let group_count = groups.len);
 
         GroupedDiagnostics {
             groups,
@@ -501,13 +501,13 @@ impl FilterOptionsBuilder {
 
     /// Filter by file patterns
     pub fn file_patterns(mut self, patterns: &[String]) -> Self {
-        self.options.filter.file_patterns = Some(patterns.to_vec(;
+        self.options.filter.file_patterns = Some(patterns.to_vec);
         self
     }
 
     /// Exclude file patterns
     pub fn exclude_patterns(mut self, patterns: &[String]) -> Self {
-        self.options.filter.exclude_patterns = Some(patterns.to_vec(;
+        self.options.filter.exclude_patterns = Some(patterns.to_vec);
         self
     }
 
@@ -585,7 +585,7 @@ mod tests {
     #[test]
     fn test_severity_filtering() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error message", None),
@@ -605,7 +605,7 @@ mod tests {
             collection.add_diagnostic(diag;
         }
 
-        let options = FilterOptionsBuilder::new().severities(&[Severity::Error]).build(;
+        let options = FilterOptionsBuilder::new().severities(&[Severity::Error]).build);
 
         let result = processor.process(&collection, &options).unwrap();
         assert_eq!(result.total_count, 1;
@@ -615,7 +615,7 @@ mod tests {
     #[test]
     fn test_source_filtering() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error message", None),
@@ -634,7 +634,7 @@ mod tests {
             collection.add_diagnostic(diag;
         }
 
-        let options = FilterOptionsBuilder::new().sources(&["clippy".to_string()]).build(;
+        let options = FilterOptionsBuilder::new().sources(&["clippy".to_string()]).build);
 
         let result = processor.process(&collection, &options).unwrap();
         assert_eq!(result.total_count, 1;
@@ -644,7 +644,7 @@ mod tests {
     #[test]
     fn test_file_grouping() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error 1", None),
@@ -658,7 +658,7 @@ mod tests {
             collection.add_diagnostic(diag;
         }
 
-        let options = FilterOptionsBuilder::new().group_by(GroupBy::File).build(;
+        let options = FilterOptionsBuilder::new().group_by(GroupBy::File).build);
 
         let result = processor.process(&collection, &options).unwrap();
         assert_eq!(result.group_count, 2;
@@ -669,7 +669,7 @@ mod tests {
     #[test]
     fn test_pattern_matching() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         assert!(processor.matches_pattern("src/main.rs", "*.rs");
         assert!(processor.matches_pattern("src/lib.rs", "src/*");

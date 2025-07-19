@@ -18,7 +18,7 @@ mod bounded_vec_tests {
 
     #[test]
     fn test_bounded_vec_creation_and_capacity() -> Result<()> {
-        let vec = BoundedVec::<i32, 10>::new(;
+        let vec = BoundedVec::<i32, 10>::new);
         
         assert_eq!(vec.len(), 0;
         assert_eq!(vec.capacity(), 10;
@@ -30,7 +30,7 @@ mod bounded_vec_tests {
 
     #[test]
     fn test_bounded_vec_push_operations() -> Result<()> {
-        let mut vec = BoundedVec::<i32, 5>::new(;
+        let mut vec = BoundedVec::<i32, 5>::new);
         
         // Push elements within capacity
         for i in 0..5 {
@@ -51,7 +51,7 @@ mod bounded_vec_tests {
 
     #[test]
     fn test_bounded_vec_pop_operations() -> Result<()> {
-        let mut vec = BoundedVec::<i32, 5>::new(;
+        let mut vec = BoundedVec::<i32, 5>::new);
         
         // Push some elements
         for i in 0..3 {
@@ -72,7 +72,7 @@ mod bounded_vec_tests {
 
     #[test]
     fn test_bounded_vec_indexing() -> Result<()> {
-        let mut vec = BoundedVec::<i32, 5>::new(;
+        let mut vec = BoundedVec::<i32, 5>::new);
         
         // Push some elements
         for i in 0..5 {
@@ -124,7 +124,7 @@ mod bounded_vec_tests {
 
     #[test]
     fn test_bounded_vec_clear_and_truncate() -> Result<()> {
-        let mut vec = BoundedVec::<i32, 10>::new(;
+        let mut vec = BoundedVec::<i32, 10>::new);
         
         // Fill with data
         for i in 0..8 {
@@ -139,7 +139,7 @@ mod bounded_vec_tests {
         assert!(vec.get(5).is_err();
         
         // Test clear
-        vec.clear(;
+        vec.clear);
         assert_eq!(vec.len(), 0;
         assert!(vec.is_empty();
         
@@ -156,7 +156,7 @@ mod bounded_stack_tests {
 
     #[test]
     fn test_bounded_stack_creation() -> Result<()> {
-        let stack = BoundedStack::<i32, 10>::new(;
+        let stack = BoundedStack::<i32, 10>::new);
         
         assert_eq!(stack.len(), 0;
         assert_eq!(stack.capacity(), 10;
@@ -168,7 +168,7 @@ mod bounded_stack_tests {
 
     #[test]
     fn test_bounded_stack_push_pop() -> Result<()> {
-        let mut stack = BoundedStack::<i32, 5>::new(;
+        let mut stack = BoundedStack::<i32, 5>::new);
         
         // Push elements
         for i in 0..5 {
@@ -194,7 +194,7 @@ mod bounded_stack_tests {
 
     #[test]
     fn test_bounded_stack_peek() -> Result<()> {
-        let mut stack = BoundedStack::<i32, 5>::new(;
+        let mut stack = BoundedStack::<i32, 5>::new);
         
         // Empty stack peek
         assert_eq!(stack.peek()?, None;
@@ -245,7 +245,7 @@ mod bounded_stack_tests {
 
     #[test]
     fn test_bounded_stack_iterator() -> Result<()> {
-        let mut stack = BoundedStack::<i32, 5>::new(;
+        let mut stack = BoundedStack::<i32, 5>::new);
         
         let values = [10, 20, 30, 40, 50];
         for &value in &values {
@@ -272,7 +272,7 @@ mod bounded_queue_tests {
 
     #[test]
     fn test_bounded_queue_creation() -> Result<()> {
-        let queue = BoundedQueue::<i32, 10>::new(;
+        let queue = BoundedQueue::<i32, 10>::new);
         
         assert_eq!(queue.len(), 0;
         assert_eq!(queue.capacity(), 10;
@@ -284,7 +284,7 @@ mod bounded_queue_tests {
 
     #[test]
     fn test_bounded_queue_enqueue_dequeue() -> Result<()> {
-        let mut queue = BoundedQueue::<i32, 5>::new(;
+        let mut queue = BoundedQueue::<i32, 5>::new);
         
         // Enqueue elements
         for i in 0..5 {
@@ -310,7 +310,7 @@ mod bounded_queue_tests {
 
     #[test]
     fn test_bounded_queue_front_back() -> Result<()> {
-        let mut queue = BoundedQueue::<i32, 5>::new(;
+        let mut queue = BoundedQueue::<i32, 5>::new);
         
         // Empty queue
         assert_eq!(queue.front()?, None;
@@ -334,7 +334,7 @@ mod bounded_queue_tests {
 
     #[test]
     fn test_bounded_queue_circular_behavior() -> Result<()> {
-        let mut queue = BoundedQueue::<i32, 3>::new(;
+        let mut queue = BoundedQueue::<i32, 3>::new);
         
         // Fill queue
         queue.enqueue(1)?;
@@ -394,9 +394,9 @@ mod collection_integration_tests {
 
     #[test]
     fn test_mixed_collection_usage() -> Result<()> {
-        let mut vec = BoundedVec::<i32, 10>::new(;
-        let mut stack = BoundedStack::<i32, 10>::new(;
-        let mut queue = BoundedQueue::<i32, 10>::new(;
+        let mut vec = BoundedVec::<i32, 10>::new);
+        let mut stack = BoundedStack::<i32, 10>::new);
+        let mut queue = BoundedQueue::<i32, 10>::new);
         
         let test_data = [1, 2, 3, 4, 5];
         
@@ -423,7 +423,7 @@ mod collection_integration_tests {
     #[test]
     fn test_collection_memory_safety() -> Result<()> {
         // Test that collections don't allow unsafe operations
-        let mut vec = BoundedVec::<i32, 3>::new(;
+        let mut vec = BoundedVec::<i32, 3>::new);
         
         // Fill to capacity
         vec.push(1)?;
@@ -435,14 +435,14 @@ mod collection_integration_tests {
         assert!(vec.push(4).is_err())); // Over capacity
         
         // Same for stack
-        let mut stack = BoundedStack::<i32, 3>::new(;
+        let mut stack = BoundedStack::<i32, 3>::new);
         stack.push(1)?;
         stack.push(2)?;
         stack.push(3)?;
         assert!(stack.push(4).is_err();
         
         // Same for queue
-        let mut queue = BoundedQueue::<i32, 3>::new(;
+        let mut queue = BoundedQueue::<i32, 3>::new);
         queue.enqueue(1)?;
         queue.enqueue(2)?;
         queue.enqueue(3)?;
@@ -459,7 +459,7 @@ mod collection_integration_tests {
             data: Vec<u8>,
         }
         
-        let mut vec = BoundedVec::<TestStruct, 5>::new(;
+        let mut vec = BoundedVec::<TestStruct, 5>::new);
         
         let test_item = TestStruct {
             id: 42,
@@ -482,28 +482,28 @@ mod collection_integration_tests {
         const SIZE: usize = 1000;
         
         // Test vector performance
-        let start = Instant::now(;
-        let mut vec = BoundedVec::<i32, SIZE>::new(;
+        let start = Instant::now);
+        let mut vec = BoundedVec::<i32, SIZE>::new);
         for i in 0..SIZE {
             vec.push(i as i32)?;
         }
-        let vec_time = start.elapsed(;
+        let vec_time = start.elapsed);
         
         // Test stack performance
-        let start = Instant::now(;
-        let mut stack = BoundedStack::<i32, SIZE>::new(;
+        let start = Instant::now);
+        let mut stack = BoundedStack::<i32, SIZE>::new);
         for i in 0..SIZE {
             stack.push(i as i32)?;
         }
-        let stack_time = start.elapsed(;
+        let stack_time = start.elapsed);
         
         // Test queue performance
-        let start = Instant::now(;
-        let mut queue = BoundedQueue::<i32, SIZE>::new(;
+        let start = Instant::now);
+        let mut queue = BoundedQueue::<i32, SIZE>::new);
         for i in 0..SIZE {
             queue.enqueue(i as i32)?;
         }
-        let queue_time = start.elapsed(;
+        let queue_time = start.elapsed);
         
         // All should be reasonably fast (under 10ms for 1000 operations)
         assert!(vec_time.as_millis() < 10);
@@ -523,7 +523,7 @@ mod collection_error_tests {
 
     #[test]
     fn test_collection_error_recovery() -> Result<()> {
-        let mut vec = BoundedVec::<i32, 3>::new(;
+        let mut vec = BoundedVec::<i32, 3>::new);
         
         // Fill to capacity
         vec.push(1)?;

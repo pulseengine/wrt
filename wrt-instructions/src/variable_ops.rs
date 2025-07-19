@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_local_operations() {
-        let mut context = MockVariableContext::new(;
+        let mut context = MockVariableContext::new);
 
         // Set up initial values
         context.set_local(0, Value::I32(42)).unwrap();
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn test_global_operations() {
-        let mut context = MockVariableContext::new(;
+        let mut context = MockVariableContext::new);
 
         // Set up initial values
         context.set_global(0, Value::I32(42)).unwrap();
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_variable_errors() {
-        let mut context = MockVariableContext::new(;
+        let mut context = MockVariableContext::new);
 
         // Test invalid local index
         let result = VariableOp::LocalGet(100).execute(&mut context;

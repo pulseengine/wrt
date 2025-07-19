@@ -251,7 +251,7 @@ impl FutexLike for TockFutex {
             // Check if value has changed
             let current = self.value.load(Ordering::SeqCst;
             if current != expected {
-                return Ok((;
+                return Ok();
             }
 
             // Check callback state
@@ -260,7 +260,7 @@ impl FutexLike for TockFutex {
             match state {
                 x if x == CallbackState::Fired as u32 => {
                     // Wake notification received
-                    return Ok((;
+                    return Ok();
                 }
                 x if x == CallbackState::Timeout as u32 => {
                     // Timeout occurred
@@ -269,7 +269,7 @@ impl FutexLike for TockFutex {
                 _ => {
                     // Continue waiting - yield to scheduler
                     unsafe {
-                        sync_syscall::yield_wait(;
+                        sync_syscall::yield_wait);
                     }
                 }
             }
@@ -319,12 +319,12 @@ impl TockSemaphoreFutex {
 impl FutexLike for TockSemaphoreFutex {
     fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<(), Error> {
         // Simple spin-wait implementation for cases where IPC is not available
-        let start_cycles = Self::get_cycle_count(;
+        let start_cycles = Self::get_cycle_count);
 
         loop {
             let current = self.value.load(Ordering::SeqCst;
             if current != expected {
-                return Ok((;
+                return Ok();
             }
 
             // Check timeout (simplified cycle-based timeout)
@@ -338,7 +338,7 @@ impl FutexLike for TockSemaphoreFutex {
 
             // Yield to scheduler to avoid busy-wait
             unsafe {
-                sync_syscall::yield_for(;
+                sync_syscall::yield_for);
             }
         }
     }
@@ -456,7 +456,7 @@ mod tests {
         assert_eq!(builder.initial_value, 123;
         assert!(!builder.use_ipc);
 
-        let futex = builder.build_semaphore(;
+        let futex = builder.build_semaphore);
         assert_eq!(futex.load(), 123;
     }
 

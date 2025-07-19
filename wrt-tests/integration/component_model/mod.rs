@@ -30,7 +30,7 @@ mod tests {
     
     #[test]
     fn component_model_integration() {
-        let result = run_component_model_tests(;
+        let result = run_component_model_tests);
         assert!(result.is_success(), "Component model tests failed: {:?}", result);
     }
 }

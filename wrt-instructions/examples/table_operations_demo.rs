@@ -102,7 +102,7 @@ fn demonstrate_multiple_table_operations(
     externref_table_type: WrtTableType,
 ) -> Result<()> {
     // Create a table manager and add multiple tables
-    let mut table_manager = TableManager::new(;
+    let mut table_manager = TableManager::new);
     
     let funcref_table = Table::new(funcref_table_type)?;
     let externref_table = Table::new(externref_table_type)?;
@@ -110,7 +110,7 @@ fn demonstrate_multiple_table_operations(
     let funcref_table_index = table_manager.add_table(funcref_table;
     let externref_table_index = table_manager.add_table(externref_table;
     
-    println!("  Created table manager with {} tables", table_manager.table_count(;
+    println!("  Created table manager with {} tables", table_manager.table_count);
     println!("  FuncRef table index: {}", funcref_table_index;
     println!("  ExternRef table index: {}", externref_table_index;
     
@@ -266,7 +266,7 @@ mod tests {
     
     #[test]
     fn test_table_manager_multiple_tables() -> Result<()> {
-        let mut table_manager = TableManager::new(;
+        let mut table_manager = TableManager::new);
         
         let funcref_table_type = WrtTableType {
             element_type: WrtValueType::FuncRef,
@@ -399,7 +399,7 @@ mod tests {
 fn main() -> Result<()> {
     println!("=== Table Operations Demo ===";
     
-    let demo = TableOperationsDemo::new(;
+    let demo = TableOperationsDemo::new);
     demo.demo_table_operations()?;
     demo.demo_error_handling()?;
     

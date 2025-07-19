@@ -202,7 +202,7 @@ impl<T> FuelHandleTable<T> {
             entry.data = Some(data;
             entry.generation = generation;
             entry.state = ResourceState::Available;
-            entry.touch(;
+            entry.touch);
         } else {
             return Err(Error::resource_error("Failed to update handle entry";
         }
@@ -247,7 +247,7 @@ impl<T> FuelHandleTable<T> {
         })?;
         
         // Update access tracking
-        entry.touch(;
+        entry.touch);
         self.stats.total_lookups.fetch_add(1, Ordering::Relaxed;
         self.stats.cache_hits.fetch_add(1, Ordering::Relaxed;
         self.consume_fuel(HANDLE_LOOKUP_FUEL)?;
@@ -274,7 +274,7 @@ impl<T> FuelHandleTable<T> {
         
         // Update state
         entry.state = ResourceState::InUse;
-        entry.touch(;
+        entry.touch);
         
         // Get data
         let data = entry.data.as_mut().ok_or_else(|| {

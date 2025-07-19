@@ -289,7 +289,7 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_resource_table_basic() {
-        let provider = DefaultMemoryProvider::default(;
+        let provider = DefaultMemoryProvider::default);
         let mut table = ResourceTable::<u32, _>::new(provider).unwrap();
         
         // Create owned resource

@@ -9,7 +9,7 @@ mod qm_tests {
 
     #[test]
     fn test_qm_dynamic_loading() {
-        let qm_cap = capabilities::DynamicNNCapability::new(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
         assert!(qm_cap.allows_dynamic_loading();
         
         // QM should allow large models (up to default limit)
@@ -22,8 +22,8 @@ mod qm_tests {
 
     #[test]
     fn test_qm_all_formats_allowed() {
-        let qm_cap = capabilities::DynamicNNCapability::new(;
-        let formats = qm_cap.allowed_formats(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
+        let formats = qm_cap.allowed_formats);
         
         // QM should support all available formats
         assert!(formats.contains(&capabilities::ModelFormat::ONNX);
@@ -35,7 +35,7 @@ mod qm_tests {
 
     #[test]
     fn test_qm_large_tensor_creation() {
-        let qm_cap = capabilities::DynamicNNCapability::new(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
         
         // Test large but reasonable tensor
         let large_dims = TensorDimensions::new(&[100, 100, 10]).unwrap(); // 4MB tensor
@@ -49,7 +49,7 @@ mod qm_tests {
 
     #[test]
     fn test_qm_no_model_restrictions() {
-        let qm_cap = capabilities::DynamicNNCapability::new(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
         
         // QM should approve any model hash (no pre-approval required)
         let random_hash = [0x42u8; 32];
@@ -73,7 +73,7 @@ mod asil_a_tests {
         assert_eq!(asil_a_cap.verification_level(), capabilities::VerificationLevel::Sampling;
         
         // ASIL-A has 50MB model limit
-        let limits = asil_a_cap.resource_limits(;
+        let limits = asil_a_cap.resource_limits);
         assert_eq!(limits.max_model_size, 50 * 1024 * 1024;
         assert_eq!(limits.max_tensor_memory, 20 * 1024 * 1024;
         assert_eq!(limits.max_tensor_dimensions, 6;
@@ -85,7 +85,7 @@ mod asil_a_tests {
     #[test]
     fn test_asil_a_format_restrictions() {
         let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
-        let formats = asil_a_cap.allowed_formats(;
+        let formats = asil_a_cap.allowed_formats);
         
         // ASIL-A only allows well-tested formats
         assert!(formats.contains(&capabilities::ModelFormat::ONNX);
@@ -173,7 +173,7 @@ mod asil_b_tests {
         assert_eq!(asil_b_cap.verification_level(), capabilities::VerificationLevel::Continuous;
         
         // ASIL-B has the strictest limits
-        let limits = asil_b_cap.resource_limits(;
+        let limits = asil_b_cap.resource_limits);
         assert_eq!(limits.max_model_size, 20 * 1024 * 1024); // 20MB
         assert_eq!(limits.max_tensor_memory, 10 * 1024 * 1024); // 10MB
         assert_eq!(limits.max_tensor_dimensions, 4;
@@ -193,7 +193,7 @@ mod asil_b_tests {
     #[test]
     fn test_asil_b_verified_formats_only() {
         let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
-        let formats = asil_b_cap.allowed_formats(;
+        let formats = asil_b_cap.allowed_formats);
         
         // ASIL-B only allows verified, deterministic formats
         assert!(formats.contains(&capabilities::ModelFormat::ONNX);
@@ -279,7 +279,7 @@ mod asil_b_tests {
         let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
         
         // ASIL-B has 1 second execution limit for deterministic execution
-        let limits = asil_b_cap.resource_limits(;
+        let limits = asil_b_cap.resource_limits);
         assert_eq!(limits.max_execution_time_us, 1_000_000;
         
         // This would be enforced during actual execution
@@ -292,14 +292,14 @@ mod compatibility_tests {
 
     #[test]
     fn test_capability_level_hierarchy() {
-        let qm_cap = capabilities::DynamicNNCapability::new(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
         let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
         let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
         
         // Verify hierarchy: QM < ASIL-A < ASIL-B (in terms of restrictions)
-        let qm_limits = qm_cap.resource_limits(;
-        let asil_a_limits = asil_a_cap.resource_limits(;
-        let asil_b_limits = asil_b_cap.resource_limits(;
+        let qm_limits = qm_cap.resource_limits);
+        let asil_a_limits = asil_a_cap.resource_limits);
+        let asil_b_limits = asil_b_cap.resource_limits);
         
         // Model size limits: QM >= ASIL-A >= ASIL-B
         assert!(qm_limits.max_model_size >= asil_a_limits.max_model_size);
@@ -319,7 +319,7 @@ mod compatibility_tests {
         // Create a tensor that should work at all levels
         let small_dims = TensorDimensions::new(&[10, 10]).unwrap(); // 400 bytes
         
-        let qm_cap = capabilities::DynamicNNCapability::new(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
         let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
         let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
         
@@ -345,7 +345,7 @@ mod compatibility_tests {
             format: capabilities::ModelFormat::ONNX, // Supported by all levels
         };
         
-        let qm_cap = capabilities::DynamicNNCapability::new(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
         let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
         let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
         
@@ -363,15 +363,15 @@ mod performance_tests {
     #[test]
     fn test_capability_creation_performance() {
         // Test that capability creation is fast and deterministic
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         
         for _ in 0..1000 {
-            let _qm_cap = capabilities::DynamicNNCapability::new(;
+            let _qm_cap = capabilities::DynamicNNCapability::new);
             let _asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
             let _asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         assert!(duration.as_millis() < 100)); // Should be very fast
     }
 
@@ -384,17 +384,17 @@ mod performance_tests {
         let medium_data = vec![0u8; 1024 * 1024]; // 1MB
         let large_data = vec![0u8; 10 * 1024 * 1024]; // 10MB
         
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         let _small_hash = sha256(&small_data;
-        let small_time = start.elapsed(;
+        let small_time = start.elapsed);
         
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         let _medium_hash = sha256(&medium_data;
-        let medium_time = start.elapsed(;
+        let medium_time = start.elapsed);
         
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         let _large_hash = sha256(&large_data;
-        let large_time = start.elapsed(;
+        let large_time = start.elapsed);
         
         // Verify performance scales reasonably
         assert!(small_time.as_millis() < 10);
@@ -418,17 +418,17 @@ mod performance_tests {
         // Time both operations multiple times
         let iterations = 10000;
         
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         for _ in 0..iterations {
             let _ = asil_b_cap.is_model_approved(&early_diff;
         }
-        let early_time = start.elapsed(;
+        let early_time = start.elapsed);
         
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         for _ in 0..iterations {
             let _ = asil_b_cap.is_model_approved(&late_diff;
         }
-        let late_time = start.elapsed(;
+        let late_time = start.elapsed);
         
         // Times should be very similar (within 10% for constant-time property)
         let time_diff = if early_time > late_time {

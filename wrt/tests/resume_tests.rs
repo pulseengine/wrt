@@ -95,7 +95,7 @@ mod resume_tests {
 
         // Should get an error
         // assert!(result.is_err();
-        // let err = result.unwrap_err(;
+        // let err = result.unwrap_err);
         // assert_eq!(
         //     err.to_string(),
         //     "Execution error: Cannot resume: engine is not paused"
@@ -119,7 +119,7 @@ mod resume_tests {
 
         // The result should be an error
         // assert!(result.is_err();
-        // let err = result.unwrap_err(;
+        // let err = result.unwrap_err);
         // assert_eq!(
         //     err.to_string(),
         //     "Execution error: Insufficient fuel"

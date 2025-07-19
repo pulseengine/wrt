@@ -326,12 +326,12 @@ impl<'a> DwarfDebugInfo<'a> {
     /// Check if debug information is available
     pub fn has_debug_info(&self) -> bool {
         #[cfg(feature = "line-info")]
-        let has_line = self.sections.debug_line.is_some(;
+        let has_line = self.sections.debug_line.is_some);
         #[cfg(not(feature = "line-info"))]
         let has_line = false;
 
         #[cfg(feature = "debug-info")]
-        let has_info = self.sections.debug_info.is_some(;
+        let has_info = self.sections.debug_info.is_some);
         #[cfg(not(feature = "debug-info"))]
         let has_info = false;
 
@@ -472,7 +472,7 @@ mod tests {
     #[test]
     #[cfg(feature = "abbrev")]
     fn test_abbreviation_table() {
-        let abbrev_table = AbbreviationTable::new(;
+        let abbrev_table = AbbreviationTable::new);
         assert!(abbrev_table.is_empty();
     }
 

@@ -373,7 +373,7 @@ impl ResourceTracker {
 
         // Check per-module limit
         let module_threads = {
-            let modules = self.threads_per_module.read(;
+            let modules = self.threads_per_module.read);
             modules
                 .get(&request.module_id)
                 .map_or(0, |count| count.load(Ordering::Acquire))
@@ -385,7 +385,7 @@ impl ResourceTracker {
 
         // Check memory limit
         let module_memory = {
-            let memory = self.memory_per_module.read(;
+            let memory = self.memory_per_module.read);
             memory
                 .get(&request.module_id)
                 .map_or(0, |usage| usage.load(Ordering::Acquire))
@@ -406,7 +406,7 @@ impl ResourceTracker {
 
         // Increment module threads
         {
-            let mut modules = self.threads_per_module.write(;
+            let mut modules = self.threads_per_module.write);
             modules
                 .entry(module_id)
                 .or_insert_with(|| AtomicUsize::new(0))
@@ -415,7 +415,7 @@ impl ResourceTracker {
 
         // Add memory usage
         {
-            let mut memory = self.memory_per_module.write(;
+            let mut memory = self.memory_per_module.write);
             memory
                 .entry(module_id)
                 .or_insert_with(|| AtomicUsize::new(0))
@@ -432,7 +432,7 @@ impl ResourceTracker {
 
         // Decrement module threads
         {
-            let modules = self.threads_per_module.read(;
+            let modules = self.threads_per_module.read);
             if let Some(count) = modules.get(&module_id) {
                 count.fetch_sub(1, Ordering::AcqRel;
             }
@@ -440,7 +440,7 @@ impl ResourceTracker {
 
         // Subtract memory usage
         {
-            let memory = self.memory_per_module.read(;
+            let memory = self.memory_per_module.read);
             if let Some(usage) = memory.get(&module_id) {
                 usage.fetch_sub(stack_size, Ordering::AcqRel;
             }
@@ -508,7 +508,7 @@ mod tests {
 
     #[test]
     fn test_cpu_set() {
-        let mut cpu_set = CpuSet::new(;
+        let mut cpu_set = CpuSet::new);
         assert!(!cpu_set.contains(0);
         
         cpu_set.add(0;
@@ -582,7 +582,7 @@ where
     };
     
     let _handle = builder.spawn(move || {
-        let _ = task(;
+        let _ = task);
     }).map_err(|_e| wrt_error::Error::runtime_execution_error("Failed to spawn thread"))?;
     
     // Create a simplified thread handle

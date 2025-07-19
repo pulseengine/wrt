@@ -61,8 +61,8 @@ mod tests {
 
     impl ASILComplianceHarness {
         fn new_for_asil_level(asil_level: ASILLevel) -> Self {
-            let task_manager = Arc::new(Mutex::new(TaskManager::new(;
-            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new(;
+            let task_manager = Arc::new(Mutex::new(TaskManager::new);
+            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new);
             
             let config = BridgeConfiguration {
                 enable_preemption: true,
@@ -157,7 +157,7 @@ mod tests {
                 ])
             } else {
                 // ASIL Compliance Check: Deterministic wakeup
-                cx.waker().wake_by_ref(;
+                cx.waker().wake_by_ref);
                 Poll::Pending
             }
         }
@@ -186,7 +186,7 @@ mod tests {
         const FUEL_BUDGET: u64 = 1000; // Strict budget
         const MAX_EXECUTIONS: u32 = 10; // Bounded execution
         
-        let mut task_ids = Vec::new(;
+        let mut task_ids = Vec::new);
         
         for i in 0..NUM_TASKS {
             let task_id = {
@@ -402,7 +402,7 @@ mod tests {
         }
 
         // Verify no cross-component interference
-        let channel_stats = harness.channels.get_channel_statistics(;
+        let channel_stats = harness.channels.get_channel_statistics);
         if channel_stats.total_channels_created < 2 {
             harness.report_safety_violation("Channel isolation failed";
         }
@@ -511,9 +511,9 @@ mod tests {
         }
 
         // Verify resource limits were enforced
-        let channel_stats = harness.channels.get_channel_statistics(;
-        let timer_stats = harness.timers.get_timer_statistics(;
-        let sync_stats = harness.sync_primitives.get_sync_statistics(;
+        let channel_stats = harness.channels.get_channel_statistics);
+        let timer_stats = harness.timers.get_timer_statistics);
+        let sync_stats = harness.sync_primitives.get_sync_statistics);
         let bridge_stats = {
             let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()

@@ -75,13 +75,13 @@ mod tests {
     #[test]
     fn test_bounded_container_integration() {
         // Test BoundedVec from wrt-foundation
-        let mut vec = BoundedVec::<u32, 5>::new(;
+        let mut vec = BoundedVec::<u32, 5>::new);
         assert!(vec.push(1).is_ok();
         assert!(vec.push(2).is_ok();
         assert_eq!(vec.len(), 2;
         
         // Test BoundedStack from wrt-foundation
-        let mut stack = BoundedStack::<u32, 5>::new(;
+        let mut stack = BoundedStack::<u32, 5>::new);
         assert!(stack.push(1).is_ok();
         assert!(stack.push(2).is_ok();
         assert_eq!(stack.pop(), Some(2;
@@ -164,7 +164,7 @@ mod tests {
         assert!(module.exports().is_empty();
         
         // Create a new engine
-        let engine = new_engine(;
+        let engine = new_engine);
         assert!(engine.validate_module(&module).is_ok();
     }
     
@@ -178,7 +178,7 @@ mod tests {
         // Test Mutex
         let mutex = Mutex::new(42;
         {
-            let mut guard = mutex.lock(;
+            let mut guard = mutex.lock);
             *guard = 100;
         }
         assert_eq!(*mutex.lock(), 100;
@@ -186,11 +186,11 @@ mod tests {
         // Test RwLock
         let rwlock = RwLock::new(vec![1, 2, 3];
         {
-            let guard = rwlock.read(;
+            let guard = rwlock.read);
             assert_eq!(*guard, vec![1, 2, 3];
         }
         {
-            let mut guard = rwlock.write(;
+            let mut guard = rwlock.write);
             guard.push(4);
         }
         assert_eq!(*rwlock.read(), vec![1, 2, 3, 4];
@@ -221,7 +221,7 @@ mod tests {
         ).unwrap();
         
         // Create engine
-        let engine = new_engine(;
+        let engine = new_engine);
         
         // Validate the module
         assert!(engine.validate_module(&module).is_ok();

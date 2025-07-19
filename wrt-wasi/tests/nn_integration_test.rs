@@ -71,7 +71,7 @@ fn test_nn_subsystem_init() {
     initialize_context_store().unwrap();
     
     // Verify we can get the capability
-    let retrieved = wrt_wasi::nn::get_nn_capability(;
+    let retrieved = wrt_wasi::nn::get_nn_capability);
     assert!(retrieved.is_ok();
 }
 
@@ -84,7 +84,7 @@ fn test_nn_capability_restrictions() {
     };
     
     // Test dynamic capability (QM)
-    let dynamic_cap = DynamicNNCapability::new(;
+    let dynamic_cap = DynamicNNCapability::new);
     let load_op = NNOperation::Load {
         size: 50 * 1024 * 1024,
         format: ModelFormat::ONNX,
@@ -161,7 +161,7 @@ fn test_tensor_operations() {
     use wrt_wasi::nn::{Tensor, TensorDimensions, TensorType};
     use wrt_wasi::nn::capabilities::DynamicNNCapability;
     
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     
     // Create small tensor - should succeed
     let dims = TensorDimensions::new(&[10, 10]).unwrap();

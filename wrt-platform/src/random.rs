@@ -198,7 +198,7 @@ impl PlatformRandom {
         
         if let Ok(mut urandom) = File::open("/dev/urandom") {
             if urandom.read_exact(buffer).is_ok() {
-                return Ok((;
+                return Ok();
             }
         }
         
@@ -269,8 +269,8 @@ impl TestRandom {
     /// Fill a buffer with pseudo-random bytes
     pub fn fill_bytes(&mut self, buffer: &mut [u8]) {
         for chunk in buffer.chunks_mut(8) {
-            let value = self.next_u64(;
-            let bytes = value.to_le_bytes(;
+            let value = self.next_u64);
+            let bytes = value.to_le_bytes);
             for (i, byte) in chunk.iter_mut().enumerate() {
                 if i < bytes.len() {
                     *byte = bytes[i];
@@ -309,10 +309,10 @@ mod tests {
         let mut rng3 = TestRandom::new(54321;
         
         // Same seed should produce same sequence
-        assert_eq!(rng1.next_u64(), rng2.next_u64(;
+        assert_eq!(rng1.next_u64(), rng2.next_u64);
         
         // Different seed should produce different sequence
-        assert_ne!(rng1.next_u64(), rng3.next_u64(;
+        assert_ne!(rng1.next_u64(), rng3.next_u64);
     }
     
     #[cfg(feature = "std")]

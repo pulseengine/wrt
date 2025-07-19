@@ -372,7 +372,7 @@ impl ComponentLoader {
 
     /// Convert parsed component to runtime component
     pub fn to_runtime_component(&self, parsed: &ParsedComponent) -> WrtResult<Component> {
-        let mut component = Component::new(WrtComponentType::default(;
+        let mut component = Component::new(WrtComponentType::default);
 
         // Convert types
         for component_type in &parsed.types {
@@ -616,7 +616,7 @@ mod tests {
 
     #[test]
     fn test_component_loader_creation() {
-        let loader = ComponentLoader::new(;
+        let loader = ComponentLoader::new);
         assert_eq!(loader.validation_level, ValidationLevel::Full;
         assert_eq!(loader.max_component_size, 16 * 1024 * 1024;
     }
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     fn test_canonical_options_default() {
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
         assert_eq!(options.string_encoding, Some(StringEncoding::Utf8;
         assert_eq!(options.memory, None;
         assert_eq!(options.realloc, None;
@@ -668,7 +668,7 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_component() {
-        let loader = ComponentLoader::new(;
+        let loader = ComponentLoader::new);
 
         // Test empty binary
         let result = loader.parse_component(&[];
@@ -681,7 +681,7 @@ mod tests {
 
     #[test]
     fn test_parse_minimal_component() {
-        let loader = ComponentLoader::new(;
+        let loader = ComponentLoader::new);
 
         // Create minimal valid component binary (simplified)
         let binary = b"\x00asm\x0d\x00\x01\x00"; // Magic + version

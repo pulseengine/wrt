@@ -18,7 +18,7 @@ use wrt_format::{
 #[test]
 fn test_component_name_section() {
     // Create a component with a name
-    let mut component = Component::new(;
+    let mut component = Component::new);
     component.name = Some("test_component".to_string();
 
     // Add some basic content to make it a valid component
@@ -90,7 +90,7 @@ fn test_standalone_name_section() {
     assert_eq!(decoded.component_name, original.component_name;
 
     // Check sort names
-    assert_eq!(decoded.sort_names.len(), original.sort_names.len(;
+    assert_eq!(decoded.sort_names.len(), original.sort_names.len);
 
     for i in 0..original.sort_names.len() {
         let (sort1, names1) = &original.sort_names[i];
@@ -101,7 +101,7 @@ fn test_standalone_name_section() {
         assert!(matches!(sort1, _sort2);
 
         // Compare name maps
-        assert_eq!(names1.len(), names2.len(;
+        assert_eq!(names1.len(), names2.len);
         for j in 0..names1.len() {
             assert_eq!(names1[j].0, names2[j].0;
             assert_eq!(names1[j].1, names2[j].1;
@@ -135,12 +135,12 @@ fn test_custom_section_with_name() {
     let name_section_data = generate_component_name_section(&actual_name_section).unwrap();
 
     // Create custom section content with "name" as the identifier
-    let mut custom_section_content = Vec::new(;
+    let mut custom_section_content = Vec::new);
     custom_section_content.extend_from_slice(&binary::write_string("name";
     custom_section_content.extend_from_slice(&name_section_data;
 
     // Create a component with just the custom section
-    let mut binary = Vec::new(;
+    let mut binary = Vec::new);
 
     // Component preamble
     binary.extend_from_slice(&binary::COMPONENT_MAGIC;

@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_generic_factory() {
         static COORDINATOR: GenericMemoryCoordinator<TestCrateId, 10> =
-            GenericMemoryCoordinator::new(;
+            GenericMemoryCoordinator::new);
 
         // Initialize
         COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap();

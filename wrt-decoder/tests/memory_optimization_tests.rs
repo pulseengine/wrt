@@ -12,7 +12,7 @@ fn test_memory_optimized_parsing() {
         0x01, 0x00, 0x00, 0x00, // version
     ];
 
-    let provider = NoStdProvider::<1024>::default(;
+    let provider = NoStdProvider::<1024>::default);
     let result = decode_module_with_provider(&wasm_bytes, provider;
 
     // Should parse without error (even if empty)

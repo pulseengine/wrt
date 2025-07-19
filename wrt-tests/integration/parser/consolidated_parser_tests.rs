@@ -26,7 +26,7 @@ pub fn create_wasm_header() -> Vec<u8> {
 
 /// Consolidated helper to create a minimal test module with an import
 pub fn create_test_module(module_name: &str, import_name: &str) -> Vec<u8> {
-    let mut module = create_wasm_header(;
+    let mut module = create_wasm_header);
 
     // Type section (empty)
     module.extend_from_slice(&[0x01, 0x04, 0x01, 0x60, 0x00, 0x00];
@@ -53,7 +53,7 @@ pub fn create_test_module(module_name: &str, import_name: &str) -> Vec<u8> {
 
 /// Create a test module with comprehensive sections
 pub fn create_comprehensive_test_module() -> Vec<u8> {
-    let mut module = create_wasm_header(;
+    let mut module = create_wasm_header);
 
     // Type section with one function signature: (i32, i32) -> i32
     module.extend_from_slice(&[
@@ -113,7 +113,7 @@ pub fn create_comprehensive_test_module() -> Vec<u8> {
 
 /// Create a multi-import test module
 pub fn create_multi_import_module() -> Vec<u8> {
-    let mut module = create_wasm_header(;
+    let mut module = create_wasm_header);
 
     // Type section
     module.extend_from_slice(&[0x01, 0x04, 0x01, 0x60, 0x00, 0x00];
@@ -146,7 +146,7 @@ pub fn create_multi_import_module() -> Vec<u8> {
 /// Helper function consolidated from individual tests
 pub fn get_required_builtins(module: &[u8]) -> Result<HashSet<BuiltinType>> {
     let builtin_names = parser::scan_for_builtins(module)?;
-    let mut required_builtins = HashSet::new(;
+    let mut required_builtins = HashSet::new);
     
     for name in builtin_names {
         match name.as_str() {
@@ -209,7 +209,7 @@ mod basic_parser_tests {
 
     #[test]
     fn test_multiple_builtins() {
-        let module = create_multi_import_module(;
+        let module = create_multi_import_module);
         
         let required_builtins = get_required_builtins(&module).unwrap();
         assert!(required_builtins.contains(&BuiltinType::ResourceCreate);
@@ -235,7 +235,7 @@ mod comprehensive_parser_tests {
 
     #[test]
     fn test_comprehensive_module_parsing() {
-        let module = create_comprehensive_test_module(;
+        let module = create_comprehensive_test_module);
         
         // Test that we can parse all sections
         let mut parser = Parser::new(&module;
@@ -276,7 +276,7 @@ mod comprehensive_parser_tests {
 
     #[test]
     fn test_import_section_parsing() {
-        let module = create_comprehensive_test_module(;
+        let module = create_comprehensive_test_module);
         
         let mut parser = Parser::new(&module;
         let mut found_import_section = false;
@@ -307,7 +307,7 @@ mod comprehensive_parser_tests {
 
     #[test]
     fn test_section_reader_functionality() {
-        let module = create_comprehensive_test_module(;
+        let module = create_comprehensive_test_module);
         
         let mut parser = Parser::new(&module;
         
@@ -316,11 +316,11 @@ mod comprehensive_parser_tests {
                 Ok(payload) => {
                     match payload {
                         Payload::ImportSection(reader) => {
-                            let section_size = reader.get_count(;
+                            let section_size = reader.get_count);
                             assert_eq!(section_size, 1;
                         }
                         Payload::FunctionSection(reader) => {
-                            let section_size = reader.get_count(;
+                            let section_size = reader.get_count);
                             assert_eq!(section_size, 1;
                         }
                         Payload::End => break,
@@ -350,13 +350,13 @@ mod integration_parser_tests {
         
         // Test wrt-decoder parser
         let mut decoder_parser = Parser::new(&module;
-        let decoder_result = decoder_parser.parse(;
+        let decoder_result = decoder_parser.parse);
         assert!(decoder_result.is_ok();
     }
 
     #[test]
     fn test_builtin_detection_across_parsers() {
-        let module = create_multi_import_module(;
+        let module = create_multi_import_module);
         
         // Test that both parsers detect the same information
         let builtins = parser::scan_for_builtins(&module).unwrap();
@@ -397,7 +397,7 @@ mod integration_parser_tests {
         
         // Test decoder parser error handling
         let mut decoder_parser = Parser::new(&invalid_module;
-        let decoder_result = decoder_parser.parse(;
+        let decoder_result = decoder_parser.parse);
         // Note: Some parsers may be more tolerant than others
     }
 }
@@ -445,7 +445,7 @@ mod validation_parser_tests {
 
     #[test]
     fn test_truncated_module_handling() {
-        let mut module = create_comprehensive_test_module(;
+        let mut module = create_comprehensive_test_module);
         
         // Truncate the module at various points
         for truncate_at in [10, 20, 30, 40] {
@@ -474,10 +474,10 @@ mod validation_parser_tests {
 
     #[test]
     fn test_section_boundary_validation() {
-        let module = create_comprehensive_test_module(;
+        let module = create_comprehensive_test_module);
         
         let mut parser = Parser::new(&module;
-        let mut sections_seen = Vec::new(;
+        let mut sections_seen = Vec::new);
         
         loop {
             match parser.parse() {
@@ -512,15 +512,15 @@ mod performance_parser_tests {
 
     #[test]
     fn test_parser_performance() {
-        let module = create_comprehensive_test_module(;
+        let module = create_comprehensive_test_module);
         
-        let start = Instant::now(;
+        let start = Instant::now);
         
         for _ in 0..1000 {
             let _builtins = parser::scan_for_builtins(&module).unwrap();
         }
         
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         
         // Parser should complete 1000 iterations in reasonable time
         assert!(duration.as_secs() < 1, "Parser performance regression detected");
@@ -529,14 +529,14 @@ mod performance_parser_tests {
     #[test]
     fn test_large_module_parsing() {
         // Create a module with many imports
-        let mut module = create_wasm_header(;
+        let mut module = create_wasm_header);
         
         // Type section
         module.extend_from_slice(&[0x01, 0x04, 0x01, 0x60, 0x00, 0x00];
         
         // Large import section
         let import_count = 100;
-        let mut import_section = Vec::new(;
+        let mut import_section = Vec::new);
         import_section.push(import_count); // Number of imports
         
         for i in 0..import_count {
@@ -544,9 +544,9 @@ mod performance_parser_tests {
             let import_name = format!("import_{}", i;
             
             import_section.push(module_name.len() as u8;
-            import_section.extend_from_slice(module_name.as_bytes(;
+            import_section.extend_from_slice(module_name.as_bytes);
             import_section.push(import_name.len() as u8;
-            import_section.extend_from_slice(import_name.as_bytes(;
+            import_section.extend_from_slice(import_name.as_bytes);
             import_section.push(0x00); // Function import
             import_section.push(0x00); // Type index
         }
@@ -556,9 +556,9 @@ mod performance_parser_tests {
         module.extend_from_slice(&import_section;
         
         // Test parsing performance
-        let start = Instant::now(;
+        let start = Instant::now);
         let _builtins = parser::scan_for_builtins(&module).unwrap();
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
         
         assert!(duration.as_millis() < 100, "Large module parsing too slow");
     }

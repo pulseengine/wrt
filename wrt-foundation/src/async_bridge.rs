@@ -36,7 +36,7 @@ impl<T: Clone + Send + 'static + Unpin> Future for ComponentFutureBridge<T> {
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Get mutable reference to the inner data
-        let this = self.get_mut(;
+        let this = self.get_mut);
 
         // Check Component Model future status
         match this.component_future.poll_status() {
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_async_runtime_creation() {
-        let runtime = AsyncRuntime::new(;
+        let runtime = AsyncRuntime::new);
         assert!(runtime.executor.is_running();
     }
 }

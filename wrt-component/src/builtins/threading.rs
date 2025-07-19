@@ -185,7 +185,7 @@ impl ThreadManager {
                     let result = thread_result.read()
                         .ok()
                         .and_then(|guard| guard.clone())
-                        .unwrap_or_default(;
+                        .unwrap_or_default);
                     Ok(result)
                 }
                 Err(e) => {
@@ -365,7 +365,7 @@ impl ThreadManager {
                 let mut guard = lock.lock().unwrap();
 
                 // Swap the data
-                let previous = guard.take(;
+                let previous = guard.take);
                 *guard = data;
 
                 Ok(previous)
@@ -437,11 +437,11 @@ impl ThreadManager {
                 let mut guard = lock.lock().unwrap();
 
                 // Swap the data
-                let previous = guard.take(;
+                let previous = guard.take);
                 *guard = data;
 
                 // Signal one waiting thread
-                cvar.notify_one(;
+                cvar.notify_one);
 
                 Ok(previous)
             }
@@ -500,7 +500,7 @@ impl ThreadManager {
                 let mut guard = lock.write().unwrap();
 
                 // Swap the data
-                let previous = guard.take(;
+                let previous = guard.take);
                 *guard = data;
 
                 Ok(previous)
@@ -560,7 +560,7 @@ impl BuiltinHandler for ThreadingSpawnHandler {
         };
 
         // Extract function arguments
-        let function_args = args[1..].to_vec(;
+        let function_args = args[1..].to_vec);
 
         // Create a clone of the executor
         let executor = self.executor.clone();
@@ -678,7 +678,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
         match op_type {
             "create-mutex" => {
                 // Create a new mutex
-                let mutex_id = self.thread_manager.create_mutex(;
+                let mutex_id = self.thread_manager.create_mutex);
                 Ok(vec![ComponentValue::U64(mutex_id)])
             }
             "lock-mutex" => {
@@ -705,7 +705,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
             }
             "create-condvar" => {
                 // Create a new condition variable
-                let condvar_id = self.thread_manager.create_condvar(;
+                let condvar_id = self.thread_manager.create_condvar);
                 Ok(vec![ComponentValue::U64(condvar_id)])
             }
             "wait-condvar" => {
@@ -754,7 +754,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
             }
             "create-rwlock" => {
                 // Create a new read-write lock
-                let rwlock_id = self.thread_manager.create_rwlock(;
+                let rwlock_id = self.thread_manager.create_rwlock);
                 Ok(vec![ComponentValue::U64(rwlock_id)])
             }
             "read-rwlock" => {
@@ -812,7 +812,7 @@ impl BuiltinHandler for ThreadingSyncHandler {
 pub fn create_threading_handlers(
     executor: Arc<dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync>,
 ) -> Vec<Box<dyn BuiltinHandler>> {
-    let thread_manager = Arc::new(ThreadManager::new(;
+    let thread_manager = Arc::new(ThreadManager::new);
 
     vec![
         Box::new(ThreadingSpawnHandler::new(thread_manager.clone(), executor)),
@@ -872,7 +872,7 @@ mod tests {
 
     #[test]
     fn test_thread_manager_spawn_and_join() {
-        let manager = ThreadManager::new(;
+        let manager = ThreadManager::new);
 
         // Spawn a thread
         let thread_id = manager
@@ -888,7 +888,7 @@ mod tests {
 
     #[test]
     fn test_thread_manager_async_join() {
-        let manager = ThreadManager::new(;
+        let manager = ThreadManager::new);
 
         // Spawn a thread that sleeps
         let thread_id = manager.spawn(2, vec![ComponentValue::U32(50)], test_executor).unwrap();
@@ -914,7 +914,7 @@ mod tests {
 
     #[test]
     fn test_thread_manager_error() {
-        let manager = ThreadManager::new(;
+        let manager = ThreadManager::new);
 
         // Spawn a thread that returns an error
         let thread_id = manager.spawn(3, vec![], test_executor).unwrap();
@@ -930,7 +930,7 @@ mod tests {
 
     #[test]
     fn test_thread_spawn_handler() {
-        let thread_manager = Arc::new(ThreadManager::new(;
+        let thread_manager = Arc::new(ThreadManager::new);
         let executor = Arc::new(test_executor;
         let handler = ThreadingSpawnHandler::new(thread_manager.clone(), executor;
 
@@ -963,7 +963,7 @@ mod tests {
 
     #[test]
     fn test_thread_join_handler() {
-        let thread_manager = Arc::new(ThreadManager::new(;
+        let thread_manager = Arc::new(ThreadManager::new);
         let executor = Arc::new(test_executor;
 
         // Spawn a thread
@@ -989,7 +989,7 @@ mod tests {
 
     #[test]
     fn test_thread_sync_handler() {
-        let thread_manager = Arc::new(ThreadManager::new(;
+        let thread_manager = Arc::new(ThreadManager::new);
         let handler = ThreadingSyncHandler::new(thread_manager;
 
         // Test creating a mutex

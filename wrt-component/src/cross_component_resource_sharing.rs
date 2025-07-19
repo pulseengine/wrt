@@ -906,7 +906,7 @@ impl CrossComponentResourceSharingManager {
     }
 
     fn count_active_agreements(&self) -> usize {
-        let current_time = self.get_current_time(;
+        let current_time = self.get_current_time);
 
         self.sharing_agreements
             .values()
@@ -1008,7 +1008,7 @@ mod tests {
 
     #[test]
     fn test_sharing_statistics() {
-        let stats = SharingStatistics::default(;
+        let stats = SharingStatistics::default);
         assert_eq!(stats.total_agreements, 0;
         assert_eq!(stats.active_agreements, 0;
         assert_eq!(stats.total_shared_resources, 0;

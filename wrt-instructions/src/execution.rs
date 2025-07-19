@@ -64,7 +64,7 @@ pub trait PureExecutionContext {
 /// use wrt_instructions::execution::PureExecutionContext;
 /// use wrt_foundation::values::Value;
 ///
-/// let mut context = ExecutionContext::new(;
+/// let mut context = ExecutionContext::new);
 /// context.push_value(Value::I32(42)).unwrap();
 /// let value = context.pop_value().unwrap();
 /// assert_eq!(value, Value::I32(42;
@@ -98,9 +98,9 @@ impl ExecutionContext {
     /// Returns the current stack as a slice
     pub fn stack(&self) -> &[Value] {
         #[cfg(feature = "safety")]
-        return self.stack.as_slice(;
+        return self.stack.as_slice);
         #[cfg(not(feature = "safety"))]
-        return self.stack.as_slice(;
+        return self.stack.as_slice);
     }
 }
 
@@ -198,9 +198,9 @@ impl TestExecutionContext {
     /// Returns a reference to the current stack as a slice.
     pub fn stack(&self) -> &[Value] {
         #[cfg(feature = "safety")]
-        return self.stack.as_slice(;
+        return self.stack.as_slice);
         #[cfg(not(feature = "safety"))]
-        return self.stack.as_slice(;
+        return self.stack.as_slice);
     }
 }
 
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_execution_context() {
-        let mut context = TestExecutionContext::new(;
+        let mut context = TestExecutionContext::new);
 
         // Test pushing and popping values
         PureExecutionContext::push_value(&mut context, Value::I32(42)).unwrap();

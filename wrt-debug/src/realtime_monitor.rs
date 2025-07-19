@@ -205,7 +205,7 @@ impl RealtimeMonitor {
 
                         // Maintain history size
                         while history_guard.len() > config.history_size {
-                            history_guard.pop_front(;
+                            history_guard.pop_front);
                         }
                     }
 
@@ -245,7 +245,7 @@ impl RealtimeMonitor {
 
         use wrt_foundation::monitoring::MEMORY_MONITOR;
 
-        let monitor_stats = MEMORY_MONITOR.get_statistics(;
+        let monitor_stats = MEMORY_MONITOR.get_statistics);
         let total_allocated = 0; // TODO: Get from capability context
 
         // Collect per-crate utilization
@@ -392,13 +392,13 @@ impl RealtimeMonitor {
             if config.console_output {
                 eprintln!("Failed to create output directory: {}", e;
             }
-            return Ok((;
+            return Ok();
         }
 
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
-            .as_secs(;
+            .as_secs);
 
         // Note: Visualization features will be restored when budget_visualization
         // module is available
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_monitor_config_default() {
-        let config = MonitorConfig::default(;
+        let config = MonitorConfig::default);
         assert_eq!(config.interval_ms, 1000;
         assert_eq!(config.alert_threshold, 80;
         assert_eq!(config.critical_threshold, 95;
@@ -528,7 +528,7 @@ mod tests {
 
     #[test]
     fn test_sample_collection() {
-        let _ = wrt_foundation::memory_system_initializer::presets::test(;
+        let _ = wrt_foundation::memory_system_initializer::presets::test);
 
         let sample = RealtimeMonitor::collect_sample(0;
         assert!(sample.is_ok();
@@ -540,7 +540,7 @@ mod tests {
 
     #[test]
     fn test_monitor_creation() {
-        let config = MonitorConfig::default(;
+        let config = MonitorConfig::default);
         let monitor = RealtimeMonitor::new(config;
 
         assert!(!monitor.is_active();
@@ -548,13 +548,13 @@ mod tests {
 
     #[test]
     fn test_global_monitor_init() {
-        let config = MonitorConfig::default(;
+        let config = MonitorConfig::default);
 
         // This might fail if already initialized, which is okay
         let _ = init_global_monitor(config;
 
         // Should be able to get current sample
-        let sample = get_current_sample(;
+        let sample = get_current_sample);
         match sample {
             Ok(_) => {},  // Success
             Err(_) => {}, // Expected if memory system not initialized

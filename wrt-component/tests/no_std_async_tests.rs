@@ -23,10 +23,10 @@ use wrt_foundation::{component_value::ComponentValue, types::ValueType};
 #[test]
 fn test_async_context_no_std() {
     // Clear any existing context
-    let _ = AsyncContextManager::context_pop(;
+    let _ = AsyncContextManager::context_pop);
 
     // Test basic context operations
-    let context = AsyncContext::new(;
+    let context = AsyncContext::new);
     AsyncContextManager::context_set(context).unwrap();
 
     // Set a value with bounded string key
@@ -228,7 +228,7 @@ fn test_memory_efficiency_no_std() {
     // Verify that our no_std implementations are memory efficient
 
     // Small context
-    let context = AsyncContext::new(;
+    let context = AsyncContext::new);
     // In no_std, this uses BoundedMap with fixed capacity
 
     // Small task registry

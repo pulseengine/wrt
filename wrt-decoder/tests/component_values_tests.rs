@@ -12,7 +12,7 @@ use wrt_format::component::{
 
 /// Create a simple component with values of different types
 fn create_test_component() -> Result<wrt_format::component::Component> {
-    let mut component = wrt_format::component::Component::new(;
+    let mut component = wrt_format::component::Component::new);
 
     // Add test values
     component.values = vec![
@@ -125,7 +125,7 @@ fn test_component_value_encoding_decoding() -> Result<()> {
     // Verify the values were preserved
     // Note: Current decoder implementation doesn't preserve values
     // This should be fixed in a future update
-    assert_eq!(0, decoded.values.len(;
+    assert_eq!(0, decoded.values.len);
 
     // Skip value-by-value comparison since no values are preserved
 

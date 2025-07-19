@@ -63,21 +63,21 @@ fuzz_target!(|input: FuzzInput| {
                     let _ = stack.push(value);
                 }
                 Operation::Pop => {
-                    let _ = stack.pop(;
+                    let _ = stack.pop);
                 }
                 Operation::Peek => {
-                    let _ = stack.peek(;
+                    let _ = stack.peek);
                 }
                 Operation::Clear => {
-                    stack.clear(;
+                    stack.clear);
                 }
                 Operation::Validate => {
-                    let _ = stack.validate(;
+                    let _ = stack.validate);
                 }
                 Operation::CheckCapacity => {
-                    let _ = stack.available_capacity(;
-                    let _ = stack.is_full(;
-                    let _ = stack.len(;
+                    let _ = stack.available_capacity);
+                    let _ = stack.is_full);
+                    let _ = stack.len);
                 }
                 Operation::ManipulateInternals { operation_type, value } => {
                     // This simulates corruption or direct manipulation
@@ -89,7 +89,7 @@ fuzz_target!(|input: FuzzInput| {
                                 // This is using internal knowledge of the BoundedStack implementation
                                 unsafe {
                                     // Get access to the internal Vec
-                                    let data_ptr = stack.as_ptr(;
+                                    let data_ptr = stack.as_ptr);
                                     if !data_ptr.is_null() && stack.len() > 0 {
                                         // Modify the last element (top of stack) 
                                         let top_index = stack.len() - 1;
@@ -104,9 +104,9 @@ fuzz_target!(|input: FuzzInput| {
                                     let _ = stack.push(value);
                                 }
                                 if !stack.is_empty() {
-                                    let _ = stack.pop(;
+                                    let _ = stack.pop);
                                 }
-                                let _ = stack.validate(;
+                                let _ = stack.validate);
                             }
                         }
                     }
@@ -116,5 +116,5 @@ fuzz_target!(|input: FuzzInput| {
     }
     
     // Final validation to check if corruption was detected
-    let _ = stack.validate(;
+    let _ = stack.validate);
 };

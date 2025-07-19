@@ -556,7 +556,7 @@ mod tests {
 
     #[test]
     fn namespace_from_str_empty_parts() {
-        let provider = StdProvider::new(Vec::new(;
+        let provider = StdProvider::new(Vec::new);
         let ns = Namespace::from_str("foo::bar", provider).unwrap(); // Handles empty part
         assert_eq!(ns.elements.len(), 2;
         assert_eq!(ns.elements.get(0).unwrap().as_str().unwrap(), "foo";

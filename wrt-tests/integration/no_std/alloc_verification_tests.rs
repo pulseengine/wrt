@@ -99,13 +99,13 @@ mod tests {
     #[test]
     fn test_component_value_store() {
         // Create a component value store builder
-        let mut builder = ComponentValueStoreBuilder::new(;
+        let mut builder = ComponentValueStoreBuilder::new);
         
         // Binary std/no_std choice
         let string_id = builder.add_string("hello world";
         
         // Build the store
-        let store = builder.build(;
+        let store = builder.build);
         
         // Test retrieving values
         let retrieved = store.get_string(string_id).unwrap();
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn test_resource_management() {
         // Binary std/no_std choice
-        let mut resource_manager = ResourceManager::new(;
+        let mut resource_manager = ResourceManager::new);
         
         // Test resource creation
         let resource_id = resource_manager.create_resource(
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_bounded_vec_with_complex_type() {
         // Binary std/no_std choice
-        let mut vec = BoundedVec::<String, 5>::new(;
+        let mut vec = BoundedVec::<String, 5>::new);
         
         // Add strings to it
         assert!(vec.push("string1".to_string()).is_ok();
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn test_component_builder() {
         // Binary std/no_std choice
-        let mut builder = ComponentBuilder::new(;
+        let mut builder = ComponentBuilder::new);
         
         // Binary std/no_std choice
         let type_id = ComponentTypeId::Func(0;
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn test_buffer_pool_allocations() {
         // Create a buffer pool
-        let mut pool = BufferPool::new(;
+        let mut pool = BufferPool::new);
         
         // Allocate multiple buffers of different sizes
         let buffer1 = pool.allocate(100).unwrap();

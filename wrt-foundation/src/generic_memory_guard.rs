@@ -80,7 +80,7 @@ where
     /// * `coordinator` - The coordinator for tracking allocations
     /// * `crate_id` - The crate requesting the allocation
     pub fn new(provider: P, coordinator: &'static C, crate_id: I) -> Result<Self> {
-        let size = provider.allocation_size(;
+        let size = provider.allocation_size);
 
         // Register with coordinator
         let allocation_id = coordinator.register_allocation(crate_id, size)?;
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn test_generic_guard() {
         static COORDINATOR: GenericMemoryCoordinator<TestCrateId, 10> =
-            GenericMemoryCoordinator::new(;
+            GenericMemoryCoordinator::new);
 
         // Initialize coordinator
         COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap();

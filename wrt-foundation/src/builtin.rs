@@ -304,7 +304,7 @@ impl BuiltinType {
     #[must_use]
     pub fn all_available(
     ) -> BoundedVec<Self, MAX_BUILTIN_TYPES, NoStdProvider<ALL_AVAILABLE_PROVIDER_CAPACITY>> {
-        let provider = NoStdProvider::<ALL_AVAILABLE_PROVIDER_CAPACITY>::default(;
+        let provider = NoStdProvider::<ALL_AVAILABLE_PROVIDER_CAPACITY>::default);
         let mut result: BoundedVec<Self, MAX_BUILTIN_TYPES, _> = BoundedVec::new(provider)
             .expect("Static BoundedVec init failed for BuiltinType::all_available");
 
@@ -388,7 +388,7 @@ mod tests {
     #[test]
     fn test_all_available() {
         // Should at least contain the resource built-ins
-        let available = BuiltinType::all_available(;
+        let available = BuiltinType::all_available);
         assert!(available.contains(&BuiltinType::ResourceCreate);
         assert!(available.contains(&BuiltinType::ResourceDrop);
         assert!(available.contains(&BuiltinType::ResourceRep);

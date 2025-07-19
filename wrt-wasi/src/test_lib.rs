@@ -27,8 +27,8 @@ mod tests {
 
     #[test]
     fn verify_safety_enforcement() {
-        let level = test_safety_level(;
-        let max_size = test_max_allocation(;
+        let level = test_safety_level);
+        let max_size = test_max_allocation);
         
         println!("Safety level: {}", level;
         println!("Max allocation: {} bytes", max_size;

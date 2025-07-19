@@ -215,12 +215,12 @@ fn test_run_all_spec_tests() -> Result<()> {
 
     if !testsuite_path.exists() {
         println!("Test suite directory not found, skipping spec tests.";
-        return Ok((;
+        return Ok();
     }
 
     for entry in fs::read_dir(testsuite_path).map_err(|e| WrtError::IO(e.to_string()))? {
         let entry = entry.map_err(|e| WrtError::IO(e.to_string()))?;
-        let path = entry.path(;
+        let path = entry.path);
         if path.is_file() && path.extension().map_or(false, |ext| ext == "wast") {
             println!("Running test: {:?}", path;
             // TODO: Implement wast parsing and execution logic here

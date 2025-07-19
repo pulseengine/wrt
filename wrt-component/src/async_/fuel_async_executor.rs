@@ -649,7 +649,7 @@ impl ExecutionContext {
     /// Create a new execution context for the given ASIL configuration
     pub fn new(asil_config: ASILExecutionConfig) -> Self {
         // Get stack depth limit from configuration
-        let max_stack_depth = asil_config.limits.get_call_depth_limit(;
+        let max_stack_depth = asil_config.limits.get_call_depth_limit);
 
         Self {
             component_instance: None,
@@ -905,7 +905,7 @@ impl ExecutionContext {
                 },
                 ResumptionCondition::TimeElapsed { duration_ms } => {
                     // Check if enough time has elapsed
-                    let current_time = self.get_deterministic_timestamp(;
+                    let current_time = self.get_deterministic_timestamp);
                     let elapsed = current_time.saturating_sub(yield_point.yield_timestamp;
                     Ok(elapsed >= (*duration_ms as u64))
                 },
@@ -1362,7 +1362,7 @@ impl FuelAsyncExecutor {
     /// Clear fuel alerts
     pub fn clear_fuel_alerts(&self) {
         if let Some(monitor) = &self.fuel_monitor {
-            monitor.clear_alerts(;
+            monitor.clear_alerts);
         }
     }
 
@@ -1865,7 +1865,7 @@ impl FuelAsyncExecutor {
 
         // Clear ready queue
         if let Ok(mut queue) = self.ready_queue.lock() {
-            queue.clear(;
+            queue.clear);
         }
         
         self.executor_state = ExecutorState::Stopped;
@@ -1903,7 +1903,7 @@ impl FuelAsyncExecutor {
 
     fn consume_task_fuel(&self, task: &FuelAsyncTask, amount: u64) -> Result<(), Error> {
         if !self.should_check_fuel(task) {
-            return Ok((;
+            return Ok();
         }
 
         // Check if task has sufficient fuel budget
@@ -1921,7 +1921,7 @@ impl FuelAsyncExecutor {
                         // Credit covered the deficit
                         task.fuel_consumed.fetch_add(amount, Ordering::AcqRel;
                         self.consume_global_fuel(amount)?;
-                        return Ok((;
+                        return Ok();
                     }
                     // Partial credit - reduce deficit
                     let remaining_deficit = deficit - credit_used;
@@ -2062,7 +2062,7 @@ impl FuelAsyncExecutor {
 
         // Fallback to original execution if no ASIL executor
         // Consume fuel for execution step based on configuration
-        let step_fuel = task.execution_context.asil_config.limits.get_fuel_limit(;
+        let step_fuel = task.execution_context.asil_config.limits.get_fuel_limit);
         
         task.execution_context.consume_fuel(step_fuel;
         self.consume_task_fuel(task, step_fuel)?;
@@ -2160,17 +2160,17 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with ASIL-D constraints from configuration
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new(;
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
         
         // Set fuel limit from configuration
-        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit(;
+        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit);
         engine.set_fuel(Some(fuel_limit;
         
         // Enable deterministic mode
         engine.set_deterministic_mode(true;
         
         // Set instructions per step from configuration
-        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit(;
+        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit);
         engine.set_max_instructions_per_step(max_instructions;
         
         // Execute single instruction step
@@ -2186,7 +2186,7 @@ impl FuelAsyncExecutor {
         // For ASIL-C, ensure spatial, temporal, and resource isolation
         
         // Check temporal isolation - no interference from other tasks
-        let current_time = task.execution_context.get_deterministic_timestamp(;
+        let current_time = task.execution_context.get_deterministic_timestamp);
         
         // Check if we need to yield for temporal isolation
         if current_time % 1000 == 0 { // Yield every 1000 fuel units
@@ -2194,22 +2194,22 @@ impl FuelAsyncExecutor {
         }
         
         // Execute real WebAssembly with isolation constraints from configuration
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new(;
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
         
         // Set fuel limit from configuration
-        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit(;
+        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit);
         engine.set_fuel(Some(fuel_limit;
         
         // Set up isolation constraints from configuration
         engine.set_memory_isolation(true;
-        let max_stack_depth = task.execution_context.asil_config.limits.get_call_depth_limit(;
+        let max_stack_depth = task.execution_context.asil_config.limits.get_call_depth_limit);
         engine.set_max_stack_depth(max_stack_depth;
         
         // Set memory limit from configuration
-        let memory_limit = task.execution_context.asil_config.limits.get_memory_limit(;
+        let memory_limit = task.execution_context.asil_config.limits.get_memory_limit);
         engine.set_max_memory_usage(memory_limit;
         
-        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit(;
+        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit);
         self.execute_single_instruction_step(&mut engine, task, component_instance, max_instructions)
     }
 
@@ -2231,7 +2231,7 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with resource limits
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new(;
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
         engine.set_fuel(Some(400)); // Bounded fuel for ASIL-B
         
         // Set resource limits
@@ -2255,7 +2255,7 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with relaxed constraints
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new(;
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
         engine.set_fuel(Some(1000)); // More fuel for ASIL-A
         
         // Relaxed limits for ASIL-A
@@ -2418,7 +2418,7 @@ impl FuelAsyncExecutor {
         // 5. Validate deterministic execution for ASIL-D
         if let ASILExecutionMode::D { deterministic_execution: true, .. } = task.execution_context.asil_config.mode {
             // Verify deterministic timestamp consistency
-            let current_timestamp = task.execution_context.get_deterministic_timestamp(;
+            let current_timestamp = task.execution_context.get_deterministic_timestamp);
             if current_timestamp < yield_point.yield_timestamp {
                 return Err(Error::runtime_execution_error("Deterministic execution violation during resume";
             }
@@ -2452,7 +2452,7 @@ impl FuelAsyncExecutor {
         _waker_context: &mut Context<'_>,
     ) -> Result<ExecutionStepResult, Error> {
         // Create a StacklessEngine for WebAssembly execution
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new(;
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
         
         // Set fuel limit based on task's remaining fuel budget
         let consumed = task.fuel_consumed.load(Ordering::Acquire;
@@ -2474,7 +2474,7 @@ impl FuelAsyncExecutor {
         };
         
         // Execute a limited number of WebAssembly instructions based on configuration
-        let max_instructions_per_step = task.execution_context.asil_config.limits.get_instructions_limit(;
+        let max_instructions_per_step = task.execution_context.asil_config.limits.get_instructions_limit);
         
         // Real WebAssembly execution step
         let initial_fuel = engine.remaining_fuel().unwrap_or(0;
@@ -2645,27 +2645,27 @@ impl FuelAsyncExecutor {
     
     /// Serialize WebAssembly values to bytes
     fn serialize_values(&self, values: &[wrt_foundation::Value]) -> Result<Vec<u8>, Error> {
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
         
         for value in values {
             match value {
                 wrt_foundation::Value::I32(v) => {
-                    result.extend_from_slice(&v.to_le_bytes(;
+                    result.extend_from_slice(&v.to_le_bytes);
                 },
                 wrt_foundation::Value::I64(v) => {
-                    result.extend_from_slice(&v.to_le_bytes(;
+                    result.extend_from_slice(&v.to_le_bytes);
                 },
                 wrt_foundation::Value::F32(v) => {
-                    result.extend_from_slice(&v.to_bits().to_le_bytes(;
+                    result.extend_from_slice(&v.to_bits().to_le_bytes);
                 },
                 wrt_foundation::Value::F64(v) => {
-                    result.extend_from_slice(&v.to_bits().to_le_bytes(;
+                    result.extend_from_slice(&v.to_bits().to_le_bytes);
                 },
                 wrt_foundation::Value::FuncRef(opt_ref) => {
                     match opt_ref {
                         Some(func_ref) => {
                             result.extend_from_slice(&[1u8]); // Non-null marker
-                            result.extend_from_slice(&func_ref.to_le_bytes(;
+                            result.extend_from_slice(&func_ref.to_le_bytes);
                         },
                         None => {
                             result.extend_from_slice(&[0u8]); // Null marker
@@ -2676,7 +2676,7 @@ impl FuelAsyncExecutor {
                     match opt_ref {
                         Some(extern_ref) => {
                             result.extend_from_slice(&[1u8]); // Non-null marker
-                            result.extend_from_slice(&extern_ref.to_le_bytes(;
+                            result.extend_from_slice(&extern_ref.to_le_bytes);
                         },
                         None => {
                             result.extend_from_slice(&[0u8]); // Null marker
@@ -2710,7 +2710,7 @@ impl FuelAsyncExecutor {
 
     /// Enable fuel debt/credit system with configuration
     pub fn enable_debt_credit_system(&mut self, config: Option<DebtCreditConfig>) -> Result<(), Error> {
-        let config = config.unwrap_or_default(;
+        let config = config.unwrap_or_default);
         
         let system = FuelDebtCreditSystem::new(
             config.max_concurrent_debtors,
@@ -3087,7 +3087,7 @@ mod tests {
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if !self.yielded {
                 self.yielded = true;
-                cx.waker().wake_by_ref(;
+                cx.waker().wake_by_ref);
                 Poll::Pending
             } else {
                 Poll::Ready(Ok(()))
@@ -3098,7 +3098,7 @@ mod tests {
     #[test]
     fn test_executor_creation() {
         let executor = FuelAsyncExecutor::new().unwrap();
-        let status = executor.get_global_fuel_status(;
+        let status = executor.get_global_fuel_status);
         
         assert_eq!(status.active_tasks, 0;
         assert_eq!(status.ready_tasks, 0;
@@ -3167,7 +3167,7 @@ mod tests {
             let polled = exec.poll_tasks().unwrap();
             assert_eq!(polled, 1;
             
-            let stats = exec.get_polling_stats(;
+            let stats = exec.get_polling_stats);
             assert_eq!(stats.tasks_yielded, 1;
             assert_eq!(stats.total_polls, 1;
         }
@@ -3178,7 +3178,7 @@ mod tests {
             let polled = exec.poll_tasks().unwrap();
             assert_eq!(polled, 1;
             
-            let stats = exec.get_polling_stats(;
+            let stats = exec.get_polling_stats);
             assert_eq!(stats.tasks_completed, 1;
             assert_eq!(stats.total_polls, 2;
         }
@@ -3210,13 +3210,13 @@ mod tests {
         let polled = executor.poll_tasks().unwrap();
         assert_eq!(polled, 3;
         
-        let stats = executor.get_polling_stats(;
+        let stats = executor.get_polling_stats);
         assert_eq!(stats.tasks_completed, 3;
         assert_eq!(stats.total_polls, 3;
         
         // Reset stats and verify
-        executor.reset_polling_stats(;
-        let stats = executor.get_polling_stats(;
+        executor.reset_polling_stats);
+        let stats = executor.get_polling_stats);
         assert_eq!(stats.total_polls, 0;
         assert_eq!(stats.tasks_completed, 0;
     }

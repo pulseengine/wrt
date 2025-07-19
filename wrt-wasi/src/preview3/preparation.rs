@@ -275,7 +275,7 @@ mod tests {
     
     #[test]
     fn test_preview3_limits() {
-        let limits = WasiPreview3Limits::default(;
+        let limits = WasiPreview3Limits::default);
         assert_eq!(limits.max_threads, 16;
         assert_eq!(limits.max_shared_memory, 16 * 1024 * 1024;
         assert_eq!(limits.max_async_io_ops, 256;
@@ -284,7 +284,7 @@ mod tests {
     
     #[test]
     fn test_preview3_capabilities() {
-        let caps = WasiPreview3Capabilities::default(;
+        let caps = WasiPreview3Capabilities::default);
         assert!(!caps.threading_enabled);
         assert!(!caps.shared_memory_enabled);
         assert!(caps.async_io_enabled);

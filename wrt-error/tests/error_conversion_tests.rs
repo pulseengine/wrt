@@ -80,7 +80,7 @@ fn test_error_messages() {
 
     assert!(!error.message().is_empty();
     // Message should contain some indication of the error type
-    let message = error.message().to_lowercase(;
+    let message = error.message().to_lowercase);
     assert!(message.contains("parse") || message.contains("error");
 }
 
@@ -104,7 +104,7 @@ fn test_runtime_vs_validation_categories() {
 
     assert_eq!(val_error.category(), ErrorCategory::Validation;
     assert_eq!(run_error.category(), ErrorCategory::Runtime;
-    assert_ne!(val_error.category(), run_error.category(;
+    assert_ne!(val_error.category(), run_error.category);
 }
 
 #[test]

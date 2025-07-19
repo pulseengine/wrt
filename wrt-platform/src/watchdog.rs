@@ -109,7 +109,7 @@ impl SoftwareWatchdog {
     /// Start the watchdog monitoring thread
     pub fn start(&self) -> Result<()> {
         if self.running.load(Ordering::Acquire) {
-            return Ok((;
+            return Ok();
         }
 
         self.running.store(true, Ordering::Release;
@@ -133,7 +133,7 @@ impl SoftwareWatchdog {
                         continue;
                     }
 
-                    let last_heartbeat = *task.last_heartbeat.lock(;
+                    let last_heartbeat = *task.last_heartbeat.lock);
                     let elapsed_ms = now.saturating_sub(last_heartbeat;
                     let elapsed = Duration::from_millis(elapsed_ms;
 
@@ -175,7 +175,7 @@ impl SoftwareWatchdog {
         self.running.store(false, Ordering::Release;
 
         if let Some(thread) = self.watchdog_thread.lock().take() {
-            let _ = thread.join(;
+            let _ = thread.join);
         }
 
         Ok(())
@@ -207,7 +207,7 @@ impl SoftwareWatchdog {
 
         // Check limit
         {
-            let tasks = self.tasks.read(;
+            let tasks = self.tasks.read);
             if tasks.len() >= self.config.max_watched_tasks {
                 return Err(Error::runtime_execution_error("Maximum watched tasks limit reached";
             }
@@ -223,7 +223,7 @@ impl SoftwareWatchdog {
 
     /// Send heartbeat for a task
     pub fn heartbeat(&self, task_id: WatchedTaskId) -> Result<()> {
-        let tasks = self.tasks.read(;
+        let tasks = self.tasks.read);
         let task = tasks.get(&task_id).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Validation,
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_watchdog_integration() {
-        let watchdog = SoftwareWatchdog::new(WatchdogConfig::default(;
+        let watchdog = SoftwareWatchdog::new(WatchdogConfig::default);
         watchdog.start().unwrap();
 
         // Test function watching

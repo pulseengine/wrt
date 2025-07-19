@@ -33,7 +33,7 @@
 //! use wrt_instructions::Value;
 //!
 //! // Return from function
-//! let return_op = Return::new(;
+//! let return_op = Return::new);
 //! // Execute with appropriate context
 //!
 //! // Indirect function call
@@ -477,7 +477,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             Self::BrTable { table, default } => {
                 // Use from_slice for unified interface across all feature configurations
                 #[cfg(feature = "std")]
-                let slice: &[u32] = table.as_slice(;
+                let slice: &[u32] = table.as_slice);
                 #[cfg(not(feature = "std"))]
                 let slice: &[u32] = table.as_slice().map_err(|_| Error::runtime_error("Failed to get table slice"))?;
                 
@@ -485,7 +485,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 br_table.execute(context)
             }
             Self::Return => {
-                let return_op = Return::new(;
+                let return_op = Return::new);
                 return_op.execute(context)
             }
             Self::Call(func_idx) => context.call_function(*func_idx),
@@ -736,7 +736,7 @@ mod tests {
 
     #[test]
     fn test_block_operations() {
-        let mut context = MockControlContext::new(;
+        let mut context = MockControlContext::new);
 
         // Test block instruction
         let block_type = ControlBlockType::ValueType(Some(ValueType::I32;
@@ -761,7 +761,7 @@ mod tests {
 
     #[test]
     fn test_if_else() {
-        let mut context = MockControlContext::new(;
+        let mut context = MockControlContext::new);
 
         // Test if instruction with true condition
         context.push_control_value(Value::I32(1)).unwrap(); // True condition
@@ -785,7 +785,7 @@ mod tests {
 
     #[test]
     fn test_branching() {
-        let mut context = MockControlContext::new(;
+        let mut context = MockControlContext::new);
 
         // Test br instruction
         ControlOp::Br(1).execute(&mut context).unwrap();
@@ -812,11 +812,11 @@ mod tests {
 
     #[test]
     fn test_br_table() {
-        let mut context = MockControlContext::new(;
+        let mut context = MockControlContext::new);
 
         // Test br_table instruction with in-range index
         context.push_control_value(Value::I32(1)).unwrap(); // Index 1
-        let mut table = Vec::new(;
+        let mut table = Vec::new);
         table.push(10);
         table.push(20);
         table.push(30);
@@ -837,7 +837,7 @@ mod tests {
 
     #[test]
     fn test_function_control() {
-        let mut context = MockControlContext::new(;
+        let mut context = MockControlContext::new);
 
         // Test return instruction
         ControlOp::Return.execute(&mut context).unwrap();
@@ -854,7 +854,7 @@ mod tests {
 
     #[test]
     fn test_other_control() {
-        let mut context = MockControlContext::new(;
+        let mut context = MockControlContext::new);
 
         // Test nop instruction
         ControlOp::Nop.execute(&mut context).unwrap();
@@ -871,8 +871,8 @@ mod tests {
         println!("Testing individual control flow operations";
         
         // Test Return creation
-        let return_op = Return::new(;
-        assert_eq!(return_op, Return::default(;
+        let return_op = Return::new);
+        assert_eq!(return_op, Return::default);
         
         // Test CallIndirect creation
         let call_indirect = CallIndirect::new(0, 1;

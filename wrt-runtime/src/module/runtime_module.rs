@@ -58,7 +58,7 @@ impl RuntimeModuleData {
     /// Extract runtime data from a format module during conversion
     #[cfg(feature = "format")]
     pub fn from_format_module(module: &wrt_format::module::Module) -> Self {
-        let mut runtime_data = Self::new(;
+        let mut runtime_data = Self::new);
         
         // Extract start function
         runtime_data.start_function = module.start;

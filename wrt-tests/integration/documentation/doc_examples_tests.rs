@@ -10,7 +10,7 @@ mod foundation_examples {
     #[test]
     fn test_bounded_vec_example() {
         // This is the exact code from the documentation
-        let mut vec: BoundedVec<u32, 10> = BoundedVec::new(;
+        let mut vec: BoundedVec<u32, 10> = BoundedVec::new);
         
         // Push elements (safe - returns Result)
         vec.push(1).expect("capacity available");
@@ -44,7 +44,7 @@ mod foundation_examples {
         use wrt_foundation::bounded::BoundedStack;
         
         // Create a stack with capacity 5
-        let mut stack: BoundedStack<&str, 5> = BoundedStack::new(;
+        let mut stack: BoundedStack<&str, 5> = BoundedStack::new);
         
         // Push operations
         stack.push("first").unwrap();

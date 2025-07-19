@@ -55,7 +55,7 @@ macro_rules! vec {
     };
     ($elem:expr; $n:expr) => {
         {
-            let mut v = Vec::new(;
+            let mut v = Vec::new);
             for _ in 0..$n {
                 v.push($elem);
             }
@@ -64,7 +64,7 @@ macro_rules! vec {
     };
     ($($x:expr),*) => {
         {
-            let mut v = Vec::new(;
+            let mut v = Vec::new);
             $(v.push($x);)*
             v
         }
@@ -432,7 +432,7 @@ impl wrt_foundation::traits::Checksummable for Instruction {
             }
             Instruction::Call(func_idx) => {
                 checksum.update_slice(&[3u8]); // Variant discriminant
-                checksum.update_slice(&func_idx.to_le_bytes(;
+                checksum.update_slice(&func_idx.to_le_bytes);
             }
         }
     }

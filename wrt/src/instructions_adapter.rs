@@ -187,7 +187,7 @@ impl<'a> ExecutionContext for WrtExecutionContextAdapter<'a> {
 impl<'a> SimdContext for WrtExecutionContextAdapter<'a> {
     fn execute_simd_op(&mut self, op: SimdOp, inputs: &[Value]) -> Result<Value> {
         // Use the comprehensive SIMD implementation
-        let provider = self.simd_runtime.provider(;
+        let provider = self.simd_runtime.provider);
         simd_runtime_impl::execute_simd_operation(op, inputs, provider.as_ref())
     }
 }

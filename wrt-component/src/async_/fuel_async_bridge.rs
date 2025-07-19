@@ -212,7 +212,7 @@ impl FuelAsyncBridge {
         T: Send + 'static,
     {
         let bridge_config = config.unwrap_or_else(|| self.default_config.clone();
-        let mut task_ids = Vec::new(;
+        let mut task_ids = Vec::new);
 
         // Spawn all futures as tasks
         for future in futures {
@@ -241,7 +241,7 @@ impl FuelAsyncBridge {
         }
 
         // Execute all tasks concurrently
-        let mut results = Vec::new(;
+        let mut results = Vec::new);
         for task_id in task_ids {
             // This is a simplified version - real implementation would use proper concurrent execution
             match self.executor.get_task_status(task_id) {
@@ -288,8 +288,8 @@ impl FuelAsyncBridge {
             }
         }
 
-        let executor_stats = self.executor.get_global_fuel_status(;
-        let scheduler_stats = self.scheduler.get_statistics(;
+        let executor_stats = self.executor.get_global_fuel_status);
+        let scheduler_stats = self.scheduler.get_statistics);
 
         AsyncBridgeStatistics {
             total_bridges: self.active_bridges.len(),
@@ -313,7 +313,7 @@ impl FuelAsyncBridge {
 
         // Shutdown executor and scheduler
         self.executor.shutdown()?;
-        self.active_bridges.clear(;
+        self.active_bridges.clear);
 
         Ok(())
     }
@@ -481,7 +481,7 @@ mod tests {
             VerificationLevel::Standard,
         ).unwrap();
 
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
         assert_eq!(stats.total_bridges, 0;
         assert_eq!(stats.active_bridges, 0;
     }
@@ -521,7 +521,7 @@ mod tests {
         // ;
         
         // For now, just test that the bridge was created successfully
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
         assert_eq!(stats.total_bridges, 0;
     }
 }

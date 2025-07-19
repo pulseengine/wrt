@@ -31,10 +31,10 @@ impl SimpleBoundedString {
             return None;
         }
 
-        let mut result = Self::new(;
-        let bytes = s.as_bytes(;
+        let mut result = Self::new);
+        let bytes = s.as_bytes);
         result.data[..bytes.len()].copy_from_slice(bytes;
-        result.len = bytes.len(;
+        result.len = bytes.len);
         Some(result)
     }
 
@@ -263,18 +263,18 @@ impl BoundedWitParser {
     pub fn new(limits: WitParsingLimits) -> Result<Self> {
         limits.validate()?;
 
-        let mut input_buffer = alloc::vec::Vec::new(;
+        let mut input_buffer = alloc::vec::Vec::new);
         input_buffer.resize(limits.max_input_buffer, 0;
 
-        let mut worlds = alloc::vec::Vec::new(;
+        let mut worlds = alloc::vec::Vec::new);
         worlds.resize(limits.max_worlds, None;
 
-        let mut interfaces = alloc::vec::Vec::new(;
+        let mut interfaces = alloc::vec::Vec::new);
         interfaces.resize(limits.max_interfaces, None;
 
         let memory_usage = input_buffer.capacity()
             + worlds.capacity() * core::mem::size_of::<Option<BoundedWitWorld>>()
-            + interfaces.capacity() * core::mem::size_of::<Option<BoundedWitInterface>>(;
+            + interfaces.capacity() * core::mem::size_of::<Option<BoundedWitInterface>>);
 
         Ok(Self {
             limits,
@@ -334,21 +334,21 @@ impl BoundedWitParser {
         }
 
         // Clear previous state
-        self.reset_state(;
+        self.reset_state);
 
         // Copy input to buffer
-        let copy_len = core::cmp::min(wit_source.len(), self.input_buffer.len(;
+        let copy_len = core::cmp::min(wit_source.len(), self.input_buffer.len);
         self.input_buffer[..copy_len].copy_from_slice(&wit_source[..copy_len];
         self.input_len = copy_len;
 
         // Perform bounded parsing
         self.bounded_parse()?;
 
-        let end_time = self.get_timestamp(;
+        let end_time = self.get_timestamp);
 
         // Collect results
-        let mut result_worlds = alloc::vec::Vec::new(;
-        let mut result_interfaces = alloc::vec::Vec::new(;
+        let mut result_worlds = alloc::vec::Vec::new);
+        let mut result_interfaces = alloc::vec::Vec::new);
 
         for world_opt in &self.worlds {
             if let Some(world) = world_opt {
@@ -381,7 +381,7 @@ impl BoundedWitParser {
         self.input_len = 0;
         self.world_count = 0;
         self.interface_count = 0;
-        self.warnings.clear(;
+        self.warnings.clear);
 
         for world in &mut self.worlds {
             *world = None;
@@ -716,7 +716,7 @@ mod tests {
 
     #[test]
     fn test_bounded_wit_parser_creation() {
-        let limits = WitParsingLimits::default(;
+        let limits = WitParsingLimits::default);
         let parser = BoundedWitParser::new(limits;
         assert!(parser.is_ok();
 
@@ -727,10 +727,10 @@ mod tests {
 
     #[test]
     fn test_platform_specific_limits() {
-        let embedded_limits = WitParsingLimits::embedded(;
+        let embedded_limits = WitParsingLimits::embedded);
         assert!(embedded_limits.max_input_buffer < WitParsingLimits::default().max_input_buffer);
 
-        let linux_limits = WitParsingLimits::linux(;
+        let linux_limits = WitParsingLimits::linux);
         assert!(linux_limits.max_input_buffer > WitParsingLimits::default().max_input_buffer);
     }
 

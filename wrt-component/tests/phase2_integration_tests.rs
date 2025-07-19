@@ -118,7 +118,7 @@ mod tests {
             protocol.get_effective_priority(low_priority_holder, Priority::Low;
         assert_eq!(effective_priority, Priority::High;
 
-        let stats = protocol.get_statistics(;
+        let stats = protocol.get_statistics);
         assert_eq!(
             stats.total_inheritances.load(core::sync::atomic::Ordering::Acquire),
             1
@@ -132,7 +132,7 @@ mod tests {
         let next_holder = protocol.release_resource(resource_id, low_priority_holder).unwrap();
         assert_eq!(next_holder, Some(high_priority_task;
 
-        let final_stats = protocol.get_statistics(;
+        let final_stats = protocol.get_statistics);
         assert_eq!(
             final_stats.active_chains.load(core::sync::atomic::Ordering::Acquire),
             0
@@ -181,7 +181,7 @@ mod tests {
         }
 
         // Verify channel statistics
-        let stats = channel_manager.get_global_stats(;
+        let stats = channel_manager.get_global_stats);
         assert_eq!(
             stats.total_channels_created.load(core::sync::atomic::Ordering::Acquire),
             1
@@ -283,7 +283,7 @@ mod tests {
         }
 
         // Verify scheduler statistics
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(
             stats.active_tasks.load(core::sync::atomic::Ordering::Acquire),
             3
@@ -305,7 +305,7 @@ mod tests {
         executor.set_default_verification_level(VerificationLevel::Standard;
 
         // 2. Create preemptive scheduler
-        let config = PreemptiveSchedulerConfig::default(;
+        let config = PreemptiveSchedulerConfig::default);
         let mut preemptive_scheduler =
             FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
 
@@ -414,10 +414,10 @@ mod tests {
         }
 
         // 8. Verify final system state
-        let executor_stats = executor.get_global_fuel_status(;
-        let scheduler_stats = preemptive_scheduler.get_statistics(;
-        let protocol_stats = priority_protocol.get_statistics(;
-        let channel_stats = channel_manager.get_global_stats(;
+        let executor_stats = executor.get_global_fuel_status);
+        let scheduler_stats = preemptive_scheduler.get_statistics);
+        let protocol_stats = priority_protocol.get_statistics);
+        let channel_stats = channel_manager.get_global_stats);
 
         // All components should show activity
         assert_eq!(
@@ -581,8 +581,8 @@ mod tests {
             .unwrap();
 
         // Verify system constraints
-        let scheduler_stats = scheduler.get_statistics(;
-        let channel_stats = channel_manager.get_global_stats(;
+        let scheduler_stats = scheduler.get_statistics);
+        let channel_stats = channel_manager.get_global_stats);
 
         // ASIL-B compliance checks:
         assert!(scheduler_stats.active_tasks.load(core::sync::atomic::Ordering::Acquire) <= 4);

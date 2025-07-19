@@ -147,7 +147,7 @@ pub use prelude::*;
 macro_rules! safe_managed_alloc {
     ($size:expr, $crate_id:expr) => {{
         // Ensure memory system is initialized
-        $crate::memory_init::MemoryInitializer::initialize(;
+        $crate::memory_init::MemoryInitializer::initialize);
 
         // Use capability-based allocation
         $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<$size>($crate_id)
@@ -565,7 +565,7 @@ mod tests {
 
     #[test]
     fn test_boundedvec_is_empty() -> WrtResult<()> {
-        init_test_memory_system(;
+        init_test_memory_system);
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::{CapabilityFactoryBuilder, ProviderCapabilityExt};
@@ -576,7 +576,7 @@ mod tests {
         let provider = {
             let factory = CapabilityFactoryBuilder::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build(;
+                .build);
             factory.create_provider::<1024>(CrateId::Foundation)?
         };
         #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -598,7 +598,7 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_boundedvec_to_vec_std() -> WrtResult<()> {
-        init_test_memory_system(;
+        init_test_memory_system);
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::CapabilityFactoryBuilder;
@@ -607,7 +607,7 @@ mod tests {
         let provider = {
             let factory = CapabilityFactoryBuilder::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build(;
+                .build);
             factory.create_provider::<1024>(CrateId::Foundation)?
         };
         #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -626,7 +626,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "std"))]
     fn test_boundedvec_to_vec_no_std() -> WrtResult<()> {
-        init_test_memory_system(;
+        init_test_memory_system);
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::CapabilityFactoryBuilder;
@@ -635,7 +635,7 @@ mod tests {
         let provider = {
             let factory = CapabilityFactoryBuilder::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build(;
+                .build);
             factory.create_provider::<1024>(CrateId::Foundation)?
         };
         #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -656,7 +656,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_to_vec() -> WrtResult<()> {
-        init_test_memory_system(;
+        init_test_memory_system);
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::CapabilityFactoryBuilder;
@@ -665,7 +665,7 @@ mod tests {
         let provider = {
             let factory = CapabilityFactoryBuilder::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
-                .build(;
+                .build);
             factory.create_provider::<1024>(CrateId::Foundation)?
         };
         #[cfg(not(any(feature = "std", feature = "alloc")))]

@@ -505,7 +505,7 @@ mod tests {
         manager.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         manager.voluntary_yield(task_id).unwrap();
         
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.voluntary_yields, 1;
     }
 

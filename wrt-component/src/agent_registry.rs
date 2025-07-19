@@ -251,7 +251,7 @@ impl AgentRegistry {
         let agent_id = AgentId(self.next_agent_id;
         self.next_agent_id += 1;
 
-        let agent = ComponentExecutionEngine::new(;
+        let agent = ComponentExecutionEngine::new);
 
         #[cfg(feature = "std")]
         {
@@ -279,7 +279,7 @@ impl AgentRegistry {
         let agent_id = AgentId(self.next_agent_id;
         self.next_agent_id += 1;
 
-        let agent = AsyncExecutionEngine::new(;
+        let agent = AsyncExecutionEngine::new);
 
         #[cfg(feature = "std")]
         {
@@ -371,7 +371,7 @@ impl AgentRegistry {
         #[cfg(not(feature = "std"))]
         let migration_config = {
             let mut found = false;
-            let mut config = AgentConfiguration::default(;
+            let mut config = AgentConfiguration::default);
             
             for (id, agent) in &self.legacy_agents {
                 if *id == agent_id {
@@ -497,7 +497,7 @@ impl AgentRegistry {
         }
         #[cfg(not(feature = "std"))]
         {
-            let original_len = self.unified_agents.len(;
+            let original_len = self.unified_agents.len);
             self.unified_agents.retain(|(id, _)| *id != agent_id;
             if self.unified_agents.len() < original_len {
                 removed = true;
@@ -514,7 +514,7 @@ impl AgentRegistry {
         }
         #[cfg(not(feature = "std"))]
         {
-            let original_len = self.legacy_agents.len(;
+            let original_len = self.legacy_agents.len);
             self.legacy_agents.retain(|(id, _)| *id != agent_id;
             if self.legacy_agents.len() < original_len {
                 removed = true;
@@ -689,7 +689,7 @@ mod tests {
     #[test]
     fn test_unified_agent_creation() {
         let mut registry = AgentRegistry::new().unwrap();
-        let config = AgentConfiguration::default(;
+        let config = AgentConfiguration::default);
         
         let agent_id = registry.create_unified_agent(config).unwrap();
         assert_eq!(agent_id.0, 1;
@@ -747,7 +747,7 @@ mod tests {
     #[test]
     fn test_function_execution() {
         let mut registry = AgentRegistry::new().unwrap();
-        let config = AgentConfiguration::default(;
+        let config = AgentConfiguration::default);
         
         let agent_id = registry.create_unified_agent(config).unwrap();
         let args = [Value::U32(42), Value::Bool(true)];
@@ -759,7 +759,7 @@ mod tests {
     #[test]
     fn test_agent_removal() {
         let mut registry = AgentRegistry::new().unwrap();
-        let config = AgentConfiguration::default(;
+        let config = AgentConfiguration::default);
         
         let agent_id = registry.create_unified_agent(config).unwrap();
         assert_eq!(registry.stats.active_agents, 1;
@@ -867,7 +867,7 @@ impl PartialEq for MigrationWarning {
 impl Eq for MigrationWarning {}
 
 // Apply macro to types that need traits
-impl_basic_traits!(AgentId, AgentId::default(;
+impl_basic_traits!(AgentId, AgentId::default);
 #[cfg(not(feature = "std"))]
-impl_basic_traits!(LegacyAgentType, LegacyAgentType::default(;
+impl_basic_traits!(LegacyAgentType, LegacyAgentType::default);
 impl_basic_traits!(MigrationWarning, MigrationWarning::new().unwrap();

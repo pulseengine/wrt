@@ -303,8 +303,8 @@ mod tests {
 
     #[test]
     fn test_capability_verifier() {
-        let full_mask = CapabilityMask::all(;
-        let read_only_mask = CapabilityMask::read_only(;
+        let full_mask = CapabilityMask::all);
+        let read_only_mask = CapabilityMask::read_only);
 
         assert!(CapabilityVerifier::are_masks_compatible(&full_mask, &read_only_mask);
         assert!(!CapabilityVerifier::are_masks_compatible(&read_only_mask, &full_mask);
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_memory_stats() {
-        let mut stats = CapabilityMemoryStats::new(;
+        let mut stats = CapabilityMemoryStats::new);
 
         let read_op = MemoryOperation::Read { offset: 0, len: 100 };
         stats.record_operation(&read_op;
@@ -321,14 +321,14 @@ mod tests {
         assert_eq!(stats.read_operations, 1;
         assert_eq!(stats.violation_rate(), 0.0;
 
-        stats.record_violation(;
+        stats.record_violation);
         assert_eq!(stats.violation_rate(), 100.0;
     }
 
     #[test]
     fn test_mask_intersection() {
-        let mask1 = CapabilityMask::all(;
-        let mask2 = CapabilityMask::read_only(;
+        let mask1 = CapabilityMask::all);
+        let mask2 = CapabilityMask::read_only);
 
         let intersection = CapabilityVerifier::intersect_masks(&mask1, &mask2;
 

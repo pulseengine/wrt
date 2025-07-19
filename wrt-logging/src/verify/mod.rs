@@ -52,11 +52,11 @@ fn verify_logging_ext() {
         use crate::handler::LoggingExt;
         
         // Create a registry
-        let mut registry = CallbackRegistry::new(;
+        let mut registry = CallbackRegistry::new);
 
         // Add handler (using LoggingExt trait)
         let registry_with_handler = {
-            let mut r = CallbackRegistry::new(;
+            let mut r = CallbackRegistry::new);
             r.register_log_handler(|_| {};
             r
         };

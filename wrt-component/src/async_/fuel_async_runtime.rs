@@ -239,7 +239,7 @@ impl FuelAsyncRuntime {
     /// Run the runtime until all tasks complete or fuel is exhausted
     pub fn run(&mut self) -> Result<RuntimeExecutionSummary> {
         self.state = RuntimeState::Running;
-        let start_fuel = global_fuel_consumed(;
+        let start_fuel = global_fuel_consumed);
         
         while self.has_active_tasks()? {
             // Check global fuel budget
@@ -253,7 +253,7 @@ impl FuelAsyncRuntime {
             self.stats.polling_cycles += 1;
             
             // Update fuel consumption
-            let current_fuel = global_fuel_consumed(;
+            let current_fuel = global_fuel_consumed);
             self.total_fuel_consumed = current_fuel.saturating_sub(start_fuel;
             self.stats.total_fuel_consumed = self.total_fuel_consumed;
             
@@ -322,7 +322,7 @@ impl FuelAsyncRuntime {
     
     /// Collect results from completed tasks
     fn collect_completed_tasks(&mut self) -> Result<()> {
-        let mut completed_tasks = Vec::new(;
+        let mut completed_tasks = Vec::new);
         
         // Get completed tasks from executor
         {
@@ -428,7 +428,7 @@ impl FuelAsyncRuntime {
         self.state = RuntimeState::ShuttingDown;
         
         // Cancel all active tasks
-        let active_tasks: Vec<TaskId> = self.executor.lock()?.get_active_task_ids(;
+        let active_tasks: Vec<TaskId> = self.executor.lock()?.get_active_task_ids);
         for task_id in active_tasks {
             let _ = self.cancel_task(task_id;
         }
@@ -559,7 +559,7 @@ mod tests {
     
     #[test]
     fn test_runtime_creation() {
-        let config = RuntimeConfig::default(;
+        let config = RuntimeConfig::default);
         let runtime = FuelAsyncRuntime::new(config;
         assert!(runtime.is_ok();
         
@@ -588,7 +588,7 @@ mod tests {
     
     #[test]
     fn test_simple_executor() {
-        let executor = SimpleAsyncExecutor::new(;
+        let executor = SimpleAsyncExecutor::new);
         assert!(executor.is_ok();
         
         let executor = executor.unwrap();

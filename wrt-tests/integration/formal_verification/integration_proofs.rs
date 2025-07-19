@@ -95,7 +95,7 @@ const MAX_CROSS_COMPONENT_OPS: usize = 8;
 #[cfg(kani)]
 pub fn verify_cross_component_memory_isolation() {
     // Generate arbitrary number of components
-    let component_count: usize = kani::any(;
+    let component_count: usize = kani::any);
     kani::assume(component_count >= 2 && component_count <= MAX_INTEGRATION_COMPONENTS;
     
     // Create memory providers for different components with different budgets
@@ -105,12 +105,12 @@ pub fn verify_cross_component_memory_isolation() {
     kani::assume(component1_budget > 0;
     kani::assume(component2_budget > 0;
     
-    let provider1 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new(;
-    let provider2 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new(;
+    let provider1 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new);
+    let provider2 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new);
     
     // Generate allocation sizes for each component
-    let component1_alloc_size: usize = kani::any(;
-    let component2_alloc_size: usize = kani::any(;
+    let component1_alloc_size: usize = kani::any);
+    let component2_alloc_size: usize = kani::any);
     
     kani::assume(component1_alloc_size <= component1_budget;
     kani::assume(component2_alloc_size <= component2_budget;
@@ -126,8 +126,8 @@ pub fn verify_cross_component_memory_isolation() {
     
     // Verify memory isolation by ensuring different provider instances
     // cannot interfere with each other's allocations
-    let provider1_capacity = provider1.capacity(;
-    let provider2_capacity = provider2.capacity(;
+    let provider1_capacity = provider1.capacity);
+    let provider2_capacity = provider2.capacity);
     
     // Each provider should maintain its own capacity independently
     assert!(provider1_capacity > 0);
@@ -148,15 +148,15 @@ pub fn verify_cross_component_memory_isolation() {
 #[cfg(kani)]
 pub fn verify_component_interface_type_safety() {
     // Generate resource types for interface testing
-    let source_component_resource_id: u32 = kani::any(;
-    let target_component_resource_id: u32 = kani::any(;
+    let source_component_resource_id: u32 = kani::any);
+    let target_component_resource_id: u32 = kani::any);
     
     // Ensure different resource IDs for different components
     kani::assume(source_component_resource_id != target_component_resource_id;
     
     // Create resources with different types in different components
-    let value_type1_discriminant: u8 = kani::any(;
-    let value_type2_discriminant: u8 = kani::any(;
+    let value_type1_discriminant: u8 = kani::any);
+    let value_type2_discriminant: u8 = kani::any);
     kani::assume(value_type1_discriminant <= 3;
     kani::assume(value_type2_discriminant <= 3;
     
@@ -228,7 +228,7 @@ pub fn verify_system_wide_resource_limits() {
     let system_resource_limit = MAX_VERIFICATION_ALLOCATIONS;
     
     // Generate arbitrary number of components and their allocations
-    let component_count: usize = kani::any(;
+    let component_count: usize = kani::any);
     kani::assume(component_count >= 1 && component_count <= MAX_INTEGRATION_COMPONENTS;
     
     let mut total_memory_used: usize = 0;
@@ -236,8 +236,8 @@ pub fn verify_system_wide_resource_limits() {
     
     // Simulate memory allocation across components
     for component_idx in 0..component_count {
-        let component_memory: usize = kani::any(;
-        let component_resources: usize = kani::any(;
+        let component_memory: usize = kani::any);
+        let component_resources: usize = kani::any);
         
         // Assume reasonable per-component limits
         kani::assume(component_memory <= system_memory_limit / MAX_INTEGRATION_COMPONENTS;
@@ -252,7 +252,7 @@ pub fn verify_system_wide_resource_limits() {
     assert!(total_resources_used <= system_resource_limit);
     
     // Test resource table index bounds
-    let table_idx_value: u32 = kani::any(;
+    let table_idx_value: u32 = kani::any);
     let table_idx = ResourceTableIdx(table_idx_value;
     
     if (table_idx.0 as usize) < system_resource_limit {
@@ -278,8 +278,8 @@ pub fn verify_system_wide_resource_limits() {
 #[cfg(kani)]
 pub fn verify_end_to_end_safety_preservation() {
     // Create safety contexts for different components
-    let component1_asil = any_asil_level(;
-    let component2_asil = any_asil_level(;
+    let component1_asil = any_asil_level);
+    let component2_asil = any_asil_level);
     
     let safety_context1 = SafetyContext::new(component1_asil;
     let safety_context2 = SafetyContext::new(component2_asil;
@@ -289,12 +289,12 @@ pub fn verify_end_to_end_safety_preservation() {
     assert_eq!(safety_context2.compile_time_asil, component2_asil;
     
     // Simulate cross-component operation
-    let operation_count: usize = kani::any(;
+    let operation_count: usize = kani::any);
     kani::assume(operation_count <= MAX_CROSS_COMPONENT_OPS;
     
     for _op in 0..operation_count {
         // Each operation may require safety level escalation
-        let required_asil = any_asil_level(;
+        let required_asil = any_asil_level);
         
         // Verify safety level can be escalated if needed
         let effective_level1 = if required_asil.safety_criticality() > component1_asil.safety_criticality() {
@@ -315,8 +315,8 @@ pub fn verify_end_to_end_safety_preservation() {
     }
     
     // Verify final state maintains or improves initial safety levels
-    assert_eq!(safety_context1.compile_time_asil.safety_criticality(), component1_asil.safety_criticality(;
-    assert_eq!(safety_context2.compile_time_asil.safety_criticality(), component2_asil.safety_criticality(;
+    assert_eq!(safety_context1.compile_time_asil.safety_criticality(), component1_asil.safety_criticality);
+    assert_eq!(safety_context2.compile_time_asil.safety_criticality(), component2_asil.safety_criticality);
 }
 
 /// Verify multi-component workflow consistency
@@ -333,10 +333,10 @@ pub fn verify_end_to_end_safety_preservation() {
 #[cfg(kani)]
 pub fn verify_multi_component_workflow_consistency() {
     // Define a multi-component workflow
-    let workflow_steps: usize = kani::any(;
+    let workflow_steps: usize = kani::any);
     kani::assume(workflow_steps >= 1 && workflow_steps <= MAX_CROSS_COMPONENT_OPS;
     
-    let provider = NoStdProvider::<4096>::new(;
+    let provider = NoStdProvider::<4096>::new);
     
     // Track workflow state across components
     let mut workflow_resource_count: usize = 0;
@@ -344,10 +344,10 @@ pub fn verify_multi_component_workflow_consistency() {
     
     for step in 0..workflow_steps {
         // Each step may create or modify resources
-        let creates_resource: bool = kani::any(;
+        let creates_resource: bool = kani::any);
         
         if creates_resource && workflow_resource_count < MAX_VERIFICATION_ALLOCATIONS {
-            let resource_id: u32 = kani::any(;
+            let resource_id: u32 = kani::any);
             
             let resource = Resource::new(
                 resource_id,
@@ -379,7 +379,7 @@ pub fn verify_multi_component_workflow_consistency() {
 #[cfg(kani)]
 pub fn verify_component_isolation_under_stress() {
     // Generate stress test parameters
-    let concurrent_operations: usize = kani::any(;
+    let concurrent_operations: usize = kani::any);
     kani::assume(concurrent_operations <= MAX_CROSS_COMPONENT_OPS;
     
     // Create multiple components with different crate IDs
@@ -394,7 +394,7 @@ pub fn verify_component_isolation_under_stress() {
     
     // Simulate concurrent operations from different components
     for _op in 0..concurrent_operations {
-        let operation_component: u8 = kani::any(;
+        let operation_component: u8 = kani::any);
         kani::assume(operation_component <= 2;
         
         let operating_crate = match operation_component {
@@ -439,11 +439,11 @@ pub fn verify_component_isolation_under_stress() {
 pub fn register_tests(registry: &TestRegistry) -> TestResult {
     registry.register_test("cross_component_isolation_basic", || {
         // Basic cross-component isolation test
-        let provider1 = NoStdProvider::<1024>::new(;
-        let provider2 = NoStdProvider::<1024>::new(;
+        let provider1 = NoStdProvider::<1024>::new);
+        let provider2 = NoStdProvider::<1024>::new);
         
         // Different providers should have independent capacities
-        assert_eq!(provider1.capacity(), provider2.capacity(;
+        assert_eq!(provider1.capacity(), provider2.capacity);
         
         // But they should be separate instances
         // (This is a basic test - full isolation requires more complex verification)
@@ -507,7 +507,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("workflow_consistency_basic", || {
         // Basic workflow consistency test
-        let provider = NoStdProvider::<4096>::new(;
+        let provider = NoStdProvider::<4096>::new);
         
         let resource = Resource::new(
             42,
@@ -541,54 +541,54 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for integration properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_cross_component_memory_isolation(;
-    verify_component_interface_type_safety(;
-    verify_system_wide_resource_limits(;
-    verify_end_to_end_safety_preservation(;
-    verify_multi_component_workflow_consistency(;
-    verify_component_isolation_under_stress(;
+    verify_cross_component_memory_isolation);
+    verify_component_interface_type_safety);
+    verify_system_wide_resource_limits);
+    verify_end_to_end_safety_preservation);
+    verify_multi_component_workflow_consistency);
+    verify_component_isolation_under_stress);
 }
 
 /// KANI harness for cross-component memory isolation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_cross_component_memory_isolation() {
-    verify_cross_component_memory_isolation(;
+    verify_cross_component_memory_isolation);
 }
 
 /// KANI harness for component interface type safety verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_component_interface_type_safety() {
-    verify_component_interface_type_safety(;
+    verify_component_interface_type_safety);
 }
 
 /// KANI harness for system-wide resource limits verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_system_wide_resource_limits() {
-    verify_system_wide_resource_limits(;
+    verify_system_wide_resource_limits);
 }
 
 /// KANI harness for end-to-end safety preservation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_end_to_end_safety_preservation() {
-    verify_end_to_end_safety_preservation(;
+    verify_end_to_end_safety_preservation);
 }
 
 /// KANI harness for multi-component workflow consistency verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_multi_component_workflow_consistency() {
-    verify_multi_component_workflow_consistency(;
+    verify_multi_component_workflow_consistency);
 }
 
 /// KANI harness for component isolation under stress verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_component_isolation_under_stress() {
-    verify_component_isolation_under_stress(;
+    verify_component_isolation_under_stress);
 }
 
 #[cfg(test)]
@@ -597,7 +597,7 @@ mod tests {
     
     #[test]
     fn test_integration_verification() {
-        let registry = TestRegistry::global(;
+        let registry = TestRegistry::global);
         let result = register_tests(registry;
         assert!(result.is_ok();
         assert_eq!(property_count(), 7;

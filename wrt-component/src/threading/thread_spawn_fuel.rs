@@ -292,7 +292,7 @@ impl FuelTrackedThreadManager {
 
     pub fn consume_thread_fuel(&self, thread_id: ThreadId, amount: u64) -> ThreadSpawnResult<()> {
         if !self.fuel_enforcement.load(Ordering::Acquire) {
-            return Ok((;
+            return Ok();
         }
 
         let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
@@ -384,7 +384,7 @@ impl FuelTrackedThreadManager {
         self.consume_thread_fuel(thread_id, fuel_per_operation)?;
 
         // Execute the operation
-        let result = operation(;
+        let result = operation);
 
         Ok(result)
     }
@@ -514,7 +514,7 @@ mod tests {
         assert_eq!(config.fuel_per_ms, FUEL_PER_MS;
         assert!(!config.allow_fuel_extension);
 
-        let unlimited = create_unlimited_fuel_thread_config(;
+        let unlimited = create_unlimited_fuel_thread_config);
         assert_eq!(unlimited.initial_fuel, None;
         assert!(unlimited.allow_fuel_extension);
     }

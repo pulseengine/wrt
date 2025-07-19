@@ -97,8 +97,8 @@ pub struct ToolManager {
 impl ToolManager {
     /// Create a new tool manager with default tool definitions
     pub fn new() -> Self {
-        let version_config = ToolVersionConfig::load_or_default(;
-        let mut tools = HashMap::new(;
+        let version_config = ToolVersionConfig::load_or_default);
+        let mut tools = HashMap::new);
 
         // Core tools (should always be available)
         tools.insert(
@@ -358,7 +358,7 @@ impl ToolManager {
 
     /// Check all tools and return a summary
     pub fn check_all_tools(&self) -> HashMap<String, ToolStatus> {
-        let mut results = HashMap::new(;
+        let mut results = HashMap::new);
 
         for tool_name in self.tools.keys() {
             results.insert(tool_name.clone(), self.check_tool(tool_name;
@@ -393,13 +393,13 @@ impl ToolManager {
 
     /// Print a tool status report
     pub fn print_tool_status(&self) {
-        println!("{} Tool Status Report", "🔧".bright_blue(;
-        println!(;
+        println!("{} Tool Status Report", "🔧".bright_blue);
+        println!);
 
-        let results = self.check_all_tools(;
+        let results = self.check_all_tools);
 
         // Required tools
-        println!("{}", "Required Tools:".bright_yellow(;
+        println!("{}", "Required Tools:".bright_yellow);
         for (tool_name, tool_info) in &self.tools {
             if tool_info.required {
                 if let Some(status) = results.get(tool_name) {
@@ -418,8 +418,8 @@ impl ToolManager {
             }
         }
 
-        println!(;
-        println!("{}", "Optional Tools:".bright_yellow(;
+        println!);
+        println!("{}", "Optional Tools:".bright_yellow);
         for (tool_name, tool_info) in &self.tools {
             if !tool_info.required {
                 if let Some(status) = results.get(tool_name) {
@@ -449,7 +449,7 @@ impl ToolManager {
             }
         }
 
-        println!(;
+        println!);
     }
 
     /// Get tool info for a specific tool
@@ -600,7 +600,7 @@ impl ToolManager {
             .map_err(|e| BuildError::Tool(format!("Failed to execute cargo install: {}", e)))?;
 
         if output.status.success() {
-            println!("    ✅ {} installed successfully", tool_name.bright_green(;
+            println!("    ✅ {} installed successfully", tool_name.bright_green);
 
             // Run additional setup if needed (e.g., kani setup)
             if tool_name == "kani" && install_cmd.contains("kani setup") {
@@ -653,7 +653,7 @@ impl ToolManager {
 
     /// Install all tools that need updates
     pub fn install_all_needed_tools(&self) -> BuildResult<()> {
-        let managed_tools = self.version_config.get_managed_tools(;
+        let managed_tools = self.version_config.get_managed_tools);
         let mut installed_any = false;
 
         for tool_name in managed_tools {
@@ -672,9 +672,9 @@ impl ToolManager {
         }
 
         if installed_any {
-            println!(;
+            println!);
             println!("🔄 Verifying installations...";
-            self.print_tool_status(;
+            self.print_tool_status);
         }
 
         Ok(())
@@ -728,7 +728,7 @@ impl ToolManager {
         }
 
         // clippy is called via `cargo clippy`
-        let output = Command::new("cargo").args(["clippy", "--version"]).output(;
+        let output = Command::new("cargo").args(["clippy", "--version"]).output);
 
         match output {
             Ok(output) if output.status.success() => {
@@ -783,7 +783,7 @@ impl ToolManager {
         }
 
         // rustfmt is called via `cargo fmt`
-        let output = Command::new("cargo").args(["fmt", "--version"]).output(;
+        let output = Command::new("cargo").args(["fmt", "--version"]).output);
 
         match output {
             Ok(output) if output.status.success() => {
@@ -825,7 +825,7 @@ impl ToolManager {
 
     fn check_cargo_fuzz(&self) -> ToolStatus {
         // cargo-fuzz is called via `cargo +nightly fuzz`
-        let output = Command::new("cargo").args(["+nightly", "fuzz", "--help"]).output(;
+        let output = Command::new("cargo").args(["+nightly", "fuzz", "--help"]).output);
 
         match output {
             Ok(output) if output.status.success() => ToolStatus {
@@ -861,7 +861,7 @@ impl ToolManager {
     }
 
     fn check_python_venv(&self) -> ToolStatus {
-        let output = Command::new("python3").args(["-m", "venv", "--help"]).output(;
+        let output = Command::new("python3").args(["-m", "venv", "--help"]).output);
 
         match output {
             Ok(output) if output.status.success() => ToolStatus {
@@ -911,7 +911,7 @@ impl ToolManager {
 
     /// Helper method to check a command and extract version
     fn check_command_version(&self, command: &str, args: &[&str]) -> ToolStatus {
-        let output = Command::new(command).args(args).output(;
+        let output = Command::new(command).args(args).output);
 
         match output {
             Ok(output) if output.status.success() => {
@@ -956,7 +956,7 @@ impl Default for ToolManager {
 
 /// Check if a tool is available before using it
 pub fn ensure_tool_available(tool_name: &str, command: &str) -> BuildResult<()> {
-    let manager = ToolManager::new(;
+    let manager = ToolManager::new);
     let status = manager.check_tool(tool_name;
 
     if !status.available {
@@ -968,13 +968,13 @@ pub fn ensure_tool_available(tool_name: &str, command: &str) -> BuildResult<()> 
 
 /// Check if Kani is available (commonly used check)
 pub fn is_kani_available() -> bool {
-    let manager = ToolManager::new(;
+    let manager = ToolManager::new);
     manager.check_tool("kani").available
 }
 
 /// Check if cargo-fuzz is available
 pub fn is_cargo_fuzz_available() -> bool {
-    let manager = ToolManager::new(;
+    let manager = ToolManager::new);
     manager.check_tool("cargo-fuzz").available
 }
 
@@ -984,7 +984,7 @@ mod tests {
 
     #[test]
     fn test_tool_manager_creation() {
-        let manager = ToolManager::new(;
+        let manager = ToolManager::new);
         assert!(manager.tools.contains_key("cargo");
         assert!(manager.tools.contains_key("rustc");
         assert!(manager.tools.contains_key("kani");
@@ -992,7 +992,7 @@ mod tests {
 
     #[test]
     fn test_tool_status_check() {
-        let manager = ToolManager::new(;
+        let manager = ToolManager::new);
 
         // Cargo should be available in any Rust environment
         let cargo_status = manager.check_tool("cargo";
@@ -1002,7 +1002,7 @@ mod tests {
 
     #[test]
     fn test_unknown_tool() {
-        let manager = ToolManager::new(;
+        let manager = ToolManager::new);
         let status = manager.check_tool("nonexistent-tool";
         assert!(!status.available);
         assert!(status.error.is_some();

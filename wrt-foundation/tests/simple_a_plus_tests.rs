@@ -6,7 +6,7 @@ use wrt_foundation::*;
 fn test_basic_managed_allocation() {
     // Test the core safe_managed_alloc! macro
     let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let provider = guard.provider(;
+    let provider = guard.provider);
 
     // Verify provider works
     assert_eq!(provider.size(), 1024;
@@ -33,13 +33,13 @@ fn test_auto_provider_macro() {
 #[test]
 fn test_monitoring_basics() {
     // Reset monitoring
-    monitoring::MEMORY_MONITOR.reset(;
+    monitoring::MEMORY_MONITOR.reset);
 
     // Make an allocation
     let _guard = safe_managed_alloc!(512, CrateId::Foundation).unwrap();
 
     // Check basic monitoring
-    let stats = monitoring::convenience::global_stats(;
+    let stats = monitoring::convenience::global_stats);
     assert!(stats.total_allocations > 0);
     assert!(stats.current_usage >= 512);
 }

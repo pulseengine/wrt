@@ -363,7 +363,7 @@ impl HostBuilder {
         ];
 
         for builtin_type in &builtin_types {
-            let builtin_name = builtin_type.name(;
+            let builtin_name = builtin_type.name);
             if self.registry.has_host_function("wasi_builtin", builtin_name) {
                 // We need a way to extract the handler function from the registry
                 // For now, we'll create a new function that calls through the registry
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_builder_basics() {
-        let builder = HostBuilder::new(;
+        let builder = HostBuilder::new);
         let registry = builder.build().expect("Failed to build registry");
 
         assert!(!registry.has_host_function("test_module", "test_function");
@@ -431,7 +431,7 @@ mod tests {
             .with_strict_validation(true;
 
         // Should fail because ResourceCreate is required but not implemented
-        let result = builder.build(;
+        let result = builder.build);
         assert!(result.is_err();
 
         // Now implement the required built-in
@@ -443,7 +443,7 @@ mod tests {
             };
 
         // Should succeed now
-        let result = builder.build(;
+        let result = builder.build);
         assert!(result.is_ok();
     }
 
@@ -455,7 +455,7 @@ mod tests {
             .builtin_implemented(BuiltinType::ResourceCreate;
 
         // Should succeed because we manually marked ResourceCreate as implemented
-        let result = builder.build(;
+        let result = builder.build);
         assert!(result.is_ok();
     }
 
@@ -518,13 +518,13 @@ mod tests {
             .with_host_id("test-host")
             .with_builtin_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(42)];
 
-        let builtin_host = builder.build_builtin_host(;
+        let builtin_host = builder.build_builtin_host);
 
         // Check that the handler was registered
         assert!(builtin_host.is_implemented(BuiltinType::ResourceCreate);
 
         // Test calling the built-in
-        let mut engine = (;
+        let mut engine = );
         let result = builtin_host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
         assert!(result.is_ok();
         assert_eq!(result.unwrap(), vec![Value::I32(42)];
@@ -536,13 +536,13 @@ mod tests {
         let builder = HostBuilder::new()
             .with_fallback_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)];
 
-        let builtin_host = builder.build_builtin_host(;
+        let builtin_host = builder.build_builtin_host);
 
         // Check that the fallback was registered
         assert!(builtin_host.has_fallback(BuiltinType::ResourceCreate);
 
         // Test calling the built-in (should use fallback)
-        let mut engine = (;
+        let mut engine = );
         let result = builtin_host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
         assert!(result.is_ok();
         assert_eq!(result.unwrap(), vec![Value::I32(99)];
@@ -610,10 +610,10 @@ mod tests {
                 Ok(vec![Value::I32(42)])
             };
 
-        let builtin_host = builder.build_builtin_host(;
+        let builtin_host = builder.build_builtin_host);
 
         // Test calling the built-in
-        let mut engine = (;
+        let mut engine = );
         let result = builtin_host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
         // The interceptor should have bypassed the handler and returned 777

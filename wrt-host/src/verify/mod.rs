@@ -21,7 +21,7 @@ fn verify_cloneable_fn() {
     let f2 = f.clone();
 
     // Verify that both functions work the same
-    let target: Box<dyn std::any::Any> = Box::new((;
+    let target: Box<dyn std::any::Any> = Box::new();
     let result1 = f.call(&mut *target, vec![];
     let result2 = f2.call(&mut *target, vec![];
 
@@ -34,7 +34,7 @@ fn verify_cloneable_fn() {
 #[kani::proof]
 fn verify_callback_registry() {
     // Create a new registry
-    let mut registry = CallbackRegistry::new(;
+    let mut registry = CallbackRegistry::new);
 
     // Register a host function
     registry.register_host_function(

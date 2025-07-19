@@ -186,7 +186,7 @@ impl CargoOutputParser {
         }
 
         // Add related information from child messages and secondary spans
-        let mut related_info = Vec::new(;
+        let mut related_info = Vec::new);
 
         // Add secondary spans as related info
         for span in &message.spans {
@@ -228,7 +228,7 @@ impl ToolOutputParser for CargoOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         // Parse JSON messages from stdout
         for line in stdout.lines() {
@@ -330,7 +330,7 @@ impl GenericOutputParser {
 
     /// Parse generic error patterns from stderr
     fn parse_error_patterns(&self, stderr: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         for line in stderr.lines() {
             // Look for common error patterns
@@ -424,10 +424,10 @@ impl MiriOutputParser {
 
     /// Parse Miri-specific output patterns
     fn parse_miri_output(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
         let mut current_error: Option<(String, String, Option<String>)> = None;
         let mut in_backtrace = false;
-        let mut backtrace_items = Vec::new(;
+        let mut backtrace_items = Vec::new);
 
         for line in output.lines() {
             // Detect start of Miri error
@@ -440,7 +440,7 @@ impl MiriOutputParser {
                         code,
                         &backtrace_items,
                     ;
-                    backtrace_items.clear(;
+                    backtrace_items.clear);
                 }
 
                 let error_msg = line.strip_prefix("error: ").unwrap_or(line).to_string();
@@ -536,7 +536,7 @@ impl MiriOutputParser {
         }
 
         // Add backtrace as related information
-        let mut related_info = Vec::new(;
+        let mut related_info = Vec::new);
         for (i, location) in backtrace.iter().enumerate() {
             let parts: Vec<&str> = location.split(':').collect();
             if parts.len() >= 2 {
@@ -576,7 +576,7 @@ impl ToolOutputParser for MiriOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         // Miri outputs to stderr
         diagnostics.extend(self.parse_miri_output(stderr);
@@ -607,7 +607,7 @@ impl KaniOutputParser {
 
     /// Parse Kani-specific output patterns
     fn parse_kani_output(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         for line in output.lines() {
             // Look for Kani verification failures
@@ -667,7 +667,7 @@ impl CargoAuditOutputParser {
 
     /// Parse cargo-audit JSON output
     fn parse_audit_json(&self, json_str: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         // Try to parse as JSON
         if let Ok(audit_report) = serde_json::from_str::<serde_json::Value>(json_str) {
@@ -729,9 +729,9 @@ impl CargoAuditOutputParser {
 
     /// Parse cargo-audit text output (fallback)
     fn parse_audit_text(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
         let mut current_vuln: Option<(String, String, Severity)> = None;
-        let mut details = String::new(;
+        let mut details = String::new);
 
         for line in output.lines() {
             // Parse vulnerability header like "RUSTSEC-2021-0139: ansi_term is
@@ -749,7 +749,7 @@ impl CargoAuditOutputParser {
                         )
                         .with_code(id),
                     ;
-                    details.clear(;
+                    details.clear);
                 }
 
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
@@ -762,7 +762,7 @@ impl CargoAuditOutputParser {
             // Parse severity
             else if line.trim().starts_with("Severity:") {
                 if let Some((_, _, ref mut sev)) = current_vuln {
-                    let severity_str = line.trim().strip_prefix("Severity:").unwrap_or("").trim(;
+                    let severity_str = line.trim().strip_prefix("Severity:").unwrap_or("").trim);
                     *sev = match severity_str.to_lowercase().as_str() {
                         "critical" | "high" => Severity::Error,
                         "medium" => Severity::Warning,
@@ -825,7 +825,7 @@ impl ToolOutputParser for CargoAuditOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         // Try JSON parsing first (if --format json was used)
         if stdout.trim().starts_with('{') {
@@ -880,8 +880,8 @@ impl RustdocOutputParser {
 
     /// Parse rustdoc output
     fn parse_rustdoc_output(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
-        let mut current_file = String::new(;
+        let mut diagnostics = Vec::new);
+        let mut current_file = String::new);
         let mut in_error = false;
 
         for line in output.lines() {
@@ -1018,7 +1018,7 @@ impl ToolOutputParser for RustdocOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         // Parse both stdout and stderr as rustdoc outputs to both
         diagnostics.extend(self.parse_rustdoc_output(stdout);
@@ -1058,7 +1058,7 @@ impl TarpaulinOutputParser {
 
     /// Parse tarpaulin JSON output
     fn parse_tarpaulin_json(&self, json_str: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         if let Ok(coverage_report) = serde_json::from_str::<serde_json::Value>(json_str) {
             // Parse overall coverage
@@ -1135,8 +1135,8 @@ impl TarpaulinOutputParser {
 
     /// Parse tarpaulin text output
     fn parse_tarpaulin_text(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new(;
-        let mut current_file = String::new(;
+        let mut diagnostics = Vec::new);
+        let mut current_file = String::new);
 
         for line in output.lines() {
             // Parse overall coverage line like "Coverage Results: 85.50%"
@@ -1169,7 +1169,7 @@ impl TarpaulinOutputParser {
             else if line.contains(".rs:") && line.contains('%') {
                 let parts: Vec<&str> = line.split(':').collect();
                 if parts.len() >= 2 {
-                    current_file = self.make_relative_path(parts[0].trim(;
+                    current_file = self.make_relative_path(parts[0].trim);
 
                     if let Some(pct_str) = parts[1].trim().strip_suffix('%') {
                         let file_coverage = pct_str.parse::<f64>().unwrap_or(0.0;
@@ -1200,7 +1200,7 @@ impl TarpaulinOutputParser {
                 if let Some(lines_str) = line.split(':').nth(1) {
                     // Parse line ranges like "10-15, 20, 25-30"
                     for range_str in lines_str.split(',') {
-                        let range_str = range_str.trim(;
+                        let range_str = range_str.trim);
                         if range_str.contains('-') {
                             // Line range
                             let parts: Vec<&str> = range_str.split('-').collect();
@@ -1262,7 +1262,7 @@ impl ToolOutputParser for TarpaulinOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new(;
+        let mut diagnostics = Vec::new);
 
         // Try JSON parsing first
         if stdout.trim().starts_with('{') {

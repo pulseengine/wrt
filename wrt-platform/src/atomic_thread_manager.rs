@@ -55,7 +55,7 @@ impl AtomicCoordinator {
     
     /// Get or create a futex for a memory address
     fn get_or_create_futex(&self, addr: u64, initial_value: u32) -> Result<Arc<dyn FutexLike + Send + Sync>> {
-        let mut map = self.futex_map.write(;
+        let mut map = self.futex_map.write);
         
         if let Some(futex) = map.get(&addr) {
             return Ok(Arc::clone(futex);
@@ -97,7 +97,7 @@ impl AtomicCoordinator {
     
     /// Implement atomic notify operation
     pub fn atomic_notify(&self, addr: u64, count: u32) -> Result<u32> {
-        let map = self.futex_map.read(;
+        let map = self.futex_map.read);
         
         if let Some(futex) = map.get(&addr) {
             futex.wake(count)?;
@@ -118,11 +118,11 @@ impl AtomicCoordinator {
             module_id: self.atomic_module_id,
             function_id: 0xFFFF, // Special function ID for atomic operations
             args: {
-                let mut args = Vec::new(;
-                args.extend_from_slice(&addr.to_le_bytes(;
-                args.extend_from_slice(&expected.to_le_bytes(;
+                let mut args = Vec::new);
+                args.extend_from_slice(&addr.to_le_bytes);
+                args.extend_from_slice(&expected.to_le_bytes);
                 if let Some(timeout) = timeout_ns {
-                    args.extend_from_slice(&timeout.to_le_bytes(;
+                    args.extend_from_slice(&timeout.to_le_bytes);
                 }
                 args
             },
@@ -135,7 +135,7 @@ impl AtomicCoordinator {
     
     /// Clean up unused futexes (garbage collection)
     pub fn cleanup_futexes(&self) {
-        let mut map = self.futex_map.write(;
+        let mut map = self.futex_map.write);
         
         // Remove futexes that are no longer referenced
         // In a real implementation, we'd track reference counts
@@ -144,7 +144,7 @@ impl AtomicCoordinator {
     
     /// Get statistics about atomic operations
     pub fn get_atomic_stats(&self) -> AtomicStats {
-        let map = self.futex_map.read(;
+        let map = self.futex_map.read);
         AtomicStats {
             active_futexes: map.len(),
             thread_manager_stats: self.thread_manager.get_stats(),
@@ -221,7 +221,7 @@ impl AtomicAwareThreadManager {
     /// Shutdown the manager
     pub fn shutdown(&mut self, _timeout: Duration) -> Result<()> {
         // Clean up atomic operations first
-        self.atomic_coordinator.cleanup_futexes(;
+        self.atomic_coordinator.cleanup_futexes);
         
         // Shutdown base manager (this will unregister the atomic module)
         // Note: We need to work around the fact that base_manager is Arc
@@ -250,9 +250,9 @@ mod tests {
     
     #[test]
     fn test_atomic_coordinator_creation() {
-        let config = ThreadPoolConfig::default(;
-        let limits = ThreadingLimits::default(;
-        let executor = create_test_executor(;
+        let config = ThreadPoolConfig::default);
+        let limits = ThreadingLimits::default);
+        let executor = create_test_executor);
         
         let base_manager = Arc::new(WasmThreadManager::new(config, limits, executor).unwrap();
         let coordinator = AtomicCoordinator::new(base_manager;
@@ -261,9 +261,9 @@ mod tests {
     
     #[test]
     fn test_atomic_aware_thread_manager() {
-        let config = ThreadPoolConfig::default(;
-        let limits = ThreadingLimits::default(;
-        let executor = create_test_executor(;
+        let config = ThreadPoolConfig::default);
+        let limits = ThreadingLimits::default);
+        let executor = create_test_executor);
         
         let manager = AtomicAwareThreadManager::new(config, limits, executor;
         assert!(manager.is_ok();
@@ -271,9 +271,9 @@ mod tests {
     
     #[test]
     fn test_atomic_operations() {
-        let config = ThreadPoolConfig::default(;
-        let limits = ThreadingLimits::default(;
-        let executor = create_test_executor(;
+        let config = ThreadPoolConfig::default);
+        let limits = ThreadingLimits::default);
+        let executor = create_test_executor);
         
         let manager = AtomicAwareThreadManager::new(config, limits, executor).unwrap();
         

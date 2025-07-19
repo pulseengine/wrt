@@ -28,7 +28,7 @@
 //! use wrt_component::component_communication::{CallRouter, CallContext};
 //! 
 //! // Create a call router
-//! let mut router = CallRouter::new(;
+//! let mut router = CallRouter::new);
 //! 
 //! // Route a call between components
 //! let context = CallContext::new(source_instance, target_instance, "add", &args)?;
@@ -804,14 +804,14 @@ mod tests {
 
     #[test]
     fn test_call_router_creation() {
-        let router = CallRouter::new(;
+        let router = CallRouter::new);
         assert_eq!(router.stats.total_calls, 0;
         assert_eq!(router.get_call_stack_depth(), 0;
     }
 
     #[test]
     fn test_call_context_creation() {
-        let router = CallRouter::new(;
+        let router = CallRouter::new);
         let context = router.create_call_context(
             1, 
             2, 
@@ -851,8 +851,8 @@ mod tests {
 
     #[test]
     fn test_parameter_bridge_creation() {
-        let source_context = create_memory_context(1, 1024, MemoryProtectionFlags::default(;
-        let target_context = create_memory_context(2, 2048, MemoryProtectionFlags::default(;
+        let source_context = create_memory_context(1, 1024, MemoryProtectionFlags::default);
+        let target_context = create_memory_context(2, 2048, MemoryProtectionFlags::default);
         let bridge = create_parameter_bridge(source_context, target_context;
         
         assert_eq!(bridge.source_memory_context.instance_id, 1;
@@ -876,7 +876,7 @@ mod tests {
 
     #[test]
     fn test_call_statistics() {
-        let mut stats = CallStatistics::default(;
+        let mut stats = CallStatistics::default);
         stats.total_calls = 10;
         stats.successful_calls = 8;
         stats.failed_calls = 2;
@@ -1021,12 +1021,12 @@ impl Default for ResourceTransferType {
 }
 
 // Apply macro to all types that need traits
-impl_basic_traits!(CallContext, CallContext::default(;
-impl_basic_traits!(CallFrame, CallFrame::default(;
-impl_basic_traits!(CallMetadata, CallMetadata::default(;
-impl_basic_traits!(MemoryContext, MemoryContext::default(;
-impl_basic_traits!(MemoryProtectionFlags, MemoryProtectionFlags::default(;
-impl_basic_traits!(ResourceTransfer, ResourceTransfer::default(;
+impl_basic_traits!(CallContext, CallContext::default);
+impl_basic_traits!(CallFrame, CallFrame::default);
+impl_basic_traits!(CallMetadata, CallMetadata::default);
+impl_basic_traits!(MemoryContext, MemoryContext::default);
+impl_basic_traits!(MemoryProtectionFlags, MemoryProtectionFlags::default);
+impl_basic_traits!(ResourceTransfer, ResourceTransfer::default);
 
 // Additional Default implementations
 impl Default for CallRouterConfig {
@@ -1070,6 +1070,6 @@ impl Default for StringEncoding {
 }
 
 // Apply traits to additional types
-impl_basic_traits!(CallRouterConfig, CallRouterConfig::default(;
-impl_basic_traits!(MarshalingConfig, MarshalingConfig::default(;
-impl_basic_traits!(ResourceTransferPolicy, ResourceTransferPolicy::default(;
+impl_basic_traits!(CallRouterConfig, CallRouterConfig::default);
+impl_basic_traits!(MarshalingConfig, MarshalingConfig::default);
+impl_basic_traits!(ResourceTransferPolicy, ResourceTransferPolicy::default);

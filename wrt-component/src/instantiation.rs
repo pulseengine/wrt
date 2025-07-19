@@ -183,7 +183,7 @@ impl Default for ImportValues {
                 #[cfg(not(feature = "std"))]
                 imports: {
                     // Use fallback provider only in default construction
-                    let provider = InstantiationProvider::default(;
+                    let provider = InstantiationProvider::default);
                     BoundedVec::new(provider).unwrap()
                 },
             }
@@ -237,7 +237,7 @@ impl Component {
         context: &mut InstantiationContext,
     ) -> WrtResult<ComponentInstance> {
         // Generate unique instance ID
-        let instance_id = context.next_instance_id(;
+        let instance_id = context.next_instance_id);
 
         // Step 1: Validate imports match component requirements
         self.validate_imports(imports)?;
@@ -381,7 +381,7 @@ impl Component {
     /// Create resource tables for the instance with budget enforcement
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     fn create_resource_tables(&self) -> WrtResult<WrtVec<ResourceTable, {CrateId::Component as u8}, 16>> {
-        let mut tables = WrtVec::new(;
+        let mut tables = WrtVec::new);
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
@@ -399,7 +399,7 @@ impl Component {
     /// Create resource tables for the instance
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
-        let mut tables = Vec::new(;
+        let mut tables = Vec::new);
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
@@ -438,7 +438,7 @@ impl Component {
         imports: &ImportValues,
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>> {
-        let mut resolved = WrtVec::new(;
+        let mut resolved = WrtVec::new);
 
         for import in &self.imports {
             if let Some(value) = imports.get(&import.name) {
@@ -459,7 +459,7 @@ impl Component {
         imports: &ImportValues,
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ResolvedImport>> {
-        let mut resolved = Vec::new(;
+        let mut resolved = Vec::new);
 
         for import in &self.imports {
             if let Some(value) = imports.get(&import.name) {
@@ -533,7 +533,7 @@ impl Component {
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>> {
-        let mut instances = WrtVec::new(;
+        let mut instances = WrtVec::new);
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -554,7 +554,7 @@ impl Component {
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ModuleInstance>> {
-        let mut instances = Vec::new(;
+        let mut instances = Vec::new);
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -593,7 +593,7 @@ impl Component {
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>> {
-        let mut exports = WrtVec::new(;
+        let mut exports = WrtVec::new);
 
         for export in &self.exports {
             // Resolve export to actual value based on export kind
@@ -646,7 +646,7 @@ impl Component {
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ResolvedExport>> {
-        let mut exports = Vec::new(;
+        let mut exports = Vec::new);
 
         for export in &self.exports {
             // Resolve export to actual value based on export kind
@@ -788,7 +788,7 @@ mod tests {
 
     #[test]
     fn test_import_values() {
-        let mut imports = ImportValues::new(;
+        let mut imports = ImportValues::new);
 
         #[cfg(feature = "std")]
         {
@@ -816,7 +816,7 @@ mod tests {
 
     #[test]
     fn test_instantiation_context() {
-        let mut context = InstantiationContext::new(;
+        let mut context = InstantiationContext::new);
         assert_eq!(context.next_instance_id(), 0;
         assert_eq!(context.next_instance_id(), 1;
         assert_eq!(context.next_instance_id(), 2;
@@ -826,7 +826,7 @@ mod tests {
 
     #[test]
     fn test_value_imports() {
-        let mut imports = ImportValues::new(;
+        let mut imports = ImportValues::new);
         
         let value_import = ImportValue::Value(WrtComponentValue::U32(100;
         
@@ -871,7 +871,7 @@ mod tests {
     /*
     #[test]
     fn test_full_instantiation_context() {
-        let mut context = InstantiationContext::new(;
+        let mut context = InstantiationContext::new);
         
         // Verify all subsystems are initialized
         assert_eq!(context.canonical_abi.string_encoding(), crate::string_encoding::StringEncoding::Utf8;
@@ -912,7 +912,7 @@ mod tests {
 
     #[test]
     fn test_resource_management() {
-        let mut context = InstantiationContext::new(;
+        let mut context = InstantiationContext::new);
         
         // Create a resource
         let resource_data = WrtComponentValue::String("test_resource".into();
@@ -939,7 +939,7 @@ mod tests {
 
     #[test]
     fn test_memory_layout_integration() {
-        let _context = InstantiationContext::new(;
+        let _context = InstantiationContext::new);
         
         // Test basic type layouts
         use crate::types::ValType;
@@ -960,7 +960,7 @@ mod tests {
 
     #[test]
     fn test_string_encoding_integration() {
-        let _context = InstantiationContext::new(;
+        let _context = InstantiationContext::new);
         
         use crate::string_encoding::{StringEncoding, encode_string};
         
@@ -970,7 +970,7 @@ mod tests {
         assert!(encoded.is_ok();
         
         let encoded_bytes = encoded.unwrap();
-        assert_eq!(encoded_bytes, test_string.as_bytes(;
+        assert_eq!(encoded_bytes, test_string.as_bytes);
         
         // Test UTF-16LE encoding  
         let encoded_utf16 = encode_string("Hello", StringEncoding::Utf16Le;

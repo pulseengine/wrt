@@ -97,13 +97,13 @@ impl PerformanceOptimizer {
 
     /// Start timing a command
     pub fn start_timer(&mut self, command: &str) {
-        self.command_timers.insert(command.to_string(), Instant::now(;
+        self.command_timers.insert(command.to_string(), Instant::now);
     }
 
     /// Stop timing a command and record duration
     pub fn stop_timer(&mut self, command: &str) {
         if let Some(start_time) = self.command_timers.remove(command) {
-            let duration = start_time.elapsed(;
+            let duration = start_time.elapsed);
             self.metrics.command_times.insert(command.to_string(), duration;
         }
     }
@@ -130,10 +130,10 @@ impl PerformanceOptimizer {
 
     /// Get performance recommendations
     pub fn get_recommendations(&self) -> Vec<PerformanceRecommendation> {
-        let mut recommendations = Vec::new(;
+        let mut recommendations = Vec::new);
 
         // Cache performance
-        let cache_ratio = self.cache_hit_ratio(;
+        let cache_ratio = self.cache_hit_ratio);
         if cache_ratio < 0.5 && self.metrics.cache_hits + self.metrics.cache_misses > 10 {
             recommendations.push(PerformanceRecommendation {
                 category:    RecommendationCategory::Caching,
@@ -209,7 +209,7 @@ impl PerformanceOptimizer {
     /// Optimize configuration based on system
     pub fn optimize_for_system(&mut self) -> Result<()> {
         // Detect system capabilities
-        let cpu_count = num_cpus::get(;
+        let cpu_count = num_cpus::get);
         let available_memory = self.get_available_memory_mb()?;
 
         // Adjust parallel jobs
@@ -299,7 +299,7 @@ impl PerformanceReport {
     pub fn format_human(&self, use_colors: bool) -> String {
         use colored::Colorize;
 
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Header
         if use_colors {

@@ -33,7 +33,7 @@ mod error_handling_tests {
     /// Test that capacity exceeded returns error, not panic
     #[test]
     fn test_no_panic_on_capacity_exceeded() {
-        let vec_result = new_component_vec::<u32>(;
+        let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
@@ -60,7 +60,7 @@ mod error_handling_tests {
     /// Test error handling in string operations
     #[test]
     fn test_string_error_handling() {
-        let name_result = new_component_name(;
+        let name_result = new_component_name);
         assert!(name_result.is_ok();
 
         let mut name = name_result.unwrap();
@@ -92,7 +92,7 @@ mod error_handling_tests {
     /// Test map error handling
     #[test]
     fn test_map_error_handling() {
-        let map_result = new_type_map::<u32>(;
+        let map_result = new_type_map::<u32>);
         assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
@@ -123,7 +123,7 @@ mod error_handling_tests {
     /// Test resource table error handling
     #[test]
     fn test_resource_table_error_handling() {
-        let mut table = ResourceTable::new(;
+        let mut table = ResourceTable::new);
 
         // Test invalid handle operations
         let invalid_handle = 0xFFFFFFFF;
@@ -154,11 +154,11 @@ mod error_handling_tests {
     /// Test canonical ABI error handling
     #[test]
     fn test_canonical_abi_error_handling() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
 
         // Test with null memory
-        let null_memory = core::ptr::null(;
-        let options = CanonicalOptions::default(;
+        let null_memory = core::ptr::null);
+        let options = CanonicalOptions::default);
 
         // These operations should handle null memory gracefully
         // (Note: actual implementation details may vary)
@@ -175,7 +175,7 @@ mod error_handling_tests {
     /// Test resource lifecycle error handling
     #[test]
     fn test_resource_lifecycle_error_handling() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
 
         let resource_type = ResourceType {
             type_idx: 1,
@@ -224,7 +224,7 @@ mod error_handling_tests {
     /// Test stack overflow protection
     #[test]
     fn test_stack_overflow_protection() {
-        let stack_result = new_call_stack::<u32>(;
+        let stack_result = new_call_stack::<u32>);
         assert!(stack_result.is_ok();
 
         let mut stack = stack_result.unwrap();
@@ -251,7 +251,7 @@ mod error_handling_tests {
     #[test]
     fn test_empty_collection_operations() {
         // Test empty vector operations
-        let vec_result = new_component_vec::<u32>(;
+        let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
@@ -265,7 +265,7 @@ mod error_handling_tests {
         }
 
         // Test empty map operations
-        let map_result = new_type_map::<String>(;
+        let map_result = new_type_map::<String>);
         assert!(map_result.is_ok();
 
         let map = map_result.unwrap();
@@ -275,7 +275,7 @@ mod error_handling_tests {
         assert_eq!(map.get(&key), None;
 
         // Iteration over empty map should work
-        let count = map.iter().count(;
+        let count = map.iter().count);
         assert_eq!(count, 0;
     }
 
@@ -283,7 +283,7 @@ mod error_handling_tests {
     #[test]
     fn test_boundary_value_errors() {
         // Test with maximum indices
-        let vec_result = new_type_map::<u32>(;
+        let vec_result = new_type_map::<u32>);
         assert!(vec_result.is_ok();
 
         let mut map = vec_result.unwrap();
@@ -336,13 +336,13 @@ mod error_handling_tests {
         // This test verifies the API design
         // All operations that can fail should return Result<T, E>
 
-        let vec_result: WrtResult<_> = new_component_vec::<u32>(;
+        let vec_result: WrtResult<_> = new_component_vec::<u32>);
         assert!(vec_result.is_ok();
 
-        let map_result: WrtResult<_> = new_export_map::<u32>(;
+        let map_result: WrtResult<_> = new_export_map::<u32>);
         assert!(map_result.is_ok();
 
-        let string_result: WrtResult<_> = new_component_name(;
+        let string_result: WrtResult<_> = new_component_name);
         assert!(string_result.is_ok();
 
         let bounded_string_result: WrtResult<_> = bounded_component_name_from_str("test";
@@ -354,7 +354,7 @@ mod error_handling_tests {
     /// Test error recovery
     #[test]
     fn test_error_recovery() {
-        let vec_result = new_component_vec::<u32>(;
+        let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();

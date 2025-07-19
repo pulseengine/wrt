@@ -85,7 +85,7 @@ impl DocumentationVerificationFramework {
         ;
 
         let requirements = self.requirement_registry.requirements.clone();
-        let mut violations = Vec::new(;
+        let mut violations = Vec::new);
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
@@ -132,7 +132,7 @@ impl DocumentationVerificationFramework {
             self.documentation_analysis.push(analysis);
         }
 
-        let total_requirements = requirements.len(;
+        let total_requirements = requirements.len);
         let compliance_percentage = if total_requirements > 0 {
             (compliant_requirements as f64 / total_requirements as f64) * 100.0
         } else {
@@ -193,7 +193,7 @@ impl DocumentationVerificationFramework {
         ;
 
         let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
-        let mut violations = Vec::new(;
+        let mut violations = Vec::new);
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
@@ -208,7 +208,7 @@ impl DocumentationVerificationFramework {
             }
         }
 
-        let total_requirements = requirements.len(;
+        let total_requirements = requirements.len);
         let compliance_percentage = if total_requirements > 0 {
             (compliant_requirements as f64 / total_requirements as f64) * 100.0
         } else {
@@ -256,14 +256,14 @@ impl DocumentationVerificationFramework {
             100.0
         };
 
-        let total_violations = self.documentation_analysis.iter().map(|a| a.violations.len()).sum(;
+        let total_violations = self.documentation_analysis.iter().map(|a| a.violations.len()).sum);
 
         let critical_violations = self
             .documentation_analysis
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.severity == DocumentationViolationSeverity::Critical)
-            .count(;
+            .count);
 
         let report = DocumentationReport {
             overall_compliance,
@@ -372,7 +372,7 @@ impl DocumentationVerificationFramework {
         requirement: &SafetyRequirement,
         diagnostics: &mut DiagnosticCollection,
     ) -> DocumentationAnalysis {
-        let mut violations = Vec::new(;
+        let mut violations = Vec::new);
         let required_standards = self.get_documentation_standards_for_asil(requirement.asil_level;
 
         // Check requirement documentation completeness
@@ -579,7 +579,7 @@ impl DocumentationVerificationFramework {
         }
 
         let total_penalty: f64 =
-            violations.iter().map(|v| self.get_violation_penalty(&v.severity)).sum(;
+            violations.iter().map(|v| self.get_violation_penalty(&v.severity)).sum);
         let max_possible_penalty = 100.0; // Maximum penalty possible
 
         ((max_possible_penalty - total_penalty) / max_possible_penalty * 100.0).max(0.0)
@@ -641,7 +641,7 @@ impl DocumentationVerificationFramework {
 
     /// Calculate compliance per ASIL level
     fn calculate_asil_compliance(&self) -> HashMap<AsilLevel, f64> {
-        let mut asil_compliance = HashMap::new(;
+        let mut asil_compliance = HashMap::new);
 
         for asil_level in [
             AsilLevel::QM,
@@ -668,14 +668,14 @@ impl DocumentationVerificationFramework {
 
     /// Generate recommendations for improving documentation
     fn generate_recommendations(&self) -> Vec<String> {
-        let mut recommendations = Vec::new(;
+        let mut recommendations = Vec::new);
 
         let critical_violations = self
             .documentation_analysis
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.severity == DocumentationViolationSeverity::Critical)
-            .count(;
+            .count);
 
         if critical_violations > 0 {
             recommendations.push(format!(
@@ -689,7 +689,7 @@ impl DocumentationVerificationFramework {
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.violation_type == DocumentationViolationType::MissingDescription)
-            .count(;
+            .count);
 
         if missing_descriptions > 0 {
             recommendations.push(format!(
@@ -703,7 +703,7 @@ impl DocumentationVerificationFramework {
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.violation_type == DocumentationViolationType::UndocumentedImplementation)
-            .count(;
+            .count);
 
         if undocumented_implementations > 0 {
             recommendations.push(format!(
@@ -977,7 +977,7 @@ mod tests {
     #[test]
     fn test_documentation_report_generation() {
         let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
-        let (report, _diagnostics) = framework.generate_report(;
+        let (report, _diagnostics) = framework.generate_report);
 
         assert_eq!(report.overall_compliance, 100.0;
         assert_eq!(report.total_requirements, 0;

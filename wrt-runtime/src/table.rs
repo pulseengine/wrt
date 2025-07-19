@@ -137,10 +137,10 @@ impl wrt_foundation::traits::Checksummable for Table {
             WrtRefType::Funcref => 0u8,
             WrtRefType::Externref => 1u8,
         };
-        checksum.update_slice(&element_type_byte.to_le_bytes(;
-        checksum.update_slice(&self.ty.limits.min.to_le_bytes(;
+        checksum.update_slice(&element_type_byte.to_le_bytes);
+        checksum.update_slice(&self.ty.limits.min.to_le_bytes);
         if let Some(max) = self.ty.limits.max {
-            checksum.update_slice(&max.to_le_bytes(;
+            checksum.update_slice(&max.to_le_bytes);
         }
     }
 }
@@ -339,7 +339,7 @@ impl Table {
             return Err(Error::validation_error("Grow operation init value type doesn't match table element type";
         }
 
-        let old_size = self.size(;
+        let old_size = self.size);
         let new_size = old_size.checked_add(delta).ok_or_else(|| {
             Error::runtime_execution_error("Table size overflow")
         })?;
@@ -431,7 +431,7 @@ impl Table {
 
         // Handle the case where regions don't overlap or no elements to copy
         if len == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Create temporary stack to store elements during copy
@@ -478,7 +478,7 @@ impl Table {
 
         // Handle empty fill
         if len == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Create a new stack with the filled elements
@@ -970,7 +970,7 @@ mod tests {
         assert_eq!(table.get(2)?, fill_value;
 
         // Print safety stats
-        println!("{}", table.safety_stats(;
+        println!("{}", table.safety_stats);
 
         Ok(())
     }

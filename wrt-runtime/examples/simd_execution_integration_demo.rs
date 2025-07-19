@@ -23,8 +23,8 @@ fn main() -> Result<()> {
     println!("==================================";
     
     // Create a stackless engine for demonstration
-    let mut engine = StacklessEngine::new(;
-    let adapter = SimdExecutionAdapter::new(;
+    let mut engine = StacklessEngine::new);
+    let adapter = SimdExecutionAdapter::new);
     
     // Demonstrate SIMD operation integration
     demonstrate_simd_arithmetic(&adapter, &mut engine)?;
@@ -73,7 +73,7 @@ fn demonstrate_simd_arithmetic(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(result_v128) = result {
         println!("✓ I32x4 Add executed successfully";
-        println!("  Result vector: {:?}", result_v128.bytes(;
+        println!("  Result vector: {:?}", result_v128.bytes);
     } else {
         println!("✗ Unexpected result type";
     }
@@ -88,7 +88,7 @@ fn demonstrate_simd_arithmetic(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(result_v128) = result {
         println!("✓ I32x4 Mul executed successfully";
-        println!("  Result vector: {:?}", result_v128.bytes(;
+        println!("  Result vector: {:?}", result_v128.bytes);
     }
     
     Ok(())
@@ -176,7 +176,7 @@ fn demonstrate_simd_lane_operations(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(splat_result) = result {
         println!("✓ I8x16 Splat executed successfully";
-        println!("  Splat result: {:?}", splat_result.bytes(;
+        println!("  Splat result: {:?}", splat_result.bytes);
     }
     
     // Demonstrate replace lane
@@ -190,7 +190,7 @@ fn demonstrate_simd_lane_operations(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(replace_result) = result {
         println!("✓ I8x16 ReplaceLane executed successfully";
-        println!("  Replace result: {:?}", replace_result.bytes(;
+        println!("  Replace result: {:?}", replace_result.bytes);
     }
     
     Ok(())
@@ -201,7 +201,7 @@ fn demonstrate_execution_statistics(engine: &StacklessEngine) {
     println!("\n📈 Execution Statistics";
     println!("----------------------";
     
-    let stats = engine.stats(;
+    let stats = engine.stats);
     println!("Instructions executed: {}", stats.instructions_executed;
     println!("Function calls: {}", stats.function_calls;
     println!("SIMD operations executed: {}", stats.simd_operations_executed;
@@ -219,8 +219,8 @@ mod tests {
     
     #[test]
     fn test_simd_adapter_integration() {
-        let adapter = SimdExecutionAdapter::new(;
-        let mut engine = StacklessEngine::new(;
+        let adapter = SimdExecutionAdapter::new);
+        let mut engine = StacklessEngine::new);
         
         // Test basic adapter functionality
         let initial_simd_count = engine.stats().simd_operations_executed;
@@ -248,7 +248,7 @@ mod tests {
     
     #[test]
     fn test_operand_count_validation() {
-        let adapter = SimdExecutionAdapter::new(;
+        let adapter = SimdExecutionAdapter::new);
         
         // Test operand count calculations
         assert_eq!(adapter.get_operand_count(&SimdOp::I32x4Add), 2;

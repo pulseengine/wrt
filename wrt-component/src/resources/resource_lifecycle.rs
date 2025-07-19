@@ -384,7 +384,7 @@ impl ResourceLifecycleManager {
         // Update resource state
         resource.state = ResourceState::Borrowed;
         resource.borrow_count += 1;
-        resource.metadata.last_accessed = Some(self.get_timestamp(;
+        resource.metadata.last_accessed = Some(self.get_timestamp);
 
         // Store borrow info
         #[cfg(feature = "std")]
@@ -521,7 +521,7 @@ impl ResourceLifecycleManager {
         // Update ownership
         resource.state = ResourceState::Transferring;
         resource.metadata.owner = to;
-        resource.metadata.last_accessed = Some(self.get_timestamp(;
+        resource.metadata.last_accessed = Some(self.get_timestamp);
         resource.state = ResourceState::Active;
 
         Ok(())
@@ -647,7 +647,7 @@ mod tests {
 
     #[test]
     fn test_resource_lifecycle() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
 
         // Register a type
         manager.register_type(1, "TestResource", None).unwrap();
@@ -681,7 +681,7 @@ mod tests {
 
     #[test]
     fn test_ownership_transfer() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
 
         // Register and create
         manager.register_type(1, "TestResource", None).unwrap();
@@ -697,7 +697,7 @@ mod tests {
 
     #[test]
     fn test_borrow_rules() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
 
         // Register and create
         manager.register_type(1, "TestResource", None).unwrap();
@@ -724,7 +724,7 @@ mod tests {
 
     #[test]
     fn test_resource_guard() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
         manager.register_type(1, "TestResource", None).unwrap();
 
         {

@@ -368,7 +368,7 @@ impl WaitableSet {
 
     /// Add a waitable to the set
     pub fn add(&mut self, waitable: Waitable) -> WrtResult<u32> {
-        let index = self.waitables.len(;
+        let index = self.waitables.len);
         if index >= 64 {
             return Err(wrt_error::Error::runtime_execution_error("Too many waitables";
         }
@@ -504,10 +504,10 @@ mod tests {
         stream.buffer.push(Value::U32(42);
         assert!(stream.is_readable();
 
-        stream.close_writable(;
+        stream.close_writable);
         assert!(!stream.is_writable();
 
-        stream.close_readable(;
+        stream.close_readable);
         assert_eq!(stream.state, StreamState::Closed;
     }
 
@@ -528,7 +528,7 @@ mod tests {
     fn test_future_cancel() {
         let mut future: Future<Value> = Future::new(FutureHandle(2), ValType::Bool;
 
-        future.cancel(;
+        future.cancel);
         assert_eq!(future.state, FutureState::Cancelled;
         assert!(future.set_value(Value::Bool(true)).is_err();
     }
@@ -543,7 +543,7 @@ mod tests {
             BoundedString::from_str("Test error").unwrap(),
         ).unwrap();
 
-        let debug_str = error.debug_string(;
+        let debug_str = error.debug_string);
         assert!(debug_str.as_str().contains("Test error");
     }
 

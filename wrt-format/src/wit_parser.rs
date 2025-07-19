@@ -81,7 +81,7 @@ impl WitParser {
             let mut i = 0;
 
             while i < lines.len() {
-                let line = lines[i].trim(;
+                let line = lines[i].trim);
                 
                 if line.is_empty() || line.starts_with("//") {
                     i += 1;
@@ -126,7 +126,7 @@ impl WitParser {
             let mut i = 0;
 
             while i < lines.len() {
-                let line = lines[i].trim(;
+                let line = lines[i].trim);
                 
                 if line.is_empty() || line.starts_with("//") {
                     i += 1;
@@ -193,7 +193,7 @@ impl WitParser {
             
             // Split whitespace manually for no_std
             let mut start = 0;
-            let bytes = line.as_bytes(;
+            let bytes = line.as_bytes);
             
             for (i, &byte) in bytes.iter().enumerate() {
                 if byte.is_ascii_whitespace() {
@@ -285,7 +285,7 @@ impl WitParser {
             
             // Split whitespace manually for no_std
             let mut start = 0;
-            let bytes = line.as_bytes(;
+            let bytes = line.as_bytes);
             
             for (i, &byte) in bytes.iter().enumerate() {
                 if byte.is_ascii_whitespace() {
@@ -347,7 +347,7 @@ impl WitParser {
 
         #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
-            let name_part = &line[..colon_pos].trim(;
+            let name_part = &line[..colon_pos].trim);
             let parts: Vec<&str> = name_part.split_whitespace().collect();
             
             if let Some(name) = parts.last() {
@@ -397,7 +397,7 @@ impl WitParser {
             
             // Split by space for type definition (e.g., "type name value")
             let mut start = 0;
-            let bytes = line.as_bytes(;
+            let bytes = line.as_bytes);
             let mut part_count = 0;
             
             for (i, &byte) in bytes.iter().enumerate() {
@@ -448,7 +448,7 @@ impl WitParser {
     }
 
     fn parse_type(&mut self, type_str: &str) -> Result<WitType, WitParseError> {
-        let type_str = type_str.trim(;
+        let type_str = type_str.trim);
         
         match type_str {
             "bool" => Ok(WitType::Bool),
@@ -495,7 +495,7 @@ impl WitParser {
                 #[cfg(not(any(feature = "std", )))]
                 {
                     // Handle complex types in no_std environments
-                    let bytes = type_str.as_bytes(;
+                    let bytes = type_str.as_bytes);
                     
                     // Check for list<T>
                     if bytes.len() > 6 && &bytes[..5] == b"list<" && bytes[bytes.len()-1] == b'>' {
@@ -606,14 +606,14 @@ mod tests {
 
     #[test]
     fn test_wit_parser_creation() {
-        let parser = WitParser::new(;
+        let parser = WitParser::new);
         assert_eq!(parser.current_position, 0;
         assert_eq!(parser.type_definitions.len(), 0;
     }
 
     #[test]
     fn test_parse_basic_types() {
-        let mut parser = WitParser::new(;
+        let mut parser = WitParser::new);
         
         assert_eq!(parser.parse_type("bool").unwrap(), WitType::Bool;
         assert_eq!(parser.parse_type("u32").unwrap(), WitType::U32;
@@ -624,7 +624,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_compound_types() {
-        let mut parser = WitParser::new(;
+        let mut parser = WitParser::new);
         
         let list_type = parser.parse_type("list<u32>").unwrap();
         match list_type {
@@ -642,7 +642,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_async_types() {
-        let mut parser = WitParser::new(;
+        let mut parser = WitParser::new);
         
         let stream_type = parser.parse_type("stream<u8>").unwrap();
         match stream_type {
@@ -660,7 +660,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_simple_world() {
-        let mut parser = WitParser::new(;
+        let mut parser = WitParser::new);
         let source = r#"
             world test-world {
                 import test-func: func()
@@ -683,7 +683,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_convert_to_valtype() {
-        let parser = WitParser::new(;
+        let parser = WitParser::new);
         
         assert_eq!(parser.convert_to_valtype(&WitType::Bool).unwrap(), crate::types::ValueType::I32;
         assert_eq!(parser.convert_to_valtype(&WitType::U32).unwrap(), crate::types::ValueType::I32;

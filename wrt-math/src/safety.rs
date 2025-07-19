@@ -599,7 +599,7 @@ pub fn check_simd_bounds(offset: usize, len: usize, memory_size: usize) -> Resul
 /// Safe memory access for SIMD operations
 #[inline]
 pub fn safe_simd_load<T: Copy>(memory: &[u8], offset: usize, len: usize) -> Result<&[T]> {
-    let byte_len = len * core::mem::size_of::<T>(;
+    let byte_len = len * core::mem::size_of::<T>);
     check_simd_bounds(offset, byte_len, memory.len())?;
     
     // Use safe slice operations instead of unsafe pointer manipulation
@@ -619,7 +619,7 @@ pub fn safe_simd_load<T: Copy>(memory: &[u8], offset: usize, len: usize) -> Resu
 /// Safe memory store for SIMD operations
 #[inline]
 pub fn safe_simd_store<T: Copy>(memory: &mut [u8], offset: usize, data: &[T]) -> Result<()> {
-    let byte_len = data.len() * core::mem::size_of::<T>(;
+    let byte_len = data.len() * core::mem::size_of::<T>);
     check_simd_bounds(offset, byte_len, memory.len())?;
     
     // For ASIL compliance, we'll return an error if alignment is not guaranteed
@@ -664,8 +664,8 @@ mod proofs {
     
     #[kani::proof]
     fn verify_i32_safe_add() {
-        let a: i32 = kani::any(;
-        let b: i32 = kani::any(;
+        let a: i32 = kani::any);
+        let b: i32 = kani::any);
         
         match a.safe_add(b) {
             Ok(result) => {
@@ -674,15 +674,15 @@ mod proofs {
             }
             Err(_) => {
                 // This should not happen with saturating arithmetic
-                unreachable!(;
+                unreachable!);
             }
         }
     }
     
     #[kani::proof]
     fn verify_i32_safe_div() {
-        let a: i32 = kani::any(;
-        let b: i32 = kani::any(;
+        let a: i32 = kani::any);
+        let b: i32 = kani::any);
         
         match a.safe_div(b) {
             Ok(result) => {

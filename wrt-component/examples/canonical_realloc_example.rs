@@ -34,7 +34,7 @@ mod example {
     /// Binary std/no_std choice
     fn example_lift_string() -> Result<()> {
         // Create instance and memory (simplified)
-        let module = Module::default(;
+        let module = Module::default);
         let instance = Instance::new(&module)?;
         let memory = Memory::new(1, Some(10))?; // 1 initial page, max 10 pages
 
@@ -68,7 +68,7 @@ mod example {
     /// Binary std/no_std choice
     fn example_lower_string() -> Result<()> {
         // Create instance and memory
-        let module = Module::default(;
+        let module = Module::default);
         let mut instance = Instance::new(&module)?;
         let mut memory = Memory::new(1, Some(10))?;
 
@@ -92,7 +92,7 @@ mod example {
 
         // Binary std/no_std choice
         let allocations = lower_context.finish()?;
-        println!("Made {} allocations during lowering", allocations.len(;
+        println!("Made {} allocations during lowering", allocations.len);
 
         Ok(())
     }
@@ -152,7 +152,7 @@ mod example {
         // Check metrics
         {
             let manager = realloc_manager.read().unwrap();
-            let metrics = manager.metrics(;
+            let metrics = manager.metrics);
             println!("Allocation metrics:";
             println!("  Total allocations: {}", metrics.total_allocations;
             println!("  Total deallocations: {}", metrics.total_deallocations;
@@ -165,7 +165,7 @@ mod example {
 
     /// Example of handling post-return cleanup
     fn example_post_return() -> Result<()> {
-        let module = Module::default(;
+        let module = Module::default);
         let instance = Instance::new(&module)?;
         let memory = Memory::new(1, Some(10))?;
 
@@ -227,7 +227,7 @@ mod example {
         // Check metrics
         {
             let manager = realloc_manager.read().unwrap();
-            let metrics = manager.metrics(;
+            let metrics = manager.metrics);
             assert_eq!(metrics.total_allocations, 1;
             assert_eq!(metrics.total_deallocations, 1;
             assert!(metrics.total_bytes_allocated >= 64);

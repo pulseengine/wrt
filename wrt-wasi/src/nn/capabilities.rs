@@ -328,13 +328,13 @@ impl ResourceTracker {
         let mut window = self.operations_window.lock()
             .map_err(|_| Error::wasi_runtime_error("Failed to acquire rate limit lock"))?;
         
-        let current_time = get_current_time_ms(;
+        let current_time = get_current_time_ms);
         
         // Clean up old operations (outside sliding window)
         let window_start = current_time.saturating_sub(self.rate_limits.window_size_ms;
         while let Some(record) = window.front() {
             if record.timestamp < window_start {
-                window.pop_front(;
+                window.pop_front);
             } else {
                 break;
             }
@@ -347,7 +347,7 @@ impl ResourceTracker {
                 let minute_start = current_time.saturating_sub(60_000;
                 let loads_this_minute = window.iter()
                     .filter(|r| r.operation_type == NNOperationType::Load && r.timestamp >= minute_start)
-                    .count(;
+                    .count);
                 loads_this_minute >= self.rate_limits.max_loads_per_minute as usize
             },
             NNOperationType::Inference => {
@@ -355,7 +355,7 @@ impl ResourceTracker {
                 let second_start = current_time.saturating_sub(1_000;
                 let inferences_this_second = window.iter()
                     .filter(|r| r.operation_type == NNOperationType::Inference && r.timestamp >= second_start)
-                    .count(;
+                    .count);
                 inferences_this_second >= self.rate_limits.max_inferences_per_second as usize
             },
             _ => false, // Other operations use general concurrent limit
@@ -393,7 +393,7 @@ impl ResourceTracker {
             
             // Limit window size to prevent unbounded growth
             while window.len() > 10_000 {
-                window.pop_front(;
+                window.pop_front);
             }
         }
     }
@@ -589,8 +589,8 @@ impl DynamicNNCapability {
     
     /// Create with resource tracking enabled
     pub fn with_tracking() -> Self {
-        let limits = NNResourceLimits::default(;
-        let rate_limits = RateLimits::default(;
+        let limits = NNResourceLimits::default);
+        let rate_limits = RateLimits::default);
         let tracker = ResourceTracker::new(limits.clone(), rate_limits;
         
         Self {
@@ -743,7 +743,7 @@ pub struct BoundedNNCapability {
 impl BoundedNNCapability {
     /// Create a new bounded capability
     pub fn new() -> Result<Self> {
-        let mut allowed_formats = Vec::new(;
+        let mut allowed_formats = Vec::new);
         
         // Only allow well-tested formats
         allowed_formats.push(ModelFormat::ONNX);
@@ -833,7 +833,7 @@ pub struct StaticNNCapability {
 impl StaticNNCapability {
     /// Create a new static capability with pre-approved models
     pub fn new(approved_hashes: &[[u8); 32]]) -> Result<Self> {
-        let mut approved_models = Vec::new(;
+        let mut approved_models = Vec::new);
         
         for hash in approved_hashes {
             approved_models.push(*hash);
@@ -946,7 +946,7 @@ mod tests {
     
     #[test]
     fn test_dynamic_capability() {
-        let cap = DynamicNNCapability::new(;
+        let cap = DynamicNNCapability::new);
         assert_eq!(cap.verification_level(), VerificationLevel::Standard;
         assert!(cap.allows_dynamic_loading();
         

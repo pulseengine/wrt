@@ -56,7 +56,7 @@ fn safe_memory_store_benchmark(c: &mut Criterion) {
             })
         };
     }
-    group.finish(;
+    group.finish);
 }
 
 fn safe_memory_load_benchmark(c: &mut Criterion) {
@@ -77,7 +77,7 @@ fn safe_memory_load_benchmark(c: &mut Criterion) {
             SafeMemoryHandler::new(StdMemoryProvider::new(initial_data_vec.clone()), level;
         #[cfg(not(feature = "std"))]
         let mut handler = {
-            let mut provider = wrt_foundation::safe_memory::NoStdMemoryProvider::<CAPACITY>::new(;
+            let mut provider = wrt_foundation::safe_memory::NoStdMemoryProvider::<CAPACITY>::new);
             provider.set_data(&initial_data_vec).unwrap_or_default(); // Populate NoStd provider
             SafeMemoryHandler::new(provider, level)
         };
@@ -99,7 +99,7 @@ fn safe_memory_load_benchmark(c: &mut Criterion) {
             })
         };
     }
-    group.finish(;
+    group.finish);
 }
 
 criterion_group!(

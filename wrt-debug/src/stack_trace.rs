@@ -41,7 +41,7 @@ impl<'a> StackTrace<'a> {
     /// Add a frame to the stack trace
     pub fn push_frame(&mut self, frame: StackFrame<'a>) -> Result<(), ()> {
         if self.frame_count >= MAX_STACK_FRAMES {
-            return Err((;
+            return Err();
         }
         self.frames[self.frame_count] = Some(frame;
         self.frame_count += 1;
@@ -132,13 +132,13 @@ impl<'a> StackTraceBuilder<'a> {
     /// Full stack walking requires runtime support for frame pointers
     #[cfg(all(feature = "line-info", feature = "function-info"))]
     pub fn build_from_pc(&mut self, pc: u32) -> Result<StackTrace<'a>, ()> {
-        let mut trace = StackTrace::new(;
+        let mut trace = StackTrace::new);
 
         // Get function info
         let function = self.debug_info.find_function_info(pc;
 
         // Get line info (using immutable reference)
-        let line_info = self.debug_info.find_line_info(pc).ok().flatten(;
+        let line_info = self.debug_info.find_line_info(pc).ok().flatten);
 
         // Add current frame
         let frame = StackFrame {
@@ -165,7 +165,7 @@ impl<'a> StackTraceBuilder<'a> {
     /// Build a partial trace with just PC values
     /// (when debug info is not available)
     pub fn build_minimal(&self, pcs: &[u32]) -> Result<StackTrace<'a>, ()> {
-        let mut trace = StackTrace::new(;
+        let mut trace = StackTrace::new);
 
         for (i, &pc) in pcs.iter().enumerate() {
             let frame = StackFrame {
@@ -190,7 +190,7 @@ fn format_u16(mut n: u16, buf: &mut [u8]) -> &str {
         return "0";
     }
 
-    let mut i = buf.len(;
+    let mut i = buf.len);
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
@@ -202,7 +202,7 @@ fn format_u16(mut n: u16, buf: &mut [u8]) -> &str {
 
 // Helper to format u32 as hexadecimal
 fn format_hex_u32(mut n: u32, buf: &mut [u8]) -> &str {
-    let mut i = buf.len(;
+    let mut i = buf.len);
 
     if n == 0 {
         return "00000000";
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_stack_trace_display() {
-        let mut trace = StackTrace::new(;
+        let mut trace = StackTrace::new);
 
         // Add a frame with no debug info
         let frame1 = StackFrame {
@@ -243,8 +243,8 @@ mod tests {
         trace.push_frame(frame1).unwrap();
 
         // Test minimal display
-        let mut output = String::new(;
-        let file_table = crate::FileTable::new(;
+        let mut output = String::new);
+        let file_table = crate::FileTable::new);
         trace
             .display(&file_table, |s| {
                 output.push_str(s;

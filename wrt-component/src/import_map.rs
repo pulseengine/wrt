@@ -60,7 +60,7 @@ impl ImportMap {
     /// Convert this import map to one using SafeMemory containers
     #[cfg(feature = "safe-memory")]
     pub fn to_safe_memory(&self) -> SafeImportMap {
-        let mut result = SafeImportMap::new(;
+        let mut result = SafeImportMap::new);
         for (name, import) in &self.imports {
             result.add(name, import.clone()).unwrap();
         }
@@ -83,7 +83,7 @@ impl SafeImportMap {
             if existing_name == name {
                 // Replace the existing import
                 self.imports.set(i, (name.to_string(), import))?;
-                return Ok((;
+                return Ok();
             }
         }
 
@@ -123,7 +123,7 @@ impl SafeImportMap {
                         }
 
                         // Clear and rebuild the stack
-                        self.imports.clear(;
+                        self.imports.clear);
                         for item in new_items {
                             let _ = self.imports.push(item);
                         }
@@ -151,7 +151,7 @@ impl SafeImportMap {
 
     /// Get all import names
     pub fn names(&self) -> Result<Vec<String>> {
-        let mut names = Vec::with_capacity(self.imports.len(;
+        let mut names = Vec::with_capacity(self.imports.len);
         for i in 0..self.imports.len() {
             if let Ok((name, _)) = self.imports.get(i) {
                 names.push(name);
@@ -167,7 +167,7 @@ impl SafeImportMap {
 
     /// Convert to standard ImportMap
     pub fn to_standard(&self) -> Result<ImportMap> {
-        let mut result = ImportMap::new(;
+        let mut result = ImportMap::new);
         let items = self.imports.to_vec()?;
         for (name, import) in items {
             result.add(&name, import)?;

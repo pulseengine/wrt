@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_primitive_valtype_conversions() {
-        let mut registry = TypeConversionRegistry::new(;
+        let mut registry = TypeConversionRegistry::new);
         register_valtype_conversions(&mut registry;
 
         // Test Format to Types ValType

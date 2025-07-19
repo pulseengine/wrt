@@ -97,8 +97,8 @@ mod comprehensive_tests {
     /// Tests that should intentionally fail to validate failure detection
     #[test]
     fn test_intentional_failures() {
-        let mut stats = TestSuiteStats::new(;
-        let mut results = Vec::new(;
+        let mut stats = TestSuiteStats::new);
+        let mut results = Vec::new);
 
         // Test 1: Invalid module that should fail validation
         let invalid_wasm = wat::parse_str(
@@ -113,7 +113,7 @@ mod comprehensive_tests {
 
         match invalid_wasm {
             Ok(bytes) => {
-                let engine = wrt::StacklessEngine::new(;
+                let engine = wrt::StacklessEngine::new);
                 match engine.load_module(Some("invalid"), &bytes) {
                     Ok(_) => {
                         results.push(DetailedTestResult {
@@ -160,7 +160,7 @@ mod comprehensive_tests {
         ;
 
         if let Ok(bytes) = type_mismatch_wasm {
-            let engine = wrt::StacklessEngine::new(;
+            let engine = wrt::StacklessEngine::new);
             match engine.load_module(Some("type_mismatch"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
@@ -200,8 +200,8 @@ mod comprehensive_tests {
     /// Tests for unimplemented WASM features
     #[test]
     fn test_unimplemented_features() {
-        let mut stats = TestSuiteStats::new(;
-        let mut results = Vec::new(;
+        let mut stats = TestSuiteStats::new);
+        let mut results = Vec::new);
 
         // Test 1: SIMD instructions (if not implemented)
         let simd_wasm = wat::parse_str(
@@ -217,7 +217,7 @@ mod comprehensive_tests {
 
         match simd_wasm {
             Ok(bytes) => {
-                let engine = wrt::StacklessEngine::new(;
+                let engine = wrt::StacklessEngine::new);
                 match engine.load_module(Some("simd_test"), &bytes) {
                     Ok(_) => {
                         results.push(DetailedTestResult {
@@ -263,7 +263,7 @@ mod comprehensive_tests {
         ;
 
         if let Ok(bytes) = ref_types_wasm {
-            let engine = wrt::StacklessEngine::new(;
+            let engine = wrt::StacklessEngine::new);
             match engine.load_module(Some("ref_types"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
@@ -310,8 +310,8 @@ mod comprehensive_tests {
     /// Tests for edge cases and boundary conditions
     #[test]
     fn test_edge_cases() {
-        let mut stats = TestSuiteStats::new(;
-        let mut results = Vec::new(;
+        let mut stats = TestSuiteStats::new);
+        let mut results = Vec::new);
 
         // Test 1: Maximum function parameters
         let max_params_wasm = wat::parse_str(
@@ -329,7 +329,7 @@ mod comprehensive_tests {
         ;
 
         if let Ok(bytes) = max_params_wasm {
-            let engine = wrt::StacklessEngine::new(;
+            let engine = wrt::StacklessEngine::new);
             match engine.load_module(Some("max_params"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
@@ -375,7 +375,7 @@ mod comprehensive_tests {
         ;
 
         if let Ok(bytes) = deep_nesting_wasm {
-            let engine = wrt::StacklessEngine::new(;
+            let engine = wrt::StacklessEngine::new);
             match engine.load_module(Some("deep_nesting"), &bytes) {
                 Ok(_) => {
                     results.push(DetailedTestResult {
@@ -419,7 +419,7 @@ mod comprehensive_tests {
     /// Master test that runs all comprehensive tests and reports statistics
     #[test]
     fn test_comprehensive_suite() {
-        let mut overall_stats = TestSuiteStats::new(;
+        let mut overall_stats = TestSuiteStats::new);
 
         println!("\n=== Running Comprehensive Test Suite ===\n";
 

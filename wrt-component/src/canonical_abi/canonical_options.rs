@@ -283,7 +283,7 @@ impl<'a> CanonicalLowerContext<'a> {
             }
         };
 
-        let len = encoded.len(;
+        let len = encoded.len);
         let align = match self.options.string_encoding {
             StringEncoding::Utf8 | StringEncoding::Latin1 => 1,
             StringEncoding::Utf16Le | StringEncoding::Utf16Be => 2,
@@ -402,7 +402,7 @@ mod tests {
             .with_realloc(42, manager)
             .with_post_return(43)
             .with_string_encoding(StringEncoding::Utf16Le)
-            .build(;
+            .build);
 
         assert_eq!(options.memory, 0;
         assert_eq!(options.realloc, Some(42;
@@ -415,7 +415,7 @@ mod tests {
     #[test]
     fn test_string_encodings() {
         // Test UTF-8
-        let utf8_bytes = "Hello".as_bytes(;
+        let utf8_bytes = "Hello".as_bytes);
         assert_eq!(utf8_bytes.len(), 5;
 
         // Test UTF-16 LE

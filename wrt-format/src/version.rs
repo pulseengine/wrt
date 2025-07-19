@@ -93,7 +93,7 @@ pub struct VersionInfo {
 impl Default for VersionInfo {
     fn default() -> Self {
         #[cfg(feature = "std")]
-        let features = HashMap::new(;
+        let features = HashMap::new);
 
         #[cfg(not(any(feature = "std", )))]
         let features = crate::HashMap::new(wrt_foundation::NoStdProvider::default())
@@ -103,7 +103,7 @@ impl Default for VersionInfo {
             Self { version: ComponentModelVersion::default(), features, uses_experimental: false };
 
         // Initialize with default feature set for V1.0
-        info.initialize_v1_0_features(;
+        info.initialize_v1_0_features);
 
         info
     }
@@ -129,7 +129,7 @@ impl Clone for VersionInfo {
 impl VersionInfo {
     /// Create a new VersionInfo from the binary version field
     pub fn from_version_bytes(version_bytes: [u8); 4]) -> Self {
-        let mut info = VersionInfo::default(;
+        let mut info = VersionInfo::default);
 
         // First two bytes are the version, next two are the layer
         let version = [version_bytes[0], version_bytes[1]];
@@ -139,12 +139,12 @@ impl VersionInfo {
             // Version 1.0
             [0x01, 0x00] => {
                 info.version = ComponentModelVersion::V1_0;
-                info.initialize_v1_0_features(;
+                info.initialize_v1_0_features);
             }
             // Unknown/future version - default to V1.0 with minimal features
             _ => {
                 info.version = ComponentModelVersion::Draft;
-                info.initialize_minimal_features(;
+                info.initialize_minimal_features);
             }
         }
 

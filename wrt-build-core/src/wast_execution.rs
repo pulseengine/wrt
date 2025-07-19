@@ -150,10 +150,10 @@ impl WastEngine {
 
     /// Clear all modules and reset the engine
     pub fn reset(&mut self) -> Result<()> {
-        self.modules.clear(;
+        self.modules.clear);
         self.current_module = None;
         // Create a new engine to reset state
-        self.engine = StacklessEngine::new(;
+        self.engine = StacklessEngine::new);
         Ok(())
     }
 }
@@ -255,7 +255,7 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
         V128Pattern::I16x8(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes(;
+                let val_bytes = val.to_le_bytes);
                 bytes[i * 2] = val_bytes[0];
                 bytes[i * 2 + 1] = val_bytes[1];
             }
@@ -264,7 +264,7 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
         V128Pattern::I32x4(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes(;
+                let val_bytes = val.to_le_bytes);
                 bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
@@ -272,7 +272,7 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
         V128Pattern::I64x2(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes(;
+                let val_bytes = val.to_le_bytes);
                 bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
@@ -285,7 +285,7 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
                     wast::core::NanPattern::CanonicalNan => f32::NAN,
                     wast::core::NanPattern::ArithmeticNan => f32::NAN,
                 };
-                let val_bytes = val.to_le_bytes(;
+                let val_bytes = val.to_le_bytes);
                 bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
@@ -298,7 +298,7 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
                     wast::core::NanPattern::CanonicalNan => f64::NAN,
                     wast::core::NanPattern::ArithmeticNan => f64::NAN,
                 };
-                let val_bytes = val.to_le_bytes(;
+                let val_bytes = val.to_le_bytes);
                 bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
@@ -536,8 +536,8 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
 
 /// Check if runtime error matches expected trap message
 pub fn is_expected_trap(error_str: &str, expected_message: &str) -> bool {
-    let error_message = error_str.to_lowercase(;
-    let expected = expected_message.to_lowercase(;
+    let error_message = error_str.to_lowercase);
+    let expected = expected_message.to_lowercase);
 
     // Common trap patterns
     let trap_patterns = [
@@ -575,8 +575,8 @@ pub fn values_equal(actual: &Value, expected: &Value) -> bool {
         (Value::I64(a), Value::I64(b)) => a == b,
         (Value::F32(a), Value::F32(b)) => {
             // Handle NaN comparison
-            let a_val = a.value(;
-            let b_val = b.value(;
+            let a_val = a.value);
+            let b_val = b.value);
             if a_val.is_nan() && b_val.is_nan() {
                 true
             } else {
@@ -585,8 +585,8 @@ pub fn values_equal(actual: &Value, expected: &Value) -> bool {
         },
         (Value::F64(a), Value::F64(b)) => {
             // Handle NaN comparison
-            let a_val = a.value(;
-            let b_val = b.value(;
+            let a_val = a.value);
+            let b_val = b.value);
             if a_val.is_nan() && b_val.is_nan() {
                 true
             } else {
@@ -605,7 +605,7 @@ mod tests {
 
     #[test]
     fn test_wast_engine_creation() {
-        let engine = WastEngine::new(;
+        let engine = WastEngine::new);
         assert!(engine.is_ok();
     }
 

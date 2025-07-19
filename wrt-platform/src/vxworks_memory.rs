@@ -88,7 +88,7 @@ impl VxWorksAllocator {
             
             // Allocate pool memory
             let mut pool_memory = vec![0u8; partition_size];
-            let pool_ptr = pool_memory.as_mut_ptr(;
+            let pool_ptr = pool_memory.as_mut_ptr);
             
             // Create memory partition
             let mem_part_id = unsafe { memPartCreate(pool_ptr, partition_size) };
@@ -317,7 +317,7 @@ mod tests {
             .max_pages(512)
             .use_dedicated_partition(true)
             .enable_guard_pages(true)
-            .build(;
+            .build);
 
         #[cfg(target_os = "vxworks")]
         assert!(allocator.is_ok();

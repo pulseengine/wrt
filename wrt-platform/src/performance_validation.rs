@@ -71,7 +71,7 @@ impl PerformanceValidator {
         // Binary std/no_std choice
         let direct_time = Self::time_operation(|| {
             for _ in 0..ITERATIONS {
-                let result = Self::direct_memory_allocation(;
+                let result = Self::direct_memory_allocation);
                 let _ = black_box(result;
             }
         };
@@ -79,7 +79,7 @@ impl PerformanceValidator {
         // Binary std/no_std choice
         let abstracted_time = Self::time_operation(|| {
             for _ in 0..ITERATIONS {
-                let result = Self::abstracted_memory_allocation::<P>(;
+                let result = Self::abstracted_memory_allocation::<P>);
                 let _ = black_box(result;
             }
         };
@@ -164,9 +164,9 @@ impl PerformanceValidator {
         // the concept of performance measurement
 
         // Simulate timing
-        let start = Self::get_time_ns(;
-        f(;
-        let end = Self::get_time_ns(;
+        let start = Self::get_time_ns);
+        f);
+        let end = Self::get_time_ns);
         end - start
     }
 
@@ -381,8 +381,8 @@ mod tests {
         assert!(CompileTimeValidator::validate_inlining::<paradigm::Posix>();
 
         // Test that direct and abstracted calls produce same results
-        let direct_result = CompileTimeValidator::direct_call_example(;
-        let abstracted_result = CompileTimeValidator::abstracted_call_example::<paradigm::Posix>(;
+        let direct_result = CompileTimeValidator::direct_call_example);
+        let abstracted_result = CompileTimeValidator::abstracted_call_example::<paradigm::Posix>);
 
         assert_eq!(direct_result, abstracted_result;
     }
@@ -390,8 +390,8 @@ mod tests {
     #[test]
     fn test_timing_infrastructure() {
         // Test that timing infrastructure works
-        let time1 = PerformanceValidator::get_time_ns(;
-        let time2 = PerformanceValidator::get_time_ns(;
+        let time1 = PerformanceValidator::get_time_ns);
+        let time2 = PerformanceValidator::get_time_ns);
 
         // Time should advance
         assert!(time2 >= time1);

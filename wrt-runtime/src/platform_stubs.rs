@@ -60,7 +60,7 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
             let value = unsafe { *self.value.get() };
             self.lock.store(false, Ordering::Release;
@@ -71,7 +71,7 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
             unsafe { *self.value.get() = value; }
             self.lock.store(false, Ordering::Release;
@@ -87,7 +87,7 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
             let old_value = unsafe { *self.value.get() };
             if old_value == current {
@@ -104,7 +104,7 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
             let old_value = unsafe { *self.value.get() };
             unsafe { *self.value.get() = old_value.wrapping_add(value); }
@@ -134,7 +134,7 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
             let value = unsafe { *self.value.get() };
             self.lock.store(false, Ordering::Release;
@@ -145,7 +145,7 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
             unsafe { *self.value.get() = value; }
             self.lock.store(false, Ordering::Release;
@@ -155,7 +155,7 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
             let old_value = unsafe { *self.value.get() };
             unsafe { *self.value.get() = old_value.wrapping_add(value); }

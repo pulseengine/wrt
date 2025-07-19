@@ -120,7 +120,7 @@ impl HumanFormatter {
     /// Colorize text based on severity
     fn colorize_severity(&self, text: &str, severity: Severity) -> ColoredString {
         if !self.use_colors {
-            return text.normal(;
+            return text.normal);
         }
 
         match severity {
@@ -152,7 +152,7 @@ impl HumanFormatter {
 
     /// Format a single diagnostic
     fn format_diagnostic(&self, diagnostic: &Diagnostic) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Format: severity: message [code] (source)
         let severity_text = format!("{}", diagnostic.severity;
@@ -228,7 +228,7 @@ impl Default for HumanFormatter {
 
 impl OutputFormatter for HumanFormatter {
     fn format_collection(&self, collection: &DiagnosticCollection) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         if collection.diagnostics.is_empty() {
             if self.use_colors {
@@ -241,9 +241,9 @@ impl OutputFormatter for HumanFormatter {
 
         if self.group_by_file {
             // Group diagnostics by file
-            let grouped = collection.group_by_file(;
+            let grouped = collection.group_by_file);
             let mut files: Vec<_> = grouped.keys().collect();
-            files.sort(;
+            files.sort);
 
             for file in files {
                 let diagnostics = grouped.get(file).unwrap();
@@ -274,7 +274,7 @@ impl OutputFormatter for HumanFormatter {
     }
 
     fn format_diagnostics(&self, diagnostics: &[Diagnostic]) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
         for diagnostic in diagnostics {
             output.push_str(&self.format_diagnostic(diagnostic;
         }
@@ -283,7 +283,7 @@ impl OutputFormatter for HumanFormatter {
 
     fn format_summary(&self, collection: &DiagnosticCollection) -> String {
         let summary = &collection.summary;
-        let mut output = String::new(;
+        let mut output = String::new);
 
         if summary.total == 0 {
             if self.use_colors {
@@ -424,7 +424,7 @@ impl Default for JsonLinesFormatter {
 
 impl OutputFormatter for JsonLinesFormatter {
     fn format_collection(&self, collection: &DiagnosticCollection) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Output each diagnostic as a separate JSON line
         for diagnostic in &collection.diagnostics {
@@ -444,7 +444,7 @@ impl OutputFormatter for JsonLinesFormatter {
     }
 
     fn format_diagnostics(&self, diagnostics: &[Diagnostic]) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
         for diagnostic in diagnostics {
             if let Ok(json) = serde_json::to_string(diagnostic) {
                 output.push_str(&json;
@@ -543,8 +543,8 @@ mod tests {
 
     #[test]
     fn test_human_formatter() {
-        let collection = create_test_collection(;
-        let formatter = HumanFormatter::no_colors(;
+        let collection = create_test_collection);
+        let formatter = HumanFormatter::no_colors);
         let output = formatter.format_collection(&collection;
 
         assert!(output.contains("undefined variable 'x'");
@@ -555,8 +555,8 @@ mod tests {
 
     #[test]
     fn test_json_formatter() {
-        let collection = create_test_collection(;
-        let formatter = JsonFormatter::new(;
+        let collection = create_test_collection);
+        let formatter = JsonFormatter::new);
         let output = formatter.format_collection(&collection;
 
         // Should be valid JSON
@@ -568,8 +568,8 @@ mod tests {
 
     #[test]
     fn test_json_lines_formatter() {
-        let collection = create_test_collection(;
-        let formatter = JsonLinesFormatter::new(;
+        let collection = create_test_collection);
+        let formatter = JsonLinesFormatter::new);
         let output = formatter.format_collection(&collection;
 
         let lines: Vec<&str> = output.trim().split('\n').collect();
@@ -587,7 +587,7 @@ mod tests {
         let json_formatter = FormatterFactory::create(OutputFormat::Json;
         let jsonlines_formatter = FormatterFactory::create(OutputFormat::JsonLines;
 
-        let collection = create_test_collection(;
+        let collection = create_test_collection);
 
         // Should not panic and should produce different outputs
         let human_output = human_formatter.format_collection(&collection;

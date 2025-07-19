@@ -142,7 +142,7 @@ impl FaultDetector {
     /// Report a detected fault
     pub fn report_fault(&self, fault: FaultType, context: &FaultContext) -> Result<()> {
         if !self.is_enabled() {
-            return Ok((;
+            return Ok();
         }
         
         // Increment appropriate counter
@@ -386,7 +386,7 @@ mod tests {
         assert!(detector.check_bounds(15, 10, &context).is_err();
         
         // Check statistics
-        let stats = detector.get_statistics(;
+        let stats = detector.get_statistics);
         assert_eq!(stats.bounds_violations, 2;
     }
     
@@ -407,7 +407,7 @@ mod tests {
         assert!(detector.check_budget(2048, 1024, &context).is_err();
         
         // Check statistics
-        let stats = detector.get_statistics(;
+        let stats = detector.get_statistics);
         assert_eq!(stats.budget_violations, 1;
         assert!(stats.memory_watermark >= 512);
     }
@@ -431,7 +431,7 @@ mod tests {
         assert!(detector.check_alignment(0x1002, 4, &context).is_err();
         
         // Check statistics
-        let stats = detector.get_statistics(;
+        let stats = detector.get_statistics);
         assert_eq!(stats.memory_violations, 2;
     }
     
@@ -457,7 +457,7 @@ mod tests {
         assert!(detector.report_fault(fault, &context).is_ok();
         
         // Verify the fault was counted
-        let stats = detector.get_statistics(;
+        let stats = detector.get_statistics);
         assert_eq!(stats.budget_violations, 1;
     }
 }

@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use wrt_foundation::verification::VerificationLevel;
     
     // Create wrtd configuration
-    let mut config = WrtdConfig::default(;
+    let mut config = WrtdConfig::default);
     config.enable_wasi = true;
     config.engine_mode = EngineMode::Interpreter;
     
@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Result: {:?}", result;
             
             // Print runtime statistics
-            let stats = engine.get_stats(;
+            let stats = engine.get_stats);
             println!("\nRuntime Statistics:";
             println!("  Modules executed: {}", stats.modules_executed;
             println!("  WASI functions called: {}", stats.wasi_functions_called;

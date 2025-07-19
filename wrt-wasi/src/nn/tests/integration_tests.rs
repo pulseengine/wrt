@@ -9,7 +9,7 @@ use crate::prelude::*;
 #[test]
 fn test_capability_levels() {
     // Test QM level (Standard)
-    let qm_cap = capabilities::DynamicNNCapability::new(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
     assert_eq!(qm_cap.verification_level(), capabilities::VerificationLevel::Standard;
     assert!(qm_cap.allows_dynamic_loading();
     
@@ -48,7 +48,7 @@ fn test_tensor_creation_with_capabilities() {
     let dims = TensorDimensions::new(&[2, 3, 4]).unwrap();
     
     // Test with QM capability (most permissive)
-    let qm_cap = capabilities::DynamicNNCapability::new(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
     let qm_tensor = Tensor::new(dims.clone(), TensorType::F32, &qm_cap).unwrap();
     assert_eq!(qm_tensor.size_bytes(), 96); // 2*3*4*4 bytes
     assert_eq!(qm_tensor.capability_level(), capabilities::VerificationLevel::Standard;
@@ -73,7 +73,7 @@ fn test_resource_limits_enforcement() {
     let large_dims = TensorDimensions::new(&[1000, 1000, 100]).unwrap(); // 400MB tensor
     
     // QM should allow large tensors (100MB default limit, but this exceeds it)
-    let qm_cap = capabilities::DynamicNNCapability::new(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
     let qm_result = Tensor::new(large_dims.clone(), TensorType::F32, &qm_cap;
     assert!(qm_result.is_err())); // Should fail due to size limit
     
@@ -100,7 +100,7 @@ fn test_operation_verification() {
     };
     
     // QM should allow
-    let qm_cap = capabilities::DynamicNNCapability::new(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
     assert!(qm_cap.verify_operation(&load_op).is_ok();
     
     // ASIL-A should allow (within 50MB limit)
@@ -133,8 +133,8 @@ fn test_model_format_restrictions() {
     use capabilities::ModelFormat;
     
     // QM allows all formats
-    let qm_cap = capabilities::DynamicNNCapability::new(;
-    let qm_formats = qm_cap.allowed_formats(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
+    let qm_formats = qm_cap.allowed_formats);
     assert!(qm_formats.contains(&ModelFormat::ONNX);
     assert!(qm_formats.contains(&ModelFormat::TensorFlow);
     assert!(qm_formats.contains(&ModelFormat::PyTorch);
@@ -142,14 +142,14 @@ fn test_model_format_restrictions() {
     
     // ASIL-A only allows tested formats
     let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
-    let asil_a_formats = asil_a_cap.allowed_formats(;
+    let asil_a_formats = asil_a_cap.allowed_formats);
     assert!(asil_a_formats.contains(&ModelFormat::ONNX);
     assert!(asil_a_formats.contains(&ModelFormat::TractNative);
     assert_eq!(asil_a_formats.len(), 2); // Only 2 formats allowed
     
     // ASIL-B only allows verified formats
     let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
-    let asil_b_formats = asil_b_cap.allowed_formats(;
+    let asil_b_formats = asil_b_cap.allowed_formats);
     assert!(asil_b_formats.contains(&ModelFormat::ONNX);
     assert!(asil_b_formats.contains(&ModelFormat::TractNative);
     assert_eq!(asil_b_formats.len(), 2); // Only verified formats
@@ -215,7 +215,7 @@ fn test_constant_time_model_approval() {
 #[test]
 fn test_tensor_operations() {
     let dims = TensorDimensions::new(&[2, 3]).unwrap();
-    let qm_cap = capabilities::DynamicNNCapability::new(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
     let mut tensor = Tensor::new(dims, TensorType::F32, &qm_cap).unwrap();
     
     // Test size calculations
@@ -223,12 +223,12 @@ fn test_tensor_operations() {
     assert_eq!(tensor.dimensions().num_elements(), 6;
     
     // Test data access
-    let data = tensor.as_bytes(;
+    let data = tensor.as_bytes);
     assert_eq!(data.len(), 24;
     assert!(data.iter().all(|&b| b == 0))); // Initially zero
     
     // Test mutable data access
-    let data_mut = tensor.as_bytes_mut(;
+    let data_mut = tensor.as_bytes_mut);
     data_mut[0] = 42;
     assert_eq!(tensor.as_bytes()[0], 42;
 }
@@ -295,7 +295,7 @@ fn test_error_conversions() {
 #[test]
 fn test_global_state_initialization() {
     // Test capability initialization
-    let capability = Box::new(capabilities::DynamicNNCapability::new(;
+    let capability = Box::new(capabilities::DynamicNNCapability::new);
     
     // This test might fail if already initialized in other tests
     // In a real implementation, we'd use test isolation
@@ -303,7 +303,7 @@ fn test_global_state_initialization() {
     // Don't assert success since it might already be initialized
     
     // Test that we can get the capability
-    let cap_result = get_nn_capability(;
+    let cap_result = get_nn_capability);
     // Should either work or give a clear error
     match cap_result {
         Ok(_cap) => {
@@ -320,21 +320,21 @@ fn test_global_state_initialization() {
 #[test]
 fn test_store_operations() {
     // Test graph store creation
-    let graph_store_result = graph::GraphStore::new(;
+    let graph_store_result = graph::GraphStore::new);
     assert!(graph_store_result.is_ok();
     let graph_store = graph_store_result.unwrap();
     assert_eq!(graph_store.count(), 0;
     assert!(!graph_store.is_full();
     
     // Test context store creation
-    let context_store_result = execution::ContextStore::new(;
+    let context_store_result = execution::ContextStore::new);
     assert!(context_store_result.is_ok();
 }
 
 /// Test tensor builder pattern
 #[test]
 fn test_tensor_builder() {
-    let qm_cap = capabilities::DynamicNNCapability::new(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
     
     // Test builder pattern
     let tensor = TensorBuilder::new()
@@ -365,7 +365,7 @@ fn test_complete_workflow_simulation() {
     // This test simulates a complete WASI-NN workflow without actual model loading
     
     // 1. Initialize capability (QM level)
-    let capability = capabilities::DynamicNNCapability::new(;
+    let capability = capabilities::DynamicNNCapability::new);
     
     // 2. Create mock model data
     let model_data = b"mock ONNX model data";
@@ -402,7 +402,7 @@ fn test_asil_compliance() {
     
     // Test that all capability levels work deterministically
     for _ in 0..10 {
-        let qm_cap = capabilities::DynamicNNCapability::new(;
+        let qm_cap = capabilities::DynamicNNCapability::new);
         assert_eq!(qm_cap.verification_level(), capabilities::VerificationLevel::Standard;
         
         let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
@@ -414,7 +414,7 @@ fn test_asil_compliance() {
     
     // Test that tensor operations are deterministic
     let dims = TensorDimensions::new(&[10, 10]).unwrap();
-    let qm_cap = capabilities::DynamicNNCapability::new(;
+    let qm_cap = capabilities::DynamicNNCapability::new);
     
     for _ in 0..10 {
         let tensor = Tensor::new(dims.clone(), TensorType::F32, &qm_cap).unwrap();

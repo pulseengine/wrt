@@ -45,7 +45,7 @@
 macro_rules! managed_alloc {
     ($size:expr, $crate_id:expr) => {{
         // Ensure memory system is initialized (ignore errors for convenience)
-        drop($crate::memory_init::MemoryInitializer::initialize(;
+        drop($crate::memory_init::MemoryInitializer::initialize);
 
         // Create allocation through modern capability factory
         $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<$size>($crate_id)
@@ -68,7 +68,7 @@ macro_rules! managed_alloc {
 #[macro_export]
 macro_rules! create_provider {
     ($provider_type:ty, $crate_id:expr) => {{
-        drop($crate::memory_init::MemoryInitializer::initialize(;
+        drop($crate::memory_init::MemoryInitializer::initialize);
         // MIGRATION NOTE: create_typed_provider moved to capability system
         // This macro now requires explicit size specification in provider type
         $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<1024>($crate_id)

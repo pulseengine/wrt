@@ -221,7 +221,7 @@ impl GenericHaMonitor {
     /// Start the monitor thread
     pub fn start(&self) -> Result<()> {
         if self.running.load(Ordering::Acquire) {
-            return Ok((;
+            return Ok();
         }
 
         self.running.store(true, Ordering::Release;
@@ -244,7 +244,7 @@ impl GenericHaMonitor {
         self.running.store(false, Ordering::Release;
         
         if let Some(thread) = self.monitor_thread.lock().take() {
-            let _ = thread.join(;
+            let _ = thread.join);
         }
         
         Ok(())
@@ -275,7 +275,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
         condition: MonitorCondition,
         actions: Vec<RecoveryAction>,
     ) -> Result<()> {
-        let mut entities = self.entities.write(;
+        let mut entities = self.entities.write);
         let entity = entities
             .iter_mut()
             .find(|e| e.id == entity)
@@ -284,7 +284,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             })?;
 
         // Convert Vec<RecoveryAction> to bounded (simplified for now)
-        let mut bounded_actions = new_condition_vec(;
+        let mut bounded_actions = new_condition_vec);
         for action in actions {
             if bounded_actions.len() >= 32 { // MAX_CONDITIONS check
                 return Err(Error::new(
@@ -303,7 +303,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
     }
 
     fn start_monitoring(&mut self, entity: EntityId) -> Result<()> {
-        let entities = self.entities.read(;
+        let entities = self.entities.read);
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Validation,
@@ -316,7 +316,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
     }
 
     fn stop_monitoring(&mut self, entity: EntityId) -> Result<()> {
-        let entities = self.entities.read(;
+        let entities = self.entities.read);
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::runtime_execution_error("Entity not found")
         })?;
@@ -326,7 +326,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
     }
 
     fn heartbeat(&self, entity: EntityId) -> Result<()> {
-        let entities = self.entities.read(;
+        let entities = self.entities.read);
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Validation,
@@ -340,12 +340,12 @@ impl HighAvailabilityManager for GenericHaMonitor {
     }
 
     fn get_health(&self, entity: EntityId) -> Result<HealthStatus> {
-        let entities = self.entities.read(;
+        let entities = self.entities.read);
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::runtime_execution_error("Entity not found")
         })?;
 
-        let status = *entity.status.lock(;
+        let status = *entity.status.lock);
         Ok(status)
     }
 
@@ -476,7 +476,7 @@ mod tests {
 
     #[test]
     fn test_generic_ha_monitor() {
-        let mut monitor = GenericHaMonitor::new(;
+        let mut monitor = GenericHaMonitor::new);
         
         let entity_id = monitor.create_entity("test").unwrap();
         assert_eq!(entity_id.0, 1;

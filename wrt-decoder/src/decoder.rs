@@ -58,7 +58,7 @@ fn convert_module_provider(source: WrtModule) -> WrtModule {
 fn convert_module_provider(_source: WrtModule<NoStdProvider<8192>>) -> WrtModule<DecoderProvider> {
     // For now, create a new empty module
     // In a real implementation, we would copy all fields
-    let provider = DecoderProvider::default(;
+    let provider = DecoderProvider::default);
     WrtModule::default()
 }
 
@@ -226,8 +226,8 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
 fn build_module_from_sections(
     sections: crate::bounded_decoder_infra::BoundedSectionVec<crate::sections::Section>,
 ) -> Result<WrtModule<DecoderProvider>> {
-    let provider = DecoderProvider::default(;
-    let mut module: WrtModule<DecoderProvider> = WrtModule::new(;
+    let provider = DecoderProvider::default);
+    let mut module: WrtModule<DecoderProvider> = WrtModule::new);
 
     for section in sections {
         match section {

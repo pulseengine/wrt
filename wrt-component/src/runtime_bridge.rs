@@ -367,7 +367,7 @@ impl ValueConverter {
 
     /// Convert multiple values
     pub fn convert_values_component_to_core(&self, values: &[ComponentValue]) -> Result<Vec<CoreValue>> {
-        let mut core_values = Vec::new(;
+        let mut core_values = Vec::new);
         for value in values {
             core_values.push(self.component_to_core(value)?;
         }
@@ -384,7 +384,7 @@ impl ValueConverter {
             return Err(Error::validation_error("Error occurred";
         }
 
-        let mut component_values = Vec::new(;
+        let mut component_values = Vec::new);
         for (value, target_type) in values.iter().zip(types.iter()) {
             component_values.push(self.core_to_component(value, target_type)?;
         }
@@ -540,7 +540,7 @@ impl HostFunctionRegistry {
     where
         F: Fn(&[ComponentValue]) -> Result<ComponentValue> + Send + Sync + 'static,
     {
-        let index = self.functions.len(;
+        let index = self.functions.len);
         let entry = HostFunctionEntry {
             name: name.clone(),
             signature,
@@ -571,7 +571,7 @@ impl HostFunctionRegistry {
             return Err(Error::resource_exhausted("Error occurred";
         }
 
-        let index = self.functions.len(;
+        let index = self.functions.len);
         let entry = HostFunctionEntry {
             name,
             signature,
@@ -751,7 +751,7 @@ impl ComponentRuntimeBridge {
 
     /// Reset bridge state
     pub fn reset(&mut self) {
-        self.execution_stats.reset(;
+        self.execution_stats.reset);
         // Note: We don't reset instances and host functions as they persist
     }
 }
@@ -797,14 +797,14 @@ mod tests {
 
     #[test]
     fn test_value_converter_creation() {
-        let converter = ValueConverter::new(;
+        let converter = ValueConverter::new);
         assert!(converter.config.strict_type_checking);
         assert!(converter.config.enable_caching);
     }
 
     #[test]
     fn test_component_to_core_conversion() {
-        let converter = ValueConverter::new(;
+        let converter = ValueConverter::new);
         
         // Test basic conversions
         let bool_val = ComponentValue::Bool(true;
@@ -822,7 +822,7 @@ mod tests {
 
     #[test]
     fn test_core_to_component_conversion() {
-        let converter = ValueConverter::new(;
+        let converter = ValueConverter::new);
         
         // Test conversions with target types
         let core_val = CoreValue::I32(1;
@@ -836,7 +836,7 @@ mod tests {
 
     #[test]
     fn test_instance_resolver() {
-        let mut resolver = InstanceResolver::new(;
+        let mut resolver = InstanceResolver::new);
         
         let instance_id = resolver.register_instance(
             1,
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn test_host_function_registry() {
-        let mut registry = HostFunctionRegistry::new(;
+        let mut registry = HostFunctionRegistry::new);
         
         fn test_host_function(args: &[ComponentValue]) -> Result<ComponentValue> {
             if let Some(ComponentValue::S32(val)) = args.first() {
@@ -890,7 +890,7 @@ mod tests {
 
     #[test]
     fn test_runtime_bridge_creation() {
-        let bridge = ComponentRuntimeBridge::new(;
+        let bridge = ComponentRuntimeBridge::new);
         assert_eq!(bridge.execution_stats().function_calls, 0;
         assert_eq!(bridge.instance_resolver().instance_count(), 0;
         assert_eq!(bridge.host_registry().function_count(), 0;
@@ -898,7 +898,7 @@ mod tests {
 
     #[test]
     fn test_runtime_bridge_host_function() {
-        let mut bridge = ComponentRuntimeBridge::new(;
+        let mut bridge = ComponentRuntimeBridge::new);
         
         fn add_function(args: &[ComponentValue]) -> Result<ComponentValue> {
             if args.len() == 2 {

@@ -135,8 +135,8 @@ impl Export {
 impl wrt_foundation::traits::Checksummable for Export {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.name.update_checksum(checksum;
-        checksum.update_slice(&(self.kind as u8).to_le_bytes(;
-        checksum.update_slice(&self.index.to_le_bytes(;
+        checksum.update_slice(&(self.kind as u8).to_le_bytes);
+        checksum.update_slice(&self.index.to_le_bytes);
     }
 }
 
@@ -296,7 +296,7 @@ impl Eq for Function {}
 
 impl wrt_foundation::traits::Checksummable for Function {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.type_idx.to_le_bytes(;
+        checksum.update_slice(&self.type_idx.to_le_bytes);
     }
 }
 
@@ -366,9 +366,9 @@ impl wrt_foundation::traits::Checksummable for Element {
             WrtElementMode::Passive => 1u8,
             WrtElementMode::Declarative => 2u8,
         };
-        checksum.update_slice(&mode_byte.to_le_bytes(;
+        checksum.update_slice(&mode_byte.to_le_bytes);
         if let Some(table_idx) = self.table_idx {
-            checksum.update_slice(&table_idx.to_le_bytes(;
+            checksum.update_slice(&table_idx.to_le_bytes);
         }
     }
 }
@@ -439,11 +439,11 @@ impl wrt_foundation::traits::Checksummable for Data {
             WrtDataMode::Active { .. } => 0u8,
             WrtDataMode::Passive => 1u8,
         };
-        checksum.update_slice(&mode_byte.to_le_bytes(;
+        checksum.update_slice(&mode_byte.to_le_bytes);
         if let Some(memory_idx) = self.memory_idx {
-            checksum.update_slice(&memory_idx.to_le_bytes(;
+            checksum.update_slice(&memory_idx.to_le_bytes);
         }
-        checksum.update_slice(&(self.init.len() as u32).to_le_bytes(;
+        checksum.update_slice(&(self.init.len() as u32).to_le_bytes);
     }
 }
 
@@ -577,7 +577,7 @@ impl Module {
         
         // Use empty() instead of new() to avoid memory allocation during initialization
         // This prevents stack overflow when the memory system isn't fully initialized
-        let mut runtime_module = Self::empty(;
+        let mut runtime_module = Self::empty);
         
         // Map start function if present
         runtime_module.start = wrt_module.start;
@@ -663,7 +663,7 @@ impl Module {
         wrt_foundation::memory_init::MemoryInitializer::ensure_initialized()?;
         
         // Use empty() instead of new() to avoid memory allocation during initialization
-        let mut runtime_module = Self::empty(;
+        let mut runtime_module = Self::empty);
         
         // Map start function if present
         runtime_module.start = wrt_module.start;
@@ -942,7 +942,7 @@ impl Module {
             // Convert body to WrtExpr
             // For now, just use the default empty expression
             // TODO: Properly convert the instruction sequence
-            let runtime_body = WrtExpr::default(;
+            let runtime_body = WrtExpr::default);
             
             runtime_module.functions.push(Function {
                 type_idx,
@@ -2101,22 +2101,22 @@ impl wrt_foundation::traits::Checksummable for Module {
         // Use module name (if available) and validation status for checksum
         if let Some(ref name) = self.name {
             if let Ok(name_str) = name.as_str() {
-                checksum.update_slice(name_str.as_bytes(;
+                checksum.update_slice(name_str.as_bytes);
             }
         } else {
             // Use a default identifier if no name is available
             checksum.update_slice(b"unnamed_module";
         }
         checksum.update_slice(&[if self.validated { 1 } else { 0 }];
-        checksum.update_slice(&(self.types.len() as u32).to_le_bytes(;
-        checksum.update_slice(&(self.functions.len() as u32).to_le_bytes(;
+        checksum.update_slice(&(self.types.len() as u32).to_le_bytes);
+        checksum.update_slice(&(self.functions.len() as u32).to_le_bytes);
     }
 }
 
 impl wrt_foundation::traits::ToBytes for Module {
     fn serialized_size(&self) -> usize {
         // Simple size calculation for module metadata
-        let name_size = self.name.as_ref().map_or(0, |n| n.len(;
+        let name_size = self.name.as_ref().map_or(0, |n| n.len);
         8 + name_size + 1 + 4 + 4 // magic(4) + name_len(4) + name + validated(1) + types_len(4) + functions_len(4)
     }
     
@@ -2485,8 +2485,8 @@ use wrt_foundation::verification::Checksum;
 impl Checksummable for TableWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use table size and element type for checksum
-        checksum.update_slice(&self.0.size().to_le_bytes(;
-        checksum.update_slice(&(self.0.ty.element_type as u8).to_le_bytes(;
+        checksum.update_slice(&self.0.size().to_le_bytes);
+        checksum.update_slice(&(self.0.ty.element_type as u8).to_le_bytes);
     }
 }
 
@@ -2534,8 +2534,8 @@ impl FromBytes for TableWrapper {
 impl Checksummable for MemoryWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use memory size for checksum
-        checksum.update_slice(&self.0.size().to_le_bytes(;
-        checksum.update_slice(&self.0.size_in_bytes().to_le_bytes(;
+        checksum.update_slice(&self.0.size().to_le_bytes);
+        checksum.update_slice(&self.0.size_in_bytes().to_le_bytes);
     }
 }
 
@@ -2602,8 +2602,8 @@ fn value_type_to_u8(vt: WrtValueType) -> u8 {
 impl Checksummable for GlobalWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use global value type for checksum
-        checksum.update_slice(&value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes(;
-        checksum.update_slice(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes(;
+        checksum.update_slice(&value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes);
+        checksum.update_slice(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes);
     }
 }
 

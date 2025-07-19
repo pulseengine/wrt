@@ -235,7 +235,7 @@ impl StacklessFrame {
 
         #[cfg(feature = "std")]
         let mut locals_vec = {
-            let mut vec = Vec::new(;
+            let mut vec = Vec::new);
             for value in invocation_inputs.iter() {
                 vec.push(value.clone();
             }
@@ -244,7 +244,7 @@ impl StacklessFrame {
 
         #[cfg(not(feature = "std"))]
         let mut locals_vec: LocalsVec = {
-            let provider = crate::types::RuntimeProvider::default(;
+            let provider = crate::types::RuntimeProvider::default);
             let mut bounded_vec = LocalsVec::new(provider)?;
             for value in invocation_inputs.iter() {
                 bounded_vec.push(value.clone())?;
@@ -668,7 +668,7 @@ impl FrameBehavior for StacklessFrame {
                             None => return Err(Error::runtime_stack_underflow("Stack underflow during return")),
                         }
                     }
-                    return_values.reverse(;
+                    return_values.reverse);
                     Ok(ControlFlow::Return { values: return_values })
                 }
                 #[cfg(not(feature = "std"))]
@@ -686,7 +686,7 @@ impl FrameBehavior for StacklessFrame {
                             None => return Err(Error::runtime_stack_underflow("Stack underflow during return")),
                         }
                     }
-                    return_values.reverse(;
+                    return_values.reverse);
                     Ok(ControlFlow::Return { values: return_values })
                 }
             }
@@ -696,7 +696,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 #[cfg(feature = "std")]
                 {
-                    let mut args = ValueStackVec::with_capacity(target_func_type.params.len(;
+                    let mut args = ValueStackVec::with_capacity(target_func_type.params.len);
                     
                     // Pop arguments from stack in reverse order (last param first)
                     for _ in 0..target_func_type.params.len() {
@@ -776,7 +776,7 @@ impl FrameBehavior for StacklessFrame {
                 // 6. Pop arguments from stack
                 #[cfg(feature = "std")]
                 {
-                    let mut args = ValueStackVec::with_capacity(actual_func_type.params.len(;
+                    let mut args = ValueStackVec::with_capacity(actual_func_type.params.len);
                     for _ in 0..actual_func_type.params.len() {
                         let value = engine.exec_stack.values.pop().map_err(|e| {
                             Error::runtime_stack_underflow("Stack operation error")
@@ -1399,7 +1399,7 @@ impl FrameBehavior for StacklessFrame {
                     return Err(Error::memory_error("I32Store out of bounds";
                 }
                 
-                let bytes = value.to_le_bytes(;
+                let bytes = value.to_le_bytes);
                 memory.write(effective_addr, &bytes)?;
                 Ok(ControlFlow::Next)
             }
@@ -1430,7 +1430,7 @@ impl FrameBehavior for StacklessFrame {
                     return Err(Error::memory_error("I64Store out of bounds";
                 }
                 
-                let bytes = value.to_le_bytes(;
+                let bytes = value.to_le_bytes);
                 memory.write(effective_addr, &bytes)?;
                 Ok(ControlFlow::Next)
             }
@@ -1461,8 +1461,8 @@ impl FrameBehavior for StacklessFrame {
                     return Err(Error::memory_error("F32Store out of bounds";
                 }
                 
-                let bits = value.to_bits(;
-                let bytes = bits.to_le_bytes(;
+                let bits = value.to_bits);
+                let bytes = bits.to_le_bytes);
                 memory.write(effective_addr, &bytes)?;
                 Ok(ControlFlow::Next)
             }
@@ -1493,8 +1493,8 @@ impl FrameBehavior for StacklessFrame {
                     return Err(Error::memory_error("F64Store out of bounds";
                 }
                 
-                let bits = value.to_bits(;
-                let bytes = bits.to_le_bytes(;
+                let bits = value.to_bits);
+                let bytes = bits.to_le_bytes);
                 memory.write(effective_addr, &bytes)?;
                 Ok(ControlFlow::Next)
             }
@@ -1558,7 +1558,7 @@ impl FrameBehavior for StacklessFrame {
                 }
                 
                 // Truncate to 16 bits
-                let bytes = (value as u16).to_le_bytes(;
+                let bytes = (value as u16).to_le_bytes);
                 memory.write(effective_addr, &bytes)?;
                 Ok(ControlFlow::Next)
             }
@@ -1624,7 +1624,7 @@ impl FrameBehavior for StacklessFrame {
                 }
                 
                 // Store lower 16 bits
-                let bytes = (value as u16).to_le_bytes(;
+                let bytes = (value as u16).to_le_bytes);
                 memory.write(effective_addr, &bytes)?;
                 Ok(ControlFlow::Next)
             }
@@ -1657,7 +1657,7 @@ impl FrameBehavior for StacklessFrame {
                 }
                 
                 // Store lower 32 bits
-                let bytes = (value as u32).to_le_bytes(;
+                let bytes = (value as u32).to_le_bytes);
                 memory.write(effective_addr, &bytes)?;
                 Ok(ControlFlow::Next)
             }
@@ -3049,7 +3049,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
                     Error::validation_error("F32Abs operand not f32")
                 })?;
-                let result = a.abs(;
+                let result = a.abs);
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3073,7 +3073,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
                     Error::validation_error("F32Ceil operand not f32")
                 })?;
-                let result = a.ceil(;
+                let result = a.ceil);
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3085,7 +3085,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
                     Error::validation_error("F32Floor operand not f32")
                 })?;
-                let result = a.floor(;
+                let result = a.floor);
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3117,7 +3117,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
                     Error::validation_error("F32Nearest operand not f32")
                 })?;
-                let result = a.round(;
+                let result = a.round);
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3129,7 +3129,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f32()).ok_or_else(|| {
                     Error::validation_error("F32Sqrt operand not f32")
                 })?;
-                let result = a.sqrt(;
+                let result = a.sqrt);
                 engine.exec_stack.values.push(Value::F32(FloatBits32::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3541,7 +3541,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
                     Error::validation_error("F64Abs operand not f64")
                 })?;
-                let result = a.abs(;
+                let result = a.abs);
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3565,7 +3565,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
                     Error::validation_error("F64Ceil operand not f64")
                 })?;
-                let result = a.ceil(;
+                let result = a.ceil);
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3577,7 +3577,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
                     Error::validation_error("F64Floor operand not f64")
                 })?;
-                let result = a.floor(;
+                let result = a.floor);
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3609,7 +3609,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
                     Error::validation_error("F64Nearest operand not f64")
                 })?;
-                let result = a.round(;
+                let result = a.round);
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3621,7 +3621,7 @@ impl FrameBehavior for StacklessFrame {
                 })?.and_then(|v| v.as_f64()).ok_or_else(|| {
                     Error::validation_error("F64Sqrt operand not f64")
                 })?;
-                let result = a.sqrt(;
+                let result = a.sqrt);
                 engine.exec_stack.values.push(Value::F64(FloatBits64::from_bits(result.to_bits()))).map_err(|e| {
                     Error::runtime_stack_overflow("Stack operation error")
                 })?;
@@ -3970,7 +3970,7 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::RefFunc(func_idx) => {
                 // Validate that the function index exists
-                let module = self.module_instance.module(;
+                let module = self.module_instance.module);
                 if func_idx >= module.functions.len() as u32 {
                     return Err(Error::validation_error("Stack operation error";
                 }
@@ -4148,7 +4148,7 @@ impl FrameBehavior for StacklessFrame {
             // Tail call instructions (WebAssembly 2.0)
             Instruction::ReturnCall(func_idx) => {
                 // Validate function index
-                let module = self.module_instance.module(;
+                let module = self.module_instance.module);
                 if func_idx >= module.functions.len() as u32 {
                     return Err(Error::validation_error("Stack operation error";
                 }
@@ -4192,7 +4192,7 @@ impl FrameBehavior for StacklessFrame {
                 };
                 
                 // Validate function type matches expected type
-                let module = self.module_instance.module(;
+                let module = self.module_instance.module);
                 let function = module.functions.get(actual_func_idx as usize).map_err(|_| {
                     Error::validation_error("Stack operation error")
                 })?;
@@ -4288,7 +4288,7 @@ impl FrameBehavior for StacklessFrame {
                 let memory = self.module_instance.memory(mem_idx)?;
                 
                 // Validate data segment index
-                let module = self.module_instance.module(;
+                let module = self.module_instance.module);
                 let data_segment = module.data.get(data_seg_idx as usize).map_err(|_| {
                     Error::validation_error("Stack operation error")
                 })?;
@@ -4547,7 +4547,7 @@ impl FrameBehavior for StacklessFrame {
                 })?;
                 
                 // Write 4 bytes for i32 - this will fail due to Arc<Memory> immutability
-                let bytes = value.to_le_bytes(;
+                let bytes = value.to_le_bytes);
                 memory.write(effective_addr, &bytes).map_err(|e| {
                     Error::runtime_memory_access_error("Memory write error")
                 })?;
@@ -4593,7 +4593,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 let new_value = old_value.wrapping_add(value;
                 {
-                    let bytes = new_value.to_le_bytes(;
+                    let bytes = new_value.to_le_bytes);
                     memory.write(effective_addr, &bytes).map_err(|e| {
                         Error::runtime_memory_access_error("Memory write error")
                     })?
@@ -4653,7 +4653,7 @@ impl FrameBehavior for StacklessFrame {
                 if current_value == expected {
                     // Values match, perform the exchange
                     {
-                        let bytes = replacement.to_le_bytes(;
+                        let bytes = replacement.to_le_bytes);
                         memory.write(effective_addr, &bytes).map_err(|e| {
                             Error::runtime_memory_access_error("Memory write error")
                         })?
@@ -4701,7 +4701,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read current value
@@ -4711,7 +4711,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Perform atomic subtraction
                 let new_value = current_value.wrapping_sub(value_i32;
-                let new_bytes = new_value.to_le_bytes(;
+                let new_bytes = new_value.to_le_bytes);
                 memory_guard.write(effective_addr, &new_bytes)?;
                 
                 // Push the old value
@@ -4749,7 +4749,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read current value
@@ -4759,7 +4759,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Perform atomic AND
                 let new_value = current_value & value_i32;
-                let new_bytes = new_value.to_le_bytes(;
+                let new_bytes = new_value.to_le_bytes);
                 memory_guard.write(effective_addr, &new_bytes)?;
                 
                 // Push the old value
@@ -4797,7 +4797,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read current value
@@ -4807,7 +4807,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Perform atomic OR
                 let new_value = current_value | value_i32;
-                let new_bytes = new_value.to_le_bytes(;
+                let new_bytes = new_value.to_le_bytes);
                 memory_guard.write(effective_addr, &new_bytes)?;
                 
                 // Push the old value
@@ -4845,7 +4845,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read current value
@@ -4855,7 +4855,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 // Perform atomic XOR
                 let new_value = current_value ^ value_i32;
-                let new_bytes = new_value.to_le_bytes(;
+                let new_bytes = new_value.to_le_bytes);
                 memory_guard.write(effective_addr, &new_bytes)?;
                 
                 // Push the old value
@@ -4883,7 +4883,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read value
@@ -4919,7 +4919,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read value
@@ -4962,7 +4962,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read current value
@@ -4971,7 +4971,7 @@ impl FrameBehavior for StacklessFrame {
                 let current_value = i32::from_le_bytes(bytes;
                 
                 // Write new value
-                let new_bytes = value_i32.to_le_bytes(;
+                let new_bytes = value_i32.to_le_bytes);
                 memory_guard.write(effective_addr, &new_bytes)?;
                 
                 // Push the old value
@@ -5004,7 +5004,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Write value (truncate to 8 bits)
@@ -5041,11 +5041,11 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Write value (truncate to 16 bits)
-                let bytes = (value_i32 as u16).to_le_bytes(;
+                let bytes = (value_i32 as u16).to_le_bytes);
                 memory_guard.write(effective_addr, &bytes)?;
                 
                 Ok(ControlFlow::Next)
@@ -5071,7 +5071,7 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Read value
@@ -5114,11 +5114,11 @@ impl FrameBehavior for StacklessFrame {
                     .ok_or_else(|| Error::runtime_error("No module instance"))?
                     .memory(mem_idx)?;
                 
-                let memory_guard = memory.lock(;
+                let memory_guard = memory.lock);
                 let effective_addr = (addr_i32 as usize).saturating_add(memarg.offset as usize;
                 
                 // Write value
-                let bytes = value_i64.to_le_bytes(;
+                let bytes = value_i64.to_le_bytes);
                 memory_guard.write(effective_addr, &bytes)?;
                 
                 Ok(ControlFlow::Next)
@@ -5470,7 +5470,7 @@ impl StacklessFrame {
         table_idx: u32,
         engine: &mut StacklessEngine,
     ) -> Result<()> {
-        let module = self.module_instance.module(;
+        let module = self.module_instance.module);
         let segment = module.elements.get(elem_idx as usize).map_err(|_| {
             Error::runtime_execution_error("Invalid element segment index",
             )
@@ -5508,7 +5508,7 @@ impl StacklessFrame {
         }
 
         if n == 0 {
-            return Ok((;
+            return Ok();
         } // No-op
 
         // Assuming segment.items are Vec<u32> (function indices) or similar that can be
@@ -5516,7 +5516,7 @@ impl StacklessFrame {
         // segments store their items. If Element.items are already `Value` or
         // `Option<Value>`, this is simpler. Let's assume Element stores func
         // indices as u32.
-        let mut items_to_init: Vec<Option<Value>> = Vec::new(;
+        let mut items_to_init: Vec<Option<Value>> = Vec::new);
         for i in 0..n {
             let idx = (src_offset + i) as usize;
             let item = segment.items.get(idx).map_err(|_| {
@@ -5566,7 +5566,7 @@ impl StacklessFrame {
         }
 
         if n == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Perform copy: if ranges overlap, copy direction matters.
@@ -5620,7 +5620,7 @@ impl StacklessFrame {
         }
 
         if n == 0 {
-            return Ok((;
+            return Ok();
         }
         // TODO: Type check val_to_fill against table.element_type()
         for i in 0..n {
@@ -5677,7 +5677,7 @@ impl StacklessFrame {
             return Err(Error::memory_error("Memory bounds check failed for memory.init";
         }
         if n == 0 {
-            return Ok((;
+            return Ok();
         }
 
         let data_to_write = data_segment.data()?.get((src_offset as usize)..(src_offset as usize + n as usize)).ok_or_else(|| {
@@ -5731,7 +5731,7 @@ impl StacklessFrame {
             ;
         }
         if n == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Wasm spec: if d_m is m and s_m is m, then the copy is performed as if the
@@ -5817,7 +5817,7 @@ impl StacklessFrame {
             ;
         }
         if n == 0 {
-            return Ok((;
+            return Ok();
         }
 
         memory.fill(dst_offset, n, val_to_fill_byte)
@@ -5861,7 +5861,7 @@ impl StacklessFrame {
     ) -> Result<ControlFlow> {
         // TODO: SIMD execution not yet implemented
         // Create SIMD execution adapter
-        // let adapter = SimdExecutionAdapter::new(;
+        // let adapter = SimdExecutionAdapter::new);
         
         // Execute the SIMD operation
         // adapter.execute_simd_with_engine(simd_op, engine)?;

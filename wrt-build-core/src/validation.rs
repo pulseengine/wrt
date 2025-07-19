@@ -90,8 +90,8 @@ impl CodeValidator {
             "🔍".bright_blue()
         ;
 
-        let mut errors = Vec::new(;
-        let mut warnings = Vec::new(;
+        let mut errors = Vec::new);
+        let mut warnings = Vec::new);
 
         // Walk through all Cargo.toml files to find crates
         let crates = self.find_workspace_crates()?;
@@ -103,7 +103,7 @@ impl CodeValidator {
             }
         }
 
-        let success = errors.is_empty(;
+        let success = errors.is_empty);
 
         if success {
             println!(
@@ -136,8 +136,8 @@ impl CodeValidator {
             "📚".bright_blue()
         ;
 
-        let mut errors = Vec::new(;
-        let mut warnings = Vec::new(;
+        let mut errors = Vec::new);
+        let mut warnings = Vec::new);
         let mut total_modules = 0;
         let mut documented_modules = 0;
 
@@ -190,16 +190,16 @@ impl CodeValidator {
 
     /// Comprehensive documentation audit for all crates
     pub fn audit_crate_documentation(&self) -> BuildResult<ValidationResults> {
-        println!("{} Auditing crate documentation...", "📚".bright_blue(;
+        println!("{} Auditing crate documentation...", "📚".bright_blue);
 
-        let mut results = ValidationResults::new(;
-        let start = std::time::Instant::now(;
+        let mut results = ValidationResults::new);
+        let start = std::time::Instant::now);
 
         // Find all crate directories
-        let mut crates = Vec::new(;
+        let mut crates = Vec::new);
         for entry in fs::read_dir(&self.workspace_root)? {
             let entry = entry?;
-            let path = entry.path(;
+            let path = entry.path);
             if path.is_dir() {
                 let cargo_toml = path.join("Cargo.toml";
                 if cargo_toml.exists() {
@@ -212,14 +212,14 @@ impl CodeValidator {
             }
         }
 
-        println!("    Found {} crates to audit", crates.len(;
+        println!("    Found {} crates to audit", crates.len);
 
-        let mut missing_readme = Vec::new(;
-        let mut missing_metadata = Vec::new(;
-        let mut poor_documentation = Vec::new(;
+        let mut missing_readme = Vec::new);
+        let mut missing_metadata = Vec::new);
+        let mut poor_documentation = Vec::new);
 
         for crate_path in &crates {
-            let crate_name = crate_path.file_name().unwrap().to_string_lossy(;
+            let crate_name = crate_path.file_name().unwrap().to_string_lossy);
 
             // Check README.md
             let readme_path = crate_path.join("README.md";
@@ -313,13 +313,13 @@ impl CodeValidator {
             }
         }
 
-        results.duration = start.elapsed(;
-        results.success = results.errors.is_empty(;
+        results.duration = start.elapsed);
+        results.success = results.errors.is_empty);
 
         // Print summary
-        println!("\n  {} Summary:", "📊".bright_cyan(;
-        println!("    Total crates: {}", crates.len(;
-        println!("    Crates missing README: {}", missing_readme.len(;
+        println!("\n  {} Summary:", "📊".bright_cyan);
+        println!("    Total crates: {}", crates.len);
+        println!("    Crates missing README: {}", missing_readme.len);
         println!(
             "    Crates with incomplete metadata: {}",
             missing_metadata.len()
@@ -330,7 +330,7 @@ impl CodeValidator {
         ;
 
         if !missing_readme.is_empty() {
-            println!("\n    {} Crates missing README:", "❌".bright_red(;
+            println!("\n    {} Crates missing README:", "❌".bright_red);
             for crate_name in &missing_readme {
                 println!("      - {}", crate_name;
             }
@@ -362,7 +362,7 @@ impl CodeValidator {
                 "✅".bright_green()
             ;
         } else {
-            println!("\n  {} Documentation audit found issues", "❌".bright_red(;
+            println!("\n  {} Documentation audit found issues", "❌".bright_red);
         }
 
         Ok(results)
@@ -380,7 +380,7 @@ impl CodeValidator {
                 if let Some(members_end) = content[members_start..].find(']') {
                     let members_section = &content[members_start..members_start + members_end];
                     for line in members_section.lines() {
-                        let line = line.trim(;
+                        let line = line.trim);
                         if line.starts_with('"') && line.ends_with('"') {
                             let member = line.trim_matches('"').trim_matches(',';
                             let member_path = self.workspace_root.join(member;
@@ -407,7 +407,7 @@ impl CodeValidator {
         })? {
             let entry = entry
                 .map_err(|e| BuildError::Tool(format!("Failed to read directory entry: {}", e)))?;
-            let path = entry.path(;
+            let path = entry.path);
 
             if path.is_file() {
                 if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
@@ -453,7 +453,7 @@ impl CodeValidator {
         })? {
             let entry = entry
                 .map_err(|e| BuildError::Tool(format!("Failed to read directory entry: {}", e)))?;
-            let path = entry.path(;
+            let path = entry.path);
 
             if path.is_file() {
                 if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
@@ -468,7 +468,7 @@ impl CodeValidator {
 
                             // Look for //! at the start of the file
                             for line in lines.iter().take(10) {
-                                let trimmed = line.trim(;
+                                let trimmed = line.trim);
                                 if trimmed.starts_with("//!") {
                                     has_module_doc = true;
                                     break;
@@ -537,8 +537,8 @@ impl CodeValidator {
 pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<bool> {
     let validator = CodeValidator::new(workspace_root.to_path_buf(), verbose;
 
-    println!("{} Running code validation checks...", "🔍".bright_blue(;
-    println!(;
+    println!("{} Running code validation checks...", "🔍".bright_blue);
+    println!);
 
     let mut all_passed = true;
 
@@ -548,7 +548,7 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
         all_passed = false;
     }
 
-    println!(;
+    println!);
 
     // Check module documentation
     let doc_result = validator.check_module_documentation()?;
@@ -556,7 +556,7 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
         all_passed = false;
     }
 
-    println!(;
+    println!);
 
     // Audit crate documentation
     let audit_result = validator.audit_crate_documentation()?;
@@ -564,12 +564,12 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
         all_passed = false;
     }
 
-    println!(;
+    println!);
 
     if all_passed {
-        println!("{} All validation checks passed!", "✅".bright_green(;
+        println!("{} All validation checks passed!", "✅".bright_green);
     } else {
-        println!("{} Some validation checks failed", "❌".bright_red(;
+        println!("{} Some validation checks failed", "❌".bright_red);
     }
 
     Ok(all_passed)

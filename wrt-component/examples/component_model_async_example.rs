@@ -29,8 +29,8 @@ fn main() {
     println!("=== WebAssembly Component Model Async Example ===\n";
 
     // Initialize the async infrastructure
-    let mut task_manager = TaskManager::new(;
-    let mut async_abi = AsyncCanonicalAbi::new(;
+    let mut task_manager = TaskManager::new);
+    let mut async_abi = AsyncCanonicalAbi::new);
     let component_id = ComponentInstanceId::new(1;
 
     // Example 1: Using Component Model Streams (no Rust futures needed!)
@@ -161,11 +161,11 @@ fn example_task_async(task_manager: &mut TaskManager, component_id: ComponentIns
 fn manual_async_example() {
     println!("\n=== Manual Async Polling (No Tokio/async-std needed) ===";
 
-    let mut task_manager = TaskManager::new(;
+    let mut task_manager = TaskManager::new);
     let component_id = ComponentInstanceId::new(1;
 
     // Create multiple futures
-    let mut futures = Vec::new(;
+    let mut futures = Vec::new);
     for i in 0..3 {
         let future = Future::<i32>::new(FutureHandle(i), ValType::I32;
         futures.push(future);

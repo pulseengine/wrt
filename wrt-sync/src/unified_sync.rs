@@ -129,7 +129,7 @@ impl<T> SafeMutex<T> {
     pub fn lock(&self) -> WrtResult<SafeMutexGuard<'_, T>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
-            self.safety_context.record_violation(;
+            self.safety_context.record_violation);
             return Err(Error::Safety;
         }
 
@@ -143,14 +143,14 @@ impl<T> SafeMutex<T> {
             // Yield or spin based on ASIL level
             match self.safety_context.effective_asil() {
                 AsilLevel::QM | AsilLevel::AsilA => {
-                    core::hint::spin_loop(;
+                    core::hint::spin_loop);
                 }
                 AsilLevel::AsilB | AsilLevel::AsilC | AsilLevel::AsilD => {
                     // For higher ASIL levels, be more cooperative
                     #[cfg(feature = "std")]
-                    std::thread::yield_now(;
+                    std::thread::yield_now);
                     #[cfg(not(feature = "std"))]
-                    core::hint::spin_loop(;
+                    core::hint::spin_loop);
                 }
             }
         }
@@ -172,7 +172,7 @@ impl<T> SafeMutex<T> {
     pub fn try_lock(&self) -> WrtResult<Option<SafeMutexGuard<'_, T>>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
-            self.safety_context.record_violation(;
+            self.safety_context.record_violation);
             return Err(Error::Safety;
         }
 
@@ -420,13 +420,13 @@ impl SafeAtomicCounter {
         let current = self.value.load(Ordering::Relaxed;
         
         if current >= self.max_value {
-            self.safety_context.record_violation(;
+            self.safety_context.record_violation);
             return Err(Error::Capacity;
         }
 
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_counter_safety(current + 1) {
-            self.safety_context.record_violation(;
+            self.safety_context.record_violation);
             return Err(Error::Safety;
         }
 
@@ -435,7 +435,7 @@ impl SafeAtomicCounter {
         if new_value > self.max_value {
             // Rollback the increment
             self.value.fetch_sub(1, Ordering::AcqRel;
-            self.safety_context.record_violation(;
+            self.safety_context.record_violation);
             return Err(Error::Capacity;
         }
 

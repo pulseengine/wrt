@@ -71,8 +71,8 @@ pub fn execute_simd_operation(
 /// Validate input count for SIMD operation
 #[inline]
 fn validate_input_count(op: &SimdOp, inputs: &[Value]) -> Result<()> {
-    let expected = op.input_count(;
-    let actual = inputs.len(;
+    let expected = op.input_count);
+    let actual = inputs.len);
 
     if actual != expected {
         return Err(Error::runtime_execution_error(
@@ -89,12 +89,12 @@ fn validate_input_count(op: &SimdOp, inputs: &[Value]) -> Result<()> {
 /// Validate SIMD operation result
 #[inline]
 fn validate_simd_result(op: &SimdOp, result: &Value) -> Result<()> {
-    let expected_outputs = op.output_count(;
+    let expected_outputs = op.output_count);
 
     // Store operations should not produce output
     if expected_outputs == 0 {
         // For store operations, we should get a unit value or validate memory state
-        return Ok((;
+        return Ok();
     }
 
     // Verify result type for operations that produce v128
@@ -618,7 +618,7 @@ fn execute_i8x16_splat(inputs: &[Value]) -> Result<Value> {
 fn execute_i16x8_splat(inputs: &[Value]) -> Result<Value> {
     let val = extract_i32(&inputs[0])?;
     let word_val = val as u16;
-    let bytes = word_val.to_le_bytes(;
+    let bytes = word_val.to_le_bytes);
     let mut result = [0u8; 16];
     for i in 0..8 {
         result[i * 2] = bytes[0];
@@ -629,7 +629,7 @@ fn execute_i16x8_splat(inputs: &[Value]) -> Result<Value> {
 
 fn execute_i32x4_splat(inputs: &[Value]) -> Result<Value> {
     let val = extract_i32(&inputs[0])?;
-    let bytes = val.to_le_bytes(;
+    let bytes = val.to_le_bytes);
     let mut result = [0u8; 16];
     for i in 0..4 {
         result[i * 4..i * 4 + 4].copy_from_slice(&bytes;
@@ -639,7 +639,7 @@ fn execute_i32x4_splat(inputs: &[Value]) -> Result<Value> {
 
 fn execute_i64x2_splat(inputs: &[Value]) -> Result<Value> {
     let val = extract_i64(&inputs[0])?;
-    let bytes = val.to_le_bytes(;
+    let bytes = val.to_le_bytes);
     let mut result = [0u8; 16];
     result[0..8].copy_from_slice(&bytes;
     result[8..16].copy_from_slice(&bytes;
@@ -648,7 +648,7 @@ fn execute_i64x2_splat(inputs: &[Value]) -> Result<Value> {
 
 fn execute_f32x4_splat(inputs: &[Value]) -> Result<Value> {
     let val = extract_f32(&inputs[0])?;
-    let bytes = val.to_le_bytes(;
+    let bytes = val.to_le_bytes);
     let mut result = [0u8; 16];
     for i in 0..4 {
         result[i * 4..i * 4 + 4].copy_from_slice(&bytes;
@@ -658,7 +658,7 @@ fn execute_f32x4_splat(inputs: &[Value]) -> Result<Value> {
 
 fn execute_f64x2_splat(inputs: &[Value]) -> Result<Value> {
     let val = extract_f64(&inputs[0])?;
-    let bytes = val.to_le_bytes(;
+    let bytes = val.to_le_bytes);
     let mut result = [0u8; 16];
     result[0..8].copy_from_slice(&bytes;
     result[8..16].copy_from_slice(&bytes;
@@ -800,7 +800,7 @@ fn execute_i16x8_add(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = a_val.wrapping_add(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -817,7 +817,7 @@ fn execute_i16x8_sub(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = a_val.wrapping_sub(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -834,7 +834,7 @@ fn execute_i16x8_mul(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = a_val.wrapping_mul(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -849,7 +849,7 @@ fn execute_i16x8_neg(inputs: &[Value]) -> Result<Value> {
     for i in 0..8 {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let res_val = a_val.wrapping_neg() as u16;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -869,7 +869,7 @@ fn execute_i16x8_abs(inputs: &[Value]) -> Result<Value> {
         } else {
             a_val.abs() as u16
         };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -886,7 +886,7 @@ fn execute_i16x8_min_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = core::cmp::min(a_val, b_val) as u16;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -903,7 +903,7 @@ fn execute_i16x8_min_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = core::cmp::min(a_val, b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -920,7 +920,7 @@ fn execute_i16x8_max_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = core::cmp::max(a_val, b_val) as u16;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -937,7 +937,7 @@ fn execute_i16x8_max_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = core::cmp::max(a_val, b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -956,7 +956,7 @@ fn execute_i16x8_avgr_u(inputs: &[Value]) -> Result<Value> {
         // Rounding average: (a + b + 1) / 2
         let sum = a_val as u32 + b_val as u32 + 1;
         let res_val = (sum / 2) as u16;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -977,7 +977,7 @@ fn execute_i32x4_add(inputs: &[Value]) -> Result<Value> {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val.wrapping_add(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -993,7 +993,7 @@ fn execute_i32x4_sub(inputs: &[Value]) -> Result<Value> {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val.wrapping_sub(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1009,7 +1009,7 @@ fn execute_i32x4_mul(inputs: &[Value]) -> Result<Value> {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val.wrapping_mul(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1023,7 +1023,7 @@ fn execute_i32x4_neg(inputs: &[Value]) -> Result<Value> {
     for i in 0..4 {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
         let res_val = a_val.wrapping_neg() as u32;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1042,7 +1042,7 @@ fn execute_i32x4_abs(inputs: &[Value]) -> Result<Value> {
         } else {
             a_val.abs() as u32
         };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1058,7 +1058,7 @@ fn execute_i32x4_min_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
         let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]) as i32;
         let res_val = core::cmp::min(a_val, b_val) as u32;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1074,7 +1074,7 @@ fn execute_i32x4_min_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = core::cmp::min(a_val, b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1090,7 +1090,7 @@ fn execute_i32x4_max_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
         let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]) as i32;
         let res_val = core::cmp::max(a_val, b_val) as u32;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1106,7 +1106,7 @@ fn execute_i32x4_max_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = u32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = core::cmp::max(a_val, b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1134,7 +1134,7 @@ fn execute_i64x2_add(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val.wrapping_add(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1158,7 +1158,7 @@ fn execute_i64x2_sub(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val.wrapping_sub(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1182,7 +1182,7 @@ fn execute_i64x2_mul(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val.wrapping_mul(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1200,7 +1200,7 @@ fn execute_i64x2_neg(inputs: &[Value]) -> Result<Value> {
             a_bytes[7],
         ]) as i64;
         let res_val = a_val.wrapping_neg() as u64;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1223,7 +1223,7 @@ fn execute_i64x2_abs(inputs: &[Value]) -> Result<Value> {
         } else {
             a_val.abs() as u64
         };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1243,7 +1243,7 @@ fn execute_f32x4_add(inputs: &[Value]) -> Result<Value> {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val + b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1259,7 +1259,7 @@ fn execute_f32x4_sub(inputs: &[Value]) -> Result<Value> {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val - b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1275,7 +1275,7 @@ fn execute_f32x4_mul(inputs: &[Value]) -> Result<Value> {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val * b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1291,7 +1291,7 @@ fn execute_f32x4_div(inputs: &[Value]) -> Result<Value> {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val / b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1305,7 +1305,7 @@ fn execute_f32x4_neg(inputs: &[Value]) -> Result<Value> {
     for i in 0..4 {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let res_val = -a_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1318,8 +1318,8 @@ fn execute_f32x4_sqrt(inputs: &[Value]) -> Result<Value> {
 
     for i in 0..4 {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
-        let res_val = a_val.sqrt(;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_val = a_val.sqrt);
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1332,8 +1332,8 @@ fn execute_f32x4_abs(inputs: &[Value]) -> Result<Value> {
 
     for i in 0..4 {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
-        let res_val = a_val.abs(;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_val = a_val.abs);
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1349,7 +1349,7 @@ fn execute_f32x4_min(inputs: &[Value]) -> Result<Value> {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val.min(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1365,7 +1365,7 @@ fn execute_f32x4_max(inputs: &[Value]) -> Result<Value> {
         let a_val = f32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let b_val = f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]];
         let res_val = a_val.max(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1392,7 +1392,7 @@ fn execute_f32x4_pmin(inputs: &[Value]) -> Result<Value> {
         } else {
             a_val.min(b_val)
         };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1419,7 +1419,7 @@ fn execute_f32x4_pmax(inputs: &[Value]) -> Result<Value> {
         } else {
             a_val.max(b_val)
         };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -1447,7 +1447,7 @@ fn execute_f64x2_add(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val + b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1471,7 +1471,7 @@ fn execute_f64x2_sub(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val - b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1495,7 +1495,7 @@ fn execute_f64x2_mul(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val * b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1519,7 +1519,7 @@ fn execute_f64x2_div(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val / b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1537,7 +1537,7 @@ fn execute_f64x2_neg(inputs: &[Value]) -> Result<Value> {
             a_bytes[7],
         ];
         let res_val = -a_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1554,8 +1554,8 @@ fn execute_f64x2_sqrt(inputs: &[Value]) -> Result<Value> {
             a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
             a_bytes[7],
         ];
-        let res_val = a_val.sqrt(;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_val = a_val.sqrt);
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1572,8 +1572,8 @@ fn execute_f64x2_abs(inputs: &[Value]) -> Result<Value> {
             a_bytes[0], a_bytes[1], a_bytes[2], a_bytes[3], a_bytes[4], a_bytes[5], a_bytes[6],
             a_bytes[7],
         ];
-        let res_val = a_val.abs(;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_val = a_val.abs);
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1597,7 +1597,7 @@ fn execute_f64x2_min(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val.min(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1621,7 +1621,7 @@ fn execute_f64x2_max(inputs: &[Value]) -> Result<Value> {
             b_bytes[7],
         ];
         let res_val = a_val.max(b_val;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1656,7 +1656,7 @@ fn execute_f64x2_pmin(inputs: &[Value]) -> Result<Value> {
         } else {
             a_val.min(b_val)
         };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1691,7 +1691,7 @@ fn execute_f64x2_pmax(inputs: &[Value]) -> Result<Value> {
         } else {
             a_val.max(b_val)
         };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -1970,7 +1970,7 @@ fn execute_i16x8_eq(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = if a_val == b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -1987,7 +1987,7 @@ fn execute_i16x8_ne(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = if a_val != b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2004,7 +2004,7 @@ fn execute_i16x8_lt_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val < b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2021,7 +2021,7 @@ fn execute_i16x8_lt_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = if a_val < b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2038,7 +2038,7 @@ fn execute_i16x8_gt_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val > b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2055,7 +2055,7 @@ fn execute_i16x8_gt_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = if a_val > b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2072,7 +2072,7 @@ fn execute_i16x8_le_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val <= b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2089,7 +2089,7 @@ fn execute_i16x8_le_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = if a_val <= b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2106,7 +2106,7 @@ fn execute_i16x8_ge_s(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]) as i16;
         let res_val = if a_val >= b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2123,7 +2123,7 @@ fn execute_i16x8_ge_u(inputs: &[Value]) -> Result<Value> {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let b_val = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]];
         let res_val = if a_val >= b_val { 0xFFFFu16 } else { 0x0000u16 };
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2188,7 +2188,7 @@ fn execute_i16x8_shl(inputs: &[Value]) -> Result<Value> {
     for i in 0..8 {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let res_val = a_val << shift_masked;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2206,7 +2206,7 @@ fn execute_i16x8_shr_s(inputs: &[Value]) -> Result<Value> {
     for i in 0..8 {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]]) as i16;
         let res_val = (a_val >> shift_masked) as u16;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2224,7 +2224,7 @@ fn execute_i16x8_shr_u(inputs: &[Value]) -> Result<Value> {
     for i in 0..8 {
         let a_val = u16::from_le_bytes([a[i * 2], a[i * 2 + 1]];
         let res_val = a_val >> shift_masked;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 2] = res_bytes[0];
         result[i * 2 + 1] = res_bytes[1];
     }
@@ -2242,7 +2242,7 @@ fn execute_i32x4_shl(inputs: &[Value]) -> Result<Value> {
     for i in 0..4 {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let res_val = a_val << shift_masked;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -2259,7 +2259,7 @@ fn execute_i32x4_shr_s(inputs: &[Value]) -> Result<Value> {
     for i in 0..4 {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]]) as i32;
         let res_val = (a_val >> shift_masked) as u32;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -2276,7 +2276,7 @@ fn execute_i32x4_shr_u(inputs: &[Value]) -> Result<Value> {
     for i in 0..4 {
         let a_val = u32::from_le_bytes([a[i * 4], a[i * 4 + 1], a[i * 4 + 2], a[i * 4 + 3]];
         let res_val = a_val >> shift_masked;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&res_bytes;
     }
 
@@ -2297,7 +2297,7 @@ fn execute_i64x2_shl(inputs: &[Value]) -> Result<Value> {
             a_bytes[7],
         ];
         let res_val = a_val << shift_masked;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -2318,7 +2318,7 @@ fn execute_i64x2_shr_s(inputs: &[Value]) -> Result<Value> {
             a_bytes[7],
         ]) as i64;
         let res_val = (a_val >> shift_masked) as u64;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -2339,7 +2339,7 @@ fn execute_i64x2_shr_u(inputs: &[Value]) -> Result<Value> {
             a_bytes[7],
         ];
         let res_val = a_val >> shift_masked;
-        let res_bytes = res_val.to_le_bytes(;
+        let res_bytes = res_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&res_bytes;
     }
 
@@ -2435,7 +2435,7 @@ fn execute_i16x8_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     }
 
     let lane_idx = lane as usize;
-    let val_bytes = (val as u16).to_le_bytes(;
+    let val_bytes = (val as u16).to_le_bytes);
     a[lane_idx * 2] = val_bytes[0];
     a[lane_idx * 2 + 1] = val_bytes[1];
     Ok(Value::V128(a))
@@ -2473,7 +2473,7 @@ fn execute_i32x4_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     }
 
     let lane_idx = lane as usize;
-    let val_bytes = (val as u32).to_le_bytes(;
+    let val_bytes = (val as u32).to_le_bytes);
     a[lane_idx * 4..lane_idx * 4 + 4].copy_from_slice(&val_bytes;
     Ok(Value::V128(a))
 }
@@ -2515,7 +2515,7 @@ fn execute_i64x2_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     }
 
     let lane_idx = lane as usize;
-    let val_bytes = (val as u64).to_le_bytes(;
+    let val_bytes = (val as u64).to_le_bytes);
     a[lane_idx * 8..lane_idx * 8 + 8].copy_from_slice(&val_bytes;
     Ok(Value::V128(a))
 }
@@ -2552,7 +2552,7 @@ fn execute_f32x4_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     }
 
     let lane_idx = lane as usize;
-    let val_bytes = val.to_le_bytes(;
+    let val_bytes = val.to_le_bytes);
     a[lane_idx * 4..lane_idx * 4 + 4].copy_from_slice(&val_bytes;
     Ok(Value::V128(a))
 }
@@ -2594,7 +2594,7 @@ fn execute_f64x2_replace_lane(inputs: &[Value], lane: u8) -> Result<Value> {
     }
 
     let lane_idx = lane as usize;
-    let val_bytes = val.to_le_bytes(;
+    let val_bytes = val.to_le_bytes);
     a[lane_idx * 8..lane_idx * 8 + 8].copy_from_slice(&val_bytes;
     Ok(Value::V128(a))
 }
@@ -2622,7 +2622,7 @@ fn execute_i32x4_trunc_sat_f32x4_s(inputs: &[Value]) -> Result<Value> {
             f_val as i32
         };
 
-        let i_bytes = i_val.to_le_bytes(;
+        let i_bytes = i_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&i_bytes;
     }
 
@@ -2646,7 +2646,7 @@ fn execute_i32x4_trunc_sat_f32x4_u(inputs: &[Value]) -> Result<Value> {
             f_val as u32
         };
 
-        let u_bytes = u_val.to_le_bytes(;
+        let u_bytes = u_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&u_bytes;
     }
 
@@ -2661,7 +2661,7 @@ fn execute_f32x4_convert_i32x4_s(inputs: &[Value]) -> Result<Value> {
         let i_bytes = &a[i * 4..i * 4 + 4];
         let i_val = i32::from_le_bytes([i_bytes[0], i_bytes[1], i_bytes[2], i_bytes[3]];
         let f_val = i_val as f32;
-        let f_bytes = f_val.to_le_bytes(;
+        let f_bytes = f_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&f_bytes;
     }
 
@@ -2676,7 +2676,7 @@ fn execute_f32x4_convert_i32x4_u(inputs: &[Value]) -> Result<Value> {
         let u_bytes = &a[i * 4..i * 4 + 4];
         let u_val = u32::from_le_bytes([u_bytes[0], u_bytes[1], u_bytes[2], u_bytes[3]];
         let f_val = u_val as f32;
-        let f_bytes = f_val.to_le_bytes(;
+        let f_bytes = f_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&f_bytes;
     }
 
@@ -2705,7 +2705,7 @@ fn execute_i32x4_trunc_sat_f64x2_s_zero(inputs: &[Value]) -> Result<Value> {
             f_val as i32
         };
 
-        let i_bytes = i_val.to_le_bytes(;
+        let i_bytes = i_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&i_bytes;
     }
 
@@ -2733,7 +2733,7 @@ fn execute_i32x4_trunc_sat_f64x2_u_zero(inputs: &[Value]) -> Result<Value> {
             f_val as u32
         };
 
-        let u_bytes = u_val.to_le_bytes(;
+        let u_bytes = u_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&u_bytes;
     }
 
@@ -2749,7 +2749,7 @@ fn execute_f64x2_convert_low_i32x4_s(inputs: &[Value]) -> Result<Value> {
         let i_bytes = &a[i * 4..i * 4 + 4];
         let i_val = i32::from_le_bytes([i_bytes[0], i_bytes[1], i_bytes[2], i_bytes[3]];
         let f_val = i_val as f64;
-        let f_bytes = f_val.to_le_bytes(;
+        let f_bytes = f_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&f_bytes;
     }
 
@@ -2764,7 +2764,7 @@ fn execute_f64x2_convert_low_i32x4_u(inputs: &[Value]) -> Result<Value> {
         let u_bytes = &a[i * 4..i * 4 + 4];
         let u_val = u32::from_le_bytes([u_bytes[0], u_bytes[1], u_bytes[2], u_bytes[3]];
         let f_val = u_val as f64;
-        let f_bytes = f_val.to_le_bytes(;
+        let f_bytes = f_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&f_bytes;
     }
 
@@ -2788,7 +2788,7 @@ fn execute_f32x4_demote_f64x2_zero(inputs: &[Value]) -> Result<Value> {
             f64_bytes[7],
         ];
         let f32_val = f64_val as f32;
-        let f32_bytes = f32_val.to_le_bytes(;
+        let f32_bytes = f32_val.to_le_bytes);
         result[i * 4..i * 4 + 4].copy_from_slice(&f32_bytes;
     }
 
@@ -2804,7 +2804,7 @@ fn execute_f64x2_promote_low_f32x4(inputs: &[Value]) -> Result<Value> {
         let f32_bytes = &a[i * 4..i * 4 + 4];
         let f32_val = f32::from_le_bytes([f32_bytes[0], f32_bytes[1], f32_bytes[2], f32_bytes[3]];
         let f64_val = f32_val as f64;
-        let f64_bytes = f64_val.to_le_bytes(;
+        let f64_bytes = f64_val.to_le_bytes);
         result[i * 8..i * 8 + 8].copy_from_slice(&f64_bytes;
     }
 
@@ -2903,7 +2903,7 @@ fn execute_i16x8_narrow_i32x4_s(inputs: &[Value]) -> Result<Value> {
         } else {
             i32_val as i16
         };
-        let i16_bytes = i16_val.to_le_bytes(;
+        let i16_bytes = i16_val.to_le_bytes);
         result[i * 2..i * 2 + 2].copy_from_slice(&i16_bytes;
     }
 
@@ -2918,7 +2918,7 @@ fn execute_i16x8_narrow_i32x4_s(inputs: &[Value]) -> Result<Value> {
         } else {
             i32_val as i16
         };
-        let i16_bytes = i16_val.to_le_bytes(;
+        let i16_bytes = i16_val.to_le_bytes);
         result[8 + i * 2..8 + i * 2 + 2].copy_from_slice(&i16_bytes;
     }
 
@@ -2941,7 +2941,7 @@ fn execute_i16x8_narrow_i32x4_u(inputs: &[Value]) -> Result<Value> {
         } else {
             i32_val as u16
         };
-        let u16_bytes = u16_val.to_le_bytes(;
+        let u16_bytes = u16_val.to_le_bytes);
         result[i * 2..i * 2 + 2].copy_from_slice(&u16_bytes;
     }
 
@@ -2956,7 +2956,7 @@ fn execute_i16x8_narrow_i32x4_u(inputs: &[Value]) -> Result<Value> {
         } else {
             i32_val as u16
         };
-        let u16_bytes = u16_val.to_le_bytes(;
+        let u16_bytes = u16_val.to_le_bytes);
         result[8 + i * 2..8 + i * 2 + 2].copy_from_slice(&u16_bytes;
     }
 

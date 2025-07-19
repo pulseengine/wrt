@@ -27,31 +27,31 @@ fn main() {
     // Show current ASIL level
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
     {
-        let current_level = AsilLevel::current(;
-        println!("Current ASIL Level: {}", current_level.name(;
-        println!(;
+        let current_level = AsilLevel::current);
+        println!("Current ASIL Level: {}", current_level.name);
+        println!);
     }
 
     #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
     {
         println!("Current ASIL Level: QM (Quality Management)";
-        println!(;
+        println!);
     }
 
     // Demonstrate basic error creation
-    demonstrate_basic_errors(;
+    demonstrate_basic_errors);
 
     // Demonstrate ASIL-specific features
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-    demonstrate_asil_features(;
+    demonstrate_asil_features);
 
     // Demonstrate safety monitoring (ASIL-C and above)
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
-    demonstrate_safety_monitoring(;
+    demonstrate_safety_monitoring);
 
     // Demonstrate ASIL-D specific features
     #[cfg(feature = "asil-d")]
-    demonstrate_asil_d_features(;
+    demonstrate_asil_d_features);
 }
 
 fn demonstrate_basic_errors() {
@@ -66,7 +66,7 @@ fn demonstrate_basic_errors() {
     println!("Memory Error: {}", memory_error;
     println!("Validation Error: {}", validation_error;
     println!("Runtime Error: {}", runtime_error;
-    println!(;
+    println!);
 }
 
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
@@ -122,14 +122,14 @@ fn demonstrate_asil_features() {
         .with_module_id(42;
 
     println!("\nError Context:";
-    println!("- ASIL Level: {}", context.asil_level.name(;
+    println!("- ASIL Level: {}", context.asil_level.name);
     println!("- Timestamp: {:?}", context.timestamp;
     println!("- Module ID: {:?}", context.module_id;
     println!(
         "- Requires Immediate Action: {}",
         context.requires_immediate_action()
     ;
-    println!(;
+    println!);
 }
 
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
@@ -137,7 +137,7 @@ fn demonstrate_safety_monitoring() {
     println!("Safety Monitoring (ASIL-C+)";
     println!("--------------------------";
 
-    let monitor = SafetyMonitor::new(;
+    let monitor = SafetyMonitor::new);
 
     // Simulate some errors
     let errors = vec![
@@ -153,12 +153,12 @@ fn demonstrate_safety_monitoring() {
         println!("Recorded error {}: {}", i + 1, error;
     }
 
-    println!("\nTotal errors recorded: {}", monitor.error_count(;
+    println!("\nTotal errors recorded: {}", monitor.error_count);
 
     // Reset monitor
-    monitor.reset(;
-    println!("Monitor reset. Error count: {}", monitor.error_count(;
-    println!(;
+    monitor.reset);
+    println!("Monitor reset. Error count: {}", monitor.error_count);
+    println!);
 }
 
 #[cfg(feature = "asil-d")]
@@ -206,7 +206,7 @@ fn demonstrate_asil_d_features() {
         validate_error_consistency(&valid_safety)
     ;
 
-    println!(;
+    println!);
 }
 
 // Helper function to demonstrate error propagation

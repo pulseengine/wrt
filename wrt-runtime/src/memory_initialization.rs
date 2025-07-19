@@ -81,7 +81,7 @@ impl RuntimeMemoryManager {
         self.phase = InitializationPhase::PreAllocation;
 
         // Register component with budget system
-        let total_component_memory: usize = memory_requirements.iter().map(|(size, _)| *size).sum(;
+        let total_component_memory: usize = memory_requirements.iter().map(|(size, _)| *size).sum);
         global_budget()?.register_component(component_id, total_component_memory, component_safety_level)?;
 
         // Pre-allocate all memory for this component
@@ -112,13 +112,13 @@ impl RuntimeMemoryManager {
         lock_memory_system()?;
         self.phase = InitializationPhase::Locked;
 
-        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum(;
+        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum);
         let utilization = (total_allocated * 100) / self.total_budget.max(1;
 
         println!("Memory system locked:";
         println!("  Total allocated: {} bytes ({} MB)", total_allocated, total_allocated / (1024 * 1024;
         println!("  Budget utilization: {}%", utilization;
-        println!("  Components: {}", self.allocated_components.len(;
+        println!("  Components: {}", self.allocated_components.len);
 
         Ok(LockedRuntimeMemoryManager {
             phase: InitializationPhase::Locked,
@@ -130,7 +130,7 @@ impl RuntimeMemoryManager {
 
     /// Get current memory statistics
     pub fn memory_stats(&self) -> RuntimeMemoryStats {
-        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum(;
+        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum);
         RuntimeMemoryStats {
             phase: self.phase,
             total_budget: self.total_budget,
@@ -164,7 +164,7 @@ impl LockedRuntimeMemoryManager {
 
     /// Get memory statistics for the locked system
     pub fn memory_stats(&self) -> RuntimeMemoryStats {
-        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum(;
+        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum);
         RuntimeMemoryStats {
             phase: self.phase,
             total_budget: self.total_budget,
@@ -206,8 +206,8 @@ impl RuntimeExecutionManager {
     /// Verify integrity of component allocations
     fn verify_component_integrity(&self) -> Result<()> {
         // Check that all component allocations are still within budget
-        let stats = global_memory_config().memory_stats(;
-        let expected_total: usize = self.allocated_components.iter().map(|(_, size)| *size).sum(;
+        let stats = global_memory_config().memory_stats);
+        let expected_total: usize = self.allocated_components.iter().map(|(_, size)| *size).sum);
         
         if stats.allocated > expected_total {
             return Err(Error::safety_violation("Unexpected memory allocation detected";
@@ -218,7 +218,7 @@ impl RuntimeExecutionManager {
 
     /// Get current runtime statistics
     pub fn runtime_stats(&self) -> RuntimeStats {
-        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum(;
+        let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum);
         RuntimeStats {
             safety_level: self.safety_level,
             total_budget: self.total_budget,
@@ -285,13 +285,13 @@ mod example_usage {
         let locked_manager = memory_manager.lock_system()?;
 
         // Step 4: Enter runtime execution
-        let runtime_manager = locked_manager.enter_runtime(;
+        let runtime_manager = locked_manager.enter_runtime);
 
         // Step 5: During runtime, verify system integrity periodically
         runtime_manager.verify_system_integrity()?;
 
         // Step 6: Get runtime statistics
-        let stats = runtime_manager.runtime_stats(;
+        let stats = runtime_manager.runtime_stats);
         println!("Runtime stats: {:?}", stats;
 
         Ok(())

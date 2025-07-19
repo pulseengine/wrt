@@ -46,10 +46,10 @@ mod memory_budget_tests {
         const COMPONENT_BUDGET: usize = 131072;
 
         // Calculate approximate memory usage per element
-        let element_size = core::mem::size_of::<u64>(;
+        let element_size = core::mem::size_of::<u64>);
         let overhead_per_vec = 64; // Approximate overhead
 
-        let mut allocations = Vec::new(;
+        let mut allocations = Vec::new);
         let mut total_allocated = 0;
 
         // Keep allocating until we hit the budget
@@ -82,13 +82,13 @@ mod memory_budget_tests {
     #[test]
     fn test_cross_collection_memory_sharing() {
         // Allocate different types of collections
-        let vec1 = new_component_vec::<u32>(;
+        let vec1 = new_component_vec::<u32>);
         assert!(vec1.is_ok();
 
-        let map1 = new_export_map::<String>(;
+        let map1 = new_export_map::<String>);
         assert!(map1.is_ok();
 
-        let vec2 = new_resource_vec::<u64>(;
+        let vec2 = new_resource_vec::<u64>);
         assert!(vec2.is_ok();
 
         // All should share the same memory budget
@@ -122,7 +122,7 @@ mod memory_budget_tests {
     /// Test memory budget with actual data storage
     #[test]
     fn test_memory_budget_with_data() {
-        let mut vecs = Vec::new(;
+        let mut vecs = Vec::new);
 
         // Allocate and fill vectors
         for i in 0..10 {
@@ -148,7 +148,7 @@ mod memory_budget_tests {
 
         // Verify we allocated and filled some vectors
         assert!(!vecs.is_empty();
-        let total_elements: usize = vecs.iter().map(|v| v.len()).sum(;
+        let total_elements: usize = vecs.iter().map(|v| v.len()).sum);
         assert!(total_elements > 0);
     }
 
@@ -156,7 +156,7 @@ mod memory_budget_tests {
     #[test]
     fn test_individual_collection_limits() {
         // Test export map memory usage
-        let map_result = new_export_map::<[u8; 256]>(;
+        let map_result = new_export_map::<[u8; 256]>);
         assert!(map_result.is_ok();
 
         let mut map = map_result.unwrap();
@@ -175,7 +175,7 @@ mod memory_budget_tests {
         }
 
         // Should insert up to capacity
-        assert_eq!(successful_inserts, map.len(;
+        assert_eq!(successful_inserts, map.len);
         assert!(successful_inserts > 0);
     }
 
@@ -184,7 +184,7 @@ mod memory_budget_tests {
     fn test_memory_reclamation() {
         // Allocate and drop collections
         for cycle in 0..3 {
-            let mut temp_vecs = Vec::new(;
+            let mut temp_vecs = Vec::new);
 
             // Allocate until budget exhausted
             for i in 0..20 {
@@ -214,7 +214,7 @@ mod memory_budget_tests {
     /// Test string allocation budgets
     #[test]
     fn test_string_allocation_budget() {
-        let mut strings = Vec::new(;
+        let mut strings = Vec::new);
 
         // Allocate bounded strings
         for i in 0..100 {
@@ -247,7 +247,7 @@ mod memory_budget_tests {
             flags: u64,
         }
 
-        let vec_result = new_component_vec::<ComplexData>(;
+        let vec_result = new_component_vec::<ComplexData>);
         assert!(vec_result.is_ok();
 
         let mut vec = vec_result.unwrap();
@@ -268,7 +268,7 @@ mod memory_budget_tests {
             }
         }
 
-        assert_eq!(count, vec.len(;
+        assert_eq!(count, vec.len);
         assert!(count > 0);
     }
 
@@ -328,7 +328,7 @@ mod memory_budget_tests {
 
         for iteration in 0..TEST_ITERATIONS {
             let mut allocation_count = 0;
-            let mut allocations = Vec::new(;
+            let mut allocations = Vec::new);
 
             // Allocate until budget exhausted
             loop {
@@ -362,7 +362,7 @@ mod memory_budget_tests {
     /// Test memory budget with type map allocations
     #[test]
     fn test_type_map_memory_budget() {
-        let mut maps = Vec::new(;
+        let mut maps = Vec::new);
 
         loop {
             match new_type_map::<[u8; 128]>() {
@@ -410,7 +410,7 @@ mod safety_critical_budget_tests {
     #[test]
     fn test_safety_critical_budget_enforcement() {
         // In safety-critical mode, all allocations must be bounded
-        let vec_result = new_component_vec::<u32>(;
+        let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok();
 
         // Verify managed allocation is used

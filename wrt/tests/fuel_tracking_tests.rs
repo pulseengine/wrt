@@ -61,10 +61,10 @@ fn test_operation_tracking_in_fuel_system() {
     };
 
     // Reset operation tracking
-    reset_global_operations(;
+    reset_global_operations);
 
     // Create a stackless engine with the module
-    let mut engine = StacklessEngine::new(;
+    let mut engine = StacklessEngine::new);
     engine.instantiate(module).unwrap();
 
     // Set a fuel limit
@@ -82,7 +82,7 @@ fn test_operation_tracking_in_fuel_system() {
     assert_eq!(result_value, vec![Value::I32(1050)]); // (5 + 100) * 10 = 1050
 
     // Check the operation stats
-    let stats = global_operation_summary(;
+    let stats = global_operation_summary);
 
     // We should have at least some operations recorded
     assert!(
@@ -98,14 +98,14 @@ fn test_operation_tracking_in_fuel_system() {
     assert!(stats.fuel_consumed > 0, "Should have consumed fuel");
 
     // Check engine stats match operation tracking
-    let engine_stats = engine.stats(;
+    let engine_stats = engine.stats);
     assert_eq!(engine_stats.fuel_consumed, stats.fuel_consumed;
 }
 
 #[test]
 fn test_fuel_exhaustion_from_operations() {
     // Initialize global tracking
-    reset_global_operations(;
+    reset_global_operations);
 
     // Create a module with a looping function
     let mut module = Module::new().unwrap();
@@ -162,7 +162,7 @@ fn test_fuel_exhaustion_from_operations() {
     };
 
     // Create a stackless engine with the module
-    let mut engine = StacklessEngine::new(;
+    let mut engine = StacklessEngine::new);
     engine.instantiate(module).unwrap();
 
     // Set a very low fuel limit to ensure we run out
@@ -177,7 +177,7 @@ fn test_fuel_exhaustion_from_operations() {
 
     // We should get an insufficient fuel error
     assert!(result.is_err(), "Engine should run out of fuel");
-    let err = result.unwrap_err(;
+    let err = result.unwrap_err);
     assert!(
         err.to_string().contains("Insufficient fuel"),
         "Error should indicate insufficient fuel: {}",
@@ -185,7 +185,7 @@ fn test_fuel_exhaustion_from_operations() {
     ;
 
     // Check engine stats
-    let engine_stats = engine.stats(;
+    let engine_stats = engine.stats);
     assert!(
         engine_stats.fuel_exhausted_count > 0,
         "Should record fuel exhaustion"
@@ -199,7 +199,7 @@ fn test_fuel_exhaustion_from_operations() {
 #[test]
 fn test_bounded_collections_fuel_impact() {
     // Reset global tracking
-    reset_global_operations(;
+    reset_global_operations);
 
     // Test with different verification levels
     let verification_levels = [
@@ -209,11 +209,11 @@ fn test_bounded_collections_fuel_impact() {
         VerificationLevel::Full,
     ];
 
-    let mut fuel_consumed = Vec::new(;
+    let mut fuel_consumed = Vec::new);
 
     // Perform the same operations with each verification level
     for &level in &verification_levels {
-        reset_global_operations(;
+        reset_global_operations);
 
         // Create a bounded vector with the current verification level
         let mut vec = BoundedVec::<Vec<u8>, 100>::with_verification_level(level;
@@ -234,7 +234,7 @@ fn test_bounded_collections_fuel_impact() {
         }
 
         // Get the fuel consumed for this verification level
-        let stats = global_operation_summary(;
+        let stats = global_operation_summary);
         fuel_consumed.push(stats.fuel_consumed);
     }
 
@@ -260,7 +260,7 @@ fn test_bounded_collections_fuel_impact() {
 #[test]
 fn test_manual_operation_tracking() {
     // Reset global tracking
-    reset_global_operations(;
+    reset_global_operations);
 
     // Record various operations manually
     record_global_operation(OperationType::MemoryRead, VerificationLevel::Standard;
@@ -269,7 +269,7 @@ fn test_manual_operation_tracking() {
     record_global_operation(OperationType::Arithmetic, VerificationLevel::Standard;
 
     // Get the stats
-    let stats = global_operation_summary(;
+    let stats = global_operation_summary);
 
     // Check each operation type was recorded
     assert_eq!(stats.memory_reads, 1, "Should record memory read";

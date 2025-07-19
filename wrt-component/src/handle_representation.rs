@@ -308,7 +308,7 @@ impl HandleRepresentationManager {
 
         // Update metadata
         if let Some(metadata) = self.metadata.get_mut(&handle) {
-            metadata.last_accessed = self.get_current_time(;
+            metadata.last_accessed = self.get_current_time);
             metadata.access_count = metadata.access_count.saturating_add(1;
         }
 
@@ -587,7 +587,7 @@ impl HandleRepresentationManager {
         operation: &HandleOperation,
     ) -> HandleRepresentationResult<()> {
         let representation = self.get_representation(handle)?;
-        let current_time = self.get_current_time(;
+        let current_time = self.get_current_time);
 
         for policy in self.access_policies.iter() {
             if policy.component_id == component_id && policy.resource_type == representation.type_id
@@ -785,18 +785,18 @@ mod tests {
 
     #[test]
     fn test_access_rights_presets() {
-        let read_only = AccessRights::read_only(;
+        let read_only = AccessRights::read_only);
         assert!(read_only.can_read);
         assert!(!read_only.can_write);
         assert!(!read_only.can_drop);
 
-        let full_access = AccessRights::full_access(;
+        let full_access = AccessRights::full_access);
         assert!(full_access.can_read);
         assert!(full_access.can_write);
         assert!(full_access.can_drop);
         assert!(full_access.can_share);
 
-        let no_access = AccessRights::no_access(;
+        let no_access = AccessRights::no_access);
         assert!(!no_access.can_read);
         assert!(!no_access.can_write);
         assert!(!no_access.can_drop);

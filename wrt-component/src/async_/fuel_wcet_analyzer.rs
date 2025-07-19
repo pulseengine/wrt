@@ -235,7 +235,7 @@ impl FuelWcetAnalyzer {
         input_hash: u32,
     ) -> Result<(), Error> {
         if !self.config.enable_online_sampling {
-            return Ok((;
+            return Ok();
         }
 
         record_global_operation(OperationType::CollectionInsert, self.verification_level;
@@ -295,7 +295,7 @@ impl FuelWcetAnalyzer {
         estimated_fuel: u64,
     ) -> Result<(), Error> {
         if !self.config.enable_path_analysis {
-            return Ok((;
+            return Ok();
         }
 
         record_global_operation(OperationType::CollectionInsert, self.verification_level;
@@ -534,7 +534,7 @@ impl FuelWcetAnalyzer {
 
         let min_value = *values.iter().min().unwrap();
         let max_value = *values.iter().max().unwrap();
-        let sum: u64 = values.iter().sum(;
+        let sum: u64 = values.iter().sum);
         let mean = (sum as f64) / (values.len() as f64;
 
         let variance = values.iter()
@@ -544,7 +544,7 @@ impl FuelWcetAnalyzer {
             })
             .sum::<f64>() / (values.len() as f64;
         
-        let std_deviation = variance.sqrt(;
+        let std_deviation = variance.sqrt);
 
         Ok(ExecutionStatistics {
             min_value,
@@ -559,8 +559,8 @@ impl FuelWcetAnalyzer {
             return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis";
         }
 
-        let mut sorted_values = values.to_vec(;
-        sorted_values.sort_unstable(;
+        let mut sorted_values = values.to_vec);
+        sorted_values.sort_unstable);
 
         let index = ((sorted_values.len() as f64) * percentile) as usize;
         let clamped_index = index.min(sorted_values.len() - 1;
@@ -657,17 +657,17 @@ mod tests {
 
     #[test]
     fn test_wcet_analyzer_creation() {
-        let config = WcetAnalyzerConfig::default(;
+        let config = WcetAnalyzerConfig::default);
         let analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
-        let stats = analyzer.get_statistics(;
+        let stats = analyzer.get_statistics);
         assert_eq!(stats.total_analyses.load(Ordering::Acquire), 0;
         assert_eq!(stats.total_samples.load(Ordering::Acquire), 0;
     }
 
     #[test]
     fn test_execution_sample_collection() {
-        let config = WcetAnalyzerConfig::default(;
+        let config = WcetAnalyzerConfig::default);
         let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
         let task_id = TaskId::new(1;
@@ -677,13 +677,13 @@ mod tests {
             analyzer.collect_execution_sample(task_id, 100 + i * 10, Some(1), 0x1234).unwrap();
         }
         
-        let stats = analyzer.get_statistics(;
+        let stats = analyzer.get_statistics);
         assert_eq!(stats.total_samples.load(Ordering::Acquire), 10;
     }
 
     #[test]
     fn test_static_wcet_analysis() {
-        let config = WcetAnalyzerConfig::default(;
+        let config = WcetAnalyzerConfig::default);
         let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
         let task_id = TaskId::new(1;
@@ -734,7 +734,7 @@ mod tests {
 
     #[test]
     fn test_wcet_validation() {
-        let config = WcetAnalyzerConfig::default(;
+        let config = WcetAnalyzerConfig::default);
         let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
         let task_id = TaskId::new(1;
@@ -763,7 +763,7 @@ mod tests {
         let exceeds_estimate = analyzer.validate_wcet_estimate(task_id, 1100).unwrap();
         assert!(!exceeds_estimate);
         
-        let stats = analyzer.get_statistics(;
+        let stats = analyzer.get_statistics);
         assert_eq!(stats.underestimations.load(Ordering::Acquire), 1;
     }
 }

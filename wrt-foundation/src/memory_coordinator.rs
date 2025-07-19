@@ -86,7 +86,7 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
         // Set individual crate budgets
         let mut total_assigned = 0;
         for (crate_id, budget) in budgets {
-            let index = crate_id.as_index(;
+            let index = crate_id.as_index);
             if index >= MAX_CRATES {
                 return Err(Error::new(
                     ErrorCategory::Capacity,
@@ -108,7 +108,7 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
 
     /// Register a new allocation
     pub fn register_allocation(&self, crate_id: C, size: usize) -> Result<AllocationId> {
-        let index = crate_id.as_index(;
+        let index = crate_id.as_index);
         if index >= MAX_CRATES {
             return Err(Error::runtime_execution_error("Crate index out of bounds for allocation registration";
         }
@@ -160,7 +160,7 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
         _allocation_id: AllocationId,
         size: usize,
     ) -> Result<()> {
-        let index = crate_id.as_index(;
+        let index = crate_id.as_index);
         if index >= MAX_CRATES {
             return Err(Error::runtime_execution_error("Crate index out of bounds for allocation return";
         }
@@ -184,7 +184,7 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
 
     /// Get current allocation for a crate
     pub fn get_crate_allocation(&self, crate_id: C) -> usize {
-        let index = crate_id.as_index(;
+        let index = crate_id.as_index);
         if index >= MAX_CRATES {
             return 0;
         }
@@ -193,7 +193,7 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
 
     /// Get budget for a crate
     pub fn get_crate_budget(&self, crate_id: C) -> usize {
-        let index = crate_id.as_index(;
+        let index = crate_id.as_index);
         if index >= MAX_CRATES {
             return 0;
         }
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn test_generic_coordinator() {
-        let coordinator = GenericMemoryCoordinator::<TestCrate, 10>::new(;
+        let coordinator = GenericMemoryCoordinator::<TestCrate, 10>::new);
 
         // Initialize with budgets
         let builder = MemoryCoordinatorBuilder::new()

@@ -113,7 +113,7 @@ pub mod allocation {
         }
     }
 
-    pub const MEMORY_STRATEGY: u8 = get_memory_strategy(;
+    pub const MEMORY_STRATEGY: u8 = get_memory_strategy);
 }
 
 /// Safety standard mapping
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_current_safety_level() {
-        let level = runtime::current_safety_level(;
+        let level = runtime::current_safety_level);
         assert!(!level.is_empty(), "Safety level should be determined");
 
         // Verify that the detected level makes sense
@@ -329,8 +329,8 @@ mod tests {
 
     #[test]
     fn test_max_allocation_size() {
-        let max_size = runtime::max_allocation_size(;
-        let level = runtime::current_safety_level(;
+        let max_size = runtime::max_allocation_size);
+        let level = runtime::current_safety_level);
 
         match level {
             "maximum-safety" => assert_eq!(max_size, 16384),

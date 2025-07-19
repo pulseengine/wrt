@@ -18,7 +18,7 @@ mod tests {
         let project_root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
             .parent()
             .unwrap()
-            .to_path_buf(;
+            .to_path_buf);
 
         let wrtd_path = project_root.join("target/debug/wrtd";
 
@@ -41,9 +41,9 @@ mod tests {
         }
 
         let output = cmd.output().expect("Failed to execute wrtd");
-        let success = output.status.success(;
-        let stdout = String::from_utf8_lossy(&output.stdout).into_owned(;
-        let stderr = String::from_utf8_lossy(&output.stderr).into_owned(;
+        let success = output.status.success);
+        let stdout = String::from_utf8_lossy(&output.stdout).into_owned);
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned);
 
         (success, stdout, stderr)
     }

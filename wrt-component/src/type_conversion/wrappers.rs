@@ -29,7 +29,7 @@
 //! let wrapper = RuntimeComponentType::new(rt_type;
 //!
 //! // Get the underlying type
-//! let inner_type = wrapper.into_inner(;
+//! let inner_type = wrapper.into_inner);
 //! ```
 
 // Additional imports
@@ -183,7 +183,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
     type Error = Error;
 
     fn try_from(runtime_type: RuntimeComponentType) -> Result<Self> {
-        let runtime_type = runtime_type.into_inner(;
+        let runtime_type = runtime_type.into_inner);
 
         // Convert imports
         let imports_result: core::result::Result<Vec<(String, String, FormatExternType)>> = runtime_type
@@ -232,7 +232,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
             .collect();
 
         // Create empty instances for now - can be enhanced in future
-        let instances = Vec::new(;
+        let instances = Vec::new);
 
         Ok(Self::new(ComponentType {
             imports: imports_result?,
@@ -246,7 +246,7 @@ impl TryFrom<RuntimeInstanceType> for FormatInstanceType {
     type Error = Error;
 
     fn try_from(runtime_type: RuntimeInstanceType) -> Result<Self> {
-        let runtime_type = runtime_type.into_inner(;
+        let runtime_type = runtime_type.into_inner);
 
         // Convert exports
         let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = runtime_type
@@ -426,7 +426,7 @@ mod tests {
             To: TestConvertible,
             F: TestConversion<From, To> + 'static,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+            let key = (TypeId::of::<From>(), TypeId::of::<To>);
             self.conversions.insert(key, Arc::new(converter;
         }
 
@@ -435,7 +435,7 @@ mod tests {
             From: TestConvertible,
             To: TestConvertible,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+            let key = (TypeId::of::<From>(), TypeId::of::<To>);
             self.conversions.contains_key(&key)
         }
 
@@ -444,7 +444,7 @@ mod tests {
             From: TestConvertible,
             To: TestConvertible,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+            let key = (TypeId::of::<From>(), TypeId::of::<To>);
             if let Some(conversion) = self.conversions.get(&key) {
                 if let Some(typed_conversion) = conversion.downcast_ref::<dyn TestConversion<From, To>>() {
                     typed_conversion.convert(from)
@@ -470,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_minimal_conversion_registry() {
-        let mut registry = TestConversionRegistry::new(;
+        let mut registry = TestConversionRegistry::new);
 
         // Initially, no conversions should be available
         assert!(!registry.can_convert::<TestSource, TestTarget>();

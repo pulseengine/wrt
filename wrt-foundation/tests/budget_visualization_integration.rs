@@ -33,7 +33,7 @@ mod visualization_integration_tests {
         let _provider3 = BudgetProvider::<{ 16 * 1024 }>::new(CrateId::Foundation)?;
 
         // Generate ASCII visualization
-        let config = VisualizationConfig::default(;
+        let config = VisualizationConfig::default);
         let ascii_viz = BudgetVisualizer::generate_visualization(config)?;
 
         // Verify content
@@ -125,7 +125,7 @@ mod visualization_integration_tests {
         assert!(html_viz.contains("<h1>WRT Memory Budget Report</h1>");
         assert!(html_viz.contains("</html>");
 
-        println!("Generated HTML visualization length: {} chars", html_viz.len(;
+        println!("Generated HTML visualization length: {} chars", html_viz.len);
         Ok(())
     }
 
@@ -165,7 +165,7 @@ mod visualization_integration_tests {
         setup_test_environment()?;
 
         // Create complex memory usage scenario
-        let mut allocations = Vec::new(;
+        let mut allocations = Vec::new);
 
         // Mix of small and large allocations
         for i in 0..5 {
@@ -189,7 +189,7 @@ mod visualization_integration_tests {
         // Should contain Runtime usage
         assert!(debug_dump.contains("Runtime:");
 
-        println!("Debug dump length: {} chars", debug_dump.len(;
+        println!("Debug dump length: {} chars", debug_dump.len);
         Ok(())
     }
 
@@ -201,17 +201,17 @@ mod visualization_integration_tests {
         let _provider = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Foundation)?;
 
         // Test quick functions
-        let ascii_result = quick_ascii_dump(;
+        let ascii_result = quick_ascii_dump);
         assert!(ascii_result.is_ok();
         let ascii_content = ascii_result?;
         assert!(ascii_content.contains("WRT Memory Budget Visualization");
 
-        let json_result = quick_json_dump(;
+        let json_result = quick_json_dump);
         assert!(json_result.is_ok();
         let json_content = json_result?;
         assert!(json_content.starts_with('{');
 
-        let debug_result = quick_debug_dump(;
+        let debug_result = quick_debug_dump);
         assert!(debug_result.is_ok();
         let debug_content = debug_result?;
         assert!(debug_content.contains("WRT MEMORY DEBUG DUMP");
@@ -302,7 +302,7 @@ mod visualization_integration_tests {
         setup_test_environment()?;
 
         // Create high memory usage to test visualization under pressure
-        let mut providers = Vec::new(;
+        let mut providers = Vec::new);
 
         // Allocate until we get significant utilization
         for _ in 0..20 {
@@ -369,7 +369,7 @@ mod visualization_integration_tests {
         // Test without initializing memory system
         // This should handle errors gracefully
 
-        let config = VisualizationConfig::default(;
+        let config = VisualizationConfig::default);
         let result = BudgetVisualizer::generate_visualization(config;
 
         // Should either succeed (if already initialized) or fail gracefully
@@ -379,7 +379,7 @@ mod visualization_integration_tests {
         }
 
         // Test debug dump without initialization
-        let debug_result = DebugDumper::generate_debug_dump(;
+        let debug_result = DebugDumper::generate_debug_dump);
         match debug_result {
             Ok(content) => assert!(!content.is_empty()),
             Err(_) => {} // Expected if not initialized

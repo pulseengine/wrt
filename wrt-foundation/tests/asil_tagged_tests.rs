@@ -89,7 +89,7 @@ asil_c_test! {
         assert_eq!(deque.back(), Some(&200), "Data should remain intact";
         
         // Verify recovery after freeing resources
-        let _freed = deque.pop_front(;
+        let _freed = deque.pop_front);
         assert!(deque.push_back(300).is_ok(), "Should succeed after freeing space");
     }
 }
@@ -153,7 +153,7 @@ resource_safety_test! {
         assert_eq!(stack.peek(), Some(&7), "Top element should be unchanged";
         
         // Test recovery after popping elements
-        let _popped = stack.pop(;
+        let _popped = stack.pop);
         assert!(stack.push(999).is_ok(), "Push should succeed after pop");
         assert_eq!(stack.peek(), Some(&999), "New element should be on top";
     }
@@ -229,15 +229,15 @@ mod framework_tests {
         
         // Should have at least the ASIL-D tests we defined
         assert!(asil_d_tests.len() >= 3, 
-            "Should have multiple ASIL-D tests, found: {}", asil_d_tests.len(;
+            "Should have multiple ASIL-D tests, found: {}", asil_d_tests.len);
         
         // Check that memory tests are properly categorized
         let memory_tests = get_tests_by_category(TestCategory::Memory;
         assert!(memory_tests.len() >= 2, 
-            "Should have multiple memory tests, found: {}", memory_tests.len(;
+            "Should have multiple memory tests, found: {}", memory_tests.len);
         
         // Check that we have tests for different requirements
-        let mut requirement_ids = std::collections::HashSet::new(;
+        let mut requirement_ids = std::collections::HashSet::new);
         for test in get_asil_tests() {
             requirement_ids.insert(test.requirement_id;
         }
@@ -249,7 +249,7 @@ mod framework_tests {
 
     #[test]
     fn test_statistics_accuracy() {
-        let stats = get_test_statistics(;
+        let stats = get_test_statistics);
         
         // Should have a reasonable number of tests
         assert!(stats.total_count >= 6, 

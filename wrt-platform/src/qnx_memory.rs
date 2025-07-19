@@ -287,7 +287,7 @@ impl QnxAllocator {
 impl Drop for QnxAllocator {
     fn drop(&mut self) {
         // Binary std/no_std choice
-        let _ = self.free_current_allocation(;
+        let _ = self.free_current_allocation);
 
         // Destroy partition if created
         if let Some(id) = self.partition_id {
@@ -447,7 +447,7 @@ impl PageAllocator for QnxAllocator {
         };
 
         // Copy existing data to new memory
-        let current_ptr = self.current_allocation.unwrap().as_ptr(;
+        let current_ptr = self.current_allocation.unwrap().as_ptr);
         let copy_size = (current_pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::memory_error("Memory size calculation overflow")
         })?;
@@ -602,7 +602,7 @@ mod tests {
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_allocator_basic() {
         // Binary std/no_std choice
-        let mut allocator = QnxAllocatorBuilder::new().with_guard_pages(true).build(;
+        let mut allocator = QnxAllocatorBuilder::new().with_guard_pages(true).build);
 
         // Allocate 2 pages
         let result = allocator.allocate(2, Some(4;
@@ -614,7 +614,7 @@ mod tests {
         assert_eq!(size, 2 * WASM_PAGE_SIZE;
 
         // Clean up
-        let free_result = allocator.free(;
+        let free_result = allocator.free);
         assert!(free_result.is_ok();
     }
 
@@ -624,7 +624,7 @@ mod tests {
         // Binary std/no_std choice
         let mut allocator = QnxAllocatorBuilder::new()
             .with_guard_pages(false) // No guard pages for simpler testing
-            .build(;
+            .build);
 
         // Allocate 1 page
         let result = allocator.allocate(1, Some(4;
@@ -653,7 +653,7 @@ mod tests {
         assert_eq!(preserved_data, test_pattern;
 
         // Clean up
-        let free_result = allocator.free(;
+        let free_result = allocator.free);
         assert!(free_result.is_ok();
     }
 
@@ -664,7 +664,7 @@ mod tests {
         let mut allocator = QnxAllocatorBuilder::new()
             .with_guard_pages(true)
             .with_data_protection(QnxProtFlags::ReadWrite)
-            .build(;
+            .build);
 
         // Allocate 2 pages
         let result = allocator.allocate(2, None;
@@ -678,7 +678,7 @@ mod tests {
         assert!(protect_result.is_ok();
 
         // Clean up
-        let free_result = allocator.free(;
+        let free_result = allocator.free);
         assert!(free_result.is_ok();
     }
 }

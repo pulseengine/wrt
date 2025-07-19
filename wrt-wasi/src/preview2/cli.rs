@@ -60,7 +60,7 @@ pub fn wasi_get_terminal_stdin(
         use std::io::{self, IsTerminal};
         
         // Check if stdin is a terminal
-        let is_terminal = io::stdin().is_terminal(;
+        let is_terminal = io::stdin().is_terminal);
         
         if is_terminal {
             // Return some terminal handle (simplified)
@@ -89,7 +89,7 @@ pub fn wasi_get_terminal_stdout(
         use std::io::{self, IsTerminal};
         
         // Check if stdout is a terminal
-        let is_terminal = io::stdout().is_terminal(;
+        let is_terminal = io::stdout().is_terminal);
         
         if is_terminal {
             // Return some terminal handle (simplified)
@@ -118,7 +118,7 @@ pub fn wasi_get_terminal_stderr(
         use std::io::{self, IsTerminal};
         
         // Check if stderr is a terminal
-        let is_terminal = io::stderr().is_terminal(;
+        let is_terminal = io::stderr().is_terminal);
         
         if is_terminal {
             // Return some terminal handle (simplified)
@@ -186,7 +186,7 @@ mod tests {
     #[test]
     fn test_wasi_get_arguments() -> Result<()> {
         // Initialize memory system for testing
-        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize(;
+        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize);
         
         let result = wasi_cli_get_arguments(&mut (), vec![])?;
         assert_eq!(result.len(), 1;
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_wasi_get_environment() -> Result<()> {
         // Initialize memory system for testing
-        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize(;
+        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize);
         
         let result = wasi_cli_get_environment(&mut (), vec![])?;
         assert_eq!(result.len(), 1;
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn test_wasi_get_initial_cwd() -> Result<()> {
         // Initialize memory system for testing
-        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize(;
+        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize);
         
         let result = wasi_get_initial_cwd(&mut (), vec![])?;
         assert_eq!(result.len(), 1;

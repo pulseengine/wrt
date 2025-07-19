@@ -124,11 +124,11 @@ impl wrt_foundation::traits::Checksummable for RefValue {
             Self::Null => checksum.update_slice(&[0u8]),
             Self::FuncRef(id) => {
                 checksum.update_slice(&[1u8];
-                checksum.update_slice(&id.to_le_bytes(;
+                checksum.update_slice(&id.to_le_bytes);
             },
             Self::ExternRef(id) => {
                 checksum.update_slice(&[2u8];
-                checksum.update_slice(&id.to_le_bytes(;
+                checksum.update_slice(&id.to_le_bytes);
             },
         }
     }

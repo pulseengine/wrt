@@ -528,7 +528,7 @@ pub trait SafetyStandardConversion {
 
 impl SafetyStandardConversion for SafetyStandard {
     fn convert_to(&self, target: SafetyStandardType) -> Option<SafetyStandard> {
-        let severity = self.severity_score(;
+        let severity = self.severity_score);
 
         match target {
             SafetyStandardType::Iso26262 => {
@@ -770,7 +770,7 @@ impl SafetyContext {
         let count = self.violation_count.fetch_add(1, Ordering::AcqRel) + 1;
 
         // Trigger safety actions based on ASIL level
-        let effective = self.effective_asil(;
+        let effective = self.effective_asil);
         match effective {
             AsilLevel::QM => {
                 // No action required
@@ -813,8 +813,8 @@ impl SafetyContext {
     ///
     /// `true` if verification should be performed, `false` otherwise.
     pub fn should_verify(&self) -> bool {
-        let effective = self.effective_asil(;
-        let frequency = effective.verification_frequency(;
+        let effective = self.effective_asil);
+        let frequency = effective.verification_frequency);
 
         if frequency == 0 {
             return false; // QM level - no verification required
@@ -841,7 +841,7 @@ impl SafetyContext {
     /// A context is considered unsafe if it has too many violations relative
     /// to the ASIL requirements.
     pub fn is_safe(&self) -> bool {
-        let violations = self.violation_count(;
+        let violations = self.violation_count);
         let operations = self.operation_count.load(Ordering::Acquire;
 
         if operations == 0 {
@@ -849,7 +849,7 @@ impl SafetyContext {
         }
 
         let error_rate = violations as f64 / operations as f64;
-        let max_rate = self.effective_asil().max_error_rate(;
+        let max_rate = self.effective_asil().max_error_rate);
 
         error_rate <= max_rate
     }
@@ -955,8 +955,8 @@ impl UniversalSafetyContext {
         for slot in &mut self.secondary_standards {
             if slot.is_none() {
                 *slot = Some(standard;
-                self.update_effective_severity(;
-                return Ok((;
+                self.update_effective_severity);
+                return Ok();
             }
         }
         Err(Error::safety_violation("Too many secondary standards"))
@@ -972,8 +972,8 @@ impl UniversalSafetyContext {
     /// Returns `true` if the effective severity is greater than or equal to
     /// the required standard's severity.
     pub fn can_handle(&self, required: SafetyStandard) -> bool {
-        let effective = self.effective_severity(;
-        let required_severity = required.severity_score(;
+        let effective = self.effective_severity);
+        let required_severity = required.severity_score);
         effective >= required_severity
     }
 
@@ -998,7 +998,7 @@ impl UniversalSafetyContext {
         let count = self.violation_count.fetch_add(1, Ordering::AcqRel) + 1;
 
         // Trigger safety actions based on severity
-        let effective_severity = self.effective_severity(;
+        let effective_severity = self.effective_severity);
 
         #[cfg(feature = "std")]
         {
@@ -1046,7 +1046,7 @@ impl UniversalSafetyContext {
     /// Based on the effective severity level, this determines whether verification
     /// should be performed for the current operation.
     pub fn should_verify(&self) -> bool {
-        let effective_severity = self.effective_severity(;
+        let effective_severity = self.effective_severity);
 
         // Determine frequency based on severity
         let frequency = match effective_severity.value() {
@@ -1068,11 +1068,11 @@ impl UniversalSafetyContext {
 
     /// Update effective severity based on all standards
     fn update_effective_severity(&self) {
-        let mut max_severity = self.primary_standard.severity_score().value(;
+        let mut max_severity = self.primary_standard.severity_score().value);
 
         for standard_opt in &self.secondary_standards {
             if let Some(standard) = standard_opt {
-                let severity = standard.severity_score().value(;
+                let severity = standard.severity_score().value);
                 if severity > max_severity {
                     max_severity = severity;
                 }
@@ -1098,7 +1098,7 @@ impl UniversalSafetyContext {
     /// A context is considered unsafe if it has too many violations relative
     /// to the effective severity requirements.
     pub fn is_safe(&self) -> bool {
-        let violations = self.violation_count(;
+        let violations = self.violation_count);
         let operations = self.operation_count.load(Ordering::Acquire;
 
         if operations == 0 {
@@ -1128,7 +1128,7 @@ impl UniversalSafetyContext {
         &self,
         target: SafetyStandardType,
     ) -> Option<UniversalSafetyContext> {
-        let effective_severity = self.effective_severity(;
+        let effective_severity = self.effective_severity);
 
         // Find equivalent level in target standard
         let target_standard = SafetyStandard::Iso26262(AsilLevel::QM) // Dummy value
@@ -1179,7 +1179,7 @@ impl<'a> SafetyGuard<'a> {
     pub fn new(context: &'a SafetyContext, operation_name: &'static str) -> WrtResult<Self> {
         // Check if the context is in a safe state
         if !context.is_safe() {
-            context.record_violation(;
+            context.record_violation);
             return Err(Error::safety_violation("Safety context is not in a safe state";
         }
 
@@ -1208,7 +1208,7 @@ impl<'a> SafetyGuard<'a> {
     {
         if self.context.should_verify() {
             verifier().map_err(|_| {
-                self.context.record_violation(;
+                self.context.record_violation);
                 Error::verification_failed("Safety verification failed")
             })?;
         }
@@ -1219,7 +1219,7 @@ impl<'a> SafetyGuard<'a> {
     pub fn complete(self) -> WrtResult<()> {
         #[cfg(feature = "std")]
         {
-            let duration = self.start_time.elapsed().unwrap_or_default(;
+            let duration = self.start_time.elapsed().unwrap_or_default);
             if self.context.effective_asil().requires_runtime_verification() {
                 println!("Operation '{}' completed in {:?}", self.operation_name, duration;
             }
@@ -1234,7 +1234,7 @@ impl<'a> Drop for SafetyGuard<'a> {
         #[cfg(feature = "std")]
         {
             if std::thread::panicking() {
-                self.context.record_violation(;
+                self.context.record_violation);
                 eprintln!("Safety guard for '{}' dropped during panic", self.operation_name;
             }
         }
@@ -1242,7 +1242,7 @@ impl<'a> Drop for SafetyGuard<'a> {
         {
             // In no_std, we can't detect panicking, so we assume it might be an error
             // This is a conservative approach for safety-critical environments
-            self.context.record_violation(;
+            self.context.record_violation);
         }
     }
 }
@@ -1281,7 +1281,7 @@ impl<'a> SafeMemoryAllocation<'a> {
         if self.context.effective_asil().requires_memory_protection() {
             let current_checksum = Self::calculate_checksum(self.data;
             if current_checksum != self.checksum {
-                self.context.record_violation(;
+                self.context.record_violation);
                 return Err(Error::memory_error("Memory corruption detected";
             }
         }
@@ -1513,11 +1513,11 @@ mod tests {
         assert_eq!(ctx.violation_count(), 0;
         assert!(ctx.is_safe();
 
-        let count1 = ctx.record_violation(;
+        let count1 = ctx.record_violation);
         assert_eq!(count1, 1;
         assert_eq!(ctx.violation_count(), 1;
 
-        let count2 = ctx.record_violation(;
+        let count2 = ctx.record_violation);
         assert_eq!(count2, 2;
         assert_eq!(ctx.violation_count(), 2;
     }
@@ -1568,7 +1568,7 @@ mod tests {
             let data_mut = allocation.data_mut()?;
             data_mut[0] = 10;
         }
-        allocation.update_checksum(;
+        allocation.update_checksum);
 
         // Should still verify successfully
         allocation.verify_integrity()?;
@@ -1704,7 +1704,7 @@ mod tests {
         assert_eq!(ctx.violation_count(), 0;
         assert!(ctx.is_safe();
 
-        let count1 = ctx.record_violation(;
+        let count1 = ctx.record_violation);
         assert_eq!(count1, 1;
         assert_eq!(ctx.violation_count(), 1;
     }
@@ -1773,7 +1773,7 @@ mod tests {
 
         let mut severity_scores: Vec<_> =
             standards.iter().map(|s| s.severity_score().value()).collect();
-        severity_scores.sort(;
+        severity_scores.sort);
 
         assert_eq!(severity_scores, vec![0, 200, 250, 750, 1000];
     }

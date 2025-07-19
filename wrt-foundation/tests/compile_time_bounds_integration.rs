@@ -44,14 +44,14 @@ fn test_safe_managed_alloc_validated() {
 #[test]
 fn test_memory_layout_validation() {
     // Valid aligned layouts
-    let layout1 = MemoryLayoutValidator::<1024, 8>::validate(;
+    let layout1 = MemoryLayoutValidator::<1024, 8>::validate);
     assert_eq!(layout1.total_size_with_padding(), 1024;
 
-    let layout2 = MemoryLayoutValidator::<2048, 16>::validate(;
+    let layout2 = MemoryLayoutValidator::<2048, 16>::validate);
     assert_eq!(layout2.total_size_with_padding(), 2048;
 
     // Unaligned size that gets padded
-    let layout3 = MemoryLayoutValidator::<1000, 8>::validate(;
+    let layout3 = MemoryLayoutValidator::<1000, 8>::validate);
     assert_eq!(layout3.total_size_with_padding(), 1000); // Already aligned
 }
 
@@ -59,15 +59,15 @@ fn test_memory_layout_validation() {
 #[test]
 fn test_collection_bounds_validation() {
     // Small collections
-    let collection1 = CollectionBoundsValidator::<100, 64>::validate(;
+    let collection1 = CollectionBoundsValidator::<100, 64>::validate);
     assert_eq!(collection1.total_memory(), 6400;
 
     // Medium collections
-    let collection2 = CollectionBoundsValidator::<1000, 128>::validate(;
+    let collection2 = CollectionBoundsValidator::<1000, 128>::validate);
     assert_eq!(collection2.total_memory(), 128000;
 
     // Large but valid collections
-    let collection3 = CollectionBoundsValidator::<4096, 256>::validate(;
+    let collection3 = CollectionBoundsValidator::<4096, 256>::validate);
     assert_eq!(collection3.total_memory(), 1048576); // 1MB
 }
 
@@ -75,8 +75,8 @@ fn test_collection_bounds_validation() {
 #[test]
 fn test_stack_bounds_validation() {
     // Small stack frames
-    let _stack1 = StackBoundsValidator::<1024>::validate(;
-    let _stack2 = StackBoundsValidator::<4096>::validate(;
+    let _stack1 = StackBoundsValidator::<1024>::validate);
+    let _stack2 = StackBoundsValidator::<4096>::validate);
     let _stack3 = StackBoundsValidator::<32768>::validate(); // 32KB
 }
 
@@ -84,9 +84,9 @@ fn test_stack_bounds_validation() {
 #[test]
 fn test_resource_limits_validation() {
     // Various resource counts
-    let _resources1 = ResourceLimitsValidator::<16>::validate(;
-    let _resources2 = ResourceLimitsValidator::<256>::validate(;
-    let _resources3 = ResourceLimitsValidator::<1024>::validate(;
+    let _resources1 = ResourceLimitsValidator::<16>::validate);
+    let _resources2 = ResourceLimitsValidator::<256>::validate);
+    let _resources3 = ResourceLimitsValidator::<1024>::validate);
     let _resources4 = ResourceLimitsValidator::<4096>::validate(); // Max allowed
 }
 
@@ -95,12 +95,12 @@ fn test_resource_limits_validation() {
 fn test_compile_time_bounds_validator() {
     // Test with different valid sizes and crates
     let validator1 =
-        CompileTimeBoundsValidator::<1024, { CrateId::Foundation as usize }>::validate(;
+        CompileTimeBoundsValidator::<1024, { CrateId::Foundation as usize }>::validate);
     assert_eq!(validator1.size(), 1024;
     assert_eq!(validator1.crate_id(), CrateId::Foundation as usize;
 
     let validator2 =
-        CompileTimeBoundsValidator::<65536, { CrateId::Component as usize }>::validate(;
+        CompileTimeBoundsValidator::<65536, { CrateId::Component as usize }>::validate);
     assert_eq!(validator2.size(), 65536;
     assert_eq!(validator2.crate_id(), CrateId::Component as usize;
 
@@ -113,7 +113,7 @@ fn test_compile_time_bounds_validator() {
 #[test]
 fn test_system_bounds_validation() {
     // System validation should always pass if compiled
-    SystemBoundsValidator::validate_system(;
+    SystemBoundsValidator::validate_system);
 }
 
 /// Test runtime verification in debug builds
@@ -187,16 +187,16 @@ fn test_edge_cases() {
     validate_allocation!(1, CrateId::Foundation;
 
     // Maximum allowed alignment
-    let _max_align = MemoryLayoutValidator::<4096, 4096>::validate(;
+    let _max_align = MemoryLayoutValidator::<4096, 4096>::validate);
 
     // Single element collection
-    let _single_element = CollectionBoundsValidator::<1, 64>::validate(;
+    let _single_element = CollectionBoundsValidator::<1, 64>::validate);
 
     // Minimum stack frame
-    let _min_stack = StackBoundsValidator::<1>::validate(;
+    let _min_stack = StackBoundsValidator::<1>::validate);
 
     // Minimum resources
-    let _min_resources = ResourceLimitsValidator::<1>::validate(;
+    let _min_resources = ResourceLimitsValidator::<1>::validate);
 }
 
 /// Benchmark compile-time validation overhead
@@ -209,14 +209,14 @@ fn test_no_runtime_overhead() {
 
     MemoryInitializer::initialize().unwrap();
 
-    let start = Instant::now(;
+    let start = Instant::now);
 
     // Perform multiple validated allocations
     for _ in 0..100 {
         let _allocation = safe_managed_alloc_validated!(4096, CrateId::Foundation).unwrap();
     }
 
-    let duration = start.elapsed(;
+    let duration = start.elapsed);
 
     // The time should be reasonable (less than 100ms for 100 allocations)
     assert!(duration.as_millis() < 100, "Validation appears to add runtime overhead");
@@ -238,12 +238,12 @@ fn test_wasm_component_instantiation_bounds() {
     let _imports_exports = safe_managed_alloc_validated!(8192, CrateId::Component).unwrap();
 
     // 3. Resource tables with bounds
-    let _resource_validator = CollectionBoundsValidator::<1024, 64>::validate(;
+    let _resource_validator = CollectionBoundsValidator::<1024, 64>::validate);
     validate_allocation!(65536, CrateId::Component;
     let _resources = safe_managed_alloc_validated!(65536, CrateId::Component).unwrap();
 
     // 4. Runtime execution context
-    let _stack_validator = StackBoundsValidator::<8192>::validate(;
+    let _stack_validator = StackBoundsValidator::<8192>::validate);
     validate_allocation!(32768, CrateId::Runtime;
     let _execution_context = safe_managed_alloc_validated!(32768, CrateId::Runtime).unwrap();
 

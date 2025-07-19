@@ -71,7 +71,7 @@ impl Namespace {
             None
         } else {
             let mut new_parts = self.parts.clone();
-            new_parts.pop(;
+            new_parts.pop);
             Some(Self { parts: new_parts })
         }
     }
@@ -111,12 +111,12 @@ mod tests {
         let joined_multi = ns.join("client.fetch";
         assert_eq!(joined_multi.to_string(), "wasi.http.client.fetch";
 
-        let parent = ns.parent(;
+        let parent = ns.parent);
         assert!(parent.is_some();
         assert_eq!(parent.unwrap().to_string(), "wasi";
 
         let root = Namespace::from_string("root";
-        let parent_of_root = root.parent(;
+        let parent_of_root = root.parent);
         assert!(parent_of_root.is_some();
         assert_eq!(parent_of_root.unwrap().to_string(), "";
 

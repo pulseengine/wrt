@@ -68,7 +68,7 @@ impl Default for Function {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for Function {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.type_idx.to_le_bytes(;
+        checksum.update_slice(&self.type_idx.to_le_bytes);
         // For Vec<ValueType>, we need to checksum each element  
         for local in &self.locals {
             local.update_checksum(checksum;
@@ -317,7 +317,7 @@ impl Default for Data {
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Data<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.mode.update_checksum(checksum;
-        checksum.update_slice(&self.memory_idx.to_le_bytes(;
+        checksum.update_slice(&self.memory_idx.to_le_bytes);
         self.offset.update_checksum(checksum;
         self.init.update_checksum(checksum;
     }
@@ -328,7 +328,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 impl wrt_foundation::traits::Checksummable for Data {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.mode.update_checksum(checksum;
-        checksum.update_slice(&self.memory_idx.to_le_bytes(;
+        checksum.update_slice(&self.memory_idx.to_le_bytes);
         checksum.update_slice(&self.offset;
         checksum.update_slice(&self.init;
     }
@@ -599,7 +599,7 @@ impl wrt_foundation::traits::Checksummable for ElementInit {
             Self::FuncIndices(indices) => {
                 checksum.update_slice(&[0u8]); // discriminant
                 for idx in indices {
-                    checksum.update_slice(&idx.to_le_bytes(;
+                    checksum.update_slice(&idx.to_le_bytes);
                 }
             }
             Self::Expressions(exprs) => {
@@ -801,7 +801,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
         match self {
             Self::Active { table_index, offset_expr } => {
                 checksum.update_slice(&[0u8]); // discriminant
-                checksum.update_slice(&table_index.to_le_bytes(;
+                checksum.update_slice(&table_index.to_le_bytes);
                 offset_expr.update_checksum(checksum;
             }
             Self::Passive => {
@@ -821,7 +821,7 @@ impl wrt_foundation::traits::Checksummable for ElementMode {
         match self {
             Self::Active { table_index, offset_expr } => {
                 checksum.update_slice(&[0u8]); // discriminant
-                checksum.update_slice(&table_index.to_le_bytes(;
+                checksum.update_slice(&table_index.to_le_bytes);
                 checksum.update_slice(offset_expr;
             }
             Self::Passive => {
@@ -1064,7 +1064,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.name.update_checksum(checksum;
         checksum.update_slice(&[self.kind as u8];
-        checksum.update_slice(&self.index.to_le_bytes(;
+        checksum.update_slice(&self.index.to_le_bytes);
     }
 }
 
@@ -1211,7 +1211,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             ImportDesc::Function(idx, _) => {
-                checksum.update_slice(&idx.to_le_bytes(;
+                checksum.update_slice(&idx.to_le_bytes);
             }
             ImportDesc::Table(_, _) => {
                 checksum.update_slice(&[0x01];
@@ -1223,7 +1223,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
                 checksum.update_slice(&[0x03];
             }
             ImportDesc::Tag(idx, _) => {
-                checksum.update_slice(&idx.to_le_bytes(;
+                checksum.update_slice(&idx.to_le_bytes);
             }
         }
     }
@@ -1398,7 +1398,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     for TypeInformationEntry<P>
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.type_index.to_le_bytes(;
+        checksum.update_slice(&self.type_index.to_le_bytes);
         self.name.update_checksum(checksum;
     }
 }

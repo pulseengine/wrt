@@ -60,8 +60,8 @@ mod tests {
 
     impl ErrorHandlingHarness {
         fn new() -> Self {
-            let task_manager = Arc::new(Mutex::new(TaskManager::new(;
-            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new(;
+            let task_manager = Arc::new(Mutex::new(TaskManager::new);
+            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new);
             
             let config = BridgeConfiguration {
                 enable_preemption: true,
@@ -137,7 +137,7 @@ mod tests {
             let polls = self.polls_count.fetch_add(1, Ordering::AcqRel;
             
             if polls < self.polls_until_failure {
-                cx.waker().wake_by_ref(;
+                cx.waker().wake_by_ref);
                 return Poll::Pending;
             }
 
@@ -146,23 +146,23 @@ mod tests {
                     Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32)])
                 },
                 FailureMode::PanicOnPoll => {
-                    self.error_harness.record_error(;
+                    self.error_harness.record_error);
                     Poll::Ready(Err(Error::runtime_execution_error("Error occurred", self.id),
                     ))
                 },
                 FailureMode::ExcessiveFuelConsumption => {
-                    self.error_harness.record_error(;
+                    self.error_harness.record_error);
                     // Simulate excessive fuel consumption
                     Poll::Ready(Err(Error::resource_exhausted("Missing error message"),
                     ))
                 },
                 FailureMode::ResourceExhaustion => {
-                    self.error_harness.record_error(;
+                    self.error_harness.record_error);
                     Poll::Ready(Err(Error::runtime_execution_error("Error occurred", self.id),
                     ))
                 },
                 FailureMode::InvalidOperations => {
-                    self.error_harness.record_error(;
+                    self.error_harness.record_error);
                     Poll::Ready(Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_INPUT,
@@ -170,20 +170,20 @@ mod tests {
                     ))
                 },
                 FailureMode::TimeoutFailure => {
-                    self.error_harness.record_error(;
+                    self.error_harness.record_error);
                     Poll::Ready(Err(Error::runtime_execution_error("Error occurred", self.id),
                     ))
                 },
                 FailureMode::RecoveryAfterFailure => {
                     if polls == self.polls_until_failure {
-                        self.error_harness.record_error(;
-                        cx.waker().wake_by_ref(;
+                        self.error_harness.record_error);
+                        cx.waker().wake_by_ref);
                         Poll::Pending
                     } else if polls == self.polls_until_failure + 2 {
-                        self.error_harness.record_recovery(;
+                        self.error_harness.record_recovery);
                         Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32 + 1000)])
                     } else {
-                        cx.waker().wake_by_ref(;
+                        cx.waker().wake_by_ref);
                         Poll::Pending
                     }
                 },
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_resource_exhaustion_handling() {
-        let mut harness = ErrorHandlingHarness::new(;
+        let mut harness = ErrorHandlingHarness::new);
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
@@ -214,7 +214,7 @@ mod tests {
                 Ok(_) => channels_created += 1,
                 Err(_) => {
                     channel_creation_errors += 1;
-                    harness.record_error(;
+                    harness.record_error);
                     break;
                 }
             }
@@ -229,7 +229,7 @@ mod tests {
                 Ok(_) => timers_created += 1,
                 Err(_) => {
                     timer_creation_errors += 1;
-                    harness.record_error(;
+                    harness.record_error);
                     break;
                 }
             }
@@ -244,7 +244,7 @@ mod tests {
                 Ok(_) => mutexes_created += 1,
                 Err(_) => {
                     mutex_creation_errors += 1;
-                    harness.record_error(;
+                    harness.record_error);
                     break;
                 }
             }
@@ -276,7 +276,7 @@ mod tests {
                 Ok(_) => tasks_created += 1,
                 Err(_) => {
                     task_creation_errors += 1;
-                    harness.record_error(;
+                    harness.record_error);
                     break;
                 }
             }
@@ -299,7 +299,7 @@ mod tests {
         };
         assert_eq!(bridge_stats.active_components, 1;
 
-        let (errors, recoveries) = harness.get_error_stats(;
+        let (errors, recoveries) = harness.get_error_stats);
         assert!(errors > 0, "No resource exhaustion errors recorded");
         
         println!("Resource Exhaustion Handling Test: PASSED";
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_task_failure_isolation() {
-        let mut harness = ErrorHandlingHarness::new(;
+        let mut harness = ErrorHandlingHarness::new);
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
@@ -334,7 +334,7 @@ mod tests {
             (FailureMode::NoFailure, 2),
         ];
 
-        let mut task_ids = Vec::new(;
+        let mut task_ids = Vec::new);
         
         for (i, (failure_mode, polls_until_failure)) in task_configs.iter().enumerate() {
             let task_id = {
@@ -376,12 +376,12 @@ mod tests {
         }
 
         // Verify that good tasks completed despite faulty ones
-        let (errors, recoveries) = harness.get_error_stats(;
+        let (errors, recoveries) = harness.get_error_stats);
         
         // Count expected good tasks (those with NoFailure)
         let expected_good_tasks = task_configs.iter()
             .filter(|(mode, _)| matches!(mode, FailureMode::NoFailure)
-            .count(;
+            .count);
         
         // System should remain functional despite task failures
         let bridge_stats = {
@@ -395,7 +395,7 @@ mod tests {
         assert!(completed_tasks > 0, "No tasks completed despite failures");
         
         println!("Task Failure Isolation Test: PASSED";
-        println!("  Total Tasks: {}", task_configs.len(;
+        println!("  Total Tasks: {}", task_configs.len);
         println!("  Completed Tasks: {}", completed_tasks;
         println!("  Expected Good Tasks: {}", expected_good_tasks;
         println!("  Errors Isolated: {}", errors;
@@ -403,7 +403,7 @@ mod tests {
 
     #[test]
     fn test_channel_error_handling() {
-        let mut harness = ErrorHandlingHarness::new(;
+        let mut harness = ErrorHandlingHarness::new);
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
@@ -455,7 +455,7 @@ mod tests {
                 },
                 Ok(ReceiveResult::WouldBlock) => break,
                 Err(_) => {
-                    harness.record_error(;
+                    harness.record_error);
                     break;
                 }
             }
@@ -474,7 +474,7 @@ mod tests {
         ;
         
         assert!(invalid_send.is_err(), "Invalid channel send should fail");
-        harness.record_error(;
+        harness.record_error);
 
         let invalid_receive = harness.channels.receive_message(
             invalid_channel_id,
@@ -482,7 +482,7 @@ mod tests {
         ;
         
         assert!(invalid_receive.is_err(), "Invalid channel receive should fail");
-        harness.record_error(;
+        harness.record_error);
 
         // Test 3: Cross-component channel access
         let other_component = ComponentInstanceId::new(999;
@@ -506,7 +506,7 @@ mod tests {
             Err(_) => harness.record_error(), // Rejected as expected
         }
 
-        let (errors, recoveries) = harness.get_error_stats(;
+        let (errors, recoveries) = harness.get_error_stats);
         assert!(errors > 0, "No channel errors recorded");
         
         println!("Channel Error Handling Test: PASSED";
@@ -517,7 +517,7 @@ mod tests {
 
     #[test]
     fn test_timer_error_scenarios() {
-        let mut harness = ErrorHandlingHarness::new(;
+        let mut harness = ErrorHandlingHarness::new);
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
@@ -558,11 +558,11 @@ mod tests {
         
         let invalid_cancel = harness.timers.cancel_timer(invalid_timer_id;
         assert!(invalid_cancel.is_err(), "Invalid timer cancel should fail");
-        harness.record_error(;
+        harness.record_error);
 
         let invalid_status = harness.timers.get_timer_status(invalid_timer_id;
         assert!(invalid_status.is_err(), "Invalid timer status should fail");
-        harness.record_error(;
+        harness.record_error);
 
         // Test 4: Timer overflow scenarios
         let mut created_timers = 0;
@@ -598,8 +598,8 @@ mod tests {
             }
         }
 
-        let timer_stats = harness.timers.get_timer_statistics(;
-        let (errors, recoveries) = harness.get_error_stats(;
+        let timer_stats = harness.timers.get_timer_statistics);
+        let (errors, recoveries) = harness.get_error_stats);
         
         assert!(errors > 0, "No timer errors recorded");
         assert!(timer_stats.total_timers_created > 0, "No timers created");
@@ -613,7 +613,7 @@ mod tests {
 
     #[test]
     fn test_sync_primitive_deadlock_avoidance() {
-        let mut harness = ErrorHandlingHarness::new(;
+        let mut harness = ErrorHandlingHarness::new);
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
@@ -645,11 +645,11 @@ mod tests {
         // Test 2: Invalid unlock operations
         let invalid_unlock = harness.sync_primitives.unlock_async_mutex(mutex1, task2); // Wrong owner
         assert!(invalid_unlock.is_err(), "Invalid unlock should fail");
-        harness.record_error(;
+        harness.record_error);
 
         let double_unlock = harness.sync_primitives.unlock_async_mutex(mutex1, task1); // Already unlocked
         assert!(double_unlock.is_err(), "Double unlock should fail");
-        harness.record_error(;
+        harness.record_error);
 
         // Test 3: Semaphore overflow/underflow
         let semaphore = harness.sync_primitives.create_async_semaphore(component_id, 2, true).unwrap();
@@ -669,7 +669,7 @@ mod tests {
         // Release permits
         harness.sync_primitives.release_semaphore(semaphore).unwrap();
         harness.sync_primitives.release_semaphore(semaphore).unwrap();
-        harness.record_recovery(;
+        harness.record_recovery);
 
         // Try to over-release
         let over_release = harness.sync_primitives.release_semaphore(semaphore;
@@ -687,9 +687,9 @@ mod tests {
             component_id,
         ;
         assert!(invalid_lock.is_err(), "Invalid mutex lock should fail");
-        harness.record_error(;
+        harness.record_error);
 
-        let (errors, recoveries) = harness.get_error_stats(;
+        let (errors, recoveries) = harness.get_error_stats);
         
         assert!(errors > 0, "No sync primitive errors recorded");
         assert!(recoveries > 0, "No recoveries recorded");
@@ -701,7 +701,7 @@ mod tests {
 
     #[test]
     fn test_recovery_and_graceful_degradation() {
-        let mut harness = ErrorHandlingHarness::new(;
+        let mut harness = ErrorHandlingHarness::new);
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
@@ -719,7 +719,7 @@ mod tests {
             FailureMode::RecoveryAfterFailure,
         ];
 
-        let mut task_ids = Vec::new(;
+        let mut task_ids = Vec::new);
         
         for (i, failure_mode) in recovery_tasks.iter().enumerate() {
             let task_id = {
@@ -758,7 +758,7 @@ mod tests {
             }
         }
 
-        let (errors, recoveries) = harness.get_error_stats(;
+        let (errors, recoveries) = harness.get_error_stats);
         
         // Verify recovery behavior
         assert!(errors > 0, "No errors to recover from");
@@ -770,7 +770,7 @@ mod tests {
                 FailureMode::RecoveryAfterFailure | 
                 FailureMode::NoFailure
             )
-            .count(;
+            .count);
         
         // System should remain stable after recovery
         let bridge_stats = {
@@ -780,7 +780,7 @@ mod tests {
         assert_eq!(bridge_stats.active_components, 1;
         
         println!("Recovery and Graceful Degradation Test: PASSED";
-        println!("  Total Tasks: {}", recovery_tasks.len(;
+        println!("  Total Tasks: {}", recovery_tasks.len);
         println!("  Completed Tasks: {}", completed_tasks;
         println!("  Expected Recoverable: {}", expected_recoverable;
         println!("  Errors: {}", errors;
@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     fn test_system_stability_under_errors() {
-        let mut harness = ErrorHandlingHarness::new(;
+        let mut harness = ErrorHandlingHarness::new);
         
         // Create multiple components to test system-wide stability
         let components: Vec<ComponentInstanceId> = (1..=3)
@@ -882,7 +882,7 @@ mod tests {
             
             // Process timers
             harness.timers.advance_time(10;
-            let _ = harness.timers.process_timers(;
+            let _ = harness.timers.process_timers);
             
             // Check system stability
             let current_stats = {
@@ -905,7 +905,7 @@ mod tests {
             bridge.get_bridge_statistics()
         };
         
-        let (total_errors, total_recoveries) = harness.get_error_stats(;
+        let (total_errors, total_recoveries) = harness.get_error_stats);
         
         // Verify system remained stable despite errors
         assert_eq!(final_stats.active_components, components.len() as u64, 
@@ -920,7 +920,7 @@ mod tests {
         let completion_rate = completed_tasks as f64 / task_count as f64;
         
         println!("System Stability Under Errors Test: PASSED";
-        println!("  Components: {}", components.len(;
+        println!("  Components: {}", components.len);
         println!("  Total Tasks: {}", task_count;
         println!("  Completed Tasks: {}", completed_tasks;
         println!("  Completion Rate: {:.1}%", completion_rate * 100.0;

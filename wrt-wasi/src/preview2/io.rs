@@ -160,7 +160,7 @@ fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
     
     match &args[index] {
         Value::List(items) => {
-            let mut data = Vec::new(;
+            let mut data = Vec::new);
             for item in items {
                 match item {
                     Value::U8(byte) => data.push(*byte),
@@ -181,7 +181,7 @@ fn extract_pollable_list(args: &[Value]) -> Result<Vec<u32>> {
     
     match &args[0] {
         Value::List(items) => {
-            let mut pollables = Vec::new(;
+            let mut pollables = Vec::new);
             for item in items {
                 match item {
                     Value::U32(handle) => pollables.push(*handle),

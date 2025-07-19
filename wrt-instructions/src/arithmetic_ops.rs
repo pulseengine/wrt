@@ -746,7 +746,7 @@ mod tests {
     #[test]
     fn test_i32_arithmetic() {
         // Create a simple test context
-        let mut context = MockArithmeticContext::new(;
+        let mut context = MockArithmeticContext::new);
 
         // Test i32.add
         context.push_arithmetic_value(Value::I32(2)).unwrap();
@@ -782,7 +782,7 @@ mod tests {
     #[test]
     fn test_i32_bitwise() {
         // Create a simple test context
-        let mut context = MockArithmeticContext::new(;
+        let mut context = MockArithmeticContext::new);
 
         // Test i32.and
         context.push_arithmetic_value(Value::I32(0b1010)).unwrap();
@@ -806,7 +806,7 @@ mod tests {
     #[test]
     fn test_i32_shift_rotate() {
         // Create a simple test context
-        let mut context = MockArithmeticContext::new(;
+        let mut context = MockArithmeticContext::new);
 
         // Test i32.shl
         context.push_arithmetic_value(Value::I32(1)).unwrap();
@@ -841,7 +841,7 @@ mod tests {
 
     #[test]
     fn test_i32_count_operations() {
-        let mut context = MockArithmeticContext::new(;
+        let mut context = MockArithmeticContext::new);
 
         // Test i32.clz (count leading zeros)
         context.push_arithmetic_value(Value::I32(0b00000000_00000000_00000000_00001000)).unwrap();
@@ -861,7 +861,7 @@ mod tests {
 
     #[test]
     fn test_f32_arithmetic() {
-        let mut context = MockArithmeticContext::new(;
+        let mut context = MockArithmeticContext::new);
 
         // Test f32.add
         context.push_arithmetic_value(Value::F32(FloatBits32::from_float(2.5))).unwrap();
@@ -910,7 +910,7 @@ mod tests {
 
     #[test]
     fn test_f32_math_operations() {
-        let mut context = MockArithmeticContext::new(;
+        let mut context = MockArithmeticContext::new);
 
         // Test f32.abs
         context.push_arithmetic_value(Value::F32(FloatBits32::from_float(-5.5))).unwrap();
@@ -985,7 +985,7 @@ mod tests {
 
     #[test]
     fn test_f32_minmax() {
-        let mut context = MockArithmeticContext::new(;
+        let mut context = MockArithmeticContext::new);
 
         // Test f32.min
         context.push_arithmetic_value(Value::F32(FloatBits32::from_float(2.0))).unwrap();

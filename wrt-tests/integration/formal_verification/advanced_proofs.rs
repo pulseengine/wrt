@@ -234,7 +234,7 @@ pub mod hardware_error_detection {
         }
         
         pub fn set_expected_flow(&mut self, sequence: &[u32]) -> Result<(), &'static str> {
-            self.expected_sequence.clear(;
+            self.expected_sequence.clear);
             for &step in sequence {
                 self.expected_sequence.push(step)
                     .map_err(|_| "Expected sequence too long")?;
@@ -277,7 +277,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_lockstep_synchronization() {
-        let mut coordinator = LockStepCoordinator::new(;
+        let mut coordinator = LockStepCoordinator::new);
         
         // Execute sequence of operations
         let inputs = [1u32, 2, 3, 4, 5];
@@ -333,7 +333,7 @@ mod proofs {
         tmr.units[1].fault_injected = true;
         
         // Execute with voting
-        let result = tmr.execute_with_voting(|c| c.increment(;
+        let result = tmr.execute_with_voting(|c| c.increment);
         
         #[cfg(feature = "kani")]
         {
@@ -355,7 +355,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_diverse_redundancy_correctness() {
-        let redundancy = DiverseRedundancy::new(;
+        let redundancy = DiverseRedundancy::new);
         
         // Test with various inputs
         let test_inputs = [0u32, 1, 42, 1000, u32::MAX / 2];
@@ -391,7 +391,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_memory_edc_effectiveness() {
-        let mut edc = MemoryEDC::new(;
+        let mut edc = MemoryEDC::new);
         
         // Test data with no errors
         let good_data = vec![0x12, 0x34, 0x56, 0x78];
@@ -425,7 +425,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_control_flow_integrity() {
-        let mut monitor = ControlFlowMonitor::new(;
+        let mut monitor = ControlFlowMonitor::new);
         
         // Set expected control flow
         let expected = vec![1, 2, 3, 4, 5];
@@ -460,7 +460,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_fault_propagation_prevention() {
-        let mut coordinator = LockStepCoordinator::new(;
+        let mut coordinator = LockStepCoordinator::new);
         
         // Simulate fault injection
         coordinator.secondary.state = 0xDEADBEEF; // Inject fault
@@ -536,10 +536,10 @@ pub fn property_count() -> usize {
 #[cfg(kani)]
 pub fn run_all_proofs() {
     use proofs::*;
-    verify_lockstep_synchronization(;
-    verify_tmr_fault_tolerance(;
-    verify_diverse_redundancy_correctness(;
-    verify_memory_edc_effectiveness(;
-    verify_control_flow_integrity(;
-    verify_fault_propagation_prevention(;
+    verify_lockstep_synchronization);
+    verify_tmr_fault_tolerance);
+    verify_diverse_redundancy_correctness);
+    verify_memory_edc_effectiveness);
+    verify_control_flow_integrity);
+    verify_fault_propagation_prevention);
 }

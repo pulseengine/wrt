@@ -105,13 +105,13 @@ impl SimdCapabilities {
     pub fn detect() -> Self {
         #[cfg(target_arch = "x86_64")]
         {
-            return Self::detect_x86_64(;
+            return Self::detect_x86_64);
         }
         
         // TODO: Implement aarch64 detection
         // #[cfg(target_arch = "aarch64")]
         // {
-        //     return Self::detect_aarch64(;
+        //     return Self::detect_aarch64);
         // }
         
         // Fallback for unsupported architectures
@@ -481,7 +481,7 @@ impl SimdRuntime {
     /// Create a new SIMD runtime with automatic provider selection
     #[cfg(feature = "std")]
     pub fn new() -> Self {
-        let capabilities = SimdCapabilities::detect(;
+        let capabilities = SimdCapabilities::detect);
         let provider = Self::select_provider(&capabilities;
         
         // Mark as initialized  
@@ -499,9 +499,9 @@ impl SimdRuntime {
         #[cfg(target_arch = "x86_64")]
         {
             if _capabilities.has_avx2 {
-                return Box::new(x86_64::X86SimdProvider::new_avx2(;
+                return Box::new(x86_64::X86SimdProvider::new_avx2);
             } else if _capabilities.has_sse2 {
-                return Box::new(x86_64::X86SimdProvider::new_sse2(;
+                return Box::new(x86_64::X86SimdProvider::new_sse2);
             }
         }
         
@@ -509,7 +509,7 @@ impl SimdRuntime {
         // #[cfg(target_arch = "aarch64")]
         // {
         //     if capabilities.has_neon {
-        //         return Box::new(aarch64::ArmSimdProvider::new(;
+        //         return Box::new(aarch64::ArmSimdProvider::new);
         //     }
         // }
         
@@ -546,7 +546,7 @@ mod tests {
     
     #[test]
     fn test_simd_capabilities_detection() {
-        let caps = SimdCapabilities::detect(;
+        let caps = SimdCapabilities::detect);
         
         // Should always have at least None level
         assert!(caps.level >= SimdLevel::None);
@@ -569,7 +569,7 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_simd_runtime_creation() {
-        let runtime = SimdRuntime::new(;
+        let runtime = SimdRuntime::new);
         
         // Should have a valid provider
         assert!(runtime.provider().is_available();

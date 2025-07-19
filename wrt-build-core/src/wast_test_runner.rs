@@ -108,7 +108,7 @@ impl WastTestRunner {
         ;
 
         let test_files = self.discover_test_files(test_dir)?;
-        println!("📁 Found {} test files", test_files.len(;
+        println!("📁 Found {} test files", test_files.len);
 
         for test_file in test_files {
             if let Some(max) = self.max_failures {
@@ -121,7 +121,7 @@ impl WastTestRunner {
             match self.run_test_file(&test_file) {
                 Ok(_) => {
                     self.stats.total_files += 1;
-                    println!("✅ {}", test_file.file_name().unwrap().to_string_lossy(;
+                    println!("✅ {}", test_file.file_name().unwrap().to_string_lossy);
                 },
                 Err(e) => {
                     self.stats.total_files += 1;
@@ -140,7 +140,7 @@ impl WastTestRunner {
             }
         }
 
-        self.print_summary(;
+        self.print_summary);
         Ok(&self.stats)
     }
 
@@ -193,7 +193,7 @@ impl WastTestRunner {
     ) -> Result<()> {
         match directive {
             WastDirective::Module(module) => {
-                let binary = module.encode().unwrap_or_default(;
+                let binary = module.encode().unwrap_or_default);
                 engine.load_module(None, &binary).context("Failed to load module")?;
             },
             WastDirective::AssertReturn { exec, results, .. } => {
@@ -251,7 +251,7 @@ impl WastTestRunner {
                 module, message, ..
             } => {
                 // Test unlinkable modules
-                let binary = module.encode().unwrap_or_default(;
+                let binary = module.encode().unwrap_or_default);
                 match engine.load_module(None, &binary) {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
@@ -301,7 +301,7 @@ impl WastTestRunner {
 
     /// Discover test files in directory
     fn discover_test_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
-        let mut test_files = Vec::new(;
+        let mut test_files = Vec::new);
 
         if !dir.is_dir() {
             return Err(anyhow::anyhow!(
@@ -312,10 +312,10 @@ impl WastTestRunner {
 
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
-            let path = entry.path(;
+            let path = entry.path);
 
             if path.is_file() && path.extension().map_or(false, |ext| ext == "wast") {
-                let filename = path.file_name().unwrap().to_string_lossy(;
+                let filename = path.file_name().unwrap().to_string_lossy);
 
                 // Check include patterns
                 let included = self.include_patterns.iter().any(|pattern| {
@@ -332,7 +332,7 @@ impl WastTestRunner {
             }
         }
 
-        test_files.sort(;
+        test_files.sort);
         Ok(test_files)
     }
 
@@ -345,7 +345,7 @@ impl WastTestRunner {
         println!("✅ Passed: {}", self.stats.passed;
         println!("❌ Failed: {}", self.stats.failed;
         println!("⏭️  Skipped: {}", self.stats.skipped;
-        println!("📈 Success rate: {:.1}%", self.stats.success_rate(;
+        println!("📈 Success rate: {:.1}%", self.stats.success_rate);
 
         if !self.stats.errors.is_empty() {
             println!("\n❌ Errors:";
@@ -430,7 +430,7 @@ mod tests {
 
     #[test]
     fn test_wast_runner_creation() {
-        let runner = WastTestRunner::new(;
+        let runner = WastTestRunner::new);
         assert_eq!(runner.stats.total_files, 0;
         assert_eq!(runner.stats.total_directives, 0;
         assert_eq!(runner.continue_on_failure, true;
@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn test_simple_wast_execution() {
-        let mut runner = WastTestRunner::new(;
+        let mut runner = WastTestRunner::new);
 
         let simple_wast = r#"
             (module
@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn test_test_file_discovery() {
         let temp_dir = tempdir().unwrap();
-        let test_dir = temp_dir.path(;
+        let test_dir = temp_dir.path);
 
         // Create test files
         let mut file1 = File::create(test_dir.join("test1.wast")).unwrap();
@@ -494,7 +494,7 @@ mod tests {
 
     #[test]
     fn test_statistics_calculation() {
-        let mut stats = WastTestStats::default(;
+        let mut stats = WastTestStats::default);
         stats.total_directives = 10;
         stats.passed = 8;
         stats.failed = 2;

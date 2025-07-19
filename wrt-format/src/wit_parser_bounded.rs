@@ -32,10 +32,10 @@ impl SimpleBoundedString {
             return None;
         }
         
-        let mut result = Self::new(;
-        let bytes = s.as_bytes(;
+        let mut result = Self::new);
+        let bytes = s.as_bytes);
         result.data[..bytes.len()].copy_from_slice(bytes;
-        result.len = bytes.len(;
+        result.len = bytes.len);
         Some(result)
     }
     
@@ -158,8 +158,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
     /// Parse WIT text input (simplified)
     pub fn parse(&mut self, input: &str) -> Result<()> {
         // Store input in fixed buffer
-        let input_bytes = input.as_bytes(;
-        let copy_len = core::cmp::min(input_bytes.len(), self.input_buffer.len(;
+        let input_bytes = input.as_bytes);
+        let copy_len = core::cmp::min(input_bytes.len(), self.input_buffer.len);
         self.input_buffer[..copy_len].copy_from_slice(&input_bytes[..copy_len];
         self.input_len = copy_len;
         
@@ -479,7 +479,7 @@ mod tests {
         let parser = result.unwrap();
         assert_eq!(parser.world_count(), 1;
 
-        let mut worlds = parser.worlds(;
+        let mut worlds = parser.worlds);
         let world = worlds.next().unwrap();
         assert_eq!(world.name.as_str().unwrap(), "test-world";
     }
@@ -498,7 +498,7 @@ mod tests {
         let parser = result.unwrap();
         assert_eq!(parser.interface_count(), 1;
 
-        let mut interfaces = parser.interfaces(;
+        let mut interfaces = parser.interfaces);
         let interface = interfaces.next().unwrap();
         assert_eq!(interface.name.as_str().unwrap(), "test-interface";
     }
@@ -568,7 +568,7 @@ mod tests {
         let parser = result.unwrap();
         assert_eq!(parser.world_count(), 1;
 
-        let mut worlds = parser.worlds(;
+        let mut worlds = parser.worlds);
         let world = worlds.next().unwrap();
         assert_eq!(world.name.as_str().unwrap(), "test-world";
     }
@@ -584,7 +584,7 @@ mod tests {
         let parser = result.unwrap();
         assert_eq!(parser.world_count(), 1;
         
-        let mut worlds = parser.worlds(;
+        let mut worlds = parser.worlds);
         let world = worlds.next().unwrap();
         assert_eq!(world.name.as_str().unwrap(), "foo";
     }
@@ -600,7 +600,7 @@ mod tests {
         let parser = result.unwrap();
         assert_eq!(parser.interface_count(), 1;
         
-        let mut interfaces = parser.interfaces(;
+        let mut interfaces = parser.interfaces);
         let interface = interfaces.next().unwrap();
         assert_eq!(interface.name.as_str().unwrap(), "bar";
     }

@@ -478,7 +478,7 @@ pub trait SimdExecutionContext {
 impl<T: SimdExecutionContext> PureInstruction<T, wrt_error::Error> for SimdInstruction {
     fn execute(&self, context: &mut T) -> Result<()> {
         // Get the required inputs from the execution stack
-        let input_count = self.op.input_count(;
+        let input_count = self.op.input_count);
         let mut inputs = Vec::with_capacity(input_count;
         
         // Pop inputs from the stack in reverse order (stack is LIFO)

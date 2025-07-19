@@ -660,7 +660,7 @@ impl UnifiedExecutionAgent {
         #[cfg(feature = "std")]
         let function_name = "Component not found";
         #[cfg(not(feature = "std"))]
-        let function_name = BoundedString::from_str("Component operation result").unwrap_or_default(;
+        let function_name = BoundedString::from_str("Component operation result").unwrap_or_default);
         
         let component_values = self.convert_values_to_component(args)?;
         
@@ -671,11 +671,11 @@ impl UnifiedExecutionAgent {
         // Pop frame
         #[cfg(feature = "std")]
         {
-            self.core_state.call_stack.pop(;
+            self.core_state.call_stack.pop);
         }
         #[cfg(not(feature = "std"))]
         {
-            let _ = self.core_state.call_stack.pop(;
+            let _ = self.core_state.call_stack.pop);
         }
 
         self.core_state.state = UnifiedExecutionState::Completed;
@@ -820,15 +820,15 @@ impl UnifiedExecutionAgent {
 
     /// Reset the agent state
     pub fn reset(&mut self) {
-        self.core_state.call_stack.clear(;
-        self.core_state.operand_stack.clear(;
+        self.core_state.call_stack.clear);
+        self.core_state.operand_stack.clear);
         self.core_state.state = UnifiedExecutionState::Ready;
         self.core_state.current_context = None;
-        self.statistics = UnifiedExecutionStatistics::default(;
+        self.statistics = UnifiedExecutionStatistics::default);
         
         #[cfg(feature = "async")]
         {
-            self.async_state.executions.clear(;
+            self.async_state.executions.clear);
             self.async_state.next_execution_id = 1;
         }
     }
@@ -836,7 +836,7 @@ impl UnifiedExecutionAgent {
     /// Convert values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<ComponentValue>> {
-        let mut component_values = Vec::new(;
+        let mut component_values = Vec::new);
         for value in values {
             component_values.push(value.clone().into();
         }
@@ -948,7 +948,7 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to UnifiedExecutionAgent
-impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default(;
+impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default);
 
 #[cfg(test)]
 mod tests {
@@ -1021,7 +1021,7 @@ mod tests {
         assert_eq!(agent.statistics().function_calls, 1;
         
         // Reset and verify clean state
-        agent.reset(;
+        agent.reset);
         assert_eq!(agent.state(), UnifiedExecutionState::Ready;
         assert_eq!(agent.call_stack_depth(), 0;
         assert_eq!(agent.statistics().function_calls, 0;

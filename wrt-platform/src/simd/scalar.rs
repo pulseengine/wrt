@@ -113,7 +113,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let sum = a_val.wrapping_add(b_val;
-            result[offset..offset + 2].copy_from_slice(&sum.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&sum.to_le_bytes);
         }
         result
     }
@@ -125,7 +125,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let diff = a_val.wrapping_sub(b_val;
-            result[offset..offset + 2].copy_from_slice(&diff.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&diff.to_le_bytes);
         }
         result
     }
@@ -137,7 +137,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let product = a_val.wrapping_mul(b_val;
-            result[offset..offset + 2].copy_from_slice(&product.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&product.to_le_bytes);
         }
         result
     }
@@ -147,8 +147,8 @@ impl SimdProvider for ScalarSimdProvider {
         for i in 0..8 {
             let offset = i * 2;
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
-            let neg = a_val.wrapping_neg(;
-            result[offset..offset + 2].copy_from_slice(&neg.to_le_bytes(;
+            let neg = a_val.wrapping_neg);
+            result[offset..offset + 2].copy_from_slice(&neg.to_le_bytes);
         }
         result
     }
@@ -165,7 +165,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let sum = a_val.wrapping_add(b_val;
-            result[offset..offset + 4].copy_from_slice(&sum.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&sum.to_le_bytes);
         }
         result
     }
@@ -181,7 +181,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let diff = a_val.wrapping_sub(b_val;
-            result[offset..offset + 4].copy_from_slice(&diff.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&diff.to_le_bytes);
         }
         result
     }
@@ -197,7 +197,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let product = a_val.wrapping_mul(b_val;
-            result[offset..offset + 4].copy_from_slice(&product.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&product.to_le_bytes);
         }
         result
     }
@@ -209,8 +209,8 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i32::from_le_bytes([
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3]
             ];
-            let neg = a_val.wrapping_neg(;
-            result[offset..offset + 4].copy_from_slice(&neg.to_le_bytes(;
+            let neg = a_val.wrapping_neg);
+            result[offset..offset + 4].copy_from_slice(&neg.to_le_bytes);
         }
         result
     }
@@ -229,7 +229,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let sum = a_val.wrapping_add(b_val;
-            result[offset..offset + 8].copy_from_slice(&sum.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&sum.to_le_bytes);
         }
         result
     }
@@ -247,7 +247,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let diff = a_val.wrapping_sub(b_val;
-            result[offset..offset + 8].copy_from_slice(&diff.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&diff.to_le_bytes);
         }
         result
     }
@@ -265,7 +265,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let product = a_val.wrapping_mul(b_val;
-            result[offset..offset + 8].copy_from_slice(&product.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&product.to_le_bytes);
         }
         result
     }
@@ -278,8 +278,8 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3],
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
-            let neg = a_val.wrapping_neg(;
-            result[offset..offset + 8].copy_from_slice(&neg.to_le_bytes(;
+            let neg = a_val.wrapping_neg);
+            result[offset..offset + 8].copy_from_slice(&neg.to_le_bytes);
         }
         result
     }
@@ -298,7 +298,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let sum = a_val + b_val;
-            result[offset..offset + 4].copy_from_slice(&sum.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&sum.to_bits().to_le_bytes);
         }
         result
     }
@@ -316,7 +316,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let diff = a_val - b_val;
-            result[offset..offset + 4].copy_from_slice(&diff.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&diff.to_bits().to_le_bytes);
         }
         result
     }
@@ -334,7 +334,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let product = a_val * b_val;
-            result[offset..offset + 4].copy_from_slice(&product.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&product.to_bits().to_le_bytes);
         }
         result
     }
@@ -352,7 +352,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let quotient = a_val / b_val;
-            result[offset..offset + 4].copy_from_slice(&quotient.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&quotient.to_bits().to_le_bytes);
         }
         result
     }
@@ -366,7 +366,7 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let a_val = f32::from_bits(a_bits;
             let neg = -a_val;
-            result[offset..offset + 4].copy_from_slice(&neg.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&neg.to_bits().to_le_bytes);
         }
         result
     }
@@ -380,10 +380,10 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let a_val = f32::from_bits(a_bits;
             #[cfg(feature = "std")]
-            let sqrt_val = a_val.sqrt(;
+            let sqrt_val = a_val.sqrt);
             #[cfg(not(feature = "std"))]
             let sqrt_val = sqrt_f32(a_val;
-            result[offset..offset + 4].copy_from_slice(&sqrt_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&sqrt_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -404,7 +404,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let sum = a_val + b_val;
-            result[offset..offset + 8].copy_from_slice(&sum.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&sum.to_bits().to_le_bytes);
         }
         result
     }
@@ -424,7 +424,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let diff = a_val - b_val;
-            result[offset..offset + 8].copy_from_slice(&diff.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&diff.to_bits().to_le_bytes);
         }
         result
     }
@@ -444,7 +444,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let product = a_val * b_val;
-            result[offset..offset + 8].copy_from_slice(&product.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&product.to_bits().to_le_bytes);
         }
         result
     }
@@ -464,7 +464,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let quotient = a_val / b_val;
-            result[offset..offset + 8].copy_from_slice(&quotient.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&quotient.to_bits().to_le_bytes);
         }
         result
     }
@@ -479,7 +479,7 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let a_val = f64::from_bits(a_bits;
             let neg = -a_val;
-            result[offset..offset + 8].copy_from_slice(&neg.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&neg.to_bits().to_le_bytes);
         }
         result
     }
@@ -494,10 +494,10 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let a_val = f64::from_bits(a_bits;
             #[cfg(feature = "std")]
-            let sqrt_val = a_val.sqrt(;
+            let sqrt_val = a_val.sqrt);
             #[cfg(not(feature = "std"))]
             let sqrt_val = sqrt_f64(a_val;
-            result[offset..offset + 8].copy_from_slice(&sqrt_val.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&sqrt_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -681,7 +681,7 @@ impl SimdProvider for ScalarSimdProvider {
         let mut result = *a;
         if idx < 8 {
             let offset = (idx as usize) * 2;
-            let bytes = val.to_le_bytes(;
+            let bytes = val.to_le_bytes);
             result[offset] = bytes[0];
             result[offset + 1] = bytes[1];
         }
@@ -692,7 +692,7 @@ impl SimdProvider for ScalarSimdProvider {
         let mut result = *a;
         if idx < 4 {
             let offset = (idx as usize) * 4;
-            let bytes = val.to_le_bytes(;
+            let bytes = val.to_le_bytes);
             result[offset..offset + 4].copy_from_slice(&bytes;
         }
         result
@@ -702,7 +702,7 @@ impl SimdProvider for ScalarSimdProvider {
         let mut result = *a;
         if idx < 2 {
             let offset = (idx as usize) * 8;
-            let bytes = val.to_le_bytes(;
+            let bytes = val.to_le_bytes);
             result[offset..offset + 8].copy_from_slice(&bytes;
         }
         result
@@ -712,7 +712,7 @@ impl SimdProvider for ScalarSimdProvider {
         let mut result = *a;
         if idx < 4 {
             let offset = (idx as usize) * 4;
-            let bytes = val.to_bits().to_le_bytes(;
+            let bytes = val.to_bits().to_le_bytes);
             result[offset..offset + 4].copy_from_slice(&bytes;
         }
         result
@@ -722,7 +722,7 @@ impl SimdProvider for ScalarSimdProvider {
         let mut result = *a;
         if idx < 2 {
             let offset = (idx as usize) * 8;
-            let bytes = val.to_bits().to_le_bytes(;
+            let bytes = val.to_bits().to_le_bytes);
             result[offset..offset + 8].copy_from_slice(&bytes;
         }
         result
@@ -735,7 +735,7 @@ impl SimdProvider for ScalarSimdProvider {
     
     fn v128_i16x8_splat(&self, val: i16) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_le_bytes(;
+        let bytes = val.to_le_bytes);
         for i in 0..8 {
             let offset = i * 2;
             result[offset] = bytes[0];
@@ -746,7 +746,7 @@ impl SimdProvider for ScalarSimdProvider {
     
     fn v128_i32x4_splat(&self, val: i32) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_le_bytes(;
+        let bytes = val.to_le_bytes);
         for i in 0..4 {
             let offset = i * 4;
             result[offset..offset + 4].copy_from_slice(&bytes;
@@ -756,7 +756,7 @@ impl SimdProvider for ScalarSimdProvider {
     
     fn v128_i64x2_splat(&self, val: i64) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_le_bytes(;
+        let bytes = val.to_le_bytes);
         for i in 0..2 {
             let offset = i * 8;
             result[offset..offset + 8].copy_from_slice(&bytes;
@@ -766,7 +766,7 @@ impl SimdProvider for ScalarSimdProvider {
     
     fn v128_f32x4_splat(&self, val: f32) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_bits().to_le_bytes(;
+        let bytes = val.to_bits().to_le_bytes);
         for i in 0..4 {
             let offset = i * 4;
             result[offset..offset + 4].copy_from_slice(&bytes;
@@ -776,7 +776,7 @@ impl SimdProvider for ScalarSimdProvider {
     
     fn v128_f64x2_splat(&self, val: f64) -> [u8; 16] {
         let mut result = [0u8; 16];
-        let bytes = val.to_bits().to_le_bytes(;
+        let bytes = val.to_bits().to_le_bytes);
         for i in 0..2 {
             let offset = i * 8;
             result[offset..offset + 8].copy_from_slice(&bytes;
@@ -873,7 +873,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val == b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -885,7 +885,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val != b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -897,7 +897,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val < b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -909,7 +909,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = u16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val < b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -921,7 +921,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val > b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -933,7 +933,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = u16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val > b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -945,7 +945,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val <= b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -957,7 +957,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = u16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val <= b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -969,7 +969,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val >= b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -981,7 +981,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = u16::from_le_bytes([b[offset], b[offset + 1]];
             let mask: u16 = if a_val >= b_val { 0xFFFF } else { 0x0000 };
-            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1001,7 +1001,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val == b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1018,7 +1018,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val != b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1034,7 +1034,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val < b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1050,7 +1050,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val < b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1066,7 +1066,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val > b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1082,7 +1082,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val > b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1098,7 +1098,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val <= b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1114,7 +1114,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val <= b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1130,7 +1130,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val >= b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1146,7 +1146,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let mask: u32 = if a_val >= b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1165,7 +1165,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let mask: u64 = if a_val == b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1183,7 +1183,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let mask: u64 = if a_val != b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1201,7 +1201,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let mask: u64 = if a_val < b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1219,7 +1219,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let mask: u64 = if a_val > b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1237,7 +1237,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let mask: u64 = if a_val <= b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1255,7 +1255,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset + 4], b[offset + 5], b[offset + 6], b[offset + 7]
             ];
             let mask: u64 = if a_val >= b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1274,7 +1274,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let mask: u32 = if a_val == b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1292,7 +1292,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let mask: u32 = if a_val != b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1310,7 +1310,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let mask: u32 = if a_val < b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1328,7 +1328,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let mask: u32 = if a_val > b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1346,7 +1346,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let mask: u32 = if a_val <= b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1364,7 +1364,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f32::from_bits(a_bits;
             let b_val = f32::from_bits(b_bits;
             let mask: u32 = if a_val >= b_val { 0xFFFF_FFFF } else { 0x0000_0000 };
-            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1385,7 +1385,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let mask: u64 = if a_val == b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1405,7 +1405,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let mask: u64 = if a_val != b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1425,7 +1425,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let mask: u64 = if a_val < b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1445,7 +1445,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let mask: u64 = if a_val > b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1465,7 +1465,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let mask: u64 = if a_val <= b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1485,7 +1485,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = f64::from_bits(a_bits;
             let b_val = f64::from_bits(b_bits;
             let mask: u64 = if a_val >= b_val { 0xFFFF_FFFFFFFFFFFF } else { 0x0000_000000000000 };
-            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&mask.to_le_bytes);
         }
         result
     }
@@ -1515,7 +1515,7 @@ impl SimdProvider for ScalarSimdProvider {
             } else {
                 val.abs() as u16
             };
-            result[offset..offset + 2].copy_from_slice(&abs_val.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&abs_val.to_le_bytes);
         }
         result
     }
@@ -1532,7 +1532,7 @@ impl SimdProvider for ScalarSimdProvider {
             } else {
                 val.abs() as u32
             };
-            result[offset..offset + 4].copy_from_slice(&abs_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&abs_val.to_le_bytes);
         }
         result
     }
@@ -1550,7 +1550,7 @@ impl SimdProvider for ScalarSimdProvider {
             } else {
                 val.abs() as u64
             };
-            result[offset..offset + 8].copy_from_slice(&abs_val.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&abs_val.to_le_bytes);
         }
         result
     }
@@ -1563,8 +1563,8 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3]
             ];
             let f32_val = f32::from_bits(f32_bits;
-            let abs_val = f32_val.abs(;
-            result[offset..offset + 4].copy_from_slice(&abs_val.to_bits().to_le_bytes(;
+            let abs_val = f32_val.abs);
+            result[offset..offset + 4].copy_from_slice(&abs_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1590,7 +1590,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a_val.min(b_val)
             };
             
-            result[offset..offset + 4].copy_from_slice(&min_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&min_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1616,7 +1616,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a_val.max(b_val)
             };
             
-            result[offset..offset + 4].copy_from_slice(&max_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&max_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1642,7 +1642,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b_val
             };
             
-            result[offset..offset + 4].copy_from_slice(&pmin_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&pmin_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1668,7 +1668,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b_val
             };
             
-            result[offset..offset + 4].copy_from_slice(&pmax_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&pmax_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1682,8 +1682,8 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
             let f64_val = f64::from_bits(f64_bits;
-            let abs_val = f64_val.abs(;
-            result[offset..offset + 8].copy_from_slice(&abs_val.to_bits().to_le_bytes(;
+            let abs_val = f64_val.abs);
+            result[offset..offset + 8].copy_from_slice(&abs_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1711,7 +1711,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a_val.min(b_val)
             };
             
-            result[offset..offset + 8].copy_from_slice(&min_val.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&min_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1739,7 +1739,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a_val.max(b_val)
             };
             
-            result[offset..offset + 8].copy_from_slice(&max_val.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&max_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1767,7 +1767,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b_val
             };
             
-            result[offset..offset + 8].copy_from_slice(&pmin_val.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&pmin_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1795,7 +1795,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b_val
             };
             
-            result[offset..offset + 8].copy_from_slice(&pmax_val.to_bits().to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&pmax_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -1845,7 +1845,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let min_val = a_val.min(b_val;
-            result[offset..offset + 2].copy_from_slice(&min_val.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&min_val.to_le_bytes);
         }
         result
     }
@@ -1857,7 +1857,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = u16::from_le_bytes([b[offset], b[offset + 1]];
             let min_val = a_val.min(b_val;
-            result[offset..offset + 2].copy_from_slice(&min_val.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&min_val.to_le_bytes);
         }
         result
     }
@@ -1869,7 +1869,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = i16::from_le_bytes([b[offset], b[offset + 1]];
             let max_val = a_val.max(b_val;
-            result[offset..offset + 2].copy_from_slice(&max_val.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&max_val.to_le_bytes);
         }
         result
     }
@@ -1881,7 +1881,7 @@ impl SimdProvider for ScalarSimdProvider {
             let a_val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let b_val = u16::from_le_bytes([b[offset], b[offset + 1]];
             let max_val = a_val.max(b_val;
-            result[offset..offset + 2].copy_from_slice(&max_val.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&max_val.to_le_bytes);
         }
         result
     }
@@ -1898,7 +1898,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let min_val = a_val.min(b_val;
-            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes);
         }
         result
     }
@@ -1914,7 +1914,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let min_val = a_val.min(b_val;
-            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&min_val.to_le_bytes);
         }
         result
     }
@@ -1930,7 +1930,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let max_val = a_val.max(b_val;
-            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes);
         }
         result
     }
@@ -1946,7 +1946,7 @@ impl SimdProvider for ScalarSimdProvider {
                 b[offset], b[offset + 1], b[offset + 2], b[offset + 3]
             ];
             let max_val = a_val.max(b_val;
-            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&max_val.to_le_bytes);
         }
         result
     }
@@ -1972,7 +1972,7 @@ impl SimdProvider for ScalarSimdProvider {
                 f32_val as i32
             };
             
-            result[offset..offset + 4].copy_from_slice(&i32_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&i32_val.to_le_bytes);
         }
         result
     }
@@ -1995,7 +1995,7 @@ impl SimdProvider for ScalarSimdProvider {
                 f32_val as u32
             };
             
-            result[offset..offset + 4].copy_from_slice(&u32_val.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&u32_val.to_le_bytes);
         }
         result
     }
@@ -2009,7 +2009,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3]
             ];
             let f32_val = i32_val as f32;
-            result[offset..offset + 4].copy_from_slice(&f32_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&f32_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -2022,7 +2022,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3]
             ];
             let f32_val = u32_val as f32;
-            result[offset..offset + 4].copy_from_slice(&f32_val.to_bits().to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&f32_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -2051,7 +2051,7 @@ impl SimdProvider for ScalarSimdProvider {
             };
             
             let result_offset = i * 4;
-            result[result_offset..result_offset + 4].copy_from_slice(&i32_val.to_le_bytes(;
+            result[result_offset..result_offset + 4].copy_from_slice(&i32_val.to_le_bytes);
         }
         // Last two i32 lanes are already zeroed from initialization
         result
@@ -2079,7 +2079,7 @@ impl SimdProvider for ScalarSimdProvider {
             };
             
             let result_offset = i * 4;
-            result[result_offset..result_offset + 4].copy_from_slice(&u32_val.to_le_bytes(;
+            result[result_offset..result_offset + 4].copy_from_slice(&u32_val.to_le_bytes);
         }
         // Last two i32 lanes are already zeroed from initialization
         result
@@ -2098,7 +2098,7 @@ impl SimdProvider for ScalarSimdProvider {
             let f64_val = i32_val as f64;
             
             let result_offset = i * 8;
-            result[result_offset..result_offset + 8].copy_from_slice(&f64_val.to_bits().to_le_bytes(;
+            result[result_offset..result_offset + 8].copy_from_slice(&f64_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -2115,7 +2115,7 @@ impl SimdProvider for ScalarSimdProvider {
             let f64_val = u32_val as f64;
             
             let result_offset = i * 8;
-            result[result_offset..result_offset + 8].copy_from_slice(&f64_val.to_bits().to_le_bytes(;
+            result[result_offset..result_offset + 8].copy_from_slice(&f64_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -2135,7 +2135,7 @@ impl SimdProvider for ScalarSimdProvider {
             let f32_val = f64_val as f32;
             
             let result_offset = i * 4;
-            result[result_offset..result_offset + 4].copy_from_slice(&f32_val.to_bits().to_le_bytes(;
+            result[result_offset..result_offset + 4].copy_from_slice(&f32_val.to_bits().to_le_bytes);
         }
         // Last two f32 lanes are already zeroed from initialization
         result
@@ -2154,7 +2154,7 @@ impl SimdProvider for ScalarSimdProvider {
             let f64_val = f32_val as f64;
             
             let result_offset = i * 8;
-            result[result_offset..result_offset + 8].copy_from_slice(&f64_val.to_bits().to_le_bytes(;
+            result[result_offset..result_offset + 8].copy_from_slice(&f64_val.to_bits().to_le_bytes);
         }
         result
     }
@@ -2215,7 +2215,7 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let narrow_val = val.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
             let result_offset = i * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes);
         }
         
         // Pack 4 i32 lanes from b into last 4 i16 lanes of result
@@ -2226,7 +2226,7 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let narrow_val = val.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
             let result_offset = (i + 4) * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes);
         }
         
         result
@@ -2243,7 +2243,7 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let narrow_val = val.clamp(0, u16::MAX as i32) as u16;
             let result_offset = i * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes);
         }
         
         // Pack 4 i32 lanes from b into last 4 u16 lanes of result
@@ -2254,7 +2254,7 @@ impl SimdProvider for ScalarSimdProvider {
             ];
             let narrow_val = val.clamp(0, u16::MAX as i32) as u16;
             let result_offset = (i + 4) * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&narrow_val.to_le_bytes);
         }
         
         result
@@ -2269,7 +2269,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = a[i] as i8; // Sign-extend
             let extended_val = val as i16;
             let result_offset = i * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2283,7 +2283,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = a[i + 8] as i8; // Sign-extend
             let extended_val = val as i16;
             let result_offset = i * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2297,7 +2297,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = a[i]; // Zero-extend
             let extended_val = val as u16;
             let result_offset = i * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2311,7 +2311,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = a[i + 8]; // Zero-extend
             let extended_val = val as u16;
             let result_offset = i * 2;
-            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 2].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2325,7 +2325,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = i16::from_le_bytes([a[offset], a[offset + 1]]); // Sign-extend
             let extended_val = val as i32;
             let result_offset = i * 4;
-            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2339,7 +2339,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = i16::from_le_bytes([a[offset], a[offset + 1]]); // Sign-extend
             let extended_val = val as i32;
             let result_offset = i * 4;
-            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2353,7 +2353,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = u16::from_le_bytes([a[offset], a[offset + 1]]); // Zero-extend
             let extended_val = val as u32;
             let result_offset = i * 4;
-            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2367,7 +2367,7 @@ impl SimdProvider for ScalarSimdProvider {
             let val = u16::from_le_bytes([a[offset], a[offset + 1]]); // Zero-extend
             let extended_val = val as u32;
             let result_offset = i * 4;
-            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 4].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2383,7 +2383,7 @@ impl SimdProvider for ScalarSimdProvider {
             ]); // Sign-extend
             let extended_val = val as i64;
             let result_offset = i * 8;
-            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2399,7 +2399,7 @@ impl SimdProvider for ScalarSimdProvider {
             ]); // Sign-extend
             let extended_val = val as i64;
             let result_offset = i * 8;
-            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2415,7 +2415,7 @@ impl SimdProvider for ScalarSimdProvider {
             ]); // Zero-extend
             let extended_val = val as u64;
             let result_offset = i * 8;
-            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2431,7 +2431,7 @@ impl SimdProvider for ScalarSimdProvider {
             ]); // Zero-extend
             let extended_val = val as u64;
             let result_offset = i * 8;
-            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes(;
+            result[result_offset..result_offset + 8].copy_from_slice(&extended_val.to_le_bytes);
         }
         
         result
@@ -2473,7 +2473,7 @@ impl SimdProvider for ScalarSimdProvider {
             let offset = i * 2;
             let val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let shifted = val << shift;
-            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2485,7 +2485,7 @@ impl SimdProvider for ScalarSimdProvider {
             let offset = i * 2;
             let val = i16::from_le_bytes([a[offset], a[offset + 1]];
             let shifted = val >> shift;
-            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2497,7 +2497,7 @@ impl SimdProvider for ScalarSimdProvider {
             let offset = i * 2;
             let val = u16::from_le_bytes([a[offset], a[offset + 1]];
             let shifted = val >> shift;
-            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 2].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2511,7 +2511,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3]
             ];
             let shifted = val << shift;
-            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2525,7 +2525,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3]
             ];
             let shifted = val >> shift;
-            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2539,7 +2539,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset], a[offset + 1], a[offset + 2], a[offset + 3]
             ];
             let shifted = val >> shift;
-            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 4].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2555,7 +2555,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
             let shifted = val << shift;
-            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2570,7 +2570,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
             let shifted = val >> shift;
-            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2585,7 +2585,7 @@ impl SimdProvider for ScalarSimdProvider {
                 a[offset + 4], a[offset + 5], a[offset + 6], a[offset + 7]
             ];
             let shifted = val >> shift;
-            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes(;
+            result[offset..offset + 8].copy_from_slice(&shifted.to_le_bytes);
         }
         result
     }
@@ -2631,7 +2631,7 @@ mod tests {
     
     #[test]
     fn test_scalar_i32x4_add() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         let a = [1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0]; // [1, 2, 3, 4]
         let b = [5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0, 8, 0, 0, 0]; // [5, 6, 7, 8]
         let result = provider.v128_i32x4_add(&a, &b;
@@ -2645,21 +2645,21 @@ mod tests {
     
     #[test]
     fn test_scalar_f32x4_mul() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         // Create f32x4 vectors [2.0, 3.0, 4.0, 5.0] and [0.5, 2.0, 0.25, 0.2]
         let mut a = [0u8; 16];
         let mut b = [0u8; 16];
         
-        a[0..4].copy_from_slice(&2.0f32.to_bits().to_le_bytes(;
-        a[4..8].copy_from_slice(&3.0f32.to_bits().to_le_bytes(;
-        a[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes(;
-        a[12..16].copy_from_slice(&5.0f32.to_bits().to_le_bytes(;
+        a[0..4].copy_from_slice(&2.0f32.to_bits().to_le_bytes);
+        a[4..8].copy_from_slice(&3.0f32.to_bits().to_le_bytes);
+        a[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes);
+        a[12..16].copy_from_slice(&5.0f32.to_bits().to_le_bytes);
         
-        b[0..4].copy_from_slice(&0.5f32.to_bits().to_le_bytes(;
-        b[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes(;
-        b[8..12].copy_from_slice(&0.25f32.to_bits().to_le_bytes(;
-        b[12..16].copy_from_slice(&0.2f32.to_bits().to_le_bytes(;
+        b[0..4].copy_from_slice(&0.5f32.to_bits().to_le_bytes);
+        b[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes);
+        b[8..12].copy_from_slice(&0.25f32.to_bits().to_le_bytes);
+        b[12..16].copy_from_slice(&0.2f32.to_bits().to_le_bytes);
         
         let result = provider.v128_f32x4_mul(&a, &b;
         
@@ -2678,7 +2678,7 @@ mod tests {
     
     #[test]
     fn test_scalar_bitwise_ops() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         let a = [0xFF; 16];
         let b = [0xAA; 16];
@@ -2702,7 +2702,7 @@ mod tests {
     
     #[test]
     fn test_scalar_any_true() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         assert!(!provider.v128_any_true(&[0x00); 16];
         assert!(provider.v128_any_true(&[0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2711,7 +2711,7 @@ mod tests {
     
     #[test]
     fn test_scalar_all_true() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         // i8x16 all true
         assert!(provider.v128_i8x16_all_true(&[0xFF); 16];
@@ -2721,51 +2721,51 @@ mod tests {
         // i32x4 all true
         let mut all_ones = [0u8; 16];
         for i in 0..4 {
-            all_ones[i * 4..(i + 1) * 4].copy_from_slice(&(-1i32).to_le_bytes(;
+            all_ones[i * 4..(i + 1) * 4].copy_from_slice(&(-1i32).to_le_bytes);
         }
         assert!(provider.v128_i32x4_all_true(&all_ones);
         
         let mut one_zero = all_ones;
-        one_zero[8..12].copy_from_slice(&0i32.to_le_bytes(;
+        one_zero[8..12].copy_from_slice(&0i32.to_le_bytes);
         assert!(!provider.v128_i32x4_all_true(&one_zero);
     }
     
     #[test]
     fn test_scalar_float_comparisons() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         // Create f32x4 vectors [1.0, 2.0, 3.0, 4.0] and [1.0, 1.5, 4.0, 3.5]
         let mut a = [0u8; 16];
         let mut b = [0u8; 16];
         
-        a[0..4].copy_from_slice(&1.0f32.to_bits().to_le_bytes(;
-        a[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes(;
-        a[8..12].copy_from_slice(&3.0f32.to_bits().to_le_bytes(;
-        a[12..16].copy_from_slice(&4.0f32.to_bits().to_le_bytes(;
+        a[0..4].copy_from_slice(&1.0f32.to_bits().to_le_bytes);
+        a[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes);
+        a[8..12].copy_from_slice(&3.0f32.to_bits().to_le_bytes);
+        a[12..16].copy_from_slice(&4.0f32.to_bits().to_le_bytes);
         
-        b[0..4].copy_from_slice(&1.0f32.to_bits().to_le_bytes(;
-        b[4..8].copy_from_slice(&1.5f32.to_bits().to_le_bytes(;
-        b[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes(;
-        b[12..16].copy_from_slice(&3.5f32.to_bits().to_le_bytes(;
+        b[0..4].copy_from_slice(&1.0f32.to_bits().to_le_bytes);
+        b[4..8].copy_from_slice(&1.5f32.to_bits().to_le_bytes);
+        b[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes);
+        b[12..16].copy_from_slice(&3.5f32.to_bits().to_le_bytes);
         
         // Test eq: [true, false, false, false] -> [0xFFFF_FFFF, 0x0000_0000, 0x0000_0000, 0x0000_0000]
         let eq_result = provider.v128_f32x4_eq(&a, &b;
-        assert_eq!(&eq_result[0..4], &0xFFFF_FFFFu32.to_le_bytes(;
-        assert_eq!(&eq_result[4..8], &0x0000_0000u32.to_le_bytes(;
-        assert_eq!(&eq_result[8..12], &0x0000_0000u32.to_le_bytes(;
-        assert_eq!(&eq_result[12..16], &0x0000_0000u32.to_le_bytes(;
+        assert_eq!(&eq_result[0..4], &0xFFFF_FFFFu32.to_le_bytes);
+        assert_eq!(&eq_result[4..8], &0x0000_0000u32.to_le_bytes);
+        assert_eq!(&eq_result[8..12], &0x0000_0000u32.to_le_bytes);
+        assert_eq!(&eq_result[12..16], &0x0000_0000u32.to_le_bytes);
         
         // Test lt: [false, false, true, false] -> [0x0000_0000, 0x0000_0000, 0xFFFF_FFFF, 0x0000_0000]
         let lt_result = provider.v128_f32x4_lt(&a, &b;
-        assert_eq!(&lt_result[0..4], &0x0000_0000u32.to_le_bytes(;
-        assert_eq!(&lt_result[4..8], &0x0000_0000u32.to_le_bytes(;
-        assert_eq!(&lt_result[8..12], &0xFFFF_FFFFu32.to_le_bytes(;
-        assert_eq!(&lt_result[12..16], &0x0000_0000u32.to_le_bytes(;
+        assert_eq!(&lt_result[0..4], &0x0000_0000u32.to_le_bytes);
+        assert_eq!(&lt_result[4..8], &0x0000_0000u32.to_le_bytes);
+        assert_eq!(&lt_result[8..12], &0xFFFF_FFFFu32.to_le_bytes);
+        assert_eq!(&lt_result[12..16], &0x0000_0000u32.to_le_bytes);
     }
     
     #[test]
     fn test_scalar_integer_abs() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         // Test i8x16 abs with negative values
         let a = [0xFF, 0xFE, 0x01, 0x7F, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // [-1, -2, 1, 127, -128, ...]
@@ -2778,10 +2778,10 @@ mod tests {
         
         // Test i32x4 abs
         let mut a = [0u8; 16];
-        a[0..4].copy_from_slice(&(-42i32).to_le_bytes(;
-        a[4..8].copy_from_slice(&42i32.to_le_bytes(;
-        a[8..12].copy_from_slice(&(-1000i32).to_le_bytes(;
-        a[12..16].copy_from_slice(&0i32.to_le_bytes(;
+        a[0..4].copy_from_slice(&(-42i32).to_le_bytes);
+        a[4..8].copy_from_slice(&42i32.to_le_bytes);
+        a[8..12].copy_from_slice(&(-1000i32).to_le_bytes);
+        a[12..16].copy_from_slice(&0i32.to_le_bytes);
         
         let result = provider.v128_i32x4_abs(&a;
         
@@ -2793,21 +2793,21 @@ mod tests {
     
     #[test]
     fn test_scalar_integer_min_max() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         // Test i32x4 min/max
         let mut a = [0u8; 16];
         let mut b = [0u8; 16];
         
-        a[0..4].copy_from_slice(&10i32.to_le_bytes(;
-        a[4..8].copy_from_slice(&(-5i32).to_le_bytes(;
-        a[8..12].copy_from_slice(&100i32.to_le_bytes(;
-        a[12..16].copy_from_slice(&0i32.to_le_bytes(;
+        a[0..4].copy_from_slice(&10i32.to_le_bytes);
+        a[4..8].copy_from_slice(&(-5i32).to_le_bytes);
+        a[8..12].copy_from_slice(&100i32.to_le_bytes);
+        a[12..16].copy_from_slice(&0i32.to_le_bytes);
         
-        b[0..4].copy_from_slice(&5i32.to_le_bytes(;
-        b[4..8].copy_from_slice(&(-10i32).to_le_bytes(;
-        b[8..12].copy_from_slice(&200i32.to_le_bytes(;
-        b[12..16].copy_from_slice(&(-1i32).to_le_bytes(;
+        b[0..4].copy_from_slice(&5i32.to_le_bytes);
+        b[4..8].copy_from_slice(&(-10i32).to_le_bytes);
+        b[8..12].copy_from_slice(&200i32.to_le_bytes);
+        b[12..16].copy_from_slice(&(-1i32).to_le_bytes);
         
         // Test signed min: min(10,5)=5, min(-5,-10)=-10, min(100,200)=100, min(0,-1)=-1
         let min_result = provider.v128_i32x4_min_s(&a, &b;
@@ -2826,7 +2826,7 @@ mod tests {
     
     #[test]
     fn test_scalar_shift_operations() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         // Test i32x4 shift operations
         let mut a = [0u8; 16];

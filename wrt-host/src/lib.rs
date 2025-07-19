@@ -96,6 +96,6 @@ pub use bounded_host_integration::{
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     // For safety-critical systems, enter infinite loop to maintain known safe state
 //     loop {
-//         core::hint::spin_loop(;
+//         core::hint::spin_loop);
 //     }
 // }

@@ -61,7 +61,7 @@ impl<P: Provider + Default> Default for CapabilityAwareProvider<P> {
         use crate::capabilities::{DynamicMemoryCapability, VerificationLevel};
         use alloc::boxed::Box;
         
-        let provider = P::default(;
+        let provider = P::default);
         let capability = Box::new(DynamicMemoryCapability::new(
             4096, // Default size
             CrateId::Foundation, // Default crate

@@ -23,25 +23,25 @@ fn main() {
     #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
     {
         println!("Running on VxWorks platform!";
-        run_vxworks_examples(;
+        run_vxworks_examples);
     }
     
     #[cfg(not(all(feature = "platform-vxworks", target_os = "vxworks")))]
     {
         println!("VxWorks platform not available on this system.";
         println!("This example demonstrates how VxWorks support would work:";
-        show_vxworks_concepts(;
+        show_vxworks_concepts);
     }
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn run_vxworks_examples() {
     // Real VxWorks implementation examples
-    example_rtp_memory_allocation(;
-    example_lkm_memory_allocation(;
-    example_synchronization(;
-    example_threading(;
-    example_complete_integration(;
+    example_rtp_memory_allocation);
+    example_lkm_memory_allocation);
+    example_synchronization);
+    example_threading);
+    example_complete_integration);
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
@@ -55,7 +55,7 @@ fn example_rtp_memory_allocation() {
         .build()
         .expect("Failed to create RTP allocator");
     
-    println!("Created RTP allocator with max {} pages", allocator.max_pages(;
+    println!("Created RTP allocator with max {} pages", allocator.max_pages);
     
     let pages_to_allocate = 10;
     let ptr = allocator.allocate_pages(pages_to_allocate)
@@ -197,7 +197,7 @@ fn show_vxworks_concepts() {
     println!("```";
     
     // Demonstrate trait usage with mock implementations
-    demonstrate_trait_usage(;
+    demonstrate_trait_usage);
 }
 
 #[cfg(not(all(feature = "platform-vxworks", target_os = "vxworks")))]
@@ -284,7 +284,7 @@ fn demonstrate_trait_usage() {
     impl FutexLike for MockVxWorksFutex {
         fn wait(&self, expected: u32, _timeout: Option<Duration>) -> Result<(), wrt_error::Error> {
             if self.value.load(Ordering::Acquire) != expected {
-                return Ok((;
+                return Ok();
             }
             // Mock wait - in real implementation would call VxWorks wait APIs
             Ok(())
@@ -329,13 +329,13 @@ fn demonstrate_trait_usage() {
     match allocator.allocate_pages(10) {
         Ok(ptr) => {
             println!("✓ Allocated 10 pages successfully";
-            println!("  Current allocated: {} pages", allocator.allocated_pages(;
+            println!("  Current allocated: {} pages", allocator.allocated_pages);
             
             if let Err(e) = allocator.deallocate_pages(ptr, 10) {
                 println!("✗ Deallocation failed: {}", e;
             } else {
                 println!("✓ Deallocated successfully";
-                println!("  Final allocated: {} pages", allocator.allocated_pages(;
+                println!("  Final allocated: {} pages", allocator.allocated_pages);
             }
         }
         Err(e) => println!("✗ Allocation failed: {}", e),

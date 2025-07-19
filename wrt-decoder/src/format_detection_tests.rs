@@ -42,7 +42,7 @@ type TestData = BoundedVec<u8, 256, wrt_foundation::NoStdProvider<1024>>;
 // Helper function to convert BoundedVec to Vec for std mode tests
 #[cfg(feature = "std")]
 fn bounded_to_vec(bounded: &TestData) -> Result<Vec<u8>> {
-    let mut vec = Vec::with_capacity(bounded.len(;
+    let mut vec = Vec::with_capacity(bounded.len);
     for i in 0..bounded.len() {
         vec.push(bounded.get(i)?;
     }
@@ -52,7 +52,7 @@ fn bounded_to_vec(bounded: &TestData) -> Result<Vec<u8>> {
 // Helper function to create a slice from BoundedVec for no_std mode
 #[cfg(not(feature = "std"))]
 fn bounded_to_slice(bounded: &TestData) -> Result<Vec<u8>> {
-    let mut vec = Vec::with_capacity(bounded.len(;
+    let mut vec = Vec::with_capacity(bounded.len);
     for i in 0..bounded.len() {
         vec.push(bounded.get(i)?;
     }
@@ -304,7 +304,7 @@ impl FormatDetectionTests {
 
     /// Test lazy detection performance and accuracy
     pub fn test_lazy_detection() -> Result<()> {
-        let config = DetectionConfig::default(;
+        let config = DetectionConfig::default);
         let detector = LazyDetector::with_config(config;
 
         // Test various binaries
@@ -420,10 +420,10 @@ impl FormatDetectionTests {
 
         #[cfg(feature = "std")]
         {
-            let start = std::time::Instant::now(;
+            let start = std::time::Instant::now);
             let large_vec = bounded_to_vec(&large_binary)?;
             let _info = load_wasm_unified(&large_vec)?;
-            let duration = start.elapsed(;
+            let duration = start.elapsed);
             println!(
                 "✓ Performance test: {}KB binary processed in {:?}",
                 large_binary.len() / 1024,

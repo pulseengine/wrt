@@ -245,7 +245,7 @@ impl BuiltinRegistry {
         // Register error context handlers if the feature is enabled
         #[cfg(feature = "component-model-error-context")]
         {
-            let error_handlers = error::create_error_handlers(;
+            let error_handlers = error::create_error_handlers);
             for handler in error_handlers {
                 registry.register_handler(handler;
             }
@@ -271,7 +271,7 @@ impl BuiltinRegistry {
     /// * `handler` - The handler to register
     pub fn register_handler(&mut self, handler: Box<dyn BuiltinHandler>) {
         // Check if we already have a handler for this built-in type
-        let builtin_type = handler.builtin_type(;
+        let builtin_type = handler.builtin_type);
         if self.handlers.iter().any(|h| h.builtin_type() == builtin_type) {
             // Replace the existing handler
             let idx = self.handlers.iter().position(|h| h.builtin_type() == builtin_type).unwrap();
@@ -504,7 +504,7 @@ mod tests {
                 assert_eq!(poll_result, vec![WrtComponentValue::U32(0)];
 
                 // Complete the async value
-                let store = registry.async_store(;
+                let store = registry.async_store);
                 let mut async_store = store.lock().unwrap();
                 async_store.set_result(*id, vec![WrtComponentValue::U32(42)]).unwrap();
 

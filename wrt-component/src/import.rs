@@ -97,7 +97,7 @@ impl ImportCollection {
 
     /// Adds an import to the collection
     pub fn add(&mut self, import: Import) {
-        let id = import.identifier(;
+        let id = import.identifier);
         self.imports.insert(id, import;
     }
 
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_import_collection() {
-        let mut collection = ImportCollection::new(;
+        let mut collection = ImportCollection::new);
         assert!(collection.is_empty();
 
         let import1 = Import::new(

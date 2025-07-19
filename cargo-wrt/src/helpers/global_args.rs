@@ -28,7 +28,7 @@ use crate::{
 
 /// Parse severity strings to Severity enum
 fn parse_severities(severity_strings: &[String]) -> Result<Vec<Severity>> {
-    let mut severities = Vec::new(;
+    let mut severities = Vec::new);
     for s in severity_strings {
         match s.to_lowercase().as_str() {
             "error" => severities.push(Severity::Error),
@@ -151,7 +151,7 @@ impl GlobalArgs {
             .features
             .as_ref()
             .map(|f| f.split(',').map(|s| s.trim().to_string()).collect())
-            .unwrap_or_default(;
+            .unwrap_or_default);
 
         Ok(Self {
             verbose: cli.verbose,
@@ -178,7 +178,7 @@ impl GlobalArgs {
     #[must_use]
     pub fn build_filter_options(&mut self) -> Result<wrt_build_core::filtering::FilterOptions> {
         // Build filter options fresh each time
-        let mut builder = FilterOptionsBuilder::new(;
+        let mut builder = FilterOptionsBuilder::new);
 
         // Apply severity filter
         if let Some(severity_strings) = &self.filter_severity {

@@ -16,7 +16,7 @@ use wrt_component::{
 
 #[test]
 fn test_resource_lifecycle_basic() {
-    let mut manager = ResourceLifecycleManager::new(;
+    let mut manager = ResourceLifecycleManager::new);
 
     // Create a resource
     let request = ResourceCreateRequest {
@@ -30,7 +30,7 @@ fn test_resource_lifecycle_basic() {
     assert_eq!(resource_id, ResourceId(1;
 
     // Check statistics
-    let stats = manager.get_stats(;
+    let stats = manager.get_stats);
     assert_eq!(stats.resources_created, 1;
     assert_eq!(stats.active_resources, 1;
 
@@ -47,14 +47,14 @@ fn test_resource_lifecycle_basic() {
     assert_eq!(ref_count, 0;
 
     // Verify statistics
-    let stats = manager.get_stats(;
+    let stats = manager.get_stats);
     assert_eq!(stats.resources_destroyed, 1;
     assert_eq!(stats.active_resources, 0;
 }
 
 #[test]
 fn test_handle_lifetime_tracking() {
-    let mut tracker = HandleLifetimeTracker::new(;
+    let mut tracker = HandleLifetimeTracker::new);
 
     // Create owned handle
     let owned: OwnHandle<u32> = tracker
@@ -91,7 +91,7 @@ fn test_handle_lifetime_tracking() {
 
 #[test]
 fn test_resource_representation() {
-    let mut manager = ResourceRepresentationManager::with_builtin_representations(;
+    let mut manager = ResourceRepresentationManager::with_builtin_representations);
 
     // Create a file handle resource
     let resource_id = ResourceId(1;
@@ -120,15 +120,15 @@ fn test_resource_representation() {
 #[test]
 fn test_cancellation_tokens() {
     // Test basic cancellation
-    let token = CancellationToken::new(;
+    let token = CancellationToken::new);
     assert!(!token.is_cancelled();
 
     token.cancel().unwrap();
     assert!(token.is_cancelled();
 
     // Test child cancellation
-    let parent = CancellationToken::new(;
-    let child = parent.child(;
+    let parent = CancellationToken::new);
+    let child = parent.child);
 
     assert!(!child.is_cancelled();
 
@@ -140,7 +140,7 @@ fn test_cancellation_tokens() {
 #[test]
 fn test_subtask_management() {
     let mut manager = SubtaskManager::new(TaskId(1;
-    let parent_token = CancellationToken::new(;
+    let parent_token = CancellationToken::new);
 
     // Spawn subtask
     let subtask_token = manager
@@ -152,7 +152,7 @@ fn test_subtask_management() {
         .unwrap();
 
     // Check stats
-    let stats = manager.get_stats(;
+    let stats = manager.get_stats);
     assert_eq!(stats.created, 1;
     assert_eq!(stats.active, 1;
 
@@ -179,14 +179,14 @@ fn test_subtask_management() {
         )
         .unwrap();
 
-    let stats = manager.get_stats(;
+    let stats = manager.get_stats);
     assert_eq!(stats.cancelled, 1;
     assert_eq!(stats.active, 0;
 }
 
 #[test]
 fn test_garbage_collection() {
-    let mut manager = ResourceLifecycleManager::new(;
+    let mut manager = ResourceLifecycleManager::new);
 
     // Create resources
     for i in 0..3 {
@@ -211,7 +211,7 @@ fn test_garbage_collection() {
     assert!(gc_result.full_gc);
 
     // Check stats
-    let stats = manager.get_stats(;
+    let stats = manager.get_stats);
     assert_eq!(stats.resources_created, 3;
     assert_eq!(stats.resources_destroyed, 2;
     assert_eq!(stats.active_resources, 1;
@@ -219,7 +219,7 @@ fn test_garbage_collection() {
 
 #[test]
 fn test_resource_with_drop_handlers() {
-    let mut manager = ResourceLifecycleManager::new(;
+    let mut manager = ResourceLifecycleManager::new);
 
     // Register drop handler
     let handler_id = manager
@@ -244,7 +244,7 @@ fn test_resource_with_drop_handlers() {
     // Drop resource - handlers should be called
     manager.drop_resource(resource_id).unwrap();
 
-    let stats = manager.get_stats(;
+    let stats = manager.get_stats);
     assert!(stats.drop_handlers_executed > 0);
 }
 
@@ -276,7 +276,7 @@ fn test_lifecycle_policies() {
     assert_eq!(leaks.len(), 0;
 
     // Verify policies are applied
-    let current_policies = manager.get_policies(;
+    let current_policies = manager.get_policies);
     assert!(current_policies.enable_gc);
     assert!(current_policies.leak_detection);
 }
@@ -297,9 +297,9 @@ fn test_complex_resource_scenario() {
     // This test simulates a more complex scenario with multiple resources,
     // borrowing, and cleanup coordination
 
-    let mut lifecycle_manager = ResourceLifecycleManager::new(;
-    let mut handle_tracker = HandleLifetimeTracker::new(;
-    let mut repr_manager = ResourceRepresentationManager::with_builtin_representations(;
+    let mut lifecycle_manager = ResourceLifecycleManager::new);
+    let mut handle_tracker = HandleLifetimeTracker::new);
+    let mut repr_manager = ResourceRepresentationManager::with_builtin_representations);
 
     // Create multiple resources
     let resources: Vec<_> = (0..3)
@@ -332,7 +332,7 @@ fn test_complex_resource_scenario() {
         }
 
         // Verify all borrows are valid within scope
-        let stats = handle_tracker.get_stats(;
+        let stats = handle_tracker.get_stats);
         assert_eq!(stats.active_borrowed, 3;
 
         Ok(()
@@ -340,7 +340,7 @@ fn test_complex_resource_scenario() {
     .unwrap();
 
     // After scope, all borrows should be invalidated
-    let stats = handle_tracker.get_stats(;
+    let stats = handle_tracker.get_stats);
     assert_eq!(stats.borrowed_invalidated, 3;
     assert_eq!(stats.active_borrowed, 0;
 

@@ -375,7 +375,7 @@ impl CrossComponentCallManager {
         }
 
         // Create call frame
-        let start_time = self.get_current_time(;
+        let start_time = self.get_current_time);
         let call_frame = CrossCallFrame {
             caller_instance,
             target_instance: target.target_instance,
@@ -416,7 +416,7 @@ impl CrossComponentCallManager {
             engine.call_function(target.target_instance, target.function_index, &prepared_args;
 
         // Calculate statistics
-        let end_time = self.get_current_time(;
+        let end_time = self.get_current_time);
         let duration_ns = end_time - start_time;
         let stats = CallStatistics {
             duration_ns,
@@ -462,11 +462,11 @@ impl CrossComponentCallManager {
         // Pop call frame
         #[cfg(feature = "std")]
         {
-            self.call_stack.pop(;
+            self.call_stack.pop);
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let _ = self.call_stack.pop(;
+            let _ = self.call_stack.pop);
         }
 
         Ok(result)
@@ -480,14 +480,14 @@ impl CrossComponentCallManager {
         caller_instance: u32,
     ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
         #[cfg(feature = "std")]
-        let mut prepared_args = Vec::new(;
+        let mut prepared_args = Vec::new);
         #[cfg(not(any(feature = "std", )))]
-        let mut prepared_args = Vec::new(;
+        let mut prepared_args = Vec::new);
 
         #[cfg(feature = "std")]
-        let mut transferred_resources = Vec::new(;
+        let mut transferred_resources = Vec::new);
         #[cfg(not(any(feature = "std", )))]
-        let mut transferred_resources = Vec::new(;
+        let mut transferred_resources = Vec::new);
 
         for arg in args {
             match arg {
@@ -667,7 +667,7 @@ impl CrossComponentCallManager {
             // Update running average
             let total_time = stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
             stats.avg_duration_ns = total_time / stats.call_count as u64;
-            stats.last_call_time = self.get_current_time(;
+            stats.last_call_time = self.get_current_time);
             
             // Determine if eligible for inlining (fast, frequent calls)
             stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000; // < 1μs
@@ -681,7 +681,7 @@ impl CrossComponentCallManager {
                     stats.call_count += 1;
                     let total_time = stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
                     stats.avg_duration_ns = total_time / stats.call_count as u64;
-                    stats.last_call_time = self.get_current_time(;
+                    stats.last_call_time = self.get_current_time);
                     stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000;
                     found = true;
                     break;
@@ -689,10 +689,10 @@ impl CrossComponentCallManager {
             }
             
             if !found {
-                let mut new_stats = CallStats::default(;
+                let mut new_stats = CallStats::default);
                 new_stats.call_count = 1;
                 new_stats.avg_duration_ns = duration_ns;
-                new_stats.last_call_time = self.get_current_time(;
+                new_stats.last_call_time = self.get_current_time);
                 let _ = self.call_frequency.push((key, new_stats);
             }
         }
@@ -732,11 +732,11 @@ impl CrossComponentCallManager {
         #[cfg(feature = "std")]
         {
             if self.pending_transfers.is_empty() {
-                return Ok((;
+                return Ok();
             }
 
             // Group transfers by target component for batch processing
-            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> = std::collections::HashMap::new(;
+            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> = std::collections::HashMap::new);
             
             for transfer in self.pending_transfers.drain(..) {
                 transfers_by_target.entry(transfer.target_component).or_insert_with(Vec::new).push(transfer);
@@ -962,7 +962,7 @@ mod tests {
 
     #[test]
     fn test_call_permissions() {
-        let perms = CallPermissions::default(;
+        let perms = CallPermissions::default);
         assert!(perms.allowed);
         assert!(!perms.allow_resource_transfer);
         assert!(!perms.allow_memory_access);
@@ -1050,7 +1050,7 @@ mod tests {
         }
 
         // Flush them
-        let result = manager.flush_pending_transfers(;
+        let result = manager.flush_pending_transfers);
         assert!(result.is_ok();
 
         #[cfg(feature = "std")]

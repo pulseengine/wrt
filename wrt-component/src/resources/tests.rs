@@ -16,11 +16,11 @@ use crate::prelude::*;
 #[test]
 fn test_size_class_buffer_pool() {
     // Create the pool
-    let mut pool = SizeClassBufferPool::new(;
+    let mut pool = SizeClassBufferPool::new);
 
     // Binary std/no_std choice
     let sizes = [15, 64, 200, 1024, 4096, 16385];
-    let mut buffers = Vec::new(;
+    let mut buffers = Vec::new);
 
     // Allocate buffers
     for &size in &sizes {
@@ -40,21 +40,21 @@ fn test_size_class_buffer_pool() {
     }
 
     // Pool should now have buffers
-    let stats = pool.stats(;
+    let stats = pool.stats);
     assert!(stats.total_buffers > 0, "Buffer pool should contain returned buffers");
 
     // Reset the pool
-    pool.reset(;
+    pool.reset);
 
     // Verify pool is empty
-    let stats_after = pool.stats(;
+    let stats_after = pool.stats);
     assert_eq!(stats_after.total_buffers, 0, "Buffer pool should be empty after reset";
 }
 
 #[test]
 fn test_resource_table_with_optimized_memory() {
     // Create a resource table with optimized memory
-    let mut table = ResourceTable::new_with_optimized_memory(;
+    let mut table = ResourceTable::new_with_optimized_memory);
 
     // Create some resources
     let data1 = Arc::new(String::from("test1";
@@ -145,7 +145,7 @@ fn test_auto_cleanup() {
 #[test]
 fn test_resource_manager_with_arena() {
     // Create a resource manager
-    let manager = ResourceManager::new(;
+    let manager = ResourceManager::new);
 
     // Create a resource arena that uses the manager's table
     // First we need to get access to the manager's table
@@ -171,7 +171,7 @@ fn test_resource_manager_with_arena() {
 #[test]
 fn test_multiple_arenas() {
     // Create a resource manager
-    let manager = ResourceManager::new(;
+    let manager = ResourceManager::new);
 
     // Create two arenas sharing the same resource table
     let table = Arc::clone(&manager.get_resource_table();
@@ -208,8 +208,8 @@ fn test_performance_comparison() {
     const SIZES: [usize; 6] = [32, 64, 128, 512, 1024, 4096];
 
     // Test standard buffer pool
-    let mut standard_pool = BufferPool::new(;
-    let start_standard = Instant::now(;
+    let mut standard_pool = BufferPool::new);
+    let start_standard = Instant::now);
 
     for _ in 0..NUM_ALLOCATIONS {
         for &size in &SIZES {
@@ -218,11 +218,11 @@ fn test_performance_comparison() {
         }
     }
 
-    let standard_duration = start_standard.elapsed(;
+    let standard_duration = start_standard.elapsed);
 
     // Test size class buffer pool
-    let mut optimized_pool = SizeClassBufferPool::new(;
-    let start_optimized = Instant::now(;
+    let mut optimized_pool = SizeClassBufferPool::new);
+    let start_optimized = Instant::now);
 
     for _ in 0..NUM_ALLOCATIONS {
         for &size in &SIZES {
@@ -231,7 +231,7 @@ fn test_performance_comparison() {
         }
     }
 
-    let optimized_duration = start_optimized.elapsed(;
+    let optimized_duration = start_optimized.elapsed);
 
     // We're not making assertions here because performance can vary by system,
     // but we can log the results in debug output

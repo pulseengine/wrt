@@ -42,7 +42,7 @@ pub extern "C" fn demonstrate_debug_features() -> DebugResult {
     debug_info.add_section(".debug_str", 0x1F00, 0x300;
 
     // Initialize the debug info parser
-    let info_init_result = debug_info.init_info_parser(;
+    let info_init_result = debug_info.init_info_parser);
 
     let mut result = DebugResult {
         has_line_info:     false,
@@ -74,7 +74,7 @@ pub extern "C" fn demonstrate_debug_features() -> DebugResult {
 
         // Count total functions
         if let Some(functions) = debug_info.get_functions() {
-            result.function_count = functions.len(;
+            result.function_count = functions.len);
         }
     }
 
@@ -92,7 +92,7 @@ pub extern "C" fn query_multiple_addresses() {
     debug_info.add_section(".debug_abbrev", 0x1D00, 0x200;
 
     // Initialize parser
-    let _ = debug_info.init_info_parser(;
+    let _ = debug_info.init_info_parser);
 
     // Query multiple addresses
     let test_addresses = [0x10, 0x20, 0x30, 0x40, 0x50];
@@ -133,7 +133,7 @@ pub extern "C" fn list_all_functions() -> usize {
                 let _file = func.file_index;
                 let _line = func.line;
             }
-            return functions.len(;
+            return functions.len);
         }
     }
 

@@ -10,14 +10,14 @@ mod tests {
     
     #[test]
     fn test_engine_creation() {
-        let engine = StacklessEngine::new(;
+        let engine = StacklessEngine::new);
         assert_eq!(engine.remaining_fuel(), None;
         assert_eq!(engine.stats().instructions_executed, 0;
     }
     
     #[test]
     fn test_engine_fuel_management() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         
         // Set fuel
         engine.set_fuel(Some(1000;
@@ -33,7 +33,7 @@ mod tests {
     
     #[test]
     fn test_stack_operations() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         
         // Push values
         assert!(engine.push_control_value(Value::I32(42)).is_ok();
@@ -49,7 +49,7 @@ mod tests {
     
     #[test]
     fn test_stack_underflow() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         
         // Pop from empty stack should error
         assert!(engine.pop_control_value().is_err();
@@ -57,7 +57,7 @@ mod tests {
     
     #[test]
     fn test_local_variables() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         
         // Initialize locals
         let locals_count = 5;
@@ -73,7 +73,7 @@ mod tests {
     
     #[test]
     fn test_local_out_of_bounds() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         
         // Initialize with 3 locals
         assert!(engine.init_locals(3).is_ok();
@@ -85,7 +85,7 @@ mod tests {
     
     #[test]
     fn test_gas_metering() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         engine.set_fuel(Some(100;
         
         // Consume fuel multiple times
@@ -102,7 +102,7 @@ mod tests {
     
     #[test]
     fn test_execution_stats() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         
         // Push some values to trigger stats
         engine.push_control_value(Value::I32(1)).unwrap();

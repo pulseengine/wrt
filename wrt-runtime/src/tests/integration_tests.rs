@@ -18,7 +18,7 @@ mod tests {
         };
 
         // Create a runtime
-        let mut runtime = ComponentRuntimeImpl::new(;
+        let mut runtime = ComponentRuntimeImpl::new);
 
         // Register the hello function implementation
         runtime.register_host_function(
@@ -65,7 +65,7 @@ mod tests {
         };
 
         // Create a runtime
-        let mut runtime = ComponentRuntimeImpl::new(;
+        let mut runtime = ComponentRuntimeImpl::new);
 
         // Register a host function
         runtime.register_host_function(
@@ -129,7 +129,7 @@ mod tests {
         };
 
         // Create a runtime
-        let runtime = ComponentRuntimeImpl::new(;
+        let runtime = ComponentRuntimeImpl::new);
 
         // Instantiate the component
         let mut instance = runtime.instantiate(&component_type)?;

@@ -158,7 +158,7 @@ impl CleanMemory {
     /// Write to memory
     pub fn write(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len(;
+        let end = start + data.len);
         
         // Grow memory if needed (simplified)
         if end > self.data.len() {
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_clean_runtime_creation() {
-        let runtime = CleanRuntime::new(;
+        let runtime = CleanRuntime::new);
         assert_eq!(runtime.functions.len(), 0;
         assert_eq!(runtime.memories.len(), 0;
         assert_eq!(runtime.tables.len(), 0;
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_add_function() {
-        let mut runtime = CleanRuntime::new(;
+        let mut runtime = CleanRuntime::new);
         
         let func_type = CleanFuncType {
             params: vec![CleanValType::S32, CleanValType::S32],
@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_add_memory() {
-        let mut runtime = CleanRuntime::new(;
+        let mut runtime = CleanRuntime::new);
         
         let memory_type = CleanMemoryType {
             limits: CleanLimits { min: 1, max: Some(10) },
@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_execute_function() {
-        let mut runtime = CleanRuntime::new(;
+        let mut runtime = CleanRuntime::new);
         
         let func_type = CleanFuncType {
             params: vec![CleanValType::S32, CleanValType::S32],
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_memory_operations() {
-        let mut runtime = CleanRuntime::new(;
+        let mut runtime = CleanRuntime::new);
         
         let memory_type = CleanMemoryType {
             limits: CleanLimits { min: 1, max: Some(10) },
@@ -280,8 +280,8 @@ mod tests {
 
     #[test]
     fn test_factory_access() {
-        let runtime = CleanRuntime::new(;
-        let factory = runtime.factory(;
+        let runtime = CleanRuntime::new);
+        let factory = runtime.factory);
         
         // Test that we can create bounded strings using the factory
         let bounded_str = factory.create_bounded_string::<64>("test").unwrap();

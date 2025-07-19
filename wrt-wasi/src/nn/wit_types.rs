@@ -208,7 +208,7 @@ impl TensorDataConverter {
         }
         
         // Validate alignment and size
-        let type_size = core::mem::size_of::<T>(;
+        let type_size = core::mem::size_of::<T>);
         if type_size == 0 {
             return Err(Error::wasi_invalid_argument("Cannot convert to zero-sized type";
         }
@@ -235,7 +235,7 @@ impl TensorDataConverter {
             return Err(Error::wasi_invalid_argument("Cannot convert empty data array";
         }
         
-        let type_size = core::mem::size_of::<T>(;
+        let type_size = core::mem::size_of::<T>);
         if type_size == 0 {
             return Err(Error::wasi_invalid_argument("Cannot convert from zero-sized type";
         }
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn test_tensor_type_conversion() {
         let tensor_type = TensorType::F32;
-        let wit_type = tensor_type.to_wit(;
+        let wit_type = tensor_type.to_wit);
         let converted = TensorType::from_wit(wit_type).unwrap();
         assert_eq!(tensor_type, converted;
     }

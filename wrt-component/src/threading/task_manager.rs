@@ -387,7 +387,7 @@ impl TaskManager {
                 for i in 1..self.ready_queue.len() {
                     self.ready_queue[i - 1] = self.ready_queue[i];
                 }
-                let _ = self.ready_queue.pop(;
+                let _ = self.ready_queue.pop);
                 Some(task_id)
             }
         }
@@ -535,7 +535,7 @@ impl TaskManager {
 
     /// Update waitable states and wake waiting tasks
     pub fn update_waitables(&mut self) -> WrtResult<()> {
-        let mut tasks_to_wake = Vec::new(;
+        let mut tasks_to_wake = Vec::new);
 
         // Check all waiting tasks
         #[cfg(feature = "std")]

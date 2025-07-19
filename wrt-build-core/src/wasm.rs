@@ -102,13 +102,13 @@ impl WasmVerifier {
             ))
         })?;
 
-        let start_time = Instant::now(;
+        let start_time = Instant::now);
 
         // Parse the module using wrt-decoder unified loader
-        let mut imports = Vec::new(;
-        let mut exports = Vec::new(;
-        let mut builtin_imports = Vec::new(;
-        let mut errors = Vec::new(;
+        let mut imports = Vec::new);
+        let mut exports = Vec::new);
+        let mut builtin_imports = Vec::new);
+        let mut errors = Vec::new);
         let section_count = 0; // Will be updated when we have section counting
         let version = 1; // WebAssembly version 1
 
@@ -149,10 +149,10 @@ impl WasmVerifier {
             },
         }
 
-        let parse_time = start_time.elapsed(;
-        let parse_time_ms = parse_time.as_millis(;
-        let module_size = module_bytes.len(;
-        let throughput_mbps = (module_size as f64 / 1_048_576.0) / parse_time.as_secs_f64(;
+        let parse_time = start_time.elapsed);
+        let parse_time_ms = parse_time.as_millis);
+        let module_size = module_bytes.len);
+        let throughput_mbps = (module_size as f64 / 1_048_576.0) / parse_time.as_secs_f64);
 
         Ok(WasmVerificationResult {
             valid: errors.is_empty(),
@@ -194,9 +194,9 @@ impl WasmVerifier {
     /// Print human-readable verification results
     pub fn print_results(&self, result: &WasmVerificationResult) {
         if result.valid {
-            println!("{} WebAssembly module is valid", "✅".bright_green(;
+            println!("{} WebAssembly module is valid", "✅".bright_green);
         } else {
-            println!("{} WebAssembly module validation failed", "❌".bright_red(;
+            println!("{} WebAssembly module validation failed", "❌".bright_red);
         }
 
         println!("\n📊 Module Information:";
@@ -204,14 +204,14 @@ impl WasmVerifier {
         println!("  Sections: {}", result.section_count;
 
         if !result.imports.is_empty() {
-            println!("\n📥 Imports ({}):", result.imports.len(;
+            println!("\n📥 Imports ({}):", result.imports.len);
             for import in &result.imports {
                 println!("  - {}::{} ({})", import.module, import.name, import.kind;
             }
         }
 
         if !result.exports.is_empty() {
-            println!("\n📤 Exports ({}):", result.exports.len(;
+            println!("\n📤 Exports ({}):", result.exports.len);
             for export in &result.exports {
                 println!("  - {} ({})", export.name, export.kind;
             }
@@ -234,7 +234,7 @@ impl WasmVerifier {
         if !result.errors.is_empty() {
             println!("\n❌ Errors:";
             for error in &result.errors {
-                println!("  - {}", error.bright_red(;
+                println!("  - {}", error.bright_red);
             }
         }
     }
@@ -251,10 +251,10 @@ pub fn scan_for_builtins(module_path: impl AsRef<Path>) -> BuildResult<Vec<Strin
 pub fn verify_modules(
     module_paths: &[impl AsRef<Path>],
 ) -> BuildResult<Vec<(String, WasmVerificationResult)>> {
-    let mut results = Vec::new(;
+    let mut results = Vec::new);
 
     for path in module_paths {
-        let path_ref = path.as_ref(;
+        let path_ref = path.as_ref);
         let verifier = WasmVerifier::new(path_ref;
         let result = verifier.verify()?;
         results.push((path_ref.to_string_lossy().to_string(), result;
@@ -297,13 +297,13 @@ mod tests {
 
     #[test]
     fn test_minimal_module_verification() {
-        let module = create_minimal_module(;
+        let module = create_minimal_module);
 
         // Write to temporary file
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write_all(&module).unwrap();
 
-        let verifier = WasmVerifier::new(temp_file.path(;
+        let verifier = WasmVerifier::new(temp_file.path);
         let result = verifier.verify().unwrap();
 
         assert!(result.valid);
@@ -319,7 +319,7 @@ mod tests {
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write_all(&invalid_module).unwrap();
 
-        let verifier = WasmVerifier::new(temp_file.path(;
+        let verifier = WasmVerifier::new(temp_file.path);
         let result = verifier.verify().unwrap();
 
         assert!(!result.valid);

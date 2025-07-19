@@ -24,7 +24,7 @@ use wrt_wasi::nn::{
 #[test]
 fn test_tract_backend_compiles() {
     // This test ensures the Tract backend compiles correctly
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     let backend = TractBackend::new(capability;
 
     // Test backend name
@@ -37,7 +37,7 @@ fn test_tract_backend_compiles() {
 
 #[test]
 fn test_tract_tensor_creation() {
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     let backend = TractBackend::new(capability;
 
     // Create a simple tensor
@@ -49,14 +49,14 @@ fn test_tract_tensor_creation() {
 
 #[test]
 fn test_tract_backend_provider() {
-    let provider = TractBackendProvider::new(;
+    let provider = TractBackendProvider::new);
 
     // Test encoding support
     assert!(provider.supports_encoding(GraphEncoding::ONNX);
     assert!(provider.supports_encoding(GraphEncoding::TractNative);
 
     // Test backend creation
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     let backend = provider.create_backend(&capability;
     assert!(backend.is_ok();
 }
@@ -66,7 +66,7 @@ fn test_tract_backend_provider() {
 fn test_tract_model_loading() {
     // This test would require actual ONNX model data
     // For now, we just verify the API compiles
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     let backend = TractBackend::new(capability;
 
     // Dummy ONNX data (invalid, but tests compilation)

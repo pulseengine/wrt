@@ -29,7 +29,7 @@ pub extern "C" fn basic_debug_functionality() -> u32 {
     debug_info.add_section(".debug_abbrev", 0x1D00, 0x200;
 
     // Basic query always works
-    let has_debug = debug_info.has_debug_info(;
+    let has_debug = debug_info.has_debug_info);
 
     if has_debug {
         1

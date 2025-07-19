@@ -23,7 +23,7 @@ fn main() -> Result<(), wrt_error::Error> {
 
     match parse_wit_bounded(simple_world) {
         Ok(parser) => {
-            println!("✓ Parsed {} worlds", parser.world_count(;
+            println!("✓ Parsed {} worlds", parser.world_count);
             for world in parser.worlds() {
                 if let Ok(name) = world.name.as_str() {
                     println!("  World: '{}'", name;
@@ -36,7 +36,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse world: {:?}", e;
         },
     }
-    println!(;
+    println!);
 
     // Example 2: Simple interface parsing
     println!("Example 2: Parsing a simple interface definition";
@@ -49,7 +49,7 @@ fn main() -> Result<(), wrt_error::Error> {
 
     match parse_wit_bounded(simple_interface) {
         Ok(parser) => {
-            println!("✓ Parsed {} interfaces", parser.interface_count(;
+            println!("✓ Parsed {} interfaces", parser.interface_count);
             for interface in parser.interfaces() {
                 if let Ok(name) = interface.name.as_str() {
                     println!("  Interface: '{}'", name;
@@ -61,7 +61,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse interface: {:?}", e;
         },
     }
-    println!(;
+    println!);
 
     // Example 3: Multiple definitions
     println!("Example 3: Parsing multiple definitions";
@@ -103,11 +103,11 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse multiple definitions: {:?}", e;
         },
     }
-    println!(;
+    println!);
 
     // Example 4: Testing capacity limits
     println!("Example 4: Testing bounded capacity limits";
-    let mut large_input = String::new(;
+    let mut large_input = String::new);
     for i in 0..10 {
         large_input.push_str(&format!("world world{} {{}}\n", i;
     }
@@ -130,7 +130,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse large input: {:?}", e;
         },
     }
-    println!(;
+    println!);
 
     // Example 5: Custom provider
     println!("Example 5: Using custom memory provider";

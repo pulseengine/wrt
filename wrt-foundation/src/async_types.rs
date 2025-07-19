@@ -66,7 +66,7 @@ impl<T> ComponentFuture<T> {
     pub fn complete(&mut self, value: T) {
         self.status = ComponentFutureStatus::Ready(value;
         if let Some(waker) = self.waker.take() {
-            waker.wake(;
+            waker.wake);
         }
     }
 }
@@ -130,7 +130,7 @@ impl<T> ComponentStream<T> {
         self.buffer_item = Some(value;
 
         if let Some(waker) = self.read_waker.take() {
-            waker.wake(;
+            waker.wake);
         }
 
         Ok(())
@@ -145,7 +145,7 @@ impl<T> ComponentStream<T> {
     pub fn close_write(&mut self) {
         self.state = StreamState::WriteClosed;
         if let Some(waker) = self.read_waker.take() {
-            waker.wake(;
+            waker.wake);
         }
     }
 
@@ -241,7 +241,7 @@ mod tests {
         assert!(stream.try_read().is_err();
 
         // Close and check
-        stream.close_write(;
+        stream.close_write);
         assert!(!stream.is_closed())); // Still have buffered values
 
         stream.state = StreamState::Closed;

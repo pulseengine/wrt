@@ -72,13 +72,13 @@ fn test_safe_slice_property_invariants() {
                         }
                     }
                     SafeSliceOp::Validate => {
-                        let _ = safe_slice.validate(;
+                        let _ = safe_slice.validate);
                     }
                     SafeSliceOp::ValidateChecksum => {
-                        let _ = safe_slice.validate_checksum(;
+                        let _ = safe_slice.validate_checksum);
                     }
                     SafeSliceOp::CheckIntegrity => {
-                        let _ = safe_slice.check_integrity(;
+                        let _ = safe_slice.check_integrity);
                     }
                 }
             };
@@ -88,7 +88,7 @@ fn test_safe_slice_property_invariants() {
         }
         
         // Final validation should succeed for properly used slices
-        let final_validation = safe_slice.validate(;
+        let final_validation = safe_slice.validate);
         assert!(final_validation.is_ok(), "Final validation failed for SafeSlice");
     }
 }

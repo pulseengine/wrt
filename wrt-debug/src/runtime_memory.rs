@@ -208,7 +208,7 @@ impl<'a> MemoryInspector<'a> {
 
     /// Analyze stack usage
     pub fn analyze_stack(&self, state: &dyn RuntimeState) -> StackAnalysis {
-        let sp = state.sp(;
+        let sp = state.sp);
 
         // Find stack region
         let stack_region = self.regions.iter().find(|r| r.region_type == MemoryRegionType::Stack;
@@ -453,7 +453,7 @@ mod tests {
             })
             .unwrap();
 
-        let stats = inspector.heap_stats(;
+        let stats = inspector.heap_stats);
         assert_eq!(stats.total_allocations, 3;
         assert_eq!(stats.active_allocations, 2;
         assert_eq!(stats.allocated_bytes, 768;

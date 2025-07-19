@@ -42,11 +42,11 @@ fn test_complete_component_model_workflow() {
     let instance_id = ComponentInstanceId::new(1;
 
     // Initialize all core systems
-    let mut type_registry = GenerativeTypeRegistry::new(;
-    let mut task_manager = TaskManager::new(;
-    let mut realloc_manager = ReallocManager::new(;
-    let mut post_return_registry = PostReturnRegistry::new(;
-    let mut bounds_checker = TypeBoundsChecker::new(;
+    let mut type_registry = GenerativeTypeRegistry::new);
+    let mut task_manager = TaskManager::new);
+    let mut realloc_manager = ReallocManager::new);
+    let mut post_return_registry = PostReturnRegistry::new);
+    let mut bounds_checker = TypeBoundsChecker::new);
 
     // Test 1: Generative type creation and bounds
     test_generative_types_with_bounds(&mut type_registry, &mut bounds_checker, instance_id;
@@ -61,22 +61,22 @@ fn test_complete_component_model_workflow() {
     test_post_return_integration(&mut post_return_registry, instance_id;
 
     // Test 5: Component linking and composition
-    test_component_composition(;
+    test_component_composition);
 
     // Test 6: Virtualization and sandboxing
-    test_virtualization_integration(;
+    test_virtualization_integration);
 
     // Test 7: Thread spawning integration
-    test_thread_spawn_integration(;
+    test_thread_spawn_integration);
 
     // Test 8: Start function validation
-    test_start_function_validation_integration(;
+    test_start_function_validation_integration);
 
     // Test 9: Handle representation and resource sharing
-    test_handle_representation_and_sharing(;
+    test_handle_representation_and_sharing);
 
     // Test 10: Cross-environment compatibility
-    test_cross_environment_compatibility(;
+    test_cross_environment_compatibility);
 }
 
 fn test_generative_types_with_bounds(
@@ -229,7 +229,7 @@ fn test_post_return_integration(
 }
 
 fn test_virtualization_integration() {
-    let mut virt_manager = VirtualizationManager::new(;
+    let mut virt_manager = VirtualizationManager::new);
 
     // Create a virtualized component with strong isolation
     let component_id = virt_manager
@@ -288,7 +288,7 @@ fn test_virtualization_integration() {
 }
 
 fn test_thread_spawn_integration() {
-    let mut thread_manager = ComponentThreadManager::new(;
+    let mut thread_manager = ComponentThreadManager::new);
     let component_id = ComponentInstanceId::new(500;
 
     // Create thread configuration
@@ -302,7 +302,7 @@ fn test_thread_spawn_integration() {
     };
 
     // Create spawn request
-    let mut arguments = BoundedVec::new(;
+    let mut arguments = BoundedVec::new);
     arguments.push(ComponentValue::I32(42)).unwrap();
 
     let spawn_request = ThreadSpawnRequest {
@@ -331,11 +331,11 @@ fn test_thread_spawn_integration() {
     assert_eq!(thread_manager.get_component_thread_count(component_id), 0;
 
     // Test fuel-aware thread spawning
-    test_fuel_aware_thread_spawning(;
+    test_fuel_aware_thread_spawning);
 }
 
 fn test_fuel_aware_thread_spawning() {
-    let mut fuel_manager = FuelTrackedThreadManager::new(;
+    let mut fuel_manager = FuelTrackedThreadManager::new);
     let component_id = ComponentInstanceId::new(550;
 
     // Set global fuel limit
@@ -345,7 +345,7 @@ fn test_fuel_aware_thread_spawning() {
     let fuel_config = create_fuel_thread_config(5000;
 
     // Create spawn request
-    let mut arguments = BoundedVec::new(;
+    let mut arguments = BoundedVec::new);
     arguments.push(ComponentValue::I32(100)).unwrap();
 
     let spawn_request = ThreadSpawnRequest {
@@ -388,7 +388,7 @@ fn test_fuel_aware_thread_spawning() {
     assert_eq!(final_status.consumed_fuel, 1500;
 
     // Check global fuel status
-    let global_status = fuel_manager.get_global_fuel_status(;
+    let global_status = fuel_manager.get_global_fuel_status);
     assert_eq!(global_status.limit, 10_000_000;
     assert_eq!(global_status.consumed, 5000;
     assert!(global_status.enforcement_enabled);
@@ -439,7 +439,7 @@ fn test_start_function_validation_integration() {
     assert_eq!(validation.descriptor.name, "_start";
 
     // Get summary
-    let summary = validator.get_validation_summary(;
+    let summary = validator.get_validation_summary);
     assert_eq!(summary.total, 1;
     assert!(summary.passed + summary.failed == 1);
 
@@ -453,9 +453,9 @@ fn test_start_function_validation_integration() {
 }
 
 fn test_handle_representation_and_sharing() {
-    let mut handle_manager = HandleRepresentationManager::new(;
-    let mut sharing_manager = CrossComponentResourceSharingManager::new(;
-    let mut type_registry = GenerativeTypeRegistry::new(;
+    let mut handle_manager = HandleRepresentationManager::new);
+    let mut sharing_manager = CrossComponentResourceSharingManager::new);
+    let mut type_registry = GenerativeTypeRegistry::new);
 
     let source_component = ComponentInstanceId::new(700;
     let target_component = ComponentInstanceId::new(701;
@@ -482,7 +482,7 @@ fn test_handle_representation_and_sharing() {
     // Test handle operations
     let read_op = HandleOperation::Read {
         fields: {
-            let mut fields = BoundedVec::new(;
+            let mut fields = BoundedVec::new);
             fields.push("value".to_string()).unwrap();
             fields
         },
@@ -493,7 +493,7 @@ fn test_handle_representation_and_sharing() {
 
     // Set up resource sharing
     // Establish sharing agreement
-    let mut resource_types = BoundedVec::new(;
+    let mut resource_types = BoundedVec::new);
     resource_types.push(resource_type.type_id).unwrap();
 
     let agreement_id = sharing_manager
@@ -509,7 +509,7 @@ fn test_handle_representation_and_sharing() {
 
     // Add a basic sharing policy
     let mut policy = create_basic_sharing_policy("test-policy";
-    let mut allowed_types = BoundedVec::new(;
+    let mut allowed_types = BoundedVec::new);
     allowed_types.push(resource_type.type_id).unwrap();
     policy
         .rules
@@ -535,7 +535,7 @@ fn test_handle_representation_and_sharing() {
     assert!(access_result.is_ok() || access_result.is_err();
 
     // Get sharing statistics
-    let stats = sharing_manager.get_sharing_statistics(;
+    let stats = sharing_manager.get_sharing_statistics);
     assert_eq!(stats.total_agreements, 1;
     assert_eq!(stats.active_agreements, 1;
 
@@ -556,7 +556,7 @@ fn test_handle_representation_and_sharing() {
 }
 
 fn test_component_composition() {
-    let mut linker = ComponentLinker::new(;
+    let mut linker = ComponentLinker::new);
 
     // Create mock component instances for testing
     let producer_id = ComponentInstanceId::new(10;
@@ -577,7 +577,7 @@ fn test_component_composition() {
     assert!(link_result.is_ok();
 
     // Resolve dependencies
-    let mut resolver = ComponentResolver::new(;
+    let mut resolver = ComponentResolver::new);
     let resolution = resolver.resolve_component_dependencies(&linker;
 
     match resolution {
@@ -600,7 +600,7 @@ fn test_cross_environment_compatibility() {
     // Test that our implementations work across different environments
 
     // Test bounded collections (for no_std)
-    let mut bounded_vec: BoundedVec<u32, MAX_TEST_ITEMS> = BoundedVec::new(;
+    let mut bounded_vec: BoundedVec<u32, MAX_TEST_ITEMS> = BoundedVec::new);
     for i in 0..10 {
         bounded_vec.push(i).unwrap();
     }
@@ -620,15 +620,15 @@ fn test_cross_environment_compatibility() {
 #[test]
 fn test_canonical_options_integration() {
     let instance_id = ComponentInstanceId::new(100;
-    let mut realloc_manager = ReallocManager::new(;
-    let mut post_return_registry = PostReturnRegistry::new(;
+    let mut realloc_manager = ReallocManager::new);
+    let mut post_return_registry = PostReturnRegistry::new);
 
     // Binary std/no_std choice
     let options = CanonicalOptions::builder()
         .with_memory(true)
         .with_realloc(true)
         .with_post_return(true)
-        .build(;
+        .build);
 
     // Create lift context
     let mut lift_context = LiftContext::new(instance_id, &options;
@@ -652,7 +652,7 @@ fn test_canonical_options_integration() {
 #[test]
 fn test_error_handling_integration() {
     let instance_id = ComponentInstanceId::new(200;
-    let mut task_manager = TaskManager::new(;
+    let mut task_manager = TaskManager::new);
 
     // Test error context creation
     let error_msg = "Test error occurred";
@@ -674,8 +674,8 @@ fn test_error_handling_integration() {
 #[test]
 fn test_resource_lifecycle_integration() {
     let instance_id = ComponentInstanceId::new(300;
-    let mut type_registry = GenerativeTypeRegistry::new(;
-    let mut task_manager = TaskManager::new(;
+    let mut type_registry = GenerativeTypeRegistry::new);
+    let mut task_manager = TaskManager::new);
 
     // Create resource type
     let resource_type = type_registry.create_resource_type(instance_id, "lifecycle-test").unwrap();
@@ -702,7 +702,7 @@ fn test_std_specific_features() {
     use std::{sync::Arc, thread};
 
     // Test thread safety of our implementations
-    let type_registry = Arc::new(GenerativeTypeRegistry::new(;
+    let type_registry = Arc::new(GenerativeTypeRegistry::new);
     let instance_id = ComponentInstanceId::new(400;
 
     let registry_clone = Arc::clone(&type_registry);

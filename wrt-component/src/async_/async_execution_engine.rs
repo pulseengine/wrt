@@ -555,7 +555,7 @@ impl AsyncExecutionEngine {
     }
     
     fn return_context_to_pool(&mut self, mut context: ExecutionContext) {
-        context.reset(;
+        context.reset);
         let _ = self.context_pool.push(context);
     }
     
@@ -849,10 +849,10 @@ impl ExecutionContext {
     /// Reset context for reuse
     pub fn reset(&mut self) {
         self.component_instance = 0;
-        self.function_name = BoundedString::new(;
-        self.call_stack.clear(;
-        self.locals.clear(;
-        self.memory_views = MemoryViews::new(;
+        self.function_name = BoundedString::new);
+        self.call_stack.clear);
+        self.locals.clear);
+        self.memory_views = MemoryViews::new);
     }
 }
 
@@ -1066,7 +1066,7 @@ mod tests {
         context.call_stack.push(frame).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
         assert_eq!(context.call_stack.len(), 1;
         
-        context.reset(;
+        context.reset);
         assert_eq!(context.call_stack.len(), 0;
         Ok(())
     }

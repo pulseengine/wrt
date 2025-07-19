@@ -17,7 +17,7 @@ use wrt_runtime::{
 #[test]
 fn test_basic_tail_call() -> Result<()> {
     // Create a simple module with functions that use tail calls
-    let mut module = Module::new(;
+    let mut module = Module::new);
     
     // Add function types
     let recursive_type = FuncType {
@@ -47,7 +47,7 @@ fn test_tail_call_stack_usage() -> Result<()> {
     // by calling a function many times with tail calls
     
     // Create module with tail-recursive function
-    let mut module = Module::new(;
+    let mut module = Module::new);
     
     // Add type for recursive function
     let count_type = FuncType {
@@ -68,7 +68,7 @@ fn test_return_call_indirect() -> Result<()> {
     // Test indirect tail calls through function tables
     
     // Create module with function table
-    let mut module = Module::new(;
+    let mut module = Module::new);
     
     // Add function types
     let func_type = FuncType {

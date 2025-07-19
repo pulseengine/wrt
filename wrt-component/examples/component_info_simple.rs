@@ -33,7 +33,7 @@ use wrt_format::{
 
 /// Displays a hexadecimal dump of a portion of a binary slice.
 fn hex_dump(data: &[u8], offset: usize, len: usize) {
-    let end = std::cmp::min(offset + len, data.len(;
+    let end = std::cmp::min(offset + len, data.len);
     let chunk = &data[offset..end];
 
     for (i, bytes) in chunk.chunks(16).enumerate() {
@@ -78,7 +78,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
 
     if !is_valid_module(binary) {
         println!("Not a valid WebAssembly module";
-        return Ok((;
+        return Ok();
     }
 
     let mut offset = 8; // Skip magic and version
@@ -275,7 +275,7 @@ fn parse_name_section(module: &Module) -> Result<()> {
             found_name_section = true;
 
             // Parse name subsections
-            let data = section_data.as_slice(;
+            let data = section_data.as_slice);
             let mut offset = 0;
 
             while offset < data.len() {
@@ -397,7 +397,7 @@ fn analyze_memory_usage(module: &Module) -> Result<()> {
     println!("\n=== Memory Usage Analysis ===";
 
     // Check for memory definitions
-    let memory_count = module.memories().len(;
+    let memory_count = module.memories().len);
     println!("Memory definitions: {}", memory_count;
 
     for (i, memory) in module.memories().iter().enumerate() {
@@ -416,8 +416,8 @@ fn analyze_memory_usage(module: &Module) -> Result<()> {
     }
 
     // Check for data sections
-    let data_segments = module.data_sections(;
-    println!("Data segments: {}", data_segments.len(;
+    let data_segments = module.data_sections);
+    println!("Data segments: {}", data_segments.len);
 
     for (i, data) in data_segments.iter().enumerate() {
         println!(
@@ -438,14 +438,14 @@ fn analyze_memory_usage(module: &Module) -> Result<()> {
 
         // Print a short preview of the data content
         if !data.data.is_empty() {
-            let preview_len = std::cmp::min(16, data.data.len(;
+            let preview_len = std::cmp::min(16, data.data.len);
             let preview = &data.data[0..preview_len];
 
             print!("    data (first {} bytes): ", preview_len;
             for byte in preview {
                 print!("{:02x} ", byte;
             }
-            println!(;
+            println!);
 
             // Try to interpret as ASCII if it looks like text
             if preview.iter().all(|&b| b >= 32 && b <= 126) {
@@ -525,7 +525,7 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
     // Check if file is long enough for header
     if binary.len() < 8 {
         println!("File too short to be a valid WebAssembly binary";
-        return Ok((;
+        return Ok();
     }
 
     // Check magic bytes
@@ -545,12 +545,12 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
         println!("File type: WebAssembly Component";
     } else {
         println!("File type: Unknown (not a valid WebAssembly binary)";
-        return Ok((;
+        return Ok();
     }
 
     // Count and identify sections
     let mut offset = 8; // Skip magic and version
-    let mut section_counts = std::collections::HashMap::new(;
+    let mut section_counts = std::collections::HashMap::new);
 
     // Module section names
     let module_section_names = [
@@ -633,7 +633,7 @@ fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("Usage: {} <path-to-wasm-file>", args[0];
-        return Ok((;
+        return Ok();
     }
 
     let path = &args[1];

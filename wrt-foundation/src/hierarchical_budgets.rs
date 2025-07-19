@@ -220,7 +220,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
 
         for sub_budget in &self.sub_budgets {
             if let Some(budget) = sub_budget {
-                let allocated = budget.current_allocation(;
+                let allocated = budget.current_allocation);
                 stats.total_allocated += allocated;
                 stats.sub_budget_count += 1;
 
@@ -355,7 +355,7 @@ mod tests {
         let idx1 = budget.add_sub_budget("critical", 1024, MemoryPriority::Critical).unwrap();
         let idx2 = budget.add_sub_budget("normal", 2048, MemoryPriority::Normal).unwrap();
 
-        let stats = budget.get_statistics(;
+        let stats = budget.get_statistics);
         assert_eq!(stats.sub_budget_count, 2;
         assert_eq!(stats.total_budget, 4096;
     }

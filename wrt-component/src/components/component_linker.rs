@@ -298,7 +298,7 @@ impl ComponentLinker {
 
     /// Link all components and create instances
     pub fn link_all(&mut self) -> Result<Vec<InstanceId>> {
-        let mut instance_ids = Vec::new(;
+        let mut instance_ids = Vec::new);
 
         // Topological sort to determine instantiation order
         let sorted_components = self.link_graph.topological_sort()?;
@@ -352,9 +352,9 @@ impl ComponentLinker {
         
         #[cfg(not(feature = "std"))]
         let exports = {
-            let mut exports = Vec::new(;
-            let mut params = Vec::new(;
-            let mut results = Vec::new(;
+            let mut exports = Vec::new);
+            let mut params = Vec::new);
+            let mut results = Vec::new);
             results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
             
             let signature = crate::component_instantiation::create_function_signature(
@@ -381,7 +381,7 @@ impl ComponentLinker {
             )),
         )];
 
-        let metadata = ComponentMetadata::default(;
+        let metadata = ComponentMetadata::default);
 
         Ok((exports, imports, metadata))
     }
@@ -391,7 +391,7 @@ impl ComponentLinker {
         component_id: &ComponentId,
         imports: &[ComponentImport],
     ) -> Result<Vec<ResolvedImport>> {
-        let mut resolved = Vec::new(;
+        let mut resolved = Vec::new);
 
         for import in imports {
             let resolution = self.resolve_single_import(component_id, import)?;
@@ -527,7 +527,7 @@ impl LinkGraph {
         {
             let mut visited = vec![false; self.nodes.len()];
             let mut temp_visited = vec![false; self.nodes.len()];
-            let mut result = Vec::new(;
+            let mut result = Vec::new);
             
             for i in 0..self.nodes.len() {
                 if !visited[i] {
@@ -535,7 +535,7 @@ impl LinkGraph {
                 }
             }
             
-            result.reverse(;
+            result.reverse);
             Ok(result)
         }
         #[cfg(not(feature = "std"))]
@@ -549,7 +549,7 @@ impl LinkGraph {
             let mut temp_visited = BoundedVec::new(provider2).map_err(|_| {
                 Error::platform_memory_allocation_failed("Failed to create temp_visited vector")
             })?;
-            let mut result = Vec::new(;
+            let mut result = Vec::new);
             
             // Initialize with false values
             for _ in 0..self.nodes.len() {
@@ -563,7 +563,7 @@ impl LinkGraph {
                 }
             }
             
-            result.reverse(;
+            result.reverse);
             Ok(result)
         }
     }
@@ -580,7 +580,7 @@ impl LinkGraph {
         }
 
         if visited[node_index] {
-            return Ok((;
+            return Ok();
         }
 
         temp_visited[node_index] = true;
@@ -614,7 +614,7 @@ mod tests {
 
     #[test]
     fn test_linker_creation() {
-        let linker = ComponentLinker::new(;
+        let linker = ComponentLinker::new);
         assert_eq!(linker.components.len(), 0;
         assert_eq!(linker.instances.len(), 0;
         assert_eq!(linker.next_instance_id, 1;
@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn test_add_component() {
-        let mut linker = ComponentLinker::new(;
+        let mut linker = ComponentLinker::new);
         let binary = vec![0x00, 0x61, 0x73, 0x6d]; // "wasm" magic
 
         let result = linker.add_component("test_component".to_string(), &binary;
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_remove_component() {
-        let mut linker = ComponentLinker::new(;
+        let mut linker = ComponentLinker::new);
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
         linker.add_component("test_component".to_string(), &binary).unwrap();
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn test_link_graph_operations() {
-        let mut graph = LinkGraph::new(;
+        let mut graph = LinkGraph::new);
 
         // Add components
         graph.add_component("comp1".to_string()).unwrap();
@@ -661,14 +661,14 @@ mod tests {
 
     #[test]
     fn test_topological_sort_empty() {
-        let graph = LinkGraph::new(;
+        let graph = LinkGraph::new);
         let result = graph.topological_sort().unwrap();
         assert!(result.is_empty();
     }
 
     #[test]
     fn test_topological_sort_single() {
-        let mut graph = LinkGraph::new(;
+        let mut graph = LinkGraph::new);
         graph.add_component("comp1".to_string()).unwrap();
 
         let result = graph.topological_sort().unwrap();
@@ -677,7 +677,7 @@ mod tests {
 
     #[test]
     fn test_linker_config_default() {
-        let config = LinkerConfig::default(;
+        let config = LinkerConfig::default);
         assert!(config.strict_typing);
         assert!(!config.allow_hot_swap);
         assert_eq!(config.max_instance_memory, 64 * 1024 * 1024;
@@ -687,12 +687,12 @@ mod tests {
 
     #[test]
     fn test_linking_stats() {
-        let mut linker = ComponentLinker::new(;
+        let mut linker = ComponentLinker::new);
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
         linker.add_component("test".to_string(), &binary).unwrap();
 
-        let stats = linker.get_stats(;
+        let stats = linker.get_stats);
         assert_eq!(stats.components_registered, 1;
         assert_eq!(stats.instances_created, 0;
     }
@@ -770,5 +770,5 @@ impl Default for GraphNode {
     }
 }
 
-impl_basic_traits!(GraphEdge, GraphEdge::default(;
-impl_basic_traits!(GraphNode, GraphNode::default(;
+impl_basic_traits!(GraphEdge, GraphEdge::default);
+impl_basic_traits!(GraphNode, GraphNode::default);

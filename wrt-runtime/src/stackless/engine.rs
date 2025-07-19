@@ -269,7 +269,7 @@ impl StacklessStack {
     /// Creates a new `StacklessStack` with the given module.
     #[must_use]
     pub fn new(module: Arc<Module>, instance_idx: usize) -> Self {
-        let provider = DefaultMemoryProvider::default(;
+        let provider = DefaultMemoryProvider::default);
         Self {
             values: BoundedVec::new(provider.clone()).unwrap(),
             labels: BoundedVec::new(provider).unwrap(),
@@ -304,14 +304,14 @@ impl Default for StacklessEngine {
 impl StacklessEngine {
     /// Creates a new stackless execution engine
     pub fn new() -> Self {
-        let provider = DefaultMemoryProvider::default(;
+        let provider = DefaultMemoryProvider::default);
         
         // Create empty collections that will work for basic operations
         // The actual memory management will be handled by the capability system
-        let values = BoundedVec::default(;
-        let labels = BoundedVec::default(;
-        let operand_stack = BoundedVec::default(;
-        let locals = BoundedVec::default(;
+        let values = BoundedVec::default);
+        let labels = BoundedVec::default);
+        let operand_stack = BoundedVec::default);
+        let locals = BoundedVec::default);
         
         Self {
             exec_stack: StacklessStack {
@@ -479,7 +479,7 @@ impl StacklessEngine {
     fn execute_memory_load(&mut self, mem_op: MemoryLoad, memory_idx: u32) -> Result<()> {
         // ASIL-B: Get memory with safety checks
         let memory_wrapper = self.get_memory_safe(memory_idx)?;
-        let memory = memory_wrapper.inner(;
+        let memory = memory_wrapper.inner);
         
         // Pop the address from the stack
         let addr_value = self.pop_control_value()?;
@@ -564,7 +564,7 @@ impl StacklessEngine {
     
     /// Create a new stackless execution engine with a module
     pub fn new_with_module(module: crate::module::Module) -> Result<Self> {
-        let mut engine = Self::new(;
+        let mut engine = Self::new);
         let instance_idx = engine.instantiate(module)?;
         
         // Initialize the execution stack with the instantiated module
@@ -584,8 +584,8 @@ impl StacklessEngine {
         self.exec_stack.pc = 0;
         
         // Clear the operand stack and initialize locals with function arguments
-        self.exec_stack.values.clear(;
-        self.locals.clear(;
+        self.exec_stack.values.clear);
+        self.locals.clear);
         
         // Initialize local variables with function parameters
         for arg in args {
@@ -685,12 +685,12 @@ impl StacklessEngine {
     
     /// Collect results from the operand stack
     fn collect_results(&mut self) -> Result<Vec<Value>> {
-        let mut results = Vec::new(;
+        let mut results = Vec::new);
         
         // Get the function type to determine expected results
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(self.exec_stack.func_idx as usize) {
-                let result_count = func_type.results.len(;
+                let result_count = func_type.results.len);
                 
                 // Pop results from stack (in reverse order)
                 for _ in 0..result_count {
@@ -2617,7 +2617,7 @@ impl StacklessEngine {
         // Read vector length
         let len = self.read_leb128_u32(code)?;
         
-        let mut targets = Vec::new(;
+        let mut targets = Vec::new);
         for _ in 0..len {
             let target = self.read_leb128_u32(code)?;
             targets.push(target);
@@ -2638,7 +2638,7 @@ impl StacklessEngine {
                     if label.kind == LabelKind::If {
                         // Convert if to else
                         label.kind = LabelKind::Block; // Treat else as a block
-                        return Ok((;
+                        return Ok();
                     }
                 }
                 None => return Err(Error::runtime_execution_error("Label access error")),
@@ -3008,7 +3008,7 @@ impl StacklessEngine {
                         let memory = module_instance.memory(0)?; // Memory index 0 for now
                         
                         // Write 4 bytes to memory
-                        let bytes = value_i32.to_le_bytes(;
+                        let bytes = value_i32.to_le_bytes);
                         memory.write(effective_addr, &bytes)?;
                     } else {
                         return Err(Error::runtime_error("No module instance ";
@@ -3057,7 +3057,7 @@ impl StacklessEngine {
                     
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?;
-                        let bytes = value_i64.to_le_bytes(;
+                        let bytes = value_i64.to_le_bytes);
                         memory.write(effective_addr, &bytes)?;
                     } else {
                         return Err(Error::runtime_error("No module instance ";
@@ -3097,13 +3097,13 @@ impl StacklessEngine {
                 wrt_foundation::types::Instruction::Call(func_idx) => {
                     // Get the function from the module
                     if let Some(module_instance) = &self.current_module {
-                        let module = module_instance.module(;
+                        let module = module_instance.module);
                         if let Some(function) = module.get_function(func_idx) {
                             // Get function type
                             if let Some(func_type) = module.get_function_type(function.type_idx) {
                             
                             // Pop arguments from stack
-                            let provider = DefaultMemoryProvider::default(;
+                            let provider = DefaultMemoryProvider::default);
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
@@ -3130,7 +3130,7 @@ impl StacklessEngine {
                             self.exec_stack.frame_count += 1;
                             
                             // Initialize locals with parameters
-                            self.locals.clear(;
+                            self.locals.clear);
                             for arg in &args {
                                 self.locals.push(arg.clone())?;
                             }
@@ -3192,7 +3192,7 @@ impl StacklessEngine {
                         };
                         
                         // Validate function type matches expected type
-                        let module = module_instance.module(;
+                        let module = module_instance.module);
                         let expected_type = module.get_function_type(type_idx).ok_or_else(|| {
                             Error::type_error("Expected function type not found ")
                         })?;
@@ -3209,13 +3209,13 @@ impl StacklessEngine {
                         
                         // Now perform the call with the actual function index
                         // Duplicate the Call instruction logic
-                        let module = module_instance.module(;
+                        let module = module_instance.module);
                         if let Some(function) = module.get_function(actual_func_idx) {
                             // Get function type
                             if let Some(func_type) = module.get_function_type(function.type_idx) {
                             
                             // Pop arguments from stack
-                            let provider = DefaultMemoryProvider::default(;
+                            let provider = DefaultMemoryProvider::default);
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
@@ -3242,7 +3242,7 @@ impl StacklessEngine {
                             self.exec_stack.frame_count += 1;
                             
                             // Initialize locals with parameters
-                            self.locals.clear(;
+                            self.locals.clear);
                             for arg in &args {
                                 self.locals.push(arg.clone())?;
                             }
@@ -3574,7 +3574,7 @@ impl StacklessEngine {
                 wrt_foundation::types::Instruction::TableSize(table_idx) => {
                     if let Some(module_instance) = &self.current_module {
                         let table = module_instance.table(table_idx)?;
-                        let size = table.size(;
+                        let size = table.size);
                         self.exec_stack.values.push(Value::I32(size as i32))?;
                     } else {
                         return Err(Error::runtime_error("No module instance ";
@@ -3729,13 +3729,13 @@ impl StacklessEngine {
                     }
                     wrt_foundation::types::Instruction::Else if depth == 1 => {
                         self.exec_stack.pc = pc;
-                        return Ok((;
+                        return Ok();
                     }
                     wrt_foundation::types::Instruction::End => {
                         depth -= 1;
                         if depth == 0 {
                             self.exec_stack.pc = pc;
-                            return Ok((;
+                            return Ok();
                         }
                     }
                     _ => {}
@@ -3764,7 +3764,7 @@ impl StacklessEngine {
                         depth -= 1;
                         if depth == 0 {
                             self.exec_stack.pc = pc;
-                            return Ok((;
+                            return Ok();
                         }
                     }
                     _ => {}
@@ -3778,7 +3778,7 @@ impl StacklessEngine {
     
     /// Branch to a label at the given depth
     fn branch_to_label(&mut self, label_depth: u32) -> Result<()> {
-        let labels_len = self.exec_stack.labels.len(;
+        let labels_len = self.exec_stack.labels.len);
         if label_depth as usize >= labels_len {
             return Err(Error::runtime_execution_error("Invalid label depth";
         }
@@ -4033,7 +4033,7 @@ impl ControlContext for StacklessEngine {
         // Get function type to determine return arity
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(self.exec_stack.func_idx as usize) {
-                let return_arity = func_type.results.len(;
+                let return_arity = func_type.results.len);
                 
                 // Pop the required number of return values from the stack
                 for _ in 0..return_arity {
@@ -4068,7 +4068,7 @@ impl ControlContext for StacklessEngine {
         // Get function type to determine parameter arity
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(func_idx as usize) {
-                let param_arity = func_type.params.len(;
+                let param_arity = func_type.params.len);
                 
                 // Pop the required number of arguments from the stack
                 for _ in 0..param_arity {
@@ -4118,7 +4118,7 @@ impl ControlContext for StacklessEngine {
         
         // Validate function exists in current module before tail call
         if let Some(module_instance) = &self.current_module {
-            let module = module_instance.module(;
+            let module = module_instance.module);
             if (func_idx as usize) >= module.functions.len() {
                 return Err(Error::runtime_function_not_found("Function index out of bounds for tail call";
             }
@@ -4199,7 +4199,7 @@ impl ControlContext for StacklessEngine {
             };
             
             // Validate function type matches expected
-            let module = module_instance.module(;
+            let module = module_instance.module);
             let expected_type = module.get_function_type(type_idx as u32).ok_or_else(|| {
                 Error::type_error("Expected function type not found ")
             })?;

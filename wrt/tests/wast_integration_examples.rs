@@ -24,7 +24,7 @@ use wast_test_runner::{
 /// Example: Basic WAST test execution
 #[test]
 fn example_basic_wast_execution() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let wast_content = r#"
         (module
@@ -58,7 +58,7 @@ fn example_basic_wast_execution() -> Result<()> {
 /// Example: Testing trap conditions
 #[test]
 fn example_trap_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let wast_content = r#"
         (module
@@ -90,7 +90,7 @@ fn example_trap_testing() -> Result<()> {
 /// Example: Testing invalid modules
 #[test]
 fn example_validation_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let wast_content = r#"
         ;; This module should be invalid due to type mismatch
@@ -122,7 +122,7 @@ fn example_validation_testing() -> Result<()> {
 /// Example: Testing with resource limits
 #[test]
 fn example_resource_limit_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     // Set strict resource limits
     runner.set_resource_limits(ResourceLimits {
@@ -154,7 +154,7 @@ fn example_resource_limit_testing() -> Result<()> {
 /// Example: Float precision and NaN testing
 #[test]
 fn example_float_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let wast_content = r#"
         (module
@@ -188,7 +188,7 @@ fn example_float_testing() -> Result<()> {
 /// Example: Memory operations testing
 #[test]
 fn example_memory_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let wast_content = r#"
         (module
@@ -221,7 +221,7 @@ fn example_memory_testing() -> Result<()> {
 /// Example: Control flow testing
 #[test]
 fn example_control_flow_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let wast_content = r#"
         (module
@@ -276,7 +276,7 @@ fn example_control_flow_testing() -> Result<()> {
 /// Example: Comprehensive test statistics analysis
 #[test]
 fn example_statistics_analysis() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let comprehensive_wast = r#"
         (module
@@ -335,7 +335,7 @@ fn example_statistics_analysis() -> Result<()> {
 /// Example: Error handling and debugging
 #[test]
 fn example_error_handling() -> Result<()> {
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     // This WAST content has intentional issues for demonstration
     let problematic_wast = r#"
@@ -373,7 +373,7 @@ fn example_no_std_usage() -> Result<()> {
     // This example shows how the WAST runner works in no_std environments
     // All the string content is static, no file I/O required
 
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     let simple_wast = r#"
         (module
@@ -455,7 +455,7 @@ fn analyze_test_results(stats: &WastTestStats) {
 fn example_full_workflow() -> Result<()> {
     println!("=== Full WAST Testing Workflow Example ===";
 
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
 
     // Configure resource limits
     runner.set_resource_limits(ResourceLimits {

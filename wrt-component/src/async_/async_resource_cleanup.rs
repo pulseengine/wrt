@@ -254,10 +254,10 @@ impl AsyncResourceCleanupManager {
 
     /// Execute all cleanups for an instance
     pub fn execute_cleanups(&mut self, instance_id: ComponentInstanceId) -> Result<Vec<CleanupResult>> {
-        let mut results = Vec::new(;
+        let mut results = Vec::new);
         
         #[cfg(feature = "std")]
-        let entries = self.cleanup_entries.remove(&instance_id).unwrap_or_default(;
+        let entries = self.cleanup_entries.remove(&instance_id).unwrap_or_default);
         
         #[cfg(not(any(feature = "std", )))]
         let entries = {
@@ -368,7 +368,7 @@ impl AsyncResourceCleanupManager {
 
     /// Reset all statistics
     pub fn reset_stats(&mut self) {
-        self.stats = AsyncCleanupStats::default(;
+        self.stats = AsyncCleanupStats::default);
     }
 
     /// Remove all cleanup entries for an instance
@@ -434,7 +434,7 @@ impl AsyncResourceCleanupManager {
         }
 
         // Update peak statistics
-        let total_entries = self.count_total_entries(;
+        let total_entries = self.count_total_entries);
         if total_entries > self.stats.peak_cleanup_entries {
             self.stats.peak_cleanup_entries = total_entries;
         }
@@ -753,7 +753,7 @@ mod tests {
 
         manager.execute_cleanups(instance_id).unwrap();
 
-        let stats_after = manager.get_stats(;
+        let stats_after = manager.get_stats);
         assert_eq!(stats_after.total_executed, 2;
         assert_eq!(stats_after.stream_cleanups, 1;
         assert_eq!(stats_after.future_cleanups, 1;

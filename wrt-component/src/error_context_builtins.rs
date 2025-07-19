@@ -171,7 +171,7 @@ impl StackFrame {
         #[cfg(feature = "std")]
         return &self.function_name;
         #[cfg(not(any(feature = "std", )))]
-        return self.function_name.as_str(;
+        return self.function_name.as_str);
     }
 
     pub fn file_name(&self) -> Option<&str> {
@@ -305,7 +305,7 @@ impl ErrorContextImpl {
         #[cfg(feature = "std")]
         return &self.debug_message;
         #[cfg(not(any(feature = "std", )))]
-        return self.debug_message.as_str(;
+        return self.debug_message.as_str);
     }
 
     pub fn stack_frame_count(&self) -> usize {
@@ -318,9 +318,9 @@ impl ErrorContextImpl {
 
     #[cfg(feature = "std")]
     pub fn format_stack_trace(&self) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
         for (i, frame) in self.stack_trace.iter().enumerate() {
-            output.push_str(&format!("  #{}: {}", i, frame.function_name(;
+            output.push_str(&format!("  #{}: {}", i, frame.function_name);
             if let Some(file) = frame.file_name() {
                 output.push_str(&format!(" at {}:{}", file, frame.line_number.unwrap_or(0;
             }
@@ -331,7 +331,7 @@ impl ErrorContextImpl {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn format_stack_trace(&self) -> core::result::Result<BoundedString<1024, NoStdProvider<65536>>> {
-        let mut output = BoundedString::new(;
+        let mut output = BoundedString::new);
         for (i, frame) in self.stack_trace.iter().enumerate() {
             // Binary std/no_std choice
             output.push_str("  #").map_err(|_| Error::memory_allocation_failed("Stack trace format buffer full")
@@ -418,7 +418,7 @@ impl ErrorContextBuiltins {
         let mut registry_ref = ERROR_CONTEXT_REGISTRY.try_borrow_mut()
             .map_err(|_| Error::runtime_invalid_state("Error context registry borrow failed")
             ))?;
-        *registry_ref = Some(ErrorContextRegistry::new(;
+        *registry_ref = Some(ErrorContextRegistry::new);
         Ok(()
     }
 
@@ -738,8 +738,8 @@ mod tests {
 
     #[test]
     fn test_error_context_id_generation() {
-        let id1 = ErrorContextId::new(;
-        let id2 = ErrorContextId::new(;
+        let id1 = ErrorContextId::new);
+        let id2 = ErrorContextId::new);
         assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
@@ -843,7 +843,7 @@ mod tests {
             context.add_stack_frame(frame2;
 
             assert_eq!(context.stack_frame_count(), 2;
-            let trace = context.format_stack_trace(;
+            let trace = context.format_stack_trace);
             assert!(trace.contains("function1");
             assert!(trace.contains("function2");
             assert!(trace.contains("file1.rs");
@@ -870,7 +870,7 @@ mod tests {
 
     #[test]
     fn test_error_context_registry() {
-        let mut registry = ErrorContextRegistry::new(;
+        let mut registry = ErrorContextRegistry::new);
         assert_eq!(registry.context_count(), 0;
 
         #[cfg(feature = "std")]

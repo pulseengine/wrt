@@ -108,7 +108,7 @@ impl CategorizedError {
     /// Format the error for human-readable output
     #[must_use]
     pub fn format_human(&self, use_colors: bool) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         // Header with emoji and category
         if use_colors {

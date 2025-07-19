@@ -39,7 +39,7 @@ macro_rules! asil_error {
             if !error.validate_integrity() {
                 // ASIL-D: Enter safe state instead of panic
                 loop {
-                    core::hint::spin_loop(;
+                    core::hint::spin_loop);
                 }
             }
             error
@@ -71,7 +71,7 @@ macro_rules! asil_error {
 /// ```ignore
 /// use wrt_error::{monitor_error, Error, ErrorCategory, codes};
 ///
-/// let monitor = SafetyMonitor::new(;
+/// let monitor = SafetyMonitor::new);
 /// let error = Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Out of bounds";
 /// monitor_error!(monitor, error;
 /// ```
@@ -126,7 +126,7 @@ macro_rules! asil_assert {
             if !$condition {
                 // ASIL-D: Enter safe state instead of panic
                 loop {
-                    core::hint::spin_loop(;
+                    core::hint::spin_loop);
                 }
             }
             Ok(())
@@ -137,7 +137,7 @@ macro_rules! asil_assert {
             if !$condition {
                 // ASIL-C: Enter safe state for critical assertions
                 loop {
-                    core::hint::spin_loop(;
+                    core::hint::spin_loop);
                 }
             }
             Ok(())

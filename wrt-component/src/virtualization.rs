@@ -507,7 +507,7 @@ impl VirtualizationManager {
         }
 
         let current_usage =
-            component.memory_regions.iter().map(|region| region.size).sum::<usize>(;
+            component.memory_regions.iter().map(|region| region.size).sum::<usize>);
 
         if current_usage + size > component.resource_limits.max_memory {
             return Err(VirtualizationError {

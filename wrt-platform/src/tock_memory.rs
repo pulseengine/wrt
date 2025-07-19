@@ -219,7 +219,7 @@ impl TockAllocator {
             self.grant_regions[self.grant_regions_count] = Some(region;
             self.grant_regions_count += 1;
 
-            return Ok((;
+            return Ok();
         }
 
         // Binary std/no_std choice
@@ -331,7 +331,7 @@ impl PageAllocator for TockAllocator {
                 // Verify MPU configuration by attempting a test access
                 unsafe {
                     core::ptr::write_volatile(ptr.as_ptr(), 0x42;
-                    let value = core::ptr::read_volatile(ptr.as_ptr(;
+                    let value = core::ptr::read_volatile(ptr.as_ptr);
                     if value != 0x42 {
                         return Err(Error::validation_error("Memory verification failed";
                     }
@@ -362,7 +362,7 @@ impl PageAllocator for TockAllocator {
         for i in 0..self.grant_regions_count {
             if let Some(region) = &mut self.grant_regions[i] {
                 if region.ptr.as_ptr() == ptr.as_ptr() {
-                    region.deallocate(;
+                    region.deallocate);
                     break;
                 }
             }
@@ -455,7 +455,7 @@ mod tests {
         assert!(region.allocated);
         assert!(!region.can_satisfy(1024))); // Binary std/no_std choice
 
-        region.deallocate(;
+        region.deallocate);
         assert!(!region.allocated);
         assert!(region.can_satisfy(1024))); // Available again
     }
@@ -482,7 +482,7 @@ mod tests {
         let result = TockAllocatorBuilder::new()
             .with_maximum_pages(1)
             .with_static_buffer(unsafe { &mut BUFFER })
-            .build(;
+            .build);
 
         assert!(result.is_ok();
         let allocator = result.unwrap();

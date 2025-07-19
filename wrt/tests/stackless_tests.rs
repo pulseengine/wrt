@@ -68,7 +68,7 @@ fn test_direct_memory_operations() -> Result<()> {
     ;
 
     // Initialize the StacklessVM
-    let mut engine = wrt::new_stackless_engine(;
+    let mut engine = wrt::new_stackless_engine);
     let instance_idx = engine.instantiate(module.clone())?;
 
     // Check memory instance details before any operations
@@ -88,8 +88,8 @@ fn test_direct_memory_operations() -> Result<()> {
     // Manual checks to diagnose the issue
     {
         let instance = &engine.instances[instance_idx as usize];
-        println!("Created instance with {} memories", instance.memories.len(;
-        println!("Instance has {} memories", instance.memories.len(;
+        println!("Created instance with {} memories", instance.memories.len);
+        println!("Instance has {} memories", instance.memories.len);
         if !instance.memories.is_empty() {
             println!("Memory data around address 100 before any operations:";
             let start = if 100 >= 4 { 96 } else { 0 };
@@ -109,7 +109,7 @@ fn test_direct_memory_operations() -> Result<()> {
         if !instance.memories.is_empty() {
             // Set the value directly in memory
             let value: i32 = 42;
-            let bytes = value.to_le_bytes(;
+            let bytes = value.to_le_bytes);
             println!("Storing bytes: {:?}", bytes;
             // Add write lock
             let mut data = instance.memories[0].data.write().unwrap();

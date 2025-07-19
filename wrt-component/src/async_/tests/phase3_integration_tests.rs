@@ -53,22 +53,22 @@ mod tests {
                 Poll::Ready(Ok(vec![self.result_value.clone()])
             } else {
                 self.polls_remaining -= 1;
-                cx.waker().wake_by_ref(;
+                cx.waker().wake_by_ref);
                 Poll::Pending
             }
         }
     }
 
     fn create_test_bridge() -> TaskManagerAsyncBridge {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new(;
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new(;
-        let config = BridgeConfiguration::default(;
+        let task_manager = Arc::new(Mutex::new(TaskManager::new);
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new);
+        let config = BridgeConfiguration::default);
         TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
     }
 
     #[test]
     fn test_full_component_async_lifecycle() {
-        let mut bridge = create_test_bridge(;
+        let mut bridge = create_test_bridge);
         
         // Initialize component for async operations
         let component_id = ComponentInstanceId::new(1;
@@ -99,13 +99,13 @@ mod tests {
         }
 
         // Verify task completed
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
         assert!(stats.total_async_tasks > 0);
     }
 
     #[test]
     fn test_async_canonical_abi_operations() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
         let component_id = ComponentInstanceId::new(1;
@@ -157,7 +157,7 @@ mod tests {
         let result = abi_support.poll_async_operations().unwrap();
         assert!(result.ready_operations >= 0);
 
-        let stats = abi_support.get_abi_statistics(;
+        let stats = abi_support.get_abi_statistics);
         assert_eq!(stats.total_async_calls, 1;
         assert_eq!(stats.async_lifts, 1;
         assert_eq!(stats.async_lowers, 1;
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_resource_async_operations() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let abi_support = AsyncCanonicalAbiSupport::new(bridge;
         let mut resource_ops = ResourceAsyncOperations::new(abi_support;
         
@@ -201,7 +201,7 @@ mod tests {
         // Poll operations
         let result = resource_ops.poll_resource_operations().unwrap();
         
-        let stats = resource_ops.get_resource_statistics(;
+        let stats = resource_ops.get_resource_statistics);
         assert_eq!(stats.total_creates, 1;
         assert_eq!(stats.total_method_calls, 1;
         assert_eq!(stats.total_borrows, 1;
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn test_future_and_stream_operations() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
         let component_id = ComponentInstanceId::new(1;
@@ -260,20 +260,20 @@ mod tests {
         // Poll all operations
         let result = abi_support.poll_async_operations().unwrap();
         
-        let stats = abi_support.get_abi_statistics(;
+        let stats = abi_support.get_abi_statistics);
         assert_eq!(stats.future_operations, 3;
         assert_eq!(stats.stream_operations, 3;
     }
 
     #[test]
     fn test_task_manager_integration() {
-        let mut bridge = create_test_bridge(;
+        let mut bridge = create_test_bridge);
         
         let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Test task.wait implementation
-        let waitables = crate::async_::async_types::WaitableSet::new(;
+        let waitables = crate::async_::async_types::WaitableSet::new);
         
         // In real implementation, would set up actual waitables
         // let result = bridge.task_wait(waitables).unwrap();
@@ -284,13 +284,13 @@ mod tests {
         // Test task.poll implementation
         // let poll_result = bridge.task_poll(&waitables).unwrap();
 
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
         assert_eq!(stats.active_components, 1;
     }
 
     #[test]
     fn test_component_isolation() {
-        let mut bridge = create_test_bridge(;
+        let mut bridge = create_test_bridge);
         
         // Initialize multiple components
         let component1 = ComponentInstanceId::new(1;
@@ -329,14 +329,14 @@ mod tests {
             bridge.poll_async_tasks().unwrap();
         }
 
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
         assert_eq!(stats.active_components, 2;
         assert!(stats.total_async_tasks >= 2);
     }
 
     #[test]
     fn test_component_suspension() {
-        let mut bridge = create_test_bridge(;
+        let mut bridge = create_test_bridge);
         
         let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
@@ -360,13 +360,13 @@ mod tests {
         // Poll - should not make progress on suspended component
         let result = bridge.poll_async_tasks().unwrap();
         
-        let stats = bridge.get_bridge_statistics(;
+        let stats = bridge.get_bridge_statistics);
         assert_eq!(stats.active_components, 1;
     }
 
     #[test]
     fn test_error_handling_and_recovery() {
-        let mut bridge = create_test_bridge(;
+        let mut bridge = create_test_bridge);
         
         let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();

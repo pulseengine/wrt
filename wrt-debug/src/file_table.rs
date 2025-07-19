@@ -53,9 +53,9 @@ impl<'a> Eq for FileEntry<'a> {}
 impl<'a> wrt_foundation::traits::Checksummable for FileEntry<'a> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.path.update_checksum(checksum;
-        checksum.update_slice(&self.dir_index.to_le_bytes(;
-        checksum.update_slice(&self.mod_time.to_le_bytes(;
-        checksum.update_slice(&self.size.to_le_bytes(;
+        checksum.update_slice(&self.dir_index.to_le_bytes);
+        checksum.update_slice(&self.mod_time.to_le_bytes);
+        checksum.update_slice(&self.size.to_le_bytes);
     }
 }
 
@@ -237,7 +237,7 @@ mod tests {
         let string_data = b"\0src\0lib\0main.rs\0utils.rs\0tests\0";
         let string_table = StringTable::new(string_data;
 
-        let mut file_table = FileTable::new(;
+        let mut file_table = FileTable::new);
 
         // Add directories
         let src_dir = string_table.get_string(1).unwrap();
@@ -290,7 +290,7 @@ mod tests {
             filename:  string_table.get_string(5).unwrap(),
         };
 
-        let mut output = String::new(;
+        let mut output = String::new);
         path.display(|s| {
             output.push_str(s;
             Ok(())

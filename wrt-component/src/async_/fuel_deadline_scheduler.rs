@@ -455,7 +455,7 @@ impl FuelDeadlineScheduler {
         }
 
         let schedulable = total_utilization <= self.config.global_utilization_bound 
-                         && problematic_tasks.is_empty(;
+                         && problematic_tasks.is_empty);
 
         Ok(SchedulabilityResult {
             schedulable,
@@ -564,7 +564,7 @@ impl FuelDeadlineScheduler {
                 })?;
                 
                 queue.total_utilization += task.utilization;
-                return Ok((;
+                return Ok();
             }
         }
         
@@ -606,7 +606,7 @@ impl FuelDeadlineScheduler {
         let current_time = self.current_fuel_time.load(Ordering::Acquire;
         
         // Find tasks ready for execution
-        queue.edf_ready_queue.clear(;
+        queue.edf_ready_queue.clear);
         
         for &task_id in queue.rm_tasks.iter() {
             if let Some(task) = self.task_info.get(&task_id) {
@@ -644,7 +644,7 @@ impl FuelDeadlineScheduler {
 
     fn sort_edf_queue(&self, edf_queue: &mut BoundedVec<TaskId, MAX_TASKS_PER_LEVEL>, _current_time: u64) -> Result<(), Error> {
         // Simple bubble sort for EDF ordering
-        let len = edf_queue.len(;
+        let len = edf_queue.len);
         for i in 0..len {
             for j in 0..len.saturating_sub(1 + i) {
                 let should_swap = {
@@ -741,7 +741,7 @@ impl FuelDeadlineScheduler {
 
     fn check_deadline_misses(&mut self, current_time: u64) -> Result<(), Error> {
         if !self.config.enable_deadline_monitoring {
-            return Ok((;
+            return Ok();
         }
 
         let mut total_misses = 0;
@@ -760,7 +760,7 @@ impl FuelDeadlineScheduler {
 
     fn check_criticality_mode_switch(&mut self, _current_time: u64) -> Result<(), Error> {
         if !self.config.enable_criticality_switching {
-            return Ok((;
+            return Ok();
         }
 
         let total_misses = self.stats.total_deadline_misses.load(Ordering::Acquire;
@@ -855,17 +855,17 @@ mod tests {
 
     #[test]
     fn test_deadline_scheduler_creation() {
-        let config = DeadlineSchedulerConfig::default(;
+        let config = DeadlineSchedulerConfig::default);
         let scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Standard).unwrap();
         
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.total_tasks.load(Ordering::Acquire), 0;
         assert_eq!(stats.current_utilization.load(Ordering::Acquire), 0;
     }
 
     #[test]
     fn test_add_deadline_task() {
-        let config = DeadlineSchedulerConfig::default(;
+        let config = DeadlineSchedulerConfig::default);
         let mut scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Standard).unwrap();
         
         let result = scheduler.add_deadline_task(
@@ -880,14 +880,14 @@ mod tests {
         
         assert!(result.is_ok();
         
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.total_tasks.load(Ordering::Acquire), 1;
         assert_eq!(stats.active_tasks.load(Ordering::Acquire), 1;
     }
 
     #[test]
     fn test_constrained_deadline_validation() {
-        let config = DeadlineSchedulerConfig::default(;
+        let config = DeadlineSchedulerConfig::default);
         let mut scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Standard).unwrap();
         
         // Test invalid deadline > period
@@ -906,7 +906,7 @@ mod tests {
 
     #[test]
     fn test_criticality_mode_switching() {
-        let config = DeadlineSchedulerConfig::default(;
+        let config = DeadlineSchedulerConfig::default);
         let mut scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Standard).unwrap();
         
         // Add tasks at different ASIL levels
@@ -927,14 +927,14 @@ mod tests {
         scheduler.switch_criticality_mode(CriticalityMode::High).unwrap();
         
         // ASIL-A task should be dropped, ASIL-C task remains
-        let stats = scheduler.get_statistics(;
+        let stats = scheduler.get_statistics);
         assert_eq!(stats.tasks_dropped.load(Ordering::Acquire), 1;
         assert_eq!(stats.criticality_switches.load(Ordering::Acquire), 1;
     }
 
     #[test]
     fn test_schedulability_analysis() {
-        let config = DeadlineSchedulerConfig::default(;
+        let config = DeadlineSchedulerConfig::default);
         let mut scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Standard).unwrap();
         
         // Add schedulable task set
@@ -955,7 +955,7 @@ mod tests {
 
     #[test]
     fn test_rm_priority_assignment() {
-        let config = DeadlineSchedulerConfig::default(;
+        let config = DeadlineSchedulerConfig::default);
         let scheduler = FuelDeadlineScheduler::new(config, VerificationLevel::Standard).unwrap();
         
         // Test Rate Monotonic priority assignment

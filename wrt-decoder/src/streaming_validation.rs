@@ -238,7 +238,7 @@ impl StreamingValidator {
                 .with_context("expected_size", "8")
                 .with_context("actual_size", data.len().to_string()),
             )?;
-            return Ok((;
+            return Ok();
         }
 
         // Check magic number
@@ -588,7 +588,7 @@ mod tests {
         let valid_header = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         validator.validate_header(&valid_header, 0).unwrap();
 
-        let report = validator.generate_report(;
+        let report = validator.generate_report);
         assert_eq!(report.info_count, 1); // Should have info about core module
         assert!(report.validation_passed);
     }
@@ -601,7 +601,7 @@ mod tests {
         let invalid_header = [0xFF, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         validator.validate_header(&invalid_header, 0).unwrap();
 
-        let report = validator.generate_report(;
+        let report = validator.generate_report);
         assert!(report.critical_count > 0);
         assert!(!report.validation_passed);
     }

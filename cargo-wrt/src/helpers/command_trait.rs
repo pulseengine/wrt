@@ -145,7 +145,7 @@ impl StandardCommand for TestCommand {
         };
 
         let output_format = global.output_format.clone();
-        let use_colors = global.output.is_colored(;
+        let use_colors = global.output.is_colored);
 
         crate::cmd_test(
             build_system,

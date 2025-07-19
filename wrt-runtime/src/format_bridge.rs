@@ -273,7 +273,7 @@ impl RuntimeModuleInitializer {
             let total_data_size: usize = runtime_data.data_extractions
                 .iter()
                 .map(|e| e.data_size)
-                .sum(;
+                .sum);
                 
             if total_data_size > self.context.asil_constraints.max_memory_allocation {
                 return Err(Error::resource_exhausted("Data size exceeds ASIL-D memory limits";

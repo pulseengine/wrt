@@ -15,7 +15,7 @@ mod std_encoding {
 
     /// Encode a WebAssembly Component Model component into binary format
     pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
-        let mut binary = Vec::new(;
+        let mut binary = Vec::new);
 
         // Write magic and version
         binary.extend_from_slice(&binary::COMPONENT_MAGIC); // \0asm
@@ -44,7 +44,7 @@ mod std_encoding {
                 crate::component::name_section::generate_component_name_section(&name_section)?;
 
             // Create the custom section content
-            let mut custom_section_content = Vec::new(;
+            let mut custom_section_content = Vec::new);
             custom_section_content.extend_from_slice(&write_string("name";
             custom_section_content.extend_from_slice(&name_section_bytes;
 
@@ -100,7 +100,7 @@ mod std_encoding {
     }
 
     fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<Vec<u8>> {
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
 
         // Write count of modules
         data.extend_from_slice(&write_leb128_u32(modules.len() as u32;
@@ -125,7 +125,7 @@ mod std_encoding {
     fn encode_core_instance_section(
         instances: &[wrt_format::component::CoreInstance],
     ) -> Result<Vec<u8>> {
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
 
         // Write count of instances
         data.extend_from_slice(&write_leb128_u32(instances.len() as u32;
@@ -178,7 +178,7 @@ mod std_encoding {
     }
 
     fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Vec<u8>> {
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
 
         // Write count of imports
         data.extend_from_slice(&write_leb128_u32(imports.len() as u32;
@@ -490,7 +490,7 @@ mod std_encoding {
     }
 
     fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Vec<u8>> {
-        let mut data = Vec::new(;
+        let mut data = Vec::new);
 
         // Write count of exports
         data.extend_from_slice(&write_leb128_u32(exports.len() as u32;
@@ -602,7 +602,7 @@ mod std_encoding {
             },
             wrt_format::component::FormatValType::Record(fields) => {
                 // Create new vectors of fields to avoid references to temporaries
-                let mut new_fields = Vec::with_capacity(fields.len(;
+                let mut new_fields = Vec::with_capacity(fields.len);
                 for (name, field_type) in fields {
                     let new_name = name.clone();
                     let new_field_type = format_val_type_to_val_type(field_type;
@@ -612,7 +612,7 @@ mod std_encoding {
             },
             wrt_format::component::FormatValType::Variant(cases) => {
                 // Create new vectors of cases to avoid references to temporaries
-                let mut new_cases = Vec::with_capacity(cases.len(;
+                let mut new_cases = Vec::with_capacity(cases.len);
                 for (name, case_type) in cases {
                     let new_name = name.clone();
                     let new_case_type = case_type.as_ref().map(format_val_type_to_val_type);
@@ -685,7 +685,7 @@ mod std_encoding {
 
         #[test]
         fn test_encode_empty_component() {
-            let component = Component::new(;
+            let component = Component::new);
             let binary = encode_component(&component).unwrap();
 
             // Check magic and version
@@ -698,7 +698,7 @@ mod std_encoding {
 
         #[test]
         fn test_encode_component_with_name() {
-            let mut component = Component::new(;
+            let mut component = Component::new);
             component.name = Some("test_component".to_string();
 
             let binary = encode_component(&component).unwrap();
@@ -713,7 +713,7 @@ mod std_encoding {
 
         #[test]
         fn test_encode_component_with_core_instance() {
-            let mut component = Component::new(;
+            let mut component = Component::new);
 
             // Add a core instance with inline exports
             let instance = CoreInstance {
@@ -737,7 +737,7 @@ mod std_encoding {
 
         #[test]
         fn test_encode_component_with_imports() {
-            let mut component = Component::new(;
+            let mut component = Component::new);
 
             // Add an import
             let import = Import {
@@ -760,7 +760,7 @@ mod std_encoding {
 
         #[test]
         fn test_encode_component_with_exports() {
-            let mut component = Component::new(;
+            let mut component = Component::new);
 
             // Add an export
             let export = Export {

@@ -44,7 +44,7 @@ mod tests {
                 self.polls_remaining -= 1;
                 let fuel = self.fuel_per_poll.load(Ordering::Acquire;
                 self.total_consumed.fetch_add(fuel, Ordering::AcqRel;
-                cx.waker().wake_by_ref(;
+                cx.waker().wake_by_ref);
                 Poll::Pending
             }
         }
@@ -213,7 +213,7 @@ mod tests {
         assert!(emergency_fuel > 0);
         
         // Check reserve was reduced
-        let stats = fuel_manager.get_allocation_stats(;
+        let stats = fuel_manager.get_allocation_stats);
         assert!(stats.reserve_fuel < 10_000);
     }
 
@@ -239,7 +239,7 @@ mod tests {
         ).unwrap();
 
         // Spawn multiple tasks that compete for fuel
-        let mut task_ids = Vec::new(;
+        let mut task_ids = Vec::new);
         let completed = Arc::new(AtomicU64::new(0;
 
         for i in 0..5 {
@@ -297,7 +297,7 @@ mod tests {
         // Refill quantums
         preemption_mgr.refill_quantums(2000;
         
-        let stats = preemption_mgr.get_statistics(;
+        let stats = preemption_mgr.get_statistics);
         assert_eq!(stats.total_preemptions, 0); // No preemptions yet
     }
 

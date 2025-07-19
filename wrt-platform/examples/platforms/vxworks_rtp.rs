@@ -20,22 +20,22 @@ fn main() {
     #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
     {
         println!("Running VxWorks RTP examples...\n";
-        run_rtp_examples(;
+        run_rtp_examples);
     }
     
     #[cfg(not(all(feature = "platform-vxworks", target_os = "vxworks")))]
     {
         println!("VxWorks platform not available - showing RTP concepts";
-        show_rtp_concepts(;
+        show_rtp_concepts);
     }
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn run_rtp_examples() {
-    example_rtp_memory(;
-    example_rtp_synchronization(;
-    example_rtp_threading(;
-    example_rtp_integration(;
+    example_rtp_memory);
+    example_rtp_synchronization);
+    example_rtp_threading);
+    example_rtp_integration);
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
@@ -59,7 +59,7 @@ fn example_rtp_memory() {
     match allocator.allocate(initial_pages, max_pages) {
         Ok((ptr, size)) => {
             println!("✓ Allocated {} pages ({} bytes)", initial_pages, size;
-            println!("  Memory at: {:p}", ptr.as_ptr(;
+            println!("  Memory at: {:p}", ptr.as_ptr);
             
             // Test memory growth
             if allocator.grow(initial_pages, 5).is_ok() {

@@ -324,7 +324,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         let Some(base_ptr) = self.base_ptr else {
             return Err(Error::runtime_execution_error("Cannot write: memory not initialized";
         };
-        self.track_access(offset, data.len(;
+        self.track_access(offset, data.len);
         // Use ASIL-D safe memory operation wrapper  
         let dest_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, data.len())
             .map_err(|_| Error::memory_access_out_of_bounds("Invalid memory write bounds"))?;
@@ -401,7 +401,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 
     fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
         if len == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Verify source and destination ranges independently first.
@@ -429,7 +429,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
     }
 
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
-        let current_size_bytes = self.size(;
+        let current_size_bytes = self.size);
         if byte_offset > current_size_bytes {
             if byte_offset > self.capacity() {
                 return Err(Error::runtime_execution_error("Requested byte offset exceeds memory capacity";
@@ -559,8 +559,8 @@ mod kani_proofs {
     /// Verify memory bounds checking never overflows
     #[kani::proof]
     fn verify_no_overflow_in_bounds_check() {
-        let offset: usize = kani::any(;
-        let len: usize = kani::any(;
+        let offset: usize = kani::any);
+        let len: usize = kani::any);
         
         // Verify that overflow detection works correctly
         if let Some(end) = offset.checked_add(len) {

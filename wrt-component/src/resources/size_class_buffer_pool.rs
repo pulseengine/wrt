@@ -62,7 +62,7 @@ impl SizeClassBufferPool {
     /// Allocate a buffer of at least the specified size
     pub fn allocate(&mut self, size: usize) -> Vec<u8> {
         // Find the appropriate size class (next power of 2)
-        let class_size = size.next_power_of_two(;
+        let class_size = size.next_power_of_two);
 
         // If the size is too small, use minimum 16 bytes
         let class_size = std::cmp::max(class_size, 16;
@@ -89,7 +89,7 @@ impl SizeClassBufferPool {
 
     /// Allocate a buffer from the overflow pool
     fn allocate_overflow(&mut self, size: usize) -> Vec<u8> {
-        let size = size.next_power_of_two(;
+        let size = size.next_power_of_two);
 
         // Try to get a buffer from the overflow pool
         if let Some(buffers) = self.overflow_pools.get_mut(&size) {
@@ -104,7 +104,7 @@ impl SizeClassBufferPool {
 
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, mut buffer: Vec<u8>) {
-        let capacity = buffer.capacity(;
+        let capacity = buffer.capacity);
 
         // Don't keep oversized buffers
         if capacity > self.max_buffer_size {
@@ -112,7 +112,7 @@ impl SizeClassBufferPool {
         }
 
         // Clear the buffer before returning it
-        buffer.clear(;
+        buffer.clear);
 
         if capacity <= 16384 {
             // Find the right size class
@@ -158,9 +158,9 @@ impl SizeClassBufferPool {
     /// Reset the buffer pool, clearing all pooled buffers
     pub fn reset(&mut self) {
         for class in &mut self.size_classes {
-            class.clear(;
+            class.clear);
         }
-        self.overflow_pools.clear(;
+        self.overflow_pools.clear);
     }
 
     /// Get statistics about the buffer pool
@@ -171,14 +171,14 @@ impl SizeClassBufferPool {
         // Count buffers in size classes
         for (i, class) in self.size_classes.iter().enumerate() {
             let class_size = 16 << i; // 16, 32, 64, ...
-            total_buffers += class.len(;
-            total_capacity += class_size * class.len(;
+            total_buffers += class.len);
+            total_capacity += class_size * class.len);
         }
 
         // Count buffers in overflow pools
         for (size, buffers) in &self.overflow_pools {
-            total_buffers += buffers.len(;
-            total_capacity += size * buffers.len(;
+            total_buffers += buffers.len);
+            total_capacity += size * buffers.len);
         }
 
         BufferPoolStats {
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_allocate_from_size_class() {
-        let mut pool = SizeClassBufferPool::new(;
+        let mut pool = SizeClassBufferPool::new);
 
         // Allocate a buffer
         let buffer = pool.allocate(100;
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_size_classes() {
-        let mut pool = SizeClassBufferPool::new(;
+        let mut pool = SizeClassBufferPool::new);
 
         // Test a few size classes
         let sizes = [15, 32, 33, 500, 1025, 4000, 16385];
@@ -245,7 +245,7 @@ mod tests {
         pool.return_buffer(buffer3;
 
         // Pool should only have kept 2
-        let stats = pool.stats(;
+        let stats = pool.stats);
         assert_eq!(stats.total_buffers, 2;
     }
 
@@ -260,13 +260,13 @@ mod tests {
         pool.return_buffer(large_buffer;
 
         // Should not be kept because it's too large
-        let stats = pool.stats(;
+        let stats = pool.stats);
         assert_eq!(stats.total_buffers, 0;
     }
 
     #[test]
     fn test_reset() {
-        let mut pool = SizeClassBufferPool::new(;
+        let mut pool = SizeClassBufferPool::new);
 
         // Allocate and return some buffers
         pool.return_buffer(pool.allocate(64;
@@ -274,14 +274,14 @@ mod tests {
         pool.return_buffer(pool.allocate(4096;
 
         // Check stats before reset
-        let stats_before = pool.stats(;
+        let stats_before = pool.stats);
         assert_eq!(stats_before.total_buffers, 3;
 
         // Reset the pool
-        pool.reset(;
+        pool.reset);
 
         // Check stats after reset
-        let stats_after = pool.stats(;
+        let stats_after = pool.stats);
         assert_eq!(stats_after.total_buffers, 0;
     }
 }

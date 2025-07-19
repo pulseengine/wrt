@@ -17,7 +17,7 @@ mod zephyr_tests {
             .with_maximum_pages(100)
             .with_memory_domains(true)
             .with_guard_regions(true)
-            .build(;
+            .build);
 
         // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
@@ -27,10 +27,10 @@ mod zephyr_tests {
     fn test_zephyr_allocator_configuration() {
         // Test different memory attribute configurations
         let read_only_allocator =
-            ZephyrAllocatorBuilder::new().with_memory_attributes(ZephyrMemoryFlags::Read).build(;
+            ZephyrAllocatorBuilder::new().with_memory_attributes(ZephyrMemoryFlags::Read).build);
 
         let read_write_allocator =
-            ZephyrAllocatorBuilder::new().with_memory_attributes(ZephyrMemoryFlags::Write).build(;
+            ZephyrAllocatorBuilder::new().with_memory_attributes(ZephyrMemoryFlags::Write).build);
 
         // All should build successfully
         assert!(core::mem::size_of_val(&read_only_allocator) > 0);
@@ -39,7 +39,7 @@ mod zephyr_tests {
 
     #[test]
     fn test_zephyr_futex_creation() {
-        let futex = ZephyrFutexBuilder::new().with_initial_value(42).build(;
+        let futex = ZephyrFutexBuilder::new().with_initial_value(42).build);
 
         // Verify the futex was created successfully
         assert!(core::mem::size_of_val(&futex) > 0);
@@ -66,7 +66,7 @@ mod zephyr_tests {
     #[test]
     fn test_zephyr_allocator_with_custom_heap() {
         let allocator =
-            ZephyrAllocatorBuilder::new().with_custom_heap(true).with_maximum_pages(50).build(;
+            ZephyrAllocatorBuilder::new().with_custom_heap(true).with_maximum_pages(50).build);
 
         // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
@@ -77,7 +77,7 @@ mod zephyr_tests {
         let allocator = ZephyrAllocatorBuilder::new()
             .with_memory_domains(false)
             .with_guard_regions(false)
-            .build(;
+            .build);
 
         // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
@@ -96,11 +96,11 @@ fn test_zephyr_platform_compilation() {
         use wrt_platform::*;
 
         // Basic verification that types exist
-        let _ = core::mem::size_of::<NoStdProvider<1024>>(;
+        let _ = core::mem::size_of::<NoStdProvider<1024>>);
 
         // Zephyr-specific types should be available
-        let _ = core::mem::size_of::<ZephyrAllocatorBuilder>(;
-        let _ = core::mem::size_of::<ZephyrFutexBuilder>(;
-        let _ = core::mem::size_of::<ZephyrMemoryFlags>(;
+        let _ = core::mem::size_of::<ZephyrAllocatorBuilder>);
+        let _ = core::mem::size_of::<ZephyrFutexBuilder>);
+        let _ = core::mem::size_of::<ZephyrMemoryFlags>);
     }
 }

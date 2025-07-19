@@ -104,7 +104,7 @@ mod resource_handle_tests {
     #[test]
     fn test_resource_handle_cross_crate_prevention() {
         // Try to initialize, but ignore if already initialized
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Create resource in Runtime crate
         let mut resource = ResourceHandle::new(1, CrateId::Runtime, 1024).unwrap();
@@ -114,12 +114,12 @@ mod resource_handle_tests {
         assert!(result.is_err();
         assert!(result.unwrap_err().to_string().contains("Cannot transfer resource handle");
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_resource_lifetime_tracking() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         let initial_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         let initial_usage = initial_stats.allocated_bytes;
@@ -138,7 +138,7 @@ mod resource_handle_tests {
         let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         assert_eq!(final_stats.allocated_bytes, initial_usage;
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -178,7 +178,7 @@ mod component_interaction_tests {
 
     #[test]
     fn test_component_instantiation_budget_tracking() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Create component instances in different crates
         let comp1 = ComponentInstance::new(1, CrateId::Component).unwrap();
@@ -192,12 +192,12 @@ mod component_interaction_tests {
         assert!(runtime_stats.allocated_bytes > 0);
         assert_ne!(comp_stats.allocated_bytes, runtime_stats.allocated_bytes;
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_canonical_abi_compliance() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Simulate canonical ABI memory operations
         let provider = BudgetProvider::<4096>::new(CrateId::Component).unwrap();
@@ -212,7 +212,7 @@ mod component_interaction_tests {
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component).unwrap();
         assert!(stats.allocated_bytes >= 4096);
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -220,7 +220,7 @@ mod error_propagation_tests {
     use super::*;
 
     fn allocate_until_exhausted(crate_id: CrateId) -> WrtResult<Vec<BudgetProvider<1024>>> {
-        let mut providers = Vec::new(;
+        let mut providers = Vec::new);
         loop {
             match BudgetProvider::<1024>::new(crate_id) {
                 Ok(p) => providers.push(p),
@@ -237,7 +237,7 @@ mod error_propagation_tests {
 
     #[test]
     fn test_budget_exhaustion_recovery() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Exhaust Runtime crate budget
         let providers = allocate_until_exhausted(CrateId::Runtime).unwrap();
@@ -251,7 +251,7 @@ mod error_propagation_tests {
 
         // Drop half the providers to free budget
         let half = providers.len() / 2;
-        drop(providers.into_iter().take(half).collect::<Vec<_>>(;
+        drop(providers.into_iter().take(half).collect::<Vec<_>>);
 
         // Verify Runtime can allocate again
         let new_provider = BudgetProvider::<1024>::new(CrateId::Runtime).unwrap();
@@ -259,12 +259,12 @@ mod error_propagation_tests {
         let alloc_result = new_provider.allocate(layout;
         assert!(alloc_result.is_ok();
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_cross_crate_error_propagation() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Function that propagates errors across crates
         fn cross_crate_operation() -> WrtResult<()> {
@@ -282,7 +282,7 @@ mod error_propagation_tests {
         // Should succeed normally
         assert!(cross_crate_operation().is_ok();
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -291,25 +291,25 @@ mod performance_tests {
 
     #[test]
     fn test_allocation_overhead() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         const ITERATIONS: usize = 10000;
 
         // Measure budget-aware allocation time
-        let start = Instant::now(;
+        let start = Instant::now);
         for _ in 0..ITERATIONS {
             let provider = BudgetProvider::<256>::new(CrateId::Runtime).unwrap();
             let layout = Layout::from_size_align(128, 8).unwrap();
             let _ = provider.allocate(layout;
         }
-        let budget_aware_duration = start.elapsed(;
+        let budget_aware_duration = start.elapsed);
 
         // Measure direct allocation time (for comparison)
-        let start = Instant::now(;
+        let start = Instant::now);
         for _ in 0..ITERATIONS {
             let _data = vec![0u8; 128];
         }
-        let direct_duration = start.elapsed(;
+        let direct_duration = start.elapsed);
 
         // Budget tracking should add less than 5x overhead
         let overhead_ratio =
@@ -317,17 +317,17 @@ mod performance_tests {
         println!("Allocation overhead ratio: {:.2}x", overhead_ratio;
         assert!(overhead_ratio < 5.0, "Budget tracking overhead too high: {:.2}x", overhead_ratio);
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_scalability_thousands_allocations() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         const ALLOCATION_COUNT: usize = 5000;
-        let mut providers = Vec::new(;
+        let mut providers = Vec::new);
 
-        let start = Instant::now(;
+        let start = Instant::now);
         for i in 0..ALLOCATION_COUNT {
             let crate_id = match i % 4 {
                 0 => CrateId::Runtime,
@@ -340,7 +340,7 @@ mod performance_tests {
                 providers.push(provider);
             }
         }
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
 
         println!("Created {} allocations in {:?}", providers.len(), duration;
         assert!(
@@ -349,7 +349,7 @@ mod performance_tests {
             ALLOCATION_COUNT
         ;
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -358,13 +358,13 @@ mod edge_case_tests {
 
     #[test]
     fn test_zero_budget_crate_behavior() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Note: In practice, crates always have some budget
         // This tests graceful handling if budget is exhausted
 
         // Exhaust a crate's budget
-        let mut providers = Vec::new(;
+        let mut providers = Vec::new);
         while let Ok(p) = BudgetProvider::<1024>::new(CrateId::Math) {
             providers.push(p);
         }
@@ -374,12 +374,12 @@ mod edge_case_tests {
         assert!(result.is_err();
         assert!(result.unwrap_err().to_string().contains("budget");
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_maximum_allocation_limits() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Test various allocation sizes
         const SIZES: &[usize] = &[
@@ -419,12 +419,12 @@ mod edge_case_tests {
             }
         }
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_integer_overflow_protection() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Test that budget calculations don't overflow
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
@@ -438,7 +438,7 @@ mod edge_case_tests {
         let available = budget.saturating_sub(usage;
         assert!(available <= budget);
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -447,12 +447,12 @@ mod thread_safety_tests {
 
     #[test]
     fn test_concurrent_budget_updates() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         const THREAD_COUNT: usize = 8;
         const ALLOCATIONS_PER_THREAD: usize = 100;
 
-        let mut handles = Vec::new(;
+        let mut handles = Vec::new);
 
         for thread_id in 0..THREAD_COUNT {
             let handle = thread::spawn(move || {
@@ -463,7 +463,7 @@ mod thread_safety_tests {
                     _ => CrateId::Host,
                 };
 
-                let mut providers = Vec::new(;
+                let mut providers = Vec::new);
                 for _ in 0..ALLOCATIONS_PER_THREAD {
                     if let Ok(p) = BudgetProvider::<256>::new(crate_id) {
                         providers.push(p);
@@ -474,17 +474,17 @@ mod thread_safety_tests {
             handles.push(handle);
         }
 
-        let total_allocations: usize = handles.into_iter().map(|h| h.join().unwrap()).sum(;
+        let total_allocations: usize = handles.into_iter().map(|h| h.join().unwrap()).sum);
 
         println!("Total concurrent allocations: {}", total_allocations;
         assert!(total_allocations > 0);
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_atomic_budget_operations() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         let usage_before = Arc::new(AtomicUsize::new(0;
         let usage_after = Arc::new(AtomicUsize::new(0;
@@ -496,7 +496,7 @@ mod thread_safety_tests {
         ;
 
         // Concurrent allocations and deallocations
-        let mut handles = Vec::new(;
+        let mut handles = Vec::new);
 
         for _ in 0..4 {
             let usage_after_clone = usage_after.clone();
@@ -530,7 +530,7 @@ mod thread_safety_tests {
         // Allow some variance due to shared pool
         assert!(final_usage <= initial + 4096, "Memory leak detected in concurrent operations");
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -539,7 +539,7 @@ mod diagnostic_integration_tests {
 
     #[test]
     fn test_debug_vs_release_tracking() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Tracking should work in both debug and release modes
         let provider = BudgetProvider::<1024>::new(CrateId::Debug).unwrap();
@@ -566,12 +566,12 @@ mod diagnostic_integration_tests {
             assert!(stats.allocated_bytes >= 1024);
         }
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_memory_leak_detection() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Intentionally create a potential leak scenario
         let leaked_providers: Vec<BudgetProvider<512>> =
@@ -582,12 +582,12 @@ mod diagnostic_integration_tests {
         assert!(usage_with_leaks >= 5120)); // At least 10 * 512
 
         // In a real system, leak detection would identify these allocations
-        println!("Simulated memory leak scenario with {} allocations", leaked_providers.len(;
+        println!("Simulated memory leak scenario with {} allocations", leaked_providers.len);
 
         // Clean up
         drop(leaked_providers;
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -596,26 +596,26 @@ mod custom_strategy_tests {
 
     #[test]
     fn test_custom_memory_strategy() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
-        let strategy = TestMemoryStrategy::new(;
+        let strategy = TestMemoryStrategy::new);
 
         // Allocate using custom strategy
         let id1 = strategy.allocate(1024).unwrap();
         let id2 = strategy.allocate(2048).unwrap();
 
-        let (count, bytes) = strategy.get_stats(;
+        let (count, bytes) = strategy.get_stats);
         assert_eq!(count, 2;
         assert_eq!(bytes, 3072;
 
         // Deallocate
         strategy.deallocate(id1).unwrap();
 
-        let (count, bytes) = strategy.get_stats(;
+        let (count, bytes) = strategy.get_stats);
         assert_eq!(count, 2); // Count doesn't decrease
         assert_eq!(bytes, 2048;
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
@@ -631,16 +631,16 @@ mod custom_strategy_tests {
         let budget = stats.budget_bytes;
         assert!(budget < 10 * 1024)); // Should be small for embedded
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
 
         // Test desktop platform
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         let budget = stats.budget_bytes;
         assert!(budget > 100 * 1024)); // Should be larger for desktop
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -659,7 +659,7 @@ mod external_integration_tests {
 
     #[test]
     fn test_wasi_integration() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Simulate WASI memory operations
         let ptr1 = wasi_malloc(1024, CrateId::Host).unwrap();
@@ -672,12 +672,12 @@ mod external_integration_tests {
         let usage = stats.allocated_bytes;
         assert!(usage >= 8192)); // Two 4096 allocations
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_host_function_budget_enforcement() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Simulate host function that allocates memory
         fn host_function_with_allocation() -> WrtResult<Vec<u8>> {
@@ -693,7 +693,7 @@ mod external_integration_tests {
         }
 
         // Call host function multiple times
-        let mut results = Vec::new(;
+        let mut results = Vec::new);
         for _ in 0..5 {
             if let Ok(buffer) = host_function_with_allocation() {
                 results.push(buffer);
@@ -702,7 +702,7 @@ mod external_integration_tests {
 
         assert!(!results.is_empty();
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -714,7 +714,7 @@ mod compile_time_enforcement_tests {
 
     #[test]
     fn test_type_safety_enforcement() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // This compiles - correct usage
         let provider = BudgetProvider::<1024>::new(CrateId::Runtime).unwrap();
@@ -723,12 +723,12 @@ mod compile_time_enforcement_tests {
         // let bad_provider: BudgetProvider<0> = BudgetProvider::new(CrateId::Runtime).unwrap();
         // let negative_size: BudgetProvider<-1> = BudgetProvider::new(CrateId::Runtime).unwrap();
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 
     #[test]
     fn test_const_generic_validation() {
-        let _ = memory_system_initializer::presets::development(;
+        let _ = memory_system_initializer::presets::development);
 
         // Valid const generic sizes
         const SMALL: usize = 256;
@@ -747,7 +747,7 @@ mod compile_time_enforcement_tests {
         assert!(medium_provider.allocate(layout2).is_ok();
         assert!(large_provider.allocate(layout3).is_ok();
 
-        let _ = memory_system_initializer::complete_global_memory_initialization(;
+        let _ = memory_system_initializer::complete_global_memory_initialization);
     }
 }
 
@@ -761,7 +761,7 @@ fn test_comprehensive_system_stress() {
     ;
 
     // Phase 1: Initialize and warm up
-    let recovery_config = RecoveryConfig::default(;
+    let recovery_config = RecoveryConfig::default);
     let _pressure_handler = MemoryPressureHandler::new(recovery_config;
 
     // Phase 2: Create diverse workload
@@ -775,7 +775,7 @@ fn test_comprehensive_system_stress() {
                     _ => CrateId::Host,
                 };
 
-                let mut allocations = Vec::new(;
+                let mut allocations = Vec::new);
                 let mut allocation_count = 0;
 
                 // Mixed allocation patterns

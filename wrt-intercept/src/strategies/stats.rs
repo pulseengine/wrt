@@ -277,10 +277,10 @@ impl StatisticsStrategy {
     /// Reset all statistics
     pub fn reset(&self) {
         if let Ok(mut stats) = self.stats.write() {
-            stats.clear(;
+            stats.clear);
         }
         if let Ok(mut executing) = self.executing.lock() {
-            executing.clear(;
+            executing.clear);
         }
     }
 }
@@ -297,7 +297,7 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
         if self.config.track_timing {
             let key = Self::function_key(source, target, function;
             if let Ok(mut executing) = self.executing.lock() {
-                executing.insert(key, Instant::now(;
+                executing.insert(key, Instant::now);
             }
         }
 
@@ -314,7 +314,7 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
         result: Result<Vec<Value>>,
     ) -> Result<Vec<Value>> {
         let key = Self::function_key(source, target, function;
-        let is_success = result.is_ok(;
+        let is_success = result.is_ok);
         let elapsed_ms = if self.config.track_timing {
             match self.executing.lock() {
                 Ok(mut executing) => {
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_statistics_strategy() {
-        let strategy = StatisticsStrategy::new(;
+        let strategy = StatisticsStrategy::new);
 
         // Test before_call and after_call
         let source = "source";
@@ -414,7 +414,7 @@ mod tests {
 
         // Check statistics
         let key = StatisticsStrategy::function_key(source, target, function;
-        let stats = strategy.get_all_stats(;
+        let stats = strategy.get_all_stats);
         assert!(stats.contains_key(&key);
 
         let func_stats = stats.get(&key).unwrap();
@@ -445,7 +445,7 @@ mod tests {
 
         // Check statistics - timing should not be tracked
         let key = StatisticsStrategy::function_key(source, target, function;
-        let stats = strategy.get_all_stats(;
+        let stats = strategy.get_all_stats);
         let func_stats = stats.get(&key).unwrap();
         assert_eq!(func_stats.call_count, 1;
         assert_eq!(func_stats.success_count, 1;
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_statistics_reset() {
-        let strategy = StatisticsStrategy::new(;
+        let strategy = StatisticsStrategy::new);
 
         // Make a call
         let source = "source";
@@ -473,7 +473,7 @@ mod tests {
         assert_eq!(strategy.get_all_stats().len(), 1;
 
         // Reset and verify
-        strategy.reset(;
+        strategy.reset);
         assert_eq!(strategy.get_all_stats().len(), 0;
     }
 }

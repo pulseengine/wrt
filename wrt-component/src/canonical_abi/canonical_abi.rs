@@ -26,7 +26,7 @@
 //! use wrt_component::canonical_abi::{CanonicalABI, ComponentValue, ComponentType};
 //!
 //! // Create a canonical ABI instance
-//! let abi = CanonicalABI::new(;
+//! let abi = CanonicalABI::new);
 //!
 //! // Lift an i32 from memory
 //! let value = abi.lift_i32(&memory, 0)?;
@@ -259,7 +259,7 @@ impl CanonicalMemory for SimpleMemory {
 
     fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len(;
+        let end = start + data.len);
 
         if end > self.data.len() {
             return Err(Error::memory_out_of_bounds("Memory write out of bounds";
@@ -369,7 +369,7 @@ impl CanonicalABI {
             ComponentType::Enum(_) => Ok(4), // discriminant only
             ComponentType::Flags(flags) => {
                 // Each flag is 1 bit, round up to byte boundary
-                let bit_count = flags.len(;
+                let bit_count = flags.len);
                 let byte_count = (bit_count + 7) / 8;
                 Ok(byte_count as u32)
             }
@@ -550,7 +550,7 @@ impl CanonicalABI {
                     return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new(;
+                let mut code_units = Vec::new);
                 for chunk in bytes.chunks_exact(2) {
                     let code_unit = u16::from_le_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
@@ -565,7 +565,7 @@ impl CanonicalABI {
                     return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new(;
+                let mut code_units = Vec::new);
                 for chunk in bytes.chunks_exact(2) {
                     let code_unit = u16::from_be_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
@@ -601,7 +601,7 @@ impl CanonicalABI {
         }
 
         let element_size = self.size_of(element_ty)?;
-        let mut values = Vec::new(;
+        let mut values = Vec::new);
 
         for i in 0..len {
             let element_offset = ptr + i * element_size;
@@ -619,7 +619,7 @@ impl CanonicalABI {
         fields: &[(String, ComponentType)],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut field_values = Vec::new(;
+        let mut field_values = Vec::new);
         let mut current_offset = offset;
 
         for (field_name, field_ty) in fields {
@@ -638,7 +638,7 @@ impl CanonicalABI {
         types: &[ComponentType],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut values = Vec::new(;
+        let mut values = Vec::new);
         let mut current_offset = offset;
 
         for ty in types {
@@ -749,7 +749,7 @@ impl CanonicalABI {
         let byte_count = (flags.len() + 7) / 8;
         let bytes = memory.read_bytes(offset, byte_count as u32)?;
 
-        let mut active_flags = Vec::new(;
+        let mut active_flags = Vec::new);
 
         for (i, flag_name) in flags.iter().enumerate() {
             let byte_index = i / 8;
@@ -930,7 +930,7 @@ impl CanonicalABI {
         // Binary std/no_std choice
         // Binary std/no_std choice
 
-        let bytes = value.as_bytes(;
+        let bytes = value.as_bytes);
         let len = bytes.len() as u32;
 
         // Safety check
@@ -1313,7 +1313,7 @@ mod tests {
 
     #[test]
     fn test_canonical_abi_primitives() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test bool
@@ -1339,7 +1339,7 @@ mod tests {
 
     #[test]
     fn test_canonical_abi_string() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Lower a string
@@ -1352,7 +1352,7 @@ mod tests {
 
     #[test]
     fn test_size_calculation() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
 
         assert_eq!(abi.size_of(&ComponentType::Bool).unwrap(), 1;
         assert_eq!(abi.size_of(&ComponentType::S32).unwrap(), 4;
@@ -1362,7 +1362,7 @@ mod tests {
 
     #[test]
     fn test_alignment_calculation() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
 
         assert_eq!(abi.align_of(&ComponentType::Bool).unwrap(), 1;
         assert_eq!(abi.align_of(&ComponentType::S32).unwrap(), 4;
@@ -1371,7 +1371,7 @@ mod tests {
 
     #[test]
     fn test_option_value() {
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
         let mut memory = SimpleMemory::new(1024;
 
         // Test None option
@@ -1389,7 +1389,7 @@ mod tests {
     #[test]
     fn test_cross_environment_compatibility() {
         // This test verifies the code compiles and runs in different environments
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
 
         #[cfg(feature = "std")]
         {

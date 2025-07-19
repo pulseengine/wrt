@@ -43,7 +43,7 @@ impl MemoryOperations for MockMemory {
 
     fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + bytes.len(;
+        let end = start + bytes.len);
         
         // Extend data if necessary
         if end > self.data.len() {
@@ -83,7 +83,7 @@ impl MemoryOperations for MockMemory {
 
     fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
         if dest == src || size == 0 {
-            return Ok((;
+            return Ok();
         }
         
         let dest_start = dest as usize;

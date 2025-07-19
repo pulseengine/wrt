@@ -43,11 +43,11 @@
 //! use wrt_host::bounded_host_integration::*;
 //!
 //! // Create manager with embedded system limits
-//! let limits = HostIntegrationLimits::embedded(;
+//! let limits = HostIntegrationLimits::embedded);
 //! let mut manager = BoundedHostIntegrationManager::new(limits)?;
 //!
 //! // Register safety-critical host function
-//! let safety_function = create_safety_check_function(;
+//! let safety_function = create_safety_check_function);
 //! let function_id = manager.register_function(safety_function)?;
 //!
 //! // Call function with safety verification
@@ -207,7 +207,7 @@ impl BoundedCallContext {
         parameters: Vec<u8>,
         safety_level: u8,
     ) -> Self {
-        let memory_used = parameters.len(;
+        let memory_used = parameters.len);
         Self {
             function_id,
             component_instance,
@@ -275,7 +275,7 @@ impl BoundedCallResult {
     /// * `return_data` - Data returned from the host function
     #[must_use]
     pub fn success(return_data: Vec<u8>) -> Self {
-        let memory_used = return_data.len(;
+        let memory_used = return_data.len);
         Self {
             return_data,
             memory_used,
@@ -528,7 +528,7 @@ impl BoundedHostIntegrationManager {
 
     /// Cancel all active calls for a component instance
     pub fn cancel_instance_calls(&mut self, component_instance: ComponentInstanceId) -> usize {
-        let initial_count = self.active_calls.len(;
+        let initial_count = self.active_calls.len);
 
         self.active_calls.retain(|call| {
             if call.component_instance == component_instance {
@@ -545,7 +545,7 @@ impl BoundedHostIntegrationManager {
     /// Get integration statistics
     #[must_use]
     pub fn get_statistics(&self) -> HostIntegrationStatistics {
-        let active_calls = self.active_calls.len(;
+        let active_calls = self.active_calls.len);
         let max_call_depth = self.active_calls.iter()
             .map(|_| 1) // Simplified depth calculation
             .max()
@@ -632,7 +632,7 @@ pub fn create_memory_info_function() -> SimpleBoundedHostFunction {
         "memory_info".to_string(),
         |context| {
             let info = alloc::format!("Memory used: {}", context.memory_used;
-            let return_data = info.into_bytes(;
+            let return_data = info.into_bytes);
             Ok(BoundedCallResult::success(return_data))
         },
         512, // 512B memory requirement
@@ -648,7 +648,7 @@ pub fn create_safety_check_function() -> SimpleBoundedHostFunction {
         |context| {
             let check_result =
                 if context.safety_level <= 2 { "SAFETY_OK" } else { "SAFETY_WARNING" };
-            let return_data = check_result.as_bytes().to_vec(;
+            let return_data = check_result.as_bytes().to_vec);
             Ok(BoundedCallResult::success(return_data))
         },
         256, // 256B memory requirement
@@ -662,39 +662,39 @@ mod tests {
 
     #[test]
     fn test_host_integration_manager_creation() {
-        let limits = HostIntegrationLimits::default(;
+        let limits = HostIntegrationLimits::default);
         let manager = BoundedHostIntegrationManager::new(limits;
         assert!(manager.is_ok();
 
         let manager = manager.unwrap();
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.registered_functions, 0;
         assert_eq!(stats.active_calls, 0;
     }
 
     #[test]
     fn test_function_registration() {
-        let limits = HostIntegrationLimits::default(;
+        let limits = HostIntegrationLimits::default);
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function(;
+        let echo_function = create_echo_function);
         let function_id = manager.register_function(echo_function).unwrap();
 
         assert_eq!(function_id.0, 1;
 
-        let stats = manager.get_statistics(;
+        let stats = manager.get_statistics);
         assert_eq!(stats.registered_functions, 1;
     }
 
     #[test]
     fn test_function_call() {
-        let limits = HostIntegrationLimits::default(;
+        let limits = HostIntegrationLimits::default);
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function(;
+        let echo_function = create_echo_function);
         let function_id = manager.register_function(echo_function).unwrap();
 
-        let test_data = b"hello world".to_vec(;
+        let test_data = b"hello world".to_vec);
         let context =
             BoundedCallContext::new(function_id, ComponentInstanceId(1), test_data.clone(), 0;
 
@@ -773,7 +773,7 @@ mod tests {
         };
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function(;
+        let echo_function = create_echo_function);
         let function_id = manager.register_function(echo_function).unwrap();
 
         let large_data = vec![0u8; 20]; // Exceeds limit
@@ -785,10 +785,10 @@ mod tests {
 
     #[test]
     fn test_safety_level_checks() {
-        let limits = HostIntegrationLimits::default(;
+        let limits = HostIntegrationLimits::default);
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let safety_function = create_safety_check_function(;
+        let safety_function = create_safety_check_function);
         let function_id = manager.register_function(safety_function).unwrap();
 
         // Call with higher safety level than function (should fail)
@@ -805,10 +805,10 @@ mod tests {
 
     #[test]
     fn test_instance_call_cancellation() {
-        let limits = HostIntegrationLimits::default(;
+        let limits = HostIntegrationLimits::default);
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function(;
+        let echo_function = create_echo_function);
         let function_id = manager.register_function(echo_function).unwrap();
 
         let context = BoundedCallContext::new(

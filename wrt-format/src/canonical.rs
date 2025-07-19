@@ -149,7 +149,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             },
         },
         ValType::Record(fields) => {
-            let mut field_layouts = Vec::with_capacity(fields.len(;
+            let mut field_layouts = Vec::with_capacity(fields.len);
             let mut total_size = 0;
             let mut max_alignment = 1;
 
@@ -190,7 +190,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             }
         },
         ValType::Variant(cases) => {
-            let case_count = cases.len(;
+            let case_count = cases.len);
             let tag_size = if case_count <= 256 {
                 1
             } else if case_count <= 65536 {
@@ -199,7 +199,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 4
             };
 
-            let mut case_layouts = Vec::with_capacity(cases.len(;
+            let mut case_layouts = Vec::with_capacity(cases.len);
             let mut max_payload_size = 0;
             let mut max_payload_alignment = 1;
 
@@ -274,7 +274,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             }
         },
         ValType::Tuple(elements) => {
-            let mut field_layouts = Vec::with_capacity(elements.len(;
+            let mut field_layouts = Vec::with_capacity(elements.len);
             let mut total_size = 0;
             let mut max_alignment = 1;
 

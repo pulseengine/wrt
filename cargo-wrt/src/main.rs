@@ -1886,7 +1886,7 @@ async fn cmd_test(
                     "{} Package tests completed in {:.2}s",
                     "✅".bright_green(),
                     results.duration().as_secs_f64()
-                ;
+                );
                 return Ok(());
             }
 
@@ -1905,15 +1905,15 @@ async fn cmd_test(
                     "✅".bright_green(),
                     results.passed,
                     results.duration_ms as f64 / 1000.0
-                ;
+                );
             } else {
                 println!(
                     "{} {} tests failed, {} passed",
                     "❌".bright_red(),
                     results.failed,
                     results.passed
-                ;
-                anyhow::bail!("Test suite failed";
+                );
+                anyhow::bail!("Test suite failed");
             }
         },
     }
@@ -1942,7 +1942,7 @@ async fn cmd_test_asil(
         "Running ASIL-{} test suite{}",
         config.asil_level,
         if no_std_only { " (no_std only)" } else { "" }
-    );
+    ));
 
     run_asil_tests(global, config.asil_level).context("ASIL tests failed")
 }
@@ -1962,7 +1962,7 @@ async fn cmd_test_no_std(
         test_threads,
     };
 
-    global.output.info("Running no_std compatibility tests";
+    global.output.info("Running no_std compatibility tests");
 
     run_no_std_tests(global).context("No_std tests failed")
 }
@@ -1972,20 +1972,20 @@ async fn cmd_test_config(output: String, example: bool, global: &mut GlobalArgs)
     use test_config::WrtTestConfig;
 
     let config = if example {
-        global.output.info("Generating example test configuration";
+        global.output.info("Generating example test configuration");
         WrtTestConfig::example_config()
     } else {
-        global.output.info("Generating default test configuration";
+        global.output.info("Generating default test configuration");
         WrtTestConfig::default()
     };
 
     config.save_to_file(&output).context("Failed to save test configuration file")?;
 
-    global.output.success(&format!("Test configuration saved to: {}", output);
+    global.output.success(&format!("Test configuration saved to: {}", output));
 
     if example {
-        global.output.info("Edit the configuration file to customize test behavior";
-        global.output.info("Use 'cargo-wrt test-asil' to run ASIL-specific tests";
+        global.output.info("Edit the configuration file to customize test behavior");
+        global.output.info("Use 'cargo-wrt test-asil' to run ASIL-specific tests");
     }
 
     Ok(())
@@ -2003,7 +2003,7 @@ async fn cmd_verify(
     cli: &Cli,
     global: &mut GlobalArgs,
 ) -> Result<()> {
-    let mut options = wrt_build_core::verify::VerificationOptions::default);
+    let mut options = wrt_build_core::verify::VerificationOptions::default();
     options.target_asil = asil.into();
     options.kani = !no_kani;
     options.miri = !no_miri;
@@ -2014,18 +2014,18 @@ async fn cmd_verify(
     if allowed_unsafe_path.exists() {
         match wrt_build_core::verify::AllowedUnsafeConfig::load_from_file(&allowed_unsafe_path) {
             Ok(config) => {
-                options.allowed_unsafe = Some(config;
+                options.allowed_unsafe = Some(config);
                 if use_colors {
                     println!(
                         "  {} Loaded allowed unsafe configuration from {}",
                         "📋".bright_cyan(),
                         allowed_unsafe_path.display()
-                    ;
+                    );
                 } else {
                     println!(
                         "  Loaded allowed unsafe configuration from {}",
                         allowed_unsafe_path.display()
-                    ;
+                    );
                 }
             },
             Err(e) => {
@@ -2034,12 +2034,12 @@ async fn cmd_verify(
                         "  {} Failed to load allowed unsafe configuration: {}",
                         "⚠️".bright_yellow(),
                         e
-                    ;
+                    );
                 } else {
                     eprintln!(
                         "  Warning: Failed to load allowed unsafe configuration: {}",
                         e
-                    ;
+                    );
                 }
             },
         }
@@ -2139,7 +2139,7 @@ async fn cmd_verify(
             }
 
             if detailed {
-                println!("\n{}", results.report;
+                println!("\n{}", results.report);
             }
         },
     }
@@ -2166,7 +2166,7 @@ async fn cmd_docs(
             .collect();
 
         if versions.is_empty() {
-            anyhow::bail!("No versions specified for multi-version documentation";
+            anyhow::bail!("No versions specified for multi-version documentation");
         }
 
         println!(
@@ -2182,17 +2182,17 @@ async fn cmd_docs(
 
     // Check documentation dependencies first
     let tool_manager = ToolManager::new);
-    let python_status = tool_manager.check_tool("python3";
-    let venv_status = tool_manager.check_tool("python-venv";
+    let python_status = tool_manager.check_tool("python3");
+    let venv_status = tool_manager.check_tool("python-venv");
 
     if !python_status.available {
-        println!("⚠️  Python not available - generating Rust API docs only";
-        println!("   💡 Install Python 3.8+ to enable comprehensive documentation generation";
+        println!("⚠️  Python not available - generating Rust API docs only");
+        println!("   💡 Install Python 3.8+ to enable comprehensive documentation generation");
     } else if !venv_status.available {
-        println!("⚠️  Python venv not available - generating Rust API docs only";
-        println!("   💡 Python virtual environment support needed for documentation dependencies";
+        println!("⚠️  Python venv not available - generating Rust API docs only");
+        println!("   💡 Python virtual environment support needed for documentation dependencies");
     } else {
-        println!("📚 Python environment ready - will generate comprehensive documentation";
+        println!("📚 Python environment ready - will generate comprehensive documentation");
     }
 
     // Generate documentation with enhanced functionality

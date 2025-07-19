@@ -37,7 +37,7 @@ mod tests {
     
     #[test]
     fn runtime_integration() {
-        let result = run_tests(;
+        let result = run_tests);
         assert!(result.is_success(), "Runtime integration tests failed: {:?}", result);
     }
 }

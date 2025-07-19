@@ -491,7 +491,7 @@ impl DynamicQuotaManager {
         }
 
         // Apply allocation to the node and ancestors
-        let timestamp = self.get_current_time(;
+        let timestamp = self.get_current_time);
         if self.allocate_hierarchical(node_id, request.amount, timestamp)? {
             let reservation_id = self.next_reservation_id;
             self.next_reservation_id += 1;
@@ -546,7 +546,7 @@ impl DynamicQuotaManager {
         #[cfg(feature = "std")]
         {
             if let Some((node_id, amount)) = self.reservations.remove(&reservation_id) {
-                let timestamp = self.get_current_time(;
+                let timestamp = self.get_current_time);
                 self.deallocate_hierarchical(node_id, amount, timestamp)?;
             }
         }
@@ -567,7 +567,7 @@ impl DynamicQuotaManager {
             }
             
             if found {
-                let timestamp = self.get_current_time(;
+                let timestamp = self.get_current_time);
                 self.deallocate_hierarchical(node_id, amount, timestamp)?;
             }
         }
@@ -664,7 +664,7 @@ impl DynamicQuotaManager {
     fn allocate_hierarchical(&mut self, node_id: u32, amount: u64, timestamp: u64) -> WrtResult<bool> {
         let mut current_id = Some(node_id;
         #[cfg(feature = "std")]
-        let mut allocated_nodes = Vec::new(;
+        let mut allocated_nodes = Vec::new);
         #[cfg(not(feature = "std"))]
         let mut allocated_nodes = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;

@@ -8,7 +8,7 @@ fn main() -> wrt_decoder::Result<()> {
     // Load our test WASM file
     let wasm_bytes = fs::read("test_add.wasm")
         .map_err(|_| wrt_decoder::Error::parse_error("Failed to read file"))?;
-    println!("✓ Loaded test_add.wasm ({} bytes)", wasm_bytes.len(;
+    println!("✓ Loaded test_add.wasm ({} bytes)", wasm_bytes.len);
 
     // Try to decode it
     println!("→ Decoding module...";
@@ -16,10 +16,10 @@ fn main() -> wrt_decoder::Result<()> {
     println!("✓ Module decoded successfully";
 
     println!("Module info:";
-    println!("  - Types: {}", module.types.len(;
-    println!("  - Functions: {}", module.functions.len(;
-    println!("  - Exports: {}", module.exports.len(;
-    println!("  - Imports: {}", module.imports.len(;
+    println!("  - Types: {}", module.types.len);
+    println!("  - Functions: {}", module.functions.len);
+    println!("  - Exports: {}", module.exports.len);
+    println!("  - Imports: {}", module.imports.len);
 
     if let Some(start) = module.start {
         println!("  - Start function: {}", start;

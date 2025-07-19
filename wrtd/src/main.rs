@@ -30,7 +30,7 @@ use linked_list_allocator::LockedHeap;
 
 #[cfg(all(not(feature = "std"), feature = "enable-panic-handler"))]
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty(;
+static ALLOCATOR: LockedHeap = LockedHeap::empty);
 
 // Static heap memory for the allocator
 #[cfg(all(not(feature = "std"), feature = "enable-panic-handler"))]
@@ -358,7 +358,7 @@ impl WrtdEngine {
         
         // Get WASI capabilities or use default
         let mut capabilities = self.config.wasi_capabilities.clone()
-            .unwrap_or_else(|| WasiCapabilities::minimal(;
+            .unwrap_or_else(|| WasiCapabilities::minimal);
         
         // Configure environment variables
         for env_var in &self.config.wasi_env_vars {
@@ -389,7 +389,7 @@ impl WrtdEngine {
         }
         
         // Update stats
-        self.stats.host_functions_registered += provider.function_count(;
+        self.stats.host_functions_registered += provider.function_count);
         
         self.wasi_provider = Some(provider;
         
@@ -523,7 +523,7 @@ impl WrtdEngine {
                         // For now, just return success
                     }
                     Ok(vec![])
-                }).unwrap_or((;
+                }).unwrap_or();
                 
                 let _ = self.logger.handle_minimal_log(LogLevel::Info, "Example host functions registered";
             }
@@ -592,7 +592,7 @@ impl WrtdEngine {
             // For safety-critical mode, use bounded allocation
             #[cfg(feature = "safety-critical")]
             {
-                let mut module_data: WrtVec<u8, {CrateId::Wrtd as u8}, MAX_MODULE_SIZE> = WrtVec::new(;
+                let mut module_data: WrtVec<u8, {CrateId::Wrtd as u8}, MAX_MODULE_SIZE> = WrtVec::new);
                 
                 // Read file in chunks to stay within bounds
                 let mut file = fs::File::open(path).map_err(|_| Error::system_io_error("Failed to open module file"))?;
@@ -645,9 +645,9 @@ impl WrtdEngine {
 
         // Get module size for resource estimation
         #[cfg(feature = "std")]
-        let module_size = module_data.len(;
+        let module_size = module_data.len);
         #[cfg(not(feature = "std"))]
-        let module_size = module_data.len(;
+        let module_size = module_data.len);
 
         // Estimate resource usage
         let estimated_fuel = (module_size as u64) / 10; // Conservative estimate
@@ -777,7 +777,7 @@ impl SimpleArgs {
                 "--help" | "-h" => {
                     println!("WebAssembly Runtime Daemon (wrtd)";
                     println!("Usage: wrtd [OPTIONS] <module.wasm>";
-                    println!(;
+                    println!);
                     println!("Options:";
                     println!("  --function <name>     Function to execute (default: start)";
                     println!("  --fuel <amount>       Maximum fuel limit";
@@ -900,7 +900,7 @@ fn main() -> Result<()> {
     println!("===================================";
     
     // Create configuration from arguments
-    let mut config = WrtdConfig::default(;
+    let mut config = WrtdConfig::default);
     config.module_path = args.module_path;
     if let Some(_function_name) = args.function_name {
         // For now, we'll just use "start" as default since we need static lifetime
@@ -928,7 +928,7 @@ fn main() -> Result<()> {
         }
         
         if config.enable_wasi {
-            let mut capabilities = WasiCapabilities::minimal(;
+            let mut capabilities = WasiCapabilities::minimal);
             
             // Add filesystem access paths
             for path in &args.wasi_fs_paths {
@@ -956,9 +956,9 @@ fn main() -> Result<()> {
             
             println!("✓ WASI enabled:";
             println!("  - Version: {:?}", config.wasi_version;
-            println!("  - Filesystem paths: {}", args.wasi_fs_paths.len(;
-            println!("  - Environment variables: {}", args.wasi_env_vars.len(;
-            println!("  - Program arguments: {}", args.wasi_args.len(;
+            println!("  - Filesystem paths: {}", args.wasi_fs_paths.len);
+            println!("  - Environment variables: {}", args.wasi_env_vars.len);
+            println!("  - Program arguments: {}", args.wasi_args.len);
         }
     }
     
@@ -969,7 +969,7 @@ fn main() -> Result<()> {
         config.component_interfaces = args.component_interfaces.clone();
         
         if config.enable_component_model {
-            println!("✓ Component model enabled with {} interfaces", args.component_interfaces.len(;
+            println!("✓ Component model enabled with {} interfaces", args.component_interfaces.len);
         }
     }
     
@@ -993,7 +993,7 @@ fn main() -> Result<()> {
     
     match engine.execute_module() {
         Ok(()) => {
-            let stats = engine.stats(;
+            let stats = engine.stats);
             println!("✓ Execution completed successfully";
             println!("  Modules executed: {}", stats.modules_executed;
             println!("  Components executed: {}", stats.components_executed;
@@ -1006,8 +1006,8 @@ fn main() -> Result<()> {
             // Display memory profiling if enabled
             if let Some(profiler) = engine.memory_profiler() {
                 println!("Memory Profiling:";
-                println!("  Peak usage: {} bytes", profiler.peak_usage(;
-                println!("  Current usage: {} bytes", profiler.current_usage(;
+                println!("  Peak usage: {} bytes", profiler.peak_usage);
+                println!("  Current usage: {} bytes", profiler.current_usage);
             }
         }
         Err(e) => {
@@ -1033,7 +1033,7 @@ fn main() {
     {
         #[allow(unsafe_code)] // Required for allocator initialization
         unsafe {
-            ALLOCATOR.lock().init(HEAP.as_mut_ptr(), HEAP.len(;
+            ALLOCATOR.lock().init(HEAP.as_mut_ptr(), HEAP.len);
         }
     }
 
@@ -1042,7 +1042,7 @@ fn main() {
     if let Err(_) = wrt_foundation::memory_init::init_wrt_memory() { // Initialize with defaults
         // In no_std, we can't easily print errors, so we enter an error loop
         loop {
-            core::hint::spin_loop(;
+            core::hint::spin_loop);
         }
     }
     
@@ -1053,7 +1053,7 @@ fn main() {
         0x01, 0x00, 0x00, 0x00, // Version 1
     ];
 
-    let mut config = WrtdConfig::default(;
+    let mut config = WrtdConfig::default);
     config.module_data = Some(DEMO_MODULE;
     config.function_name = Some("start";
     config.max_fuel = 1000; // Conservative for embedded
@@ -1064,7 +1064,7 @@ fn main() {
         Err(_) => {
             // Engine creation failed, enter error loop
             loop {
-                core::hint::spin_loop(;
+                core::hint::spin_loop);
             }
         }
     };
@@ -1074,13 +1074,13 @@ fn main() {
         // For embedded applications, this would typically trigger some error handling mechanism
         // For now, we just enter an infinite loop (panic-like behavior)
         loop {
-            core::hint::spin_loop(;
+            core::hint::spin_loop);
         }
     }
 
     // Complete memory system initialization
     #[cfg(feature = "std")]
-    let _ = wrt_foundation::memory_init::init_wrt_memory(;
+    let _ = wrt_foundation::memory_init::init_wrt_memory);
 }
 
 // Panic handler for no_std builds

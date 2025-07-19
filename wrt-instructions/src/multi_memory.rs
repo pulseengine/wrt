@@ -552,7 +552,7 @@ mod tests {
                 return Err(Error::memory_error("Read out of bounds";
             }
             
-            let provider = wrt_foundation::wrt_provider!(len, wrt_foundation::budget_aware_provider::CrateId::Instructions).unwrap_or_default(;
+            let provider = wrt_foundation::wrt_provider!(len, wrt_foundation::budget_aware_provider::CrateId::Instructions).unwrap_or_default);
             let mut result = wrt_foundation::BoundedVec::new(provider)?;
             for i in start..end {
                 result.push(self.data[i]).map_err(|_| Error::memory_error("Result vector full"))?;
@@ -562,7 +562,7 @@ mod tests {
 
         fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
             let start = offset as usize;
-            let end = start + bytes.len(;
+            let end = start + bytes.len);
             
             // Extend data if necessary
             if end > self.data.len() {
@@ -596,7 +596,7 @@ mod tests {
 
         fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
             if dest == src || size == 0 {
-                return Ok((;
+                return Ok();
             }
             
             let dest_start = dest as usize;
@@ -626,7 +626,7 @@ mod tests {
 
         fn grow(&mut self, pages: u32) -> Result<u32> {
             let additional_bytes = pages as usize * 65536;
-            let old_size = self.data.len(;
+            let old_size = self.data.len);
             self.data.resize(old_size + additional_bytes, 0;
             Ok((old_size / 65536) as u32)
         }
@@ -634,7 +634,7 @@ mod tests {
 
     #[test]
     fn test_multi_memory_load() {
-        let mut memory = MockMemory::new(;
+        let mut memory = MockMemory::new);
         
         // Write test data
         memory.write_bytes(0, &[0x42, 0x43, 0x44, 0x45]).unwrap();
@@ -649,7 +649,7 @@ mod tests {
 
     #[test]
     fn test_multi_memory_store() {
-        let mut memory = MockMemory::new(;
+        let mut memory = MockMemory::new);
         
         // Test i32 store to memory 1
         let store_op = MultiMemoryStore::i32_store(1, 0, 4;
@@ -663,7 +663,7 @@ mod tests {
 
     #[test]
     fn test_multi_memory_size_and_grow() {
-        let mut memory = MockMemory::new(;
+        let mut memory = MockMemory::new);
         
         // Test size (should be 0 pages initially)
         let size_op = MultiMemorySize::new(0;
@@ -682,7 +682,7 @@ mod tests {
 
     #[test]
     fn test_multi_memory_bulk_operations() {
-        let mut memory = MockMemory::new(;
+        let mut memory = MockMemory::new);
         memory.data.resize(100, 0); // Binary std/no_std choice
         
         let bulk_ops = MultiMemoryBulk::new(0;
@@ -706,8 +706,8 @@ mod tests {
 
     #[test]
     fn test_cross_memory_copy() {
-        let mut dest_memory = MockMemory::new(;
-        let src_memory = MockMemory::new(;
+        let mut dest_memory = MockMemory::new);
+        let src_memory = MockMemory::new);
         
         let cross_copy = MultiMemoryCrossCopy::new(0, 1;
         

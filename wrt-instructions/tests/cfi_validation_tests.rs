@@ -22,7 +22,7 @@ mod tests {
     #[test]
     fn test_label_resolution_valid() {
         let ops = DefaultCfiControlFlowOps;
-        let mut context = CfiExecutionContext::default(;
+        let mut context = CfiExecutionContext::default);
         context.max_labels = 10;
         context.valid_branch_targets = Some(vec![0, 1, 2, 5, 7];
 
@@ -43,7 +43,7 @@ mod tests {
         // Label index out of bounds should fail
         let result = ops.resolve_label_to_offset(15, &context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.category(), ErrorCategory::ControlFlow;
     }
 
@@ -87,14 +87,14 @@ mod tests {
         // Mismatched signature should fail
         let result = ops.validate_type_signature(1, 0x9999, &context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.category(), ErrorCategory::Security;
     }
 
     #[test]
     fn test_shadow_stack_validation_overflow() {
         let ops = DefaultCfiControlFlowOps;
-        let mut context = CfiExecutionContext::default(;
+        let mut context = CfiExecutionContext::default);
         context.max_shadow_stack_depth = 3;
 
         // Fill shadow stack to max
@@ -109,7 +109,7 @@ mod tests {
         // Should detect overflow
         let result = ops.validate_shadow_stack(&context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.code(), codes::STACK_OVERFLOW;
     }
 
@@ -125,7 +125,7 @@ mod tests {
         // Should detect underflow
         let result = ops.validate_shadow_stack(&context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.category(), ErrorCategory::Security;
     }
 
@@ -145,7 +145,7 @@ mod tests {
         // Should detect return address mismatch
         let result = ops.validate_shadow_stack(&context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.category(), ErrorCategory::Security;
         assert!(err.message().contains("ROP");
     }
@@ -178,14 +178,14 @@ mod tests {
         // Current instruction not in valid targets
         let result = ops.validate_control_flow_target(&valid_targets, &context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.category(), ErrorCategory::Security;
     }
 
     #[test]
     fn test_control_flow_target_empty_list() {
         let ops = DefaultCfiControlFlowOps;
-        let context = CfiExecutionContext::default(;
+        let context = CfiExecutionContext::default);
         let valid_targets = vec![];
 
         // Empty target list should fail
@@ -205,7 +205,7 @@ mod tests {
         // Should detect misalignment
         let result = ops.validate_calling_convention(&context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.code(), codes::MEMORY_ALIGNMENT_ERROR;
     }
 
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn test_temporal_validation_disabled() {
         let ops = DefaultCfiControlFlowOps;
-        let mut context = CfiExecutionContext::default(;
+        let mut context = CfiExecutionContext::default);
         context.software_config.temporal_validation = false;
 
         // Should skip validation when disabled
@@ -251,21 +251,21 @@ mod tests {
     #[test]
     fn test_temporal_validation_timeout() {
         let ops = DefaultCfiControlFlowOps;
-        let mut context = CfiExecutionContext::default(;
+        let mut context = CfiExecutionContext::default);
         context.software_config.temporal_validation = true;
         context.metrics.total_execution_time = 2000;
 
         // Should detect timeout
         let result = ops.validate_temporal_properties(1000, &context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert_eq!(err.code(), codes::TIMEOUT;
     }
 
     #[test]
     fn test_temporal_validation_timing_anomaly() {
         let ops = DefaultCfiControlFlowOps;
-        let mut context = CfiExecutionContext::default(;
+        let mut context = CfiExecutionContext::default);
         context.software_config.temporal_validation = true;
         context.metrics.average_instruction_time = Some(100;
         context.metrics.last_instruction_time = 1500; // 15x average
@@ -273,14 +273,14 @@ mod tests {
         // Should detect timing anomaly
         let result = ops.validate_temporal_properties(10000, &context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert!(err.message().contains("side-channel");
     }
 
     #[test]
     fn test_temporal_validation_time_regression() {
         let ops = DefaultCfiControlFlowOps;
-        let mut context = CfiExecutionContext::default(;
+        let mut context = CfiExecutionContext::default);
         context.software_config.temporal_validation = true;
         context.metrics.total_execution_time = 1000;
         context.last_checkpoint_time = 2000; // Time went backwards
@@ -288,7 +288,7 @@ mod tests {
         // Should detect time regression
         let result = ops.validate_temporal_properties(10000, &context;
         assert!(result.is_err();
-        let err = result.unwrap_err(;
+        let err = result.unwrap_err);
         assert!(err.message().contains("clock manipulation");
     }
 }

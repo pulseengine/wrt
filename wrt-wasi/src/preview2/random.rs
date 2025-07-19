@@ -137,7 +137,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         {
             // Use platform time as seed for fallback
             use wrt_platform::time::PlatformTime;
-            let seed = PlatformTime::monotonic_ns(;
+            let seed = PlatformTime::monotonic_ns);
             
             // Simple but safe pseudo-random generation
             let mut state = seed;
@@ -152,7 +152,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         {
             // Simple fallback using platform time as seed
             use wrt_platform::time::PlatformTime;
-            let seed = PlatformTime::monotonic_ns(;
+            let seed = PlatformTime::monotonic_ns);
             
             // Simple LCG for demonstration (not cryptographically secure!)
             let mut state = seed;
@@ -173,7 +173,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         
         // Simple fallback using platform time as seed
         use wrt_platform::time::PlatformTime;
-        let time = PlatformTime::new(;
+        let time = PlatformTime::new);
         let seed = time.monotonic_now().unwrap_or(0;
         
         // Simple LCG for demonstration (not cryptographically secure!)
@@ -200,7 +200,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
         
         // Simple fallback using platform time as seed
         use wrt_platform::time::PlatformTime;
-        let time = PlatformTime::new(;
+        let time = PlatformTime::new);
         let seed = time.monotonic_now().unwrap_or(0;
         
         // Simple LCG for demonstration (not cryptographically secure!)
@@ -218,7 +218,7 @@ fn generate_secure_random(len: usize) -> Result<Vec<u8>> {
 fn generate_pseudo_random(len: usize) -> Result<Vec<u8>> {
     // Use platform time as seed
     use wrt_platform::time::PlatformTime;
-    let seed = PlatformTime::monotonic_ns(;
+    let seed = PlatformTime::monotonic_ns);
     
     let mut buffer = vec![0u8; len];
     
@@ -236,7 +236,7 @@ fn generate_pseudo_random(len: usize) -> Result<Vec<u8>> {
         let value = state.wrapping_mul(0x2545F4914F6CDD1D;
         
         // Convert to bytes
-        let bytes = value.to_le_bytes(;
+        let bytes = value.to_le_bytes);
         for (i, byte) in chunk.iter_mut().enumerate() {
             if i < bytes.len() {
                 *byte = bytes[i];
@@ -365,7 +365,7 @@ mod tests {
         assert_ne!(random1, random2, "Pseudo-random should produce different values";
         
         // Check distribution (very basic test)
-        let sum: u32 = random1.iter().map(|&b| b as u32).sum(;
+        let sum: u32 = random1.iter().map(|&b| b as u32).sum);
         let avg = sum / 32;
         
         // Average should be somewhere around 128 (middle of 0-255 range)

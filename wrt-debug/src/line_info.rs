@@ -85,7 +85,7 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
         return "0";
     }
 
-    let mut i = buf.len(;
+    let mut i = buf.len);
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
@@ -201,7 +201,7 @@ impl LineNumberState {
 
         // Read header length
         let header_length = cursor.read_u32()?;
-        let header_start = cursor.position(;
+        let header_start = cursor.position);
 
         // Read header fields
         self.minimum_instruction_length = cursor.read_u8()?;
@@ -324,7 +324,7 @@ impl LineNumberState {
         self.parse_header(&mut cursor)?;
 
         // Reset state machine
-        self.reset(;
+        self.reset);
 
         let mut last_line_info = None;
 
@@ -386,7 +386,7 @@ impl LineNumberState {
             }
 
             if self.end_sequence {
-                self.reset(;
+                self.reset);
             }
         }
 

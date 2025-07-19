@@ -196,7 +196,7 @@ impl MemoryValue {
 
         // Resize memory if needed
         if offset_usize + bytes.len() > self.memory.len() {
-            let new_size = offset_usize + bytes.len(;
+            let new_size = offset_usize + bytes.len);
             for _ in self.memory.len()..new_size {
                 // Grow memory with zeros
                 self.memory.push(0).map_err(|_| {
@@ -231,7 +231,7 @@ impl MemoryValue {
     /// Grows the memory by the given number of pages
     pub fn grow(&mut self, pages: u32) -> Result<u32> {
         let page_size = 64 * 1024; // 64KB pages per WebAssembly spec
-        let prev_pages = self.size(;
+        let prev_pages = self.size);
         let additional_bytes = (pages as usize) * page_size;
 
         // Check if growing would exceed max memory size
@@ -992,7 +992,7 @@ impl ComponentBuilder {
 
     /// Build the component
     pub fn build(self) -> Result<Component> {
-        let component_type = self.component_type.unwrap_or_default(;
+        let component_type = self.component_type.unwrap_or_default);
         let resource_table = self.resource_table.unwrap_or_else(ResourceTable::new;
 
         let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -1302,11 +1302,11 @@ impl Default for ValType {
 
 // Apply macro to all types that need traits
 // Note: These types don't need basic traits for now, commenting out to fix compilation
-// impl_basic_traits!(ComponentTypeDefinition, ComponentTypeDefinition::default(;
-// impl_basic_traits!(ExternValue, ExternValue::default(;
-// impl_basic_traits!(MemoryValue, MemoryValue::default(;
-// impl_basic_traits!(TableValue, TableValue::default(;
-// impl_basic_traits!(GlobalValue, GlobalValue::default(;
+// impl_basic_traits!(ComponentTypeDefinition, ComponentTypeDefinition::default);
+// impl_basic_traits!(ExternValue, ExternValue::default);
+// impl_basic_traits!(MemoryValue, MemoryValue::default);
+// impl_basic_traits!(TableValue, TableValue::default);
+// impl_basic_traits!(GlobalValue, GlobalValue::default);
 
 // Try to implement traits for external types directly
 // This works only if the external types have the required traits

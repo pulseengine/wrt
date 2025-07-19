@@ -17,7 +17,7 @@ mod fuel_consumption_tests {
 
     /// Helper to create a test engine with fuel tracking
     fn create_test_engine(fuel: Option<u64>, verification_level: VerificationLevel) -> StacklessEngine {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         engine.set_fuel(fuel;
         engine.set_verification_level(verification_level;
         engine
@@ -28,7 +28,7 @@ mod fuel_consumption_tests {
     where
         F: FnOnce(&mut StacklessEngine) -> Result<()>,
     {
-        reset_global_operations(;
+        reset_global_operations);
         let mut engine = create_test_engine(Some(initial_fuel), verification_level;
         
         operation(&mut engine)?;
@@ -37,7 +37,7 @@ mod fuel_consumption_tests {
         let consumed = initial_fuel - remaining_fuel;
         
         // Also verify against global fuel tracking
-        let global_consumed = global_fuel_consumed(;
+        let global_consumed = global_fuel_consumed);
         assert_eq!(consumed, global_consumed, "Engine fuel and global fuel tracking mismatch";
         
         Ok(consumed)
@@ -205,7 +205,7 @@ mod fuel_consumption_tests {
         ];
         
         for (fuel_type, op_type, expected_cost) in mappings {
-            let cost = op_type.cost(;
+            let cost = op_type.cost);
             assert_eq!(cost, expected_cost, 
                 "{:?} should have base cost of {}", fuel_type, expected_cost;
         }
@@ -225,9 +225,9 @@ mod fuel_consumption_tests {
             }).unwrap()
         };
         
-        let first_run = run_test(;
-        let second_run = run_test(;
-        let third_run = run_test(;
+        let first_run = run_test);
+        let second_run = run_test);
+        let third_run = run_test);
         
         assert_eq!(first_run, second_run, "Fuel consumption should be deterministic";
         assert_eq!(second_run, third_run, "Fuel consumption should be deterministic";

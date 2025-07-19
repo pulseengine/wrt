@@ -365,7 +365,7 @@ pub fn decode_component_header(
 
     // Initialize the component header
     let mut header = ComponentHeader::new(verification_level;
-    header.size = bytes.len(;
+    header.size = bytes.len);
 
     // Create empty collections for the component header
     let header_provider = create_provider_1024()?;
@@ -509,7 +509,7 @@ fn scan_component_imports(
     >,
 ) -> Result<()> {
     if section_data.is_empty() {
-        return Ok((;
+        return Ok();
     }
 
     // Read the number of imports
@@ -575,7 +575,7 @@ fn scan_component_exports(
     >,
 ) -> Result<()> {
     if section_data.is_empty() {
-        return Ok((;
+        return Ok();
     }
 
     // Read the number of exports
@@ -642,7 +642,7 @@ fn scan_component_types(
     >,
 ) -> Result<()> {
     if section_data.is_empty() {
-        return Ok((;
+        return Ok();
     }
 
     // Read the number of types
@@ -790,7 +790,7 @@ pub fn validate_component_no_alloc(bytes: &[u8], validator: ComponentValidatorTy
     // For Basic validation, just checking the header and section structure is
     // enough
     if validator == ComponentValidatorType::Basic {
-        return Ok((;
+        return Ok();
     }
 
     // For Standard validation, check section order and basic structure
@@ -920,7 +920,7 @@ fn validate_component_imports_exports(header: &ComponentHeader, bytes: &[u8]) ->
 fn validate_component_resources(header: &ComponentHeader, bytes: &[u8]) -> Result<()> {
     // Only perform this validation if the component uses resources
     if !header.uses_resources {
-        return Ok((;
+        return Ok();
     }
 
     // Find the component type section and validate resource type usage

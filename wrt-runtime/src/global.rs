@@ -102,7 +102,7 @@ fn value_type_to_u8(value_type: &WrtValueType) -> u8 {
 
 impl wrt_foundation::traits::Checksummable for Global {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&value_type_to_u8(&self.ty.value_type).to_le_bytes(;
+        checksum.update_slice(&value_type_to_u8(&self.ty.value_type).to_le_bytes);
         checksum.update_slice(&[u8::from(self.ty.mutable)];
     }
 }

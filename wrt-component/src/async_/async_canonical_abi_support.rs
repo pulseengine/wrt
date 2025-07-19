@@ -602,7 +602,7 @@ impl AsyncCanonicalAbiSupport {
         // Poll underlying bridge
         let bridge_result = self.bridge.poll_async_tasks()?;
 
-        let mut completed_operations = Vec::new(;
+        let mut completed_operations = Vec::new);
         let mut ready_operations = 0;
 
         // Check operation statuses
@@ -714,24 +714,24 @@ mod tests {
     fn create_test_bridge() -> TaskManagerAsyncBridge {
         let task_manager = wrt_foundation::Arc::new(wrt_foundation::sync::Mutex::new(TaskManager::new();
         let thread_manager = wrt_foundation::Arc::new(wrt_foundation::sync::Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default(;
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default);
         TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
     }
 
     #[test]
     fn test_abi_support_creation() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let abi_support = AsyncCanonicalAbiSupport::new(bridge;
         assert_eq!(abi_support.async_operations.len(), 0;
     }
 
     #[test]
     fn test_component_abi_initialization() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let mut abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
         let component_id = ComponentInstanceId::new(1;
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
         
         abi_support.initialize_component_abi(component_id, options).unwrap();
         assert!(abi_support.abi_contexts.contains_key(&component_id);
@@ -739,10 +739,10 @@ mod tests {
 
     #[test] 
     fn test_abi_statistics() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
-        let stats = abi_support.get_abi_statistics(;
+        let stats = abi_support.get_abi_statistics);
         assert_eq!(stats.total_async_calls, 0;
         assert_eq!(stats.active_operations, 0;
     }

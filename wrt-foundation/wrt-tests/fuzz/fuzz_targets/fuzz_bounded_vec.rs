@@ -71,7 +71,7 @@ fuzz_target!(|input: FuzzInput| {
                     let _ = vec.push(value);
                 }
                 Operation::Pop => {
-                    let _ = vec.pop(;
+                    let _ = vec.pop);
                 }
                 Operation::Get { index } => {
                     if index < vec.len() {
@@ -84,21 +84,21 @@ fuzz_target!(|input: FuzzInput| {
                     }
                 }
                 Operation::Clear => {
-                    vec.clear(;
+                    vec.clear);
                 }
                 Operation::Reserve { additional } => {
                     let additional = std::cmp::min(additional, 1024;
                     let _ = vec.reserve(additional;
                 }
                 Operation::Validate => {
-                    let _ = vec.validate(;
+                    let _ = vec.validate);
                 }
                 Operation::ManipulateDirectly { index, value } => {
                     // This simulates corruption by manipulating internal state
                     if index < vec.len() && verification_level != VerificationLevel::None {
                         // SAFETY: This is intentionally unsafe to test corruption detection
                         unsafe {
-                            let vec_ptr = vec.as_ptr(;
+                            let vec_ptr = vec.as_ptr);
                             let target_ptr = vec_ptr.add(index) as *mut u32;
                             *target_ptr = value;
                         }
@@ -106,7 +106,7 @@ fuzz_target!(|input: FuzzInput| {
                         // After corruption, validate and see if it's detected
                         if verification_level == VerificationLevel::Full {
                             // Full verification should detect this
-                            let validation_result = vec.validate(;
+                            let validation_result = vec.validate);
                             if validation_result.is_ok() {
                                 // If corruption isn't detected, it might indicate a problem
                                 // We'll log this (in a real system this would be more robust)
@@ -120,5 +120,5 @@ fuzz_target!(|input: FuzzInput| {
     }
     
     // Final validation
-    let _ = vec.validate(;
+    let _ = vec.validate);
 };

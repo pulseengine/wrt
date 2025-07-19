@@ -20,22 +20,22 @@ fn main() {
     #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
     {
         println!("Running VxWorks LKM examples...\n";
-        run_lkm_examples(;
+        run_lkm_examples);
     }
     
     #[cfg(not(all(feature = "platform-vxworks", target_os = "vxworks")))]
     {
         println!("VxWorks platform not available - showing LKM concepts";
-        show_lkm_concepts(;
+        show_lkm_concepts);
     }
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn run_lkm_examples() {
-    example_lkm_memory(;
-    example_lkm_synchronization(;
-    example_lkm_threading(;
-    example_lkm_integration(;
+    example_lkm_memory);
+    example_lkm_synchronization);
+    example_lkm_threading);
+    example_lkm_integration);
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
@@ -61,7 +61,7 @@ fn example_lkm_memory() {
     match allocator.allocate(initial_pages, max_pages) {
         Ok((ptr, size)) => {
             println!("✓ Allocated {} pages ({} bytes) from partition", initial_pages, size;
-            println!("  Kernel memory at: {:p}", ptr.as_ptr(;
+            println!("  Kernel memory at: {:p}", ptr.as_ptr);
             
             // Test controlled memory growth
             if allocator.grow(initial_pages, 3).is_ok() {

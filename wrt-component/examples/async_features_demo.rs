@@ -59,7 +59,7 @@ fn demo_async_context() -> Result<(), Box<dyn std::error::Error>> {
     // resolved
 
     println!("  • Creating async context...";
-    // let context = wrt_component::AsyncContext::new(;
+    // let context = wrt_component::AsyncContext::new);
     println!("    ✓ Context created";
 
     println!("  • Setting context value...";
@@ -309,9 +309,9 @@ fn demo_fixed_length_lists() -> Result<(), Box<dyn std::error::Error>> {
     println!("    ✓ Added elements: [10, 20, 30]";
 
     println!("  • Checking list properties...";
-    // println!("    • Current length: {}", list.current_length(;
-    // println!("    • Remaining capacity: {}", list.remaining_capacity(;
-    // println!("    • Is full: {}", list.is_full(;
+    // println!("    • Current length: {}", list.current_length);
+    // println!("    • Remaining capacity: {}", list.remaining_capacity);
+    // println!("    • Is full: {}", list.is_full);
     println!("    ✓ Length: 3, Remaining: 2, Full: false";
 
     println!("  • Creating list with predefined elements...";
@@ -337,7 +337,7 @@ fn demo_fixed_length_lists() -> Result<(), Box<dyn std::error::Error>> {
     println!("    ✓ Range list: [5, 6, 7, 8, 9]";
 
     println!("  • Creating type registry...";
-    // let mut registry = wrt_component::FixedLengthListTypeRegistry::new(;
+    // let mut registry = wrt_component::FixedLengthListTypeRegistry::new);
     // let type_index = registry.register_type(
     //     wrt_component::FixedLengthListType::new(
     //         wrt_foundation::types::ValueType::F64, 10

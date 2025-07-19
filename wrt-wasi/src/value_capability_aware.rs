@@ -361,7 +361,7 @@ mod tests {
     #[test]
     fn test_capability_aware_value_creation() {
         // Initialize memory system for testing
-        let _ = MemoryInitializer::initialize(;
+        let _ = MemoryInitializer::initialize);
         
         // Test string creation
         let string_value = CapabilityAwareValue::string_from_str("test").unwrap();
@@ -382,7 +382,7 @@ mod tests {
     
     #[test] 
     fn test_boxed_value() {
-        let _ = MemoryInitializer::initialize(;
+        let _ = MemoryInitializer::initialize);
         
         let value = CapabilityAwareValue::U32(100;
         let boxed = WasiValueBox::new(value).unwrap();

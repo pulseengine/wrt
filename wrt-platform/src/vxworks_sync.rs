@@ -391,7 +391,7 @@ mod tests {
     fn test_vxworks_futex_builder() {
         let futex = VxWorksFutexBuilder::new(VxWorksContext::Rtp)
             .initial_value(42)
-            .build(;
+            .build);
 
         #[cfg(target_os = "vxworks")]
         {

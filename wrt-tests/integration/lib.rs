@@ -49,68 +49,68 @@ mod tests {
     
     #[test]
     fn all_integration_tests() {
-        let result = run_all_integration_tests(;
+        let result = run_all_integration_tests);
         assert!(result.is_success(), "Integration tests failed: {:?}", result);
     }
     
     #[test]
     fn component_model_suite() {
-        let result = component_model::run_tests(;
+        let result = component_model::run_tests);
         assert!(result.is_success(), "Component model tests failed: {:?}", result);
     }
     
     #[test]
     fn runtime_suite() {
-        let result = runtime::run_tests(;
+        let result = runtime::run_tests);
         assert!(result.is_success(), "Runtime tests failed: {:?}", result);
     }
     
     #[test]
     fn platform_suite() {
-        let result = platform::run_tests(;
+        let result = platform::run_tests);
         assert!(result.is_success(), "Platform tests failed: {:?}", result);
     }
     
     #[test]
     fn no_std_suite() {
-        let result = no_std::run_tests(;
+        let result = no_std::run_tests);
         assert!(result.is_success(), "No-std tests failed: {:?}", result);
     }
     
     #[test]
     fn security_suite() {
-        let result = security::run_tests(;
+        let result = security::run_tests);
         assert!(result.is_success(), "Security tests failed: {:?}", result);
     }
     
     #[test]
     fn parser_suite() {
-        let result = parser::run_tests(;
+        let result = parser::run_tests);
         assert!(result.is_success(), "Parser tests failed: {:?}", result);
     }
     
     #[test]
     fn memory_suite() {
-        let result = memory::run_tests(;
+        let result = memory::run_tests);
         assert!(result.is_success(), "Memory tests failed: {:?}", result);
     }
     
     #[test]
     fn core_suite() {
-        let result = core::run_tests(;
+        let result = core::run_tests);
         assert!(result.is_success(), "Core tests failed: {:?}", result);
     }
     
     #[test]
     fn documentation_suite() {
-        let result = documentation::run_tests(;
+        let result = documentation::run_tests);
         assert!(result.is_success(), "Documentation tests failed: {:?}", result);
     }
     
     #[test]
     #[cfg(any(doc, kani, feature = "kani"))]
     fn formal_verification_suite() {
-        let result = formal_verification::run_tests(;
+        let result = formal_verification::run_tests);
         assert!(result.is_success(), "Formal verification tests failed: {:?}", result);
     }
 }

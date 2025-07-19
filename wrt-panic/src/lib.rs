@@ -32,7 +32,7 @@
 //! let panic_context = PanicContextBuilder::new()
 //!     .with_memory_budget(2048)  // 2KB for panic information
 //!     .with_safety_level(AsilLevel::AsilD)
-//!     .build(;
+//!     .build);
 //! 
 //! initialize_panic_handler(panic_context;
 //! ```
@@ -222,7 +222,7 @@ pub fn initialize_panic_handler<P: MemoryProvider>(context: PanicContext<P>) -> 
 /// Hash a string at compile time for error codes
 #[allow(dead_code)]
 const fn hash_str(s: &str) -> u32 {
-    let bytes = s.as_bytes(;
+    let bytes = s.as_bytes);
     let mut hash = 5381u32;
     let mut i = 0;
     while i < bytes.len() {
@@ -254,15 +254,15 @@ fn store_panic_info(info: &core::panic::PanicInfo) {
 
     // Extract information from panic info
     if let Some(location) = info.location() {
-        let file_hash = hash_str(location.file(;
-        let line = location.line(;
+        let file_hash = hash_str(location.file);
+        let line = location.line);
         panic_info.location_hash = file_hash.wrapping_add(line;
     }
 
     // Extract error code from panic message
     #[cfg(feature = "std")]
     {
-        let msg = info.message(;
+        let msg = info.message);
         let msg_str = std::format!("{}", msg;
         panic_info.error_code = hash_str(&msg_str;
     }
@@ -277,7 +277,7 @@ fn store_panic_info(info: &core::panic::PanicInfo) {
     #[cfg(feature = "std")]
     {
         if let Ok(duration) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-            panic_info.timestamp = duration.as_secs(;
+            panic_info.timestamp = duration.as_secs);
         }
     }
 
@@ -344,7 +344,7 @@ fn panic_asil_d(info: &core::panic::PanicInfo) -> ! {
     // 2. Ensure no recovery attempts - enter permanent safe state
     // 3. Use hardware-efficient infinite loop for safe state maintenance
     loop {
-        core::hint::spin_loop(;
+        core::hint::spin_loop);
     }
 }
 
@@ -378,7 +378,7 @@ fn panic_asil_b(info: &core::panic::PanicInfo) -> ! {
     
     // 2. Enter safe state - similar to ASIL-D but with reduced complexity
     loop {
-        core::hint::spin_loop(;
+        core::hint::spin_loop);
     }
 }
 
@@ -402,7 +402,7 @@ fn panic_dev(info: &core::panic::PanicInfo) -> ! {
     
     // 2. Enter safe state with development-friendly behavior
     loop {
-        core::hint::spin_loop(;
+        core::hint::spin_loop);
     }
 }
 
@@ -432,7 +432,7 @@ fn panic_release(info: &core::panic::PanicInfo) -> ! {
     
     // 2. Enter safe state immediately
     loop {
-        core::hint::spin_loop(;
+        core::hint::spin_loop);
     }
 }
 
@@ -531,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_panic_handler_info() {
-        let info = panic_handler_info(;
+        let info = panic_handler_info);
         assert!(!info.is_empty();
         
         // Verify that we get a sensible response
@@ -578,7 +578,7 @@ mod tests {
         assert_eq!(current_memory_budget(), DEFAULT_PANIC_MEMORY_BUDGET;
         
         // Test ASIL level configuration
-        let level = current_asil_level(;
+        let level = current_asil_level);
         assert!(matches!(level, AsilLevel::QM | AsilLevel::AsilA | AsilLevel::AsilB | AsilLevel::AsilC | AsilLevel::AsilD);
     }
 
@@ -587,7 +587,7 @@ mod tests {
         use core::mem;
         
         // Ensure the panic info structure has expected size constraints
-        let size = mem::size_of::<WrtPanicInfo>(;
+        let size = mem::size_of::<WrtPanicInfo>);
         assert!(size >= MIN_PANIC_INFO_SIZE);
         assert!(size <= DEFAULT_PANIC_MEMORY_BUDGET);
     }
@@ -607,13 +607,13 @@ mod tests {
     #[test] 
     fn test_panic_context_builder() {
         type TestProvider = NoStdProvider<512>;
-        let provider = TestProvider::default(;
+        let provider = TestProvider::default);
         
         let context = PanicContextBuilder::new()
             .with_safety_level(AsilLevel::AsilB)
             .with_memory_budget(512)
             .with_memory_provider(provider)
-            .build(;
+            .build);
             
         assert!(context.is_ok();
         

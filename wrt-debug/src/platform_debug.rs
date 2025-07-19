@@ -409,7 +409,7 @@ mod tests {
 
     #[test]
     fn test_minimal_embedded_limits() {
-        let limits = PlatformDebugLimits::minimal_embedded(;
+        let limits = PlatformDebugLimits::minimal_embedded);
 
         assert_eq!(limits.debug_level, DebugLevel::BasicProfile;
         assert_eq!(limits.max_debug_sections, 8;
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_production_limits() {
-        let limits = PlatformDebugLimits::production(;
+        let limits = PlatformDebugLimits::production);
 
         assert_eq!(limits.debug_level, DebugLevel::None;
         assert_eq!(limits.max_debug_sections, 0;
@@ -449,7 +449,7 @@ mod tests {
         assert_eq!(manager.active_sections, 1;
 
         // Test reset
-        manager.reset(;
+        manager.reset);
         assert_eq!(manager.debug_memory_usage(), 0;
         assert_eq!(manager.active_breakpoints, 0;
         assert_eq!(manager.active_sections, 0;
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_config_builder() {
-        let platform_limits = ComprehensivePlatformLimits::default(;
+        let platform_limits = ComprehensivePlatformLimits::default);
 
         let limits = PlatformDebugConfigBuilder::new()
             .with_debug_level(DebugLevel::FullDebug)

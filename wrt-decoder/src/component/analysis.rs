@@ -52,7 +52,7 @@ impl<const N: usize, P: wrt_foundation::MemoryProvider + Default + Clone + Parti
 /// Extract embedded WebAssembly modules from a component binary
 #[cfg(feature = "std")]
 pub fn extract_embedded_modules(bytes: &[u8]) -> Result<std::vec::Vec<std::vec::Vec<u8>>> {
-    let mut modules = std::vec::Vec::new(;
+    let mut modules = std::vec::Vec::new);
     let mut offset = 8; // Skip magic and version
 
     // Parse sections
@@ -527,8 +527,8 @@ impl wrt_foundation::traits::FromBytes for CoreModuleInfo {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for CoreModuleInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.idx.to_le_bytes(;
-        checksum.update_slice(&(self.size as u64).to_le_bytes(;
+        checksum.update_slice(&self.idx.to_le_bytes);
+        checksum.update_slice(&(self.size as u64).to_le_bytes);
     }
 }
 
@@ -588,9 +588,9 @@ impl wrt_foundation::traits::FromBytes for ExtendedImportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ExtendedImportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.namespace.as_bytes(;
-        checksum.update_slice(self.name.as_bytes(;
-        checksum.update_slice(self.kind.as_bytes(;
+        checksum.update_slice(self.namespace.as_bytes);
+        checksum.update_slice(self.name.as_bytes);
+        checksum.update_slice(self.kind.as_bytes);
     }
 }
 
@@ -672,9 +672,9 @@ impl wrt_foundation::traits::FromBytes for ExtendedExportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ExtendedExportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.name.as_bytes(;
-        checksum.update_slice(self.kind.as_bytes(;
-        checksum.update_slice(&self.index.to_le_bytes(;
+        checksum.update_slice(self.name.as_bytes);
+        checksum.update_slice(self.kind.as_bytes);
+        checksum.update_slice(&self.index.to_le_bytes);
     }
 }
 
@@ -711,7 +711,7 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
-        let mut bytes = Vec::new(;
+        let mut bytes = Vec::new);
         #[cfg(not(feature = "std"))]
         let mut bytes = {
             let provider = wrt_foundation::safe_managed_alloc!(
@@ -758,11 +758,11 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ModuleImportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.module.as_bytes(;
-        checksum.update_slice(self.name.as_bytes(;
-        checksum.update_slice(self.kind.as_bytes(;
-        checksum.update_slice(&self.index.to_le_bytes(;
-        checksum.update_slice(&self.module_idx.to_le_bytes(;
+        checksum.update_slice(self.module.as_bytes);
+        checksum.update_slice(self.name.as_bytes);
+        checksum.update_slice(self.kind.as_bytes);
+        checksum.update_slice(&self.index.to_le_bytes);
+        checksum.update_slice(&self.module_idx.to_le_bytes);
     }
 }
 
@@ -796,7 +796,7 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
-        let mut bytes = Vec::new(;
+        let mut bytes = Vec::new);
         #[cfg(not(feature = "std"))]
         let mut bytes = {
             let provider = wrt_foundation::safe_managed_alloc!(
@@ -842,9 +842,9 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ModuleExportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.name.as_bytes(;
-        checksum.update_slice(self.kind.as_bytes(;
-        checksum.update_slice(&self.index.to_le_bytes(;
-        checksum.update_slice(&self.module_idx.to_le_bytes(;
+        checksum.update_slice(self.name.as_bytes);
+        checksum.update_slice(self.kind.as_bytes);
+        checksum.update_slice(&self.index.to_le_bytes);
+        checksum.update_slice(&self.module_idx.to_le_bytes);
     }
 }

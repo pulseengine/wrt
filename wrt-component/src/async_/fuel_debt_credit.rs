@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_fuel_debt_credit_basic() {
-        let system = FuelDebtCreditSystem::default(;
+        let system = FuelDebtCreditSystem::default);
         let task_id = TaskId::new(1;
         
         system.register_task(task_id).unwrap();

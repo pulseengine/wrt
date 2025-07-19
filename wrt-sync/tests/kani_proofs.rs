@@ -21,7 +21,7 @@ use wrt_sync::{
 fn verify_mutex_new_lock_unlock() {
     let m = WrtMutex::new(10;
     {
-        let mut guard = m.lock(;
+        let mut guard = m.lock);
         *guard += 5;
         assert_eq!(*guard, 15;
         // Test Debug impl while locked (indirectly)
@@ -31,7 +31,7 @@ fn verify_mutex_new_lock_unlock() {
     } // guard drops here
 
     {
-        let guard = m.lock(;
+        let guard = m.lock);
         assert_eq!(*guard, 15;
     } // guard drops here
       // Test Debug impl while unlocked
@@ -42,7 +42,7 @@ fn verify_mutex_new_lock_unlock() {
 #[cfg_attr(feature = "kani", kani::unwind(3))]
 fn verify_mutex_guard_deref() {
     let m = WrtMutex::new(42;
-    let guard = m.lock(;
+    let guard = m.lock);
     assert_eq!(*guard, 42;
 }
 
@@ -51,13 +51,13 @@ fn verify_mutex_guard_deref() {
 fn verify_mutex_guard_deref_mut() {
     let m = WrtMutex::new(42;
     {
-        let mut guard = m.lock(;
+        let mut guard = m.lock);
         assert_eq!(*guard, 42;
         *guard = 99;
         assert_eq!(*guard, 99;
     }
     {
-        let guard = m.lock(;
+        let guard = m.lock);
         assert_eq!(*guard, 99;
     }
 }
@@ -69,14 +69,14 @@ fn verify_mutex_guard_deref_mut() {
 fn verify_rwlock_new_write_read() {
     let lock = WrtRwLock::new(0;
     {
-        let mut writer = lock.write(;
+        let mut writer = lock.write);
         *writer = 100;
         assert_eq!(*writer, 100;
         // Test Debug impl while write-locked
         println!("Write Locked RwLock: {:?}", lock;
     } // writer drops
     {
-        let data = lock.read(;
+        let data = lock.read);
         assert_eq!(*data, 100;
         // Test Debug impl while read-locked
         println!("Read Locked RwLock: {:?}", lock;
@@ -89,20 +89,20 @@ fn verify_rwlock_new_write_read() {
 #[cfg_attr(feature = "kani", kani::unwind(6))] // More unwinding for multiple locks/spins
 fn verify_rwlock_new_read_read() {
     let lock = WrtRwLock::new(55;
-    let r1 = lock.read(;
-    let r2 = lock.read(;
+    let r1 = lock.read);
+    let r2 = lock.read);
     assert_eq!(*r1, 55;
     assert_eq!(*r2, 55;
     drop(r1;
     drop(r2;
     // Should be able to acquire write lock now
     {
-        let mut writer = lock.write(;
+        let mut writer = lock.write);
         *writer = 66;
     }
     // Verify write
     {
-        let reader = lock.read(;
+        let reader = lock.read);
         assert_eq!(*reader, 66;
     }
 }
@@ -111,7 +111,7 @@ fn verify_rwlock_new_read_read() {
 #[cfg_attr(feature = "kani", kani::unwind(3))]
 fn verify_rwlock_read_guard_deref() {
     let lock = WrtRwLock::new(123;
-    let guard = lock.read(;
+    let guard = lock.read);
     assert_eq!(*guard, 123;
 }
 
@@ -120,13 +120,13 @@ fn verify_rwlock_read_guard_deref() {
 fn verify_rwlock_write_guard_derefmut() {
     let lock = WrtRwLock::new(123;
     {
-        let mut guard = lock.write(;
+        let mut guard = lock.write);
         assert_eq!(*guard, 123;
         *guard = 456;
         assert_eq!(*guard, 456;
     }
     {
-        let guard = lock.read(;
+        let guard = lock.read);
         assert_eq!(*guard, 456;
     }
 }
@@ -136,7 +136,7 @@ fn verify_rwlock_write_guard_derefmut() {
 fn verify_rwlock_write_unlocks_for_read() {
     let lock = WrtRwLock::new(77;
     {
-        let mut w1 = lock.write(;
+        let mut w1 = lock.write);
         *w1 = 88;
     } // Drop w1
     {
@@ -150,12 +150,12 @@ fn verify_rwlock_write_unlocks_for_read() {
 fn verify_rwlock_read_unlocks_for_write() {
     let lock = WrtRwLock::new(11;
     {
-        let r1 = lock.read(;
+        let r1 = lock.read);
         assert_eq!(*r1, 11;
         // Create another read guard to ensure count > 1 logic is exercised if
         // applicable
         {
-            let r2 = lock.read(;
+            let r2 = lock.read);
             assert_eq!(*r2, 11;
         } // r2 drops
     } // r1 drops
@@ -165,7 +165,7 @@ fn verify_rwlock_read_unlocks_for_write() {
         *w1 = 22;
     }
     {
-        let r_final = lock.read(;
+        let r_final = lock.read);
         assert_eq!(*r_final, 22;
     }
 }

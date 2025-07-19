@@ -71,11 +71,11 @@ mod integration_tests {
     /// Test canonical ABI with resource limits
     #[test]
     fn test_canonical_abi_resource_integration() {
-        let abi = CanonicalABI::new(;
-        let mut resource_table = ResourceTable::new(;
+        let abi = CanonicalABI::new);
+        let mut resource_table = ResourceTable::new);
 
         // Allocate resources up to limit
-        let mut handles = Vec::new(;
+        let mut handles = Vec::new);
         for i in 0..100 {
             match resource_table.allocate() {
                 Ok(handle) => handles.push(handle),
@@ -87,7 +87,7 @@ mod integration_tests {
         assert!(!handles.is_empty();
 
         // Verify canonical operations work with resources
-        let options = CanonicalOptions::default(;
+        let options = CanonicalOptions::default);
 
         // Test resource handle encoding/decoding would happen here
         // In real implementation, would use canonical ABI methods
@@ -116,7 +116,7 @@ mod integration_tests {
         };
 
         // Create call manager
-        let call_manager = CrossComponentCallManager::new(;
+        let call_manager = CrossComponentCallManager::new);
 
         // Register components
         assert!(call_manager.register_component(component1).is_ok();
@@ -140,7 +140,7 @@ mod integration_tests {
     /// Test resource sharing between components
     #[test]
     fn test_resource_sharing_integration() {
-        let mut lifecycle_manager = ResourceLifecycleManager::new(;
+        let mut lifecycle_manager = ResourceLifecycleManager::new);
 
         // Create resource type
         let resource_type = ResourceType {
@@ -195,7 +195,7 @@ mod integration_tests {
             resources: BoundedResourceVec<u32>,
         }
 
-        let mut components = Vec::new(;
+        let mut components = Vec::new);
 
         // Create multiple components with memory allocations
         for i in 0..5 {
@@ -232,7 +232,7 @@ mod integration_tests {
     /// Test component linking with bounded collections
     #[test]
     fn test_component_linking_integration() {
-        let mut linker = ComponentLinker::new(;
+        let mut linker = ComponentLinker::new);
 
         // Create provider component
         let provider = MockComponent {
@@ -307,7 +307,7 @@ mod integration_tests {
     fn test_canonical_abi_metrics() {
         // CanonicalABI metrics are tested through usage
         // In a real implementation, we would track lift/lower operations
-        let abi = CanonicalABI::new(;
+        let abi = CanonicalABI::new);
 
         // Verify ABI was created successfully
         // Actual metrics tracking would happen during component operations
@@ -353,7 +353,7 @@ mod integration_tests {
         };
 
         // Test allocation up to limits
-        let mut handles = Vec::new(;
+        let mut handles = Vec::new);
         for size in (0..MAX_RESOURCE_HANDLES).step_by(100) {
             match strategy.allocate(size) {
                 Ok(handle) => handles.push(handle),
@@ -473,7 +473,7 @@ impl CrossComponentCallManager {
         // Simulate call execution
 
         // Pop frame on completion
-        stack.pop(;
+        stack.pop);
 
         Ok(()
     }

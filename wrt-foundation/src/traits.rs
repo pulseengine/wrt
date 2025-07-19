@@ -87,7 +87,7 @@ macro_rules! impl_checksummable_for_primitive {
     ($($T:ty),*) => {
         $(impl Checksummable for $T {
             fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-                checksum.update_slice(&self.to_ne_bytes(;
+                checksum.update_slice(&self.to_ne_bytes);
             }
         })*
     };
@@ -136,7 +136,7 @@ pub trait BytesWriter {
 #[cfg(feature = "std")]
 impl Checksummable for alloc::string::String {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-        checksum.update_slice(self.as_bytes(;
+        checksum.update_slice(self.as_bytes);
     }
 }
 
@@ -161,7 +161,7 @@ pub trait ToBytes: Sized {
     /// provider. Requires `DefaultMemoryProvider` to be available.
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default(;
+        let default_provider = DefaultMemoryProvider::default);
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -180,7 +180,7 @@ pub trait FromBytes: Sized {
     /// available.
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default(;
+        let default_provider = DefaultMemoryProvider::default);
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -238,7 +238,7 @@ impl fmt::Display for SerializationError {
 // Implement ToBytes/FromBytes for primitives
 
 macro_rules! impl_bytes_for_primitive {
-    ($($T:ty => $read_method:ident, $write_method:ident);* $(;)?) => {
+    ($($T:ty => $read_method:ident, $write_method:ident);* $);)?) => {
         $(
             impl ToBytes for $T {
                 fn serialized_size(&self) -> usize {
@@ -844,7 +844,7 @@ impl<'a> ReadStream<'a> {
     pub fn read_exact(&mut self, buf: &mut [u8]) -> WrtResult<()> {
         self.ensure_data(buf.len())?;
         buf.copy_from_slice(&self.buffer.data()?[self.position..self.position + buf.len()];
-        self.position += buf.len(;
+        self.position += buf.len);
         Ok(())
     }
 
@@ -976,7 +976,7 @@ impl<'a> WriteStream<'a> {
     pub fn write_all(&mut self, bytes: &[u8]) -> WrtResult<()> {
         self.ensure_capacity(bytes.len())?;
         self.buffer.data_mut()?[self.position..self.position + bytes.len()].copy_from_slice(bytes;
-        self.position += bytes.len(;
+        self.position += bytes.len);
         Ok(())
     }
 
@@ -1047,7 +1047,7 @@ impl ToBytes for alloc::string::String {
         writer: &mut WriteStream<'a>,
         provider: &PStream,
     ) -> WrtResult<()> {
-        let bytes = self.as_bytes(;
+        let bytes = self.as_bytes);
         (bytes.len() as u32).to_bytes_with_provider(writer, provider)?;
         writer.write_all(bytes).map_err(|_e| {
             WrtError::runtime_execution_error("Failed to write String data to stream")

@@ -110,7 +110,7 @@ impl Default for ErrorRecoveryManager {
 impl ErrorRecoveryManager {
     /// Create a new error recovery manager
     pub fn new() -> Self {
-        let mut strategies = HashMap::new(;
+        let mut strategies = HashMap::new);
 
         // Set default recovery strategies
         strategies.insert(ErrorCategory::Parse, RecoveryStrategy::Skip;
@@ -148,9 +148,9 @@ impl ErrorRecoveryManager {
 
     /// Analyze error patterns
     pub fn analyze_patterns(&self) -> ErrorPatternAnalysis {
-        let mut category_counts = HashMap::new(;
-        let mut location_counts = HashMap::new(;
-        let mut recent_errors = Vec::new(;
+        let mut category_counts = HashMap::new);
+        let mut location_counts = HashMap::new);
+        let mut recent_errors = Vec::new);
 
         for (error, context) in &self.error_history {
             // Count by category
@@ -267,7 +267,7 @@ pub struct RecoverableError {
 impl RecoverableError {
     /// Create a new recoverable error
     pub fn new(error: Error, context: ErrorContext) -> Self {
-        let manager = ErrorRecoveryManager::new(;
+        let manager = ErrorRecoveryManager::new);
         let recovery_suggestion = manager.recover(&error, &context;
 
         Self {
@@ -294,7 +294,7 @@ pub struct DebugUtils;
 impl DebugUtils {
     /// Format error with full debugging information
     pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
-        let mut output = String::new(;
+        let mut output = String::new);
 
         output.push_str(&format!(
             "Error: {} (Code: {})\n",
@@ -389,7 +389,7 @@ macro_rules! recoverable {
                         // Log and continue
                         #[cfg(feature = "std")]
                         eprintln!("Recovered from error: {}", recoverable.error.message;
-                        return recoverable.into_result(;
+                        return recoverable.into_result);
                     },
                     _ => Err(recoverable.error),
                 }
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_error_recovery_manager() {
-        let mut manager = ErrorRecoveryManager::new(;
+        let mut manager = ErrorRecoveryManager::new);
 
         // Test setting and getting strategies
         manager.set_strategy(ErrorCategory::Parse, RecoveryStrategy::Skip;
@@ -440,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_pattern_analysis() {
-        let mut manager = ErrorRecoveryManager::new(;
+        let mut manager = ErrorRecoveryManager::new);
 
         // Add multiple errors
         for i in 0..5 {
@@ -449,7 +449,7 @@ mod tests {
             manager.record_error(error, context;
         }
 
-        let analysis = manager.analyze_patterns(;
+        let analysis = manager.analyze_patterns);
         assert_eq!(analysis.total_errors, 5;
         assert_eq!(
             analysis.category_counts.get(&ErrorCategory::Parse),

@@ -59,7 +59,7 @@ pub struct SafeExportMap {
 impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     /// Create a new empty export map
     pub fn new() -> Result<Self> {
-        let provider = P::default(;
+        let provider = P::default);
         let exports = BoundedMap::new(provider)?;
         Ok(Self { exports })
     }
@@ -119,7 +119,7 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     /// Convert this export map to one using SafeMemory containers
     #[cfg(feature = "safe-memory")]
     pub fn to_safe_memory(&self) -> Result<SafeExportMap> {
-        let mut result = SafeExportMap::new(;
+        let mut result = SafeExportMap::new);
         for (name, export) in self.exports.iter() {
             let name_str = name.as_str()?;
             result.add(name_str, export.clone())?;
@@ -143,7 +143,7 @@ impl SafeExportMap {
             if existing_name == name {
                 // Replace the existing export
                 self.exports.set(i, (name.to_string(), export))?;
-                return Ok((;
+                return Ok();
             }
         }
 
@@ -175,7 +175,7 @@ impl SafeExportMap {
                     if let Ok(items) = self.exports.to_vec() {
                         let export = items[i].1.clone();
                         // Clear and rebuild the stack without the removed item
-                        self.exports.clear(;
+                        self.exports.clear);
                         for (j, item) in items.into_iter().enumerate() {
                             if j != i {
                                 let _ = self.exports.push(item);

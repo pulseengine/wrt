@@ -13,7 +13,7 @@ mod tests {
         let result = check_bounds_u32(30, 20, "test";
         assert!(result.is_err();
 
-        let error = result.unwrap_err(;
+        let error = result.unwrap_err);
         assert!(
             error.message().contains("exceeds maximum")
                 || error.message().contains("Bounds check failed")
@@ -103,7 +103,7 @@ mod string_optimization_tests {
         let result = validate_utf8_name(&test_data, 0;
         assert!(result.is_err();
 
-        let error = result.unwrap_err(;
+        let error = result.unwrap_err);
         assert!(error.message().contains("UTF-8");
     }
 }
@@ -116,17 +116,17 @@ mod no_std_tests {
     fn test_memory_pool_with_no_std_provider() {
         use wrt_decoder::memory_optimized::MemoryPool;
 
-        let provider = NoStdProvider::<2048>::default(;
+        let provider = NoStdProvider::<2048>::default);
         let mut pool = MemoryPool::new(provider;
 
         // Test that we can get and return vectors
-        let vec1 = pool.get_instruction_vector(;
+        let vec1 = pool.get_instruction_vector);
         assert_eq!(vec1.len(), 0;
 
         pool.return_instruction_vector(vec1;
 
         // Test string buffer pool
-        let str_buf = pool.get_string_buffer(;
+        let str_buf = pool.get_string_buffer);
         assert_eq!(str_buf.len(), 0;
 
         pool.return_string_buffer(str_buf;

@@ -202,7 +202,7 @@ impl BackendRegistry {
         capability: &dyn NeuralNetworkCapability,
     ) -> Result<Box<dyn DynBackend>> {
         // Validate capability before creating backend
-        let limits = capability.resource_limits(;
+        let limits = capability.resource_limits);
         if limits.max_tensor_memory == 0 || limits.max_concurrent_models == 0 || limits.max_concurrent_contexts == 0 {
             return Err(Error::wasi_invalid_argument("Capability has invalid resource limits";
         }
@@ -226,11 +226,11 @@ impl BackendRegistry {
 }
 
 /// Global backend registry instance
-static BACKEND_REGISTRY: OnceLock<Mutex<BackendRegistry>> = OnceLock::new(;
+static BACKEND_REGISTRY: OnceLock<Mutex<BackendRegistry>> = OnceLock::new);
 
 /// Initialize the backend registry (call once at startup)
 pub fn initialize_backends() -> Result<()> {
-    let mut registry = BackendRegistry::new(;
+    let mut registry = BackendRegistry::new);
     
     // Register available backends
     #[cfg(feature = "tract")]
@@ -265,7 +265,7 @@ mod tests {
     
     #[test]
     fn test_backend_registry() {
-        let mut registry = BackendRegistry::new(;
+        let mut registry = BackendRegistry::new);
         assert!(registry.backends.is_empty();
     }
 }

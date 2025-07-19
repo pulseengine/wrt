@@ -175,7 +175,7 @@ pub fn init_config_file(workspace_root: &Path, force: bool) -> Result<PathBuf> {
         ;
     }
 
-    let default_config = CargoWrtConfig::default(;
+    let default_config = CargoWrtConfig::default);
     let content = toml::to_string_pretty(&default_config)
         .context("Failed to serialize default configuration")?;
 

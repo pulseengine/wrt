@@ -44,11 +44,11 @@ mod tests {
         use wrt_runtime::engine::{ModuleHandle, InstanceHandle};
         
         // Test handle creation
-        let module_handle = ModuleHandle::new(;
+        let module_handle = ModuleHandle::new);
         let instance_handle = InstanceHandle::from_index(0;
         
         // Test handle comparison
-        let another_module = ModuleHandle::new(;
+        let another_module = ModuleHandle::new);
         assert_ne!(module_handle, another_module, "Module handles should be unique";
         
         // Test instance handle indexing

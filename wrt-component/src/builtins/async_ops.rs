@@ -92,7 +92,7 @@ impl AsyncValueStore {
 
     /// Create a new async value with the given status
     pub fn create_async(&mut self, status: AsyncStatus) -> u32 {
-        let id = self.generate_id(;
+        let id = self.generate_id);
         self.values.insert(id, AsyncValue { status, result: None, error: None };
         id
     }
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_async_store() {
-        let mut store = AsyncValueStore::new(;
+        let mut store = AsyncValueStore::new);
 
         // Create a new async value
         let id = store.create_async(AsyncStatus::Pending;

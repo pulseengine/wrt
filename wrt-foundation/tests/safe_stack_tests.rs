@@ -10,7 +10,7 @@ use wrt_foundation::safe_memory::NoStdMemoryProvider;
 // use wrt_foundation::prelude::Checksummed;
 // use wrt_foundation::validation::BoundedCapacity;
 // use wrt_foundation::verification::VerificationLevel; // Was part of verification::{Checksum,
-// VerificationLevel} const U32_SIZE: usize = core::mem::size_of::<u32>(;
+// VerificationLevel} const U32_SIZE: usize = core::mem::size_of::<u32>);
 #[cfg(feature = "std")]
 use wrt_foundation::safe_memory::StdMemoryProvider;
 #[cfg(feature = "std")]
@@ -34,8 +34,8 @@ struct TestValue {
 
 impl Checksummable for TestValue {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&self.id.to_le_bytes(;
-        checksum.update_slice(&self.data.to_le_bytes(;
+        checksum.update_slice(&self.id.to_le_bytes);
+        checksum.update_slice(&self.data.to_le_bytes);
     }
 }
 
@@ -45,8 +45,8 @@ impl ToBytes for TestValue {
         if buffer.len() < <Self as ToBytes>::SERIALIZED_SIZE {
             return Err(SerializationError::IncorrectSize;
         }
-        buffer[0..4].copy_from_slice(&self.id.to_le_bytes(;
-        buffer[4..8].copy_from_slice(&self.data.to_le_bytes(;
+        buffer[0..4].copy_from_slice(&self.id.to_le_bytes);
+        buffer[4..8].copy_from_slice(&self.data.to_le_bytes);
         Ok(())
     }
 }
@@ -189,7 +189,7 @@ fn test_safe_stack_integrity_mixed_ops_levels() {
         StdMemoryProvider::new(vec![0u8); REQUIRED_BYTES_PER_STACK]),
     )
     .unwrap();
-    stack_sampling.set_verification_level(VerificationLevel::default(;
+    stack_sampling.set_verification_level(VerificationLevel::default);
 
     let mut stack_full = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(StdMemoryProvider::new(
         vec![0u8; REQUIRED_BYTES_PER_STACK],
@@ -247,11 +247,11 @@ fn test_safe_stack_checksum_logic() {
     for i in 0..CAPACITY_ELEMENTS as u32 {
         stack.push(i).unwrap();
     }
-    let checksum_off = stack.checksum(;
+    let checksum_off = stack.checksum);
 
     stack.set_verification_level(VerificationLevel::Full;
-    stack.recalculate_checksum(;
-    let checksum_on_initial = stack.checksum(;
+    stack.recalculate_checksum);
+    let checksum_on_initial = stack.checksum);
     if CAPACITY_ELEMENTS > 0 {
         assert_ne!(
             checksum_off, checksum_on_initial,
@@ -262,14 +262,14 @@ fn test_safe_stack_checksum_logic() {
 
     if CAPACITY_ELEMENTS > 0 {
         stack.pop().unwrap();
-        let checksum_after_pop = stack.checksum(;
+        let checksum_after_pop = stack.checksum);
         assert_ne!(
             checksum_on_initial, checksum_after_pop,
             "Checksum should change after pop if stack was not empty"
         ;
 
         stack.push(100).unwrap();
-        let checksum_after_push = stack.checksum(;
+        let checksum_after_push = stack.checksum);
         assert_ne!(
             checksum_after_pop, checksum_after_push,
             "Checksum should change after push if stack was not full"
@@ -278,7 +278,7 @@ fn test_safe_stack_checksum_logic() {
 
     while stack.pop().unwrap().is_some() {}
     assert!(stack.is_empty();
-    let checksum_empty_verified = stack.checksum(;
+    let checksum_empty_verified = stack.checksum);
 
     let mut empty_stack_verified = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(
         StdMemoryProvider::new(vec![0u8); REQUIRED_BYTES_PER_STACK]),

@@ -138,14 +138,14 @@ impl VxWorksThread {
             // Convert Rust closure to C function pointer
             extern "C" fn task_wrapper(arg: *mut c_void) -> i32 {
                 let closure: Box<ThreadEntryPoint> = unsafe { Box::from_raw(arg as *mut ThreadEntryPoint) };
-                closure(;
+                closure);
                 0 // Success
             }
 
             let closure_ptr = Box::into_raw(Box::new(f)) as *mut c_void;
             let name_ptr = config.name.as_ref()
                 .map(|n| n.as_ptr())
-                .unwrap_or(b"wrt_task\0".as_ptr(;
+                .unwrap_or(b"wrt_task\0".as_ptr);
             
             let priority = config.priority.unwrap_or(100); // Default VxWorks priority
             let mut options = 0;
@@ -191,7 +191,7 @@ impl VxWorksThread {
         {
             extern "C" fn thread_wrapper(arg: *mut c_void) -> *mut c_void {
                 let closure: Box<ThreadEntryPoint> = unsafe { Box::from_raw(arg as *mut ThreadEntryPoint) };
-                closure(;
+                closure);
                 core::ptr::null_mut()
             }
 
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_thread_config_default() {
-        let config = VxWorksThreadConfig::default(;
+        let config = VxWorksThreadConfig::default);
         assert_eq!(config.context, VxWorksContext::Rtp;
         assert_eq!(config.stack_size, 8192;
         assert!(config.priority.is_none();
@@ -445,7 +445,7 @@ mod tests {
 
     #[test]
     fn test_current_thread_id() {
-        let id = VxWorksThread::current_id(;
+        let id = VxWorksThread::current_id);
         
         #[cfg(target_os = "vxworks")]
         assert!(id > 0);

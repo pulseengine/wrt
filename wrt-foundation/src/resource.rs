@@ -572,13 +572,13 @@ mod kani_proofs {
         
         // Hash should be consistent
         use core::hash::{Hash, Hasher};
-        let mut hasher1 = core::hash::SipHasher::new(;
-        let mut hasher2 = core::hash::SipHasher::new(;
+        let mut hasher1 = core::hash::SipHasher::new);
+        let mut hasher2 = core::hash::SipHasher::new);
         
         id1.hash(&mut hasher1;
         id2.hash(&mut hasher2;
         
-        assert_eq!(hasher1.finish(), hasher2.finish(;
+        assert_eq!(hasher1.finish(), hasher2.finish);
     }
     
     /// Verify resource operation permission checking
@@ -611,8 +611,8 @@ mod kani_proofs {
         ] {
             // No operation should require both read and write simultaneously
             // (unless explicitly designed that way)
-            let read_req = op.requires_read(;
-            let write_req = op.requires_write(;
+            let read_req = op.requires_read);
+            let write_req = op.requires_write);
             
             // At least one permission should be required
             assert!(read_req || write_req);
@@ -623,7 +623,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_type_serialization() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::SmallProvider::default(;
+        let provider = crate::memory_sizing::SmallProvider::default);
         
         // Test primitive resource type
         let primitive = ResourceType::<crate::memory_sizing::SmallProvider>::Primitive(ValueType::I32;
@@ -644,12 +644,12 @@ mod kani_proofs {
     /// Verify resource handle uniqueness and validity
     #[kani::proof]
     fn verify_resource_handle_properties() {
-        let handle1 = ResourceHandle::new(;
-        let handle2 = ResourceHandle::new(;
+        let handle1 = ResourceHandle::new);
+        let handle2 = ResourceHandle::new);
         
         // Handles should be unique (assuming monotonic ID generation)
         // This depends on implementation details
-        assert_ne!(handle1.id(), handle2.id(;
+        assert_ne!(handle1.id(), handle2.id);
         
         // Handles should be valid when created
         assert!(handle1.is_valid();
@@ -661,7 +661,7 @@ mod kani_proofs {
     fn verify_resource_bounds_checking() {
         const MAX_RESOURCES: usize = 16;
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::MediumProvider::default(;
+        let provider = crate::memory_sizing::MediumProvider::default);
         
         // Create a resource collection with bounded capacity
         let mut resources: BoundedVec<ResourceId, MAX_RESOURCES, _> = 
@@ -689,13 +689,13 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_access_safety() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::SmallProvider::default(;
+        let provider = crate::memory_sizing::SmallProvider::default);
         let mut resources: BoundedVec<ResourceHandle, 8, _> = 
             BoundedVec::new(provider).unwrap();
         
         // Add some resources
-        let handle1 = ResourceHandle::new(;
-        let handle2 = ResourceHandle::new(;
+        let handle1 = ResourceHandle::new);
+        let handle2 = ResourceHandle::new);
         
         resources.push(handle1).unwrap();
         resources.push(handle2).unwrap();

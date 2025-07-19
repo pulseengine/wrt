@@ -1071,7 +1071,7 @@ impl ParameterMarshaler {
 
         // For now, just clone the parameters (no actual marshaling)
         #[cfg(feature = "std")]
-        let marshaled_parameters = parameters.to_vec(;
+        let marshaled_parameters = parameters.to_vec);
         #[cfg(not(feature = "std"))]
         let marshaled_parameters = {
             let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
@@ -1129,7 +1129,7 @@ impl ParameterMarshaler {
                 }
                 #[cfg(not(feature = "std"))]
                 ComponentValue::String(s) => {
-                    let len = s.as_bytes().len(;
+                    let len = s.as_bytes().len);
                     if len > MAX_STRING_LENGTH {
                         return Err(Error::validation_error("String parameter too long";
                     }
@@ -1200,7 +1200,7 @@ impl ResourceCoordinator {
     /// Coordinate resources for a call
     pub fn coordinate_resources(&mut self, resource_handles: &[ResourceHandle]) -> Result<ResourceState> {
         #[cfg(feature = "std")]
-        let mut acquired_locks = std::vec::Vec::new(;
+        let mut acquired_locks = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
         let mut acquired_locks = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
 
@@ -1421,19 +1421,19 @@ mod tests {
 
     #[test]
     fn test_call_context_manager_creation() {
-        let manager = CallContextManager::new(;
+        let manager = CallContextManager::new);
         assert_eq!(manager.contexts.len(), 0;
     }
 
     #[test]
     fn test_parameter_marshaler_creation() {
-        let marshaler = ParameterMarshaler::new(MarshalingConfig::default(;
+        let marshaler = ParameterMarshaler::new(MarshalingConfig::default);
         assert_eq!(marshaler.config.string_encoding, StringEncoding::Utf8;
     }
 
     #[test]
     fn test_parameter_size_calculation() {
-        let marshaler = ParameterMarshaler::new(MarshalingConfig::default(;
+        let marshaler = ParameterMarshaler::new(MarshalingConfig::default);
         let parameters = vec![
             ComponentValue::S32(42),
             #[cfg(feature = "std")]
@@ -1453,7 +1453,7 @@ mod tests {
 
     #[test]
     fn test_resource_coordinator() {
-        let mut coordinator = ResourceCoordinator::new(;
+        let mut coordinator = ResourceCoordinator::new);
         let handles = vec![ResourceHandle::new(1), ResourceHandle::new(2)];
 
         let state = coordinator.coordinate_resources(&handles).unwrap();
@@ -1963,20 +1963,20 @@ impl PartialEq for SizeValidationResult {
 impl Eq for SizeValidationResult {}
 
 // Apply macro to all types that need traits
-impl_basic_traits!(ManagedCallContext, ManagedCallContext::default(;
-impl_basic_traits!(TypeCompatibility, TypeCompatibility::default(;
-impl_basic_traits!(ResourceLock, ResourceLock::default(;
-impl_basic_traits!(PendingResourceTransfer, PendingResourceTransfer::default(;
-impl_basic_traits!(TransferPolicy, TransferPolicy::default(;
-impl_basic_traits!(SecurityPolicy, SecurityPolicy::default(;
-impl_basic_traits!(ValidationRule, ValidationRule::default(;
-impl_basic_traits!(TimingMetrics, TimingMetrics::default(;
-impl_basic_traits!(OptimizationSuggestion, OptimizationSuggestion::default(;
-impl_basic_traits!(PermissionCheckResult, PermissionCheckResult::default(;
-impl_basic_traits!(AccessControlResult, AccessControlResult::default(;
-impl_basic_traits!(ResourceAvailabilityResult, ResourceAvailabilityResult::default(;
-impl_basic_traits!(TransferPermissionResult, TransferPermissionResult::default(;
-impl_basic_traits!(SizeValidationResult, SizeValidationResult::default(;
+impl_basic_traits!(ManagedCallContext, ManagedCallContext::default);
+impl_basic_traits!(TypeCompatibility, TypeCompatibility::default);
+impl_basic_traits!(ResourceLock, ResourceLock::default);
+impl_basic_traits!(PendingResourceTransfer, PendingResourceTransfer::default);
+impl_basic_traits!(TransferPolicy, TransferPolicy::default);
+impl_basic_traits!(SecurityPolicy, SecurityPolicy::default);
+impl_basic_traits!(ValidationRule, ValidationRule::default);
+impl_basic_traits!(TimingMetrics, TimingMetrics::default);
+impl_basic_traits!(OptimizationSuggestion, OptimizationSuggestion::default);
+impl_basic_traits!(PermissionCheckResult, PermissionCheckResult::default);
+impl_basic_traits!(AccessControlResult, AccessControlResult::default);
+impl_basic_traits!(ResourceAvailabilityResult, ResourceAvailabilityResult::default);
+impl_basic_traits!(TransferPermissionResult, TransferPermissionResult::default);
+impl_basic_traits!(SizeValidationResult, SizeValidationResult::default);
 
 // Additional Default implementations for remaining types
 impl Default for TransferResult {
@@ -2019,5 +2019,5 @@ impl PartialEq for TypeCheckResult {
 impl Eq for TypeCheckResult {}
 
 // Apply macro to additional types
-impl_basic_traits!(TransferResult, TransferResult::default(;
-impl_basic_traits!(TypeCheckResult, TypeCheckResult::default(;
+impl_basic_traits!(TransferResult, TransferResult::default);
+impl_basic_traits!(TypeCheckResult, TypeCheckResult::default);

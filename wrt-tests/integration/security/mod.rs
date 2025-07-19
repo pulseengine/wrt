@@ -25,7 +25,7 @@ mod tests {
     
     #[test]
     fn security_integration() {
-        let result = run_tests(;
+        let result = run_tests);
         assert!(result.is_success(), "Security integration tests failed: {:?}", result);
     }
 }

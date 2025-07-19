@@ -66,7 +66,7 @@ pub fn convert_locals_to_bounded(
 pub fn expand_locals_to_flat(
     bounded_locals: &BoundedVec<LocalEntry, 64, RuntimeProvider>
 ) -> Result<Vec<ValueType>> {
-    let mut flat_locals = Vec::new(;
+    let mut flat_locals = Vec::new);
     
     for local_entry in bounded_locals.iter() {
         for _ in 0..local_entry.count {
@@ -84,7 +84,7 @@ mod tests {
     
     #[test]
     fn test_convert_empty_locals() {
-        let locals = Vec::new(;
+        let locals = Vec::new);
         let result = convert_locals_to_bounded(&locals).unwrap();
         assert_eq!(result.len(), 0;
     }

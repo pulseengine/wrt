@@ -260,7 +260,7 @@ mod tests {
             .with_name("test-resource")
             .with_memory_strategy(MemoryStrategy::ZeroCopy)
             .with_verification_level(VerificationLevel::Full)
-            .build(;
+            .build);
 
         assert_eq!(resource.type_idx, 1;
         assert_eq!(resource.name, Some("test-resource".to_string();
@@ -276,7 +276,7 @@ mod tests {
             .with_default_memory_strategy(MemoryStrategy::ZeroCopy)
             .with_default_verification_level(VerificationLevel::None)
             .with_optimized_memory()
-            .build(;
+            .build);
 
         // Create a resource to test the table was built correctly
         let data = Arc::new("test".to_string();
@@ -291,7 +291,7 @@ mod tests {
             .with_instance_id("test-instance")
             .with_default_memory_strategy(MemoryStrategy::Copy)
             .with_default_verification_level(VerificationLevel::Critical)
-            .build(;
+            .build);
 
         assert_eq!(manager.instance_id(), "test-instance";
         assert_eq!(manager.default_memory_strategy(), MemoryStrategy::Copy;
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "std"))]
     fn test_resource_manager_builder_no_std() {
-        let table = Mutex::new(ResourceTable::new(;
+        let table = Mutex::new(ResourceTable::new);
 
         let manager = ResourceManagerBuilder::new()
             .with_instance_id("test-instance")

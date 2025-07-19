@@ -59,7 +59,7 @@ mod helper_tests {
 
     #[test]
     fn test_command_suggestion_engine() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
 
         // Test exact match
         let suggestions = engine.suggest("build", None;
@@ -78,22 +78,22 @@ mod helper_tests {
 
     #[test]
     fn test_performance_optimizer() {
-        let mut optimizer = PerformanceOptimizer::with_defaults(;
+        let mut optimizer = PerformanceOptimizer::with_defaults);
 
         // Test timing
         optimizer.start_timer("test_command";
         std::thread::sleep(Duration::from_millis(10;
         optimizer.stop_timer("test_command";
 
-        let report = optimizer.generate_report(;
+        let report = optimizer.generate_report);
         assert!(report.metrics.command_times.contains_key("test_command");
 
         // Test cache tracking
-        optimizer.record_cache_hit(;
-        optimizer.record_cache_miss(;
-        optimizer.record_cache_hit(;
+        optimizer.record_cache_hit);
+        optimizer.record_cache_miss);
+        optimizer.record_cache_hit);
 
-        let ratio = optimizer.cache_hit_ratio(;
+        let ratio = optimizer.cache_hit_ratio);
         assert!((ratio - 0.666).abs() < 0.01)); // 2/3 ≈ 0.666
     }
 
@@ -112,7 +112,7 @@ mod helper_tests {
         assert!(human_format.contains("Build Error");
         assert!(human_format.contains("Test error");
 
-        let json_format = error.format_json(;
+        let json_format = error.format_json);
         assert!(json_format.is_object();
     }
 }
@@ -135,7 +135,7 @@ mod context_detection_tests {
         };
 
         let context = TestContext::with_config(config)?;
-        let detector = ContextDetector::new(context.workspace_root().to_path_buf(;
+        let detector = ContextDetector::new(context.workspace_root().to_path_buf);
         let project_context = detector.detect()?;
 
         assert!(matches!(
@@ -157,7 +157,7 @@ mod context_detection_tests {
         };
 
         let context = TestContext::with_config(config)?;
-        let detector = ContextDetector::new(context.workspace_root().to_path_buf(;
+        let detector = ContextDetector::new(context.workspace_root().to_path_buf);
         let project_context = detector.detect()?;
 
         assert!(matches!(
@@ -176,7 +176,7 @@ mod context_detection_tests {
         };
 
         let context = TestContext::with_config(config)?;
-        let detector = ContextDetector::new(context.workspace_root().to_path_buf(;
+        let detector = ContextDetector::new(context.workspace_root().to_path_buf);
         let project_context = detector.detect()?;
 
         assert!(matches!(
@@ -364,7 +364,7 @@ mod mock_build_tests {
         assert!(!mock_system.was_called("non_existent_operation");
 
         // Test clearing log
-        mock_system.clear_log(;
+        mock_system.clear_log);
         assert!(!mock_system.was_called("build_all");
 
         Ok(())
@@ -399,10 +399,10 @@ mod performance_tests {
         }
 
         // Test context detection performance
-        let start = std::time::Instant::now(;
-        let detector = ContextDetector::new(context.workspace_root().to_path_buf(;
+        let start = std::time::Instant::now);
+        let detector = ContextDetector::new(context.workspace_root().to_path_buf);
         let _project_context = detector.detect()?;
-        let duration = start.elapsed(;
+        let duration = start.elapsed);
 
         // Should complete quickly even with many files
         assert!(duration < Duration::from_secs(1);
@@ -425,14 +425,14 @@ mod performance_tests {
                         OutputFormat::Human,
                         false,
                     ;
-                    progress.start(;
+                    progress.start);
 
                     for _ in 0..10 {
-                        progress.tick(;
+                        progress.tick);
                         thread::sleep(Duration::from_millis(10;
                     }
 
-                    progress.finish(;
+                    progress.finish);
                 })
             })
             .collect();
@@ -457,7 +457,7 @@ mod error_handling_tests {
         let invalid_path = temp_dir.path().join("non_existent";
 
         let detector = ContextDetector::new(invalid_path;
-        let result = detector.detect(;
+        let result = detector.detect);
 
         // Should handle invalid paths gracefully
         match result {
@@ -475,7 +475,7 @@ mod error_handling_tests {
 
     #[test]
     fn test_command_suggestions_edge_cases() {
-        let engine = CommandSuggestionEngine::new(;
+        let engine = CommandSuggestionEngine::new);
 
         // Test very long input
         let long_input = "a".repeat(1000;
@@ -495,7 +495,7 @@ mod error_handling_tests {
 
     #[test]
     fn test_performance_optimizer_edge_cases() {
-        let mut optimizer = PerformanceOptimizer::with_defaults(;
+        let mut optimizer = PerformanceOptimizer::with_defaults);
 
         // Test stopping timer that was never started
         optimizer.stop_timer("never_started";
@@ -508,7 +508,7 @@ mod error_handling_tests {
         // Should handle gracefully
 
         // Test cache operations with no data
-        let ratio = optimizer.cache_hit_ratio(;
+        let ratio = optimizer.cache_hit_ratio);
         assert_eq!(ratio, 0.0;
     }
 }

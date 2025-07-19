@@ -8,7 +8,7 @@ use wrt_foundation::*;
 fn test_zero_configuration_usage() {
     // Test the safe_managed_alloc! macro - crown jewel of A+ usability
     let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let provider = guard.provider(;
+    let provider = guard.provider);
 
     // Verify provider works
     assert_eq!(provider.size(), 1024;
@@ -63,14 +63,14 @@ fn test_compile_time_enforcement() {
     assert_eq!(guard.provider().size(), 2048;
 
     // Test memory regions
-    let region = enforcement::MemoryRegion::<0, 4096>::new(;
+    let region = enforcement::MemoryRegion::<0, 4096>::new);
     assert_eq!(region.size(), 4096;
 }
 
 #[test]
 fn test_monitoring_and_telemetry() {
     // Reset monitoring state
-    monitoring::MEMORY_MONITOR.reset(;
+    monitoring::MEMORY_MONITOR.reset);
 
     // Perform several allocations
     let _guard1 = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
@@ -78,7 +78,7 @@ fn test_monitoring_and_telemetry() {
     let _guard3 = safe_managed_alloc!(512, CrateId::Runtime).unwrap();
 
     // Check monitoring captured the allocations
-    let stats = monitoring::convenience::global_stats(;
+    let stats = monitoring::convenience::global_stats);
     assert_eq!(stats.total_allocations, 3;
     assert_eq!(stats.current_usage, 1024 + 2048 + 512;
     assert!(stats.peak_usage >= stats.current_usage);
@@ -104,7 +104,7 @@ fn test_auto_sizing_macros() {
 #[test]
 fn test_raii_automatic_cleanup() {
     // Reset monitoring
-    monitoring::MEMORY_MONITOR.reset(;
+    monitoring::MEMORY_MONITOR.reset);
 
     // Create and drop allocations
     {
@@ -112,13 +112,13 @@ fn test_raii_automatic_cleanup() {
         let _guard2 = safe_managed_alloc!(2048, CrateId::Component).unwrap();
 
         // Verify allocations recorded
-        let stats = monitoring::convenience::global_stats(;
+        let stats = monitoring::convenience::global_stats);
         assert_eq!(stats.total_allocations, 2;
         assert_eq!(stats.current_usage, 1024 + 2048;
     } // Guards dropped here
 
     // Give time for cleanup (RAII should be immediate, but just to be safe)
-    let stats = monitoring::convenience::global_stats(;
+    let stats = monitoring::convenience::global_stats);
     assert_eq!(stats.total_deallocations, 2;
     assert_eq!(stats.current_usage, 0;
     assert!(!stats.has_leaks();
@@ -177,9 +177,9 @@ fn test_cross_crate_compatibility() {
 #[test]
 fn test_memory_regions_compile_time_validation() {
     // Test compile-time memory region validation
-    let region1 = enforcement::MemoryRegion::<0, 1024>::new(;
-    let region2 = enforcement::MemoryRegion::<1024, 2048>::new(;
-    let region3 = enforcement::MemoryRegion::<3072, 1024>::new(;
+    let region1 = enforcement::MemoryRegion::<0, 1024>::new);
+    let region2 = enforcement::MemoryRegion::<1024, 2048>::new);
+    let region3 = enforcement::MemoryRegion::<3072, 1024>::new);
 
     assert_eq!(region1.size(), 1024;
     assert_eq!(region2.size(), 2048;
@@ -205,14 +205,14 @@ fn test_capability_based_tokens() {
 #[test]
 fn test_system_report_generation() {
     // Reset monitoring
-    monitoring::MEMORY_MONITOR.reset(;
+    monitoring::MEMORY_MONITOR.reset);
 
     // Generate some activity
     let _guards =
-        (0..5).map(|_| safe_managed_alloc!(1024, CrateId::Foundation).unwrap()).collect::<Vec<_>>(;
+        (0..5).map(|_| safe_managed_alloc!(1024, CrateId::Foundation).unwrap()).collect::<Vec<_>>);
 
     // Generate system report
-    let report = monitoring::get_system_report(;
+    let report = monitoring::get_system_report);
 
     assert_eq!(report.global_statistics.total_allocations, 5;
     assert_eq!(report.global_statistics.current_usage, 5 * 1024;
@@ -231,7 +231,7 @@ fn test_debug_allocation_tracking() {
     let _guard = debug_alloc!(1024, CrateId::Foundation, "test allocation").unwrap();
 
     // In debug mode, this should have tracked the allocation
-    let stats = monitoring::convenience::global_stats(;
+    let stats = monitoring::convenience::global_stats);
     assert!(stats.total_allocations > 0);
 }
 
@@ -264,7 +264,7 @@ fn test_memory_safety_properties() {
     // 1. No double-free (RAII prevents this)
     {
         let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-        let _provider = guard.provider(;
+        let _provider = guard.provider);
         // guard.drop() is called automatically - no double free possible
     }
 
@@ -279,7 +279,7 @@ fn test_memory_safety_properties() {
 
     // 3. No buffer overruns (bounded collections prevent this)
     let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let provider = guard.provider(;
+    let provider = guard.provider);
     let mut vec = BoundedVec::<u8, 10, _>::new(provider.clone()).unwrap();
 
     // Fill to capacity
@@ -294,7 +294,7 @@ fn test_memory_safety_properties() {
 /// Comprehensive stress test
 #[test]
 fn test_stress_allocation_patterns() {
-    monitoring::MEMORY_MONITOR.reset(;
+    monitoring::MEMORY_MONITOR.reset);
 
     // Pattern 1: Many small allocations
     let small_guards: Vec<_> =
@@ -313,7 +313,7 @@ fn test_stress_allocation_patterns() {
         .collect();
 
     // Verify all allocations are tracked
-    let stats = monitoring::convenience::global_stats(;
+    let stats = monitoring::convenience::global_stats);
     assert_eq!(stats.total_allocations, 100 + 10 + 50;
 
     // Verify system remains healthy under stress
@@ -325,7 +325,7 @@ fn test_stress_allocation_patterns() {
     drop(large_guards;
     drop(mixed_guards;
 
-    let final_stats = monitoring::convenience::global_stats(;
+    let final_stats = monitoring::convenience::global_stats);
     assert_eq!(final_stats.total_deallocations, 160;
     assert!(!final_stats.has_leaks();
 }

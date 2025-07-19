@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_phantom_type() {
-        let _budget: MemoryBudget<{ CrateId::Foundation as u8 }, 1024> = MemoryBudget::verify(;
+        let _budget: MemoryBudget<{ CrateId::Foundation as u8 }, 1024> = MemoryBudget::verify);
         assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::crate_id(), 0;
         assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::size(), 1024;
     }

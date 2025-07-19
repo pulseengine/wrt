@@ -69,7 +69,7 @@ impl AllocRuntime {
     /// Execute a module
     pub fn execute_module(&mut self, module_data: &[u8], function: &str) -> Result<String, String> {
         let fuel_used = module_data.len() as u64 / 50;
-        let memory_used = module_data.len(;
+        let memory_used = module_data.len);
         
         if fuel_used > self.config.max_fuel {
             return Err("Fuel limit exceeded".to_string();
@@ -100,7 +100,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 /// Binary std/no_std choice
 fn main() {
-    let config = AllocConfig::default(;
+    let config = AllocConfig::default);
     let mut runtime = AllocRuntime::new(config;
     
     // Simulate execution with fake WASM module

@@ -23,30 +23,30 @@ use wrt_wasi::nn::{
 
 #[test]
 fn test_tract_model_downcast() {
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     let backend = TractBackend::new(capability;
 
     // Create a minimal valid ONNX model for testing
     // This is the smallest valid ONNX model - just an identity operation
-    let onnx_model = create_minimal_onnx_model(;
+    let onnx_model = create_minimal_onnx_model);
 
     // Load the model
     let result = backend.load_model(&onnx_model, GraphEncoding::ONNX;
 
     if let Ok(model) = result {
         // Test that as_any works
-        let any_ref = model.as_any(;
+        let any_ref = model.as_any);
         assert!(any_ref.downcast_ref::<wrt_wasi::nn::tract_backend::TractModel>().is_some();
     }
 }
 
 #[test]
 fn test_tract_context_stores_runnable() {
-    let capability = DynamicNNCapability::new(;
+    let capability = DynamicNNCapability::new);
     let backend = TractBackend::new(capability;
 
     // Create a minimal ONNX model
-    let onnx_model = create_minimal_onnx_model(;
+    let onnx_model = create_minimal_onnx_model);
 
     // Load model and create context
     if let Ok(model) = backend.load_model(&onnx_model, GraphEncoding::ONNX) {
@@ -86,5 +86,5 @@ fn test_compute_capable_implementation() {
     fn assert_compute_capable<T: ComputeCapable>() {}
 
     // This will only compile if TractContext implements ComputeCapable
-    assert_compute_capable::<wrt_wasi::nn::tract_backend::TractContext>(;
+    assert_compute_capable::<wrt_wasi::nn::tract_backend::TractContext>);
 }

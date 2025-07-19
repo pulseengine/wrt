@@ -99,9 +99,9 @@ impl ExecutionContext {
         }
         
         // Pre-allocate space for inputs/outputs based on model metadata
-        let model = graph.backend_model(;
-        let num_inputs = model.num_inputs(;
-        let num_outputs = model.num_outputs(;
+        let model = graph.backend_model);
+        let num_inputs = model.num_inputs);
+        let num_outputs = model.num_outputs);
         
         // Validate model has reasonable input/output counts
         if num_inputs == 0 {
@@ -121,8 +121,8 @@ impl ExecutionContext {
             ;
         }
         
-        let mut inputs = Vec::new(;
-        let mut outputs = Vec::new(;
+        let mut inputs = Vec::new);
+        let mut outputs = Vec::new);
         
         for _ in 0..num_inputs {
             inputs.push(None);
@@ -131,7 +131,7 @@ impl ExecutionContext {
             outputs.push(None);
         }
         
-        let verification_level = capability.verification_level(;
+        let verification_level = capability.verification_level);
         Ok(Self {
             id,
             graph_id: graph.id(),
@@ -290,7 +290,7 @@ impl ContextStore {
     
     /// Add a context to the store
     pub fn add(&mut self, context: ExecutionContext) -> Result<u32> {
-        let id = context.id(;
+        let id = context.id);
         
         // Validate context ID is not already in use
         if self.contexts.iter().any(|c| c.id() == id) {
@@ -338,7 +338,7 @@ impl ContextStore {
 }
 
 /// Global context store
-static CONTEXT_STORE: OnceLock<Mutex<ContextStore>> = OnceLock::new(;
+static CONTEXT_STORE: OnceLock<Mutex<ContextStore>> = OnceLock::new);
 
 /// Initialize the context store
 pub fn initialize_context_store() -> Result<()> {
@@ -404,7 +404,7 @@ pub fn execute_inference(
     
     // Validate total input memory against limits
     let total_input_memory = calculate_input_memory_usage(context;
-    let limits = capability.resource_limits(;
+    let limits = capability.resource_limits);
     if total_input_memory > limits.max_tensor_memory {
         return Err(Error::wasi_resource_exhausted(
             "Input memory exceeds limit"
@@ -412,7 +412,7 @@ pub fn execute_inference(
     }
     
     // Record start time for timeout checking
-    let start_time = get_time_us(;
+    let start_time = get_time_us);
     
     // Execute inference through backend
     let graph_store = get_graph_store()?;
@@ -425,7 +425,7 @@ pub fn execute_inference(
         .collect();
     
     // Validate input count matches expectation
-    let expected_inputs = graph.backend_model().num_inputs(;
+    let expected_inputs = graph.backend_model().num_inputs);
     if inputs.len() != expected_inputs {
         return Err(Error::wasi_invalid_argument(
             "Input count mismatch"
@@ -436,7 +436,7 @@ pub fn execute_inference(
     let outputs = context.backend_context.compute(&inputs, graph.backend_model())?;
     
     // Validate output count
-    let expected_outputs = graph.backend_model().num_outputs(;
+    let expected_outputs = graph.backend_model().num_outputs);
     if outputs.len() != expected_outputs {
         return Err(Error::wasi_runtime_error(
             "Output count mismatch"
@@ -458,7 +458,7 @@ pub fn execute_inference(
     }
     
     // Store outputs in context
-    context.outputs.clear(;
+    context.outputs.clear);
     for output in outputs {
         context.outputs.push(Some(output);
     }
@@ -539,7 +539,7 @@ mod tests {
     
     #[test]
     fn test_execution_stats() {
-        let mut stats = ExecutionStats::default(;
+        let mut stats = ExecutionStats::default);
         assert_eq!(stats.inference_count, 0;
         
         stats.inference_count += 1;

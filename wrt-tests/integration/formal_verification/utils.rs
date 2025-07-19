@@ -47,7 +47,7 @@ pub const MAX_VERIFICATION_ITERATIONS: usize = 10;
 pub fn any_asil_level() -> AsilLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any(;
+        let level: u8 = kani::any);
         kani::assume(level <= 4); // Valid ASIL levels: 0-4
         unsafe { core::mem::transmute(level) }
     }
@@ -72,7 +72,7 @@ pub fn any_asil_level() -> AsilLevel {
 pub fn any_memory_size(max: usize) -> usize {
     #[cfg(kani)]
     {
-        let size: usize = kani::any(;
+        let size: usize = kani::any);
         kani::assume(size > 0 && size <= max;
         size
     }
@@ -93,7 +93,7 @@ pub fn any_memory_size(max: usize) -> usize {
 pub fn any_alignment() -> usize {
     #[cfg(kani)]
     {
-        let align_power: u8 = kani::any(;
+        let align_power: u8 = kani::any);
         kani::assume(align_power <= 3); // 2^0, 2^1, 2^2, 2^3 = 1, 2, 4, 8
         1 << align_power
     }
@@ -113,7 +113,7 @@ pub fn any_alignment() -> usize {
 pub fn any_crate_id() -> CrateId {
     #[cfg(kani)]
     {
-        let crate_id: u8 = kani::any(;
+        let crate_id: u8 = kani::any);
         match crate_id % 8 {
             0 => CrateId::Foundation,
             1 => CrateId::Component,
@@ -141,7 +141,7 @@ pub fn any_crate_id() -> CrateId {
 pub fn any_safety_standard() -> SafetyStandard {
     #[cfg(kani)]
     {
-        let standard_type: u8 = kani::any(;
+        let standard_type: u8 = kani::any);
         match standard_type % 6 {
             0 => SafetyStandard::Iso26262(any_asil_level()),
             1 => SafetyStandard::Do178c(any_dal_level()),
@@ -167,7 +167,7 @@ pub fn any_safety_standard() -> SafetyStandard {
 pub fn any_standard_type() -> SafetyStandardType {
     #[cfg(kani)]
     {
-        let type_id: u8 = kani::any(;
+        let type_id: u8 = kani::any);
         match type_id % 6 {
             0 => SafetyStandardType::Iso26262,
             1 => SafetyStandardType::Do178c,
@@ -191,7 +191,7 @@ pub fn any_standard_type() -> SafetyStandardType {
 pub fn any_dal_level() -> DalLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any(;
+        let level: u8 = kani::any);
         kani::assume(level <= 4;
         unsafe { core::mem::transmute(level) }
     }
@@ -207,7 +207,7 @@ pub fn any_dal_level() -> DalLevel {
 pub fn any_sil_level() -> SilLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any(;
+        let level: u8 = kani::any);
         kani::assume(level >= 1 && level <= 4); // SIL 1-4
         unsafe { core::mem::transmute(level) }
     }
@@ -223,7 +223,7 @@ pub fn any_sil_level() -> SilLevel {
 pub fn any_medical_class() -> MedicalClass {
     #[cfg(kani)]
     {
-        let class: u8 = kani::any(;
+        let class: u8 = kani::any);
         kani::assume(class >= 1 && class <= 3); // Class A, B, C
         unsafe { core::mem::transmute(class) }
     }
@@ -239,7 +239,7 @@ pub fn any_medical_class() -> MedicalClass {
 pub fn any_railway_sil() -> RailwaySil {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any(;
+        let level: u8 = kani::any);
         kani::assume(level <= 4); // SIL 0-4
         unsafe { core::mem::transmute(level) }
     }
@@ -255,7 +255,7 @@ pub fn any_railway_sil() -> RailwaySil {
 pub fn any_agriculture_level() -> AgricultureLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any(;
+        let level: u8 = kani::any);
         kani::assume(level >= 1 && level <= 5); // AgPL a-e
         unsafe { core::mem::transmute(level) }
     }
@@ -378,7 +378,7 @@ mod tests {
     
     #[test]
     fn test_alignment_generation() {
-        let alignment = any_alignment(;
+        let alignment = any_alignment);
         assert!(alignment.is_power_of_two();
         assert!(alignment <= 8);
     }

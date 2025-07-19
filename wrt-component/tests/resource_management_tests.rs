@@ -18,27 +18,27 @@ use wrt_error::Error;
 /// Test resource ID generation
 #[test]
 fn test_resource_id_generation() {
-    let mut resource_manager = ResourceManager::new(;
+    let mut resource_manager = ResourceManager::new);
 
     // Generate a set of resource IDs and ensure they're unique
-    let id1 = resource_manager.generate_id(;
-    let id2 = resource_manager.generate_id(;
-    let id3 = resource_manager.generate_id(;
+    let id1 = resource_manager.generate_id);
+    let id2 = resource_manager.generate_id);
+    let id3 = resource_manager.generate_id);
 
     assert_ne!(id1, id2;
     assert_ne!(id2, id3;
     assert_ne!(id1, id3;
 
     // Test that IDs increase sequentially
-    let base_id = resource_manager.generate_id(;
-    let next_id = resource_manager.generate_id(;
+    let base_id = resource_manager.generate_id);
+    let next_id = resource_manager.generate_id);
     assert_eq!(next_id.0, base_id.0 + 1;
 }
 
 /// Test host resource management
 #[test]
 fn test_host_resource_management() {
-    let mut resource_manager = ResourceManager::new(;
+    let mut resource_manager = ResourceManager::new);
 
     // Create a simple host resource
     let test_value = Arc::new(Mutex::new(42;
@@ -73,7 +73,7 @@ fn test_host_resource_management() {
 /// Test resource lifecycle operations
 #[test]
 fn test_resource_lifecycle() {
-    let mut resource_manager = ResourceManager::new(;
+    let mut resource_manager = ResourceManager::new);
 
     // Create resources
     let id1 = resource_manager.add_host_resource(Box::new(String::from("resource1";
@@ -100,7 +100,7 @@ fn test_resource_lifecycle() {
     assert!(resource_manager.has_resource(id2);
 
     // Clear all resources
-    resource_manager.clear(;
+    resource_manager.clear);
     assert!(!resource_manager.has_resource(id1);
     assert!(!resource_manager.has_resource(id2);
 }
@@ -126,10 +126,10 @@ impl Drop for DropTracker {
 /// Test resource cleanup
 #[test]
 fn test_resource_cleanup() {
-    let dropped = Rc::new(RefCell::new(Vec::new(;
+    let dropped = Rc::new(RefCell::new(Vec::new);
 
     {
-        let mut resource_manager = ResourceManager::new(;
+        let mut resource_manager = ResourceManager::new);
 
         // Add resources with drop trackers
         let id1 =
@@ -157,7 +157,7 @@ fn test_resource_cleanup() {
 /// Binary std/no_std choice
 #[test]
 fn test_buffer_pool() {
-    let mut buffer_pool = BufferPool::new(;
+    let mut buffer_pool = BufferPool::new);
 
     // Allocate a buffer
     let buffer = buffer_pool.allocate(100;
@@ -175,7 +175,7 @@ fn test_buffer_pool() {
     assert_eq!(buffer2.len(), 200;
 
     // Reset and verify buffers are returned to the pool
-    buffer_pool.reset(;
+    buffer_pool.reset);
 
     // Allocate again, should reuse from pool
     let reused_buffer = buffer_pool.allocate(100;
@@ -213,7 +213,7 @@ fn test_memory_strategies() {
 /// Test memory manager integration with resource manager
 #[test]
 fn test_memory_manager_integration() {
-    let mut resource_manager = ResourceManager::new(;
+    let mut resource_manager = ResourceManager::new);
     let mut memory_manager = MemoryManager::new(MemoryStrategy::Copy;
 
     // Create a resource
@@ -286,7 +286,7 @@ fn test_component_value_resource_representation() {
 /// Test error handling in resource operations
 #[test]
 fn test_resource_error_handling() {
-    let mut resource_manager = ResourceManager::new(;
+    let mut resource_manager = ResourceManager::new);
 
     // Try to get a non-existent resource
     let non_existent = ResourceId(9999;
@@ -313,7 +313,7 @@ fn test_resource_error_handling() {
 fn test_thread_safety() {
     use std::thread;
 
-    let resource_manager = Arc::new(Mutex::new(ResourceManager::new(;
+    let resource_manager = Arc::new(Mutex::new(ResourceManager::new);
     let threads_count = 10;
     let mut handles = vec![];
 
@@ -349,7 +349,7 @@ fn test_thread_safety() {
 #[test]
 fn test_resource_system_integration() {
     // Create managers
-    let mut resource_manager = ResourceManager::new(;
+    let mut resource_manager = ResourceManager::new);
     let mut memory_manager = MemoryManager::new(MemoryStrategy::Copy;
 
     // Create different types of resources
@@ -380,5 +380,5 @@ fn test_resource_system_integration() {
     // Memory representation would depend on the actual implementation
 
     // Clean up
-    resource_manager.clear(;
+    resource_manager.clear);
 }

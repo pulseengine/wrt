@@ -97,7 +97,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION";
 pub fn detect_workspace_root() -> Result<PathBuf> {
     let current = std::env::current_dir().context("Failed to get current directory")?;
 
-    let mut path = current.as_path(;
+    let mut path = current.as_path);
     loop {
         let cargo_toml = path.join("Cargo.toml";
         if cargo_toml.exists() {
@@ -105,7 +105,7 @@ pub fn detect_workspace_root() -> Result<PathBuf> {
             let content =
                 std::fs::read_to_string(&cargo_toml).context("Failed to read Cargo.toml")?;
             if content.contains("[workspace]") {
-                return Ok(path.to_path_buf(;
+                return Ok(path.to_path_buf);
             }
         }
 
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_workspace_detection() {
         // This test should find the WRT workspace root
-        let workspace = detect_workspace_root(;
+        let workspace = detect_workspace_root);
         assert!(workspace.is_ok(), "Should detect workspace root");
 
         let root = workspace.unwrap();

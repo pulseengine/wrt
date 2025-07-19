@@ -87,7 +87,7 @@ mod no_alloc_tests {
     #[test]
     fn test_component_header_defaults() {
         // Create a default ComponentHeader
-        let header = ComponentHeader::default(;
+        let header = ComponentHeader::default);
 
         // Check properties
         assert_eq!(header.size, 0;

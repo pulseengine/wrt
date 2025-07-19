@@ -289,8 +289,8 @@ impl ComponentResolver {
 
     /// Clear resolution caches
     pub fn clear_caches(&mut self) {
-        self.import_cache.clear(;
-        self.export_cache.clear(;
+        self.import_cache.clear);
+        self.export_cache.clear);
     }
 
     /// Get type registry reference
@@ -348,14 +348,14 @@ mod tests {
 
     #[test]
     fn test_resolver_creation() {
-        let resolver = ComponentResolver::new(;
+        let resolver = ComponentResolver::new);
         assert_eq!(resolver.import_cache.len(), 0;
         assert_eq!(resolver.export_cache.len(), 0;
     }
 
     #[test]
     fn test_import_resolution() {
-        let mut resolver = ComponentResolver::new(;
+        let mut resolver = ComponentResolver::new);
         let instance_id = ComponentInstanceId(1;
         let import_name = BoundedString::from_str("test_import").unwrap();
 
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_export_resolution() {
-        let mut resolver = ComponentResolver::new(;
+        let mut resolver = ComponentResolver::new);
         let instance_id = ComponentInstanceId(1;
         let export_name = BoundedString::from_str("test_export").unwrap();
 
@@ -389,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_import_export_compatibility() {
-        let mut resolver = ComponentResolver::new(;
+        let mut resolver = ComponentResolver::new);
 
         // Create matching import and export
         let import = ResolvedImport {
@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_type_compatibility() {
-        let resolver = ComponentResolver::new(;
+        let resolver = ComponentResolver::new);
 
         // Test primitive type compatibility
         assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool);

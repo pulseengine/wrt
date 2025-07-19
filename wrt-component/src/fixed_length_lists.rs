@@ -538,7 +538,7 @@ pub mod fixed_list_utils {
             ;
         }
         
-        let new_length = list1.length() + list2.length(;
+        let new_length = list1.length() + list2.length);
         let new_type = FixedLengthListType::new(list1.element_type().clone(), new_length;
         let mut result = FixedLengthList::new(new_type)?;
         
@@ -704,7 +704,7 @@ mod tests {
 
     #[test]
     fn test_fixed_length_list_type_registry() {
-        let mut registry = FixedLengthListTypeRegistry::new(;
+        let mut registry = FixedLengthListTypeRegistry::new);
         assert_eq!(registry.type_count(), 0;
 
         let list_type1 = FixedLengthListType::new(ValueType::I32, 10;

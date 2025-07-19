@@ -24,7 +24,7 @@ use crate::{
 #[test]
 fn test_bounded_vec_capacity_enforcement() {
     type TestProvider = NoStdProvider<1024>;
-    let provider = TestProvider::default(;
+    let provider = TestProvider::default);
 
     // Create bounded vec with capacity 10
     let mut vec: BoundedVec<u32, 10, TestProvider> = BoundedVec::new(provider).unwrap();
@@ -42,7 +42,7 @@ fn test_bounded_vec_capacity_enforcement() {
 #[test]
 fn test_bounded_map_capacity_enforcement() {
     type TestProvider = NoStdProvider<2048>;
-    let provider = TestProvider::default(;
+    let provider = TestProvider::default);
 
     // Create bounded map with capacity 5
     let mut map: BoundedMap<u32, u32, 5, TestProvider> = BoundedMap::new(provider).unwrap();
@@ -60,7 +60,7 @@ fn test_bounded_map_capacity_enforcement() {
 #[test]
 fn test_bounded_string_length_enforcement() {
     type TestProvider = NoStdProvider<256>;
-    let provider = TestProvider::default(;
+    let provider = TestProvider::default);
 
     // Create bounded string with max length 10
     let short_str = "Hello";
@@ -115,8 +115,8 @@ fn test_component_memory_pre_allocation() {
 
 #[test]
 fn test_configurable_provider_bounds() {
-    let mut small_provider = SmallProvider::new(;
-    let mut medium_provider = MediumProvider::new(;
+    let mut small_provider = SmallProvider::new);
+    let mut medium_provider = MediumProvider::new);
 
     // Small provider should have 8KB
     assert_eq!(small_provider.total_memory(), 8192;
@@ -169,7 +169,7 @@ fn test_event_system_bounded_queue() {
         let payload = format!("event_{}", i;
         assert!(events
             .emit_event(EventType::ComponentInitialized, &source, payload.as_bytes())
-            .is_ok(;
+            .is_ok);
     }
 
     // Process events
@@ -181,10 +181,10 @@ fn test_event_system_bounded_queue() {
 fn test_memory_pool_static_blocks() {
     type TestProvider = NoStdProvider<1024>;
 
-    let mut pool = BoundedMemoryPool::<128, 8, TestProvider>::new(;
+    let mut pool = BoundedMemoryPool::<128, 8, TestProvider>::new);
 
     // Allocate all blocks
-    let mut blocks = Vec::new(;
+    let mut blocks = Vec::new);
     for _ in 0..8 {
         match pool.allocate() {
             Ok(block) => blocks.push(block.as_ptr()),
@@ -202,7 +202,7 @@ fn test_memory_pool_static_blocks() {
 #[test]
 fn test_no_dynamic_allocation_in_critical_path() {
     type TestProvider = NoStdProvider<4096>;
-    let provider = TestProvider::default(;
+    let provider = TestProvider::default);
 
     // Create all collections with static capacity
     let vec: BoundedVec<u32, 100, TestProvider> = BoundedVec::new(provider.clone()).unwrap();
@@ -223,12 +223,12 @@ fn test_bounded_vs_unbounded_performance() {
     use std::time::Instant;
 
     type TestProvider = NoStdProvider<65536>;
-    let provider = TestProvider::default(;
+    let provider = TestProvider::default);
 
     const ITERATIONS: usize = 1000;
 
     // Test BoundedVec performance
-    let start = Instant::now(;
+    let start = Instant::now);
     for _ in 0..ITERATIONS {
         let mut vec: BoundedVec<u32, 100, TestProvider> =
             BoundedVec::new(provider.clone()).unwrap();
@@ -236,17 +236,17 @@ fn test_bounded_vs_unbounded_performance() {
             drop(vec.push(i);
         }
     }
-    let bounded_time = start.elapsed(;
+    let bounded_time = start.elapsed);
 
     // Test std::vec::Vec performance
-    let start = Instant::now(;
+    let start = Instant::now);
     for _ in 0..ITERATIONS {
         let mut vec = std::vec::Vec::with_capacity(100;
         for i in 0..50 {
             vec.push(i);
         }
     }
-    let unbounded_time = start.elapsed(;
+    let unbounded_time = start.elapsed);
 
     // Bounded collections should be competitive
     println!("Bounded time: {:?}, Unbounded time: {:?}", bounded_time, unbounded_time;
@@ -267,7 +267,7 @@ fn test_integrated_static_memory_system() {
     // Create system components
     let mut registry = BoundedSystemRegistry::<TestProvider>::new().unwrap();
     let mut events = BoundedEventSystem::<TestProvider>::new().unwrap();
-    let mut pool = BoundedMemoryPool::<256, 16, TestProvider>::new(;
+    let mut pool = BoundedMemoryPool::<256, 16, TestProvider>::new);
 
     // Register core components
     registry.register_component("memory", 1, &[]).unwrap();
@@ -299,8 +299,8 @@ fn test_integrated_static_memory_system() {
 // Compile-time verification tests using const assertions
 const _: () = {
     // Verify bounded collections have compile-time known sizes
-    const VEC_SIZE: usize = core::mem::size_of::<BoundedVec<u32, 100, NoStdProvider<1024>>>(;
-    const MAP_SIZE: usize = core::mem::size_of::<BoundedMap<u32, u32, 50, NoStdProvider<1024>>>(;
+    const VEC_SIZE: usize = core::mem::size_of::<BoundedVec<u32, 100, NoStdProvider<1024>>>);
+    const MAP_SIZE: usize = core::mem::size_of::<BoundedMap<u32, u32, 50, NoStdProvider<1024>>>);
 
     // These should be compile-time constants
     assert!(VEC_SIZE > 0);

@@ -248,7 +248,7 @@ fn test_decode_instruction_sequence() -> Result<()> {
     assert!(matches!(instr4, Instruction::BrOnNonNull(2));
     
     // Verify we consumed all bytes
-    assert_eq!(offset, bytecode.len(;
+    assert_eq!(offset, bytecode.len);
     
     Ok(())
 }
@@ -260,12 +260,12 @@ fn test_decode_performance() -> Result<()> {
     use std::time::Instant;
     
     // Create bytecode with 1000 br_on_null instructions
-    let mut bytecode = Vec::new(;
+    let mut bytecode = Vec::new);
     for _ in 0..1000 {
         bytecode.extend_from_slice(&[0xD5, 0x00]); // br_on_null 0
     }
     
-    let start = Instant::now(;
+    let start = Instant::now);
     
     // Decode all instructions
     let mut offset = 0;
@@ -279,7 +279,7 @@ fn test_decode_performance() -> Result<()> {
         assert!(matches!(instruction, Instruction::BrOnNull(0));
     }
     
-    let duration = start.elapsed(;
+    let duration = start.elapsed);
     
     // Verify we decoded the expected number of instructions
     assert_eq!(count, 1000;

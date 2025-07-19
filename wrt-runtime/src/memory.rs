@@ -319,7 +319,7 @@ impl Clone for Memory {
 
         // Create new SafeMemoryHandler
         let new_data = {
-            let new_provider = LargeMemoryProvider::default(;
+            let new_provider = LargeMemoryProvider::default);
             let mut new_handler = SafeMemoryHandler::new(new_provider;
             
             // Copy the data into the new handler
@@ -349,7 +349,7 @@ impl Clone for Memory {
 
         #[cfg(not(feature = "std"))]
         let cloned_metrics = {
-            let guard = self.metrics.read(;
+            let guard = self.metrics.read);
             RwLock::new((*guard).clone())
         };
 
@@ -411,9 +411,9 @@ impl Default for Memory {
 
 impl wrt_foundation::traits::Checksummable for Memory {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.ty.limits.min.to_le_bytes(;
+        checksum.update_slice(&self.ty.limits.min.to_le_bytes);
         if let Some(max) = self.ty.limits.max {
-            checksum.update_slice(&max.to_le_bytes(;
+            checksum.update_slice(&max.to_le_bytes);
         }
     }
 }
@@ -494,13 +494,13 @@ impl Memory {
         // Create memory provider based on available features
         #[cfg(feature = "std")]
         let data_handler = {
-            let provider = LargeMemoryProvider::default(;
+            let provider = LargeMemoryProvider::default);
             SafeMemoryHandler::new(provider)
         };
 
         #[cfg(not(feature = "std"))]
         let data_handler = {
-            let provider = LargeMemoryProvider::default(;
+            let provider = LargeMemoryProvider::default);
             SafeMemoryHandler::new(provider)
         };
 
@@ -606,9 +606,9 @@ impl Memory {
     pub fn buffer(&self) -> Result<std::vec::Vec<u8>> {
         // Use the SafeMemoryHandler to get data through a safe slice to ensure
         // memory integrity is verified during the operation
-        let data_size = self.data.size(;
+        let data_size = self.data.size);
         if data_size == 0 {
-            return Ok(std::vec::Vec::new(;
+            return Ok(std::vec::Vec::new);
         }
 
         // Get a safe slice over the entire memory
@@ -636,7 +636,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.peak_usage
         }
     }
@@ -651,7 +651,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.access_count
         }
     }
@@ -669,7 +669,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use write() method with WrtRwLock
-            let mut metrics = self.metrics.write(;
+            let mut metrics = self.metrics.write);
             metrics.access_count += 1;
             metrics.max_access_size = metrics.max_access_size.max(len;
             metrics.last_access_offset = offset;
@@ -679,7 +679,7 @@ impl Memory {
 
     /// Update the peak memory usage statistic
     fn update_peak_memory(&self) {
-        let current_size = self.size_in_bytes(;
+        let current_size = self.size_in_bytes);
 
         #[cfg(feature = "std")]
         {
@@ -700,7 +700,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use write() method with WrtRwLock
-            let mut metrics = self.metrics.write(;
+            let mut metrics = self.metrics.write);
             metrics.peak_usage = metrics.peak_usage.max(current_size;
         }
     }
@@ -715,7 +715,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.max_access_size
         }
     }
@@ -730,7 +730,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.unique_regions
         }
     }
@@ -745,7 +745,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.last_access_offset
         }
     }
@@ -760,7 +760,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read(;
+            let metrics = self.metrics.read);
             metrics.last_access_length
         }
     }
@@ -815,7 +815,7 @@ impl Memory {
         let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed;
 
         // Update peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(old_pages)
     }
@@ -870,7 +870,7 @@ impl Memory {
         let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed;
 
         // Update peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(old_pages)
     }
@@ -892,12 +892,12 @@ impl Memory {
     pub fn read(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
         // Empty read is always successful
         if buffer.is_empty() {
-            return Ok((;
+            return Ok();
         }
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len(;
+        let size = buffer.len);
 
         // Track this access for profiling
         self.increment_access_count(offset_usize, size;
@@ -928,12 +928,12 @@ impl Memory {
     pub fn write(&mut self, offset: u32, buffer: &[u8]) -> Result<()> {
         // Empty write is always successful
         if buffer.is_empty() {
-            return Ok((;
+            return Ok();
         }
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len(;
+        let size = buffer.len);
         let end = offset_usize.checked_add(size).ok_or_else(|| {
             Error::memory_out_of_bounds("Memory write would overflow")
         })?;
@@ -950,7 +950,7 @@ impl Memory {
         self.data.write_data(offset_usize, buffer)?;
 
         // Update the peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(())
     }
@@ -975,7 +975,7 @@ impl Memory {
     pub fn write_shared(&self, offset: u32, buffer: &[u8]) -> Result<()> {
         // Empty write is always successful
         if buffer.is_empty() {
-            return Ok((;
+            return Ok();
         }
 
         // NOTE: This method has an API mismatch - SafeMemoryHandler::write_data requires &mut self
@@ -1056,7 +1056,7 @@ impl Memory {
         }
 
         // Get current data size
-        let data_size = self.data.len(;
+        let data_size = self.data.len);
 
         // Get the last byte that would be accessed
         let end_offset = match offset.checked_add(len) {
@@ -1240,7 +1240,7 @@ impl Memory {
         size: usize,
     ) -> Result<()> {
         // Bounds check for source
-        let src_data_size = src_mem.data.size(;
+        let src_data_size = src_mem.data.size);
         let src_end = match src_addr.checked_add(size) {
             Some(end) if end <= src_data_size => end,
             _ => {
@@ -1249,7 +1249,7 @@ impl Memory {
         };
 
         // Bounds check for destination
-        let data_size = self.data.size(;
+        let data_size = self.data.size);
         let dst_end = match dst_addr.checked_add(size) {
             Some(end) if end <= data_size => end,
             _ => {
@@ -1273,19 +1273,19 @@ impl Memory {
         temp_buf.extend_from_slice(src_data;
 
         // Get destination memory data using provider-aware method
-        let data_size = self.data.size(;
+        let data_size = self.data.size);
         let dst_slice = self.data.get_slice(0, data_size)?;
-        let mut dst_data = dst_slice.data()?.to_vec(;
+        let mut dst_data = dst_slice.data()?.to_vec);
 
         // Copy from temporary buffer to destination
-        dst_data[dst_addr..dst_addr + size].copy_from_slice(temp_buf.as_slice(;
+        dst_data[dst_addr..dst_addr + size].copy_from_slice(temp_buf.as_slice);
 
         // Update destination memory
         self.data.clear()?;
         self.data.add_data(&dst_data)?;
 
         // Update peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         // Verify integrity if full verification is enabled
         if self.verification_level == VerificationLevel::Full {
@@ -1314,7 +1314,7 @@ impl Memory {
     pub fn fill(&mut self, dst: usize, val: u8, size: usize) -> Result<()> {
         // Handle empty fill
         if size == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Verify destination is within bounds
@@ -1365,7 +1365,7 @@ impl Memory {
         }
 
         // Update peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(())
     }
@@ -1395,7 +1395,7 @@ impl Memory {
         };
 
         // Destination bounds check
-        let data_size = self.data.size(;
+        let data_size = self.data.size);
         let dst_end = match dst.checked_add(size) {
             Some(end) if end <= data_size => end,
             _ => {
@@ -1405,7 +1405,7 @@ impl Memory {
 
         // Handle zero-size initialization
         if size == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // For small copies, we can use set_byte directly - this provides maximum safety
@@ -1426,7 +1426,7 @@ impl Memory {
 
             // Update metrics to reflect the entire operation rather than just the last byte
             self.update_access_metrics(dst, size;
-            return Ok((;
+            return Ok();
         }
 
         // For larger copies, use chunked processing to maintain memory safety
@@ -1459,7 +1459,7 @@ impl Memory {
         }
 
         // Update peak memory usage
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         // Ensure all metrics reflect the entire init operation
         self.update_access_metrics(dst, size;
@@ -1926,7 +1926,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use write() method with WrtRwLock
-            let mut metrics = self.metrics.write(;
+            let mut metrics = self.metrics.write);
             metrics.max_access_size = metrics.max_access_size.max(len;
             metrics.last_access_offset = offset;
             metrics.last_access_length = len;
@@ -1942,11 +1942,11 @@ impl Memory {
     /// A string containing the statistics
     #[cfg(feature = "std")]
     pub fn safety_stats(&self) -> std::string::String {
-        let memory_stats = self.memory_stats(;
-        let access_count = self.access_count(;
-        let peak_memory = self.peak_memory(;
-        let max_access = self.max_access_size(;
-        let unique_regions = self.unique_regions(;
+        let memory_stats = self.memory_stats);
+        let access_count = self.access_count);
+        let peak_memory = self.peak_memory);
+        let max_access = self.max_access_size);
+        let unique_regions = self.unique_regions);
 
         // Create a string with formatted stats
         "Memory Safety Stats: [Runtime memory]".to_string()
@@ -2008,7 +2008,7 @@ impl Memory {
         self.data.resize(new_byte_size)?;
 
         self.current_pages.store(new_size_pages, Ordering::Relaxed;
-        self.update_peak_memory(;
+        self.update_peak_memory);
 
         Ok(old_size_pages)
     }
@@ -2137,7 +2137,7 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
-            return Ok(std::vec::Vec::new(;
+            return Ok(std::vec::Vec::new);
         }
 
         // Convert to usize and check for overflow
@@ -2158,7 +2158,7 @@ impl MemoryOperations for Memory {
         let mut buffer = vec![0u8; len_usize];
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let mut buffer = {
-            let mut buf = wrt_foundation::bounded::BoundedVec::new(;
+            let mut buf = wrt_foundation::bounded::BoundedVec::new);
             for _ in 0..len_usize {
                 buf.push(0u8).unwrap();
             }
@@ -2172,7 +2172,7 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, MediumMemoryProvider>> {
         // Handle zero-length reads
         if len == 0 {
-            let provider = MediumMemoryProvider::default(;
+            let provider = MediumMemoryProvider::default);
             return wrt_foundation::BoundedVec::new(provider;
         }
 
@@ -2232,7 +2232,7 @@ impl MemoryOperations for Memory {
     fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
         // For same-memory copy, we can use a simplified version of copy_within_or_between
         if size == 0 {
-            return Ok((;
+            return Ok();
         }
         
         let dest_usize = wasm_offset_to_usize(dest)?;
@@ -2248,7 +2248,7 @@ impl MemoryOperations for Memory {
             Error::memory_out_of_bounds("Destination address overflow in memory copy")
         })?;
         
-        let memory_size = self.size_in_bytes(;
+        let memory_size = self.size_in_bytes);
         if src_end > memory_size || dest_end > memory_size {
             return Err(Error::memory_out_of_bounds("Memory copy out of bounds";
         }
@@ -2315,7 +2315,7 @@ impl AtomicOperations for Memory {
                         if current != expected {
                             return Ok(0); // Value changed
                         }
-                        std::thread::yield_now(;
+                        std::thread::yield_now);
                     }
                 }
             }
@@ -2348,7 +2348,7 @@ impl AtomicOperations for Memory {
                             return Ok(0); // Value changed
                         }
                         #[cfg(feature = "std")]
-                        std::thread::yield_now(;
+                        std::thread::yield_now);
                         #[cfg(not(feature = "std"))]
                         core::hint::spin_loop(); // CPU hint for busy waiting
                     }
@@ -2394,9 +2394,9 @@ impl AtomicOperations for Memory {
                         return Ok(0); // Value changed
                     }
                     #[cfg(feature = "std")]
-                    std::thread::yield_now(;
+                    std::thread::yield_now);
                     #[cfg(not(feature = "std"))]
-                    core::hint::spin_loop(;
+                    core::hint::spin_loop);
                 }
             }
         }
@@ -2735,7 +2735,7 @@ mod tests {
 
         // Print safety stats
         #[cfg(feature = "std")]
-        println!("{}", memory.safety_stats(;
+        println!("{}", memory.safety_stats);
         #[cfg(not(feature = "std"))]
         println!("{}", memory.safety_stats()?.as_str().unwrap_or("";
 

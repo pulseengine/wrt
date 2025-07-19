@@ -18,7 +18,7 @@ fn main() -> wrt::error::Result<()> {
     println!("WebAssembly Runtime State Checkpoint Example";
 
     // Create a new engine
-    let mut engine = StacklessEngine::new(;
+    let mut engine = StacklessEngine::new);
 
     // Create a WebAssembly module (placeholder for real module)
     // In a real example, you would load and instantiate an actual module

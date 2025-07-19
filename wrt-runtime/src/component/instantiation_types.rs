@@ -241,8 +241,8 @@ impl Default for InstantiationState {
 // Trait implementations for RuntimeInstantiateArg
 impl Checksummable for RuntimeInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes(;
-        checksum.update_slice(&self.runtime_ref.runtime_idx.to_le_bytes(;
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes);
+        checksum.update_slice(&self.runtime_ref.runtime_idx.to_le_bytes);
         checksum.update_slice(&[if self.is_validated { 1 } else { 0 }];
     }
 }
@@ -278,8 +278,8 @@ impl FromBytes for RuntimeInstantiateArg {
 // Trait implementations for RuntimeCoreInstantiateArg
 impl Checksummable for RuntimeCoreInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes(;
-        checksum.update_slice(&self.runtime_instance_idx.to_le_bytes(;
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes);
+        checksum.update_slice(&self.runtime_instance_idx.to_le_bytes);
         checksum.update_slice(&[if self.is_validated { 1 } else { 0 }];
     }
 }
@@ -313,9 +313,9 @@ impl FromBytes for RuntimeCoreInstantiateArg {
 // Trait implementations for RuntimeReference
 impl Checksummable for RuntimeReference {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&(self.sort as u32).to_le_bytes(;
-        checksum.update_slice(&self.runtime_idx.to_le_bytes(;
-        checksum.update_slice(&self.runtime_handle.to_le_bytes(;
+        checksum.update_slice(&(self.sort as u32).to_le_bytes);
+        checksum.update_slice(&self.runtime_idx.to_le_bytes);
+        checksum.update_slice(&self.runtime_handle.to_le_bytes);
     }
 }
 

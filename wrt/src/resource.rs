@@ -342,8 +342,8 @@ mod tests {
 
     #[test]
     fn test_resource_allocation() {
-        let mut table = ResourceTable::new(;
-        let resource_type = create_test_resource_type(;
+        let mut table = ResourceTable::new);
+        let resource_type = create_test_resource_type);
 
         let data = Arc::new(SimpleResourceData { value: 42 };
         let id = table.allocate(resource_type.clone(), data.clone();
@@ -359,8 +359,8 @@ mod tests {
 
     #[test]
     fn test_resource_reference_counting() -> Result<()> {
-        let mut table = ResourceTable::new(;
-        let resource_type = create_test_resource_type(;
+        let mut table = ResourceTable::new);
+        let resource_type = create_test_resource_type);
 
         let data = Arc::new(SimpleResourceData { value: 42 };
         let id = table.allocate(resource_type, data;
@@ -391,8 +391,8 @@ mod tests {
 
     #[test]
     fn test_multiple_resources() {
-        let mut table = ResourceTable::new(;
-        let resource_type = create_test_resource_type(;
+        let mut table = ResourceTable::new);
+        let resource_type = create_test_resource_type);
 
         let data1 = Arc::new(SimpleResourceData { value: 42 };
         let id1 = table.allocate(resource_type.clone(), data1;

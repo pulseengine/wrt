@@ -53,7 +53,7 @@ fn benchmark_module_loading(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 fn benchmark_engine_instantiation(c: &mut Criterion) {
@@ -62,7 +62,7 @@ fn benchmark_engine_instantiation(c: &mut Criterion) {
     if let Ok(runtime_module) = load_test_module() {
         group.bench_function("stackless_engine_creation", |b| {
             b.iter(|| {
-                let engine = StacklessEngine::new(;
+                let engine = StacklessEngine::new);
                 black_box(engine)
             };
         };
@@ -76,7 +76,7 @@ fn benchmark_engine_instantiation(c: &mut Criterion) {
 
         group.bench_function("full_instantiation", |b| {
             b.iter(|| {
-                let mut engine = StacklessEngine::new(;
+                let mut engine = StacklessEngine::new);
                 let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
                 let instance_arc = Arc::new(instance;
                 let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -85,7 +85,7 @@ fn benchmark_engine_instantiation(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 fn benchmark_simple_execution(c: &mut Criterion) {
@@ -93,7 +93,7 @@ fn benchmark_simple_execution(c: &mut Criterion) {
 
     if let Ok(runtime_module) = load_test_module() {
         group.bench_function("single_add_execution", |b| {
-            let mut engine = StacklessEngine::new(;
+            let mut engine = StacklessEngine::new);
             let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
             let instance_arc = Arc::new(instance;
             let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -107,7 +107,7 @@ fn benchmark_simple_execution(c: &mut Criterion) {
 
         group.bench_function("execution_with_setup", |b| {
             b.iter(|| {
-                let mut engine = StacklessEngine::new(;
+                let mut engine = StacklessEngine::new);
                 let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
                 let instance_arc = Arc::new(instance;
                 let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -119,14 +119,14 @@ fn benchmark_simple_execution(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 fn benchmark_repeated_execution(c: &mut Criterion) {
     let mut group = c.benchmark_group("repeated_execution";
 
     if let Ok(runtime_module) = load_test_module() {
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
         let instance = ModuleInstance::new(runtime_module, 0).unwrap();
         let instance_arc = Arc::new(instance;
         let instance_idx = engine.set_current_module(instance_arc).unwrap();
@@ -160,7 +160,7 @@ fn benchmark_repeated_execution(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 fn benchmark_memory_patterns(c: &mut Criterion) {
@@ -190,7 +190,7 @@ fn benchmark_memory_patterns(c: &mut Criterion) {
         };
     }
 
-    group.finish(;
+    group.finish);
 }
 
 criterion_group!(

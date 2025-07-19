@@ -263,7 +263,7 @@ impl WrtTestConfig {
 
     /// Generate an example configuration file
     pub fn example_config() -> Self {
-        let mut config = Self::default(;
+        let mut config = Self::default);
 
         // Add example ASIL configurations
         config.asil.insert(
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_default_config() {
-        let config = WrtTestConfig::default(;
+        let config = WrtTestConfig::default);
         assert_eq!(config.default_asil, AsilLevel::QM;
         assert!(config.global.parallel);
         assert!(config.asil.is_empty();
@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_config_serialization() {
-        let config = WrtTestConfig::example_config(;
+        let config = WrtTestConfig::example_config);
         let toml_str = toml::to_string_pretty(&config).unwrap();
 
         // Should be able to round-trip
@@ -348,7 +348,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join("test-config.toml";
 
-        let config = WrtTestConfig::example_config(;
+        let config = WrtTestConfig::example_config);
         config.save_to_file(&config_path).unwrap();
 
         let loaded_config = WrtTestConfig::load_from_file(&config_path).unwrap();
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_asil_level_defaults() {
-        let config = WrtTestConfig::default(;
+        let config = WrtTestConfig::default);
 
         let d_config = config.get_asil_config(AsilLevel::D;
         assert!(d_config.require_no_std);

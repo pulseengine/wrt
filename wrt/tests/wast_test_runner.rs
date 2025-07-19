@@ -324,8 +324,8 @@ impl WastTestRunner {
                     },
                     Err(error) => {
                         // Check if the error message matches expectations
-                        let error_msg = error.to_string().to_lowercase(;
-                        let expected_msg = expected_message.to_lowercase(;
+                        let error_msg = error.to_string().to_lowercase);
+                        let expected_msg = expected_message.to_lowercase);
 
                         if error_msg.contains(&expected_msg)
                             || contains_trap_keyword(&error_msg, &expected_msg)
@@ -377,8 +377,8 @@ impl WastTestRunner {
                         )))
                     },
                     Err(error) => {
-                        let error_msg = error.to_string().to_lowercase(;
-                        let expected_msg = expected_message.to_lowercase(;
+                        let error_msg = error.to_string().to_lowercase);
+                        let expected_msg = expected_message.to_lowercase);
 
                         if error_msg.contains(&expected_msg)
                             || contains_validation_keyword(&error_msg, &expected_msg)
@@ -402,8 +402,8 @@ impl WastTestRunner {
             },
             Err(encode_error) => {
                 // Encoding failed, which is also acceptable for invalid modules
-                let error_msg = encode_error.to_string().to_lowercase(;
-                let expected_msg = expected_message.to_lowercase(;
+                let error_msg = encode_error.to_string().to_lowercase);
+                let expected_msg = expected_message.to_lowercase);
 
                 if error_msg.contains(&expected_msg)
                     || contains_validation_keyword(&error_msg, &expected_msg)
@@ -444,8 +444,8 @@ impl WastTestRunner {
                 )))
             },
             Err(encode_error) => {
-                let error_msg = encode_error.to_string().to_lowercase(;
-                let expected_msg = expected_message.to_lowercase(;
+                let error_msg = encode_error.to_string().to_lowercase);
+                let expected_msg = expected_message.to_lowercase);
 
                 if error_msg.contains(&expected_msg)
                     || contains_malformed_keyword(&error_msg, &expected_msg)
@@ -482,7 +482,7 @@ impl WastTestRunner {
                 match Module::new().and_then(|mut m| m.load_from_binary(&binary)) {
                     Ok(module) => {
                         // Try to instantiate - should fail at linking
-                        let mut engine = StacklessEngine::new(;
+                        let mut engine = StacklessEngine::new);
                         match engine.instantiate(module) {
                             Ok(_) => {
                                 self.stats.failed += 1;
@@ -492,8 +492,8 @@ impl WastTestRunner {
                                 )))
                             },
                             Err(error) => {
-                                let error_msg = error.to_string().to_lowercase(;
-                                let expected_msg = expected_message.to_lowercase(;
+                                let error_msg = error.to_string().to_lowercase);
+                                let expected_msg = expected_message.to_lowercase);
 
                                 if error_msg.contains(&expected_msg)
                                     || contains_linking_keyword(&error_msg, &expected_msg)
@@ -517,8 +517,8 @@ impl WastTestRunner {
                     },
                     Err(error) => {
                         // Module loading failed, which might also indicate unlinkable
-                        let error_msg = error.to_string().to_lowercase(;
-                        let expected_msg = expected_message.to_lowercase(;
+                        let error_msg = error.to_string().to_lowercase);
+                        let expected_msg = expected_message.to_lowercase);
 
                         if error_msg.contains(&expected_msg)
                             || contains_linking_keyword(&error_msg, &expected_msg)
@@ -578,8 +578,8 @@ impl WastTestRunner {
                         )))
                     },
                     Err(error) => {
-                        let error_msg = error.to_string().to_lowercase(;
-                        let expected_msg = expected_message.to_lowercase(;
+                        let error_msg = error.to_string().to_lowercase);
+                        let expected_msg = expected_message.to_lowercase);
 
                         if error_msg.contains(&expected_msg)
                             || contains_exhaustion_keyword(&error_msg, &expected_msg)
@@ -697,7 +697,7 @@ impl WastTestRunner {
             .map_err(|e| Error::Parse(format!("Failed to parse WAST: {}", e)))?;
 
         let module = Module::new()?;
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
 
         for mut directive in wast.directives {
             match self.execute_directive(&mut engine, &mut directive) {
@@ -723,7 +723,7 @@ impl WastTestRunner {
             .map_err(|e| Error::Parse(format!("Failed to parse WAST: {}", e)))?;
 
         let module = Module::new()?;
-        let mut engine = StacklessEngine::new(;
+        let mut engine = StacklessEngine::new);
 
         for mut directive in wast.directives {
             match self.execute_directive(&mut engine, &mut directive) {
@@ -903,7 +903,7 @@ impl Default for WastTestRunner {
 /// Register WAST tests from the external testsuite (std only)
 #[cfg(feature = "std")]
 pub fn register_wast_tests() {
-    let registry = TestRegistry::global(;
+    let registry = TestRegistry::global);
 
     // Register a test suite for WAST file execution
     let test_case = wrt_test_registry::TestCaseImpl {
@@ -928,16 +928,16 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
     let testsuite_path = match get_testsuite_path() {
         Some(path) => path,
         None => {
-            return wrt_test_registry::TestResult::Ok((;
+            return wrt_test_registry::TestResult::Ok();
         },
     };
 
     let testsuite_dir = Path::new(&testsuite_path;
     if !testsuite_dir.exists() {
-        return wrt_test_registry::TestResult::Ok((;
+        return wrt_test_registry::TestResult::Ok();
     }
 
-    let mut runner = WastTestRunner::new(;
+    let mut runner = WastTestRunner::new);
     let mut total_files = 0;
     let mut failed_files = 0;
 
@@ -994,14 +994,14 @@ mod tests {
 
     #[test]
     fn test_wast_runner_creation() {
-        let runner = WastTestRunner::new(;
+        let runner = WastTestRunner::new);
         assert_eq!(runner.stats.passed, 0;
         assert_eq!(runner.stats.failed, 0;
     }
 
     #[test]
     fn test_resource_limits_default() {
-        let limits = ResourceLimits::default(;
+        let limits = ResourceLimits::default);
         assert_eq!(limits.max_stack_depth, 1024;
         assert_eq!(limits.max_memory_size, 64 * 1024 * 1024;
     }

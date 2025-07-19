@@ -46,11 +46,11 @@ fn main() {
     
     // 1. Check initial state - should be using fallback
     println!("1. Initial state:";
-    println!("   Using fallback executor: {}", is_using_fallback(;
+    println!("   Using fallback executor: {}", is_using_fallback);
     
     // 2. Use the simple async runtime
     println!("\n2. Using AsyncRuntime:";
-    let runtime = AsyncRuntime::new(;
+    let runtime = AsyncRuntime::new);
     
     // Test with a simple ready future
     let ready_future = ReadyFuture { value: "Ready immediately!" };
@@ -78,7 +78,7 @@ fn main() {
         
         // 4. Example of what happens with pending futures
         println!("\n4. Pending futures (expected to fail):";
-        let pending_future = core::future::pending::<()>(;
+        let pending_future = core::future::pending::<()>);
         let pinned_pending = Box::pin(pending_future;
         match with_async(pinned_pending) {
             Ok(_) => println!("   Unexpected success"),

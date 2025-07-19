@@ -313,7 +313,7 @@ impl WitSourceMap {
         let context_start = start_line.saturating_sub(context_lines;
         let context_end = (end_line + context_lines).min(file.lines.len() as u32;
 
-        let mut context_lines_vec = Vec::new(;
+        let mut context_lines_vec = Vec::new);
         for i in context_start..context_end {
             if let Some(line) = file.lines.get(i as usize) {
                 context_lines_vec.push(ContextLine {
@@ -405,7 +405,7 @@ impl WitSourceFile {
         let path_bounded = BoundedString::from_str(path, provider.clone())
             .map_err(|_| Error::parse_error("Path too long"))?;
 
-        let mut lines = Vec::new(;
+        let mut lines = Vec::new);
         for line in content.lines() {
             let line_bounded = BoundedString::from_str(line, provider.clone())
                 .map_err(|_| Error::parse_error("Line too long"))?;
@@ -482,7 +482,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_source_map_basic() {
-        let mut source_map = WitSourceMap::new(;
+        let mut source_map = WitSourceMap::new);
 
         let span = SourceSpan::new(10, 20, 0;
         source_map.add_binary_mapping(100, span;

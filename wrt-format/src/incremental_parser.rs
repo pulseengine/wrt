@@ -138,7 +138,7 @@ impl IncrementalParser {
 
     /// Set initial source content
     pub fn set_source(&mut self, content: &str) -> Result<()> {
-        self.source.clear(;
+        self.source.clear);
         self.total_length = 0;
 
         let provider = wrt_foundation::safe_managed_alloc!(
@@ -218,7 +218,7 @@ impl IncrementalParser {
         self.stats.full_reparses += 1;
 
         // Build source string
-        let mut full_source = String::new(;
+        let mut full_source = String::new);
         for line in &self.source {
             if let Ok(line_str) = line.as_str() {
                 full_source.push_str(line_str;
@@ -352,7 +352,7 @@ impl IncrementalParser {
 
     /// Build parse tree from AST
     fn build_parse_tree(&self, doc: &WitDocument) -> Result<ParseNode> {
-        let mut children = Vec::new(;
+        let mut children = Vec::new);
 
         // Add package node if present
         if let Some(ref pkg) = doc.package {
@@ -477,7 +477,7 @@ impl IncrementalParserCache {
         let mut stats = self.global_stats.clone();
 
         for parser in self.parsers.values() {
-            let parser_stats = parser.stats(;
+            let parser_stats = parser.stats);
             stats.total_parses += parser_stats.total_parses;
             stats.incremental_parses += parser_stats.incremental_parses;
             stats.full_reparses += parser_stats.full_reparses;
@@ -503,7 +503,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_incremental_parser_creation() {
-        let parser = IncrementalParser::new(;
+        let parser = IncrementalParser::new);
         assert!(parser.get_ast().is_none();
         assert_eq!(parser.stats().total_parses, 0;
     }
@@ -551,7 +551,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parser_cache() {
-        let mut cache = IncrementalParserCache::new(;
+        let mut cache = IncrementalParserCache::new);
 
         let parser1 = cache.get_parser(0;
         parser1.stats.total_parses = 5;
@@ -559,7 +559,7 @@ mod tests {
         let parser2 = cache.get_parser(1;
         parser2.stats.total_parses = 3;
 
-        let stats = cache.global_stats(;
+        let stats = cache.global_stats);
         assert_eq!(stats.total_parses, 8;
     }
 }

@@ -365,7 +365,7 @@ impl RuntimeDebugger for WitDebugger {
         state: &(dyn RuntimeState + 'static),
     ) -> DebugAction {
         // Update current context
-        let pc = state.pc(;
+        let pc = state.pc);
         self.current_component = self.find_component_for_address(pc;
 
         // Check if this is a source-level breakpoint
@@ -402,21 +402,21 @@ impl RuntimeDebugger for WitDebugger {
     }
 
     fn on_function_entry(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static)) {
-        let pc = state.pc(;
+        let pc = state.pc);
         self.current_component = self.find_component_for_address(pc;
 
         // Could log WIT function entry here
     }
 
     fn on_function_exit(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static)) {
-        let pc = state.pc(;
+        let pc = state.pc);
         self.current_component = self.find_component_for_address(pc;
 
         // Could log WIT function exit here
     }
 
     fn on_trap(&mut self, trap_code: u32, state: &(dyn RuntimeState + 'static)) {
-        let pc = state.pc(;
+        let pc = state.pc);
         self.current_component = self.find_component_for_address(pc;
 
         // Could generate WIT-level diagnostic here
@@ -520,7 +520,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_wit_debugger_creation() {
-        let debugger = WitDebugger::new(;
+        let debugger = WitDebugger::new);
         assert_eq!(debugger.step_mode(), WitStepMode::Continue;
         assert!(debugger.components.is_empty();
         assert!(debugger.functions.is_empty();
@@ -530,7 +530,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_component_metadata() {
-        let mut debugger = WitDebugger::new(;
+        let mut debugger = WitDebugger::new);
         let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
@@ -554,7 +554,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_function_metadata() {
-        let mut debugger = WitDebugger::new(;
+        let mut debugger = WitDebugger::new);
         let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
@@ -578,7 +578,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_step_mode() {
-        let mut debugger = WitDebugger::new(;
+        let mut debugger = WitDebugger::new);
 
         assert_eq!(debugger.step_mode(), WitStepMode::Continue;
 

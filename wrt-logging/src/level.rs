@@ -134,7 +134,7 @@ mod tests {
         assert!("".parse::<LogLevel>().is_err();
 
         // Test error message
-        let err = "invalid".parse::<LogLevel>().unwrap_err(;
+        let err = "invalid".parse::<LogLevel>().unwrap_err);
         assert_eq!(err.message, "Invalid log level";
     }
 

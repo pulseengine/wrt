@@ -226,7 +226,7 @@ struct LinuxThreadHandle {
 impl PlatformThreadHandle for LinuxThreadHandle {
     fn join(self: Box<Self>) -> Result<Vec<u8>> {
         // Join the thread
-        let mut retval: *mut core::ffi::c_void = core::ptr::null_mut(;
+        let mut retval: *mut core::ffi::c_void = core::ptr::null_mut);
         let result = unsafe { ffi::pthread_join(self.tid, &mut retval) };
 
         if result != 0 {
@@ -234,7 +234,7 @@ impl PlatformThreadHandle for LinuxThreadHandle {
         }
 
         // Get the result
-        let result = self.result.lock(;
+        let result = self.result.lock);
         match &*result {
             Some(Ok(data)) => Ok(data.clone()),
             Some(Err(e)) => Err(e.clone()),
@@ -402,7 +402,7 @@ extern "C" fn thread_entry(arg: *mut core::ffi::c_void) -> *mut core::ffi::c_voi
 
     // Add thread to cgroup if available
     if let Some(ref cgroup) = context.cgroup {
-        let _ = cgroup.add_thread(;
+        let _ = cgroup.add_thread);
     }
 
     // Set CPU affinity if specified
@@ -441,7 +441,7 @@ impl PlatformThreadPool for LinuxThreadPool {
         }
 
         // Check thread limit
-        let active_count = self.active_threads.read().len(;
+        let active_count = self.active_threads.read().len);
         if active_count >= self.config.max_threads {
             return Err(Error::new(
                 ErrorCategory::Resource,
@@ -524,7 +524,7 @@ impl PlatformThreadPool for LinuxThreadPool {
 
         // Update statistics
         {
-            let mut stats = self.stats.lock(;
+            let mut stats = self.stats.lock);
             stats.active_threads += 1;
             stats.total_spawned += 1;
         }
@@ -544,7 +544,7 @@ impl PlatformThreadPool for LinuxThreadPool {
         self.shutdown.store(true, Ordering::Release;
 
         // Wait for threads to complete
-        let start = std::time::Instant::now(;
+        let start = std::time::Instant::now);
         while self.active_threads.read().len() > 0 && start.elapsed() < timeout {
             std::thread::sleep(Duration::from_millis(10;
         }
@@ -590,20 +590,20 @@ mod tests {
         assert_eq!(result, vec![1, 2, 3, 4];
 
         // Check stats
-        let stats = pool.get_stats(;
+        let stats = pool.get_stats);
         assert_eq!(stats.total_spawned, 1;
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn test_linux_thread_pool_with_cpu_affinity() {
-        let config = ThreadPoolConfig::default(;
+        let config = ThreadPoolConfig::default);
         let mut pool = LinuxThreadPool::new(config).unwrap();
 
         pool.set_executor(|_| Ok(vec![];
 
         // Create CPU set for CPU 0
-        let mut cpu_set = CpuSet::new(;
+        let mut cpu_set = CpuSet::new);
         cpu_set.add(0;
 
         let task = WasmTask {

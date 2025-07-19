@@ -680,7 +680,7 @@ impl BlastZoneManager {
         {
             for (zid, zone) in &self.zones {
                 if *zid == zone_id {
-                    return Some(zone.health(;
+                    return Some(zone.health);
                 }
             }
             None
@@ -700,7 +700,7 @@ impl BlastZoneManager {
         {
             for (zid, zone) in &mut self.zones {
                 if *zid == zone_id {
-                    return zone.attempt_recovery(;
+                    return zone.attempt_recovery);
                 }
             }
             Err(wrt_foundation::wrt_error::Error::invalid_value("Zone not found"))

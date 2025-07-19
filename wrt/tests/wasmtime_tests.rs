@@ -31,7 +31,7 @@ fn test_memory_persistence() -> Result<()> {
 
     // Create a new engine with the StacklessEngine
     // This uses the correct implementation that initializes memory properly
-    let mut engine = wrt::new_stackless_engine(;
+    let mut engine = wrt::new_stackless_engine);
     let instance_idx = engine.instantiate(module.clone())?;
 
     // Find store function index
@@ -88,7 +88,7 @@ fn test_memory_in_single_function() -> Result<()> {
 
     // Create a new engine with the StacklessEngine
     // This uses the correct implementation that initializes memory properly
-    let mut engine = wrt::new_stackless_engine(;
+    let mut engine = wrt::new_stackless_engine);
     let instance_idx = engine.instantiate(module.clone())?;
 
     // Find store function index
@@ -145,7 +145,7 @@ fn test_memory_single_function_combined() -> Result<()> {
     let module = Module::from_bytes(&wasm).expect("Failed to parse WASM");
 
     // Create a new engine with the StacklessEngine
-    let mut engine = wrt::new_stackless_engine(;
+    let mut engine = wrt::new_stackless_engine);
     let instance_idx = engine.instantiate(module.clone())?;
 
     // Find function index

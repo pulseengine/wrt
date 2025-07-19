@@ -219,7 +219,7 @@ impl ContextDetector {
 
     /// Detect project features
     fn detect_features(&self) -> Result<ProjectFeatures> {
-        let mut features = ProjectFeatures::default(;
+        let mut features = ProjectFeatures::default);
 
         // Check for tests
         features.has_tests = self.workspace_root.join("tests").exists()
@@ -231,16 +231,16 @@ impl ContextDetector {
             || self.has_files_matching("**/benches/**/*.rs";
 
         // Check for examples
-        features.has_examples = self.workspace_root.join("examples").exists(;
+        features.has_examples = self.workspace_root.join("examples").exists);
 
         // Check for documentation
         features.has_docs = self.workspace_root.join("docs").exists()
-            || self.workspace_root.join("README.md").exists(;
+            || self.workspace_root.join("README.md").exists);
 
         // Check for CI
         features.has_ci = self.workspace_root.join(".github").exists()
             || self.workspace_root.join(".gitlab-ci.yml").exists()
-            || self.workspace_root.join(".travis.yml").exists(;
+            || self.workspace_root.join(".travis.yml").exists);
 
         // Check for fuzzing
         features.has_fuzzing = self.workspace_root.join("fuzz").exists()
@@ -252,10 +252,10 @@ impl ContextDetector {
             || self.has_files_matching("**/*verification*.rs";
 
         // Check for no_std support
-        features.no_std_support = self.check_no_std_support(;
+        features.no_std_support = self.check_no_std_support);
 
         // Check for WebAssembly targets
-        features.webassembly_targets = self.check_wasm_targets(;
+        features.webassembly_targets = self.check_wasm_targets);
 
         Ok(features)
     }
@@ -305,7 +305,7 @@ impl ContextDetector {
     /// Detect CI context
     fn detect_ci_context(&self) -> Result<CiContext> {
         // Check environment variables for CI detection
-        let is_ci = std::env::var("CI").is_ok(;
+        let is_ci = std::env::var("CI").is_ok);
 
         let provider = if std::env::var("GITHUB_ACTIONS").is_ok() {
             CiProvider::GitHubActions
@@ -338,7 +338,7 @@ impl ContextDetector {
         git_context: &Option<GitContext>,
         ci_context: &Option<CiContext>,
     ) -> Vec<Recommendation> {
-        let mut recommendations = Vec::new(;
+        let mut recommendations = Vec::new);
 
         // Project setup recommendations
         match project_type {

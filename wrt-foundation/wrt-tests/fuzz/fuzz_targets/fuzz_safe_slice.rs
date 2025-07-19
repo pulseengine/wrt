@@ -96,13 +96,13 @@ fuzz_target!(|input: FuzzInput| {
                     }
                 }
                 Operation::Validate => {
-                    let _ = safe_slice.validate(;
+                    let _ = safe_slice.validate);
                 }
                 Operation::ValidateChecksum => {
-                    let _ = safe_slice.validate_checksum(;
+                    let _ = safe_slice.validate_checksum);
                 }
                 Operation::CheckIntegrity => {
-                    let _ = safe_slice.check_integrity(;
+                    let _ = safe_slice.check_integrity);
                 }
                 Operation::ChangeData {
                     index,
@@ -127,5 +127,5 @@ fuzz_target!(|input: FuzzInput| {
     }
     
     // Final validation
-    let _ = safe_slice.validate(;
+    let _ = safe_slice.validate);
 };

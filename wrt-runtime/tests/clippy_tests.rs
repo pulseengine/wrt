@@ -27,7 +27,7 @@ mod tests {
 
         if let Ok(engine) = engine {
             // Verify we can access the capability context
-            let context = engine.capability_context(;
+            let context = engine.capability_context);
             assert!(context.has_capability(CrateId::Runtime);
         }
     }
@@ -40,12 +40,12 @@ mod tests {
         };
 
         // Create handles
-        let module = ModuleHandle::new(;
+        let module = ModuleHandle::new);
         let instance = InstanceHandle::from_index(0;
 
         // Use the handles to ensure they're not optimized away
         let _module_copy = module;
-        let _index = instance.index(;
+        let _index = instance.index);
     }
 
     #[test]

@@ -215,7 +215,7 @@ impl AsyncCombinators {
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
-        let futures_count = futures.len(;
+        let futures_count = futures.len);
         
         let combinator_type = CombinatorType::Join {
             futures,
@@ -391,7 +391,7 @@ impl AsyncCombinators {
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
-        let futures_count = futures.len(;
+        let futures_count = futures.len);
         
         let combinator_type = CombinatorType::TryJoin {
             futures,
@@ -517,7 +517,7 @@ impl AsyncCombinators {
             bridge.poll_async_tasks()?
         };
 
-        let mut completed_combinators = Vec::new(;
+        let mut completed_combinators = Vec::new);
         let mut ready_combinators = 0;
 
         // Check combinator statuses
@@ -664,7 +664,7 @@ mod tests {
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default(;
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default);
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -673,17 +673,17 @@ mod tests {
 
     #[test]
     fn test_combinator_creation() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let combinators = AsyncCombinators::new(bridge;
         assert_eq!(combinators.active_combinators.len(), 0;
     }
 
     #[test]
     fn test_combinator_statistics() {
-        let bridge = create_test_bridge(;
+        let bridge = create_test_bridge);
         let combinators = AsyncCombinators::new(bridge;
         
-        let stats = combinators.get_combinator_statistics(;
+        let stats = combinators.get_combinator_statistics);
         assert_eq!(stats.total_selects, 0;
         assert_eq!(stats.total_joins, 0;
         assert_eq!(stats.total_races, 0;

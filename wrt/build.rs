@@ -24,7 +24,7 @@ fn main() {
     let commit_hash_path = out_dir.join(COMMIT_HASH_FILE;
 
     // Check internet connection
-    let has_internet = check_internet_connection(;
+    let has_internet = check_internet_connection);
 
     // First run or needs update
     if !testsuite_path.exists() {
@@ -68,7 +68,7 @@ fn main() {
         }
 
         // Make the testsuite path available to the test code
-        let path_str = testsuite_path.to_string_lossy(;
+        let path_str = testsuite_path.to_string_lossy);
         println!("cargo:rustc-env=WASM_TESTSUITE={path_str}";
         println!("cargo:warning=Setting WASM_TESTSUITE to {path_str}";
     }
@@ -102,7 +102,7 @@ fn main() {
 }
 
 fn check_internet_connection() -> bool {
-    let output = Command::new("ping").args(["-c", "1", "8.8.8.8"]).output(;
+    let output = Command::new("ping").args(["-c", "1", "8.8.8.8"]).output);
 
     match output {
         Ok(output) => output.status.success(),

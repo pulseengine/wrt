@@ -18,16 +18,16 @@ fn main() {
     println!("=============================\n";
 
     // Integer arithmetic safety
-    demo_integer_safety(;
+    demo_integer_safety);
 
     // Floating-point safety
-    demo_float_safety(;
+    demo_float_safety);
 
     // Rounding modes
-    demo_rounding_modes(;
+    demo_rounding_modes);
 
     // SIMD bounds checking
-    demo_simd_bounds(;
+    demo_simd_bounds);
 }
 
 fn demo_integer_safety() {
@@ -72,7 +72,7 @@ fn demo_integer_safety() {
         Err(e) => println!("Division by zero trapped: {:?}", e),
     }
 
-    println!(;
+    println!);
 }
 
 fn demo_float_safety() {
@@ -99,7 +99,7 @@ fn demo_float_safety() {
         },
     }
 
-    println!(;
+    println!);
 }
 
 fn demo_rounding_modes() {
@@ -122,7 +122,7 @@ fn demo_rounding_modes() {
         }
     }
 
-    println!(;
+    println!);
 }
 
 fn demo_simd_bounds() {
@@ -154,5 +154,5 @@ fn demo_simd_bounds() {
         },
     }
 
-    println!(;
+    println!);
 }

@@ -179,10 +179,10 @@ impl TaskCleanupContext {
     ) -> Result<Vec<ContextualError>> {
         // Check if already executed
         if self.cleanup_executed.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new(;
+            return Ok(Vec::new);
         }
         
-        let mut errors = Vec::new(;
+        let mut errors = Vec::new);
         
         // Execute callbacks in priority order
         for callback in self.callbacks.drain(..) {
@@ -381,7 +381,7 @@ impl GlobalCleanupManager {
             .map(|(id, _)| *id)
             .collect();
         
-        let mut all_errors = Vec::new(;
+        let mut all_errors = Vec::new);
         
         for task_id in task_ids {
             match self.cancel_task(task_id) {
@@ -445,7 +445,7 @@ impl TaskCleanupGuard {
     /// Cancel the task early
     pub fn cancel(&self) -> Result<Vec<ContextualError>> {
         if self.cancelled.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new(;
+            return Ok(Vec::new);
         }
         
         self.manager.lock()?.cancel_task(self.task_id)
@@ -455,7 +455,7 @@ impl TaskCleanupGuard {
 impl Drop for TaskCleanupGuard {
     fn drop(&mut self) {
         if !self.cancelled.load(Ordering::Acquire) {
-            let _ = self.cancel(;
+            let _ = self.cancel);
         }
     }
 }
@@ -527,7 +527,7 @@ mod tests {
         assert!(errors.is_empty();
         
         // Stats should show cleanup
-        let stats = manager.stats(;
+        let stats = manager.stats);
         assert_eq!(stats.total_cleanups, 1;
         assert_eq!(stats.failed_cleanups, 0;
     }
@@ -547,7 +547,7 @@ mod tests {
         }
         
         // Task should be cleaned up
-        let stats = manager.lock().unwrap().stats(;
+        let stats = manager.lock().unwrap().stats);
         assert_eq!(stats.total_cleanups, 1;
     }
 }

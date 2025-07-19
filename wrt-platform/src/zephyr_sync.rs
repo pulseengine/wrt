@@ -118,7 +118,7 @@ impl ZephyrFutex {
         // Binary std/no_std choice
         // For demonstration, we'll simulate with null pointer (would need actual kernel
         // object)
-        let futex_obj = core::ptr::null_mut(;
+        let futex_obj = core::ptr::null_mut);
 
         let futex = Self { value: AtomicU32::new(initial_value), futex_obj, _padding: [0; 56] };
 
@@ -178,7 +178,7 @@ impl ZephyrFutex {
         loop {
             // Check if value has changed
             if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {
-                return Ok((;
+                return Ok();
             }
 
             // Check timeout
@@ -190,7 +190,7 @@ impl ZephyrFutex {
             }
 
             // Yield to other threads
-            core::hint::spin_loop(;
+            core::hint::spin_loop);
         }
     }
 
@@ -306,7 +306,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
     fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<()> {
         // Check value first
         if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {
-            return Ok((;
+            return Ok();
         }
 
         // In real implementation, would use k_sem_take() with timeout
@@ -316,7 +316,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
 
         loop {
             if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {
-                return Ok((;
+                return Ok();
             }
 
             if timeout_ticks != i64::MAX {
@@ -326,7 +326,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
                 }
             }
 
-            core::hint::spin_loop(;
+            core::hint::spin_loop);
         }
     }
 

@@ -308,7 +308,7 @@ impl ResourceLifecycleManager {
 
     /// Create new resource lifecycle manager with custom policies
     pub fn with_policies(policies: LifecyclePolicies) -> Self {
-        let mut manager = Self::new(;
+        let mut manager = Self::new);
         manager.policies = policies;
         manager
     }
@@ -320,7 +320,7 @@ impl ResourceLifecycleManager {
 
         // Register drop handlers for this resource
         #[cfg(feature = "std")]
-        let mut handler_ids = Vec::new(;
+        let mut handler_ids = Vec::new);
         #[cfg(not(any(feature = "std", )))]
         let mut handler_ids = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -381,7 +381,7 @@ impl ResourceLifecycleManager {
         }
 
         resource.ref_count += 1;
-        resource.last_access = self.get_current_time(;
+        resource.last_access = self.get_current_time);
         Ok(resource.ref_count)
     }
 
@@ -398,7 +398,7 @@ impl ResourceLifecycleManager {
             }
 
             resource.ref_count -= 1;
-            resource.last_access = self.get_current_time(;
+            resource.last_access = self.get_current_time);
             
             resource.ref_count == 0
         };
@@ -483,7 +483,7 @@ impl ResourceLifecycleManager {
                 "Garbage collection already running";
         }
 
-        let start_time = self.get_current_time(;
+        let start_time = self.get_current_time);
         self.gc_state.gc_running = true;
         
         let mut collected_count = 0;
@@ -491,7 +491,7 @@ impl ResourceLifecycleManager {
 
         // Find resources to collect
         #[cfg(feature = "std")]
-        let mut resources_to_drop = Vec::new(;
+        let mut resources_to_drop = Vec::new);
         #[cfg(not(any(feature = "std", )))]
         let mut resources_to_drop = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -541,7 +541,7 @@ impl ResourceLifecycleManager {
         // Update GC state
         let gc_time = self.get_current_time() - start_time;
         self.gc_state.gc_running = false;
-        self.gc_state.last_gc_time = self.get_current_time(;
+        self.gc_state.last_gc_time = self.get_current_time);
         self.gc_state.gc_cycles += 1;
         self.gc_state.last_collected = collected_count;
 
@@ -595,11 +595,11 @@ impl ResourceLifecycleManager {
     #[cfg(feature = "std")]
     pub fn check_for_leaks(&mut self) -> Result<Vec<ResourceId>> {
         if !self.policies.leak_detection {
-            return Ok(Vec::new(;
+            return Ok(Vec::new);
         }
 
-        let mut leaked_resources = Vec::new(;
-        let current_time = self.get_current_time(;
+        let mut leaked_resources = Vec::new);
+        let current_time = self.get_current_time);
 
         for resource in &self.resources {
             if let Some(max_lifetime) = self.policies.max_lifetime_ms {
@@ -624,7 +624,7 @@ impl ResourceLifecycleManager {
 
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let mut leaked_resources = BoundedVec::new(provider).unwrap();
-        let current_time = self.get_current_time(;
+        let current_time = self.get_current_time);
 
         for resource in &self.resources {
             if let Some(max_lifetime) = self.policies.max_lifetime_ms {
@@ -847,7 +847,7 @@ mod tests {
 
     #[test]
     fn test_resource_lifecycle_manager_creation() {
-        let manager = ResourceLifecycleManager::new(;
+        let manager = ResourceLifecycleManager::new);
         assert_eq!(manager.resources.len(), 0;
         assert_eq!(manager.stats.active_resources, 0;
         assert_eq!(manager.next_resource_id, 1;
@@ -855,7 +855,7 @@ mod tests {
 
     #[test]
     fn test_create_resource() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Stream,
@@ -878,7 +878,7 @@ mod tests {
 
     #[test]
     fn test_reference_counting() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Future,
@@ -913,7 +913,7 @@ mod tests {
 
     #[test]
     fn test_drop_handler_registration() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
         
         let handler_id = manager.register_drop_handler(
             ResourceType::Stream,
@@ -928,7 +928,7 @@ mod tests {
 
     #[test]
     fn test_garbage_collection() {
-        let mut manager = ResourceLifecycleManager::new(;
+        let mut manager = ResourceLifecycleManager::new);
         
         // Create a resource with zero references
         let request = ResourceCreateRequest {
@@ -965,7 +965,7 @@ mod tests {
 
     #[test]
     fn test_lifecycle_policies() {
-        let policies = LifecyclePolicies::default(;
+        let policies = LifecyclePolicies::default);
         assert!(policies.enable_gc);
         assert!(policies.strict_ref_counting);
         assert!(policies.leak_detection);

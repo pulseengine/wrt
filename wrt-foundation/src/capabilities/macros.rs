@@ -25,7 +25,7 @@
 /// // Create capability context
 /// let mut factory = CapabilityFactoryBuilder::new()
 ///     .with_dynamic_capability(CrateId::Foundation, 4096)?
-///     .build(;
+///     .build);
 ///
 /// // Use the capability-driven macro
 /// let provider = safe_capability_alloc!(factory, CrateId::Foundation, 1024)?;
@@ -111,7 +111,7 @@ macro_rules! safe_verified_alloc {
 /// };
 ///
 /// # fn example() -> wrt_foundation::Result<()> {
-/// let provider = NoStdProvider::<1024>::new(;
+/// let provider = NoStdProvider::<1024>::new);
 /// let capability = Box::new(DynamicMemoryCapability::new(
 ///     1024,
 ///     CrateId::Foundation,

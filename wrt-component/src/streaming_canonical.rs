@@ -281,7 +281,7 @@ impl StreamingCanonicalAbi {
         let (values, bytes_consumed) = self.parse_values_from_buffer(stream_index)?;
         
         // Update backpressure state
-        context.update_backpressure_state(;
+        context.update_backpressure_state);
         context.bytes_processed += bytes_consumed as u64;
 
         Ok(StreamingLiftResult {
@@ -315,7 +315,7 @@ impl StreamingCanonicalAbi {
         let (bytes, values_consumed) = self.serialize_values_to_buffer(stream_index, input_values)?;
         
         // Update backpressure state
-        context.update_backpressure_state(;
+        context.update_backpressure_state);
 
         Ok(StreamingLowerResult {
             bytes,
@@ -381,7 +381,7 @@ impl StreamingCanonicalAbi {
 
     #[cfg(feature = "std")]
     fn return_buffer_to_pool(&mut self, mut buffer: Vec<u8>) {
-        buffer.clear(;
+        buffer.clear);
         if buffer.capacity() <= MAX_STREAM_BUFFER_SIZE * 2 {
             self.buffer_pool.push(buffer);
         }
@@ -444,24 +444,24 @@ impl StreamingCanonicalAbi {
     }
 
     fn serialize_values_to_buffer(&mut self, _stream_index: usize, values: &[Value]) -> core::result::Result<(Vec<u8>, usize)> {
-        let mut result_bytes = Vec::new(;
+        let mut result_bytes = Vec::new);
         let mut values_consumed = 0;
 
         for value in values {
             match value {
                 Value::U32(n) => {
-                    result_bytes.extend_from_slice(&n.to_le_bytes(;
+                    result_bytes.extend_from_slice(&n.to_le_bytes);
                     values_consumed += 1;
                 }
                 Value::String(s) => {
-                    let string_bytes = s.as_str().as_bytes(;
-                    result_bytes.extend_from_slice(&(string_bytes.len() as u32).to_le_bytes(;
+                    let string_bytes = s.as_str().as_bytes);
+                    result_bytes.extend_from_slice(&(string_bytes.len() as u32).to_le_bytes);
                     result_bytes.extend_from_slice(string_bytes;
                     values_consumed += 1;
                 }
                 _ => {
                     // Simplified - just serialize as u32
-                    result_bytes.extend_from_slice(&42u32.to_le_bytes(;
+                    result_bytes.extend_from_slice(&42u32.to_le_bytes);
                     values_consumed += 1;
                 }
             }
@@ -492,7 +492,7 @@ impl StreamingContext {
             self.backpressure.is_active = false;
         }
 
-        self.backpressure.available_capacity = self.backpressure.high_water_mark.saturating_sub(self.buffer.len(;
+        self.backpressure.available_capacity = self.backpressure.high_water_mark.saturating_sub(self.buffer.len);
     }
 }
 
@@ -582,14 +582,14 @@ mod tests {
 
     #[test]
     fn test_streaming_abi_creation() {
-        let abi = StreamingCanonicalAbi::new(;
+        let abi = StreamingCanonicalAbi::new);
         assert_eq!(abi.streams.len(), 0;
         assert_eq!(abi.next_stream_id, 1;
     }
 
     #[test]
     fn test_create_stream() {
-        let mut abi = StreamingCanonicalAbi::new(;
+        let mut abi = StreamingCanonicalAbi::new);
         let handle = abi.create_stream(
             ValType::U32,
             StreamDirection::Lifting,
@@ -603,14 +603,14 @@ mod tests {
 
     #[test]
     fn test_streaming_lift_u32() {
-        let mut abi = StreamingCanonicalAbi::new(;
+        let mut abi = StreamingCanonicalAbi::new);
         let handle = abi.create_stream(
             ValType::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
         ).unwrap();
 
-        let input_bytes = 42u32.to_le_bytes(;
+        let input_bytes = 42u32.to_le_bytes);
         let result = abi.streaming_lift(handle, &input_bytes).unwrap();
 
         assert_eq!(result.values.len(), 1;
@@ -621,7 +621,7 @@ mod tests {
 
     #[test]
     fn test_streaming_lower_u32() {
-        let mut abi = StreamingCanonicalAbi::new(;
+        let mut abi = StreamingCanonicalAbi::new);
         let handle = abi.create_stream(
             ValType::U32,
             StreamDirection::Lowering,
@@ -631,14 +631,14 @@ mod tests {
         let input_values = vec![Value::U32(42)];
         let result = abi.streaming_lower(handle, &input_values).unwrap();
 
-        assert_eq!(result.bytes, 42u32.to_le_bytes(;
+        assert_eq!(result.bytes, 42u32.to_le_bytes);
         assert_eq!(result.values_consumed, 1;
         assert!(!result.backpressure_active);
     }
 
     #[test]
     fn test_stream_stats() {
-        let mut abi = StreamingCanonicalAbi::new(;
+        let mut abi = StreamingCanonicalAbi::new);
         let handle = abi.create_stream(
             ValType::U32,
             StreamDirection::Lifting,
@@ -653,8 +653,8 @@ mod tests {
 
     #[test]
     fn test_backpressure_config() {
-        let mut abi = StreamingCanonicalAbi::new(;
-        let mut config = BackpressureConfig::default(;
+        let mut abi = StreamingCanonicalAbi::new);
+        let mut config = BackpressureConfig::default);
         config.default_high_water_percent = 90;
         config.default_low_water_percent = 10;
 
@@ -664,7 +664,7 @@ mod tests {
 
     #[test]
     fn test_close_stream() {
-        let mut abi = StreamingCanonicalAbi::new(;
+        let mut abi = StreamingCanonicalAbi::new);
         let handle = abi.create_stream(
             ValType::U32,
             StreamDirection::Lifting,

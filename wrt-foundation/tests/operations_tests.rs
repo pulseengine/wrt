@@ -13,7 +13,7 @@ mod tests {
 
     #[test]
     fn test_operation_counter() {
-        let counter = OperationCounter::new(;
+        let counter = OperationCounter::new);
 
         // Record some operations
         counter.record_operation(OperationType::MemoryRead, VerificationLevel::Full;
@@ -21,7 +21,7 @@ mod tests {
         counter.record_operation(OperationType::CollectionPush, VerificationLevel::Full;
 
         // Get the summary
-        let summary = counter.get_summary(;
+        let summary = counter.get_summary);
 
         // Check individual counts
         assert_eq!(summary.memory_reads, 1;
@@ -44,15 +44,15 @@ mod tests {
         assert_eq!(summary.fuel_consumed, expected_fuel;
 
         // Test reset
-        counter.reset(;
-        let summary_after_reset = counter.get_summary(;
+        counter.reset);
+        let summary_after_reset = counter.get_summary);
         assert_eq!(summary_after_reset.memory_reads, 0;
         assert_eq!(summary_after_reset.fuel_consumed, 0;
     }
 
     #[test]
     fn test_verification_level_impact() {
-        let counter = OperationCounter::new(;
+        let counter = OperationCounter::new);
         let vl_off = VerificationLevel::Off;
         let vl_sampling = VerificationLevel::default(); // Sampling
         let vl_full = VerificationLevel::Full;
@@ -63,7 +63,7 @@ mod tests {
         counter.record_operation(OperationType::MemoryRead, vl_full;
 
         // The fuel cost should reflect the different verification levels
-        let summary = counter.get_summary(;
+        let summary = counter.get_summary);
 
         // Memory reads should be 3
         assert_eq!(summary.memory_reads, 3;
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_global_counter() {
         // Reset global counter
-        reset_global_operations(;
+        reset_global_operations);
         let vl_full = VerificationLevel::Full;
 
         // Record some operations
@@ -94,18 +94,18 @@ mod tests {
         record_global_operation(OperationType::CollectionValidate, vl_full); // Was Standard
 
         // Get global summary
-        let summary = global_operation_summary(;
+        let summary = global_operation_summary);
 
         // Check counts
         assert_eq!(summary.function_calls, 1;
         assert_eq!(summary.collection_validates, 1;
 
         // Check global fuel consumed
-        let fuel = global_fuel_consumed(;
+        let fuel = global_fuel_consumed);
         assert_eq!(fuel, summary.fuel_consumed;
 
         // Reset and check again
-        reset_global_operations(;
+        reset_global_operations);
         assert_eq!(global_fuel_consumed(), 0;
     }
 

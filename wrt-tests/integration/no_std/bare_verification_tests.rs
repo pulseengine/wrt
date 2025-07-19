@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn test_bounded_vec_without_alloc() {
         // Binary std/no_std choice
-        let mut vec = BoundedVec::<u32, 10>::new(;
+        let mut vec = BoundedVec::<u32, 10>::new);
         
         // Fill it with values
         for i in 0..5 {
@@ -63,7 +63,7 @@ mod tests {
     #[test]
     fn test_bounded_stack_without_alloc() {
         // Binary std/no_std choice
-        let mut stack = BoundedStack::<u32, 5>::new(;
+        let mut stack = BoundedStack::<u32, 5>::new);
         
         // Push values
         assert!(stack.push(1).is_ok();
@@ -144,53 +144,53 @@ mod tests {
     #[test]
     fn test_mutex_without_alloc() {
         // Binary std/no_std choice
-        let mutex = RawMutex::new(;
+        let mutex = RawMutex::new);
         
         // Test lock/unlock
         unsafe {
-            mutex.lock(;
+            mutex.lock);
             
             // Critical section here
             let value = 42;
             assert_eq!(value, 42;
             
-            mutex.unlock(;
+            mutex.unlock);
         }
     }
     
     #[test]
     fn test_rwlock_without_alloc() {
         // Binary std/no_std choice
-        let rwlock = RawRwLock::new(;
+        let rwlock = RawRwLock::new);
         
         // Test read lock
         unsafe {
-            rwlock.read_lock(;
+            rwlock.read_lock);
             
             // Read operation here
             let value = 42;
             assert_eq!(value, 42;
             
-            rwlock.read_unlock(;
+            rwlock.read_unlock);
         }
         
         // Test write lock
         unsafe {
-            rwlock.write_lock(;
+            rwlock.write_lock);
             
             // Write operation here
             let mut value = 42;
             value += 1;
             assert_eq!(value, 43;
             
-            rwlock.write_unlock(;
+            rwlock.write_unlock);
         }
     }
     
     #[test]
     fn test_platform_page_size() {
         // Binary std/no_std choice
-        let size = page_size(;
+        let size = page_size);
         
         // Page size should be a power of 2 and greater than 0
         assert!(size > 0);
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn test_safe_stack_operations() {
         // Binary std/no_std choice
-        let mut stack = SafeStack::<u32, 5>::new(;
+        let mut stack = SafeStack::<u32, 5>::new);
         
         // Test stack operations
         assert!(stack.push(1).is_ok();

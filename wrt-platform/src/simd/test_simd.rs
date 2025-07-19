@@ -13,7 +13,7 @@ mod simd_tests {
     
     #[test]
     fn test_scalar_simd_provider() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         assert_eq!(provider.simd_level(), SimdLevel::None;
         assert!(provider.is_available();
@@ -32,7 +32,7 @@ mod simd_tests {
     
     #[test]
     fn test_simd_capabilities_detection() {
-        let caps = SimdCapabilities::detect(;
+        let caps = SimdCapabilities::detect);
         
         // Should always have at least None level
         assert!(caps.level >= SimdLevel::None);
@@ -48,7 +48,7 @@ mod simd_tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_simd_runtime() {
-        let runtime = SimdRuntime::new(;
+        let runtime = SimdRuntime::new);
         
         // Should have a valid provider
         assert!(runtime.provider().is_available();
@@ -66,7 +66,7 @@ mod simd_tests {
     #[cfg(target_arch = "x86_64")]
     fn test_x86_simd_provider_if_available() {
         // Only test if we're actually on x86_64
-        let provider = x86_64::X86SimdProvider::new_sse2(;
+        let provider = x86_64::X86SimdProvider::new_sse2);
         
         assert_eq!(provider.simd_level(), SimdLevel::Basic;
         assert!(provider.is_available();
@@ -84,7 +84,7 @@ mod simd_tests {
     
     #[test]
     fn test_bitwise_operations() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         let a = [0xFF; 16];
         let b = [0xAA; 16];
@@ -108,21 +108,21 @@ mod simd_tests {
     
     #[test]
     fn test_float_operations() {
-        let provider = ScalarSimdProvider::new(;
+        let provider = ScalarSimdProvider::new);
         
         // Create f32x4 vectors [2.0, 3.0, 4.0, 5.0] and [0.5, 2.0, 0.25, 0.2]
         let mut a = [0u8; 16];
         let mut b = [0u8; 16];
         
-        a[0..4].copy_from_slice(&2.0f32.to_bits().to_le_bytes(;
-        a[4..8].copy_from_slice(&3.0f32.to_bits().to_le_bytes(;
-        a[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes(;
-        a[12..16].copy_from_slice(&5.0f32.to_bits().to_le_bytes(;
+        a[0..4].copy_from_slice(&2.0f32.to_bits().to_le_bytes);
+        a[4..8].copy_from_slice(&3.0f32.to_bits().to_le_bytes);
+        a[8..12].copy_from_slice(&4.0f32.to_bits().to_le_bytes);
+        a[12..16].copy_from_slice(&5.0f32.to_bits().to_le_bytes);
         
-        b[0..4].copy_from_slice(&0.5f32.to_bits().to_le_bytes(;
-        b[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes(;
-        b[8..12].copy_from_slice(&0.25f32.to_bits().to_le_bytes(;
-        b[12..16].copy_from_slice(&0.2f32.to_bits().to_le_bytes(;
+        b[0..4].copy_from_slice(&0.5f32.to_bits().to_le_bytes);
+        b[4..8].copy_from_slice(&2.0f32.to_bits().to_le_bytes);
+        b[8..12].copy_from_slice(&0.25f32.to_bits().to_le_bytes);
+        b[12..16].copy_from_slice(&0.2f32.to_bits().to_le_bytes);
         
         let result = provider.v128_f32x4_mul(&a, &b;
         

@@ -12,7 +12,7 @@ use wrt_foundation::{safe_managed_alloc, memory_init::{init_wrt_memory, init_cra
 #[test]
 fn test_safety_level_detection() {
     // Test that we can detect the current safety level
-    let level = wasi_safety_level(;
+    let level = wasi_safety_level);
     println!("Current safety level: {}", level;
     
     // Verify it's one of the expected values
@@ -24,7 +24,7 @@ fn test_safety_level_detection() {
 
 #[test]
 fn test_allocation_size_limits() {
-    let max_size = wasi_max_allocation_size(;
+    let max_size = wasi_max_allocation_size);
     println!("Maximum allocation size: {} bytes", max_size;
     
     // Verify size based on safety level
@@ -75,7 +75,7 @@ fn test_safety_aware_allocation_enforcement() {
 fn test_capability_defaults_by_safety_level() {
     // Test that default capabilities change based on safety level
     let provider = WasiProviderBuilder::new().build().unwrap();
-    let caps = provider.capabilities(;
+    let caps = provider.capabilities);
     
     match wasi_safety_level() {
         "maximum-safety" => {
@@ -109,7 +109,7 @@ fn test_safety_level_override() {
         .build()
         .unwrap();
     
-    let caps_minimal = provider_minimal.capabilities(;
+    let caps_minimal = provider_minimal.capabilities);
     assert!(!caps_minimal.filesystem.read_access);
     
     let provider_sandbox = WasiProviderBuilder::new()
@@ -117,7 +117,7 @@ fn test_safety_level_override() {
         .build()
         .unwrap();
     
-    let caps_sandbox = provider_sandbox.capabilities(;
+    let caps_sandbox = provider_sandbox.capabilities);
     assert!(caps_sandbox.filesystem.read_access);
     assert!(!caps_sandbox.filesystem.write_access);
 }
@@ -149,7 +149,7 @@ fn test_asil_d_specific_enforcement() {
     
     // ASIL-D should get minimal capabilities by default
     let provider = WasiProviderBuilder::new().build().unwrap();
-    let caps = provider.capabilities(;
+    let caps = provider.capabilities);
     assert!(!caps.filesystem.read_access);
     assert!(!caps.io.stdout_access);
 }
@@ -163,7 +163,7 @@ fn test_qm_specific_enforcement() {
     
     // QM should get full capabilities by default
     let provider = WasiProviderBuilder::new().build().unwrap();
-    let caps = provider.capabilities(;
+    let caps = provider.capabilities);
     assert!(caps.filesystem.read_access);
     assert!(caps.filesystem.write_access);
     assert!(caps.io.stdout_access);

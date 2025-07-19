@@ -204,7 +204,7 @@ mod no_std_types {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
             self.name.update_checksum(checksum;
             checksum.update_slice(&[self.kind as u8];
-            checksum.update_slice(&self.index.to_le_bytes(;
+            checksum.update_slice(&self.index.to_le_bytes);
         }
     }
 
@@ -675,7 +675,7 @@ impl wrt_foundation::traits::FromBytes for ExportInfo {
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
         {
-            let mut bytes = Vec::new(;
+            let mut bytes = Vec::new);
             loop {
                 match reader.read_u8() {
                     Ok(byte) => bytes.push(byte),
@@ -707,20 +707,20 @@ impl wrt_foundation::traits::Checksummable for ExportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         #[cfg(feature = "std")]
         {
-            checksum.update_slice(self.name.as_bytes(;
-            checksum.update_slice(self.kind.as_bytes(;
-            checksum.update_slice(self.type_info.as_bytes(;
+            checksum.update_slice(self.name.as_bytes);
+            checksum.update_slice(self.kind.as_bytes);
+            checksum.update_slice(self.type_info.as_bytes);
         }
         #[cfg(not(feature = "std"))]
         {
             if let Ok(s) = self.name.as_str() {
-                checksum.update_slice(s.as_bytes(;
+                checksum.update_slice(s.as_bytes);
             }
             if let Ok(s) = self.kind.as_str() {
-                checksum.update_slice(s.as_bytes(;
+                checksum.update_slice(s.as_bytes);
             }
             if let Ok(s) = self.type_info.as_str() {
-                checksum.update_slice(s.as_bytes(;
+                checksum.update_slice(s.as_bytes);
             }
         }
     }
@@ -780,7 +780,7 @@ impl wrt_foundation::traits::FromBytes for ImportInfo {
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
         {
-            let mut bytes = Vec::new(;
+            let mut bytes = Vec::new);
             loop {
                 match reader.read_u8() {
                     Ok(byte) => bytes.push(byte),
@@ -813,24 +813,24 @@ impl wrt_foundation::traits::Checksummable for ImportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         #[cfg(feature = "std")]
         {
-            checksum.update_slice(self.module.as_bytes(;
-            checksum.update_slice(self.name.as_bytes(;
-            checksum.update_slice(self.kind.as_bytes(;
-            checksum.update_slice(self.type_info.as_bytes(;
+            checksum.update_slice(self.module.as_bytes);
+            checksum.update_slice(self.name.as_bytes);
+            checksum.update_slice(self.kind.as_bytes);
+            checksum.update_slice(self.type_info.as_bytes);
         }
         #[cfg(not(feature = "std"))]
         {
             if let Ok(s) = self.module.as_str() {
-                checksum.update_slice(s.as_bytes(;
+                checksum.update_slice(s.as_bytes);
             }
             if let Ok(s) = self.name.as_str() {
-                checksum.update_slice(s.as_bytes(;
+                checksum.update_slice(s.as_bytes);
             }
             if let Ok(s) = self.kind.as_str() {
-                checksum.update_slice(s.as_bytes(;
+                checksum.update_slice(s.as_bytes);
             }
             if let Ok(s) = self.type_info.as_str() {
-                checksum.update_slice(s.as_bytes(;
+                checksum.update_slice(s.as_bytes);
             }
         }
     }

@@ -206,7 +206,7 @@ impl WebAssembly3Runtime {
                 args,
             } => {
                 // Create new thread execution context
-                let thread_config = wrt_runtime::thread_manager::ThreadConfig::default(;
+                let thread_config = wrt_runtime::thread_manager::ThreadConfig::default);
                 let thread_id = self.thread_manager.create_thread(thread_config)?;
 
                 // In real implementation, would spawn thread and execute function

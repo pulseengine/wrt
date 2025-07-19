@@ -34,7 +34,7 @@ mod async_context_tests {
         let initial = AsyncContextManager::context_get().unwrap();
         assert!(initial.is_none();
 
-        let context = AsyncContext::new(;
+        let context = AsyncContext::new);
         AsyncContextManager::context_set(context.clone()).unwrap();
 
         let retrieved = AsyncContextManager::context_get().unwrap();
@@ -585,7 +585,7 @@ mod fixed_length_list_tests {
 
     #[test]
     fn test_fixed_list_type_registry() {
-        let mut registry = FixedLengthListTypeRegistry::new(;
+        let mut registry = FixedLengthListTypeRegistry::new);
 
         let type1 = FixedLengthListType::new(ValueType::I32, 10;
         let index1 = registry.register_type(type1.clone()).unwrap();
@@ -670,7 +670,7 @@ mod cross_feature_integration_tests {
         TaskBuiltins::initialize().unwrap();
 
         // Set up async context
-        let context = AsyncContext::new(;
+        let context = AsyncContext::new);
         AsyncContextManager::context_set(context).unwrap();
 
         // Set context value

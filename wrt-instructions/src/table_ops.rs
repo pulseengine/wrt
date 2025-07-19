@@ -759,7 +759,7 @@ mod tests {
 
     impl MockTableOperations {
         fn new() -> Self {
-            let mut tables = Vec::new(;
+            let mut tables = Vec::new);
             tables.push(MockTable::new(10, Some(20))); // Table 0: size 10, max 20
             tables.push(MockTable::new(5, None));       // Table 1: size 5, no max
             Self { tables }
@@ -851,7 +851,7 @@ mod tests {
             
             // Copy elements (handle overlapping regions correctly)
             if len > 0 {
-                let temp: Vec<Value> = table.elements[src_index as usize..src_end].to_vec(;
+                let temp: Vec<Value> = table.elements[src_index as usize..src_end].to_vec);
                 for (i, value) in temp.into_iter().enumerate() {
                     table.elements[dst_index as usize + i] = value;
                 }
@@ -868,17 +868,17 @@ mod tests {
 
     impl MockElementSegments {
         fn new() -> Self {
-            let mut segments = Vec::new(;
+            let mut segments = Vec::new);
             
             // Segment 0: [FuncRef(1), FuncRef(2), FuncRef(3)]
-            let mut seg0 = Vec::new(;
+            let mut seg0 = Vec::new);
             seg0.push(Value::FuncRef(Some(FuncRef::from_index(1));
             seg0.push(Value::FuncRef(Some(FuncRef::from_index(2));
             seg0.push(Value::FuncRef(Some(FuncRef::from_index(3));
             segments.push(Some(seg0);
             
             // Segment 1: [ExternRef(4), ExternRef(5)]
-            let mut seg1 = Vec::new(;
+            let mut seg1 = Vec::new);
             seg1.push(Value::ExternRef(Some(ExternRef { index: 4 });
             seg1.push(Value::ExternRef(Some(ExternRef { index: 5 });
             segments.push(Some(seg1);
@@ -900,7 +900,7 @@ mod tests {
         #[cfg(not(feature = "std"))]
         fn get_element_segment(&self, elem_index: u32) -> Result<Option<wrt_foundation::BoundedVec<Value, 65536, wrt_foundation::NoStdProvider<65536>>>> {
             if let Some(Some(seg)) = self.segments.get(elem_index as usize) {
-                let mut bounded = wrt_foundation::BoundedVec::new(;
+                let mut bounded = wrt_foundation::BoundedVec::new);
                 for value in seg {
                     bounded.push(value.clone()).map_err(|_| Error::runtime_error("BoundedVec capacity exceeded"))?;
                 }
@@ -979,7 +979,7 @@ mod tests {
 
     #[test]
     fn test_table_get_set() {
-        let mut tables = MockTableOperations::new(;
+        let mut tables = MockTableOperations::new);
         
         // Test set operation
         let set_op = TableSet::new(0;
@@ -994,7 +994,7 @@ mod tests {
 
     #[test]
     fn test_table_size_grow() {
-        let mut tables = MockTableOperations::new(;
+        let mut tables = MockTableOperations::new);
         
         // Test size operation
         let size_op = TableSize::new(0;
@@ -1017,7 +1017,7 @@ mod tests {
 
     #[test]
     fn test_table_fill() {
-        let mut tables = MockTableOperations::new(;
+        let mut tables = MockTableOperations::new);
         
         let fill_op = TableFill::new(0;
         let func_ref = Value::FuncRef(Some(FuncRef::from_index(99);
@@ -1040,7 +1040,7 @@ mod tests {
 
     #[test]
     fn test_table_copy() {
-        let mut tables = MockTableOperations::new(;
+        let mut tables = MockTableOperations::new);
         
         // Set up source values
         let set_op = TableSet::new(0;
@@ -1073,8 +1073,8 @@ mod tests {
 
     #[test]
     fn test_table_init_elem_drop() {
-        let mut tables = MockTableOperations::new(;
-        let mut elements = MockElementSegments::new(;
+        let mut tables = MockTableOperations::new);
+        let mut elements = MockElementSegments::new);
         
         // Initialize table[0][4..6] from element segment 0[1..3]
         let init_op = TableInit::new(0, 0;
@@ -1111,7 +1111,7 @@ mod tests {
 
     #[test]
     fn test_unified_table_operations() {
-        let mut ctx = MockTableContext::new(;
+        let mut ctx = MockTableContext::new);
         
         // Test unified table.size
         let size_op = TableOp::Size(TableSize::new(0;
@@ -1133,7 +1133,7 @@ mod tests {
 
     #[test] 
     fn test_error_handling() {
-        let mut tables = MockTableOperations::new(;
+        let mut tables = MockTableOperations::new);
         
         // Test negative index
         let get_op = TableGet::new(0;

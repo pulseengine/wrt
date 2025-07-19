@@ -115,7 +115,7 @@ pub const MAX_TYPE_ENUM_NAMES: usize = 64;
 const MAX_ITEM_SERIALIZED_SIZE: usize = 256;
 
 /// Size of the checksum in bytes, typically the size of a u32.
-pub const CHECKSUM_SIZE: usize = core::mem::size_of::<u32>(;
+pub const CHECKSUM_SIZE: usize = core::mem::size_of::<u32>);
 
 #[cfg(feature = "std")]
 extern crate alloc;
@@ -565,7 +565,7 @@ where
         provider_arg: P,
         level: VerificationLevel,
     ) -> Result<Self> {
-        let item_serialized_size = T::default().serialized_size(;
+        let item_serialized_size = T::default().serialized_size);
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             // Prevent division by zero or logical errors if N_ELEMENTS > 0 but items are
             // ZSTs. Or, if this is allowed, ensure memory_needed is handled
@@ -600,13 +600,13 @@ where
     #[allow(clippy::needless_pass_by_value)] // False positive: item IS consumed in this function
     pub fn push(&mut self, item: T) -> core::result::Result<(), BoundedError> {
         if self.is_full() {
-            return Err(BoundedError::capacity_exceeded(;
+            return Err(BoundedError::capacity_exceeded);
         }
 
         let offset = self.length.saturating_mul(self.item_serialized_size;
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
 
-        let item_size = item.serialized_size(;
+        let item_size = item.serialized_size);
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
@@ -620,9 +620,9 @@ where
             record_global_operation(OperationType::CollectionPush, self.verification_level;
             if self.verification_level >= VerificationLevel::Full {
                 // Was should_recalculate_checksum_on_mutate
-                self.recalculate_checksum(;
+                self.recalculate_checksum);
             }
-            return Ok((;
+            return Ok();
         }
 
         let bytes_written = {
@@ -710,7 +710,7 @@ where
 
         if self.verification_level >= VerificationLevel::Full {
             // Was should_recalculate_checksum_on_mutate
-            self.recalculate_checksum(;
+            self.recalculate_checksum);
         }
 
         // Optionally, zero out the popped memory for security/safety if required by
@@ -772,14 +772,14 @@ where
         }
         if self.item_serialized_size == 0 && self.length > 0 {
             // ZST handling
-            let mut temp_checksum = Checksum::new(;
+            let mut temp_checksum = Checksum::new);
             for _ in 0..self.length {
                 T::default().update_checksum(&mut temp_checksum;
             }
             return self.checksum.verify(&temp_checksum;
         }
 
-        let mut current_checksum = Checksum::new(;
+        let mut current_checksum = Checksum::new);
         for i in 0..self.length {
             let offset = i.saturating_mul(self.item_serialized_size;
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
@@ -803,7 +803,7 @@ where
     /// checksum if per-item updates are not feasible or verification level
     /// is high.
     pub fn recalculate_checksum(&mut self) {
-        self.checksum.reset(;
+        self.checksum.reset);
         if self.item_serialized_size == 0 {
             // ZST handling
             for _ in 0..self.length {
@@ -879,7 +879,7 @@ where
     }
 
     fn recalculate_checksum(&mut self) {
-        self.checksum = Checksum::new(;
+        self.checksum = Checksum::new);
         for i in 0..self.length {
             let offset = i * self.item_serialized_size;
             match self.handler.borrow_slice(offset, self.item_serialized_size) {
@@ -912,7 +912,7 @@ where
             // Was HIGH, // Use high importance for this check
             return true; // Skip if verification level allows
         }
-        let mut current_checksum = Checksum::new(;
+        let mut current_checksum = Checksum::new);
         for i in 0..self.length {
             let offset = i * self.item_serialized_size;
             match self.handler.borrow_slice(offset, self.item_serialized_size) {
@@ -975,7 +975,7 @@ where
     /// Assumes all instances of T will have the same serialized size as
     /// T::default().
     pub fn new(provider_arg: P) -> Result<Self> {
-        let item_s_size = T::default().serialized_size(;
+        let item_s_size = T::default().serialized_size);
         if item_s_size == 0 && N_ELEMENTS > 0 {
             return Err(crate::Error::runtime_execution_error("Item serialized size cannot be zero with non-zero capacity";
         }
@@ -999,7 +999,7 @@ where
         provider_arg: P, // Renamed provider to provider_arg
         verification_level: VerificationLevel,
     ) -> Result<Self> {
-        let item_size = T::default().serialized_size(;
+        let item_size = T::default().serialized_size);
         if item_size == 0 && N_ELEMENTS > 0 {
             return Err(crate::Error::foundation_bounded_capacity_exceeded(
                 "Item serialized size cannot be zero with non-zero capacity"
@@ -1028,7 +1028,7 @@ where
     #[allow(clippy::needless_pass_by_value)] // False positive: item IS consumed in this function
     pub fn push(&mut self, item: T) -> core::result::Result<(), BoundedError> {
         if self.is_full() {
-            return Err(BoundedError::capacity_exceeded(;
+            return Err(BoundedError::capacity_exceeded);
         }
         
         // ASIL-A: Fault detection for bounds checking
@@ -1048,7 +1048,7 @@ where
         let offset = self.length.saturating_mul(self.item_serialized_size;
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
 
-        let item_size = item.serialized_size(;
+        let item_size = item.serialized_size);
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::runtime_execution_error("Operation failed";
         }
@@ -1060,9 +1060,9 @@ where
             record_global_operation(OperationType::CollectionPush, self.verification_level;
             if self.verification_level >= VerificationLevel::Full {
                 // Was should_recalculate_checksum_on_mutate
-                self.recalculate_checksum(;
+                self.recalculate_checksum);
             }
-            return Ok((;
+            return Ok();
         }
 
         let bytes_written = {
@@ -1108,10 +1108,10 @@ where
 
         if self.item_serialized_size == 0 {
             // ZST handling
-            let item = T::default(;
+            let item = T::default);
             if self.verification_level >= VerificationLevel::Full {
                 // Was should_recalculate_checksum_on_mutate
-                self.recalculate_checksum(;
+                self.recalculate_checksum);
             }
             return Ok(Some(item;
         }
@@ -1139,7 +1139,7 @@ where
 
         if self.verification_level >= VerificationLevel::Full {
             // Was should_recalculate_checksum_on_mutate
-            self.recalculate_checksum(;
+            self.recalculate_checksum);
         }
         Ok(Some(item))
     }
@@ -1184,7 +1184,7 @@ where
                                     &mut cs_stream,
                                     &self.provider,
                                 ) {
-                                    let mut current_checksum = Checksum::new(;
+                                    let mut current_checksum = Checksum::new);
                                     item.update_checksum(&mut current_checksum;
                                     if current_checksum != stored_checksum {
                                         return Err(crate::Error::validation_error(
@@ -1215,7 +1215,7 @@ where
 
     /// Recalculates the checksum for the entire vector.
     fn recalculate_checksum(&mut self) {
-        self.checksum.reset(;
+        self.checksum.reset);
         if self.item_serialized_size == 0 {
             // ZST handling
             for _ in 0..self.length {
@@ -1252,14 +1252,14 @@ where
         }
         if self.item_serialized_size == 0 && self.length > 0 {
             // ZST handling
-            let mut temp_checksum = Checksum::new(;
+            let mut temp_checksum = Checksum::new);
             for _ in 0..self.length {
                 T::default().update_checksum(&mut temp_checksum;
             }
             return self.checksum.verify(&temp_checksum;
         }
 
-        let mut current_checksum = Checksum::new(;
+        let mut current_checksum = Checksum::new);
         for i in 0..self.length {
             let offset = i * self.item_serialized_size;
             if let Ok(slice_view) = self.provider.borrow_slice(offset, self.item_serialized_size) {
@@ -1307,7 +1307,7 @@ where
     /// Method to verify checksum for a single item, used by iter
     fn verify_item_checksum_at_offset(&self, offset: usize) -> Result<()> {
         if !self.provider.verification_level().should_verify_redundant() {
-            return Ok((;
+            return Ok();
         }
 
         match self.provider.borrow_slice(offset, self.item_serialized_size) {
@@ -1332,7 +1332,7 @@ where
                             &self.provider,
                         )?;
 
-                        let mut current_checksum = Checksum::new(;
+                        let mut current_checksum = Checksum::new);
                         item.update_checksum(&mut current_checksum;
 
                         if current_checksum == stored_checksum {
@@ -1420,7 +1420,7 @@ where
     /// # vec.push(2).unwrap();
     /// # vec.push(3).unwrap();
     /// # assert_eq!(vec.len(), 3;
-    /// vec.clear(;
+    /// vec.clear);
     /// assert_eq!(vec.len(), 0;
     /// ```
     pub fn clear(&mut self) -> core::result::Result<(), BoundedError> {
@@ -1430,7 +1430,7 @@ where
         self.length = 0;
 
         // Reset the checksum
-        self.checksum = Checksum::new(;
+        self.checksum = Checksum::new);
 
         Ok(())
     }
@@ -1494,12 +1494,12 @@ where
             // For ZSTs, we only need to update the checksum if verification is enabled
             if self.verification_level >= VerificationLevel::Full {
                 // Remove old item from checksum
-                let mut old_checksum = Checksum::new(;
+                let mut old_checksum = Checksum::new);
                 current_value.update_checksum(&mut old_checksum;
                 // This is a simplification - ideally we'd want to remove just this item's
                 // contribution to the checksum, but for now we'll recalculate the entire
                 // checksum
-                self.recalculate_checksum(;
+                self.recalculate_checksum);
 
                 // Add new item to checksum
                 value.update_checksum(&mut self.checksum;
@@ -1509,7 +1509,7 @@ where
 
         // Serialize the new value
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-        let item_size = value.serialized_size(;
+        let item_size = value.serialized_size);
 
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
@@ -1540,7 +1540,7 @@ where
         if self.verification_level >= VerificationLevel::Full {
             // Option 1: Recalculate the entire checksum (more expensive but ensures
             // correctness)
-            self.recalculate_checksum(;
+            self.recalculate_checksum);
 
             // Option 2: Update incrementally (more efficient but potentially
             // less reliable) Let's use option 1 for now to ensure
@@ -1581,7 +1581,7 @@ where
         }
 
         if self.is_full() {
-            return Err(BoundedError::capacity_exceeded(;
+            return Err(BoundedError::capacity_exceeded);
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level;
@@ -1593,7 +1593,7 @@ where
                 // Add new item to checksum
                 value.update_checksum(&mut self.checksum;
             }
-            return Ok((;
+            return Ok();
         }
 
         // If we're inserting at the end, this is equivalent to push
@@ -1615,7 +1615,7 @@ where
             // Move it one position forward
             let dest_offset = (i + 1) * self.item_serialized_size;
             let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-            let item_size = current_item.serialized_size(;
+            let item_size = current_item.serialized_size);
 
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(
@@ -1649,7 +1649,7 @@ where
         // Now write the new value at the specified index
         let offset = index * self.item_serialized_size;
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-        let item_size = value.serialized_size(;
+        let item_size = value.serialized_size);
 
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
@@ -1680,7 +1680,7 @@ where
 
         // Update checksum if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum(;
+            self.recalculate_checksum);
         }
 
         Ok(())
@@ -1730,7 +1730,7 @@ where
         if self.item_serialized_size == 0 {
             self.length -= 1;
             if self.verification_level >= VerificationLevel::Full {
-                self.recalculate_checksum(;
+                self.recalculate_checksum);
             }
             return Ok(item_to_remove;
         }
@@ -1759,7 +1759,7 @@ where
             // Write it at the current position
             let dest_offset = i * self.item_serialized_size;
             let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-            let item_size = next_item.serialized_size(;
+            let item_size = next_item.serialized_size);
 
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(
@@ -1795,7 +1795,7 @@ where
 
         // Update checksum if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum(;
+            self.recalculate_checksum);
         }
 
         Ok(item_to_remove)
@@ -1864,7 +1864,7 @@ where
     /// ```
     pub fn truncate(&mut self, new_len: usize) -> core::result::Result<(), BoundedError> {
         if new_len >= self.length {
-            return Ok((;
+            return Ok();
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level;
@@ -1874,7 +1874,7 @@ where
 
         // Update checksum if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum(;
+            self.recalculate_checksum);
         }
 
         Ok(())
@@ -1927,14 +1927,14 @@ where
 
         // If indices are the same, nothing to do
         if a == b {
-            return Ok((;
+            return Ok();
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level;
 
         // Special handling for zero-sized types (no-op since all ZSTs are identical)
         if self.item_serialized_size == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Get both items
@@ -1981,14 +1981,14 @@ where
     /// ```
     pub fn reverse(&mut self) -> core::result::Result<(), BoundedError> {
         if self.length <= 1 {
-            return Ok((;
+            return Ok();
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level;
 
         // Special handling for zero-sized types (no visible effect)
         if self.item_serialized_size == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Swap pairs of elements from the start and end, moving inward
@@ -2034,7 +2034,7 @@ where
 
         // Special handling for zero-sized types (no visible effect)
         if self.item_serialized_size == 0 {
-            return Ok((;
+            return Ok();
         }
 
         // Maintain two indices: one for reading (i) and one for writing (write_idx)
@@ -2197,7 +2197,7 @@ where
                 return Ok(Err(0;
             }
             // Apply comparator to ZST to get consistent behavior
-            let zst = T::default(;
+            let zst = T::default);
             let ordering = f(&zst;
             return Ok(match ordering {
                 core::cmp::Ordering::Equal => Ok(0),
@@ -2353,7 +2353,7 @@ where
 
         // Special handling for zero-sized types or empty/single element vectors
         if self.item_serialized_size == 0 || self.length <= 1 {
-            return Ok((;
+            return Ok();
         }
 
         // Collect all elements into a temporary vector for sorting
@@ -2379,7 +2379,7 @@ where
         }
 
         // Recalculate checksum after sort
-        self.checksum.reset(;
+        self.checksum.reset);
         for i in 0..self.length {
             if let Ok(item) = self.get(i) {
                 item.update_checksum(&mut self.checksum;
@@ -2499,7 +2499,7 @@ where
 
         // Special handling for zero-sized types or empty/single element vectors
         if self.item_serialized_size == 0 || self.length <= 1 {
-            return Ok((;
+            return Ok();
         }
 
         // Collect all elements into a temporary vector
@@ -2643,7 +2643,7 @@ where
         let range_len = end - start;
 
         // Calculate new length and check capacity
-        let new_length = self.length - range_len + replacement.len(;
+        let new_length = self.length - range_len + replacement.len);
         if new_length > N_ELEMENTS {
             return Err(BoundedError::new(
                 BoundedErrorKind::CapacityExceeded,
@@ -2653,11 +2653,11 @@ where
         // Handle special cases for zero-sized types
         if self.item_serialized_size == 0 {
             self.length = new_length;
-            self.checksum.reset(;
+            self.checksum.reset);
             for _ in 0..self.length {
                 T::default().update_checksum(&mut self.checksum;
             }
-            return Ok((;
+            return Ok();
         }
 
         // Collect all elements we're keeping
@@ -3007,7 +3007,7 @@ where
         if !self.verification_level.should_verify(importance::CRITICAL) {
             return true;
         }
-        let mut current_checksum = Checksum::new(;
+        let mut current_checksum = Checksum::new);
         if self.item_serialized_size > 0 {
             for i in 0..self.length {
                 if let Ok(item) = self.get(i) {
@@ -3109,7 +3109,7 @@ where
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> Result<Self> {
-        let default_provider = DefaultMemoryProvider::default(;
+        let default_provider = DefaultMemoryProvider::default);
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3164,8 +3164,8 @@ impl<
             (Ok(self_str), Ok(other_str)) => self_str.cmp(other_str),
             _ => {
                 // Fall back to element-by-element comparison since as_slice() is not available in no_std
-                let self_len = self.len(;
-                let other_len = other.len(;
+                let self_len = self.len);
+                let other_len = other.len);
                 let min_len = self_len.min(other_len;
 
                 for i in 0..min_len {
@@ -3198,7 +3198,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> Result<()> {
-        let default_provider = DefaultMemoryProvider::default(;
+        let default_provider = DefaultMemoryProvider::default);
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3217,7 +3217,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> Result<Self> {
-        let default_provider = DefaultMemoryProvider::default(;
+        let default_provider = DefaultMemoryProvider::default);
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3341,7 +3341,7 @@ where
         }
         let offset = index.saturating_mul(self.item_serialized_size;
         if self.item_serialized_size == 0 {
-            return Some(T::default(;
+            return Some(T::default);
         }
         if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
             let mut read_stream = ReadStream::new(slice_view;
@@ -3364,7 +3364,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// BoundedVec.
     pub fn from_str_truncate(s: &str, provider: P) -> core::result::Result<Self, BoundedError> {
         let mut bytes_vec = BoundedVec::<u8, N_BYTES, P>::new(provider)?;
-        let s_bytes = s.as_bytes(;
+        let s_bytes = s.as_bytes);
         let len_to_copy = core::cmp::min(s_bytes.len(), N_BYTES;
 
         // Ensure that we are only copying valid UTF-8 characters even when truncating.
@@ -3384,7 +3384,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     ///
     /// Returns an error if the string is too long or if UTF-8 validation fails.
     pub fn from_str(s: &str, provider: P) -> core::result::Result<Self, SerializationError> {
-        let s_bytes = s.as_bytes(;
+        let s_bytes = s.as_bytes);
         if s_bytes.len() > N_BYTES {
             return Err(SerializationError::Custom("String too long for BoundedString";
         }
@@ -3447,13 +3447,13 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// assert_eq!(s.as_str().unwrap(), "Hello, Wor"); // Truncated to fit capacity
     /// ```
     pub fn push_str(&mut self, s: &str) -> core::result::Result<(), BoundedError> {
-        let remaining_capacity = N_BYTES - self.bytes.len(;
+        let remaining_capacity = N_BYTES - self.bytes.len);
 
         if remaining_capacity == 0 {
             return Ok(()); // Already at capacity, nothing to do
         }
 
-        let s_bytes = s.as_bytes(;
+        let s_bytes = s.as_bytes);
         let len_to_copy = core::cmp::min(s_bytes.len(), remaining_capacity;
 
         // Ensure we only copy valid UTF-8 boundaries
@@ -3635,7 +3635,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
         let s = self.as_str()?;
         // Allocate a String to perform the lowercase conversion
         // Binary std/no_std choice
-        let lowercase = s.to_lowercase(;
+        let lowercase = s.to_lowercase);
 
         Self::from_str_truncate(&lowercase, self.bytes.provider.clone())
     }
@@ -3661,7 +3661,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
         P: Clone,
     {
         let s = self.as_str()?;
-        let uppercase = s.to_uppercase(;
+        let uppercase = s.to_uppercase);
 
         Self::from_str_truncate(&uppercase, self.bytes.provider.clone())
     }
@@ -3733,7 +3733,7 @@ impl<
             match self.provider.borrow_slice(offset, self.item_serialized_size) {
                 Ok(slice) => {
                     // Extend the Vec with the bytes from this item
-                    result.extend_from_slice(slice.as_ref(;
+                    result.extend_from_slice(slice.as_ref);
                 }
                 Err(_) => {
                     return Err(BoundedError::runtime_execution_error("Operation failed";
@@ -3785,7 +3785,7 @@ impl<
         T: Clone, // Added Clone bound for items
     {
         if self.len() + other_slice.len() > N_ELEMENTS {
-            return Err(BoundedError::capacity_exceeded(;
+            return Err(BoundedError::capacity_exceeded);
         }
         for item in other_slice {
             // This will use self.push(item.clone()), which handles serialization and
@@ -3880,7 +3880,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 // ...
 // match self.provider.read_slice(offset, self.item_serialized_size) {
 //     Ok(item_slice) => {
-//         let mut item_reader = ReadStream::new(item_slice.data(;
+//         let mut item_reader = ReadStream::new(item_slice.data);
 //         T::from_bytes(&mut item_reader).map_err(|_e| {
 //             Error::deserialization_error(
 //                 "Failed to deserialize item from BoundedVec (read_slice path)")
@@ -3956,7 +3956,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
         P: Clone,
     {
         let s = self.as_str()?;
-        let mut result = Vec::new(;
+        let mut result = Vec::new);
 
         for part in s.split(delimiter) {
             let bounded_part = Self::from_str_truncate(part, self.bytes.provider.clone())?;
@@ -3978,7 +3978,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_push_capacity() {
         const CAPACITY: usize = 8;
-        let provider = SmallProvider::default(;
+        let provider = SmallProvider::default);
         let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
         
         // Fill to capacity - 1
@@ -4002,7 +4002,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_pop_state() {
         const CAPACITY: usize = 4;
-        let provider = SmallProvider::default(;
+        let provider = SmallProvider::default);
         let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
         
         // Initially empty
@@ -4033,7 +4033,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_indexing() {
         const CAPACITY: usize = 8;
-        let provider = SmallProvider::default(;
+        let provider = SmallProvider::default);
         let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
         
         // Add some items
@@ -4052,7 +4052,7 @@ mod kani_proofs {
         }
         
         // Invalid indices should return None or error safely
-        let invalid_index = vec.len(;
+        let invalid_index = vec.len);
         if invalid_index < CAPACITY {
             assert!(vec.get(invalid_index).unwrap().is_none();
         }
@@ -4062,7 +4062,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_string_utf8() {
         const CAPACITY: usize = 64;
-        let provider = SmallProvider::default(;
+        let provider = SmallProvider::default);
         
         // Valid UTF-8 strings should always work
         let test_str = "Hello, 世界!";
@@ -4073,13 +4073,13 @@ mod kani_proofs {
         assert_eq!(as_str, test_str;
         
         // Length should match
-        assert_eq!(bounded_str.len(), test_str.len(;
+        assert_eq!(bounded_str.len(), test_str.len);
     }
     
     /// Verify that overflow detection works in capacity calculations
     #[kani::proof]
     fn verify_no_overflow_in_capacity_calculation() {
-        let length: usize = kani::any(;
+        let length: usize = kani::any);
         let item_size: usize = kani::any_where(|&s| s > 0 && s <= 1024;
         
         // Verify that overflow is properly detected
@@ -4099,7 +4099,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_memory_provider_bounds() {
         const PROVIDER_SIZE: usize = crate::memory_sizing::size_classes::SMALL;
-        let provider = SmallProvider::default(;
+        let provider = SmallProvider::default);
         
         let offset: usize = kani::any_where(|&o| o < PROVIDER_SIZE;
         let len: usize = kani::any_where(|&l| l <= PROVIDER_SIZE - offset;

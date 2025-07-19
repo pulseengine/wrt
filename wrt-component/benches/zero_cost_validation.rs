@@ -47,7 +47,7 @@ fn bench_zero_cost_push(c: &mut Criterion) {
         };
     };
 
-    group.finish(;
+    group.finish);
 }
 
 /// Test direct memory access patterns
@@ -89,7 +89,7 @@ fn bench_zero_cost_access(c: &mut Criterion) {
         };
     };
 
-    group.finish(;
+    group.finish);
 }
 
 /// Test iterator performance (should compile to same code)
@@ -102,7 +102,7 @@ fn bench_zero_cost_iteration(c: &mut Criterion) {
     let std_vec = StdVec::from(data.clone();
 
     #[cfg(feature = "safety-critical")]
-    let mut wrt_vec: WrtVec<i32, { CrateId::Component as u8 }, 100> = WrtVec::new(;
+    let mut wrt_vec: WrtVec<i32, { CrateId::Component as u8 }, 100> = WrtVec::new);
     #[cfg(feature = "safety-critical")]
     for &val in &data {
         let _ = wrt_vec.push(val);
@@ -118,7 +118,7 @@ fn bench_zero_cost_iteration(c: &mut Criterion) {
         b.iter(|| black_box(wrt_vec.iter().sum::<i32>();
     };
 
-    group.finish(;
+    group.finish);
 }
 
 /// Test that capacity checks don't add overhead in normal path
@@ -140,7 +140,7 @@ fn bench_capacity_overhead(c: &mut Criterion) {
     #[cfg(feature = "safety-critical")]
     group.bench_function("wrt_push_within_capacity", |b| {
         b.iter(|| {
-            let mut vec: WrtVec<i32, { CrateId::Component as u8 }, 10> = WrtVec::new(;
+            let mut vec: WrtVec<i32, { CrateId::Component as u8 }, 10> = WrtVec::new);
             for i in 0..5 {
                 let _ = vec.push(black_box(i);
             }
@@ -148,7 +148,7 @@ fn bench_capacity_overhead(c: &mut Criterion) {
         };
     };
 
-    group.finish(;
+    group.finish);
 }
 
 /// Memory layout validation - ensure same size/alignment
