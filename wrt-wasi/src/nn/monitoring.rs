@@ -158,19 +158,19 @@ impl LogEntry {
     
     /// Add verification level context
     pub fn with_verification_level(mut self, level: VerificationLevel) -> Self {
-        self.verification_level = Some(level);
+        self.verification_level = Some(level;
         self
     }
     
     /// Add context key-value pair
     pub fn with_context(mut self, key: &str, value: &str) -> Self {
-        self.context.push((key.to_string(), value.to_string()));
+        self.context.push((key.to_string(), value.to_string();
         self
     }
     
     /// Add correlation ID for request tracing
     pub fn with_correlation_id(mut self, id: &str) -> Self {
-        self.correlation_id = Some(id.to_string());
+        self.correlation_id = Some(id.to_string();
         self
     }
     
@@ -179,25 +179,25 @@ impl LogEntry {
         let mut json = format!(
             r#"{{"timestamp":{},"level":"{}","component":"{}""#,
             self.timestamp, self.level, self.component
-        );
+        ;
         
         if let Some(ref level) = self.verification_level {
-            json.push_str(&format!(r#","verification_level":"{:?}""#, level));
+            json.push_str(&format!(r#","verification_level":"{:?}""#, level;
         }
         
         if let Some(ref correlation_id) = self.correlation_id {
-            json.push_str(&format!(r#","correlation_id":"{}""#, correlation_id));
+            json.push_str(&format!(r#","correlation_id":"{}""#, correlation_id;
         }
         
         // Add event details
-        json.push_str(&format!(r#","event":{}"#, self.event_to_json()));
+        json.push_str(&format!(r#","event":{}"#, self.event_to_json();
         
         // Add context if present
         if !self.context.is_empty() {
-            json.push_str(r#","context":{"#);
+            json.push_str(r#","context":{"#;
             for (i, (key, value)) in self.context.iter().enumerate() {
                 if i > 0 { json.push(','); }
-                json.push_str(&format!(r#""{}":"{}""#, key, value));
+                json.push_str(&format!(r#""{}":"{}""#, key, value;
             }
             json.push('}');
         }
@@ -208,21 +208,21 @@ impl LogEntry {
     
     /// Format as human-readable string
     pub fn to_human_readable(&self) -> String {
-        let timestamp = format_timestamp(self.timestamp);
-        let event_desc = self.event_description();
+        let timestamp = format_timestamp(self.timestamp;
+        let event_desc = self.event_description(;
         
         let mut result = format!("[{}] {} [{}] {}", 
-            timestamp, self.level, self.component, event_desc);
+            timestamp, self.level, self.component, event_desc;
         
         if let Some(ref correlation_id) = self.correlation_id {
-            result.push_str(&format!(" [correlation_id={}]", correlation_id));
+            result.push_str(&format!(" [correlation_id={}]", correlation_id;
         }
         
         if !self.context.is_empty() {
-            result.push_str(" [");
+            result.push_str(" [";
             for (i, (key, value)) in self.context.iter().enumerate() {
                 if i > 0 { result.push_str(", "); }
-                result.push_str(&format!("{}={}", key, value));
+                result.push_str(&format!("{}={}", key, value;
             }
             result.push(']');
         }
@@ -317,20 +317,20 @@ impl Logger {
             if let Ok(mut entries) = self.entries.lock() {
                 // Maintain maximum entry count
                 while entries.len() >= self.config.max_entries {
-                    entries.pop_front();
+                    entries.pop_front(;
                 }
                 
-                entries.push_back(entry.clone());
+                entries.push_back(entry.clone();
                 
                 // Update metrics
-                self.total_operations.fetch_add(1, Ordering::Relaxed);
+                self.total_operations.fetch_add(1, Ordering::Relaxed;
                 if matches!(entry.event, EventType::Error(_)) {
-                    self.total_errors.fetch_add(1, Ordering::Relaxed);
+                    self.total_errors.fetch_add(1, Ordering::Relaxed;
                 }
             }
             
             // Output to console/file based on configuration
-            self.output_entry(&entry);
+            self.output_entry(&entry;
         }
     }
     
@@ -341,14 +341,14 @@ impl Logger {
     
     /// Log security event
     pub fn log_security(&self, event: SecurityEvent, component: &str) {
-        let entry = LogEntry::new(LogLevel::Warning, EventType::Security(event), component);
-        self.log(entry);
+        let entry = LogEntry::new(LogLevel::Warning, EventType::Security(event), component;
+        self.log(entry;
     }
     
     /// Log performance event
     pub fn log_performance(&self, event: PerformanceEvent, component: &str) {
-        let entry = LogEntry::new(LogLevel::Info, EventType::Performance(event), component);
-        self.log(entry);
+        let entry = LogEntry::new(LogLevel::Info, EventType::Performance(event), component;
+        self.log(entry;
     }
     
     /// Log resource event
@@ -357,8 +357,8 @@ impl Logger {
             ResourceEvent::UsageWarning { .. } | ResourceEvent::LeakDetected { .. } => LogLevel::Warning,
             _ => LogLevel::Info,
         };
-        let entry = LogEntry::new(level, EventType::Resource(event), component);
-        self.log(entry);
+        let entry = LogEntry::new(level, EventType::Resource(event), component;
+        self.log(entry;
     }
     
     /// Log operation event
@@ -367,14 +367,14 @@ impl Logger {
             OperationEvent::Failed { .. } => LogLevel::Warning,
             _ => LogLevel::Info,
         };
-        let entry = LogEntry::new(level, EventType::Operation(event), component);
-        self.log(entry);
+        let entry = LogEntry::new(level, EventType::Operation(event), component;
+        self.log(entry;
     }
     
     /// Log error event
     pub fn log_error(&self, event: ErrorEvent, component: &str) {
-        let entry = LogEntry::new(LogLevel::Critical, EventType::Error(event), component);
-        self.log(entry);
+        let entry = LogEntry::new(LogLevel::Critical, EventType::Error(event), component;
+        self.log(entry;
     }
     
     /// Get recent log entries
@@ -393,8 +393,8 @@ impl Logger {
     /// Get logging statistics
     pub fn get_stats(&self) -> LoggingStats {
         let uptime = get_current_time_us() - self.start_time;
-        let total_ops = self.total_operations.load(Ordering::Relaxed);
-        let total_errors = self.total_errors.load(Ordering::Relaxed);
+        let total_ops = self.total_operations.load(Ordering::Relaxed;
+        let total_errors = self.total_errors.load(Ordering::Relaxed;
         
         LoggingStats {
             total_operations: total_ops,
@@ -408,7 +408,7 @@ impl Logger {
     /// Clear all log entries
     pub fn clear(&self) {
         if let Ok(mut entries) = self.entries.lock() {
-            entries.clear();
+            entries.clear(;
         }
     }
     
@@ -422,7 +422,7 @@ impl Logger {
         // For now, output to stderr
         // In production, this could be directed to proper logging infrastructure
         #[cfg(feature = "std")]
-        eprintln!("{}", output);
+        eprintln!("{}", output;
         
         #[cfg(not(feature = "std"))]
         {
@@ -443,11 +443,11 @@ pub struct LoggingStats {
 }
 
 /// Global logger instance
-static LOGGER: std::sync::OnceLock<Arc<Logger>> = std::sync::OnceLock::new();
+static LOGGER: std::sync::OnceLock<Arc<Logger>> = std::sync::OnceLock::new(;
 
 /// Initialize the global logger
 pub fn initialize_logger(config: LoggerConfig) -> Result<()> {
-    let logger = Arc::new(Logger::with_config(config));
+    let logger = Arc::new(Logger::with_config(config;
     LOGGER.set(logger).map_err(|_| Error::wasi_runtime_error("Logger already initialized"))?;
     Ok(())
 }
@@ -462,27 +462,27 @@ pub fn get_logger() -> Option<Arc<Logger>> {
 macro_rules! log_nn {
     (security, $event:expr, $component:expr) => {
         if let Some(logger) = $crate::nn::monitoring::get_logger() {
-            logger.log_security($event, $component);
+            logger.log_security($event, $component;
         }
     };
     (performance, $event:expr, $component:expr) => {
         if let Some(logger) = $crate::nn::monitoring::get_logger() {
-            logger.log_performance($event, $component);
+            logger.log_performance($event, $component;
         }
     };
     (resource, $event:expr, $component:expr) => {
         if let Some(logger) = $crate::nn::monitoring::get_logger() {
-            logger.log_resource($event, $component);
+            logger.log_resource($event, $component;
         }
     };
     (operation, $event:expr, $component:expr) => {
         if let Some(logger) = $crate::nn::monitoring::get_logger() {
-            logger.log_operation($event, $component);
+            logger.log_operation($event, $component;
         }
     };
     (error, $event:expr, $component:expr) => {
         if let Some(logger) = $crate::nn::monitoring::get_logger() {
-            logger.log_error($event, $component);
+            logger.log_error($event, $component;
         }
     };
 }
@@ -652,7 +652,7 @@ fn format_timestamp(timestamp_us: u64) -> String {
     #[cfg(feature = "std")]
     {
         use std::time::{SystemTime, UNIX_EPOCH, Duration};
-        let datetime = SystemTime::UNIX_EPOCH + Duration::from_micros(timestamp_us);
+        let datetime = SystemTime::UNIX_EPOCH + Duration::from_micros(timestamp_us;
         // For simplicity, just show microseconds since epoch
         // In production, you'd want proper datetime formatting
         format!("{}", timestamp_us)
@@ -676,12 +676,12 @@ mod tests {
         
         let entry = LogEntry::new(LogLevel::Warning, EventType::Security(event), "wasi-nn")
             .with_context("user_id", "test_user")
-            .with_correlation_id("req_123");
+            .with_correlation_id("req_123";
         
-        assert_eq!(entry.level, LogLevel::Warning);
-        assert_eq!(entry.component, "wasi-nn");
-        assert_eq!(entry.correlation_id, Some("req_123".to_string()));
-        assert_eq!(entry.context.len(), 1);
+        assert_eq!(entry.level, LogLevel::Warning;
+        assert_eq!(entry.component, "wasi-nn";
+        assert_eq!(entry.correlation_id, Some("req_123".to_string();
+        assert_eq!(entry.context.len(), 1;
     }
     
     #[test]
@@ -692,18 +692,18 @@ mod tests {
             success: true,
         };
         
-        let entry = LogEntry::new(LogLevel::Info, EventType::Performance(event), "wasi-nn");
-        let json = entry.to_json();
+        let entry = LogEntry::new(LogLevel::Info, EventType::Performance(event), "wasi-nn";
+        let json = entry.to_json(;
         
-        assert!(json.contains("\"level\":\"INFO\""));
-        assert!(json.contains("\"component\":\"wasi-nn\""));
-        assert!(json.contains("\"type\":\"performance\""));
-        assert!(json.contains("\"duration_us\":1500"));
+        assert!(json.contains("\"level\":\"INFO\"");
+        assert!(json.contains("\"component\":\"wasi-nn\"");
+        assert!(json.contains("\"type\":\"performance\"");
+        assert!(json.contains("\"duration_us\":1500");
     }
     
     #[test]
     fn test_logger_stats() {
-        let logger = Logger::new();
+        let logger = Logger::new(;
         
         let error_event = ErrorEvent::ValidationError {
             field: "model_size".to_string(),
@@ -711,12 +711,12 @@ mod tests {
             expected: "< 100MB".to_string(),
         };
         
-        let entry = LogEntry::new(LogLevel::Critical, EventType::Error(error_event), "validation");
-        logger.log(entry);
+        let entry = LogEntry::new(LogLevel::Critical, EventType::Error(error_event), "validation";
+        logger.log(entry;
         
-        let stats = logger.get_stats();
-        assert_eq!(stats.total_operations, 1);
-        assert_eq!(stats.total_errors, 1);
-        assert_eq!(stats.error_rate, 100.0);
+        let stats = logger.get_stats(;
+        assert_eq!(stats.total_operations, 1;
+        assert_eq!(stats.total_errors, 1;
+        assert_eq!(stats.error_rate, 100.0;
     }
 }

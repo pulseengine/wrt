@@ -85,26 +85,26 @@ impl TensorDimensions {
     /// Create new tensor dimensions
     pub fn new(dims: &[u32]) -> Result<Self> {
         if dims.is_empty() {
-            return Err(Error::wasi_invalid_argument("Tensor must have at least one dimension"));
+            return Err(Error::wasi_invalid_argument("Tensor must have at least one dimension";
         }
         if dims.len() > MAX_TENSOR_DIMS {
-            return Err(Error::wasi_invalid_argument("Too many tensor dimensions"));
+            return Err(Error::wasi_invalid_argument("Too many tensor dimensions";
         }
         
         // Validate each dimension
         for &dim in dims {
             if dim == 0 {
-                return Err(Error::wasi_invalid_argument("Tensor dimensions cannot be zero"));
+                return Err(Error::wasi_invalid_argument("Tensor dimensions cannot be zero";
             }
             if dim > 100_000 { // Reasonable upper bound per dimension
-                return Err(Error::wasi_invalid_argument("Tensor dimension too large"));
+                return Err(Error::wasi_invalid_argument("Tensor dimension too large";
             }
         }
         
         // Validate total element count using checked arithmetic
         let _ = Self::calculate_elements_checked(dims)?;
         
-        let dims = dims.to_vec();
+        let dims = dims.to_vec(;
         
         Ok(Self { dims })
     }
@@ -177,7 +177,7 @@ impl Tensor {
         capability: &dyn NeuralNetworkCapability,
     ) -> Result<Self> {
         if !dimensions.is_valid() {
-            return Err(Error::wasi_invalid_argument("Invalid tensor dimensions"));
+            return Err(Error::wasi_invalid_argument("Invalid tensor dimensions";
         }
         
         // Calculate size with overflow checking
@@ -186,13 +186,13 @@ impl Tensor {
             .ok_or_else(|| Error::wasi_resource_exhausted("Tensor size calculation overflow"))?;
         
         // Verify against capability limits
-        let limits = capability.resource_limits();
+        let limits = capability.resource_limits(;
         if size_bytes > limits.max_tensor_memory {
-            return Err(Error::wasi_resource_exhausted("Tensor size exceeds memory limit"));
+            return Err(Error::wasi_resource_exhausted("Tensor size exceeds memory limit";
         }
         
         // Allocate data buffer
-        let verification_level = capability.verification_level();
+        let verification_level = capability.verification_level(;
         let data = match verification_level {
             VerificationLevel::Standard => {
                 // Dynamic allocation
@@ -200,16 +200,16 @@ impl Tensor {
             }
             VerificationLevel::Sampling | VerificationLevel::Continuous => {
                 // Bounded allocation with pre-checking
-                let mut vec = Vec::new();
+                let mut vec = Vec::new(;
                 vec.try_reserve_exact(size_bytes)
                     .map_err(|_| Error::wasi_resource_exhausted("Failed to allocate tensor memory"))?;
-                vec.resize(size_bytes, 0);
+                vec.resize(size_bytes, 0;
                 vec
             }
             _ => {
                 return Err(Error::wasi_unsupported_operation(
                     "Higher verification levels not supported in wrtd"
-                ));
+                ;
             }
         };
         
@@ -229,7 +229,7 @@ impl Tensor {
         capability: &dyn NeuralNetworkCapability,
     ) -> Result<Self> {
         if !dimensions.is_valid() {
-            return Err(Error::wasi_invalid_argument("Invalid tensor dimensions"));
+            return Err(Error::wasi_invalid_argument("Invalid tensor dimensions";
         }
         
         // Calculate expected size with overflow checking
@@ -237,16 +237,16 @@ impl Tensor {
         let expected_size = num_elements.checked_mul(data_type.size_bytes())
             .ok_or_else(|| Error::wasi_resource_exhausted("Tensor size calculation overflow"))?;
         if data.len() != expected_size {
-            return Err(Error::wasi_invalid_argument("Data size doesn't match tensor dimensions"));
+            return Err(Error::wasi_invalid_argument("Data size doesn't match tensor dimensions";
         }
         
         // Verify against capability limits
-        let limits = capability.resource_limits();
+        let limits = capability.resource_limits(;
         if data.len() > limits.max_tensor_memory {
-            return Err(Error::wasi_resource_exhausted("Tensor data exceeds memory limit"));
+            return Err(Error::wasi_resource_exhausted("Tensor data exceeds memory limit";
         }
         
-        let verification_level = capability.verification_level();
+        let verification_level = capability.verification_level(;
         Ok(Self {
             dimensions,
             data_type,
@@ -291,7 +291,7 @@ impl Tensor {
         let new_elements = new_dimensions.checked_num_elements()?;
         let current_elements = self.dimensions.checked_num_elements()?;
         if new_elements != current_elements {
-            return Err(Error::wasi_invalid_argument("Reshape dimensions don't match element count"));
+            return Err(Error::wasi_invalid_argument("Reshape dimensions don't match element count";
         }
         
         self.dimensions = new_dimensions;
@@ -334,19 +334,19 @@ impl TensorBuilder {
     
     /// Set dimensions
     pub fn dimensions(mut self, dims: &[u32]) -> Result<Self> {
-        self.dimensions = Some(TensorDimensions::new(dims)?);
+        self.dimensions = Some(TensorDimensions::new(dims)?;
         Ok(self)
     }
     
     /// Set data type
     pub fn data_type(mut self, dtype: TensorType) -> Self {
-        self.data_type = Some(dtype);
+        self.data_type = Some(dtype;
         self
     }
     
     /// Set data
     pub fn data(mut self, data: Vec<u8>) -> Self {
-        self.data = Some(data);
+        self.data = Some(data;
         self
     }
     
@@ -371,39 +371,39 @@ mod tests {
     
     #[test]
     fn test_tensor_type_sizes() {
-        assert_eq!(TensorType::F32.size_bytes(), 4);
-        assert_eq!(TensorType::U8.size_bytes(), 1);
-        assert_eq!(TensorType::I64.size_bytes(), 8);
+        assert_eq!(TensorType::F32.size_bytes(), 4;
+        assert_eq!(TensorType::U8.size_bytes(), 1;
+        assert_eq!(TensorType::I64.size_bytes(), 8;
     }
     
     #[test]
     fn test_tensor_dimensions() {
         let dims = TensorDimensions::new(&[2, 3, 4]).unwrap();
-        assert_eq!(dims.rank(), 3);
-        assert_eq!(dims.num_elements(), 24);
-        assert!(dims.is_valid());
+        assert_eq!(dims.rank(), 3;
+        assert_eq!(dims.num_elements(), 24;
+        assert!(dims.is_valid();
     }
     
     #[test]
     fn test_tensor_creation() {
-        let capability = DynamicNNCapability::new();
+        let capability = DynamicNNCapability::new(;
         let dims = TensorDimensions::new(&[10, 10]).unwrap();
         let tensor = Tensor::new(dims, TensorType::F32, &capability).unwrap();
         
         assert_eq!(tensor.size_bytes(), 400); // 10*10*4
-        assert_eq!(tensor.capability_level(), VerificationLevel::Standard);
+        assert_eq!(tensor.capability_level(), VerificationLevel::Standard;
     }
     
     #[test]
     fn test_tensor_builder() {
-        let capability = DynamicNNCapability::new();
+        let capability = DynamicNNCapability::new(;
         let tensor = TensorBuilder::new()
             .dimensions(&[5, 5]).unwrap()
             .data_type(TensorType::U8)
             .build(&capability)
             .unwrap();
             
-        assert_eq!(tensor.dimensions().num_elements(), 25);
-        assert_eq!(tensor.data_type(), TensorType::U8);
+        assert_eq!(tensor.dimensions().num_elements(), 25;
+        assert_eq!(tensor.data_type(), TensorType::U8;
     }
 }

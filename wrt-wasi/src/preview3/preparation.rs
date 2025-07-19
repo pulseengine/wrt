@@ -86,7 +86,7 @@ pub trait WasiThreadSpawn {
 
 /// WASI thread handle
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct WasiThreadHandle(pub u32);
+pub struct WasiThreadHandle(pub u32;
 
 /// WASI Preview3 shared memory trait
 ///
@@ -107,7 +107,7 @@ pub trait WasiSharedMemory {
 
 /// WASI shared memory handle
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct WasiSharedMemoryHandle(pub u32);
+pub struct WasiSharedMemoryHandle(pub u32;
 
 /// WASI Preview3 streaming codec trait
 ///
@@ -125,7 +125,7 @@ pub trait WasiStreamingCodec {
     fn flush(&mut self) -> Result<Option<Self::Output>>;
     
     /// Reset the codec state
-    fn reset(&mut self);
+    fn reset(&mut self;
 }
 
 /// WASI Preview3 resource limits
@@ -200,7 +200,7 @@ pub mod component_extensions {
     
     /// WASI async resource handle
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct WasiAsyncResourceHandle(pub u32);
+    pub struct WasiAsyncResourceHandle(pub u32;
 }
 
 /// WASI Preview3 streaming patterns
@@ -257,15 +257,15 @@ pub mod error_extensions {
         
         /// Threading error
         #[derive(Debug, Clone, PartialEq, Eq)]
-        pub struct ThreadingError(pub &'static str);
+        pub struct ThreadingError(pub &'static str;
         
         /// Async I/O error
         #[derive(Debug, Clone, PartialEq, Eq)]
-        pub struct AsyncIoError(pub &'static str);
+        pub struct AsyncIoError(pub &'static str;
         
         /// Streaming error
         #[derive(Debug, Clone, PartialEq, Eq)]
-        pub struct StreamingError(pub &'static str);
+        pub struct StreamingError(pub &'static str;
     }
 }
 
@@ -275,16 +275,16 @@ mod tests {
     
     #[test]
     fn test_preview3_limits() {
-        let limits = WasiPreview3Limits::default();
-        assert_eq!(limits.max_threads, 16);
-        assert_eq!(limits.max_shared_memory, 16 * 1024 * 1024);
-        assert_eq!(limits.max_async_io_ops, 256);
-        assert_eq!(limits.max_stream_buffer, 1024 * 1024);
+        let limits = WasiPreview3Limits::default(;
+        assert_eq!(limits.max_threads, 16;
+        assert_eq!(limits.max_shared_memory, 16 * 1024 * 1024;
+        assert_eq!(limits.max_async_io_ops, 256;
+        assert_eq!(limits.max_stream_buffer, 1024 * 1024;
     }
     
     #[test]
     fn test_preview3_capabilities() {
-        let caps = WasiPreview3Capabilities::default();
+        let caps = WasiPreview3Capabilities::default(;
         assert!(!caps.threading_enabled);
         assert!(!caps.shared_memory_enabled);
         assert!(caps.async_io_enabled);
@@ -293,19 +293,19 @@ mod tests {
     
     #[test]
     fn test_thread_handle() {
-        let handle1 = WasiThreadHandle(1);
-        let handle2 = WasiThreadHandle(2);
-        let handle3 = WasiThreadHandle(1);
+        let handle1 = WasiThreadHandle(1;
+        let handle2 = WasiThreadHandle(2;
+        let handle3 = WasiThreadHandle(1;
         
-        assert_ne!(handle1, handle2);
-        assert_eq!(handle1, handle3);
+        assert_ne!(handle1, handle2;
+        assert_eq!(handle1, handle3;
     }
     
     #[test]
     fn test_shared_memory_handle() {
-        let handle1 = WasiSharedMemoryHandle(1);
-        let handle2 = WasiSharedMemoryHandle(2);
+        let handle1 = WasiSharedMemoryHandle(1;
+        let handle2 = WasiSharedMemoryHandle(2;
         
-        assert_ne!(handle1, handle2);
+        assert_ne!(handle1, handle2;
     }
 }

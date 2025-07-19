@@ -95,34 +95,34 @@ impl ExecutionContext {
     ) -> Result<Self> {
         // Validate inputs
         if id == 0 {
-            return Err(Error::wasi_invalid_argument("Context ID cannot be zero"));
+            return Err(Error::wasi_invalid_argument("Context ID cannot be zero";
         }
         
         // Pre-allocate space for inputs/outputs based on model metadata
-        let model = graph.backend_model();
-        let num_inputs = model.num_inputs();
-        let num_outputs = model.num_outputs();
+        let model = graph.backend_model(;
+        let num_inputs = model.num_inputs(;
+        let num_outputs = model.num_outputs(;
         
         // Validate model has reasonable input/output counts
         if num_inputs == 0 {
-            return Err(Error::wasi_invalid_argument("Model must have at least one input"));
+            return Err(Error::wasi_invalid_argument("Model must have at least one input";
         }
         if num_outputs == 0 {
-            return Err(Error::wasi_invalid_argument("Model must have at least one output"));
+            return Err(Error::wasi_invalid_argument("Model must have at least one output";
         }
         if num_inputs > MAX_INPUTS {
             return Err(Error::wasi_resource_exhausted(
                 "Model has too many inputs"
-            ));
+            ;
         }
         if num_outputs > MAX_OUTPUTS {
             return Err(Error::wasi_resource_exhausted(
                 "Model has too many outputs"
-            ));
+            ;
         }
         
-        let mut inputs = Vec::new();
-        let mut outputs = Vec::new();
+        let mut inputs = Vec::new(;
+        let mut outputs = Vec::new(;
         
         for _ in 0..num_inputs {
             inputs.push(None);
@@ -131,7 +131,7 @@ impl ExecutionContext {
             outputs.push(None);
         }
         
-        let verification_level = capability.verification_level();
+        let verification_level = capability.verification_level(;
         Ok(Self {
             id,
             graph_id: graph.id(),
@@ -156,16 +156,16 @@ impl ExecutionContext {
     /// Set an input tensor
     pub fn set_input(&mut self, index: usize, tensor: Tensor) -> Result<()> {
         if index >= self.inputs.len() {
-            return Err(ComputeError::InvalidInputIndex(index).into());
+            return Err(ComputeError::InvalidInputIndex(index).into();
         }
         
         // Validate tensor properties
         if !tensor.dimensions().is_valid() {
-            return Err(Error::wasi_invalid_argument("Tensor has invalid dimensions"));
+            return Err(Error::wasi_invalid_argument("Tensor has invalid dimensions";
         }
         
         if tensor.size_bytes() == 0 {
-            return Err(Error::wasi_invalid_argument("Tensor cannot be empty"));
+            return Err(Error::wasi_invalid_argument("Tensor cannot be empty";
         }
         
         // For higher safety levels, add stricter validation
@@ -173,25 +173,25 @@ impl ExecutionContext {
             // Validate tensor size against reasonable limits
             const MAX_TENSOR_SIZE: usize = 100 * 1024 * 1024; // 100MB
             if tensor.size_bytes() > MAX_TENSOR_SIZE {
-                return Err(Error::wasi_resource_exhausted("Tensor size exceeds safety limit"));
+                return Err(Error::wasi_resource_exhausted("Tensor size exceeds safety limit";
             }
             
             // Validate tensor capability level matches context level
             if tensor.capability_level() < self.capability_level {
                 return Err(Error::wasi_verification_failed(
                     "Tensor capability level insufficient for context"
-                ));
+                ;
             }
         }
         
-        self.inputs[index] = Some(tensor);
+        self.inputs[index] = Some(tensor;
         Ok(())
     }
     
     /// Get an input tensor
     pub fn get_input(&self, index: usize) -> Result<&Tensor> {
         if index >= self.inputs.len() {
-            return Err(ComputeError::InvalidInputIndex(index).into());
+            return Err(ComputeError::InvalidInputIndex(index).into();
         }
         
         self.inputs[index].as_ref()
@@ -206,7 +206,7 @@ impl ExecutionContext {
     /// Get an output tensor
     pub fn get_output(&self, index: usize) -> Result<&Tensor> {
         if index >= self.outputs.len() {
-            return Err(ComputeError::InvalidOutputIndex(index).into());
+            return Err(ComputeError::InvalidOutputIndex(index).into();
         }
         
         self.outputs[index].as_ref()
@@ -216,10 +216,10 @@ impl ExecutionContext {
     /// Set output tensor (used by backend after compute)
     pub fn set_output(&mut self, index: usize, tensor: Tensor) -> Result<()> {
         if index >= self.outputs.len() {
-            return Err(ComputeError::InvalidOutputIndex(index).into());
+            return Err(ComputeError::InvalidOutputIndex(index).into();
         }
         
-        self.outputs[index] = Some(tensor);
+        self.outputs[index] = Some(tensor;
         Ok(())
     }
     
@@ -237,7 +237,7 @@ impl ExecutionContext {
     pub fn update_stats(&mut self, execution_time_us: u64, memory_used: usize) {
         self.stats.inference_count += 1;
         self.stats.total_time_us += execution_time_us;
-        self.stats.peak_memory_bytes = self.stats.peak_memory_bytes.max(memory_used);
+        self.stats.peak_memory_bytes = self.stats.peak_memory_bytes.max(memory_used;
     }
     
     /// Get execution statistics
@@ -290,19 +290,19 @@ impl ContextStore {
     
     /// Add a context to the store
     pub fn add(&mut self, context: ExecutionContext) -> Result<u32> {
-        let id = context.id();
+        let id = context.id(;
         
         // Validate context ID is not already in use
         if self.contexts.iter().any(|c| c.id() == id) {
             return Err(Error::wasi_invalid_argument(
                 "Context ID already exists"
-            ));
+            ;
         }
         
         if self.contexts.len() >= MAX_CONTEXTS {
             return Err(Error::wasi_resource_exhausted(
                 "Maximum execution contexts reached"
-            ));
+            ;
         }
         
         self.contexts.push(context);
@@ -327,7 +327,7 @@ impl ContextStore {
     pub fn next_id(&mut self) -> Result<u32> {
         // Check if we're approaching wraparound danger zone
         if self.next_id > u32::MAX - 1000 {
-            return Err(Error::wasi_resource_exhausted("Context ID space exhausted"));
+            return Err(Error::wasi_resource_exhausted("Context ID space exhausted";
         }
         
         let id = self.next_id;
@@ -338,12 +338,12 @@ impl ContextStore {
 }
 
 /// Global context store
-static CONTEXT_STORE: OnceLock<Mutex<ContextStore>> = OnceLock::new();
+static CONTEXT_STORE: OnceLock<Mutex<ContextStore>> = OnceLock::new(;
 
 /// Initialize the context store
 pub fn initialize_context_store() -> Result<()> {
     let store = ContextStore::new()?;
-    let mutex = Mutex::new(store);
+    let mutex = Mutex::new(store;
     
     CONTEXT_STORE.set(mutex)
         .map_err(|_| Error::wasi_capability_unavailable("Context store already initialized"))
@@ -381,7 +381,7 @@ pub fn execute_inference(
             .collect();
         return Err(Error::wasi_invalid_argument(
             "Not all inputs are set"
-        ));
+        ;
     }
     
     // Validate all inputs have consistent capability levels
@@ -391,7 +391,7 @@ pub fn execute_inference(
             if input.capability_level() < context_level {
                 return Err(Error::wasi_verification_failed(
                     "Input capability level insufficient"
-                ));
+                ;
             }
         }
     }
@@ -403,16 +403,16 @@ pub fn execute_inference(
     capability.verify_operation(&NNOperation::Compute { estimated_flops })?;
     
     // Validate total input memory against limits
-    let total_input_memory = calculate_input_memory_usage(context);
-    let limits = capability.resource_limits();
+    let total_input_memory = calculate_input_memory_usage(context;
+    let limits = capability.resource_limits(;
     if total_input_memory > limits.max_tensor_memory {
         return Err(Error::wasi_resource_exhausted(
             "Input memory exceeds limit"
-        ));
+        ;
     }
     
     // Record start time for timeout checking
-    let start_time = get_time_us();
+    let start_time = get_time_us(;
     
     // Execute inference through backend
     let graph_store = get_graph_store()?;
@@ -425,22 +425,22 @@ pub fn execute_inference(
         .collect();
     
     // Validate input count matches expectation
-    let expected_inputs = graph.backend_model().num_inputs();
+    let expected_inputs = graph.backend_model().num_inputs(;
     if inputs.len() != expected_inputs {
         return Err(Error::wasi_invalid_argument(
             "Input count mismatch"
-        ));
+        ;
     }
     
     // Execute compute through the backend context
     let outputs = context.backend_context.compute(&inputs, graph.backend_model())?;
     
     // Validate output count
-    let expected_outputs = graph.backend_model().num_outputs();
+    let expected_outputs = graph.backend_model().num_outputs(;
     if outputs.len() != expected_outputs {
         return Err(Error::wasi_runtime_error(
             "Output count mismatch"
-        ));
+        ;
     }
     
     // Validate output tensor properties
@@ -448,30 +448,30 @@ pub fn execute_inference(
         if !output.dimensions().is_valid() {
             return Err(Error::wasi_runtime_error(
                 "Output has invalid dimensions"
-            ));
+            ;
         }
         if output.size_bytes() == 0 {
             return Err(Error::wasi_runtime_error(
                 "Output is empty"
-            ));
+            ;
         }
     }
     
     // Store outputs in context
-    context.outputs.clear();
+    context.outputs.clear(;
     for output in outputs {
-        context.outputs.push(Some(output));
+        context.outputs.push(Some(output);
     }
     
     // Check execution time against limits
     let execution_time = get_time_us() - start_time;
     if limits.max_execution_time_us > 0 && execution_time > limits.max_execution_time_us {
-        return Err(ComputeError::Timeout.into());
+        return Err(ComputeError::Timeout.into();
     }
     
     // Update statistics
-    let memory_used = calculate_memory_usage(context);
-    context.update_stats(execution_time, memory_used);
+    let memory_used = calculate_memory_usage(context;
+    context.update_stats(execution_time, memory_used;
     
     Ok(())
 }
@@ -485,8 +485,8 @@ fn estimate_inference_flops(_context: &ExecutionContext) -> Result<u64> {
 
 /// Calculate memory usage for monitoring
 fn calculate_memory_usage(context: &ExecutionContext) -> usize {
-    let input_memory = calculate_input_memory_usage(context);
-    let output_memory = calculate_output_memory_usage(context);
+    let input_memory = calculate_input_memory_usage(context;
+    let output_memory = calculate_output_memory_usage(context;
     input_memory + output_memory
 }
 
@@ -531,23 +531,23 @@ mod tests {
     #[test]
     fn test_compute_error_conversion() {
         let err: Error = ComputeError::MissingInput(0).into();
-        assert!(matches!(err.category, ErrorCategory::Validation));
+        assert!(matches!(err.category, ErrorCategory::Validation);
         
         let err: Error = ComputeError::Timeout.into();
-        assert!(matches!(err.category, ErrorCategory::Core));
+        assert!(matches!(err.category, ErrorCategory::Core);
     }
     
     #[test]
     fn test_execution_stats() {
-        let mut stats = ExecutionStats::default();
-        assert_eq!(stats.inference_count, 0);
+        let mut stats = ExecutionStats::default(;
+        assert_eq!(stats.inference_count, 0;
         
         stats.inference_count += 1;
         stats.total_time_us += 1000;
         stats.peak_memory_bytes = 1024;
         
-        assert_eq!(stats.inference_count, 1);
-        assert_eq!(stats.total_time_us, 1000);
-        assert_eq!(stats.peak_memory_bytes, 1024);
+        assert_eq!(stats.inference_count, 1;
+        assert_eq!(stats.total_time_us, 1000;
+        assert_eq!(stats.peak_memory_bytes, 1024;
     }
 }

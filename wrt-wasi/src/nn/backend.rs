@@ -179,7 +179,7 @@ impl BackendRegistry {
         if !provider.supports_encoding(encoding) {
             return Err(Error::wasi_invalid_argument(
                 "Backend provider does not support the specified encoding"
-            ));
+            ;
         }
         
         // Check for duplicate registrations
@@ -187,11 +187,11 @@ impl BackendRegistry {
             if *existing_encoding == encoding {
                 return Err(Error::wasi_capability_unavailable(
                     "Backend for this encoding already registered"
-                ));
+                ;
             }
         }
         
-        self.backends.push((encoding, provider));
+        self.backends.push((encoding, provider);
         Ok(())
     }
     
@@ -202,9 +202,9 @@ impl BackendRegistry {
         capability: &dyn NeuralNetworkCapability,
     ) -> Result<Box<dyn DynBackend>> {
         // Validate capability before creating backend
-        let limits = capability.resource_limits();
+        let limits = capability.resource_limits(;
         if limits.max_tensor_memory == 0 || limits.max_concurrent_models == 0 || limits.max_concurrent_contexts == 0 {
-            return Err(Error::wasi_invalid_argument("Capability has invalid resource limits"));
+            return Err(Error::wasi_invalid_argument("Capability has invalid resource limits";
         }
         
         for (enc, provider) in &self.backends {
@@ -213,10 +213,10 @@ impl BackendRegistry {
                 
                 // Validate that the created backend works correctly
                 if backend.name().is_empty() {
-                    return Err(Error::wasi_runtime_error("Backend has invalid name"));
+                    return Err(Error::wasi_runtime_error("Backend has invalid name";
                 }
                 
-                return Ok(backend);
+                return Ok(backend;
             }
         }
         Err(Error::wasi_unsupported_operation(
@@ -226,11 +226,11 @@ impl BackendRegistry {
 }
 
 /// Global backend registry instance
-static BACKEND_REGISTRY: OnceLock<Mutex<BackendRegistry>> = OnceLock::new();
+static BACKEND_REGISTRY: OnceLock<Mutex<BackendRegistry>> = OnceLock::new(;
 
 /// Initialize the backend registry (call once at startup)
 pub fn initialize_backends() -> Result<()> {
-    let mut registry = BackendRegistry::new();
+    let mut registry = BackendRegistry::new(;
     
     // Register available backends
     #[cfg(feature = "tract")]
@@ -240,7 +240,7 @@ pub fn initialize_backends() -> Result<()> {
         registry.register(GraphEncoding::TractNative, Box::new(TractBackendProvider::new()))?;
     }
     
-    let mutex = Mutex::new(registry);
+    let mutex = Mutex::new(registry;
     BACKEND_REGISTRY.set(mutex)
         .map_err(|_| Error::wasi_capability_unavailable("Backend registry already initialized"))
 }
@@ -265,7 +265,7 @@ mod tests {
     
     #[test]
     fn test_backend_registry() {
-        let mut registry = BackendRegistry::new();
-        assert!(registry.backends.is_empty());
+        let mut registry = BackendRegistry::new(;
+        assert!(registry.backends.is_empty();
     }
 }

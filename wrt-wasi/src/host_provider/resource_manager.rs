@@ -37,7 +37,7 @@ fn create_wasi_provider() -> Result<WasiProvider> {
             8192,
             wrt_foundation::CrateId::Wasi,
             wrt_foundation::verification::VerificationLevel::Standard,
-        ));
+        ;
         Ok(CapabilityAwareProvider::new(base_provider, capability, wrt_foundation::CrateId::Wasi))
     }
     #[cfg(not(feature = "std"))]
@@ -198,7 +198,7 @@ impl WasiResourceManager {
             wrt_foundation::resource::ResourceRepr::Opaque,
             None,
             wrt_foundation::verification::VerificationLevel::Standard,
-        );
+        ;
         
         // Create WASI resource wrapper
         let wasi_resource = WasiResource {
@@ -209,7 +209,7 @@ impl WasiResourceManager {
         
         // Get next handle ID
         let handle = self.next_handle;
-        self.next_handle = self.next_handle.wrapping_add(1);
+        self.next_handle = self.next_handle.wrapping_add(1;
         if self.next_handle == 0 {
             self.next_handle = 1; // Skip 0
         }
@@ -452,39 +452,39 @@ impl Checksummable for WasiResource {
         match &self.resource_type {
             WasiResourceType::Null => checksum.update_slice(b"null"),
             WasiResourceType::FileDescriptor { path, readable, writable } => {
-                checksum.update_slice(b"file");
+                checksum.update_slice(b"file";
                 if let Ok(path_str) = path.as_str() {
-                    checksum.update_slice(path_str.as_bytes());
+                    checksum.update_slice(path_str.as_bytes(;
                 }
-                checksum.update_slice(&[*readable as u8, *writable as u8]);
+                checksum.update_slice(&[*readable as u8, *writable as u8];
             },
             WasiResourceType::DirectoryHandle { path } => {
-                checksum.update_slice(b"dir");
+                checksum.update_slice(b"dir";
                 if let Ok(path_str) = path.as_str() {
-                    checksum.update_slice(path_str.as_bytes());
+                    checksum.update_slice(path_str.as_bytes(;
                 }
             },
             WasiResourceType::InputStream { name, position } => {
-                checksum.update_slice(b"in");
+                checksum.update_slice(b"in";
                 if let Ok(name_str) = name.as_str() {
-                    checksum.update_slice(name_str.as_bytes());
+                    checksum.update_slice(name_str.as_bytes(;
                 }
-                checksum.update_slice(&position.to_le_bytes());
+                checksum.update_slice(&position.to_le_bytes(;
             },
             WasiResourceType::OutputStream { name, position } => {
-                checksum.update_slice(b"out");
+                checksum.update_slice(b"out";
                 if let Ok(name_str) = name.as_str() {
-                    checksum.update_slice(name_str.as_bytes());
+                    checksum.update_slice(name_str.as_bytes(;
                 }
-                checksum.update_slice(&position.to_le_bytes());
+                checksum.update_slice(&position.to_le_bytes(;
             },
             WasiResourceType::ClockHandle { clock_type } => {
-                checksum.update_slice(b"clock");
-                checksum.update_slice(&[*clock_type as u8]);
+                checksum.update_slice(b"clock";
+                checksum.update_slice(&[*clock_type as u8];
             },
             WasiResourceType::RandomHandle { secure } => {
-                checksum.update_slice(b"random");
-                checksum.update_slice(&[*secure as u8]);
+                checksum.update_slice(b"random";
+                checksum.update_slice(&[*secure as u8];
             },
         }
     }
@@ -546,7 +546,7 @@ mod tests {
     #[test]
     fn test_resource_manager_creation() -> Result<()> {
         let manager = WasiResourceManager::new()?;
-        assert_eq!(manager.resource_count(), 0);
+        assert_eq!(manager.resource_count(), 0;
         Ok(())
     }
     
@@ -555,12 +555,12 @@ mod tests {
         let mut manager = WasiResourceManager::new()?;
         
         let fd = manager.create_file_descriptor("/tmp/test.txt", true, false)?;
-        assert!(manager.is_valid_handle(fd));
-        assert_eq!(manager.resource_count(), 1);
+        assert!(manager.is_valid_handle(fd);
+        assert_eq!(manager.resource_count(), 1;
         
         let resource = manager.get_resource(fd)?;
-        assert!(resource.is_readable());
-        assert!(!resource.is_writable());
+        assert!(resource.is_readable();
+        assert!(!resource.is_writable();
         
         Ok(())
     }
@@ -572,17 +572,17 @@ mod tests {
         let input = manager.create_input_stream("stdin")?;
         let output = manager.create_output_stream("stdout")?;
         
-        assert!(manager.is_valid_handle(input));
-        assert!(manager.is_valid_handle(output));
-        assert_eq!(manager.resource_count(), 2);
+        assert!(manager.is_valid_handle(input);
+        assert!(manager.is_valid_handle(output);
+        assert_eq!(manager.resource_count(), 2;
         
         let input_resource = manager.get_resource(input)?;
         let output_resource = manager.get_resource(output)?;
         
-        assert!(input_resource.is_readable());
-        assert!(!input_resource.is_writable());
-        assert!(!output_resource.is_readable());
-        assert!(output_resource.is_writable());
+        assert!(input_resource.is_readable();
+        assert!(!input_resource.is_writable();
+        assert!(!output_resource.is_readable();
+        assert!(output_resource.is_writable();
         
         Ok(())
     }
@@ -592,11 +592,11 @@ mod tests {
         let mut manager = WasiResourceManager::new()?;
         
         let fd = manager.create_file_descriptor("/tmp/test.txt", true, true)?;
-        assert_eq!(manager.resource_count(), 1);
+        assert_eq!(manager.resource_count(), 1;
         
         let removed = manager.remove_resource(fd)?;
-        assert_eq!(manager.resource_count(), 0);
-        assert!(!manager.is_valid_handle(fd));
+        assert_eq!(manager.resource_count(), 0;
+        assert!(!manager.is_valid_handle(fd);
         
         match removed.resource_type() {
             WasiResourceType::FileDescriptor { readable, writable, .. } => {
@@ -613,11 +613,11 @@ mod tests {
     fn test_invalid_handle_access() -> Result<()> {
         let manager = WasiResourceManager::new()?;
         
-        let result = manager.get_resource(999);
-        assert!(result.is_err());
+        let result = manager.get_resource(999;
+        assert!(result.is_err();
         
         if let Err(error) = result {
-            assert_eq!(error.code(), codes::WASI_INVALID_FD);
+            assert_eq!(error.code(), codes::WASI_INVALID_FD;
         }
         
         Ok(())
@@ -630,8 +630,8 @@ mod tests {
         let monotonic = manager.create_clock_handle(WasiClockType::Monotonic)?;
         let realtime = manager.create_clock_handle(WasiClockType::Realtime)?;
         
-        assert_ne!(monotonic, realtime);
-        assert_eq!(manager.resource_count(), 2);
+        assert_ne!(monotonic, realtime;
+        assert_eq!(manager.resource_count(), 2;
         
         Ok(())
     }

@@ -283,14 +283,14 @@ impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
                 }
             },
             crate::value_compat::Value::List(list) => {
-                let mut converted_list = alloc::vec::Vec::with_capacity(0);
+                let mut converted_list = alloc::vec::Vec::with_capacity(0;
                 for item in list {
-                    converted_list.push(item.try_into()?);
+                    converted_list.push(item.try_into()?;
                 }
                 CapabilityAwareValue::list_from_vec(converted_list)
             },
             crate::value_compat::Value::Record(pairs) => {
-                let mut converted_pairs = alloc::vec::Vec::with_capacity(0);
+                let mut converted_pairs = alloc::vec::Vec::with_capacity(0;
                 for (key, value) in pairs {
                     #[cfg(feature = "std")]
                     let key_str = key.clone();
@@ -300,7 +300,7 @@ impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
                         Err(_) => alloc::string::String::from(""),
                     };
                     
-                    converted_pairs.push((key_str, value.try_into()?));
+                    converted_pairs.push((key_str, value.try_into()?;
                 }
                 CapabilityAwareValue::record_from_pairs(converted_pairs)
             },
@@ -343,9 +343,9 @@ impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
                 CapabilityAwareValue::result_from_values(converted_result)
             },
             crate::value_compat::Value::Tuple(tuple) => {
-                let mut converted_tuple = alloc::vec::Vec::with_capacity(0);
+                let mut converted_tuple = alloc::vec::Vec::with_capacity(0;
                 for item in tuple {
-                    converted_tuple.push(item.try_into()?);
+                    converted_tuple.push(item.try_into()?;
                 }
                 CapabilityAwareValue::tuple_from_vec(converted_tuple)
             },
@@ -361,33 +361,33 @@ mod tests {
     #[test]
     fn test_capability_aware_value_creation() {
         // Initialize memory system for testing
-        let _ = MemoryInitializer::initialize();
+        let _ = MemoryInitializer::initialize(;
         
         // Test string creation
         let string_value = CapabilityAwareValue::string_from_str("test").unwrap();
         if let CapabilityAwareValue::String(_) = string_value {
             // Success
         } else {
-            panic!("Expected string value");
+            panic!("Expected string value";
         }
     }
     
     #[test]
     fn test_value_extraction() {
-        let u32_value = CapabilityAwareValue::U32(42);
-        assert_eq!(u32_value.as_u32(), 42);
-        assert_eq!(u32_value.as_u64(), 42);
-        assert!(!u32_value.as_bool()); // 42 != 0, so this should be true, but current impl returns false for non-bool
+        let u32_value = CapabilityAwareValue::U32(42;
+        assert_eq!(u32_value.as_u32(), 42;
+        assert_eq!(u32_value.as_u64(), 42;
+        assert!(!u32_value.as_bool())); // 42 != 0, so this should be true, but current impl returns false for non-bool
     }
     
     #[test] 
     fn test_boxed_value() {
-        let _ = MemoryInitializer::initialize();
+        let _ = MemoryInitializer::initialize(;
         
-        let value = CapabilityAwareValue::U32(100);
+        let value = CapabilityAwareValue::U32(100;
         let boxed = WasiValueBox::new(value).unwrap();
         
-        assert_eq!(boxed.as_inner().as_u32(), 100);
+        assert_eq!(boxed.as_inner().as_u32(), 100;
     }
 }
 
@@ -486,7 +486,7 @@ impl wrt_foundation::traits::FromBytes for CapabilityAwareValue {
 
 impl wrt_foundation::traits::Checksummable for WasiValueBox {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.inner.update_checksum(checksum);
+        self.inner.update_checksum(checksum;
     }
 }
 

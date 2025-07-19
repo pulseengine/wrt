@@ -117,7 +117,7 @@ impl VxWorksThread {
             name: config.name.clone(),
         };
 
-        let entry_point = Box::new(f);
+        let entry_point = Box::new(f;
         
         match config.context {
             VxWorksContext::Lkm => {
@@ -138,14 +138,14 @@ impl VxWorksThread {
             // Convert Rust closure to C function pointer
             extern "C" fn task_wrapper(arg: *mut c_void) -> i32 {
                 let closure: Box<ThreadEntryPoint> = unsafe { Box::from_raw(arg as *mut ThreadEntryPoint) };
-                closure();
+                closure(;
                 0 // Success
             }
 
             let closure_ptr = Box::into_raw(Box::new(f)) as *mut c_void;
             let name_ptr = config.name.as_ref()
                 .map(|n| n.as_ptr())
-                .unwrap_or(b"wrt_task\0".as_ptr());
+                .unwrap_or(b"wrt_task\0".as_ptr(;
             
             let priority = config.priority.unwrap_or(100); // Default VxWorks priority
             let mut options = 0;
@@ -170,16 +170,16 @@ impl VxWorksThread {
                 // Cleanup on failure
                 unsafe { let _ = Box::from_raw(closure_ptr as *mut ThreadEntryPoint); }
                 return Err(Error::runtime_execution_error("
-                ));
+                ;
             }
 
-            self.task_id = Some(task_id);
+            self.task_id = Some(task_id;
         }
         
         #[cfg(not(target_os = "))]
         {
             return Err(Error::runtime_execution_error("
-            ));
+            ;
         }
 
         Ok(())
@@ -191,7 +191,7 @@ impl VxWorksThread {
         {
             extern "C" fn thread_wrapper(arg: *mut c_void) -> *mut c_void {
                 let closure: Box<ThreadEntryPoint> = unsafe { Box::from_raw(arg as *mut ThreadEntryPoint) };
-                closure();
+                closure(;
                 core::ptr::null_mut()
             }
 
@@ -202,18 +202,18 @@ impl VxWorksThread {
             let attr_result = unsafe { pthread_attr_init(&mut attr) };
             if attr_result != 0 {
                 unsafe { let _ = Box::from_raw(closure_ptr as *mut ThreadEntryPoint); }
-                return Err(Error::runtime_execution_error("Failed to initialize thread attributes"));
+                return Err(Error::runtime_execution_error("Failed to initialize thread attributes";
             }
 
             // Set stack size
             unsafe {
-                pthread_attr_setstacksize(&mut attr, config.stack_size);
+                pthread_attr_setstacksize(&mut attr, config.stack_size;
             }
 
             // Set detach state
             if config.detached {
                 unsafe {
-                    pthread_attr_setdetachstate(&mut attr, PTHREAD_CREATE_DETACHED);
+                    pthread_attr_setdetachstate(&mut attr, PTHREAD_CREATE_DETACHED;
                 }
             }
 
@@ -231,15 +231,15 @@ impl VxWorksThread {
                 return Err(Error::new(
                     ErrorKind::Platform,
                     "Failed to create POSIX thread",
-                ));
+                ;
             }
 
-            self.pthread = Some(pthread);
+            self.pthread = Some(pthread;
         }
         
         #[cfg(not(target_os = "vxworks"))]
         {
-            return Err(Error::runtime_execution_error("VxWorks thread spawn not supported on this platform"));
+            return Err(Error::runtime_execution_error("VxWorks thread spawn not supported on this platform";
         }
 
         Ok(())
@@ -263,7 +263,7 @@ impl VxWorksThread {
                     if let Some(pthread) = self.pthread {
                         let result = unsafe { pthread_join(pthread, core::ptr::null_mut()) };
                         if result != 0 {
-                            return Err(Error::runtime_execution_error("Failed to join POSIX thread"));
+                            return Err(Error::runtime_execution_error("Failed to join POSIX thread";
                         }
                     }
                 }
@@ -272,7 +272,7 @@ impl VxWorksThread {
         
         #[cfg(not(target_os = "vxworks"))]
         {
-            return Err(Error::runtime_execution_error("VxWorks thread join not supported on this platform"));
+            return Err(Error::runtime_execution_error("VxWorks thread join not supported on this platform";
         }
 
         Ok(())
@@ -291,7 +291,7 @@ impl VxWorksThread {
                     if let Some(pthread) = self.pthread {
                         let result = unsafe { pthread_detach(pthread) };
                         if result != 0 {
-                            return Err(Error::runtime_execution_error("Failed to detach POSIX thread"));
+                            return Err(Error::runtime_execution_error("Failed to detach POSIX thread";
                         }
                     }
                     Ok(())
@@ -355,7 +355,7 @@ impl VxWorksThread {
             
             let result = unsafe { taskDelay(ticks as i32) };
             if result != 0 {
-                return Err(Error::runtime_execution_error("Failed to delay VxWorks task"));
+                return Err(Error::runtime_execution_error("Failed to delay VxWorks task";
             }
             Ok(())
         }
@@ -388,12 +388,12 @@ impl VxWorksThreadBuilder {
     }
 
     pub fn priority(mut self, priority: i32) -> Self {
-        self.config.priority = Some(priority);
+        self.config.priority = Some(priority;
         self
     }
 
     pub fn name<S: Into<String>>(mut self, name: S) -> Self {
-        self.config.name = Some(name.into());
+        self.config.name = Some(name.into();
         self
     }
 
@@ -425,32 +425,32 @@ mod tests {
             .stack_size(16384)
             .name("test_thread")
             .floating_point(true)
-            .detached(true);
+            .detached(true;
 
-        assert_eq!(builder.config.stack_size, 16384);
-        assert_eq!(builder.config.name.as_ref().unwrap(), "test_thread");
+        assert_eq!(builder.config.stack_size, 16384;
+        assert_eq!(builder.config.name.as_ref().unwrap(), "test_thread";
         assert!(builder.config.floating_point);
         assert!(builder.config.detached);
     }
 
     #[test]
     fn test_thread_config_default() {
-        let config = VxWorksThreadConfig::default();
-        assert_eq!(config.context, VxWorksContext::Rtp);
-        assert_eq!(config.stack_size, 8192);
-        assert!(config.priority.is_none());
+        let config = VxWorksThreadConfig::default(;
+        assert_eq!(config.context, VxWorksContext::Rtp;
+        assert_eq!(config.stack_size, 8192;
+        assert!(config.priority.is_none();
         assert!(!config.floating_point);
         assert!(!config.detached);
     }
 
     #[test]
     fn test_current_thread_id() {
-        let id = VxWorksThread::current_id();
+        let id = VxWorksThread::current_id(;
         
         #[cfg(target_os = "vxworks")]
         assert!(id > 0);
         
         #[cfg(not(target_os = "vxworks"))]
-        assert_eq!(id, 0);
+        assert_eq!(id, 0;
     }
 }

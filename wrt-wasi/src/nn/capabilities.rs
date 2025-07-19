@@ -216,9 +216,9 @@ impl ResourceTracker {
         };
         
         // Check concurrent operation limit
-        let current_concurrent = self.concurrent_operations.load(Ordering::Acquire);
+        let current_concurrent = self.concurrent_operations.load(Ordering::Acquire;
         if current_concurrent >= self.rate_limits.max_concurrent_operations as usize {
-            return Err(Error::wasi_resource_exhausted("Too many concurrent operations"));
+            return Err(Error::wasi_resource_exhausted("Too many concurrent operations";
         }
         
         // Check resource quotas
@@ -228,8 +228,8 @@ impl ResourceTracker {
         self.check_rate_limits(operation_type)?;
         
         // Increment concurrent operations and record operation
-        self.concurrent_operations.fetch_add(1, Ordering::AcqRel);
-        self.record_operation(operation_type, self.calculate_operation_cost(operation));
+        self.concurrent_operations.fetch_add(1, Ordering::AcqRel;
+        self.record_operation(operation_type, self.calculate_operation_cost(operation;
         
         Ok(OperationGuard::new(self, operation_type))
     }
@@ -239,7 +239,7 @@ impl ResourceTracker {
         match operation {
             NNOperation::Load { size, .. } => {
                 // Check model count limit
-                let current_models = self.active_models.load(Ordering::Acquire);
+                let current_models = self.active_models.load(Ordering::Acquire;
                 if current_models >= self.limits.max_concurrent_models {
                     // Log quota exceeded event
                     if let Some(logger) = crate::nn::monitoring::get_logger() {
@@ -250,9 +250,9 @@ impl ResourceTracker {
                                 limit: self.limits.max_concurrent_models,
                             },
                             "resource_tracker"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_exhausted("Maximum concurrent models reached"));
+                    return Err(Error::wasi_resource_exhausted("Maximum concurrent models reached";
                 }
                 
                 // Check model size limit
@@ -265,13 +265,13 @@ impl ResourceTracker {
                                 limit: self.limits.max_model_size,
                             },
                             "resource_tracker"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_exhausted("Model size exceeds limit"));
+                    return Err(Error::wasi_resource_exhausted("Model size exceeds limit";
                 }
                 
                 // Check total memory limit
-                let current_memory = self.total_memory_used.load(Ordering::Acquire);
+                let current_memory = self.total_memory_used.load(Ordering::Acquire;
                 if current_memory + size > self.limits.max_tensor_memory {
                     if let Some(logger) = crate::nn::monitoring::get_logger() {
                         logger.log_security(
@@ -281,13 +281,13 @@ impl ResourceTracker {
                                 limit: self.limits.max_tensor_memory,
                             },
                             "resource_tracker"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_exhausted("Total memory limit would be exceeded"));
+                    return Err(Error::wasi_resource_exhausted("Total memory limit would be exceeded";
                 }
             },
             NNOperation::CreateContext { .. } => {
-                let current_contexts = self.active_contexts.load(Ordering::Acquire);
+                let current_contexts = self.active_contexts.load(Ordering::Acquire;
                 if current_contexts >= self.limits.max_concurrent_contexts {
                     if let Some(logger) = crate::nn::monitoring::get_logger() {
                         logger.log_security(
@@ -297,13 +297,13 @@ impl ResourceTracker {
                                 limit: self.limits.max_concurrent_contexts,
                             },
                             "resource_tracker"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_exhausted("Maximum concurrent contexts reached"));
+                    return Err(Error::wasi_resource_exhausted("Maximum concurrent contexts reached";
                 }
             },
             NNOperation::SetInput { size, .. } => {
-                let current_memory = self.total_memory_used.load(Ordering::Acquire);
+                let current_memory = self.total_memory_used.load(Ordering::Acquire;
                 if current_memory + size > self.limits.max_tensor_memory {
                     if let Some(logger) = crate::nn::monitoring::get_logger() {
                         logger.log_security(
@@ -313,9 +313,9 @@ impl ResourceTracker {
                                 limit: self.limits.max_tensor_memory,
                             },
                             "resource_tracker"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_exhausted("Tensor memory limit would be exceeded"));
+                    return Err(Error::wasi_resource_exhausted("Tensor memory limit would be exceeded";
                 }
             },
             _ => {} // Other operations don't have specific quotas
@@ -328,13 +328,13 @@ impl ResourceTracker {
         let mut window = self.operations_window.lock()
             .map_err(|_| Error::wasi_runtime_error("Failed to acquire rate limit lock"))?;
         
-        let current_time = get_current_time_ms();
+        let current_time = get_current_time_ms(;
         
         // Clean up old operations (outside sliding window)
-        let window_start = current_time.saturating_sub(self.rate_limits.window_size_ms);
+        let window_start = current_time.saturating_sub(self.rate_limits.window_size_ms;
         while let Some(record) = window.front() {
             if record.timestamp < window_start {
-                window.pop_front();
+                window.pop_front(;
             } else {
                 break;
             }
@@ -344,18 +344,18 @@ impl ResourceTracker {
         let limit_exceeded = match operation_type {
             NNOperationType::Load => {
                 // For loads, use per-minute limit
-                let minute_start = current_time.saturating_sub(60_000);
+                let minute_start = current_time.saturating_sub(60_000;
                 let loads_this_minute = window.iter()
                     .filter(|r| r.operation_type == NNOperationType::Load && r.timestamp >= minute_start)
-                    .count();
+                    .count(;
                 loads_this_minute >= self.rate_limits.max_loads_per_minute as usize
             },
             NNOperationType::Inference => {
                 // For inference, use per-second limit
-                let second_start = current_time.saturating_sub(1_000);
+                let second_start = current_time.saturating_sub(1_000;
                 let inferences_this_second = window.iter()
                     .filter(|r| r.operation_type == NNOperationType::Inference && r.timestamp >= second_start)
-                    .count();
+                    .count(;
                 inferences_this_second >= self.rate_limits.max_inferences_per_second as usize
             },
             _ => false, // Other operations use general concurrent limit
@@ -374,9 +374,9 @@ impl ResourceTracker {
                         },
                     },
                     "resource_tracker"
-                );
+                ;
             }
-            return Err(Error::wasi_resource_exhausted("Rate limit exceeded"));
+            return Err(Error::wasi_resource_exhausted("Rate limit exceeded";
         }
         
         Ok(())
@@ -389,11 +389,11 @@ impl ResourceTracker {
                 operation_type,
                 timestamp: get_current_time_ms(),
                 resource_cost: cost,
-            });
+            };
             
             // Limit window size to prevent unbounded growth
             while window.len() > 10_000 {
-                window.pop_front();
+                window.pop_front(;
             }
         }
     }
@@ -410,7 +410,7 @@ impl ResourceTracker {
     
     /// Allocate model resources
     pub fn allocate_model(&self, size: usize) -> Result<()> {
-        self.active_models.fetch_add(1, Ordering::AcqRel);
+        self.active_models.fetch_add(1, Ordering::AcqRel;
         let total_used = self.total_memory_used.fetch_add(size, Ordering::AcqRel) + size;
         
         // Log resource allocation
@@ -422,7 +422,7 @@ impl ResourceTracker {
                     total_used,
                 },
                 "resource_tracker"
-            );
+            ;
         }
         
         Ok(())
@@ -430,7 +430,7 @@ impl ResourceTracker {
     
     /// Deallocate model resources
     pub fn deallocate_model(&self, size: usize) {
-        self.active_models.fetch_sub(1, Ordering::AcqRel);
+        self.active_models.fetch_sub(1, Ordering::AcqRel;
         let total_used = self.total_memory_used.fetch_sub(size, Ordering::AcqRel) - size;
         
         // Log resource deallocation
@@ -442,7 +442,7 @@ impl ResourceTracker {
                     total_used,
                 },
                 "resource_tracker"
-            );
+            ;
         }
     }
     
@@ -459,7 +459,7 @@ impl ResourceTracker {
                     total_used: total_contexts,
                 },
                 "resource_tracker"
-            );
+            ;
         }
         
         Ok(())
@@ -478,7 +478,7 @@ impl ResourceTracker {
                     total_used: total_contexts,
                 },
                 "resource_tracker"
-            );
+            ;
         }
     }
     
@@ -508,7 +508,7 @@ impl<'a> OperationGuard<'a> {
 impl<'a> Drop for OperationGuard<'a> {
     fn drop(&mut self) {
         // Decrement concurrent operations when guard is dropped
-        self.tracker.concurrent_operations.fetch_sub(1, Ordering::AcqRel);
+        self.tracker.concurrent_operations.fetch_sub(1, Ordering::AcqRel;
     }
 }
 
@@ -555,7 +555,7 @@ pub trait NeuralNetworkCapability: Send + Sync + Debug {
     fn allowed_formats(&self) -> &[ModelFormat];
     
     /// Check if a model hash is pre-approved (for higher safety levels)
-    fn is_model_approved(&self, hash: &[u8; 32]) -> bool;
+    fn is_model_approved(&self, hash: &[u8); 32]) -> bool;
     
     /// Get the resource tracker for this capability (optional)
     fn resource_tracker(&self) -> Option<&ResourceTracker> {
@@ -589,9 +589,9 @@ impl DynamicNNCapability {
     
     /// Create with resource tracking enabled
     pub fn with_tracking() -> Self {
-        let limits = NNResourceLimits::default();
-        let rate_limits = RateLimits::default();
-        let tracker = ResourceTracker::new(limits.clone(), rate_limits);
+        let limits = NNResourceLimits::default(;
+        let rate_limits = RateLimits::default(;
+        let tracker = ResourceTracker::new(limits.clone(), rate_limits;
         
         Self {
             limits,
@@ -623,7 +623,7 @@ impl DynamicNNCapability {
     
     /// Create with custom limits and tracking
     pub fn with_limits_and_tracking(limits: NNResourceLimits, rate_limits: RateLimits) -> Self {
-        let tracker = ResourceTracker::new(limits.clone(), rate_limits);
+        let tracker = ResourceTracker::new(limits.clone(), rate_limits;
         
         Self {
             limits,
@@ -661,9 +661,9 @@ impl NeuralNetworkCapability for DynamicNNCapability {
                                 capability_level: "Standard".to_string(),
                             },
                             "dynamic_capability"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_limit("Model size exceeds limit"));
+                    return Err(Error::wasi_resource_limit("Model size exceeds limit";
                 }
                 if !self.allowed_formats.contains(format) {
                     if let Some(logger) = crate::nn::monitoring::get_logger() {
@@ -673,9 +673,9 @@ impl NeuralNetworkCapability for DynamicNNCapability {
                                 model_size: *size,
                             },
                             "dynamic_capability"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_invalid_argument("Model format not allowed"));
+                    return Err(Error::wasi_invalid_argument("Model format not allowed";
                 }
                 Ok(())
             }
@@ -688,9 +688,9 @@ impl NeuralNetworkCapability for DynamicNNCapability {
                                 capability_level: "Standard".to_string(),
                             },
                             "dynamic_capability"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_limit("Tensor size exceeds limit"));
+                    return Err(Error::wasi_resource_limit("Tensor size exceeds limit";
                 }
                 if dimensions.len() > self.limits.max_tensor_dimensions {
                     if let Some(logger) = crate::nn::monitoring::get_logger() {
@@ -700,9 +700,9 @@ impl NeuralNetworkCapability for DynamicNNCapability {
                                 capability_level: "Standard".to_string(),
                             },
                             "dynamic_capability"
-                        );
+                        ;
                     }
-                    return Err(Error::wasi_resource_limit("Too many tensor dimensions"));
+                    return Err(Error::wasi_resource_limit("Too many tensor dimensions";
                 }
                 Ok(())
             }
@@ -722,7 +722,7 @@ impl NeuralNetworkCapability for DynamicNNCapability {
         &self.allowed_formats
     }
     
-    fn is_model_approved(&self, _hash: &[u8; 32]) -> bool {
+    fn is_model_approved(&self, _hash: &[u8); 32]) -> bool {
         // Dynamic capability doesn't require pre-approval
         true
     }
@@ -743,7 +743,7 @@ pub struct BoundedNNCapability {
 impl BoundedNNCapability {
     /// Create a new bounded capability
     pub fn new() -> Result<Self> {
-        let mut allowed_formats = Vec::new();
+        let mut allowed_formats = Vec::new(;
         
         // Only allow well-tested formats
         allowed_formats.push(ModelFormat::ONNX);
@@ -778,20 +778,20 @@ impl NeuralNetworkCapability for BoundedNNCapability {
         match operation {
             NNOperation::Load { size, format } => {
                 if *size > self.limits.max_model_size {
-                    return Err(Error::wasi_resource_limit("Model size exceeds bounded limit"));
+                    return Err(Error::wasi_resource_limit("Model size exceeds bounded limit";
                 }
-                let allowed = self.allowed_formats.iter().any(|f| f == format);
+                let allowed = self.allowed_formats.iter().any(|f| f == format;
                 if !allowed {
-                    return Err(Error::wasi_invalid_argument("Model format not in bounded set"));
+                    return Err(Error::wasi_invalid_argument("Model format not in bounded set";
                 }
                 Ok(())
             }
             NNOperation::SetInput { size, dimensions } => {
                 if *size > self.limits.max_tensor_memory {
-                    return Err(Error::wasi_resource_limit("Tensor exceeds bounded memory"));
+                    return Err(Error::wasi_resource_limit("Tensor exceeds bounded memory";
                 }
                 if dimensions.len() > self.limits.max_tensor_dimensions {
-                    return Err(Error::wasi_resource_limit("Tensor dimensions exceed bound"));
+                    return Err(Error::wasi_resource_limit("Tensor dimensions exceed bound";
                 }
                 Ok(())
             }
@@ -816,7 +816,7 @@ impl NeuralNetworkCapability for BoundedNNCapability {
         &self.allowed_formats
     }
     
-    fn is_model_approved(&self, _hash: &[u8; 32]) -> bool {
+    fn is_model_approved(&self, _hash: &[u8); 32]) -> bool {
         // Bounded capability doesn't require pre-approval but has runtime checks
         true
     }
@@ -832,8 +832,8 @@ pub struct StaticNNCapability {
 
 impl StaticNNCapability {
     /// Create a new static capability with pre-approved models
-    pub fn new(approved_hashes: &[[u8; 32]]) -> Result<Self> {
-        let mut approved_models = Vec::new();
+    pub fn new(approved_hashes: &[[u8); 32]]) -> Result<Self> {
+        let mut approved_models = Vec::new(;
         
         for hash in approved_hashes {
             approved_models.push(*hash);
@@ -863,20 +863,20 @@ impl NeuralNetworkCapability for StaticNNCapability {
         match operation {
             NNOperation::Load { size, format } => {
                 if *size > self.limits.max_model_size {
-                    return Err(Error::wasi_resource_limit("Model exceeds static allocation"));
+                    return Err(Error::wasi_resource_limit("Model exceeds static allocation";
                 }
                 // Only ONNX and Tract native for deterministic execution
                 if !matches!(format, ModelFormat::ONNX | ModelFormat::TractNative) {
-                    return Err(Error::wasi_verification_failed("Format not verified for deterministic execution"));
+                    return Err(Error::wasi_verification_failed("Format not verified for deterministic execution";
                 }
                 Ok(())
             }
             NNOperation::SetInput { size, dimensions } => {
                 if *size > self.limits.max_tensor_memory {
-                    return Err(Error::wasi_resource_limit("Tensor exceeds static memory pool"));
+                    return Err(Error::wasi_resource_limit("Tensor exceeds static memory pool";
                 }
                 if dimensions.len() > self.limits.max_tensor_dimensions {
-                    return Err(Error::wasi_resource_limit("Tensor complexity exceeds static limit"));
+                    return Err(Error::wasi_resource_limit("Tensor complexity exceeds static limit";
                 }
                 Ok(())
             }
@@ -911,7 +911,7 @@ impl NeuralNetworkCapability for StaticNNCapability {
     /// Uses constant-time comparison to prevent timing attacks that could
     /// leak information about approved model hashes. This is critical for
     /// ASIL-B compliance where only pre-approved models are allowed.
-    fn is_model_approved(&self, hash: &[u8; 32]) -> bool {
+    fn is_model_approved(&self, hash: &[u8); 32]) -> bool {
         // Use constant-time comparison to prevent timing attacks
         self.approved_models.iter().any(|h| {
             constant_time::constant_time_eq(h.as_ref(), hash.as_ref())
@@ -946,43 +946,43 @@ mod tests {
     
     #[test]
     fn test_dynamic_capability() {
-        let cap = DynamicNNCapability::new();
-        assert_eq!(cap.verification_level(), VerificationLevel::Standard);
-        assert!(cap.allows_dynamic_loading());
+        let cap = DynamicNNCapability::new(;
+        assert_eq!(cap.verification_level(), VerificationLevel::Standard;
+        assert!(cap.allows_dynamic_loading();
         
         // Should allow large models
         let load_op = NNOperation::Load { 
             size: 50 * 1024 * 1024, 
             format: ModelFormat::ONNX 
         };
-        assert!(cap.verify_operation(&load_op).is_ok());
+        assert!(cap.verify_operation(&load_op).is_ok();
     }
     
     #[test]
     fn test_bounded_capability() {
         let cap = BoundedNNCapability::new().unwrap();
-        assert_eq!(cap.verification_level(), VerificationLevel::Sampling);
+        assert_eq!(cap.verification_level(), VerificationLevel::Sampling;
         
         // Should reject oversized models
         let load_op = NNOperation::Load { 
             size: 100 * 1024 * 1024, 
             format: ModelFormat::ONNX 
         };
-        assert!(cap.verify_operation(&load_op).is_err());
+        assert!(cap.verify_operation(&load_op).is_err();
     }
     
     #[test]
     fn test_static_capability() {
         let cap = StaticNNCapability::new(&[]).unwrap();
-        assert_eq!(cap.verification_level(), VerificationLevel::Continuous);
-        assert!(!cap.allows_dynamic_loading());
+        assert_eq!(cap.verification_level(), VerificationLevel::Continuous;
+        assert!(!cap.allows_dynamic_loading();
         
         // Should only allow verified formats
         let load_op = NNOperation::Load { 
             size: 10 * 1024 * 1024, 
             format: ModelFormat::PyTorch 
         };
-        assert!(cap.verify_operation(&load_op).is_err());
+        assert!(cap.verify_operation(&load_op).is_err();
     }
     
     #[test]
@@ -996,24 +996,24 @@ mod tests {
         let cap = StaticNNCapability::new(&[approved_hash1, approved_hash2, approved_hash3]).unwrap();
         
         // Test approved models
-        assert!(cap.is_model_approved(&approved_hash1));
-        assert!(cap.is_model_approved(&approved_hash2));
-        assert!(cap.is_model_approved(&approved_hash3));
+        assert!(cap.is_model_approved(&approved_hash1);
+        assert!(cap.is_model_approved(&approved_hash2);
+        assert!(cap.is_model_approved(&approved_hash3);
         
         // Test unapproved model
         let unapproved_hash = [0xDDu8; 32];
-        assert!(!cap.is_model_approved(&unapproved_hash));
+        assert!(!cap.is_model_approved(&unapproved_hash);
         
         // Test that comparison works for partial matches (timing attack prevention)
         // Hash that differs only in first byte
         let mut early_diff = approved_hash1;
         early_diff[0] = 0xFF;
-        assert!(!cap.is_model_approved(&early_diff));
+        assert!(!cap.is_model_approved(&early_diff);
         
         // Hash that differs only in last byte
         let mut late_diff = approved_hash1;
         late_diff[31] = 0xFF;
-        assert!(!cap.is_model_approved(&late_diff));
+        assert!(!cap.is_model_approved(&late_diff);
         
         // Both should return false without timing differences
         // The constant-time implementation ensures equal execution time

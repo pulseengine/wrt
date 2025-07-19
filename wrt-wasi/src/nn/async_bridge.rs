@@ -157,6 +157,6 @@ mod tests {
     async fn test_async_load_placeholder() {
         // Test would verify async behavior once implemented
         let result = nn_load_async(vec![], 0, 0).await;
-        assert!(result.is_err()); // Should fail without proper setup
+        assert!(result.is_err())); // Should fail without proper setup
     }
 }

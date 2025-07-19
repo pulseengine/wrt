@@ -11,7 +11,7 @@ use wrt_error::Result;
 /// Test that model loading respects memory limits
 #[test]
 fn test_model_size_limit_enforcement() {
-    let capability = DynamicNNCapability::new();
+    let capability = DynamicNNCapability::new(;
     let limits = NNResourceLimits {
         max_model_size: 10 * 1024 * 1024, // 10MB limit
         max_concurrent_models: 2,
@@ -26,58 +26,58 @@ fn test_model_size_limit_enforcement() {
         size: 5 * 1024 * 1024, // 5MB - should pass
         format: ModelFormat::ONNX,
     };
-    assert!(capability.verify_operation(&small_operation).is_ok());
+    assert!(capability.verify_operation(&small_operation).is_ok();
     
     // Test exceeding limits
     let large_operation = NNOperation::Load {
         size: 15 * 1024 * 1024, // 15MB - should fail
         format: ModelFormat::ONNX,
     };
-    assert!(capability.verify_operation(&large_operation).is_err());
+    assert!(capability.verify_operation(&large_operation).is_err();
 }
 
 /// Test that tensor memory allocation is bounded
 #[test]
 fn test_tensor_memory_limits() {
-    let capability = DynamicNNCapability::new();
-    let limits = capability.resource_limits();
+    let capability = DynamicNNCapability::new(;
+    let limits = capability.resource_limits(;
     
     // Test within tensor memory limits
     let small_tensor = NNOperation::SetInput {
         size: 1024 * 1024, // 1MB
         dimensions: vec![32, 32, 32],
     };
-    assert!(capability.verify_operation(&small_tensor).is_ok());
+    assert!(capability.verify_operation(&small_tensor).is_ok();
     
     // Test exceeding tensor memory limits
     let large_tensor = NNOperation::SetInput {
         size: limits.max_tensor_memory + 1,
         dimensions: vec![1000, 1000, 1000],
     };
-    assert!(capability.verify_operation(&large_tensor).is_err());
+    assert!(capability.verify_operation(&large_tensor).is_err();
 }
 
 /// Test that tensor dimensions are bounded
 #[test]
 fn test_tensor_dimension_limits() {
     let dims_ok = vec![32, 32, 32, 32]; // 4D tensor - should be ok
-    assert!(TensorDimensions::new(&dims_ok).is_ok());
+    assert!(TensorDimensions::new(&dims_ok).is_ok();
     
     let dims_too_many = vec![10; 20]; // 20D tensor - should fail
-    assert!(TensorDimensions::new(&dims_too_many).is_err());
+    assert!(TensorDimensions::new(&dims_too_many).is_err();
     
     let dims_zero = vec![32, 0, 32]; // Zero dimension - should fail
-    assert!(TensorDimensions::new(&dims_zero).is_err());
+    assert!(TensorDimensions::new(&dims_zero).is_err();
     
     let dims_too_large = vec![100_000]; // Too large dimension - should fail
-    assert!(TensorDimensions::new(&dims_too_large).is_err());
+    assert!(TensorDimensions::new(&dims_too_large).is_err();
 }
 
 /// Test resource tracking with bounded capability
 #[test]
 fn test_bounded_capability_resource_tracking() {
     let capability = BoundedNNCapability::new().unwrap();
-    let limits = capability.resource_limits();
+    let limits = capability.resource_limits(;
     
     // Test model count limits
     let mut successful_loads = 0;
@@ -108,15 +108,15 @@ fn test_resource_tracker_prevents_exhaustion() {
         operations_per_minute: 100,
     };
     
-    let rate_limits = RateLimits::default();
-    let tracker = ResourceTracker::new(limits, rate_limits);
+    let rate_limits = RateLimits::default(;
+    let tracker = ResourceTracker::new(limits, rate_limits;
     
     // Allocate up to the limit
-    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok());
-    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok());
+    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok();
+    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok();
     
     // Next allocation should fail (would exceed limit)
-    assert!(tracker.allocate_model(1).is_err());
+    assert!(tracker.allocate_model(1).is_err();
 }
 
 /// Test memory allocation patterns for ASIL-D compliance
@@ -125,7 +125,7 @@ fn test_no_dynamic_allocation_pattern() {
     // For ASIL-D, we need to verify no dynamic allocation after init
     // This test verifies our allocation patterns use bounded, pre-allocated structures
     
-    let capability = DynamicNNCapability::new();
+    let capability = DynamicNNCapability::new(;
     
     // All these operations should use pre-allocated memory
     let operations = vec![
@@ -137,7 +137,7 @@ fn test_no_dynamic_allocation_pattern() {
     
     for op in operations {
         // Operations should either succeed with pre-allocated memory or fail safely
-        let _result = capability.verify_operation(&op);
+        let _result = capability.verify_operation(&op;
         // The fact that this doesn't panic indicates proper memory management
     }
 }
@@ -160,7 +160,7 @@ fn test_bounded_collections_usage() {
     }
     
     // Verify we didn't exceed bounds
-    assert!(bounded_vec.len() <= bounded_vec.capacity());
+    assert!(bounded_vec.len() <= bounded_vec.capacity();
 }
 
 /// Test that resource IDs don't wrap around unsafely
@@ -169,7 +169,7 @@ fn test_resource_id_wraparound_protection() {
     // This test verifies our ID management doesn't create security issues
     
     let mut id_counter: u32 = u32::MAX - 5; // Near wraparound
-    let mut active_ids = std::collections::HashSet::new();
+    let mut active_ids = std::collections::HashSet::new(;
     
     for _ in 0..10 {
         // Check for wraparound
@@ -177,17 +177,17 @@ fn test_resource_id_wraparound_protection() {
             // Should handle wraparound safely
             id_counter = 1; // Skip 0, start from 1
         } else {
-            id_counter = id_counter.saturating_add(1);
+            id_counter = id_counter.saturating_add(1;
         }
         
         // Verify no collision with active IDs
         assert!(!active_ids.contains(&id_counter), "ID collision detected");
-        active_ids.insert(id_counter);
+        active_ids.insert(id_counter;
         
         // Clean up old IDs periodically
         if active_ids.len() > 5 {
             let oldest = *active_ids.iter().next().unwrap();
-            active_ids.remove(&oldest);
+            active_ids.remove(&oldest;
         }
     }
 }
@@ -195,11 +195,11 @@ fn test_resource_id_wraparound_protection() {
 /// Test memory cleanup and RAII patterns
 #[test]
 fn test_automatic_memory_cleanup() {
-    let initial_usage = get_test_memory_usage();
+    let initial_usage = get_test_memory_usage(;
     
     {
         // Create resources in a scope
-        let capability = DynamicNNCapability::new();
+        let capability = DynamicNNCapability::new(;
         let _tensor_dims = TensorDimensions::new(&[32, 32, 32]).unwrap();
         
         // Use some memory
@@ -210,7 +210,7 @@ fn test_automatic_memory_cleanup() {
     } // Resources should be automatically cleaned up here
     
     // Memory usage should return to baseline (allowing for some overhead)
-    let final_usage = get_test_memory_usage();
+    let final_usage = get_test_memory_usage(;
     assert!(final_usage <= initial_usage + 1024, "Memory not properly cleaned up");
 }
 
@@ -219,7 +219,7 @@ fn test_automatic_memory_cleanup() {
 fn test_error_path_memory_safety() {
     // Test that error conditions don't cause memory leaks
     
-    let capability = DynamicNNCapability::new();
+    let capability = DynamicNNCapability::new(;
     
     // Create operations that will fail
     let failing_operations = vec![
@@ -230,7 +230,7 @@ fn test_error_path_memory_safety() {
     
     for op in failing_operations {
         // These should fail gracefully without leaking memory
-        let result = capability.verify_operation(&op);
+        let result = capability.verify_operation(&op;
         assert!(result.is_err(), "Expected operation to fail");
     }
     
@@ -243,7 +243,7 @@ fn test_concurrent_resource_safety() {
     use std::sync::{Arc, Mutex};
     use std::thread;
     
-    let capability = Arc::new(Mutex::new(DynamicNNCapability::new()));
+    let capability = Arc::new(Mutex::new(DynamicNNCapability::new();
     let mut handles = vec![];
     
     // Spawn multiple threads trying to use resources
@@ -257,9 +257,9 @@ fn test_concurrent_resource_safety() {
             
             // This should be thread-safe
             if let Ok(cap) = cap.lock() {
-                let _result = cap.verify_operation(&op);
+                let _result = cap.verify_operation(&op;
             }
-        });
+        };
         handles.push(handle);
     }
     

@@ -60,21 +60,21 @@ impl Sha256 {
         let mut data_offset = 0;
         
         // Update bit length
-        self.bit_len = self.bit_len.saturating_add((data.len() as u64) * 8);
+        self.bit_len = self.bit_len.saturating_add((data.len() as u64) * 8;
         
         // If we have buffered data, fill the buffer first
         if self.buffer_len > 0 {
-            let copy_len = (64 - self.buffer_len).min(data.len());
+            let copy_len = (64 - self.buffer_len).min(data.len(;
             self.buffer[self.buffer_len..self.buffer_len + copy_len]
-                .copy_from_slice(&data[..copy_len]);
+                .copy_from_slice(&data[..copy_len];
             self.buffer_len += copy_len;
             data_offset += copy_len;
             
             // Process complete block if buffer is full
             if self.buffer_len == 64 {
                 let mut block = [0u8; 64];
-                block.copy_from_slice(&self.buffer);
-                self.process_block(&block);
+                block.copy_from_slice(&self.buffer;
+                self.process_block(&block;
                 self.buffer_len = 0;
             }
         }
@@ -83,15 +83,15 @@ impl Sha256 {
         while data_offset + 64 <= data.len() {
             let block = &data[data_offset..data_offset + 64];
             let mut block_array = [0u8; 64];
-            block_array.copy_from_slice(block);
-            self.process_block(&block_array);
+            block_array.copy_from_slice(block;
+            self.process_block(&block_array;
             data_offset += 64;
         }
         
         // Buffer any remaining bytes
         if data_offset < data.len() {
             let remaining = data.len() - data_offset;
-            self.buffer[..remaining].copy_from_slice(&data[data_offset..]);
+            self.buffer[..remaining].copy_from_slice(&data[data_offset..];
             self.buffer_len = remaining;
         }
     }
@@ -99,18 +99,18 @@ impl Sha256 {
     /// Finalize the hash and return the result
     pub fn finalize(mut self) -> [u8; 32] {
         // Pad the message
-        self.pad();
+        self.pad(;
         
         // Convert state to bytes
         let mut result = [0u8; 32];
         for (i, &word) in self.state.iter().enumerate() {
-            result[i * 4..(i + 1) * 4].copy_from_slice(&word.to_be_bytes());
+            result[i * 4..(i + 1) * 4].copy_from_slice(&word.to_be_bytes(;
         }
         result
     }
     
     /// Process a single 512-bit block
-    fn process_block(&mut self, block: &[u8; 64]) {
+    fn process_block(&mut self, block: &[u8); 64]) {
         // Message schedule array
         let mut w = [0u32; 64];
         
@@ -121,17 +121,17 @@ impl Sha256 {
                 block[i * 4 + 1],
                 block[i * 4 + 2],
                 block[i * 4 + 3],
-            ]);
+            ];
         }
         
         // Extend the sixteen 32-bit words into sixty-four 32-bit words
         for i in 16..64 {
-            let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
-            let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
+            let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3;
+            let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10;
             w[i] = w[i - 16]
                 .wrapping_add(s0)
                 .wrapping_add(w[i - 7])
-                .wrapping_add(s1);
+                .wrapping_add(s1;
         }
         
         // Initialize working variables
@@ -146,36 +146,36 @@ impl Sha256 {
         
         // Main loop
         for i in 0..64 {
-            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
-            let ch = (e & f) ^ ((!e) & g);
+            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25;
+            let ch = (e & f) ^ ((!e) & g;
             let temp1 = h
                 .wrapping_add(s1)
                 .wrapping_add(ch)
                 .wrapping_add(K[i])
-                .wrapping_add(w[i]);
-            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
-            let maj = (a & b) ^ (a & c) ^ (b & c);
-            let temp2 = s0.wrapping_add(maj);
+                .wrapping_add(w[i];
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22;
+            let maj = (a & b) ^ (a & c) ^ (b & c;
+            let temp2 = s0.wrapping_add(maj;
             
             h = g;
             g = f;
             f = e;
-            e = d.wrapping_add(temp1);
+            e = d.wrapping_add(temp1;
             d = c;
             c = b;
             b = a;
-            a = temp1.wrapping_add(temp2);
+            a = temp1.wrapping_add(temp2;
         }
         
         // Add the compressed chunk to the current hash value
-        self.state[0] = self.state[0].wrapping_add(a);
-        self.state[1] = self.state[1].wrapping_add(b);
-        self.state[2] = self.state[2].wrapping_add(c);
-        self.state[3] = self.state[3].wrapping_add(d);
-        self.state[4] = self.state[4].wrapping_add(e);
-        self.state[5] = self.state[5].wrapping_add(f);
-        self.state[6] = self.state[6].wrapping_add(g);
-        self.state[7] = self.state[7].wrapping_add(h);
+        self.state[0] = self.state[0].wrapping_add(a;
+        self.state[1] = self.state[1].wrapping_add(b;
+        self.state[2] = self.state[2].wrapping_add(c;
+        self.state[3] = self.state[3].wrapping_add(d;
+        self.state[4] = self.state[4].wrapping_add(e;
+        self.state[5] = self.state[5].wrapping_add(f;
+        self.state[6] = self.state[6].wrapping_add(g;
+        self.state[7] = self.state[7].wrapping_add(h;
     }
     
     /// Apply padding to the message
@@ -187,29 +187,29 @@ impl Sha256 {
         // Check if we have room for the 64-bit length
         if self.buffer_len > 56 {
             // Fill rest of block with zeros and process
-            self.buffer[self.buffer_len..].fill(0);
+            self.buffer[self.buffer_len..].fill(0;
             let mut block = [0u8; 64];
-            block.copy_from_slice(&self.buffer);
-            self.process_block(&block);
-            self.buffer.fill(0);
+            block.copy_from_slice(&self.buffer;
+            self.process_block(&block;
+            self.buffer.fill(0;
             self.buffer_len = 0;
         } else {
             // Fill with zeros up to length field
-            self.buffer[self.buffer_len..56].fill(0);
+            self.buffer[self.buffer_len..56].fill(0;
         }
         
         // Append length in bits as 64-bit big-endian
-        self.buffer[56..64].copy_from_slice(&self.bit_len.to_be_bytes());
+        self.buffer[56..64].copy_from_slice(&self.bit_len.to_be_bytes(;
         let mut final_block = [0u8; 64];
-        final_block.copy_from_slice(&self.buffer);
-        self.process_block(&final_block);
+        final_block.copy_from_slice(&self.buffer;
+        self.process_block(&final_block;
     }
 }
 
 /// Compute SHA-256 hash of data in one shot
 pub fn sha256(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
+    let mut hasher = Sha256::new(;
+    hasher.update(data;
     hasher.finalize()
 }
 
@@ -219,48 +219,48 @@ mod tests {
     
     #[test]
     fn test_empty_hash() {
-        let hash = sha256(b"");
+        let hash = sha256(b"";
         let expected = [
             0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
             0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
             0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
             0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55,
         ];
-        assert_eq!(hash, expected);
+        assert_eq!(hash, expected;
     }
     
     #[test]
     fn test_abc_hash() {
-        let hash = sha256(b"abc");
+        let hash = sha256(b"abc";
         let expected = [
             0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea,
             0x41, 0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23,
             0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c,
             0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad,
         ];
-        assert_eq!(hash, expected);
+        assert_eq!(hash, expected;
     }
     
     #[test]
     fn test_long_message() {
-        let hash = sha256(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq");
+        let hash = sha256(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
         let expected = [
             0x24, 0x8d, 0x6a, 0x61, 0xd2, 0x06, 0x38, 0xb8,
             0xe5, 0xc0, 0x26, 0x93, 0x0c, 0x3e, 0x60, 0x39,
             0xa3, 0x3c, 0xe4, 0x59, 0x64, 0xff, 0x21, 0x67,
             0xf6, 0xec, 0xed, 0xd4, 0x19, 0xdb, 0x06, 0xc1,
         ];
-        assert_eq!(hash, expected);
+        assert_eq!(hash, expected;
     }
     
     #[test]
     fn test_exact_block_size() {
         // Test with exactly 64 bytes (one block)
         let data = b"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-        assert_eq!(data.len(), 64);
-        let hash = sha256(data);
+        assert_eq!(data.len(), 64;
+        let hash = sha256(data;
         // Just verify it doesn't panic and produces a hash
-        assert_eq!(hash.len(), 32);
+        assert_eq!(hash.len(), 32;
     }
     
     #[test]
@@ -269,15 +269,15 @@ mod tests {
         let data = b"The quick brown fox jumps over the lazy dog";
         
         // One shot
-        let hash1 = sha256(data);
+        let hash1 = sha256(data;
         
         // Incremental
-        let mut hasher = Sha256::new();
-        hasher.update(&data[..10]);
-        hasher.update(&data[10..20]);
-        hasher.update(&data[20..]);
-        let hash2 = hasher.finalize();
+        let mut hasher = Sha256::new(;
+        hasher.update(&data[..10];
+        hasher.update(&data[10..20];
+        hasher.update(&data[20..];
+        let hash2 = hasher.finalize(;
         
-        assert_eq!(hash1, hash2);
+        assert_eq!(hash1, hash2;
     }
 }

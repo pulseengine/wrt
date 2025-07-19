@@ -106,7 +106,7 @@ impl LinuxFutex {
             in("r9") val3,
             out("rcx") _,
             out("r11") _,
-        );
+        ;
 
         #[cfg(target_arch = "aarch64")]
         core::arch::asm!(
@@ -118,7 +118,7 @@ impl LinuxFutex {
             in("x3") timeout,
             in("x4") uaddr2,
             in("x5") val3,
-        );
+        ;
 
         result as i32
     }
@@ -177,7 +177,7 @@ impl FutexLike for LinuxFutex {
 
         let timeout_ptr = match timeout {
             Some(duration) => {
-                let ts = TimeSpec::from_duration(duration);
+                let ts = TimeSpec::from_duration(duration;
                 &ts as *const TimeSpec
             }
             None => core::ptr::null(),

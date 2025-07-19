@@ -60,7 +60,7 @@ pub fn wasi_get_terminal_stdin(
         use std::io::{self, IsTerminal};
         
         // Check if stdin is a terminal
-        let is_terminal = io::stdin().is_terminal();
+        let is_terminal = io::stdin().is_terminal(;
         
         if is_terminal {
             // Return some terminal handle (simplified)
@@ -89,7 +89,7 @@ pub fn wasi_get_terminal_stdout(
         use std::io::{self, IsTerminal};
         
         // Check if stdout is a terminal
-        let is_terminal = io::stdout().is_terminal();
+        let is_terminal = io::stdout().is_terminal(;
         
         if is_terminal {
             // Return some terminal handle (simplified)
@@ -118,7 +118,7 @@ pub fn wasi_get_terminal_stderr(
         use std::io::{self, IsTerminal};
         
         // Check if stderr is a terminal
-        let is_terminal = io::stderr().is_terminal();
+        let is_terminal = io::stderr().is_terminal(;
         
         if is_terminal {
             // Return some terminal handle (simplified)
@@ -139,10 +139,10 @@ pub fn wasi_get_terminal_stderr(
 ///
 /// Helper function to filter environment variables based on WASI capabilities
 pub fn get_filtered_environment(capabilities: &WasiEnvironmentCapabilities) -> Result<Vec<(String, String)>> {
-    let mut filtered_vars = Vec::with_capacity(0);
+    let mut filtered_vars = Vec::with_capacity(0;
     
     if !capabilities.environ_access {
-        return Ok(filtered_vars);
+        return Ok(filtered_vars;
     }
     
     #[cfg(feature = "std")]
@@ -151,7 +151,7 @@ pub fn get_filtered_environment(capabilities: &WasiEnvironmentCapabilities) -> R
         
         for (key, value) in env::vars() {
             if capabilities.is_env_var_allowed(&key) {
-                filtered_vars.push((key, value));
+                filtered_vars.push((key, value);
             }
         }
     }
@@ -164,7 +164,7 @@ pub fn get_filtered_environment(capabilities: &WasiEnvironmentCapabilities) -> R
 /// Helper function to filter arguments based on WASI capabilities
 pub fn get_filtered_arguments(capabilities: &WasiEnvironmentCapabilities) -> Result<Vec<String>> {
     if !capabilities.args_access {
-        return Ok(Vec::with_capacity(0));
+        return Ok(Vec::with_capacity(0;
     }
     
     #[cfg(feature = "std")]
@@ -186,17 +186,17 @@ mod tests {
     #[test]
     fn test_wasi_get_arguments() -> Result<()> {
         // Initialize memory system for testing
-        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize();
+        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize(;
         
         let result = wasi_cli_get_arguments(&mut (), vec![])?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         
         // Should return a list
         if let Value::List(_args) = &result[0] {
             // Arguments should be a list of strings
             // In test environment, may be empty or contain test runner args
         } else {
-            panic!("Expected list of arguments");
+            panic!("Expected list of arguments";
         }
         
         Ok(())
@@ -205,24 +205,24 @@ mod tests {
     #[test]
     fn test_wasi_get_environment() -> Result<()> {
         // Initialize memory system for testing
-        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize();
+        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize(;
         
         let result = wasi_cli_get_environment(&mut (), vec![])?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         
         // Should return a list of tuples
         if let Value::List(env_vars) = &result[0] {
             // Each environment variable should be a tuple of (key, value)
             for env_var in env_vars {
                 if let Value::Tuple(tuple) = env_var {
-                    assert_eq!(tuple.len(), 2);
+                    assert_eq!(tuple.len(), 2;
                     // Both should be strings
-                    assert!(matches!(tuple[0], Value::String(_)));
-                    assert!(matches!(tuple[1], Value::String(_)));
+                    assert!(matches!(tuple[0], Value::String(_));
+                    assert!(matches!(tuple[1], Value::String(_));
                 }
             }
         } else {
-            panic!("Expected list of environment variables");
+            panic!("Expected list of environment variables";
         }
         
         Ok(())
@@ -231,19 +231,19 @@ mod tests {
     #[test]
     fn test_wasi_get_initial_cwd() -> Result<()> {
         // Initialize memory system for testing
-        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize();
+        let _ = wrt_foundation::memory_init::MemoryInitializer::initialize(;
         
         let result = wasi_get_initial_cwd(&mut (), vec![])?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         
         // Should return an option
         if let Value::Option(cwd_opt) = &result[0] {
             // May be Some(string) or None depending on environment
             if let Some(cwd_value) = cwd_opt {
-                assert!(matches!(**cwd_value, Value::String(_)));
+                assert!(matches!(**cwd_value, Value::String(_));
             }
         } else {
-            panic!("Expected option for current working directory");
+            panic!("Expected option for current working directory";
         }
         
         Ok(())
@@ -259,7 +259,7 @@ mod tests {
         
         // Should only contain PATH if it exists in environment
         for (key, _value) in &filtered {
-            assert_eq!(key, "PATH");
+            assert_eq!(key, "PATH";
         }
         
         Ok(())
@@ -278,7 +278,7 @@ mod tests {
         // Test with access disabled
         capabilities.args_access = false;
         let no_args = get_filtered_arguments(&capabilities)?;
-        assert!(no_args.is_empty());
+        assert!(no_args.is_empty();
         
         Ok(())
     }

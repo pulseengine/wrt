@@ -74,11 +74,11 @@ pub trait IpcChannel: Send + Sync {
 
 /// Client identifier for replies
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClientId(pub u64);
+pub struct ClientId(pub u64;
 
 /// Channel identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ChannelId(pub u64);
+pub struct ChannelId(pub u64;
 
 /// Generic IPC server builder
 pub struct IpcServerBuilder {
@@ -214,7 +214,7 @@ impl IpcServer {
                     // Process message
                     match self.handler.handle_message(msg, client) {
                         Ok(Some(reply)) => {
-                            let _ = self.channel.reply(client, &reply);
+                            let _ = self.channel.reply(client, &reply;
                         }
                         Ok(None) => {
                             // No reply needed
@@ -226,14 +226,14 @@ impl IpcServer {
                                 data: e.to_string().into_bytes(),
                                 correlation_id: None,
                             };
-                            let _ = self.channel.reply(client, &error_msg);
+                            let _ = self.channel.reply(client, &error_msg;
                         }
                     }
                 }
                 Err(e) => {
                     if *self.running.lock() {
                         // Only log error if we're still running
-                        eprintln!("IPC server error: {}", e);
+                        eprintln!("IPC server error: {}", e;
                     }
                 }
             }
@@ -260,9 +260,9 @@ mod tests {
             correlation_id: Some(12345),
         };
 
-        assert_eq!(msg.msg_type, MessageType::LoadModule);
-        assert_eq!(msg.data, vec![1, 2, 3, 4]);
-        assert_eq!(msg.correlation_id, Some(12345));
+        assert_eq!(msg.msg_type, MessageType::LoadModule;
+        assert_eq!(msg.data, vec![1, 2, 3, 4];
+        assert_eq!(msg.correlation_id, Some(12345;
     }
 
     #[test]
@@ -270,11 +270,11 @@ mod tests {
         let builder = IpcServerBuilder::new("test_channel")
             .with_max_message_size(1024 * 1024)
             .with_max_clients(50)
-            .with_timeout(Duration::from_secs(60));
+            .with_timeout(Duration::from_secs(60;
 
-        assert_eq!(builder.name, "test_channel");
-        assert_eq!(builder.max_message_size, 1024 * 1024);
-        assert_eq!(builder.max_clients, 50);
-        assert_eq!(builder.timeout, Duration::from_secs(60));
+        assert_eq!(builder.name, "test_channel";
+        assert_eq!(builder.max_message_size, 1024 * 1024;
+        assert_eq!(builder.max_clients, 50;
+        assert_eq!(builder.timeout, Duration::from_secs(60;
     }
 }

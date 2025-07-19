@@ -95,13 +95,13 @@ impl Graph {
         capability: &dyn NeuralNetworkCapability,
     ) -> Result<Self> {
         // Calculate hash for verification
-        let hash = calculate_sha256(data);
+        let hash = calculate_sha256(data;
         
         // For higher safety levels, verify the model is approved
-        let verification_level = capability.verification_level();
+        let verification_level = capability.verification_level(;
         if matches!(verification_level, VerificationLevel::Continuous | VerificationLevel::Redundant | VerificationLevel::Formal) {
             if !capability.is_model_approved(&hash) {
-                return Err(Error::wasi_verification_failed("Model hash not in approved list"));
+                return Err(Error::wasi_verification_failed("Model hash not in approved list";
             }
         }
         
@@ -181,9 +181,9 @@ impl GraphStore {
     
     /// Add a graph to the store
     pub fn add(&mut self, graph: Graph) -> Result<u32> {
-        let id = graph.id();
+        let id = graph.id(;
         if self.graphs.len() >= MAX_GRAPHS {
-            return Err(Error::wasi_resource_exhausted("Maximum number of graphs reached"));
+            return Err(Error::wasi_resource_exhausted("Maximum number of graphs reached";
         }
         self.graphs.push(graph);
         Ok(id)
@@ -216,7 +216,7 @@ impl GraphStore {
     pub fn next_id(&mut self) -> Result<u32> {
         // Check if we're approaching wraparound danger zone
         if self.next_id > u32::MAX - 1000 {
-            return Err(Error::wasi_resource_exhausted("Graph ID space exhausted"));
+            return Err(Error::wasi_resource_exhausted("Graph ID space exhausted";
         }
         
         let id = self.next_id;
@@ -242,12 +242,12 @@ fn calculate_sha256(data: &[u8]) -> [u8; 32] {
 }
 
 /// Global graph store instance
-static GRAPH_STORE: OnceLock<Mutex<GraphStore>> = OnceLock::new();
+static GRAPH_STORE: OnceLock<Mutex<GraphStore>> = OnceLock::new(;
 
 /// Initialize the graph store
 pub fn initialize_graph_store() -> Result<()> {
     let store = GraphStore::new()?;
-    let mutex = Mutex::new(store);
+    let mutex = Mutex::new(store;
     
     GRAPH_STORE.set(mutex)
         .map_err(|_| Error::wasi_capability_unavailable("Graph store already initialized"))
@@ -277,18 +277,18 @@ mod tests {
     
     #[test]
     fn test_graph_encoding_conversion() {
-        assert_eq!(GraphEncoding::ONNX.to_model_format(), ModelFormat::ONNX);
-        assert_eq!(GraphEncoding::TractNative.to_model_format(), ModelFormat::TractNative);
+        assert_eq!(GraphEncoding::ONNX.to_model_format(), ModelFormat::ONNX;
+        assert_eq!(GraphEncoding::TractNative.to_model_format(), ModelFormat::TractNative;
     }
     
     #[test]
     fn test_graph_store() {
         let mut store = GraphStore::new().unwrap();
-        assert_eq!(store.count(), 0);
-        assert!(!store.is_full());
+        assert_eq!(store.count(), 0;
+        assert!(!store.is_full();
         
         let id = store.next_id().unwrap();
-        assert_eq!(id, 1);
-        assert_eq!(store.next_id().unwrap(), 2);
+        assert_eq!(id, 1;
+        assert_eq!(store.next_id().unwrap(), 2;
     }
 }

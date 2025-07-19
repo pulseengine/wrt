@@ -97,7 +97,7 @@ impl SimpleExecutionMonitor {
 impl ExecutionMonitor for SimpleExecutionMonitor {
     fn track_thread(&self, handle: &ThreadHandle) -> Result<()> {
         if !self.enabled {
-            return Ok(());
+            return Ok((;
         }
 
         let info = ThreadMonitorInfo {
@@ -108,33 +108,33 @@ impl ExecutionMonitor for SimpleExecutionMonitor {
             cpu_used: Duration::from_secs(0),
         };
 
-        self.threads.write().insert(handle.id(), info);
+        self.threads.write().insert(handle.id(), info;
         Ok(())
     }
 
     fn check_thread_health(&self, id: u64) -> Result<ThreadHealth> {
-        let threads = self.threads.read();
+        let threads = self.threads.read(;
         let info = threads.get(&id).ok_or_else(|| {
             Error::runtime_execution_error("Thread not found")
         })?;
 
-        let now = std::time::Instant::now();
+        let now = std::time::Instant::now(;
 
         // Check deadline
         if let Some(deadline) = info.deadline {
             if now > deadline {
-                return Ok(ThreadHealth::LifetimeExceeded);
+                return Ok(ThreadHealth::LifetimeExceeded;
             }
         }
 
         // Check CPU quota
         if info.cpu_used > info.cpu_quota {
-            return Ok(ThreadHealth::CpuQuotaExceeded);
+            return Ok(ThreadHealth::CpuQuotaExceeded;
         }
 
         // Check heartbeat (simple unresponsive check)
         if now.duration_since(info.last_heartbeat) > Duration::from_secs(30) {
-            return Ok(ThreadHealth::Unresponsive);
+            return Ok(ThreadHealth::Unresponsive;
         }
 
         Ok(ThreadHealth::Healthy)
@@ -142,7 +142,7 @@ impl ExecutionMonitor for SimpleExecutionMonitor {
 
     fn kill_unhealthy_thread(&self, id: u64) -> Result<()> {
         // Remove from tracking
-        self.threads.write().remove(&id);
+        self.threads.write().remove(&id;
         // In a real implementation, we would forcibly terminate the thread
         // This is platform-specific and dangerous, so we just remove from tracking
         Ok(())
@@ -191,8 +191,8 @@ impl WasmThreadManager {
         >,
     ) -> Result<Self> {
         let pool = create_thread_pool(&config)?;
-        let resource_tracker = Arc::new(ResourceTracker::new(limits));
-        let monitor = Arc::new(SimpleExecutionMonitor::new());
+        let resource_tracker = Arc::new(ResourceTracker::new(limits;
+        let monitor = Arc::new(SimpleExecutionMonitor::new(;
 
         Ok(Self {
             pool,
@@ -208,7 +208,7 @@ impl WasmThreadManager {
 
     /// Register a WebAssembly module
     pub fn register_module(&self, module: WasmModuleInfo) -> Result<()> {
-        self.modules.write().insert(module.id, module);
+        self.modules.write().insert(module.id, module;
         Ok(())
     }
 
@@ -218,7 +218,7 @@ impl WasmThreadManager {
         self.cancel_module_threads(module_id)?;
 
         // Remove module
-        self.modules.write().remove(&module_id);
+        self.modules.write().remove(&module_id;
         Ok(())
     }
 
@@ -226,12 +226,12 @@ impl WasmThreadManager {
     pub fn spawn_thread(&self, request: ThreadSpawnRequest) -> Result<u64> {
         // Check if shutting down
         if *self.shutdown.lock() {
-            return Err(Error::runtime_execution_error("Thread manager is shutting down"));
+            return Err(Error::runtime_execution_error("Thread manager is shutting down";
         }
 
         // Get module info
         let module = {
-            let modules = self.modules.read();
+            let modules = self.modules.read(;
             modules.get(&request.module_id).cloned().ok_or_else(|| {
                 Error::new(
                     ErrorCategory::Validation,
@@ -242,11 +242,11 @@ impl WasmThreadManager {
 
         // Binary std/no_std choice
         if !self.resource_tracker.can_allocate_thread(&request)? {
-            return Err(Error::runtime_execution_error("Thread allocation limit exceeded"));
+            return Err(Error::runtime_execution_error("Thread allocation limit exceeded";
         }
 
         // Get thread ID
-        let thread_id = self.next_thread_id.fetch_add(1, Ordering::AcqRel);
+        let thread_id = self.next_thread_id.fetch_add(1, Ordering::AcqRel;
 
         // Determine stack size
         let stack_size = request
@@ -257,10 +257,10 @@ impl WasmThreadManager {
         // Calculate deadline
         let deadline = module.cpu_quota.checked_add(Duration::from_secs(10)).map(|d| {
             std::time::Instant::now() + d
-        });
+        };
 
         // Create WASM task
-        let priority = request.priority.unwrap_or(module.default_priority);
+        let priority = request.priority.unwrap_or(module.default_priority;
         let task = WasmTask {
             id: thread_id,
             function_id: request.function_id,
@@ -282,8 +282,8 @@ impl WasmThreadManager {
             Err(e) => {
                 // Release resources on failure
                 self.resource_tracker
-                    .release_thread(request.module_id, stack_size);
-                return Err(e);
+                    .release_thread(request.module_id, stack_size;
+                return Err(e;
             }
         };
 
@@ -300,7 +300,7 @@ impl WasmThreadManager {
             stack_size,
         };
 
-        self.threads.write().insert(thread_id, thread_info);
+        self.threads.write().insert(thread_id, thread_info;
 
         Ok(thread_id)
     }
@@ -309,7 +309,7 @@ impl WasmThreadManager {
     pub fn join_thread(&self, thread_id: u64) -> Result<ThreadExecutionResult> {
         // Remove thread from tracking
         let thread_info = {
-            let mut threads = self.threads.write();
+            let mut threads = self.threads.write(;
             threads.remove(&thread_id).ok_or_else(|| {
                 Error::new(
                     ErrorCategory::Validation,
@@ -321,12 +321,12 @@ impl WasmThreadManager {
 
         // Release resources
         self.resource_tracker
-            .release_thread(thread_info.module_id, thread_info.stack_size);
+            .release_thread(thread_info.module_id, thread_info.stack_size;
 
         // Check if thread exceeded deadline
         if let Some(deadline) = thread_info.deadline {
             if std::time::Instant::now() > deadline {
-                return Ok(ThreadExecutionResult::Timeout);
+                return Ok(ThreadExecutionResult::Timeout;
             }
         }
 
@@ -339,7 +339,7 @@ impl WasmThreadManager {
 
     /// Check if a thread is still running
     pub fn is_thread_running(&self, thread_id: u64) -> Result<bool> {
-        let threads = self.threads.read();
+        let threads = self.threads.read(;
         let thread_info = threads.get(&thread_id).ok_or_else(|| {
             Error::runtime_execution_error("Thread not found")
         })?;
@@ -351,17 +351,17 @@ impl WasmThreadManager {
     pub fn cancel_thread(&self, thread_id: u64) -> Result<()> {
         // In a real implementation, we would send a cancellation signal
         // For now, we just remove it from tracking
-        let mut threads = self.threads.write();
+        let mut threads = self.threads.write(;
         if let Some(thread_info) = threads.remove(&thread_id) {
             self.resource_tracker
-                .release_thread(thread_info.module_id, thread_info.stack_size);
+                .release_thread(thread_info.module_id, thread_info.stack_size;
         }
         Ok(())
     }
 
     /// Cancel all threads for a specific module
     pub fn cancel_module_threads(&self, module_id: u64) -> Result<()> {
-        let mut threads = self.threads.write();
+        let mut threads = self.threads.write(;
         let to_remove: Vec<u64> = threads
             .iter()
             .filter(|(_, info)| info.module_id == module_id)
@@ -371,7 +371,7 @@ impl WasmThreadManager {
         for thread_id in to_remove {
             if let Some(thread_info) = threads.remove(&thread_id) {
                 self.resource_tracker
-                    .release_thread(thread_info.module_id, thread_info.stack_size);
+                    .release_thread(thread_info.module_id, thread_info.stack_size;
             }
         }
 
@@ -380,8 +380,8 @@ impl WasmThreadManager {
 
     /// Perform health check on all threads
     pub fn health_check(&self) -> Result<Vec<(u64, ThreadHealth)>> {
-        let threads = self.threads.read();
-        let mut results = Vec::new();
+        let threads = self.threads.read(;
+        let mut results = Vec::new(;
 
         for (thread_id, _) in threads.iter() {
             match self.monitor.check_thread_health(*thread_id) {
@@ -405,7 +405,7 @@ impl WasmThreadManager {
                 | ThreadHealth::Deadlocked
                 | ThreadHealth::Unresponsive => {
                     if self.cancel_thread(thread_id).is_ok() {
-                        let _ = self.monitor.kill_unhealthy_thread(thread_id);
+                        let _ = self.monitor.kill_unhealthy_thread(thread_id;
                         killed += 1;
                     }
                 }
@@ -418,8 +418,8 @@ impl WasmThreadManager {
 
     /// Get thread manager statistics
     pub fn get_stats(&self) -> ThreadManagerStats {
-        let threads = self.threads.read();
-        let pool_stats = self.pool.get_stats();
+        let threads = self.threads.read(;
+        let pool_stats = self.pool.get_stats(;
 
         ThreadManagerStats {
             total_threads: threads.len(),
@@ -435,7 +435,7 @@ impl WasmThreadManager {
         // Cancel all threads
         let thread_ids: Vec<u64> = self.threads.read().keys().cloned().collect();
         for thread_id in thread_ids {
-            let _ = self.cancel_thread(thread_id);
+            let _ = self.cancel_thread(thread_id;
         }
 
         // Shutdown thread pool
@@ -480,19 +480,19 @@ mod tests {
 
     #[test]
     fn test_wasm_thread_manager_creation() {
-        let config = ThreadPoolConfig::default();
-        let limits = ThreadingLimits::default();
-        let executor = create_test_executor();
+        let config = ThreadPoolConfig::default(;
+        let limits = ThreadingLimits::default(;
+        let executor = create_test_executor(;
 
-        let manager = WasmThreadManager::new(config, limits, executor);
-        assert!(manager.is_ok());
+        let manager = WasmThreadManager::new(config, limits, executor;
+        assert!(manager.is_ok();
     }
 
     #[test]
     fn test_module_registration() {
-        let config = ThreadPoolConfig::default();
-        let limits = ThreadingLimits::default();
-        let executor = create_test_executor();
+        let config = ThreadPoolConfig::default(;
+        let limits = ThreadingLimits::default(;
+        let executor = create_test_executor(;
 
         let manager = WasmThreadManager::new(config, limits, executor).unwrap();
 
@@ -505,15 +505,15 @@ mod tests {
             default_priority: ThreadPriority::Normal,
         };
 
-        assert!(manager.register_module(module).is_ok());
-        assert!(manager.unregister_module(1).is_ok());
+        assert!(manager.register_module(module).is_ok();
+        assert!(manager.unregister_module(1).is_ok();
     }
 
     #[test]
     fn test_serialization() {
-        let config = ThreadPoolConfig::default();
-        let limits = ThreadingLimits::default();
-        let executor = create_test_executor();
+        let config = ThreadPoolConfig::default(;
+        let limits = ThreadingLimits::default(;
+        let executor = create_test_executor(;
 
         let manager = WasmThreadManager::new(config, limits, executor).unwrap();
 
@@ -526,9 +526,9 @@ mod tests {
         let serialized = manager.serialize_component_values(&values).unwrap();
         let deserialized = manager.deserialize_component_values(&serialized).unwrap();
 
-        assert_eq!(values.len(), deserialized.len());
-        assert_eq!(values[0], deserialized[0]);
-        assert_eq!(values[1], deserialized[1]);
-        assert_eq!(values[2], deserialized[2]);
+        assert_eq!(values.len(), deserialized.len(;
+        assert_eq!(values[0], deserialized[0];
+        assert_eq!(values[1], deserialized[1];
+        assert_eq!(values[2], deserialized[2];
     }
 }

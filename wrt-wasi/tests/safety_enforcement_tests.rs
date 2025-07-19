@@ -12,20 +12,20 @@ use wrt_foundation::{safe_managed_alloc, memory_init::{init_wrt_memory, init_cra
 #[test]
 fn test_safety_level_detection() {
     // Test that we can detect the current safety level
-    let level = wasi_safety_level();
-    println!("Current safety level: {}", level);
+    let level = wasi_safety_level(;
+    println!("Current safety level: {}", level;
     
     // Verify it's one of the expected values
     assert!(matches!(
         level,
         "dynamic-allocation" | "bounded-collections" | "static-memory-safety" | "maximum-safety"
-    ));
+    ;
 }
 
 #[test]
 fn test_allocation_size_limits() {
-    let max_size = wasi_max_allocation_size();
-    println!("Maximum allocation size: {} bytes", max_size);
+    let max_size = wasi_max_allocation_size(;
+    println!("Maximum allocation size: {} bytes", max_size;
     
     // Verify size based on safety level
     match wasi_safety_level() {
@@ -44,7 +44,7 @@ fn test_safety_aware_allocation_enforcement() {
     init_crate_memory(CrateId::Wasi).unwrap();
     
     // Try to allocate within limits
-    let small_alloc = safe_managed_alloc!(1024, WASI_CRATE_ID);
+    let small_alloc = safe_managed_alloc!(1024, WASI_CRATE_ID;
     assert!(small_alloc.is_ok(), "Small allocation should succeed");
     
     // The actual enforcement happens at compile time for maximum-safety
@@ -53,20 +53,20 @@ fn test_safety_aware_allocation_enforcement() {
         "maximum-safety" => {
             // In maximum-safety mode, allocations > 16KB would fail at compile time
             // We can't test compile-time failures in a runtime test
-            println!("Maximum-safety mode enforces 16KB limit at compile time");
+            println!("Maximum-safety mode enforces 16KB limit at compile time";
         }
         "static-memory-safety" => {
             // Try to allocate more than 32KB
-            let large_alloc = safe_managed_alloc!(40000, WASI_CRATE_ID);
+            let large_alloc = safe_managed_alloc!(40000, WASI_CRATE_ID;
             assert!(large_alloc.is_err(), "Large allocation should fail in static-memory-safety mode");
         }
         "bounded-collections" => {
             // Try to allocate more than 64KB
-            let large_alloc = safe_managed_alloc!(70000, WASI_CRATE_ID);
+            let large_alloc = safe_managed_alloc!(70000, WASI_CRATE_ID;
             assert!(large_alloc.is_err(), "Large allocation should fail in bounded-collections mode");
         }
         _ => {
-            println!("Dynamic allocation mode has no limits");
+            println!("Dynamic allocation mode has no limits";
         }
     }
 }
@@ -75,7 +75,7 @@ fn test_safety_aware_allocation_enforcement() {
 fn test_capability_defaults_by_safety_level() {
     // Test that default capabilities change based on safety level
     let provider = WasiProviderBuilder::new().build().unwrap();
-    let caps = provider.capabilities();
+    let caps = provider.capabilities(;
     
     match wasi_safety_level() {
         "maximum-safety" => {
@@ -83,7 +83,7 @@ fn test_capability_defaults_by_safety_level() {
             assert!(!caps.filesystem.read_access);
             assert!(!caps.filesystem.write_access);
             assert!(!caps.environment.environ_access);
-            assert!(caps.clocks.monotonic_access); // Only monotonic clock allowed
+            assert!(caps.clocks.monotonic_access)); // Only monotonic clock allowed
         }
         "static-memory-safety" | "bounded-collections" => {
             // Should have sandboxed capabilities
@@ -109,7 +109,7 @@ fn test_safety_level_override() {
         .build()
         .unwrap();
     
-    let caps_minimal = provider_minimal.capabilities();
+    let caps_minimal = provider_minimal.capabilities(;
     assert!(!caps_minimal.filesystem.read_access);
     
     let provider_sandbox = WasiProviderBuilder::new()
@@ -117,7 +117,7 @@ fn test_safety_level_override() {
         .build()
         .unwrap();
     
-    let caps_sandbox = provider_sandbox.capabilities();
+    let caps_sandbox = provider_sandbox.capabilities(;
     assert!(caps_sandbox.filesystem.read_access);
     assert!(!caps_sandbox.filesystem.write_access);
 }
@@ -131,12 +131,12 @@ fn test_bounded_collections_in_capabilities() {
     
     // Should be able to add up to MAX_FILESYSTEM_PATHS (32)
     for i in 0..32 {
-        let path = format!("/path/{}", i);
+        let path = format!("/path/{}", i;
         assert!(fs_caps.add_allowed_path(&path).is_ok(), "Should add path {}", i);
     }
     
     // 33rd path should fail
-    let result = fs_caps.add_allowed_path("/path/33");
+    let result = fs_caps.add_allowed_path("/path/33";
     assert!(result.is_err(), "Should fail to add 33rd path due to bounded collection limit");
 }
 
@@ -144,12 +144,12 @@ fn test_bounded_collections_in_capabilities() {
 #[test]
 fn test_asil_d_specific_enforcement() {
     // This test only runs when ASIL-D feature is enabled
-    assert_eq!(wasi_safety_level(), "maximum-safety");
-    assert_eq!(wasi_max_allocation_size(), 16384);
+    assert_eq!(wasi_safety_level(), "maximum-safety";
+    assert_eq!(wasi_max_allocation_size(), 16384;
     
     // ASIL-D should get minimal capabilities by default
     let provider = WasiProviderBuilder::new().build().unwrap();
-    let caps = provider.capabilities();
+    let caps = provider.capabilities(;
     assert!(!caps.filesystem.read_access);
     assert!(!caps.io.stdout_access);
 }
@@ -158,12 +158,12 @@ fn test_asil_d_specific_enforcement() {
 #[test]
 fn test_qm_specific_enforcement() {
     // This test only runs when QM feature is enabled
-    assert_eq!(wasi_safety_level(), "dynamic-allocation");
-    assert_eq!(wasi_max_allocation_size(), usize::MAX);
+    assert_eq!(wasi_safety_level(), "dynamic-allocation";
+    assert_eq!(wasi_max_allocation_size(), usize::MAX;
     
     // QM should get full capabilities by default
     let provider = WasiProviderBuilder::new().build().unwrap();
-    let caps = provider.capabilities();
+    let caps = provider.capabilities(;
     assert!(caps.filesystem.read_access);
     assert!(caps.filesystem.write_access);
     assert!(caps.io.stdout_access);

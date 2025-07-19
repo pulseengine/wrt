@@ -33,7 +33,7 @@ fn test_wasi_nn_full_initialization() {
     // The provider should support NN functions when NN capabilities are enabled
     // We can't directly test the functions list, but we can verify the provider
     // was created successfully with NN capabilities
-    assert_eq!(provider.capabilities().nn.dynamic_loading, true);
+    assert_eq!(provider.capabilities().nn.dynamic_loading, true;
 }
 
 /// Test capability-based NN initialization
@@ -50,7 +50,7 @@ fn test_nn_capability_initialization() {
         } else {
             Ok(())
         };
-        assert!(result.is_ok());
+        assert!(result.is_ok();
     }
 }
 
@@ -71,8 +71,8 @@ fn test_nn_subsystem_init() {
     initialize_context_store().unwrap();
     
     // Verify we can get the capability
-    let retrieved = wrt_wasi::nn::get_nn_capability();
-    assert!(retrieved.is_ok());
+    let retrieved = wrt_wasi::nn::get_nn_capability(;
+    assert!(retrieved.is_ok();
 }
 
 /// Test WASI-NN capability restrictions
@@ -84,12 +84,12 @@ fn test_nn_capability_restrictions() {
     };
     
     // Test dynamic capability (QM)
-    let dynamic_cap = DynamicNNCapability::new();
+    let dynamic_cap = DynamicNNCapability::new(;
     let load_op = NNOperation::Load {
         size: 50 * 1024 * 1024,
         format: ModelFormat::ONNX,
     };
-    assert!(dynamic_cap.verify_operation(&load_op).is_ok());
+    assert!(dynamic_cap.verify_operation(&load_op).is_ok();
     
     // Test bounded capability (ASIL-A)
     let bounded_cap = BoundedNNCapability::new().unwrap();
@@ -97,13 +97,13 @@ fn test_nn_capability_restrictions() {
         size: 100 * 1024 * 1024,
         format: ModelFormat::ONNX,
     };
-    assert!(bounded_cap.verify_operation(&big_load).is_err());
+    assert!(bounded_cap.verify_operation(&big_load).is_err();
     
     // Test static capability (ASIL-B)
     let static_cap = StaticNNCapability::new(&[]).unwrap();
     // Static capability should have Continuous verification level
     let foundation_level: wrt_foundation::verification::VerificationLevel = static_cap.verification_level().into();
-    assert_eq!(foundation_level, wrt_foundation::verification::VerificationLevel::Full);
+    assert_eq!(foundation_level, wrt_foundation::verification::VerificationLevel::Full;
 }
 
 /// Test WASI capabilities integration
@@ -120,12 +120,12 @@ fn test_wasi_capabilities_with_nn() {
     // Create sandboxed capabilities
     let caps = WasiCapabilities::sandboxed().unwrap();
     assert!(caps.nn.dynamic_loading);
-    assert_eq!(caps.nn.max_model_size, 10 * 1024 * 1024);
+    assert_eq!(caps.nn.max_model_size, 10 * 1024 * 1024;
     
     // Create full access capabilities
     let caps = WasiCapabilities::system_utility().unwrap();
     assert!(caps.nn.dynamic_loading);
-    assert_eq!(caps.nn.max_model_size, 100 * 1024 * 1024);
+    assert_eq!(caps.nn.max_model_size, 100 * 1024 * 1024;
 }
 
 /// Test verification level mapping
@@ -136,21 +136,21 @@ fn test_verification_level_mapping() {
     let qm_caps = WasiNeuralNetworkCapabilities::for_verification_level(
         foundation_standard
     ).unwrap();
-    assert_eq!(qm_caps.verification_level, foundation_standard);
+    assert_eq!(qm_caps.verification_level, foundation_standard;
     assert!(qm_caps.dynamic_loading);
     
     let foundation_sampling: wrt_foundation::verification::VerificationLevel = VerificationLevel::Sampling.into();
     let asil_a_caps = WasiNeuralNetworkCapabilities::for_verification_level(
         foundation_sampling
     ).unwrap();
-    assert_eq!(asil_a_caps.verification_level, foundation_sampling);
+    assert_eq!(asil_a_caps.verification_level, foundation_sampling;
     assert!(asil_a_caps.dynamic_loading);
     
     let foundation_continuous: wrt_foundation::verification::VerificationLevel = VerificationLevel::Continuous.into();
     let asil_b_caps = WasiNeuralNetworkCapabilities::for_verification_level(
         foundation_continuous
     ).unwrap();
-    assert_eq!(asil_b_caps.verification_level, foundation_continuous);
+    assert_eq!(asil_b_caps.verification_level, foundation_continuous;
     assert!(!asil_b_caps.dynamic_loading);
     assert!(asil_b_caps.require_model_approval);
 }
@@ -161,12 +161,12 @@ fn test_tensor_operations() {
     use wrt_wasi::nn::{Tensor, TensorDimensions, TensorType};
     use wrt_wasi::nn::capabilities::DynamicNNCapability;
     
-    let capability = DynamicNNCapability::new();
+    let capability = DynamicNNCapability::new(;
     
     // Create small tensor - should succeed
     let dims = TensorDimensions::new(&[10, 10]).unwrap();
     let tensor = Tensor::new(dims, TensorType::F32, &capability).unwrap();
-    assert_eq!(tensor.size_bytes(), 400);
+    assert_eq!(tensor.size_bytes(), 400;
     
     // Try to create tensor exceeding limits
     let capability = DynamicNNCapability::with_limits(
@@ -174,9 +174,9 @@ fn test_tensor_operations() {
             max_tensor_memory: 100,
             ..Default::default()
         }
-    );
+    ;
     
     let dims = TensorDimensions::new(&[10, 10]).unwrap();
-    let result = Tensor::new(dims, TensorType::F32, &capability);
-    assert!(result.is_err()); // Should fail due to memory limit
+    let result = Tensor::new(dims, TensorType::F32, &capability;
+    assert!(result.is_err())); // Should fail due to memory limit
 }

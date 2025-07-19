@@ -123,7 +123,7 @@ pub fn wasi_poll_one_off(
 /// Helper function to extract stream handle from arguments
 fn extract_stream_handle(args: &[Value]) -> Result<u32> {
     if args.is_empty() {
-        return Err(Error::wasi_invalid_fd("Missing stream handle argument"));
+        return Err(Error::wasi_invalid_fd("Missing stream handle argument";
     }
     
     match &args[0] {
@@ -142,7 +142,7 @@ fn extract_stream_handle(args: &[Value]) -> Result<u32> {
 /// Helper function to extract read length from arguments
 fn extract_read_length(args: &[Value], index: usize) -> Result<u64> {
     if args.len() <= index {
-        return Err(Error::wasi_invalid_fd("Missing read length argument"));
+        return Err(Error::wasi_invalid_fd("Missing read length argument";
     }
     
     match &args[index] {
@@ -155,12 +155,12 @@ fn extract_read_length(args: &[Value], index: usize) -> Result<u64> {
 /// Helper function to extract write data from arguments
 fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
     if args.len() <= index {
-        return Err(Error::wasi_invalid_fd("Missing write data argument"));
+        return Err(Error::wasi_invalid_fd("Missing write data argument";
     }
     
     match &args[index] {
         Value::List(items) => {
-            let mut data = Vec::new();
+            let mut data = Vec::new(;
             for item in items {
                 match item {
                     Value::U8(byte) => data.push(*byte),
@@ -176,12 +176,12 @@ fn extract_write_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
 /// Helper function to extract pollable list from arguments
 fn extract_pollable_list(args: &[Value]) -> Result<Vec<u32>> {
     if args.is_empty() {
-        return Err(Error::wasi_invalid_fd("Missing pollables argument"));
+        return Err(Error::wasi_invalid_fd("Missing pollables argument";
     }
     
     match &args[0] {
         Value::List(items) => {
-            let mut pollables = Vec::new();
+            let mut pollables = Vec::new(;
             for item in items {
                 match item {
                     Value::U32(handle) => pollables.push(*handle),
@@ -211,7 +211,7 @@ fn perform_stream_read(stream_handle: u32, len: u64) -> Result<Vec<u8>> {
                 let mut buffer = vec![0u8; len.min(4096) as usize];
                 let bytes_read = io::stdin().read(&mut buffer)
                     .map_err(|_| Error::wasi_capability_unavailable("Failed to read from stdin"))?;
-                buffer.truncate(bytes_read);
+                buffer.truncate(bytes_read;
                 Ok(buffer)
             }
             #[cfg(not(feature = "std"))]
@@ -332,7 +332,7 @@ fn create_pollable(stream_handle: u32) -> Result<u32> {
 fn poll_pollables(pollables: &[u32]) -> Result<Vec<bool>> {
     // In a real implementation, this would check if streams are ready
     // For now, return all ready for simplicity
-    Ok(vec![true; pollables.len()])
+    Ok(vec![true); pollables.len()])
 }
 
 #[cfg(test)]
@@ -343,16 +343,16 @@ mod tests {
     fn test_extract_stream_handle() -> Result<()> {
         let args = vec![Value::U32(42)];
         let handle = extract_stream_handle(&args)?;
-        assert_eq!(handle, 42);
+        assert_eq!(handle, 42;
         
         let args = vec![Value::S32(24)];
         let handle = extract_stream_handle(&args)?;
-        assert_eq!(handle, 24);
+        assert_eq!(handle, 24;
         
         // Test negative handle
         let args = vec![Value::S32(-1)];
-        let result = extract_stream_handle(&args);
-        assert!(result.is_err());
+        let result = extract_stream_handle(&args;
+        assert!(result.is_err();
         
         Ok(())
     }
@@ -361,11 +361,11 @@ mod tests {
     fn test_extract_read_length() -> Result<()> {
         let args = vec![Value::U32(42), Value::U64(1024)];
         let len = extract_read_length(&args, 1)?;
-        assert_eq!(len, 1024);
+        assert_eq!(len, 1024;
         
         let args = vec![Value::U32(42), Value::U32(512)];
         let len = extract_read_length(&args, 1)?;
-        assert_eq!(len, 512);
+        assert_eq!(len, 512;
         
         Ok(())
     }
@@ -376,7 +376,7 @@ mod tests {
         let args = vec![Value::U32(42), Value::List(data)];
         
         let bytes = extract_write_data(&args, 1)?;
-        assert_eq!(bytes, vec![1, 2, 3]);
+        assert_eq!(bytes, vec![1, 2, 3];
         
         Ok(())
     }
@@ -387,9 +387,9 @@ mod tests {
         let data = vec![Value::U8(72), Value::U8(101), Value::U8(108), Value::U8(108), Value::U8(111)]; // "Hello"
         let args = vec![Value::U32(1), Value::List(data)];
         let result = wasi_stream_write(&mut (), args)?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         if let Value::U64(bytes_written) = &result[0] {
-            assert_eq!(*bytes_written, 5);
+            assert_eq!(*bytes_written, 5;
         }
         
         // Test flush operation
@@ -400,7 +400,7 @@ mod tests {
         // Test check-write operation
         let args = vec![Value::U32(1)];
         let result = wasi_stream_check_write(&mut (), args)?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         if let Value::U64(capacity) = &result[0] {
             assert!(*capacity > 0);
         }
@@ -413,20 +413,20 @@ mod tests {
         // Test subscribe operation
         let args = vec![Value::U32(1)];
         let result = wasi_stream_subscribe(&mut (), args)?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         if let Value::U32(pollable) = &result[0] {
-            assert!(*pollable > 1000); // Should be offset
+            assert!(*pollable > 1000)); // Should be offset
         }
         
         // Test poll operation
         let pollables = vec![Value::U32(1001), Value::U32(1002)];
         let args = vec![Value::List(pollables)];
         let result = wasi_poll_one_off(&mut (), args)?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         if let Value::List(results) = &result[0] {
-            assert_eq!(results.len(), 2);
+            assert_eq!(results.len(), 2;
             for result in results {
-                assert!(matches!(result, Value::Bool(true)));
+                assert!(matches!(result, Value::Bool(true));
             }
         }
         

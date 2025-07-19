@@ -34,7 +34,7 @@ pub fn wasi_cli_get_arguments_capability_aware(
         use std::env;
         
         // Create capability-aware argument list
-        let mut wasi_args = alloc::vec::Vec::new();
+        let mut wasi_args = alloc::vec::Vec::new(;
         
         for arg in env::args() {
             let arg_value = CapabilityAwareValue::string_from_str(&arg)?;
@@ -71,7 +71,7 @@ pub fn wasi_cli_get_environment_capability_aware(
     {
         use std::env;
         
-        let mut env_vars = alloc::vec::Vec::new();
+        let mut env_vars = alloc::vec::Vec::new(;
         
         // Iterate through environment variables
         for (key, value) in env::vars() {
@@ -117,7 +117,7 @@ pub fn wasi_get_initial_cwd_capability_aware(
         
         match env::current_dir() {
             Ok(cwd) => {
-                let cwd_string = cwd.to_string_lossy();
+                let cwd_string = cwd.to_string_lossy(;
                 let cwd_value = CapabilityAwareValue::string_from_str(&cwd_string)?;
                 let cwd_boxed = WasiValueBox::new(cwd_value)?;
                 let cwd_option = CapabilityAwareValue::option_from_value(Some(cwd_boxed.into_inner()))?;
@@ -158,23 +158,23 @@ fn convert_capability_value_to_legacy(value: CapabilityAwareValue) -> Result<Val
         CapabilityAwareValue::F64(v) => Ok(Value::F64(v)),
         CapabilityAwareValue::Char(c) => Ok(Value::String(c.to_string())),
         CapabilityAwareValue::String(bounded_str) => {
-            let str_result = bounded_str.as_str();
+            let str_result = bounded_str.as_str(;
             match str_result {
                 Ok(s) => Ok(Value::String(s.to_string())),
                 Err(_) => Ok(Value::String("".to_string())), // Fallback for invalid string
             }
         },
         CapabilityAwareValue::List(bounded_vec) => {
-            let mut legacy_list = Vec::new();
+            let mut legacy_list = Vec::new(;
             for item in bounded_vec.iter() {
-                legacy_list.push(convert_capability_value_to_legacy(item.clone())?);
+                legacy_list.push(convert_capability_value_to_legacy(item.clone())?;
             }
             Ok(Value::List(legacy_list))
         },
         CapabilityAwareValue::Tuple(bounded_vec) => {
-            let mut legacy_tuple = Vec::new();
+            let mut legacy_tuple = Vec::new(;
             for item in bounded_vec.iter() {
-                legacy_tuple.push(convert_capability_value_to_legacy(item.clone())?);
+                legacy_tuple.push(convert_capability_value_to_legacy(item.clone())?;
             }
             Ok(Value::Tuple(legacy_tuple))
         },
@@ -188,14 +188,14 @@ fn convert_capability_value_to_legacy(value: CapabilityAwareValue) -> Result<Val
             }
         },
         CapabilityAwareValue::Record(bounded_vec) => {
-            let mut legacy_record = Vec::new();
+            let mut legacy_record = Vec::new(;
             for (key, item) in bounded_vec.iter() {
                 let converted_value = convert_capability_value_to_legacy(item.clone())?;
                 let key_str = match key.as_str() {
                     Ok(s) => s.to_string(),
                     Err(_) => "".to_string(), // Fallback for invalid key
                 };
-                legacy_record.push((key_str, converted_value));
+                legacy_record.push((key_str, converted_value);
             }
             Ok(Value::Record(legacy_record))
         },
@@ -210,9 +210,9 @@ pub fn wasi_cli_get_arguments_bridge(
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Convert legacy values to capability-aware values
-    let mut capability_args = alloc::vec::Vec::new();
+    let mut capability_args = alloc::vec::Vec::new(;
     for arg in args {
-        capability_args.push(arg.try_into()?);
+        capability_args.push(arg.try_into()?;
     }
     
     // Call capability-aware function
@@ -220,7 +220,7 @@ pub fn wasi_cli_get_arguments_bridge(
     
     // Convert back to legacy values for compatibility
     // Note: This is a temporary bridge - eventually all code should use CapabilityAwareValue
-    let mut legacy_result = alloc::vec::Vec::new();
+    let mut legacy_result = alloc::vec::Vec::new(;
     for value in result {
         let converted = convert_capability_value_to_legacy(value)?;
         legacy_result.push(converted);
@@ -235,15 +235,15 @@ pub fn wasi_cli_get_environment_bridge(
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Convert to capability-aware and back
-    let mut capability_args = alloc::vec::Vec::new();
+    let mut capability_args = alloc::vec::Vec::new(;
     for arg in args {
-        capability_args.push(arg.try_into()?);
+        capability_args.push(arg.try_into()?;
     }
     
     let result = wasi_cli_get_environment_capability_aware(target, capability_args)?;
     
     // Convert back to legacy values
-    let mut legacy_result = alloc::vec::Vec::new();
+    let mut legacy_result = alloc::vec::Vec::new(;
     for value in result {
         let converted = convert_capability_value_to_legacy(value)?;
         legacy_result.push(converted);
@@ -258,15 +258,15 @@ pub fn wasi_get_initial_cwd_bridge(
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Convert to capability-aware and back
-    let mut capability_args = alloc::vec::Vec::new();
+    let mut capability_args = alloc::vec::Vec::new(;
     for arg in args {
-        capability_args.push(arg.try_into()?);
+        capability_args.push(arg.try_into()?;
     }
     
     let result = wasi_get_initial_cwd_capability_aware(target, capability_args)?;
     
     // Convert back to legacy values
-    let mut legacy_result = alloc::vec::Vec::new();
+    let mut legacy_result = alloc::vec::Vec::new(;
     for value in result {
         let converted = convert_capability_value_to_legacy(value)?;
         legacy_result.push(converted);
@@ -283,23 +283,23 @@ mod tests {
     #[test]
     fn test_capability_aware_cli_functions() {
         // Initialize memory system
-        let _ = MemoryInitializer::initialize();
+        let _ = MemoryInitializer::initialize(;
         
         // Test arguments function
-        let mut dummy_target = ();
+        let mut dummy_target = (;
         let empty_args = vec![];
         
-        let result = wasi_cli_get_arguments_capability_aware(&mut dummy_target, empty_args);
+        let result = wasi_cli_get_arguments_capability_aware(&mut dummy_target, empty_args;
         assert!(result.is_ok(), "Arguments function should succeed");
         
         // Test environment function
         let empty_args = vec![];
-        let result = wasi_cli_get_environment_capability_aware(&mut dummy_target, empty_args);
+        let result = wasi_cli_get_environment_capability_aware(&mut dummy_target, empty_args;
         assert!(result.is_ok(), "Environment function should succeed");
         
         // Test current directory function
         let empty_args = vec![];
-        let result = wasi_get_initial_cwd_capability_aware(&mut dummy_target, empty_args);
+        let result = wasi_get_initial_cwd_capability_aware(&mut dummy_target, empty_args;
         assert!(result.is_ok(), "Current directory function should succeed");
     }
 }

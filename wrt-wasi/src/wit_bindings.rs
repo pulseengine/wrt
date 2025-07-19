@@ -268,11 +268,11 @@ mod tests {
     #[test]
     fn test_descriptor_conversions() -> Result<()> {
         let desc: filesystem_types::Descriptor = 42;
-        let value = conversions::descriptor_to_value(desc);
-        assert_eq!(value, Value::U32(42));
+        let value = conversions::descriptor_to_value(desc;
+        assert_eq!(value, Value::U32(42;
         
         let back = conversions::value_to_descriptor(&value)?;
-        assert_eq!(back, desc);
+        assert_eq!(back, desc;
         
         Ok(())
     }
@@ -284,14 +284,14 @@ mod tests {
             nanoseconds: 123456789,
         };
         
-        let value = conversions::timestamp_to_value(ts);
+        let value = conversions::timestamp_to_value(ts;
         if let Value::Record(fields) = &value {
-            assert_eq!(fields.len(), 2);
+            assert_eq!(fields.len(), 2;
         }
         
         let back = conversions::value_to_timestamp(&value)?;
-        assert_eq!(back.seconds, ts.seconds);
-        assert_eq!(back.nanoseconds, ts.nanoseconds);
+        assert_eq!(back.seconds, ts.seconds;
+        assert_eq!(back.nanoseconds, ts.nanoseconds;
         
         Ok(())
     }
@@ -299,11 +299,11 @@ mod tests {
     #[test]
     fn test_descriptor_type_conversions() -> Result<()> {
         let dt = filesystem_types::DescriptorType::RegularFile;
-        let value = conversions::descriptor_type_to_value(dt);
-        assert_eq!(value, Value::U8(0));
+        let value = conversions::descriptor_type_to_value(dt;
+        assert_eq!(value, Value::U8(0;
         
         let back = conversions::value_to_descriptor_type(&value)?;
-        assert_eq!(back, dt);
+        assert_eq!(back, dt;
         
         // Test all types
         let types = [
@@ -318,9 +318,9 @@ mod tests {
         ];
         
         for dt in &types {
-            let value = conversions::descriptor_type_to_value(*dt);
+            let value = conversions::descriptor_type_to_value(*dt;
             let back = conversions::value_to_descriptor_type(&value)?;
-            assert_eq!(back, *dt);
+            assert_eq!(back, *dt;
         }
         
         Ok(())

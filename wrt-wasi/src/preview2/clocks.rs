@@ -18,7 +18,7 @@ pub fn wasi_monotonic_clock_now(
     _args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     // Get monotonic time using platform abstraction
-    let nanoseconds: u64 = PlatformTime::monotonic_ns();
+    let nanoseconds: u64 = PlatformTime::monotonic_ns(;
     
     Ok(vec![Value::U64(nanoseconds)])
 }
@@ -157,7 +157,7 @@ pub fn get_time_with_capabilities(
     match clock_type {
         WasiClockType::Realtime => {
             if !capabilities.realtime_access {
-                return Err(Error::wasi_permission_denied("Realtime clock access denied"));
+                return Err(Error::wasi_permission_denied("Realtime clock access denied";
             }
             
             let total_ns = PlatformTime::wall_clock_ns()
@@ -167,14 +167,14 @@ pub fn get_time_with_capabilities(
         }
         WasiClockType::Monotonic => {
             if !capabilities.monotonic_access {
-                return Err(Error::wasi_permission_denied("Monotonic clock access denied"));
+                return Err(Error::wasi_permission_denied("Monotonic clock access denied";
             }
             
             Ok(PlatformTime::monotonic_ns())
         }
         WasiClockType::ProcessCpuTime => {
             if !capabilities.process_cputime_access {
-                return Err(Error::wasi_permission_denied("Process CPU time access denied"));
+                return Err(Error::wasi_permission_denied("Process CPU time access denied";
             }
             
             // TODO: Implement when platform support is available
@@ -182,7 +182,7 @@ pub fn get_time_with_capabilities(
         }
         WasiClockType::ThreadCpuTime => {
             if !capabilities.thread_cputime_access {
-                return Err(Error::wasi_permission_denied("Thread CPU time access denied"));
+                return Err(Error::wasi_permission_denied("Thread CPU time access denied";
             }
             
             // TODO: Implement when platform support is available
@@ -198,14 +198,14 @@ mod tests {
     #[test]
     fn test_wasi_monotonic_clock_now() -> Result<()> {
         let result = wasi_monotonic_clock_now(&mut (), vec![])?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         
         // Should return a u64 timestamp
         if let Value::U64(timestamp) = &result[0] {
             // Timestamp should be non-zero (current time)
             assert!(*timestamp > 0);
         } else {
-            panic!("Expected u64 timestamp");
+            panic!("Expected u64 timestamp";
         }
         
         Ok(())
@@ -214,23 +214,23 @@ mod tests {
     #[test]
     fn test_wasi_wall_clock_now() -> Result<()> {
         let result = wasi_wall_clock_now(&mut (), vec![])?;
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
         
         // Should return a tuple of (seconds, nanoseconds)
         if let Value::Tuple(time_parts) = &result[0] {
-            assert_eq!(time_parts.len(), 2);
+            assert_eq!(time_parts.len(), 2;
             
             // First should be seconds (u64)
-            assert!(matches!(time_parts[0], Value::U64(_)));
+            assert!(matches!(time_parts[0], Value::U64(_));
             // Second should be nanoseconds (u32)
-            assert!(matches!(time_parts[1], Value::U32(_)));
+            assert!(matches!(time_parts[1], Value::U32(_));
             
             // Verify nanoseconds are in valid range
             if let Value::U32(nanos) = &time_parts[1] {
                 assert!(*nanos < 1_000_000_000);
             }
         } else {
-            panic!("Expected tuple of (seconds, nanoseconds)");
+            panic!("Expected tuple of (seconds, nanoseconds)";
         }
         
         Ok(())
@@ -239,10 +239,10 @@ mod tests {
     #[test]
     fn test_nanoseconds_to_datetime_conversion() {
         let nanoseconds = 1_234_567_890_123_456_789u64;
-        let datetime = nanoseconds_to_datetime(nanoseconds);
+        let datetime = nanoseconds_to_datetime(nanoseconds;
         
         if let Value::Record(fields) = datetime {
-            assert_eq!(fields.len(), 2);
+            assert_eq!(fields.len(), 2;
             
             let mut seconds_found = false;
             let mut nanos_found = false;
@@ -251,13 +251,13 @@ mod tests {
                 match key.as_str() {
                     "seconds" => {
                         if let Value::U64(s) = value {
-                            assert_eq!(s, 1_234_567_890);
+                            assert_eq!(s, 1_234_567_890;
                             seconds_found = true;
                         }
                     }
                     "nanoseconds" => {
                         if let Value::U32(ns) = value {
-                            assert_eq!(ns, 123_456_789);
+                            assert_eq!(ns, 123_456_789;
                             nanos_found = true;
                         }
                     }
@@ -267,7 +267,7 @@ mod tests {
             
             assert!(seconds_found && nanos_found);
         } else {
-            panic!("Expected record");
+            panic!("Expected record";
         }
     }
     
@@ -276,10 +276,10 @@ mod tests {
         let datetime = Value::Record(vec![
             ("seconds".to_string(), Value::U64(1_234_567_890)),
             ("nanoseconds".to_string(), Value::U32(123_456_789)),
-        ]);
+        ];
         
         let nanoseconds = datetime_to_nanoseconds(&datetime)?;
-        assert_eq!(nanoseconds, 1_234_567_890_123_456_789);
+        assert_eq!(nanoseconds, 1_234_567_890_123_456_789;
         
         Ok(())
     }
@@ -301,8 +301,8 @@ mod tests {
         let _monotonic = get_time_with_capabilities(WasiClockType::Monotonic, &capabilities)?;
         
         // Should fail for denied clocks
-        let result = get_time_with_capabilities(WasiClockType::ProcessCpuTime, &capabilities);
-        assert!(result.is_err());
+        let result = get_time_with_capabilities(WasiClockType::ProcessCpuTime, &capabilities;
+        assert!(result.is_err();
         
         Ok(())
     }

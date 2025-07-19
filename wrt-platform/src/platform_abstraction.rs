@@ -115,13 +115,13 @@ impl<P> PlatformConfig<P> {
 impl PlatformConfig<paradigm::SecurityFirst> {
     /// Binary std/no_std choice
     pub fn with_static_allocation(mut self, size: usize) -> Self {
-        self.static_allocation_size = Some(size);
+        self.static_allocation_size = Some(size;
         self
     }
 
     /// Set isolation level (SecurityFirst platforms)
     pub fn with_isolation_level(mut self, level: IsolationLevel) -> Self {
-        self.isolation_level = Some(level);
+        self.isolation_level = Some(level;
         self
     }
 }
@@ -129,7 +129,7 @@ impl PlatformConfig<paradigm::SecurityFirst> {
 impl PlatformConfig<paradigm::RealTime> {
     /// Set real-time priority (RealTime platforms)
     pub fn with_rt_priority(mut self, priority: u32) -> Self {
-        self.rt_priority = Some(priority);
+        self.rt_priority = Some(priority;
         self
     }
 }
@@ -269,12 +269,12 @@ mod realtime_impl {
             let mut builder = crate::ZephyrAllocatorBuilder::new()
                 .with_maximum_pages(config.max_pages)
                 .with_memory_domains(true)
-                .with_guard_regions(config.guard_pages);
+                .with_guard_regions(config.guard_pages;
 
             // Apply real-time specific configuration
             if let Some(_priority) = config.rt_priority {
                 // Binary std/no_std choice
-                builder = builder.with_memory_domains(true);
+                builder = builder.with_memory_domains(true;
             }
 
             Ok(builder.build())
@@ -304,7 +304,7 @@ mod realtime_impl {
             // Apply real-time specific configuration
             if config.rt_priority.is_some() {
                 // Configure memory partition for real-time use
-                builder = builder.partition_size(config.max_pages as usize * crate::WASM_PAGE_SIZE);
+                builder = builder.partition_size(config.max_pages as usize * crate::WASM_PAGE_SIZE;
             }
 
             builder.build()
@@ -339,13 +339,13 @@ mod security_impl {
                         crate::VerificationLevel::Full
                     }
                     None => crate::VerificationLevel::Full,
-                });
+                };
 
             // Binary std/no_std choice
             if let Some(size) = config.static_allocation_size {
                 // In a real implementation, this would use a static buffer
                 // Binary std/no_std choice
-                builder = builder.with_maximum_pages((size / crate::WASM_PAGE_SIZE) as u32);
+                builder = builder.with_maximum_pages((size / crate::WASM_PAGE_SIZE) as u32;
             }
 
             builder.build()
@@ -417,9 +417,9 @@ mod tests {
     #[test]
     fn test_config_creation() {
         let config =
-            PlatformConfig::<paradigm::Posix>::new().with_max_pages(2048).with_guard_pages(true);
+            PlatformConfig::<paradigm::Posix>::new().with_max_pages(2048).with_guard_pages(true;
 
-        assert_eq!(config.max_pages, 2048);
+        assert_eq!(config.max_pages, 2048;
         assert!(config.guard_pages);
     }
 
@@ -428,20 +428,20 @@ mod tests {
         let config = PlatformConfig::<paradigm::SecurityFirst>::new()
             .with_max_pages(1024)
             .with_static_allocation(64 * 1024)
-            .with_isolation_level(IsolationLevel::Hardware);
+            .with_isolation_level(IsolationLevel::Hardware;
 
-        assert_eq!(config.max_pages, 1024);
-        assert_eq!(config.static_allocation_size, Some(64 * 1024));
-        assert_eq!(config.isolation_level, Some(IsolationLevel::Hardware));
+        assert_eq!(config.max_pages, 1024;
+        assert_eq!(config.static_allocation_size, Some(64 * 1024;
+        assert_eq!(config.isolation_level, Some(IsolationLevel::Hardware;
     }
 
     #[test]
     fn test_realtime_config() {
         let config =
-            PlatformConfig::<paradigm::RealTime>::new().with_max_pages(512).with_rt_priority(10);
+            PlatformConfig::<paradigm::RealTime>::new().with_max_pages(512).with_rt_priority(10;
 
-        assert_eq!(config.max_pages, 512);
-        assert_eq!(config.rt_priority, Some(10));
+        assert_eq!(config.max_pages, 512;
+        assert_eq!(config.rt_priority, Some(10;
     }
 
     #[cfg(any(
@@ -451,20 +451,20 @@ mod tests {
     ))]
     #[test]
     fn test_posix_platform_creation() {
-        let platform = PosixPlatform::new(PlatformConfig::new());
+        let platform = PosixPlatform::new(PlatformConfig::new(;
 
         // Binary std/no_std choice
-        let _allocator = platform.allocator();
-        let _synchronizer = platform.synchronizer();
+        let _allocator = platform.allocator(;
+        let _synchronizer = platform.synchronizer(;
     }
 
     #[cfg(feature = "platform-zephyr")]
     #[test]
     fn test_realtime_platform_creation() {
-        let platform = RealtimePlatform::new(PlatformConfig::new().with_rt_priority(5));
+        let platform = RealtimePlatform::new(PlatformConfig::new().with_rt_priority(5;
 
         // Binary std/no_std choice
-        let _allocator = platform.allocator();
-        let _synchronizer = platform.synchronizer();
+        let _allocator = platform.allocator(;
+        let _synchronizer = platform.synchronizer(;
     }
 }

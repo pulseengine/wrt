@@ -20,7 +20,7 @@ pub fn nn_load(
     encoding: u8,
     target: u8,
 ) -> Result<u32> {
-    let start_time = get_current_time_us();
+    let start_time = get_current_time_us(;
     let operation_id = if let Some(logger) = crate::nn::monitoring::get_logger() {
         logger.next_operation_id()
     } else {
@@ -36,7 +36,7 @@ pub fn nn_load(
                 context: format!("model_size={}, encoding={}, target={}", data.len(), encoding, target),
             },
             "sync_bridge"
-        );
+        ;
     }
     
     // Initialize stores if needed
@@ -45,13 +45,13 @@ pub fn nn_load(
     
     // Validate input data
     if data.is_empty() {
-        return Err(Error::wasi_invalid_argument("Model data cannot be empty"));
+        return Err(Error::wasi_invalid_argument("Model data cannot be empty";
     }
     
     // Absolute maximum model size (500MB) to prevent DoS
     const MAX_ABSOLUTE_MODEL_SIZE: usize = 500 * 1024 * 1024;
     if data.len() > MAX_ABSOLUTE_MODEL_SIZE {
-        return Err(Error::wasi_resource_exhausted("Model exceeds absolute size limit"));
+        return Err(Error::wasi_resource_exhausted("Model exceeds absolute size limit";
     }
     
     // Convert parameters with validation
@@ -100,7 +100,7 @@ pub fn nn_load(
         // via the Drop implementation in Graph
         
         Ok(graph_id)
-    });
+    };
     
     let duration = get_current_time_us() - start_time;
     
@@ -115,7 +115,7 @@ pub fn nn_load(
                         duration_us: duration,
                     },
                     "sync_bridge"
-                );
+                ;
                 
                 logger.log_performance(
                     crate::nn::monitoring::PerformanceEvent::OperationTiming {
@@ -124,7 +124,7 @@ pub fn nn_load(
                         success: true,
                     },
                     "sync_bridge"
-                );
+                ;
                 
                 logger.log_resource(
                     crate::nn::monitoring::ResourceEvent::Allocated {
@@ -133,7 +133,7 @@ pub fn nn_load(
                         total_used: data.len(), // Simplified for now
                     },
                     "sync_bridge"
-                );
+                ;
             }
             Err(e) => {
                 logger.log_operation(
@@ -144,7 +144,7 @@ pub fn nn_load(
                         duration_us: duration,
                     },
                     "sync_bridge"
-                );
+                ;
                 
                 logger.log_performance(
                     crate::nn::monitoring::PerformanceEvent::OperationTiming {
@@ -153,7 +153,7 @@ pub fn nn_load(
                         success: false,
                     },
                     "sync_bridge"
-                );
+                ;
             }
         }
     }
@@ -216,20 +216,20 @@ pub fn nn_set_input(
 ) -> Result<()> {
     // Comprehensive input validation
     if tensor_data.is_empty() {
-        return Err(Error::wasi_invalid_argument("Tensor data cannot be empty"));
+        return Err(Error::wasi_invalid_argument("Tensor data cannot be empty";
     }
     
     if dimensions.is_empty() {
-        return Err(Error::wasi_invalid_argument("Tensor dimensions cannot be empty"));
+        return Err(Error::wasi_invalid_argument("Tensor dimensions cannot be empty";
     }
     
     // Validate each dimension
     for &dim in &dimensions {
         if dim == 0 {
-            return Err(Error::wasi_invalid_argument("Tensor dimensions cannot be zero"));
+            return Err(Error::wasi_invalid_argument("Tensor dimensions cannot be zero";
         }
         if dim > 65536 { // Reasonable upper bound per dimension
-            return Err(Error::wasi_invalid_argument("Tensor dimension too large"));
+            return Err(Error::wasi_invalid_argument("Tensor dimension too large";
         }
     }
     
@@ -247,7 +247,7 @@ pub fn nn_set_input(
     if tensor_data.len() != expected_size {
         return Err(Error::wasi_invalid_argument(
             "Tensor data size doesn't match dimensions and type"
-        ));
+        ;
     }
     
     with_nn_capability(|capability| {
@@ -284,7 +284,7 @@ pub fn nn_set_input(
 ///
 /// Implements `wasi:nn/inference.compute`
 pub fn nn_compute(context_id: u32) -> Result<()> {
-    let start_time = get_current_time_us();
+    let start_time = get_current_time_us(;
     let operation_id = if let Some(logger) = crate::nn::monitoring::get_logger() {
         logger.next_operation_id()
     } else {
@@ -300,7 +300,7 @@ pub fn nn_compute(context_id: u32) -> Result<()> {
                 context: format!("context_id={}", context_id),
             },
             "sync_bridge"
-        );
+        ;
     }
     
     with_nn_capability(|capability| {
@@ -321,7 +321,7 @@ pub fn nn_compute(context_id: u32) -> Result<()> {
                     duration_us: duration,
                 },
                 "sync_bridge"
-            );
+            ;
             
             logger.log_performance(
                 crate::nn::monitoring::PerformanceEvent::OperationTiming {
@@ -330,7 +330,7 @@ pub fn nn_compute(context_id: u32) -> Result<()> {
                     success: true,
                 },
                 "sync_bridge"
-            );
+            ;
         }
         
         Ok(())
@@ -347,7 +347,7 @@ pub fn nn_compute(context_id: u32) -> Result<()> {
                     duration_us: duration,
                 },
                 "sync_bridge"
-            );
+            ;
             
             logger.log_performance(
                 crate::nn::monitoring::PerformanceEvent::OperationTiming {
@@ -356,7 +356,7 @@ pub fn nn_compute(context_id: u32) -> Result<()> {
                     success: false,
                 },
                 "sync_bridge"
-            );
+            ;
         }
         
         e
@@ -382,9 +382,9 @@ pub fn nn_get_output(
         let tensor = context.get_output(index_usize)?;
         
         // Convert to WIT types
-        let data = tensor.as_bytes().to_vec();
-        let dimensions = tensor.dimensions().as_slice().to_vec();
-        let tensor_type = tensor.data_type().to_wit();
+        let data = tensor.as_bytes().to_vec(;
+        let dimensions = tensor.dimensions().as_slice().to_vec(;
+        let tensor_type = tensor.data_type().to_wit(;
         
         Ok((data, dimensions, tensor_type))
     })
@@ -453,7 +453,7 @@ pub fn wasi_nn_load(
 ) -> Result<Vec<Value>> {
     // Extract arguments
     if args.len() != 3 {
-        return Err(Error::wasi_invalid_argument("Expected 3 arguments"));
+        return Err(Error::wasi_invalid_argument("Expected 3 arguments";
     }
     
     let data = match &args[0] {
@@ -490,7 +490,7 @@ pub fn wasi_nn_init_execution_context(
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     if args.len() != 1 {
-        return Err(Error::wasi_invalid_argument("Expected 1 argument"));
+        return Err(Error::wasi_invalid_argument("Expected 1 argument";
     }
     
     let graph_id = match &args[0] {
@@ -509,7 +509,7 @@ pub fn wasi_nn_set_input(
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     if args.len() != 5 {
-        return Err(Error::wasi_invalid_argument("Expected 5 arguments"));
+        return Err(Error::wasi_invalid_argument("Expected 5 arguments";
     }
     
     let context_id = match &args[0] {
@@ -562,7 +562,7 @@ pub fn wasi_nn_compute(
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     if args.len() != 1 {
-        return Err(Error::wasi_invalid_argument("Expected 1 argument"));
+        return Err(Error::wasi_invalid_argument("Expected 1 argument";
     }
     
     let context_id = match &args[0] {
@@ -581,7 +581,7 @@ pub fn wasi_nn_get_output(
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
     if args.len() != 2 {
-        return Err(Error::wasi_invalid_argument("Expected 2 arguments"));
+        return Err(Error::wasi_invalid_argument("Expected 2 arguments";
     }
     
     let context_id = match &args[0] {
@@ -613,7 +613,7 @@ fn validate_model_format(data: &[u8], encoding: GraphEncoding) -> Result<()> {
         GraphEncoding::ONNX => {
             // Basic ONNX format validation - check for ONNX magic bytes
             if data.len() < 8 {
-                return Err(Error::wasi_invalid_argument("Model data too short for ONNX format"));
+                return Err(Error::wasi_invalid_argument("Model data too short for ONNX format";
             }
             
             // ONNX models typically start with protobuf bytes or have specific structure
@@ -622,14 +622,14 @@ fn validate_model_format(data: &[u8], encoding: GraphEncoding) -> Result<()> {
                 // Many ONNX files start with version info
                 // For now, accept if it looks like binary data
                 if data.iter().all(|&b| b == 0) {
-                    return Err(Error::wasi_invalid_argument("Model appears to be empty/null data"));
+                    return Err(Error::wasi_invalid_argument("Model appears to be empty/null data";
                 }
             }
         }
         GraphEncoding::TensorFlow => {
             // Basic TensorFlow SavedModel validation
             if data.len() < 16 {
-                return Err(Error::wasi_invalid_argument("Model data too short for TensorFlow format"));
+                return Err(Error::wasi_invalid_argument("Model data too short for TensorFlow format";
             }
             // TensorFlow models are typically in SavedModel format or protobuf
             // This would require more sophisticated validation in production
@@ -637,36 +637,36 @@ fn validate_model_format(data: &[u8], encoding: GraphEncoding) -> Result<()> {
         GraphEncoding::PyTorch => {
             // Basic PyTorch model validation - typically pickle format
             if data.len() < 8 {
-                return Err(Error::wasi_invalid_argument("Model data too short for PyTorch format"));
+                return Err(Error::wasi_invalid_argument("Model data too short for PyTorch format";
             }
             // PyTorch models often start with pickle protocol bytes
             if !data.starts_with(&[0x80]) && !data.starts_with(b"PK") {
                 // Could be zip format (which PyTorch also uses)
                 if data.iter().all(|&b| b == 0) {
-                    return Err(Error::wasi_invalid_argument("Model appears to be empty/null data"));
+                    return Err(Error::wasi_invalid_argument("Model appears to be empty/null data";
                 }
             }
         }
         GraphEncoding::OpenVINO => {
             // OpenVINO IR format validation
             if data.len() < 4 {
-                return Err(Error::wasi_invalid_argument("Model data too short for OpenVINO format"));
+                return Err(Error::wasi_invalid_argument("Model data too short for OpenVINO format";
             }
             // OpenVINO models are typically XML + bin files
             // For our purpose, ensure it's not empty/invalid
             if data.iter().all(|&b| b == 0) {
-                return Err(Error::wasi_invalid_argument("Model appears to be empty/null data"));
+                return Err(Error::wasi_invalid_argument("Model appears to be empty/null data";
             }
         }
         GraphEncoding::TractNative => {
             // Tract native format validation
             if data.len() < 4 {
-                return Err(Error::wasi_invalid_argument("Model data too short for Tract format"));
+                return Err(Error::wasi_invalid_argument("Model data too short for Tract format";
             }
             // Tract has its own serialization format
             // Basic validation to ensure it's not obviously invalid
             if data.iter().all(|&b| b == 0) {
-                return Err(Error::wasi_invalid_argument("Model appears to be empty/null data"));
+                return Err(Error::wasi_invalid_argument("Model appears to be empty/null data";
             }
         }
     }
@@ -696,13 +696,13 @@ mod tests {
     
     #[test]
     fn test_encoding_conversion() {
-        assert_eq!(GraphEncoding::ONNX.to_wit(), 0);
-        assert_eq!(GraphEncoding::from_wit(0).unwrap(), GraphEncoding::ONNX);
+        assert_eq!(GraphEncoding::ONNX.to_wit(), 0;
+        assert_eq!(GraphEncoding::from_wit(0).unwrap(), GraphEncoding::ONNX;
     }
     
     #[test]
     fn test_tensor_type_conversion() {
-        assert_eq!(TensorType::F32.to_wit(), 1);
-        assert_eq!(TensorType::from_wit(1).unwrap(), TensorType::F32);
+        assert_eq!(TensorType::F32.to_wit(), 1;
+        assert_eq!(TensorType::from_wit(1).unwrap(), TensorType::F32;
     }
 }

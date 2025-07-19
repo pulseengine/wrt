@@ -5,7 +5,7 @@ use wrt_foundation::{
     runtime::{current_safety_level, max_allocation_size},
 };
 
-pub const TEST_CRATE_ID: CrateId = CrateId::new("wrt-wasi-test");
+pub const TEST_CRATE_ID: CrateId = CrateId::new("wrt-wasi-test";
 
 pub fn test_safety_level() -> &'static str {
     current_safety_level()
@@ -27,11 +27,11 @@ mod tests {
 
     #[test]
     fn verify_safety_enforcement() {
-        let level = test_safety_level();
-        let max_size = test_max_allocation();
+        let level = test_safety_level(;
+        let max_size = test_max_allocation(;
         
-        println!("Safety level: {}", level);
-        println!("Max allocation: {} bytes", max_size);
+        println!("Safety level: {}", level;
+        println!("Max allocation: {} bytes", max_size;
         
         // Test small allocation
         assert!(test_allocation(1024).is_ok(), "Small allocation should succeed");

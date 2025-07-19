@@ -71,33 +71,33 @@ pub use async_bridge::{nn_load_async, nn_init_execution_context_async, nn_set_in
 // Test modules are defined inline below
 
 // Global capability storage using Mutex for thread safety (ASIL-compliant)
-static NN_CAPABILITY: Mutex<Option<Box<dyn NeuralNetworkCapability>>> = Mutex::new(None);
+static NN_CAPABILITY: Mutex<Option<Box<dyn NeuralNetworkCapability>>> = Mutex::new(None;
 
 /// Initialize the WASI-NN subsystem with the given capability
 pub fn initialize_nn(capability: Box<dyn NeuralNetworkCapability>) -> Result<()> {
     // Validate capability before setting
-    let verification_level = capability.verification_level();
-    let resource_limits = capability.resource_limits();
+    let verification_level = capability.verification_level(;
+    let resource_limits = capability.resource_limits(;
     
     // Validate resource limits are reasonable
     if resource_limits.max_tensor_memory == 0 {
-        return Err(Error::wasi_invalid_argument("Capability has invalid memory limits"));
+        return Err(Error::wasi_invalid_argument("Capability has invalid memory limits";
     }
     if resource_limits.max_concurrent_models == 0 {
-        return Err(Error::wasi_invalid_argument("Capability has invalid model limits"));
+        return Err(Error::wasi_invalid_argument("Capability has invalid model limits";
     }
     if resource_limits.max_concurrent_contexts == 0 {
-        return Err(Error::wasi_invalid_argument("Capability has invalid context limits"));
+        return Err(Error::wasi_invalid_argument("Capability has invalid context limits";
     }
     
     let mut guard = NN_CAPABILITY.lock()
         .map_err(|_| Error::wasi_runtime_error("Failed to acquire capability lock"))?;
     
     if guard.is_some() {
-        return Err(Error::wasi_capability_unavailable("Neural network capability already initialized"));
+        return Err(Error::wasi_capability_unavailable("Neural network capability already initialized";
     }
     
-    *guard = Some(capability);
+    *guard = Some(capability;
     Ok(())
 }
 
@@ -134,11 +134,11 @@ mod tests {
     
     #[test]
     fn test_wasi_nn_version() {
-        assert_eq!(WASI_NN_VERSION, "0.2.0");
+        assert_eq!(WASI_NN_VERSION, "0.2.0";
     }
     
     #[test]
     fn test_nn_not_available_by_default() {
-        assert!(!is_nn_available());
+        assert!(!is_nn_available();
     }
 }
