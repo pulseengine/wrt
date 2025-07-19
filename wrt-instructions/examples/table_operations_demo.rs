@@ -23,8 +23,8 @@ use wrt_foundation::{
 };
 
 fn main() -> Result<()> {
-    println!("WebAssembly Table Operations Demo";
-    println!("=================================";
+    println!("WebAssembly Table Operations Demo");
+    println!("=================================\n");
     
     // Create table types for demonstration
     let funcref_table_type = WrtTableType {

@@ -15,7 +15,7 @@ fn main() -> wrt::error::Result<()> {
         stackless::StacklessEngine,
     };
 
-    println!("WebAssembly Runtime State Checkpoint Example";
+    println!("WebAssembly Runtime State Checkpoint Example");
 
     // Create a new engine
     let mut engine = StacklessEngine::new);
@@ -26,7 +26,7 @@ fn main() -> wrt::error::Result<()> {
 
     // Instantiate the module
     let instance_idx = engine.instantiate(module)?;
-    println!("Created module instance: {}", instance_idx;
+    println!("Created module instance: {}", instance_idx);
 
     // Execute some code (placeholder)
     // In a real example, you would call exported functions or run code

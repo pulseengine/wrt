@@ -15,10 +15,12 @@ members = [
     "wrt-runtime",
     "wrt-instructions",
     "wrt-intercept",
-    # "test-control-instructions",  # TODO: Remove after migration
     "wrt-platform",
     "wrt-panic",
-    "wrt-tests/integration", "wrt-build-core", "cargo-wrt", "wrt-dagger", "simple-wasm-test"]
+    "wrt-tests/integration", 
+    "wrt-build-core", 
+    "cargo-wrt", 
+    "wrt-dagger"]
 exclude = ["examples/wasi-nn/inference_module"]
 resolver = "2"  # Use edition 2021 resolver
 

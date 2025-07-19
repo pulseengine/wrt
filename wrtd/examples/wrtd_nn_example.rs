@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         initialize_graph_store()?;
         initialize_context_store()?;
         
-        println!("WASI-NN initialized successfully";
+        println!("WASI-NN initialized successfully");
     }
     
     // Example: Load a WebAssembly module that uses WASI-NN
@@ -78,7 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Execute the module
     match engine.execute(wasm_module) {
         Ok(result) => {
-            println!("Module executed successfully";
+            println!("Module executed successfully");
             println!("Result: {:?}", result;
             
             // Print runtime statistics

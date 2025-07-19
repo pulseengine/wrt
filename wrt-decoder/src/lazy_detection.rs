@@ -422,7 +422,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 value too large for u32";
+            return Err(Error::parse_error("LEB128 value too large for u32"));
         }
     }
 

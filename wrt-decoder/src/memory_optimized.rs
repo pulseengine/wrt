@@ -112,13 +112,13 @@ pub fn parse_string_inplace<'a>(
     let data = slice.data().map_err(|_| Error::parse_error("Failed to access slice data"))?;
 
     if offset >= data.len() {
-        return Err(Error::parse_error("Offset beyond slice boundary";
+        return Err(Error::parse_error("Offset beyond slice boundary"));
     }
 
     let (length, new_offset) = read_leb128_u32(data, offset)?;
 
     if new_offset + length as usize > data.len() {
-        return Err(Error::parse_error("String length exceeds available data";
+        return Err(Error::parse_error("String length exceeds available data"));
     }
 
     let string_bytes = &data[new_offset..new_offset + length as usize];
@@ -130,12 +130,12 @@ pub fn parse_string_inplace<'a>(
 
 /// Copy string to target buffer only when necessary
 pub fn copy_string_to_buffer(source: &str, buffer: &mut [u8]) -> Result<usize> {
-    let bytes = source.as_bytes);
+    let bytes = source.as_bytes();
     if bytes.len() > buffer.len() {
-        return Err(Error::parse_error("Buffer too small for string";
+        return Err(Error::parse_error("Buffer too small for string"));
     }
 
-    buffer[..bytes.len()].copy_from_slice(bytes;
+    buffer[..bytes.len()].copy_from_slice(bytes);
     Ok(bytes.len())
 }
 

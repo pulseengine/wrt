@@ -333,7 +333,7 @@ pub mod binary {
     pub fn read_leb_u32(data: &[u8], offset: usize) -> wrt_error::Result<(u32, usize)> {
         // Simple implementation for no_std - just read from beginning
         if offset >= data.len() {
-            return Err(wrt_error::Error::parse_error("Offset out of bounds";
+            return Err(wrt_error::Error::parse_error("Offset out of bounds"));
         }
         // For simplicity, just parse from the offset
         let mut value = 0u32;
@@ -342,7 +342,7 @@ pub mod binary {
 
         for &byte in &data[offset..] {
             if bytes_read >= 5 {
-                return Err(wrt_error::Error::parse_error("LEB128 too long";
+                return Err(wrt_error::Error::parse_error("LEB128 too long"));
             }
 
             value |= ((byte & 0x7F) as u32) << shift;
@@ -361,7 +361,7 @@ pub mod binary {
     /// Read name from binary data in no_std mode
     pub fn read_name(data: &[u8], offset: usize) -> wrt_error::Result<(&[u8], usize)> {
         if offset >= data.len() {
-            return Err(wrt_error::Error::parse_error("Offset out of bounds";
+            return Err(wrt_error::Error::parse_error("Offset out of bounds"));
         }
 
         // Read length as LEB128
@@ -369,7 +369,7 @@ pub mod binary {
         let name_start = offset + new_offset;
 
         if name_start + length as usize > data.len() {
-            return Err(wrt_error::Error::parse_error("Name extends beyond data";
+            return Err(wrt_error::Error::parse_error("Name extends beyond data"));
         }
 
         Ok((

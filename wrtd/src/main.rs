@@ -252,7 +252,7 @@ impl MinimalLogHandler for WrtdLogHandler {
                 LogLevel::Error => "ERROR",
                 LogLevel::Critical => "CRITICAL",
             };
-            println!("[{}] {}", prefix, message;
+            println!("[{}] {}", prefix, message);
         }
         
         #[cfg(not(feature = "std"))]

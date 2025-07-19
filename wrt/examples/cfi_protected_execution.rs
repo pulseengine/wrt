@@ -21,8 +21,8 @@ use wrt::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("WRT CFI-Protected WebAssembly Execution Example";
-    println!("=============================================";
+    println!("WRT CFI-Protected WebAssembly Execution Example");
+    println!("=============================================");
 
     // Example 1: Simple CFI execution with default settings
     println!("\n1. Executing with default CFI protection...";

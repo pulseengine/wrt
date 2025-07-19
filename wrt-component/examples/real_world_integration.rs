@@ -99,10 +99,10 @@ impl WasmApplicationManager {
         println!(
             "Registering component '{}' of type {:?}",
             name, component_type
-        ;
+        );
 
         // Choose appropriate execution mode based on component type
-        let execution_mode = self.determine_execution_mode(&component_type;
+        let execution_mode = self.determine_execution_mode(&component_type);
 
         // Create agent configuration
         let agent_config = AgentConfiguration {
@@ -118,12 +118,12 @@ impl WasmApplicationManager {
         let agent_id = self.agent_registry.create_unified_agent(agent_config)?;
 
         // Store the mapping
-        self.component_agents.insert(name.clone(), agent_id;
+        self.component_agents.insert(name.clone(), agent_id);
 
         println!(
             "Successfully registered component '{}' with agent ID {:?}",
             name, agent_id
-        ;
+        );
         Ok(())
     }
 
@@ -134,7 +134,7 @@ impl WasmApplicationManager {
         function_name: &str,
         args: Vec<Value>,
     ) -> Result<ComponentResult, Box<dyn std::error::Error>> {
-        let start_time = std::time::Instant::now);
+        let start_time = std::time::Instant::now();
 
         // Get the agent for this component
         let agent_id = self
@@ -145,18 +145,18 @@ impl WasmApplicationManager {
         println!(
             "Executing function '{}' in component '{}'",
             function_name, component_name
-        ;
+        );
 
         // Simple function name to index mapping (in real app, this would be more
         // sophisticated)
-        let function_index = self.function_name_to_index(function_name;
+        let function_index = self.function_name_to_index(function_name);
         let instance_id = 1; // Simplified for demo
 
         // Execute the function
         let result =
-            self.agent_registry.call_function(*agent_id, instance_id, function_index, &args;
+            self.agent_registry.call_function(*agent_id, instance_id, function_index, &args);
 
-        let execution_time = start_time.elapsed);
+        let execution_time = start_time.elapsed();
 
         // Create result
         let component_result = ComponentResult {
@@ -171,9 +171,9 @@ impl WasmApplicationManager {
             println!(
                 "✅ Function '{}' executed successfully in {}ms",
                 function_name, component_result.execution_time_ms
-            ;
+            );
         } else {
-            println!("❌ Function '{}' failed", function_name;
+            println!("❌ Function '{}' failed", function_name);
         }
 
         Ok(component_result)
@@ -185,9 +185,9 @@ impl WasmApplicationManager {
         workflow_name: &str,
         input_data: Value,
     ) -> Result<Vec<ComponentResult>, Box<dyn std::error::Error>> {
-        println!("\n🚀 Executing workflow: {}", workflow_name;
+        println!("\n🚀 Executing workflow: {}", workflow_name);
 
-        let mut results = Vec::new);
+        let mut results = Vec::new();
 
         match workflow_name {
             "user_data_processing" => {
@@ -196,28 +196,28 @@ impl WasmApplicationManager {
                     "security",
                     "validate_input",
                     vec![input_data.clone()],
-                )?;
+                )?);
 
                 // Step 2: Process data in business logic component
                 results.push(self.execute_component_function(
                     "business_logic",
                     "process_user_data",
                     vec![input_data.clone()],
-                )?;
+                )?);
 
                 // Step 3: Store results in data component
                 results.push(self.execute_component_function(
                     "data_processing",
                     "store_processed_data",
                     vec![Value::String("processed_data".to_string())],
-                )?;
+                )?);
 
                 // Step 4: Update UI
                 results.push(self.execute_component_function(
                     "ui",
                     "update_display",
                     vec![Value::Bool(true)],
-                )?;
+                )?);
             },
 
             "batch_data_processing" => {
@@ -226,7 +226,7 @@ impl WasmApplicationManager {
                     "data_processing",
                     "start_batch_job",
                     vec![input_data],
-                )?;
+                )?);
 
                 // Simulate monitoring the batch job
                 for i in 0..3 {
@@ -234,27 +234,27 @@ impl WasmApplicationManager {
                         "data_processing",
                         "check_batch_status",
                         vec![Value::U32(i)],
-                    )?;
+                    )?);
                 }
             },
 
             _ => return Err(format!("Unknown workflow: {}", workflow_name).into()),
         }
 
-        let total_time: u64 = results.iter().map(|r| r.execution_time_ms).sum);
-        let success_count = results.iter().filter(|r| r.success).count);
+        let total_time: u64 = results.iter().map(|r| r.execution_time_ms).sum();
+        let success_count = results.iter().filter(|r| r.success).count();
 
-        println!("📊 Workflow '{}' completed:", workflow_name;
-        println!("   Total execution time: {}ms", total_time;
-        println!("   Successful steps: {}/{}", success_count, results.len);
+        println!("📊 Workflow '{}' completed:", workflow_name);
+        println!("   Total execution time: {}ms", total_time);
+        println!("   Successful steps: {}/{}", success_count, results.len());
 
         Ok(results)
     }
 
     /// Get application statistics
     pub fn get_statistics(&self) -> ApplicationStatistics {
-        let registry_stats = self.agent_registry.statistics);
-        let migration_stats = self.agent_registry.migration_status);
+        let registry_stats = self.agent_registry.statistics();
+        let migration_stats = self.agent_registry.migration_status();
 
         ApplicationStatistics {
             total_components:     self.component_agents.len(),
@@ -267,9 +267,9 @@ impl WasmApplicationManager {
 
     /// Migrate all legacy agents to unified (if any)
     pub fn migrate_legacy_agents(&mut self) -> Result<u32, Box<dyn std::error::Error>> {
-        println!("🔄 Migrating legacy agents to unified...";
+        println!("🔄 Migrating legacy agents to unified...");
         let migrated = self.agent_registry.migrate_all_agents()?;
-        println!("✅ Migrated {} agents", migrated;
+        println!("✅ Migrated {} agents", migrated);
         Ok(migrated)
     }
 
@@ -338,8 +338,8 @@ impl WasmApplicationManager {
             },
         };
 
-        let mut hasher = DefaultHasher::new);
-        function_name.hash(&mut hasher;
+        let mut hasher = DefaultHasher::new();
+        function_name.hash(&mut hasher);
         (hasher.finish() % 1000) as u32
     }
 }
@@ -368,7 +368,7 @@ impl Default for ApplicationConfig {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Real-World WebAssembly Application Example ===\n";
+    println!("=== Real-World WebAssembly Application Example ===\n");
 
     // Create application manager with configuration
     let config = ApplicationConfig {
@@ -376,7 +376,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..ApplicationConfig::default()
     };
 
-    let mut app_manager = WasmApplicationManager::new(config;
+    let mut app_manager = WasmApplicationManager::new(config);
 
     // Register application components
     app_manager.register_component("ui".to_string(), ComponentType::UserInterface)?;
@@ -388,14 +388,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app_manager.register_component("security".to_string(), ComponentType::SecurityCritical)?;
 
     // Show initial statistics
-    let stats = app_manager.get_statistics);
-    println!("\n📈 Initial Statistics:";
-    println!("   Components registered: {}", stats.total_components;
-    println!("   Active agents: {}", stats.active_agents;
-    println!("   Unified agents: {}", stats.unified_agents;
+    let stats = app_manager.get_statistics();
+    println!("\n📈 Initial Statistics:");
+    println!("   Components registered: {}", stats.total_components);
+    println!("   Active agents: {}", stats.active_agents);
+    println!("   Unified agents: {}", stats.unified_agents);
 
     // Execute individual component functions
-    println!("\n🔧 Testing Individual Components:";
+    println!("\n🔧 Testing Individual Components:");
 
     let validation_result = app_manager.execute_component_function(
         "security",
@@ -410,7 +410,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Execute complex workflows
-    println!("\n🏗️ Executing Complex Workflows:";
+    println!("\n🏗️ Executing Complex Workflows:");
 
     let workflow_results = app_manager.execute_workflow(
         "user_data_processing",
@@ -420,21 +420,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let batch_results = app_manager.execute_workflow("batch_data_processing", Value::U32(1000))?;
 
     // Show final statistics
-    let final_stats = app_manager.get_statistics);
-    println!("\n📊 Final Statistics:";
-    println!("   Total components: {}", final_stats.total_components;
-    println!("   Active agents: {}", final_stats.active_agents;
-    println!("   Unified agents: {}", final_stats.unified_agents;
-    println!("   Legacy agents: {}", final_stats.legacy_agents;
+    let final_stats = app_manager.get_statistics();
+    println!("\n📊 Final Statistics:");
+    println!("   Total components: {}", final_stats.total_components);
+    println!("   Active agents: {}", final_stats.active_agents);
+    println!("   Unified agents: {}", final_stats.unified_agents);
+    println!("   Legacy agents: {}", final_stats.legacy_agents);
 
-    println!("\n✅ Application completed successfully!";
-    println!("\nKey Benefits Demonstrated:";
-    println!("  🔹 Unified agents handle different component types seamlessly";
-    println!("  🔹 Execution modes are automatically chosen based on component requirements";
-    println!("  🔹 Complex workflows coordinate multiple components efficiently";
-    println!("  🔹 Security-critical components get appropriate protection (CFI)";
-    println!("  🔹 Memory-intensive components use stackless execution";
-    println!("  🔹 UI components use async execution for responsiveness";
+    println!("\n✅ Application completed successfully!");
+    println!("\nKey Benefits Demonstrated:");
+    println!("  🔹 Unified agents handle different component types seamlessly");
+    println!("  🔹 Execution modes are automatically chosen based on component requirements");
+    println!("  🔹 Complex workflows coordinate multiple components efficiently");
+    println!("  🔹 Security-critical components get appropriate protection (CFI)");
+    println!("  🔹 Memory-intensive components use stackless execution");
+    println!("  🔹 UI components use async execution for responsiveness");
 
     Ok(())
 }

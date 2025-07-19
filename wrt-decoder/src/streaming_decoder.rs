@@ -82,12 +82,12 @@ impl<'a> StreamingDecoder<'a> {
 
         // Check magic number
         if &self.binary[0..4] != b"\0asm" {
-            return Err(Error::parse_error("Invalid WebAssembly magic number";
+            return Err(Error::parse_error("Invalid WebAssembly magic number"));
         }
 
         // Check version
         if &self.binary[4..8] != &[0x01, 0x00, 0x00, 0x00] {
-            return Err(Error::parse_error("Unsupported WebAssembly version";
+            return Err(Error::parse_error("Unsupported WebAssembly version"));
         }
 
         self.offset = 8;
@@ -110,7 +110,7 @@ impl<'a> StreamingDecoder<'a> {
 
         let section_end = self.offset + section_size as usize;
         if section_end > self.binary.len() {
-            return Err(Error::parse_error("Section extends beyond binary";
+            return Err(Error::parse_error("Section extends beyond binary"));
         }
 
         // Process section data without loading it all into memory
@@ -240,7 +240,7 @@ impl<'a> StreamingDecoder<'a> {
             offset = new_offset;
 
             if offset >= data.len() {
-                return Err(Error::parse_error("Unexpected end of export kind";
+                return Err(Error::parse_error("Unexpected end of export kind"));
             }
 
             // Parse export kind
@@ -298,7 +298,7 @@ impl<'a> StreamingDecoder<'a> {
             // one at a time for even lower memory usage
             let body_end = offset + body_size as usize;
             if body_end > data.len() {
-                return Err(Error::parse_error("Function body extends beyond section";
+                return Err(Error::parse_error("Function body extends beyond section"));
             }
 
             // For now, copy the body - but this could be optimized further

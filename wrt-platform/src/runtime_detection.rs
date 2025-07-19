@@ -98,11 +98,11 @@ impl PlatformDetector {
     /// Detect platform capabilities (cached after first call)
     pub fn detect(&mut self) -> Result<PlatformCapabilities, Error> {
         if let Some(capabilities) = self.cached_capabilities {
-            return Ok(capabilities;
+            return Ok(capabilities);
         }
 
         let capabilities = self.detect_capabilities()?;
-        self.cached_capabilities = Some(capabilities;
+        self.cached_capabilities = Some(capabilities);
         Ok(capabilities)
     }
 

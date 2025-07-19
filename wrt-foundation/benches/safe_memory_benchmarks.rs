@@ -41,7 +41,7 @@ fn safe_memory_store_benchmark(c: &mut Criterion) {
             b.iter(|| {
                 #[cfg(feature = "std")]
                 let mut handler =
-                    SafeMemoryHandler::new(StdMemoryProvider::new(vec![0u8); CAPACITY]), level;
+                    SafeMemoryHandler::new(StdMemoryProvider::new(vec![0u8; CAPACITY]), level);
                 #[cfg(not(feature = "std"))]
                 let mut handler = SafeMemoryHandler::new(
                     wrt_foundation::safe_memory::NoStdMemoryProvider::<CAPACITY>::new(),

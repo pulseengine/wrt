@@ -71,20 +71,20 @@ impl PerformanceValidator {
         // Binary std/no_std choice
         let direct_time = Self::time_operation(|| {
             for _ in 0..ITERATIONS {
-                let result = Self::direct_memory_allocation);
-                let _ = black_box(result;
+                let result = Self::direct_memory_allocation();
+                let _ = black_box(result);
             }
-        };
+        });
 
         // Binary std/no_std choice
         let abstracted_time = Self::time_operation(|| {
             for _ in 0..ITERATIONS {
-                let result = Self::abstracted_memory_allocation::<P>);
-                let _ = black_box(result;
+                let result = Self::abstracted_memory_allocation::<P>();
+                let _ = black_box(result);
             }
-        };
+        });
 
-        let overhead = BenchmarkResult::calculate_overhead(direct_time, abstracted_time;
+        let overhead = BenchmarkResult::calculate_overhead(direct_time, abstracted_time);
 
         Ok(BenchmarkResult {
             operation: "memory_allocation",
@@ -101,20 +101,20 @@ impl PerformanceValidator {
         // Benchmark direct sync operations
         let direct_time = Self::time_operation(|| {
             for i in 0..ITERATIONS {
-                let result = Self::direct_sync_operation(i;
-                let _ = black_box(result;
+                let result = Self::direct_sync_operation(i);
+                let _ = black_box(result);
             }
-        };
+        });
 
         // Benchmark abstracted sync operations
         let abstracted_time = Self::time_operation(|| {
             for i in 0..ITERATIONS {
-                let result = Self::abstracted_sync_operation::<P>(i;
-                let _ = black_box(result;
+                let result = Self::abstracted_sync_operation::<P>(i);
+                let _ = black_box(result);
             }
-        };
+        });
 
-        let overhead = BenchmarkResult::calculate_overhead(direct_time, abstracted_time;
+        let overhead = BenchmarkResult::calculate_overhead(direct_time, abstracted_time);
 
         Ok(BenchmarkResult {
             operation: "sync_operations",
@@ -131,20 +131,20 @@ impl PerformanceValidator {
         // Benchmark direct struct creation
         let direct_time = Self::time_operation(|| {
             for i in 0..ITERATIONS {
-                let config = Self::direct_config_creation(i;
-                black_box(config;
+                let config = Self::direct_config_creation(i);
+                black_box(config);
             }
-        };
+        });
 
         // Benchmark abstracted config creation
         let abstracted_time = Self::time_operation(|| {
             for i in 0..ITERATIONS {
-                let result = Self::abstracted_config_creation::<P>(i;
-                let _ = black_box(result;
+                let result = Self::abstracted_config_creation::<P>(i);
+                let _ = black_box(result);
             }
-        };
+        });
 
-        let overhead = BenchmarkResult::calculate_overhead(direct_time, abstracted_time;
+        let overhead = BenchmarkResult::calculate_overhead(direct_time, abstracted_time);
 
         Ok(BenchmarkResult {
             operation: "config_creation",
@@ -164,9 +164,9 @@ impl PerformanceValidator {
         // the concept of performance measurement
 
         // Simulate timing
-        let start = Self::get_time_ns);
-        f);
-        let end = Self::get_time_ns);
+        let start = Self::get_time_ns();
+        f();
+        let end = Self::get_time_ns();
         end - start
     }
 
@@ -243,7 +243,7 @@ impl PerformanceValidator {
     /// Direct synchronization operation
     fn direct_sync_operation(value: u32) -> Result<(), Error> {
         // Simulate direct futex/sync API call
-        black_box(value;
+        black_box(value);
         black_box(42u32); // Expected value
         Ok(())
     }
@@ -251,8 +251,8 @@ impl PerformanceValidator {
     /// Abstracted synchronization operation
     fn abstracted_sync_operation<P>(value: u32) -> Result<(), Error> {
         // Simulate sync through abstraction
-        black_box(value;
-        black_box(42u32;
+        black_box(value);
+        black_box(42u32);
         Ok(())
     }
 
@@ -354,7 +354,7 @@ mod tests {
             overhead_percent: 0.5,
         };
 
-        assert!(result.is_zero_cost();
+        assert!(result.is_zero_cost());
 
         let high_overhead = BenchmarkResult {
             operation: "test",
@@ -363,35 +363,35 @@ mod tests {
             overhead_percent: 2.0,
         };
 
-        assert!(!high_overhead.is_zero_cost();
+        assert!(!high_overhead.is_zero_cost());
     }
 
     #[test]
     fn test_overhead_calculation() {
-        let overhead = BenchmarkResult::calculate_overhead(1000, 1010;
-        assert!((overhead - 1.0).abs() < 0.1)); // ~1% overhead
+        let overhead = BenchmarkResult::calculate_overhead(1000, 1010);
+        assert!((overhead - 1.0).abs() < 0.1); // ~1% overhead
 
-        let zero_overhead = BenchmarkResult::calculate_overhead(1000, 1000;
-        assert!(zero_overhead.abs() < 0.1)); // ~0% overhead
+        let zero_overhead = BenchmarkResult::calculate_overhead(1000, 1000);
+        assert!(zero_overhead.abs() < 0.1); // ~0% overhead
     }
 
     #[test]
     fn test_compile_time_validation() {
         // Test that the abstraction compiles and inlines properly
-        assert!(CompileTimeValidator::validate_inlining::<paradigm::Posix>();
+        assert!(CompileTimeValidator::validate_inlining::<paradigm::Posix>());
 
         // Test that direct and abstracted calls produce same results
-        let direct_result = CompileTimeValidator::direct_call_example);
-        let abstracted_result = CompileTimeValidator::abstracted_call_example::<paradigm::Posix>);
+        let direct_result = CompileTimeValidator::direct_call_example();
+        let abstracted_result = CompileTimeValidator::abstracted_call_example::<paradigm::Posix>();
 
-        assert_eq!(direct_result, abstracted_result;
+        assert_eq!(direct_result, abstracted_result);
     }
 
     #[test]
     fn test_timing_infrastructure() {
         // Test that timing infrastructure works
-        let time1 = PerformanceValidator::get_time_ns);
-        let time2 = PerformanceValidator::get_time_ns);
+        let time1 = PerformanceValidator::get_time_ns();
+        let time2 = PerformanceValidator::get_time_ns();
 
         // Time should advance
         assert!(time2 >= time1);
@@ -409,14 +409,14 @@ mod tests {
         let results = PerformanceValidator::validate_all::<paradigm::Posix>().unwrap();
 
         // Check that we got some results
-        assert!(!results.is_empty();
+        assert!(!results.is_empty());
 
         // Check that overhead is reasonable (should be very low)
         for result in &results {
-            println!("Operation: {}, Overhead: {:.2}%", result.operation, result.overhead_percent;
+            println!("Operation: {}, Overhead: {:.2}%", result.operation, result.overhead_percent);
             // In a real implementation, we'd assert result.is_zero_cost()
             // For this demo, we just ensure it's reasonable
-            assert!(result.overhead_percent < 100.0)); // Sanity check
+            assert!(result.overhead_percent < 100.0); // Sanity check
         }
     }
 }

@@ -19,8 +19,8 @@ use wrt_instructions::simd_ops::SimdOp;
 use wrt_error::Result;
 
 fn main() -> Result<()> {
-    println!("🚀 SIMD Execution Integration Demo";
-    println!("==================================";
+    println!("🚀 SIMD Execution Integration Demo");
+    println!("==================================");
     
     // Create a stackless engine for demonstration
     let mut engine = StacklessEngine::new);
@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     demonstrate_simd_lane_operations(&adapter, &mut engine)?;
     demonstrate_execution_statistics(&engine;
     
-    println!("\n✅ SIMD execution integration demo completed successfully!";
+    println!("\n✅ SIMD execution integration demo completed successfully!");
     Ok(())
 }
 

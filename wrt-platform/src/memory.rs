@@ -269,7 +269,7 @@ impl MemoryProvider for NoStdProvider {
         }
 
         let available = self.buffer.len() - offset;
-        let write_size = core::cmp::min(available, data.len));
+        let write_size = core::cmp::min(available, data.len());
 
         self.buffer[offset..offset + write_size].copy_from_slice(&data[0..write_size]);
 
@@ -280,11 +280,11 @@ impl MemoryProvider for NoStdProvider {
         if offset >= self.buffer.len() {
             return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                 1,
-                "Read offset out of bounds";
+                "Read offset out of bounds"));
         }
 
         let available = self.buffer.len() - offset;
-        let read_size = core::cmp::min(available, buffer.len));
+        let read_size = core::cmp::min(available, buffer.len());
 
         buffer[0..read_size].copy_from_slice(&self.buffer[offset..offset + read_size]);
 
@@ -355,7 +355,7 @@ mod tests {
             if self.allocated_ptr.is_none() {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::System,
                     1,
-                    "Memory not allocated";
+                    "Memory not allocated"));
             }
             let new_total_pages = current_pages + additional_pages;
             if let Some(max) = self.max_pages {
@@ -369,7 +369,7 @@ mod tests {
             if new_size > 5 * WASM_PAGE_SIZE {
                 return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                     1,
-                    "Allocation exceeds limit";
+                    "Allocation exceeds limit"));
             }
 
             // Binary std/no_std choice

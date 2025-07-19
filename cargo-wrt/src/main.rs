@@ -2608,7 +2608,7 @@ async fn cmd_kani_verify(
         anyhow::bail!(
             "KANI is not available. Please install it with: cargo install --locked kani-verifier \
              && cargo kani setup"
-        ;
+        );
     }
 
     let config = KaniConfig {
@@ -2620,18 +2620,18 @@ async fn cmd_kani_verify(
     };
 
     let workspace_root = build_system.workspace_root().to_path_buf();
-    let verifier = KaniVerifier::new(workspace_root, config;
+    let verifier = KaniVerifier::new(workspace_root, config);
 
     let results = verifier.run_verification().context("KANI verification failed")?;
 
-    verifier.print_summary(&results;
+    verifier.print_summary(&results);
 
     if results.passed_packages < results.total_packages {
         anyhow::bail!(
             "KANI verification failed for {}/{} packages",
             results.total_packages - results.passed_packages,
             results.total_packages
-        ;
+        );
     }
 
     Ok(())
@@ -2649,12 +2649,12 @@ async fn cmd_validate(
     use wrt_build_core::validation::CodeValidator;
 
     let workspace_root = build_system.workspace_root().to_path_buf();
-    let validator = CodeValidator::new(workspace_root.clone(), verbose;
+    let validator = CodeValidator::new(workspace_root.clone(), verbose);
 
     let mut any_failed = false;
 
     if all || check_test_files {
-        println!("{} Checking for test files in src/...", "🔍".bright_blue();
+        println!("{} Checking for test files in src/...", "🔍".bright_blue());
         let result = validator
             .check_no_test_files_in_src()
             .context("Failed to check for test files")?;
@@ -2667,7 +2667,7 @@ async fn cmd_validate(
                     "❌".bright_red(),
                     error.file.display(),
                     error.message
-                ;
+                );
             }
         }
     }
@@ -2677,7 +2677,7 @@ async fn cmd_validate(
         println!(
             "{} Checking module documentation coverage...",
             "📚".bright_blue()
-        ;
+        );
         let result = validator
             .check_module_documentation()
             .context("Failed to check documentation")?;
@@ -2692,7 +2692,7 @@ async fn cmd_validate(
         println!(
             "{} Running comprehensive documentation audit...",
             "📚".bright_blue()
-        ;
+        );
         let result =
             validator.audit_crate_documentation().context("Failed to audit documentation")?;
 
@@ -2734,13 +2734,13 @@ async fn cmd_setup(
     println!(
         "{} Setting up development environment...",
         "🔧".bright_blue()
-    ;
+    );
 
-    let workspace_root = build_system.workspace_root);
+    let workspace_root = build_system.workspace_root();
 
     // Handle tool status check
     if all || check {
-        println!("{} Checking tool availability...", "🔍".bright_cyan();
+        println!("{} Checking tool availability...", "🔍".bright_cyan());
 
         use wrt_build_core::tools::ToolManager;
         let tool_manager = ToolManager::new();
@@ -2754,7 +2754,7 @@ async fn cmd_setup(
 
     // Handle tool installation
     if all || install {
-        println!("{} Installing optional tools...", "💿".bright_cyan();
+        println!("{} Installing optional tools...", "💿".bright_cyan());
 
         use wrt_build_core::tools::ToolManager;
         let tool_manager = ToolManager::new();
@@ -2770,16 +2770,16 @@ async fn cmd_setup(
         println!("{} Configuring git hooks...", "🪝".bright_cyan();
 
         // Check if .githooks directory exists
-        let githooks_dir = workspace_root.join(".githooks";
+        let githooks_dir = workspace_root.join(".githooks");
         if !githooks_dir.exists() {
             fs::create_dir(&githooks_dir).context("Failed to create .githooks directory")?;
         }
 
         // Configure git to use .githooks directory
-        let mut git_cmd = Command::new("git";
+        let mut git_cmd = Command::new("git");
         git_cmd
             .args(["config", "core.hooksPath", ".githooks"])
-            .current_dir(workspace_root;
+            .current_dir(workspace_root);
 
         let output = git_cmd.output().context("Failed to configure git hooks")?;
 
@@ -2803,7 +2803,7 @@ async fn cmd_setup(
         println!("  --check    Check status of all tools");
         println!("  --hooks    Setup git hooks");
         println!("  --install  Install optional tools (cargo-fuzz, kani-verifier)";
-        println!("  --all      Do everything (check + hooks + install)";
+        println!("  --all      Do everything (check + hooks + install)");
         println!();
         println!("Examples:");
         println!("  cargo-wrt setup --check");
@@ -2823,7 +2823,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
 
     match command {
         ToolVersionCommand::Generate { force, all } => {
-            let workspace_root = build_system.workspace_root);
+            let workspace_root = build_system.workspace_root;
             let config_path = workspace_root.join("tool-versions.toml";
 
             if config_path.exists() && !force {
@@ -2868,7 +2868,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
 
             if let Some(tool_name) = tool {
                 // Check specific tool
-                let status = tool_manager.check_tool(&tool_name;
+                let status = tool_manager.check_tool(&tool_name);
                 if verbose {
                     println!("  Tool: {}", tool_name.bright_cyan();
                     println!(
@@ -2879,7 +2879,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                         println!("  Version: {}", version);
                     }
                     if let Some(error) = &status.error {
-                        println!("  Error: {}", error.bright_red();
+                        println!("  Error: {}", error.bright_red());
                     }
                     println!("  Version Status: {:?}", status.version_status);
                     println!(
@@ -2888,18 +2888,18 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                     ;
                 } else {
                     let icon = if status.available && !status.needs_action { "✅" } else { "❌" };
-                    println!("  {} {}", icon, tool_name.bright_cyan();
+                    println!("  {} {}", icon, tool_name.bright_cyan());
                 }
             } else {
                 // Check all tools
                 if verbose {
-                    tool_manager.print_tool_status);
+                    tool_manager.print_tool_status();
                 } else {
-                    let results = tool_manager.check_all_tools);
+                    let results = tool_manager.check_all_tools();
                     for (tool_name, status) in results {
                         let icon =
                             if status.available && !status.needs_action { "✅" } else { "❌" };
-                        println!("  {} {}", icon, tool_name.bright_cyan();
+                        println!("  {} {}", icon, tool_name.bright_cyan());
                     }
                 }
             }

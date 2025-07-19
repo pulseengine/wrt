@@ -22,7 +22,7 @@ fn verify_wasm_testsuite_access() {
     let testsuite_path = match get_testsuite_path() {
         Some(path) => path,
         None => {
-            println!("Skipping test: WASM_TESTSUITE environment variable not set";
+            println!("Skipping test: WASM_TESTSUITE environment variable not set");
             return;
         },
     };
@@ -46,17 +46,17 @@ fn verify_wasm_testsuite_access() {
         "simd_i8x16_arith.wast",
     ];
 
-    println!("Found WASM test suite at: {}", testsuite_path;
-    println!("Checking for SIMD WAST files...";
+    println!("Found WASM test suite at: {}", testsuite_path);
+    println!("Checking for SIMD WAST files...");
 
     let mut found_files = 0;
     for file in wast_files {
         let file_path = testsuite_dir.join(file;
         if file_path.exists() {
-            println!("✅ Found {}", file;
+            println!("✅ Found {}", file);
             found_files += 1;
         } else {
-            println!("❌ Missing {}", file;
+            println!("❌ Missing {}", file);
         }
     }
 

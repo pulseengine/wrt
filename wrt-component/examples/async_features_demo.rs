@@ -125,7 +125,7 @@ fn demo_task_management() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_waitable_sets() -> Result<(), Box<dyn std::error::Error>> {
     println!("  • Initializing waitable set registry...";
     // wrt_component::WaitableSetBuiltins::initialize()?;
-    println!("    ✓ Registry initialized";
+    println!("    ✓ Registry initialized");
 
     println!("  • Creating waitable set...";
     // let set_id = wrt_component::WaitableSetBuiltins::waitable_set_new()?;
@@ -161,9 +161,9 @@ fn demo_waitable_sets() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(feature = "std")]
 fn demo_error_contexts() -> Result<(), Box<dyn std::error::Error>> {
-    println!("  • Initializing error context registry...";
+    println!("  • Initializing error context registry...");
     // wrt_component::ErrorContextBuiltins::initialize()?;
-    println!("    ✓ Registry initialized";
+    println!("    ✓ Registry initialized");
 
     println!("  • Creating error context...";
     // let context_id = wrt_component::ErrorContextBuiltins::error_context_new(
@@ -218,7 +218,7 @@ fn main() {
 fn demo_advanced_threading() -> Result<(), Box<dyn std::error::Error>> {
     println!("  • Initializing advanced threading registry...";
     // wrt_component::AdvancedThreadingBuiltins::initialize()?;
-    println!("    ✓ Registry initialized";
+    println!("    ✓ Registry initialized");
 
     println!("  • Creating function reference...";
     // let func_ref = wrt_component::FunctionReference::new(

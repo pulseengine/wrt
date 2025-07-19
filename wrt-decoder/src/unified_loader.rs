@@ -177,12 +177,12 @@ impl WasmInfo {
 pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
     // Validate basic WASM header
     if binary.len() < 8 {
-        return Err(Error::parse_error("Binary too small to be valid WASM";
+        return Err(Error::parse_error("Binary too small to be valid WASM"));
     }
 
     // Check magic number
     if &binary[0..4] != b"\0asm" {
-        return Err(Error::parse_error("Invalid WASM magic number";
+        return Err(Error::parse_error("Invalid WASM magic number"));
     }
 
     // Check version (1.0 for core modules, different for components)
@@ -212,7 +212,7 @@ pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
             info.component_info = Some(extract_component_info(binary)?;
         },
         WasmFormat::Unknown => {
-            return Err(Error::runtime_execution_error("Unknown WebAssembly format";
+            return Err(Error::runtime_execution_error("Unknown WebAssembly format"));
         },
     }
 
@@ -277,7 +277,7 @@ fn extract_module_info(binary: &[u8]) -> Result<ModuleInfo> {
 
         let section_end = offset + section_size as usize;
         if section_end > binary.len() {
-            return Err(Error::parse_error("Section extends beyond binary";
+            return Err(Error::parse_error("Section extends beyond binary"));
         }
 
         let section_data = &binary[offset..section_end];
