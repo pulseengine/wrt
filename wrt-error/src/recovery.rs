@@ -268,7 +268,7 @@ impl RecoverableError {
     /// Create a new recoverable error
     pub fn new(error: Error, context: ErrorContext) -> Self {
         let manager = ErrorRecoveryManager::new();
-        let recovery_suggestion = manager.recover(&error, &context;
+        let recovery_suggestion = manager.recover(&error, &context);
 
         Self {
             error,
@@ -299,28 +299,28 @@ impl DebugUtils {
         output.push_str(&format!(
             "Error: {} (Code: {})\n",
             error.message, error.code
-        ;
-        output.push_str(&format!("Category: {:?}\n", error.category;
-        output.push_str(&format!("Location: {}\n", context.location;
+        ));
+        output.push_str(&format!("Category: {:?}\n", error.category));
+        output.push_str(&format!("Location: {}\n", context.location));
 
         if !context.context.is_empty() {
-            output.push_str("Context:\n";
+            output.push_str("Context:\n");
             for (key, value) in &context.context {
-                output.push_str(&format!("  {}: {}\n", key, value;
+                output.push_str(&format!("  {}: {}\n", key, value));
             }
         }
 
         if !context.stack_trace.is_empty() {
-            output.push_str("Stack trace:\n";
+            output.push_str("Stack trace:\n");
             for (i, frame) in context.stack_trace.iter().enumerate() {
-                output.push_str(&format!("  {}: {}\n", i, frame;
+                output.push_str(&format!("  {}: {}\n", i, frame));
             }
         }
 
         output.push_str(&format!(
             "Recovery strategy: {:?}\n",
             context.recovery_strategy
-        ;
+        ));
 
         output
     }
@@ -344,10 +344,10 @@ impl DebugUtils {
             operation, instruction_offset
         ))
         .with_context("operation", operation)
-        .with_context("offset", format!("{}", instruction_offset;
+        .with_context("offset", format!("{}", instruction_offset));
 
         if let Some(func_idx) = function_index {
-            ctx = ctx.with_context("function_index", format!("{}", func_idx;
+            ctx = ctx.with_context("function_index", format!("{}", func_idx));
         }
 
         ctx
@@ -366,9 +366,9 @@ macro_rules! error_context {
         {
             let mut ctx = $crate::recovery::ErrorContext::new(format!("{}:{} in {}", file!(), line!(), $location))
                 .with_context("file", file!())
-                .with_context("line", format!("{}", line!();
+                .with_context("line", format!("{}", line!()));
             $(
-                ctx = ctx.with_context($key, $value;
+                ctx = ctx.with_context($key, $value);
             )+
             ctx
         }
@@ -382,14 +382,14 @@ macro_rules! recoverable {
         match $expr {
             Ok(value) => Ok(value),
             Err(error) => {
-                let recoverable = $crate::recovery::RecoverableError::new(error, $context;
+                let recoverable = $crate::recovery::RecoverableError::new(error, $context);
                 match recoverable.recovery_suggestion {
                     $crate::recovery::RecoveryResult::Continue
                     | $crate::recovery::RecoveryResult::Skip => {
                         // Log and continue
                         #[cfg(feature = "std")]
-                        eprintln!("Recovered from error: {}", recoverable.error.message;))
-                        return recoverable.into_result);
+                        eprintln!("Recovered from error: {}", recoverable.error.message);
+                        return recoverable.into_result();
                     },
                     _ => Err(recoverable.error),
                 }
