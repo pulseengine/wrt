@@ -139,7 +139,7 @@ impl PlatformDetector {
                 hardware_tagging: self.detect_hardware_tagging(),
                 max_memory: self.detect_max_memory(),
                 allocation_granularity: self.detect_page_size(),
-            };
+            });
         }
 
         #[cfg(feature = "platform-zephyr")]
@@ -152,7 +152,7 @@ impl PlatformDetector {
                 hardware_tagging: false,     // Not typical in embedded
                 max_memory: Some(64 * 1024), // Typical embedded limit
                 allocation_granularity: 32,  // Typical alignment
-            };
+            });
         }
 
         #[cfg(feature = "platform-tock")]
