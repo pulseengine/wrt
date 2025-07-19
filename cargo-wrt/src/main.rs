@@ -1154,7 +1154,7 @@ fn should_use_colors(output_format: &OutputFormat) -> bool {
 
 /// Parse severity strings to Severity enum
 fn parse_severities(severity_strings: &[String]) -> Result<Vec<Severity>> {
-    let mut severities = Vec::new(;
+    let mut severities = Vec::new();
     for s in severity_strings {
         match s.to_lowercase().as_str() {
             "error" => severities.push(Severity::Error),
@@ -1171,36 +1171,36 @@ fn parse_severities(severity_strings: &[String]) -> Result<Vec<Severity>> {
 
 /// Create filter options from CLI arguments
 fn create_filter_options(cli: &Cli) -> Result<FilterOptionsBuilder> {
-    let mut builder = FilterOptionsBuilder::new(;
+    let mut builder = FilterOptionsBuilder::new();
 
     // Apply severity filter
     if let Some(severity_strings) = &cli.filter_severity {
         let severities = parse_severities(severity_strings)?;
-        builder = builder.severities(&severities;
+        builder = builder.severities(&severities);
     }
 
     // Apply source filter
     if let Some(sources) = &cli.filter_source {
-        builder = builder.sources(sources;
+        builder = builder.sources(sources);
     }
 
     // Apply file pattern filter
     if let Some(patterns) = &cli.filter_file {
-        builder = builder.file_patterns(patterns;
+        builder = builder.file_patterns(patterns);
     }
 
     // Apply grouping
     if let Some(group_by) = &cli.group_by {
-        builder = builder.group_by((*group_by).into();
+        builder = builder.group_by((*group_by).into());
     }
 
     // Apply limit
     if let Some(limit) = cli.limit {
-        builder = builder.limit(limit;
+        builder = builder.limit(limit);
     }
 
     // Default sorting
-    builder = builder.sort_by(SortBy::File, SortDirection::Ascending;
+    builder = builder.sort_by(SortBy::File, SortDirection::Ascending);
 
     Ok(builder)
 }
@@ -1226,12 +1226,12 @@ fn parse_args() -> Cli {
 
         // Add remaining arguments (skip the "wrt" at position 1)
         if args.len() > 2 {
-            filtered_args.extend(args[2..].iter().cloned();
+            filtered_args.extend(args[2..].iter().cloned());
         }
 
         // Parse with filtered arguments - if no command provided, show help
         if filtered_args.len() == 1 {
-            filtered_args.push("--help".to_string();
+            filtered_args.push("--help".to_string());
         }
 
         Cli::parse_from(filtered_args)
@@ -1247,7 +1247,7 @@ async fn main() -> Result<()> {
     // This must happen before any other operations to prevent stack overflow
     // when creating engines or using capability-based memory
     if let Err(e) = wrt_foundation::memory_init::MemoryInitializer::initialize() {
-        eprintln!("Warning: Failed to initialize memory system: {}", e;
+        eprintln!("Warning: Failed to initialize memory system: {}", e);
         // Continue execution - the system should still work with default
         // providers
     }
@@ -1255,20 +1255,20 @@ async fn main() -> Result<()> {
     // Handle special help cases before parsing
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && (args[1] == "help" && args.get(2) == Some(&"diagnostics".to_string())) {
-        print_diagnostic_help(;
-        return Ok(();
+        print_diagnostic_help();
+        return Ok(());
     }
     if args.len() >= 3
         && args[1] == "wrt"
         && args[2] == "help"
         && args.get(3) == Some(&"diagnostics".to_string())
     {
-        print_diagnostic_help(;
-        return Ok(();
+        print_diagnostic_help();
+        return Ok(());
     }
 
     // Handle both `cargo-wrt` and `cargo wrt` calling patterns
-    let cli = parse_args(;
+    let cli = parse_args();
 
     // Print header
     if cli.verbose {
@@ -1281,9 +1281,9 @@ async fn main() -> Result<()> {
             "🚀".bright_blue(),
             calling_pattern,
             env!("CARGO_PKG_VERSION")
-        ;
-        println!("{} WebAssembly Runtime Build System", "📦".bright_green();
-        println!(;
+        );
+        println!("{} WebAssembly Runtime Build System", "📦".bright_green());
+        println!();
     }
 
     // Create global args from CLI
@@ -1292,7 +1292,7 @@ async fn main() -> Result<()> {
     // Create build system instance
     let build_system = match &cli.workspace {
         Some(workspace) => {
-            let workspace_path = std::path::PathBuf::from(workspace;
+            let workspace_path = std::path::PathBuf::from(workspace);
             BuildSystem::new(workspace_path)
         },
         None => BuildSystem::for_current_dir(),
@@ -1300,7 +1300,7 @@ async fn main() -> Result<()> {
     .context("Failed to initialize build system")?;
 
     // Configure build system
-    let mut config = BuildConfig::default(;
+    let mut config = BuildConfig::default();
     config.verbose = global.verbose;
     config.profile = global.profile.clone();
     config.dry_run = global.dry_run;
@@ -1308,7 +1308,7 @@ async fn main() -> Result<()> {
     config.features = global.features.clone();
 
     let mut build_system = build_system;
-    build_system.set_config(config;
+    build_system.set_config(config);
 
     // Execute command
     let result = match &cli.command {
@@ -1334,7 +1334,7 @@ async fn main() -> Result<()> {
             no_doc_tests,
         } => {
             let output_format = global.output_format.clone();
-            let use_colors = should_use_colors(&output_format;
+            let use_colors = should_use_colors(&output_format);
             cmd_test(
                 &build_system,
                 package.clone(),
@@ -1379,7 +1379,7 @@ async fn main() -> Result<()> {
             allowed_unsafe: _,
         } => {
             let output_format = global.output_format.clone();
-            let use_colors = should_use_colors(&output_format;
+            let use_colors = should_use_colors(&output_format);
             cmd_verify(
                 &build_system,
                 *asil,
@@ -1593,7 +1593,7 @@ async fn main() -> Result<()> {
             cmd_embed_limits(args, &global.output)
         },
         Commands::HelpDiagnostics => {
-            print_diagnostic_help(;
+            print_diagnostic_help();
             Ok(())
         },
     };
@@ -1601,13 +1601,13 @@ async fn main() -> Result<()> {
     match result {
         Ok(()) => {
             if cli.verbose {
-                global.output.success("Command completed successfully";
+                global.output.success("Command completed successfully");
             }
             Ok(())
         },
         Err(e) => {
-            global.output.error(&e.to_string();
-            process::exit(1;
+            global.output.error(&e.to_string());
+            process::exit(1);
         },
     }
 }
@@ -1634,8 +1634,8 @@ async fn cmd_build(
 
             // Apply caching and diff functionality if enabled
             if global.cache {
-                let workspace_root = build_system.workspace_root(;
-                let cache_path = get_cache_path(workspace_root;
+                let workspace_root = build_system.workspace_root();
+                let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
@@ -1646,18 +1646,18 @@ async fn cmd_build(
                 // Apply diff filtering if requested
                 if global.diff_only {
                     let diff_diagnostics =
-                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics;
+                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
                 }
 
                 // Cache new diagnostics (after diff processing)
                 let mut file_diagnostic_map: std::collections::HashMap<String, Vec<_>> =
-                    std::collections::HashMap::new(;
+                    std::collections::HashMap::new();
                 for diagnostic in &diagnostics.diagnostics {
                     file_diagnostic_map
                         .entry(diagnostic.file.clone())
                         .or_insert_with(Vec::new)
-                        .push(diagnostic.clone();
+                        .push(diagnostic.clone());
                 }
 
                 for (file, file_diagnostics) in file_diagnostic_map {
@@ -1678,11 +1678,11 @@ async fn cmd_build(
                 let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
-                ;
+                );
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new(;
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -1693,11 +1693,11 @@ async fn cmd_build(
                 global.output.format().clone(),
                 true,
                 global.output.is_colored(),
-            ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                process::exit(1;
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
@@ -1713,7 +1713,7 @@ async fn cmd_build(
                     global.output_format.clone(),
                     output.is_colored(),
                 ;
-                progress.start(;
+                progress.start();
 
                 let results = build_system.build_package(&pkg).context("Package build failed")?;
 
@@ -1721,12 +1721,12 @@ async fn cmd_build(
                     "Package '{}' built successfully in {:.2}s",
                     pkg,
                     results.duration().as_secs_f64()
-                );
+                ));
 
                 if !results.warnings().is_empty() {
-                    output.warning("Build warnings:";
+                    output.warning("Build warnings:");
                     for warning in results.warnings() {
-                        output.indent(warning;
+                        output.indent(warning);
                     }
                 }
             } else {
@@ -1741,43 +1741,43 @@ async fn cmd_build(
                     steps,
                     global.output_format.clone(),
                     output.is_colored(),
-                ;
-                progress.start(;
+                );
+                progress.start();
 
-                progress.begin_step("Analyzing workspace dependencies";
+                progress.begin_step("Analyzing workspace dependencies");
                 // Simulate dependency analysis
-                std::thread::sleep(std::time::Duration::from_millis(500);
-                progress.finish_step("Dependencies analyzed";
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                progress.finish_step("Dependencies analyzed");
 
-                progress.begin_step("Compiling all workspace components";
+                progress.begin_step("Compiling all workspace components");
                 let results = build_system.build_all().context("Build failed")?;
-                progress.finish_step("Compilation completed";
+                progress.finish_step("Compilation completed");
 
-                progress.begin_step("Running clippy and format checks";
+                progress.begin_step("Running clippy and format checks");
                 // Additional checks would go here
-                std::thread::sleep(std::time::Duration::from_millis(300);
-                progress.finish_step("Checks completed";
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                progress.finish_step("Checks completed");
 
                 progress.finish(format!(
                     "All components built successfully in {:.2}s",
                     results.duration().as_secs_f64()
-                );
+                ));
 
                 if !results.warnings().is_empty() {
-                    output.warning("Build warnings:";
+                    output.warning("Build warnings:");
                     for warning in results.warnings() {
-                        output.indent(warning;
+                        output.indent(warning);
                     }
                 }
             }
 
             if clippy {
-                output.progress("Running clippy checks...";
+                output.progress("Running clippy checks...");
                 build_system.run_static_analysis().context("Clippy checks failed")?;
             }
 
             if fmt_check {
-                output.progress("Checking code formatting...";
+                output.progress("Checking code formatting...");
                 build_system.check_formatting().context("Format check failed")?;
             }
         },
@@ -1813,8 +1813,8 @@ async fn cmd_test(
 
             // Apply caching and diff functionality if enabled
             if global.cache {
-                let workspace_root = build_system.workspace_root(;
-                let cache_path = get_cache_path(workspace_root;
+                let workspace_root = build_system.workspace_root();
+                let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
@@ -1825,7 +1825,7 @@ async fn cmd_test(
                 // Apply diff filtering if requested
                 if global.diff_only {
                     let diff_diagnostics =
-                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics;
+                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
                 }
 
@@ -1841,11 +1841,11 @@ async fn cmd_test(
                 let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
-                ;
+                );
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new(;
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -1856,29 +1856,29 @@ async fn cmd_test(
                 global.output.format().clone(),
                 true,
                 global.output.is_colored(),
-            ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                process::exit(1;
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
             // Use traditional output for human format
             if use_colors {
-                println!("{} Running tests...", "🧪".bright_blue();
+                println!("{} Running tests...", "🧪".bright_blue());
             } else {
-                println!("Running tests...";
+                println!("Running tests...");
             }
 
             if let Some(pkg) = package {
-                println!("  Testing package: {}", pkg.bright_cyan();
+                println!("  Testing package: {}", pkg.bright_cyan());
                 let results = build_system.test_package(&pkg).context("Package tests failed")?;
 
                 if !results.warnings().is_empty() {
-                    println!("{} Test warnings:", "⚠️".bright_yellow();
+                    println!("{} Test warnings:", "⚠️".bright_yellow());
                     for warning in results.warnings() {
-                        println!("  {}", warning;
+                        println!("  {}", warning);
                     }
                 }
 
@@ -1887,7 +1887,7 @@ async fn cmd_test(
                     "✅".bright_green(),
                     results.duration().as_secs_f64()
                 ;
-                return Ok(();
+                return Ok(());
             }
 
             let mut test_options = wrt_build_core::test::TestOptions::default(;
@@ -2054,8 +2054,8 @@ async fn cmd_verify(
 
             // Apply caching and diff functionality if enabled
             if global.cache {
-                let workspace_root = build_system.workspace_root(;
-                let cache_path = get_cache_path(workspace_root;
+                let workspace_root = build_system.workspace_root();
+                let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
@@ -2066,7 +2066,7 @@ async fn cmd_verify(
                 // Apply diff filtering if requested
                 if global.diff_only {
                     let diff_diagnostics =
-                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics;
+                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
                 }
 
@@ -2082,11 +2082,11 @@ async fn cmd_verify(
                 let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
-                ;
+                );
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new(;
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -2097,19 +2097,19 @@ async fn cmd_verify(
                 global.output.format().clone(),
                 true,
                 global.output.is_colored(),
-            ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                process::exit(1;
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
             // Use traditional output for human format
             if use_colors {
-                println!("{} Running safety verification...", "🛡️".bright_blue();
+                println!("{} Running safety verification...", "🛡️".bright_blue());
             } else {
-                println!("Running safety verification...";
+                println!("Running safety verification...");
             }
 
             let results = build_system
@@ -2177,7 +2177,7 @@ async fn cmd_docs(
             .generate_multi_version_docs(versions)
             .context("Multi-version documentation generation failed")?;
 
-        return Ok(();
+        return Ok(());
     }
 
     // Check documentation dependencies first
@@ -2275,8 +2275,8 @@ async fn cmd_check(
 
             // Apply caching and diff functionality if enabled
             if global.cache {
-                let workspace_root = build_system.workspace_root(;
-                let cache_path = get_cache_path(workspace_root;
+                let workspace_root = build_system.workspace_root();
+                let cache_path = get_cache_path(workspace_root);
                 let mut cache_manager =
                     CacheManager::new(workspace_root.to_path_buf(), cache_path, true)?;
 
@@ -2287,7 +2287,7 @@ async fn cmd_check(
                 // Apply diff filtering if requested
                 if global.diff_only {
                     let diff_diagnostics =
-                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics;
+                        cache_manager.get_diff_diagnostics(&diagnostics.diagnostics);
                     diagnostics.diagnostics = diff_diagnostics;
                 }
 
@@ -2303,11 +2303,11 @@ async fn cmd_check(
                 let filter_options = global.build_filter_options()?;
                 let processor = wrt_build_core::filtering::DiagnosticProcessor::new(
                     build_system.workspace_root().to_path_buf(),
-                ;
+                );
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new(;
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -2318,11 +2318,11 @@ async fn cmd_check(
                 global.output.format().clone(),
                 true,
                 global.output.is_colored(),
-            ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            );
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
-                process::exit(1;
+                process::exit(1);
             }
         },
         OutputFormat::Human => {
@@ -2575,7 +2575,7 @@ async fn cmd_simulate_ci(
 ) -> Result<()> {
     use wrt_build_core::ci::CiSimulator;
 
-    let workspace_root = build_system.workspace_root().to_path_buf(;
+    let workspace_root = build_system.workspace_root().to_path_buf();
     let simulator = CiSimulator::new(workspace_root, verbose;
 
     let results = simulator.run_simulation().context("CI simulation failed")?;
@@ -2619,7 +2619,7 @@ async fn cmd_kani_verify(
         extra_args,
     };
 
-    let workspace_root = build_system.workspace_root().to_path_buf(;
+    let workspace_root = build_system.workspace_root().to_path_buf();
     let verifier = KaniVerifier::new(workspace_root, config;
 
     let results = verifier.run_verification().context("KANI verification failed")?;
@@ -2648,7 +2648,7 @@ async fn cmd_validate(
 ) -> Result<()> {
     use wrt_build_core::validation::CodeValidator;
 
-    let workspace_root = build_system.workspace_root().to_path_buf(;
+    let workspace_root = build_system.workspace_root().to_path_buf();
     let validator = CodeValidator::new(workspace_root.clone(), verbose;
 
     let mut any_failed = false;
@@ -2673,7 +2673,7 @@ async fn cmd_validate(
     }
 
     if all || check_docs {
-        println!(;
+        println!();
         println!(
             "{} Checking module documentation coverage...",
             "📚".bright_blue()
@@ -2688,7 +2688,7 @@ async fn cmd_validate(
     }
 
     if all || audit_docs {
-        println!(;
+        println!();
         println!(
             "{} Running comprehensive documentation audit...",
             "📚".bright_blue()
@@ -2745,7 +2745,7 @@ async fn cmd_setup(
         use wrt_build_core::tools::ToolManager;
         let tool_manager = ToolManager::new(;
         tool_manager.print_tool_status(;
-        println!(;
+        println!();
 
         if check && !all && !hooks && !install {
             return Ok(()); // Only check was requested
@@ -2763,7 +2763,7 @@ async fn cmd_setup(
             println!("    ⚠️ Some tools failed to install: {}", e;
         }
 
-        println!(;
+        println!();
     }
 
     if all || hooks {
@@ -2786,7 +2786,7 @@ async fn cmd_setup(
         if output.status.success() {
             println!("{} Git hooks configured successfully!", "✅".bright_green();
             println!("  Pre-commit hook will prevent test files in src/ directories";
-            println!(;
+            println!();
             println!("  To bypass hooks temporarily (not recommended), use:";
             println!("    git commit --no-verify";
         } else {
@@ -2804,7 +2804,7 @@ async fn cmd_setup(
         println!("  --hooks    Setup git hooks";
         println!("  --install  Install optional tools (cargo-fuzz, kani-verifier)";
         println!("  --all      Do everything (check + hooks + install)";
-        println!(;
+        println!();
         println!("Examples:";
         println!("  cargo-wrt setup --check";
         println!("  cargo-wrt setup --install";
@@ -2856,7 +2856,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                 "  📋 Configuration includes {} tools",
                 config.get_managed_tools().len()
             ;
-            println!(;
+            println!();
             println!("  💡 Edit the file to customize tool versions and requirements";
             println!("  🔄 Run 'cargo-wrt tool-versions check' to validate";
         },
@@ -2970,7 +2970,7 @@ async fn cmd_fuzz(
                 println!("  Failed to list fuzz targets: {}", e;
             },
         }
-        return Ok(();
+        return Ok(());
     }
 
     println!("{} Running fuzzing campaign...", "🐛".bright_blue();
@@ -3062,7 +3062,7 @@ async fn cmd_testsuite(
     if clean {
         println!("{} Cleaning extracted test files...", "🧹".bright_blue();
         // TODO: Implement cleaning through wrt-build-core
-        return Ok(();
+        return Ok(());
     }
 
     if extract {
@@ -3259,7 +3259,7 @@ async fn cmd_testsuite(
         println!("  --validate     Run validation tests";
         println!("  --clean        Clean extracted test files";
         println!("  --run-wast     Run WAST test suite";
-        println!(;
+        println!();
         println!("Examples:";
         println!("  cargo-wrt testsuite --run-wast";
         println!("  cargo-wrt testsuite --run-wast --wast-filter \"simd\"";
@@ -3582,7 +3582,7 @@ async fn cmd_requirements(
                     for req in missing_impl {
                         println!("  - {} {}", req.id, req.title;
                     }
-                    println!(;
+                    println!();
                 }
             }
 
@@ -3593,7 +3593,7 @@ async fn cmd_requirements(
                     for req in missing_tests {
                         println!("  - {} {} (coverage: {})", req.id, req.title, req.coverage;
                     }
-                    println!(;
+                    println!();
                 }
             }
 
@@ -3879,11 +3879,11 @@ async fn cmd_wasm(
                                 result.exports.len(),
                                 result.builtin_imports.len()
                             ;
-                            println!(;
+                            println!();
                         } else {
                             let verifier = WasmVerifier::new(path;
                             verifier.print_results(result;
-                            println!(;
+                            println!();
                         }
 
                         if result.valid {
@@ -3947,7 +3947,7 @@ async fn cmd_safety(
     use_colors: bool,
     cli: &Cli,
 ) -> Result<()> {
-    let workspace_root = build_system.workspace_root().to_path_buf(;
+    let workspace_root = build_system.workspace_root().to_path_buf();
 
     match command {
         SafetyCommand::Verify {
@@ -4101,7 +4101,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             match output_format {
                 OutputFormat::Json => {
@@ -4349,7 +4349,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             Ok(())
         },
@@ -4404,7 +4404,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if passed {
                 println!(
@@ -4525,7 +4525,7 @@ async fn cmd_safety(
                     true,
                     use_colors,
                 ;
-                print!("{}", formatter.format_collection(&diagnostics);
+                print!("{}", formatter.format_collection(&diagnostics));
 
                 println!(
                     "{} Initialized safety verification with WRT-specific requirements",
@@ -4611,7 +4611,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if detailed {
                 match output_format {
@@ -4834,7 +4834,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             ;
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             Ok(())
         },
