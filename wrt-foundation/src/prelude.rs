@@ -58,9 +58,20 @@ pub use hashbrown::HashMap as BHashMap;
 // HashSet, Arc are NOT exported by this prelude. Users should use bounded types or core types
 // directly.
 
-// Re-export from wrt_error
+// Re-export from wrt_error - this is the standard Result type for WRT
 pub use wrt_error::prelude::*;
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
+
+// Memory system core exports
+pub use crate::{
+    // Core memory allocation macro
+    safe_managed_alloc,
+    // Modern memory system types
+    generic_memory_guard::GenericMemoryGuard,
+    wrt_memory_system::CapabilityWrtFactory,
+    // Memory provider types
+    safe_memory::{Provider as MemoryProvider},
+};
 
 // Feature-gated re-exports that can't be included in the main use block
 #[cfg(feature = "std")]
@@ -107,7 +118,7 @@ pub use crate::{
     // Safe memory types (SafeMemoryHandler, SafeSlice, SafeStack are already here from direct
     // re-exports) Sections (SectionId, SectionType, Section are usually handled by decoder)
     // Binary std/no_std choice
-    safe_memory::NoStdProvider,
+    // safe_memory::NoStdProvider, // Re-exported below to avoid duplicate
     // Safety system types
     safety_system::{AsilLevel, SafeMemoryAllocation, SafetyContext, SafetyGuard},
     // Validation traits (moved to traits module to break circular dependency)
@@ -170,10 +181,37 @@ pub use crate::{
 pub const MAX_WASM_FUNCTION_PARAMS: usize = 128;
 
 /// Binary std/no_std choice
+// Convenient type aliases for WebAssembly function parameters
+/// Binary std/no_std choice - bounded vector for function arguments
 #[cfg(not(feature = "std"))]
-pub type ArgVec<T> =
-    BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
+pub type ArgVec<T> = BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
 
-/// Binary std/no_std choice
+/// Binary std/no_std choice - standard vector for function arguments
 #[cfg(feature = "std")]
 pub type ArgVec<T> = Vec<T>;
+
+// Memory system convenience re-exports
+pub use crate::{
+    // Capability system
+    capabilities::{
+        MemoryCapability, MemoryGuard, MemoryRegion, MemoryOperation,
+        CapabilityMask, MemoryOperationType,
+    },
+    // Budget management
+    budget_aware_provider::CrateId,
+    // Memory initialization
+    memory_init::MemoryInitializer,
+};
+
+// Capability system exports (when available)
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use crate::capabilities::{
+    CapabilityAwareProvider, CapabilityProviderFactory, ProviderCapabilityExt,
+};
+
+// For no_std environments, use simpler type alias
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use crate::capabilities::NoStdCapabilityContext as CapabilityContext;
+
+// Re-export NoStdProvider only once
+pub use crate::safe_memory::NoStdProvider;

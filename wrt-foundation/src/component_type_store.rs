@@ -28,7 +28,7 @@ const MAX_STORED_CORE_MODULE_TYPES: usize = 64; // Adjust as needed
 
 /// Represents a reference to a type stored in the `ComponentTypeStore`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct TypeRef(pub u32);
+pub struct TypeRef(pub u32;
 
 impl TypeRef {
     /// A reference that indicates no type or an invalid/uninitialized type.
@@ -44,7 +44,7 @@ impl TypeRef {
 
 impl crate::traits::Checksummable for TypeRef {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-        self.0.update_checksum(checksum);
+        self.0.update_checksum(checksum;
     }
 }
 

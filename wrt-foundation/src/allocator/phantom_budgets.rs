@@ -94,15 +94,15 @@ mod tests {
 
     #[test]
     fn test_crate_budgets() {
-        assert_eq!(CRATE_BUDGETS[CrateId::Foundation as usize], 256 * 1024);
-        assert_eq!(CRATE_BUDGETS[CrateId::Runtime as usize], 1024 * 1024);
-        assert_eq!(CRATE_BUDGETS[CrateId::Wrt as usize], 2048 * 1024);
+        assert_eq!(CRATE_BUDGETS[CrateId::Foundation as usize], 256 * 1024;
+        assert_eq!(CRATE_BUDGETS[CrateId::Runtime as usize], 1024 * 1024;
+        assert_eq!(CRATE_BUDGETS[CrateId::Wrt as usize], 2048 * 1024;
     }
 
     #[test]
     fn test_phantom_type() {
-        let _budget: MemoryBudget<{ CrateId::Foundation as u8 }, 1024> = MemoryBudget::verify();
-        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::crate_id(), 0);
-        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::size(), 1024);
+        let _budget: MemoryBudget<{ CrateId::Foundation as u8 }, 1024> = MemoryBudget::verify(;
+        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::crate_id(), 0;
+        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::size(), 1024;
     }
 }

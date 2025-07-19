@@ -149,7 +149,7 @@ impl ComponentInstantiation {
     /// Start instantiation process
     pub fn start_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::invalid_state_error("Instantiation already started"));
+            return Err(Error::invalid_state_error("Instantiation already started";
         }
         
         self.runtime_state.is_started = true;
@@ -159,7 +159,7 @@ impl ComponentInstantiation {
     /// Complete instantiation process
     pub fn complete_instantiation(&mut self) -> Result<()> {
         if !self.runtime_state.is_started {
-            return Err(Error::runtime_execution_error("Instantiation not started"));
+            return Err(Error::runtime_execution_error("Instantiation not started";
         }
         
         self.runtime_state.is_complete = true;
@@ -194,7 +194,7 @@ impl CoreModuleInstantiation {
     /// Start core instantiation process
     pub fn start_core_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::runtime_execution_error("Core instantiation already started"));
+            return Err(Error::runtime_execution_error("Core instantiation already started";
         }
         
         self.runtime_state.is_started = true;
@@ -207,7 +207,7 @@ impl CoreModuleInstantiation {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Core instantiation not started"));
+                "Core instantiation not started";
         }
         
         self.runtime_state.is_complete = true;
@@ -241,9 +241,9 @@ impl Default for InstantiationState {
 // Trait implementations for RuntimeInstantiateArg
 impl Checksummable for RuntimeInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes());
-        checksum.update_slice(&self.runtime_ref.runtime_idx.to_le_bytes());
-        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }]);
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes(;
+        checksum.update_slice(&self.runtime_ref.runtime_idx.to_le_bytes(;
+        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }];
     }
 }
 
@@ -278,9 +278,9 @@ impl FromBytes for RuntimeInstantiateArg {
 // Trait implementations for RuntimeCoreInstantiateArg
 impl Checksummable for RuntimeCoreInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes());
-        checksum.update_slice(&self.runtime_instance_idx.to_le_bytes());
-        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }]);
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes(;
+        checksum.update_slice(&self.runtime_instance_idx.to_le_bytes(;
+        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }];
     }
 }
 
@@ -313,9 +313,9 @@ impl FromBytes for RuntimeCoreInstantiateArg {
 // Trait implementations for RuntimeReference
 impl Checksummable for RuntimeReference {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&(self.sort as u32).to_le_bytes());
-        checksum.update_slice(&self.runtime_idx.to_le_bytes());
-        checksum.update_slice(&self.runtime_handle.to_le_bytes());
+        checksum.update_slice(&(self.sort as u32).to_le_bytes(;
+        checksum.update_slice(&self.runtime_idx.to_le_bytes(;
+        checksum.update_slice(&self.runtime_handle.to_le_bytes(;
     }
 }
 

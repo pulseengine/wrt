@@ -25,7 +25,7 @@
 /// // Create capability context
 /// let mut factory = CapabilityFactoryBuilder::new()
 ///     .with_dynamic_capability(CrateId::Foundation, 4096)?
-///     .build();
+///     .build(;
 ///
 /// // Use the capability-driven macro
 /// let provider = safe_capability_alloc!(factory, CrateId::Foundation, 1024)?;
@@ -111,14 +111,14 @@ macro_rules! safe_verified_alloc {
 /// };
 ///
 /// # fn example() -> wrt_foundation::Result<()> {
-/// let provider = NoStdProvider::<1024>::new();
+/// let provider = NoStdProvider::<1024>::new(;
 /// let capability = Box::new(DynamicMemoryCapability::new(
 ///     1024,
 ///     CrateId::Foundation,
 ///     VerificationLevel::Standard,
-/// ));
+/// ;
 ///
-/// let wrapped = capability_wrap_provider!(provider, capability, CrateId::Foundation);
+/// let wrapped = capability_wrap_provider!(provider, capability, CrateId::Foundation;
 /// # Ok(())
 /// # }
 /// ```
@@ -171,7 +171,7 @@ macro_rules! capability_context {
         use $crate::verification::VerificationLevel;
 
         // Create a simple context with dynamic capability for direct use with MemoryFactory
-        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false;
         context.register_dynamic_capability($crate_id, $max_size)
             .map(|_| context)
     }};
@@ -181,7 +181,7 @@ macro_rules! capability_context {
         use $crate::verification::VerificationLevel;
 
         // Create a simple context with static capability for direct use with MemoryFactory  
-        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false;
         context.register_static_capability::<$size>($crate_id)
             .map(|_| context)
     }};
@@ -191,7 +191,7 @@ macro_rules! capability_context {
         use $crate::verification::VerificationLevel;
 
         // Create a simple context with verified capability for direct use with MemoryFactory
-        let mut context = MemoryCapabilityContext::new(VerificationLevel::Redundant, true);
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Redundant, true;
         context.register_verified_capability::<$size>($crate_id, $proofs)
             .map(|_| context)
     }};
@@ -263,11 +263,11 @@ mod tests {
 
     #[test]
     fn test_capability_context_macro() {
-        let result = capability_context!(dynamic(CrateId::Foundation, 1024));
-        assert!(result.is_ok());
+        let result = capability_context!(dynamic(CrateId::Foundation, 1024;
+        assert!(result.is_ok();
 
         let context = result.unwrap();
-        assert!(context.has_capability(CrateId::Foundation));
+        assert!(context.has_capability(CrateId::Foundation);
     }
 
     #[test]
@@ -278,11 +278,11 @@ mod tests {
             1024,
             CrateId::Foundation,
             VerificationLevel::Standard,
-        ));
+        ;
 
-        let wrapped = capability_wrap_provider!(provider, capability, CrateId::Foundation);
-        assert_eq!(wrapped.capacity(), 1024);
-        assert_eq!(wrapped.owner_crate(), CrateId::Foundation);
+        let wrapped = capability_wrap_provider!(provider, capability, CrateId::Foundation;
+        assert_eq!(wrapped.capacity(), 1024;
+        assert_eq!(wrapped.owner_crate(), CrateId::Foundation;
         Ok(())
     }
 
@@ -291,15 +291,15 @@ mod tests {
     fn test_safe_capability_alloc_macro() {
         let context = capability_context!(dynamic(CrateId::Foundation, 2048)).unwrap();
 
-        let result = safe_capability_alloc!(context, CrateId::Foundation, 1024);
-        assert!(result.is_ok());
+        let result = safe_capability_alloc!(context, CrateId::Foundation, 1024;
+        assert!(result.is_ok();
     }
 
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_safe_verified_alloc_macro() {
         let result =
-            safe_verified_alloc!(CrateId::Foundation, 1024, VerificationLevel::Standard);
-        assert!(result.is_ok());
+            safe_verified_alloc!(CrateId::Foundation, 1024, VerificationLevel::Standard;
+        assert!(result.is_ok();
     }
 }

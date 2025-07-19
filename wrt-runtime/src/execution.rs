@@ -16,14 +16,14 @@
 //! All execution operations are bounds-checked and memory-safe, preventing
 //! stack overflows and maintaining WebAssembly's sandboxing guarantees.
 
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 use crate::prelude::{Debug, Error, ErrorCategory, Ord, Result, str};
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::format;
 
 /// Structure to track execution statistics
@@ -60,42 +60,42 @@ impl ExecutionStats {
 
     /// Reset all statistics to zero
     pub fn reset(&mut self) {
-        *self = Self::default();
+        *self = Self::default(;
     }
 
     /// Increment the instruction count
     pub fn increment_instructions(&mut self, count: u64) {
-        self.instructions_executed = self.instructions_executed.saturating_add(count);
+        self.instructions_executed = self.instructions_executed.saturating_add(count;
     }
 
     /// Update memory usage
     pub fn update_memory_usage(&mut self, bytes: usize) {
-        self.memory_usage = self.memory_usage.saturating_add(bytes);
+        self.memory_usage = self.memory_usage.saturating_add(bytes;
     }
 
     /// Update maximum stack depth
     pub fn update_stack_depth(&mut self, depth: usize) {
-        self.max_stack_depth = self.max_stack_depth.max(depth);
+        self.max_stack_depth = self.max_stack_depth.max(depth;
     }
 
     /// Increment function call count
     pub fn increment_function_calls(&mut self, count: u64) {
-        self.function_calls = self.function_calls.saturating_add(count);
+        self.function_calls = self.function_calls.saturating_add(count;
     }
 
     /// Increment memory read count
     pub fn increment_memory_reads(&mut self, count: u64) {
-        self.memory_reads = self.memory_reads.saturating_add(count);
+        self.memory_reads = self.memory_reads.saturating_add(count;
     }
 
     /// Increment memory write count
     pub fn increment_memory_writes(&mut self, count: u64) {
-        self.memory_writes = self.memory_writes.saturating_add(count);
+        self.memory_writes = self.memory_writes.saturating_add(count;
     }
 
     /// Update execution time
     pub fn update_execution_time(&mut self, time_us: u64) {
-        self.execution_time_us = self.execution_time_us.saturating_add(time_us);
+        self.execution_time_us = self.execution_time_us.saturating_add(time_us;
     }
 
     /// Check if gas limit is exceeded
@@ -105,10 +105,10 @@ impl ExecutionStats {
 
     /// Use gas and check if limit is exceeded
     pub fn use_gas(&mut self, amount: u64) -> Result<()> {
-        self.gas_used = self.gas_used.saturating_add(amount);
+        self.gas_used = self.gas_used.saturating_add(amount;
 
         if self.is_gas_exceeded() {
-            return Err(Error::runtime_execution_error("Gas limit exceeded"));
+            return Err(Error::runtime_execution_error("Gas limit exceeded";
         }
 
         Ok(())
@@ -164,11 +164,11 @@ impl ExecutionContext {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::CALL_STACK_EXHAUSTED,
-                "Function call depth exceeded maximum limit"));
+                "Function call depth exceeded maximum limit";
         }
 
-        self.stats.increment_function_calls(1);
-        self.stats.update_stack_depth(self.function_depth);
+        self.stats.increment_function_calls(1;
+        self.stats.update_stack_depth(self.function_depth;
 
         Ok(())
     }
@@ -229,7 +229,7 @@ impl InstrumentationPoint {
         let bounded_point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
             point_type,
             provider.clone()
-        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", provider).unwrap());
+        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", provider).unwrap();
         Ok(Self {
             location,
             point_type: bounded_point_type,

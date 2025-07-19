@@ -49,12 +49,12 @@ fn test_pipeline_with_const_function() -> Result<()> {
     let results = engine.execute(instance_handle, "get42", &[])?;
     
     // Verify the result
-    assert_eq!(results.len(), 1);
+    assert_eq!(results.len(), 1;
     if let Value::I32(result) = &results[0] {
-        assert_eq!(*result, 42);
-        println!("✅ Constant function test passed: got {}", result);
+        assert_eq!(*result, 42;
+        println!("✅ Constant function test passed: got {}", result;
     } else {
-        panic!("Expected I32 result, got {:?}", results[0]);
+        panic!("Expected I32 result, got {:?}", results[0];
     }
     
     Ok(())
@@ -76,12 +76,12 @@ fn test_pipeline_with_add_function() -> Result<()> {
     let results = engine.execute(instance_handle, "add", &args)?;
     
     // Verify the result
-    assert_eq!(results.len(), 1);
+    assert_eq!(results.len(), 1;
     if let Value::I32(result) = &results[0] {
-        assert_eq!(*result, 42);
-        println!("✅ Add function test passed: 10 + 32 = {}", result);
+        assert_eq!(*result, 42;
+        println!("✅ Add function test passed: 10 + 32 = {}", result;
     } else {
-        panic!("Expected I32 result, got {:?}", results[0]);
+        panic!("Expected I32 result, got {:?}", results[0];
     }
     
     Ok(())
@@ -91,7 +91,7 @@ fn test_pipeline_with_add_function() -> Result<()> {
 fn test_pipeline_across_asil_levels() -> Result<()> {
     // Test that the same module works across different ASIL levels
     for preset in [EnginePreset::QM, EnginePreset::AsilA, EnginePreset::AsilB, EnginePreset::AsilD] {
-        println!("Testing preset: {:?}", preset);
+        println!("Testing preset: {:?}", preset;
         
         let mut engine = CapabilityAwareEngine::with_preset(preset)?;
         let module_handle = engine.load_module(CONST_42_WASM)?;
@@ -99,15 +99,15 @@ fn test_pipeline_across_asil_levels() -> Result<()> {
         
         let results = engine.execute(instance_handle, "get42", &[])?;
         
-        assert_eq!(results.len(), 1);
+        assert_eq!(results.len(), 1;
         if let Value::I32(result) = &results[0] {
-            assert_eq!(*result, 42);
+            assert_eq!(*result, 42;
         } else {
-            panic!("Expected I32 result for {:?}, got {:?}", preset, results[0]);
+            panic!("Expected I32 result for {:?}, got {:?}", preset, results[0];
         }
     }
     
-    println!("✅ All ASIL levels work correctly");
+    println!("✅ All ASIL levels work correctly";
     Ok(())
 }
 
@@ -123,7 +123,7 @@ fn test_function_existence_checking() -> Result<()> {
     // Should not find a non-existent function
     assert!(!engine.has_function(instance_handle, "nonexistent")?);
     
-    println!("✅ Function existence checking works correctly");
+    println!("✅ Function existence checking works correctly";
     Ok(())
 }
 
@@ -134,9 +134,9 @@ fn test_error_handling() -> Result<()> {
     let instance_handle = engine.instantiate(module_handle)?;
     
     // Should fail gracefully for non-existent function
-    let result = engine.execute(instance_handle, "nonexistent", &[]);
-    assert!(result.is_err());
+    let result = engine.execute(instance_handle, "nonexistent", &[];
+    assert!(result.is_err();
     
-    println!("✅ Error handling works correctly");
+    println!("✅ Error handling works correctly";
     Ok(())
 }

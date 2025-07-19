@@ -4,7 +4,7 @@
 //! make tail calls without growing the call stack. This is essential for
 //! functional programming patterns and recursive algorithms.
 
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 use crate::prelude::*;
 use crate::stackless::frame::StacklessFrame;
@@ -49,10 +49,10 @@ impl StacklessEngine {
         let func_type = module.get_function_type(func_idx as usize)?;
         
         // Pop arguments from the operand stack
-        let mut args = Vec::with_capacity(func_type.params.len());
+        let mut args = Vec::with_capacity(func_type.params.len(;
         for _ in 0..func_type.params.len() {
             if self.operand_stack.is_empty() {
-                return Err(Error::runtime_error("Stack underflow"));
+                return Err(Error::runtime_error("Stack underflow";
             }
             let last_idx = self.operand_stack.len() - 1;
             let value = self.operand_stack.remove(last_idx)?;
@@ -63,7 +63,7 @@ impl StacklessEngine {
         // For tail calls, we simulate replacing the current frame
         // In a full implementation, this would replace the actual frame
         if self.call_frames_count == 0 {
-            return Err(Error::runtime_error("No active frame for tail call"));
+            return Err(Error::runtime_error("No active frame for tail call";
         }
         
         // Simulate tail call by resetting to new function
@@ -107,10 +107,10 @@ impl StacklessEngine {
         let actual_func_idx = match func_ref {
             Value::FuncRef(Some(func_ref)) => func_ref.index,
             Value::FuncRef(None) => {
-                return Err(Error::runtime_error("Null function reference in table"));
+                return Err(Error::runtime_error("Null function reference in table";
             }
             _ => {
-                return Err(Error::type_error("Expected function reference in table"));
+                return Err(Error::type_error("Expected function reference in table";
             }
         };
         
@@ -122,7 +122,7 @@ impl StacklessEngine {
         
         // Validate type compatibility  
         if actual_type.params != expected_type.params || actual_type.results != expected_type.results {
-            return Err(Error::type_error("Function type mismatch in tail call indirect"));
+            return Err(Error::type_error("Function type mismatch in tail call indirect";
         }
         
         // Execute the tail call
@@ -156,7 +156,7 @@ pub mod validation {
         if current_func_type.results != target_func_type.results {
             return Err(Error::validation_error(
                 "Tail call return type mismatch: current function and target function must have same return types"
-            ));
+            ;
         }
         
         Ok(())
@@ -187,7 +187,7 @@ mod tests {
     
     #[test]
     fn test_tail_call_validation() {
-        let provider = TestProvider::default();
+        let provider = TestProvider::default(;
         
         // Test compatible types
         let mut params1 = BoundedVec::new(provider.clone()).unwrap();
@@ -210,7 +210,7 @@ mod tests {
         };
         
         // Should succeed - same return types
-        assert!(validation::validate_tail_call(&func1, &func2).is_ok());
+        assert!(validation::validate_tail_call(&func1, &func2).is_ok();
         
         // Test incompatible return types
         let mut params3 = BoundedVec::new(provider.clone()).unwrap();
@@ -223,18 +223,18 @@ mod tests {
         };
         
         // Should fail - different return types
-        assert!(validation::validate_tail_call(&func1, &func3).is_err());
+        assert!(validation::validate_tail_call(&func1, &func3).is_err();
     }
     
     #[test]
     fn test_can_optimize_tail_call() {
         // Normal case - should be optimizable
-        assert!(validation::can_optimize_tail_call(false, false));
+        assert!(validation::can_optimize_tail_call(false, false);
         
         // Inside try-catch - not optimizable
-        assert!(!validation::can_optimize_tail_call(true, false));
+        assert!(!validation::can_optimize_tail_call(true, false);
         
         // In multivalue block - not optimizable
-        assert!(!validation::can_optimize_tail_call(false, true));
+        assert!(!validation::can_optimize_tail_call(false, true);
     }
 }

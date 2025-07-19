@@ -39,7 +39,7 @@ mod enforcement_scenario_tests {
 
         // Check total allocation includes both vec and string providers
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Foundation)?;
-        assert!(stats.current_allocation >= 4096 + (5 * 256));
+        assert!(stats.current_allocation >= 4096 + (5 * 256);
 
         Ok(())
     }
@@ -66,8 +66,8 @@ mod enforcement_scenario_tests {
 
         assert!(runtime_stats.current_allocation >= 1024);
         assert!(component_stats.current_allocation >= 1024);
-        assert_eq!(runtime_stats.allocation_count, 1);
-        assert_eq!(component_stats.allocation_count, 1);
+        assert_eq!(runtime_stats.allocation_count, 1;
+        assert_eq!(component_stats.allocation_count, 1;
 
         Ok(())
     }
@@ -78,18 +78,18 @@ mod enforcement_scenario_tests {
 
         // Test that SafeMemoryHandler works with BudgetProvider
         let provider = BudgetProvider::<2048>::new(CrateId::Decoder)?;
-        let mut handler = SafeMemoryHandler::new(provider);
+        let mut handler = SafeMemoryHandler::new(provider;
 
         // Write some data
         let data = b"Hello, WebAssembly!";
         let offset = handler.write(0, data)?;
-        assert_eq!(offset, data.len());
+        assert_eq!(offset, data.len(;
 
         // Read it back
         let mut buffer = [0u8; 32];
         let read = handler.read(0, &mut buffer)?;
-        assert_eq!(read, data.len());
-        assert_eq!(&buffer[..read], data);
+        assert_eq!(read, data.len(;
+        assert_eq!(&buffer[..read], data;
 
         // Verify allocation is tracked
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Decoder)?;
@@ -103,7 +103,7 @@ mod enforcement_scenario_tests {
         setup()?;
 
         // Get a small budget
-        let mut providers = Vec::new();
+        let mut providers = Vec::new(;
 
         // Allocate most of the budget
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Format)?;
@@ -118,16 +118,16 @@ mod enforcement_scenario_tests {
 
         // Try to create a collection that would exceed budget
         let result = {
-            let provider = BudgetProvider::<{ 1024 * 1024 }>::new(CrateId::Format);
+            let provider = BudgetProvider::<{ 1024 * 1024 }>::new(CrateId::Format;
             provider.map(|p| BoundedVec::<u8, 1000, _>::new(p))
         };
 
         // Should fail due to budget limit
-        assert!(result.is_err());
+        assert!(result.is_err();
 
         // Verify no leaked allocation
         let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Format)?;
-        assert_eq!(final_stats.allocation_count as usize, providers.len());
+        assert_eq!(final_stats.allocation_count as usize, providers.len(;
 
         Ok(())
     }
@@ -145,7 +145,7 @@ mod enforcement_scenario_tests {
             vec.push(())?;
         }
 
-        assert_eq!(vec.len(), 1000);
+        assert_eq!(vec.len(), 1000;
 
         // Even with ZSTs, the provider itself should be tracked
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Foundation)?;
@@ -171,8 +171,8 @@ mod enforcement_scenario_tests {
 
         // Stats should still show same allocation count
         let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime)?;
-        assert_eq!(final_stats.allocation_count, initial_stats.allocation_count);
-        assert_eq!(final_stats.current_allocation, initial_stats.current_allocation);
+        assert_eq!(final_stats.allocation_count, initial_stats.allocation_count;
+        assert_eq!(final_stats.current_allocation, initial_stats.current_allocation;
 
         Ok(())
     }
@@ -205,7 +205,7 @@ mod enforcement_scenario_tests {
         // This compiles and works
         let provider = BudgetProvider::<1024>::new(CrateId::Component)?;
         let capacity = process_with_provider(provider)?;
-        assert_eq!(capacity, 100);
+        assert_eq!(capacity, 100;
 
         // The modern system prevents unsafe memory extraction:
         // Providers are automatically cleaned up via RAII
@@ -261,7 +261,7 @@ mod enforcement_scenario_tests {
         assert!(crate_stats.current_allocation >= 4096);
 
         // Exhausting shared pool shouldn't affect crate budgets
-        let mut shared_providers = Vec::new();
+        let mut shared_providers = Vec::new(;
         while let Ok(p) = BudgetAwareProviderFactory::create_shared_provider::<65536>() {
             shared_providers.push(p);
             if shared_providers.len() > 100 {
@@ -281,20 +281,20 @@ mod enforcement_scenario_tests {
         setup()?;
 
         // Using migration helpers should work but be tracked
-        let provider = wrt_foundation::migration::migration_provider::<1024>();
+        let provider = wrt_foundation::migration::migration_provider::<1024>(;
 
         // Should work like a normal provider
         let vec = BoundedVec::<u8, 50, _>::new(provider)?;
-        assert_eq!(vec.capacity(), 50);
+        assert_eq!(vec.capacity(), 50;
 
         // Should be tracked in global stats
         let stats = BudgetAwareProviderFactory::get_global_stats()?;
         assert!(stats.total_allocated > 0);
 
         // Using the nostd_provider! macro (migration helper)
-        let provider2 = wrt_foundation::nostd_provider!(2048);
+        let provider2 = wrt_foundation::nostd_provider!(2048;
         let vec2 = BoundedVec::<u16, 25, _>::new(provider2)?;
-        assert_eq!(vec2.capacity(), 25);
+        assert_eq!(vec2.capacity(), 25;
 
         Ok(())
     }
@@ -315,14 +315,14 @@ mod enforcement_scenario_tests {
         )?;
 
         assert!(result.success);
-        assert_eq!(result.amount_transferred, 1024 * 1024);
+        assert_eq!(result.amount_transferred, 1024 * 1024;
 
         // Verify budgets were adjusted
         let final_runtime = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime)?;
         let final_component = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component)?;
 
-        assert_eq!(final_runtime.budget_limit, initial_runtime.budget_limit - 1024 * 1024);
-        assert_eq!(final_component.budget_limit, initial_component.budget_limit + 1024 * 1024);
+        assert_eq!(final_runtime.budget_limit, initial_runtime.budget_limit - 1024 * 1024;
+        assert_eq!(final_component.budget_limit, initial_component.budget_limit + 1024 * 1024;
 
         Ok(())
     }

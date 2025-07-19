@@ -11,7 +11,7 @@ use wrt_format::component::{
 use wrt_format::module::Module;
 
 // Always use BoundedMap for HashMap to ensure trait compatibility
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 use wrt_foundation::{BoundedMap, safe_memory::NoStdProvider};
 use crate::bounded_runtime_infra::{RuntimeProvider, create_runtime_provider};
 
@@ -42,8 +42,8 @@ impl Default for InstantiationResult {
 
 impl wrt_foundation::traits::Checksummable for InstantiationResult {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.handle.update_checksum(checksum);
-        self.exports.update_checksum(checksum);
+        self.handle.update_checksum(checksum;
+        self.exports.update_checksum(checksum;
     }
 }
 
@@ -173,10 +173,10 @@ impl wrt_foundation::traits::Checksummable for ExportedItem {
             ExportedItem::Instance(v) => *v,
         };
         for byte in discriminant.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
         for byte in value.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
     }
 }
@@ -214,9 +214,9 @@ impl Default for CoreModuleInstance {
 
 impl wrt_foundation::traits::Checksummable for CoreModuleInstance {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.module_idx.update_checksum(checksum);
-        self.imports.update_checksum(checksum);
-        self.exports.update_checksum(checksum);
+        self.module_idx.update_checksum(checksum;
+        self.imports.update_checksum(checksum;
+        self.exports.update_checksum(checksum;
     }
 }
 
@@ -287,8 +287,8 @@ pub struct ComponentInstantiator {
 impl ComponentInstantiator {
     /// Create a new component instantiator
     pub fn new() -> Self {
-        let instances_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
-        let core_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+        let instances_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default(;
+        let core_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default(;
         
         Self {
             context: InstantiationContext {
@@ -315,15 +315,15 @@ impl ComponentInstantiator {
         let handle = self.context.next_instance_handle;
         self.context.next_instance_handle += 1;
         
-        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default(;
         let result = InstantiationResult {
             handle,
             exports: HashMap::new(exports_provider).unwrap_or_default(),
         };
         
-        self.context.instances.insert(handle, result);
+        self.context.instances.insert(handle, result;
         
-        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default(;
         Ok(InstantiationResult {
             handle,
             exports: HashMap::new(exports_provider).unwrap_or_default(),
@@ -342,7 +342,7 @@ impl ComponentInstantiator {
         // Direct assignment since types already match
         let core_exports = imports;
         
-        let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+        let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default(;
         Ok(CoreModuleInstance {
             module_idx: 0,
             imports: HashMap::new(imports_provider).unwrap_or_default(), // Core module imports are empty for now
@@ -365,7 +365,7 @@ impl CoreModuleInstantiator {
         let provider = create_runtime_provider().unwrap_or_else(|_| {
             // Fallback for initialization errors
             RuntimeProvider::default()
-        });
+        };
         Self {
             instances: HashMap::new(provider).unwrap_or_default(),
             next_instance_id: 1,
@@ -382,15 +382,15 @@ impl CoreModuleInstantiator {
             CoreInstanceExpr::ModuleReference { module_idx, arg_refs } => {
                 // Validate module index
                 if *module_idx as usize >= available_modules.len() {
-                    return Err(Error::runtime_execution_error("Module index out of bounds"));
+                    return Err(Error::runtime_execution_error("Module index out of bounds";
                 }
                 
                 // Create instance
                 let instance_id = self.next_instance_id;
                 self.next_instance_id += 1;
                 
-                let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
-                let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+                let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default(;
+                let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default(;
                 
                 let core_instance = CoreModuleInstance {
                     module_idx: *module_idx,
@@ -398,7 +398,7 @@ impl CoreModuleInstantiator {
                     exports: HashMap::new(exports_provider).unwrap_or_default(),
                 };
                 
-                self.instances.insert(instance_id, core_instance);
+                self.instances.insert(instance_id, core_instance;
                 Ok(instance_id)
             }
             CoreInstanceExpr::InlineExports(exports) => {
@@ -418,7 +418,7 @@ impl CoreModuleInstantiator {
                             return Err(Error::new(
                                 ErrorCategory::Component,
                                 wrt_error::codes::COMPONENT_LINKING_ERROR,
-                                "Unsupported export sort"));
+                                "Unsupported export sort";
                         }
                     };
                     // Convert String to ComponentString
@@ -436,7 +436,7 @@ impl CoreModuleInstantiator {
                     exports: export_map,
                 };
                 
-                self.instances.insert(instance_id, core_instance);
+                self.instances.insert(instance_id, core_instance;
                 Ok(instance_id)
             }
         }

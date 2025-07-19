@@ -247,7 +247,7 @@ where
     
     fn allocate(&mut self, size: usize) -> core::result::Result<&mut [u8], Self::Error> {
         if self.allocated_bytes + size > self.max_memory {
-            return Err(Error::runtime_execution_error("Memory allocation limit exceeded"));
+            return Err(Error::runtime_execution_error("Memory allocation limit exceeded";
         }
         
         self.allocated_bytes += size;
@@ -260,7 +260,7 @@ where
     }
     
     fn deallocate(&mut self, ptr: &mut [u8]) -> core::result::Result<(), Self::Error> {
-        let size = ptr.len();
+        let size = ptr.len(;
         if self.allocated_bytes >= size {
             self.allocated_bytes -= size;
         }
@@ -314,26 +314,26 @@ mod tests {
     
     #[test]
     fn test_platform_capacities() {
-        let default_caps = PlatformCapacities::default();
-        assert_eq!(default_caps.small_capacity, 64);
-        assert_eq!(default_caps.medium_capacity, 1024);
-        assert_eq!(default_caps.large_capacity, 65536);
+        let default_caps = PlatformCapacities::default(;
+        assert_eq!(default_caps.small_capacity, 64;
+        assert_eq!(default_caps.medium_capacity, 1024;
+        assert_eq!(default_caps.large_capacity, 65536;
         
-        let embedded_caps = PlatformCapacities::embedded();
+        let embedded_caps = PlatformCapacities::embedded(;
         assert!(embedded_caps.small_capacity < default_caps.small_capacity);
         assert!(embedded_caps.memory_provider_size < default_caps.memory_provider_size);
         
-        let safety_caps = PlatformCapacities::safety_critical();
+        let safety_caps = PlatformCapacities::safety_critical(;
         assert!(safety_caps.medium_capacity < default_caps.medium_capacity);
     }
     
     #[test]
     fn test_platform_memory_adapter() {
-        let adapter = PlatformMemoryAdapter::<DefaultRuntimeProvider>::new(1024 * 1024);
-        assert!(adapter.is_ok());
+        let adapter = PlatformMemoryAdapter::<DefaultRuntimeProvider>::new(1024 * 1024;
+        assert!(adapter.is_ok();
         
         let adapter = adapter.unwrap();
-        assert_eq!(adapter.total_memory(), 1024 * 1024);
-        assert_eq!(adapter.available_memory(), 1024 * 1024);
+        assert_eq!(adapter.total_memory(), 1024 * 1024;
+        assert_eq!(adapter.available_memory(), 1024 * 1024;
     }
 }

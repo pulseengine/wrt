@@ -53,7 +53,7 @@ impl RuntimeMemoryConfig {
         
         // Get runtime capability to determine budget
         let runtime_capability = context.get_capability(CrateId::Runtime)?;
-        let runtime_budget = runtime_capability.max_allocation_size();
+        let runtime_budget = runtime_capability.max_allocation_size(;
         
         // For total budget, sum all registered capabilities
         // This is a simplified approach - in production you'd track this differently
@@ -116,7 +116,7 @@ impl RuntimeMemoryConfig {
 
 /// Global runtime memory configuration instance
 static RUNTIME_CONFIG: core::sync::atomic::AtomicPtr<RuntimeMemoryConfig> = 
-    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
+    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut(;
 
 /// Initialize runtime memory configuration
 pub fn initialize_runtime_memory_config() -> Result<()> {
@@ -146,7 +146,7 @@ pub mod platform_types {
     
     /// Create a platform-aware bounded string type
     pub fn create_bounded_string() -> Result<BoundedString<512, NoStdProvider<1024>>> {
-        let config = runtime_memory_config();
+        let config = runtime_memory_config(;
         // Use config-defined size, but macro requires compile-time constant
         let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         
@@ -163,7 +163,7 @@ pub mod platform_types {
            wrt_foundation::traits::ToBytes + 
            wrt_foundation::traits::FromBytes,
     {
-        let config = runtime_memory_config();
+        let config = runtime_memory_config(;
         // Use config-defined size, but macro requires compile-time constant  
         let provider = wrt_foundation::safe_managed_alloc!(2048, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
         
@@ -323,7 +323,7 @@ mod tests {
         // Initialize runtime configuration
         initialize_runtime_memory_config()?;
         
-        let config = runtime_memory_config();
+        let config = runtime_memory_config(;
         
         // Verify configuration values are reasonable
         assert!(config.string_buffer_size() > 0);
@@ -346,8 +346,8 @@ mod tests {
         let instr_provider = DynamicProviderFactory::create_for_use_case(MemoryUseCase::InstructionBuffer)?;
         
         // Verify providers have appropriate sizes (they should all be 16384)
-        assert_eq!(func_provider.capacity(), 16384);
-        assert_eq!(instr_provider.capacity(), 16384);
+        assert_eq!(func_provider.capacity(), 16384;
+        assert_eq!(instr_provider.capacity(), 16384;
         
         Ok(())
     }
@@ -359,14 +359,14 @@ mod tests {
         }
         initialize_runtime_memory_config()?;
         
-        let mut manager = RuntimeMemoryManager::new();
+        let mut manager = RuntimeMemoryManager::new(;
         
         // Get providers for different use cases
         let _func_provider = manager.get_provider(MemoryUseCase::FunctionLocals)?;
         let _instr_provider = manager.get_provider(MemoryUseCase::InstructionBuffer)?;
         
-        let stats = manager.get_stats();
-        assert_eq!(stats.provider_count, 2);
+        let stats = manager.get_stats(;
+        assert_eq!(stats.provider_count, 2;
         // Note: in the simplified stats, total_capacity is always 0
         // This would need proper tracking in a real implementation
         

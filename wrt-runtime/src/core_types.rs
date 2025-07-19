@@ -29,9 +29,9 @@ pub struct CallFrame {
 
 impl Checksummable for CallFrame {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes());
-        checksum.update_slice(&self.instruction_pointer.to_le_bytes());
-        checksum.update_slice(&(self.locals.len() as u32).to_le_bytes());
+        checksum.update_slice(&self.function_index.to_le_bytes(;
+        checksum.update_slice(&self.instruction_pointer.to_le_bytes(;
+        checksum.update_slice(&(self.locals.len() as u32).to_le_bytes(;
     }
 }
 
@@ -54,13 +54,13 @@ impl FromBytes for CallFrame {
     ) -> wrt_foundation::WrtResult<Self> {
         let mut func_bytes = [0u8; 4];
         reader.read_exact(&mut func_bytes)?;
-        let function_index = u32::from_le_bytes(func_bytes);
+        let function_index = u32::from_le_bytes(func_bytes;
         
         let mut ip_bytes = [0u8; 4];
         reader.read_exact(&mut ip_bytes)?;
-        let instruction_pointer = u32::from_le_bytes(ip_bytes);
+        let instruction_pointer = u32::from_le_bytes(ip_bytes;
         
-        let provider_clone = RuntimeProvider::default();
+        let provider_clone = RuntimeProvider::default(;
         let locals = BoundedVec::new(provider_clone)?;
         
         Ok(CallFrame {
@@ -87,10 +87,10 @@ pub struct ComponentExecutionState {
 
 impl Checksummable for ComponentExecutionState {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[if self.is_running { 1u8 } else { 0u8 }]);
-        checksum.update_slice(&self.instruction_pointer.to_le_bytes());
-        checksum.update_slice(&(self.stack_depth as u32).to_le_bytes());
-        checksum.update_slice(&(self.gas_remaining as u32).to_le_bytes());
+        checksum.update_slice(&[if self.is_running { 1u8 } else { 0u8 }];
+        checksum.update_slice(&self.instruction_pointer.to_le_bytes(;
+        checksum.update_slice(&(self.stack_depth as u32).to_le_bytes(;
+        checksum.update_slice(&(self.gas_remaining as u32).to_le_bytes(;
     }
 }
 
@@ -119,7 +119,7 @@ impl FromBytes for ComponentExecutionState {
         
         let mut ip_bytes = [0u8; 4];
         reader.read_exact(&mut ip_bytes)?;
-        let instruction_pointer = u32::from_le_bytes(ip_bytes);
+        let instruction_pointer = u32::from_le_bytes(ip_bytes;
         
         let mut depth_bytes = [0u8; 4];
         reader.read_exact(&mut depth_bytes)?;
@@ -127,7 +127,7 @@ impl FromBytes for ComponentExecutionState {
         
         let mut gas_bytes = [0u8; 4];
         reader.read_exact(&mut gas_bytes)?;
-        let gas_remaining = u64::from(u32::from_le_bytes(gas_bytes));
+        let gas_remaining = u64::from(u32::from_le_bytes(gas_bytes;
         
         Ok(ComponentExecutionState {
             is_running,
@@ -154,7 +154,7 @@ pub struct ExecutionContext {
 impl ExecutionContext {
     /// Create a new execution context
     pub fn new() -> Result<Self> {
-        let provider = RuntimeProvider::default();
+        let provider = RuntimeProvider::default(;
         Ok(ExecutionContext {
             value_stack: BoundedVec::new(provider.clone())?,
             call_stack: BoundedVec::new(provider)?,

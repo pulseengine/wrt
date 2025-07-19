@@ -30,7 +30,7 @@ impl ComponentInstance {
 
 /// Component identifier stub
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(pub u32);
+pub struct ComponentId(pub u32;
 
 impl ComponentId {
     pub fn new(id: u32) -> Self {
@@ -79,7 +79,7 @@ pub struct ComponentMemoryBudget {
 impl ComponentMemoryBudget {
     pub fn calculate(limits: &wrt_foundation::PlatformLimits) -> Result<Self, wrt_error::Error> {
         let component_overhead = limits.max_memory / 100; // 1% overhead
-        let available_memory = limits.max_memory.saturating_sub(component_overhead);
+        let available_memory = limits.max_memory.saturating_sub(component_overhead;
         
         Ok(Self {
             total_memory: limits.max_memory,

@@ -47,7 +47,7 @@ impl<const SIZE: usize> Default for ConfigurableProvider<SIZE> {
 impl<const SIZE: usize> UnifiedMemoryProvider for ConfigurableProvider<SIZE> {
     fn allocate(&mut self, size: usize) -> Result<&mut [u8]> {
         if self.allocated + size > SIZE {
-            return Err(Error::runtime_execution_error("Insufficient memory"));
+            return Err(Error::runtime_execution_error("Insufficient memory";
         }
         
         let start = self.allocated;

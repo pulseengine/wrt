@@ -86,19 +86,19 @@ pub const fn check_allocation_fits(crate_id: CrateId, size: usize) -> bool {
 /// Static assertion for total budget validation
 /// This will cause a compile error if budgets exceed system memory
 const fn validate_total_budget() {
-    let total = calculate_total_budget();
+    let total = calculate_total_budget(;
     assert!(total <= TOTAL_MEMORY_BUDGET, "Total crate budgets exceed system memory budget!");
 }
 
 // Force evaluation at compile time
-const _: () = validate_total_budget();
+const _: () = validate_total_budget(;
 
 /// Macro to verify crate budget at compile time
 ///
 /// # Example
 ///
 /// ```rust,ignore
-/// verify_crate_budget!(CrateId::Component, 64 * 1024);
+/// verify_crate_budget!(CrateId::Component, 64 * 1024;
 /// ```
 #[macro_export]
 macro_rules! verify_crate_budget {
@@ -116,7 +116,7 @@ macro_rules! verify_crate_budget {
                     stringify!(AVAILABLE),
                     " bytes available"
                 )
-            );
+            ;
         };
     };
 }
@@ -129,7 +129,7 @@ macro_rules! verify_crate_budget {
 /// # Example
 ///
 /// ```rust,ignore
-/// init_crate_memory!(CrateId::Component);
+/// init_crate_memory!(CrateId::Component;
 /// ```
 #[macro_export]
 macro_rules! init_crate_memory {
@@ -144,7 +144,7 @@ macro_rules! init_crate_memory {
             if let Err(e) = MEMORY_COORDINATOR.register_crate($crate_id) {
                 // Can't panic in ctor, so we need a different strategy
                 #[cfg(feature = "defmt")]
-                defmt::error!("Failed to register crate {:?}: {:?}", $crate_id, e);
+                defmt::error!("Failed to register crate {:?}: {:?}", $crate_id, e;
             }
         }
 
@@ -157,7 +157,7 @@ macro_rules! init_crate_memory {
             if let Err(e) = MEMORY_COORDINATOR.register_crate($crate_id) {
                 // Log error but don't panic
                 #[cfg(feature = "defmt")]
-                defmt::error!("Failed to register crate {:?}: {:?}", $crate_id, e);
+                defmt::error!("Failed to register crate {:?}: {:?}", $crate_id, e;
             }
         }
     };
@@ -203,14 +203,14 @@ mod tests {
 
     #[test]
     fn test_budget_calculation() {
-        let total = calculate_total_budget();
+        let total = calculate_total_budget(;
         assert!(total <= TOTAL_MEMORY_BUDGET);
     }
 
     #[test]
     fn test_budget_report() {
-        let report = generate_budget_report();
-        assert!(!report.is_over_allocated());
+        let report = generate_budget_report(;
+        assert!(!report.is_over_allocated();
         assert!(report.allocation_percentage() <= 100);
     }
 }
@@ -221,8 +221,8 @@ mod compile_checks {
     use super::*;
 
     // This would fail at compile time if Component budget < 64KB
-    verify_crate_budget!(CrateId::Component, 64 * 1024);
+    verify_crate_budget!(CrateId::Component, 64 * 1024;
 
     // This would fail at compile time if Runtime budget < 128KB
-    verify_crate_budget!(CrateId::Runtime, 128 * 1024);
+    verify_crate_budget!(CrateId::Runtime, 128 * 1024;
 }

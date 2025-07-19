@@ -82,7 +82,7 @@ impl CleanRuntime {
 
         // Validate argument count
         if args.len() != function.func_type.params.len() {
-            return Err(Error::validation_error("Argument count mismatch"));
+            return Err(Error::validation_error("Argument count mismatch";
         }
 
         // For this test, just return dummy results matching the function signature
@@ -149,7 +149,7 @@ impl CleanMemory {
         let end = start + size as usize;
         
         if end > self.data.len() {
-            return Err(Error::memory_error("Memory access out of bounds"));
+            return Err(Error::memory_error("Memory access out of bounds";
         }
         
         Ok(self.data[start..end].to_vec())
@@ -158,14 +158,14 @@ impl CleanMemory {
     /// Write to memory
     pub fn write(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len();
+        let end = start + data.len(;
         
         // Grow memory if needed (simplified)
         if end > self.data.len() {
-            self.data.resize(end, 0);
+            self.data.resize(end, 0;
         }
         
-        self.data[start..end].copy_from_slice(data);
+        self.data[start..end].copy_from_slice(data;
         Ok(())
     }
 }
@@ -201,15 +201,15 @@ mod tests {
 
     #[test]
     fn test_clean_runtime_creation() {
-        let runtime = CleanRuntime::new();
-        assert_eq!(runtime.functions.len(), 0);
-        assert_eq!(runtime.memories.len(), 0);
-        assert_eq!(runtime.tables.len(), 0);
+        let runtime = CleanRuntime::new(;
+        assert_eq!(runtime.functions.len(), 0;
+        assert_eq!(runtime.memories.len(), 0;
+        assert_eq!(runtime.tables.len(), 0;
     }
 
     #[test]
     fn test_add_function() {
-        let mut runtime = CleanRuntime::new();
+        let mut runtime = CleanRuntime::new(;
         
         let func_type = CleanFuncType {
             params: vec![CleanValType::S32, CleanValType::S32],
@@ -217,18 +217,18 @@ mod tests {
         };
         
         let func_id = runtime.add_function("add".to_string(), func_type).unwrap();
-        assert_eq!(func_id, 0);
-        assert_eq!(runtime.functions.len(), 1);
+        assert_eq!(func_id, 0;
+        assert_eq!(runtime.functions.len(), 1;
         
         let function = runtime.get_function(func_id).unwrap();
-        assert_eq!(function.name, "add");
-        assert_eq!(function.func_type.params.len(), 2);
-        assert_eq!(function.func_type.results.len(), 1);
+        assert_eq!(function.name, "add";
+        assert_eq!(function.func_type.params.len(), 2;
+        assert_eq!(function.func_type.results.len(), 1;
     }
 
     #[test]
     fn test_add_memory() {
-        let mut runtime = CleanRuntime::new();
+        let mut runtime = CleanRuntime::new(;
         
         let memory_type = CleanMemoryType {
             limits: CleanLimits { min: 1, max: Some(10) },
@@ -236,17 +236,17 @@ mod tests {
         };
         
         let mem_id = runtime.add_memory("mem0".to_string(), memory_type).unwrap();
-        assert_eq!(mem_id, 0);
-        assert_eq!(runtime.memories.len(), 1);
+        assert_eq!(mem_id, 0;
+        assert_eq!(runtime.memories.len(), 1;
         
         let memory = runtime.get_memory(mem_id).unwrap();
-        assert_eq!(memory.name, "mem0");
-        assert_eq!(memory.memory_type.limits.min, 1);
+        assert_eq!(memory.name, "mem0";
+        assert_eq!(memory.memory_type.limits.min, 1;
     }
 
     #[test]
     fn test_execute_function() {
-        let mut runtime = CleanRuntime::new();
+        let mut runtime = CleanRuntime::new(;
         
         let func_type = CleanFuncType {
             params: vec![CleanValType::S32, CleanValType::S32],
@@ -258,13 +258,13 @@ mod tests {
         let args = vec![CleanValue::S32(10), CleanValue::S32(20)];
         let results = runtime.execute_function(func_id, args).unwrap();
         
-        assert_eq!(results.len(), 1);
+        assert_eq!(results.len(), 1;
         assert_eq!(results[0], CleanValue::S32(42)); // Dummy implementation returns 42
     }
 
     #[test]
     fn test_memory_operations() {
-        let mut runtime = CleanRuntime::new();
+        let mut runtime = CleanRuntime::new(;
         
         let memory_type = CleanMemoryType {
             limits: CleanLimits { min: 1, max: Some(10) },
@@ -275,16 +275,16 @@ mod tests {
         let memory = runtime.get_memory(mem_id).unwrap();
         
         // Memory starts empty
-        assert_eq!(memory.data.len(), 0);
+        assert_eq!(memory.data.len(), 0;
     }
 
     #[test]
     fn test_factory_access() {
-        let runtime = CleanRuntime::new();
-        let factory = runtime.factory();
+        let runtime = CleanRuntime::new(;
+        let factory = runtime.factory(;
         
         // Test that we can create bounded strings using the factory
         let bounded_str = factory.create_bounded_string::<64>("test").unwrap();
-        assert_eq!(bounded_str.as_str(), "test");
+        assert_eq!(bounded_str.as_str(), "test";
     }
 }

@@ -7,7 +7,7 @@ use wrt_error::{Error, Result};
 use wrt_foundation::CrateId;
 use crate::prelude::*;
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{boxed::Box, vec, vec::Vec};
 
 /// Available engine types
@@ -88,7 +88,7 @@ impl EngineConfig {
     
     /// Set maximum call depth
     pub fn with_max_call_depth(mut self, depth: u32) -> Self {
-        self.max_call_depth = Some(depth);
+        self.max_call_depth = Some(depth;
         self
     }
 }
@@ -105,18 +105,18 @@ impl EngineFactory {
         match config.engine_type {
             EngineType::Stackless => {
                 // Create basic stackless engine for minimal overhead
-                let engine = crate::stackless::StacklessEngine::new();
+                let engine = crate::stackless::StacklessEngine::new(;
                 Ok(Box::new(engine))
             }
             EngineType::CapabilityAware => {
                 // Create capability-aware engine with security checks
                 // For now using StacklessEngine as base, but with capability-aware memory provider
-                let engine = crate::stackless::StacklessEngine::new();
+                let engine = crate::stackless::StacklessEngine::new(;
                 Ok(Box::new(engine))
             }
             EngineType::Wast => {
                 // Create WAST testing engine with extended testing capabilities
-                let engine = crate::stackless::StacklessEngine::new();
+                let engine = crate::stackless::StacklessEngine::new(;
                 Ok(Box::new(engine))
             }
         }
@@ -191,13 +191,13 @@ pub trait RuntimeEngine {
 impl RuntimeEngine for crate::stackless::StacklessEngine {
     fn load_module(&mut self, name: Option<&str>, binary: &[u8]) -> Result<()> {
         // For now, just return Ok - proper implementation would parse and load module
-        let _ = (name, binary);
+        let _ = (name, binary;
         Ok(())
     }
     
     fn invoke_function(&mut self, module: Option<&str>, function: &str, args: &[wrt_foundation::Value]) -> Result<Vec<wrt_foundation::Value>> {
         // For now, return empty result - proper implementation would execute function
-        let _ = (module, function, args);
+        let _ = (module, function, args;
         Ok(vec![])
     }
     
@@ -236,7 +236,7 @@ impl LazyEngine {
     /// Get or create the underlying engine
     pub fn get_or_create(&mut self) -> Result<&mut dyn RuntimeEngine> {
         if self.engine.is_none() {
-            self.engine = Some(EngineFactory::create(self.config.clone())?);
+            self.engine = Some(EngineFactory::create(self.config.clone())?;
         }
         Ok(self.engine.as_mut().unwrap().as_mut())
     }
@@ -256,43 +256,43 @@ mod tests {
         let config = EngineConfig::new(EngineType::Stackless)
             .with_memory_budget(131072)
             .with_debug_mode(true)
-            .with_max_call_depth(512);
+            .with_max_call_depth(512;
             
-        assert_eq!(config.engine_type, EngineType::Stackless);
-        assert_eq!(config.memory_budget, 131072);
-        assert_eq!(config.debug_mode, true);
-        assert_eq!(config.max_call_depth, Some(512));
+        assert_eq!(config.engine_type, EngineType::Stackless;
+        assert_eq!(config.memory_budget, 131072;
+        assert_eq!(config.debug_mode, true;
+        assert_eq!(config.max_call_depth, Some(512;
     }
 
     #[test]
     fn test_memory_provider_types() {
-        assert_ne!(MemoryProviderType::Basic, MemoryProviderType::CapabilityAware);
-        assert_ne!(MemoryProviderType::Basic, MemoryProviderType::Test);
-        assert_ne!(MemoryProviderType::CapabilityAware, MemoryProviderType::Test);
+        assert_ne!(MemoryProviderType::Basic, MemoryProviderType::CapabilityAware;
+        assert_ne!(MemoryProviderType::Basic, MemoryProviderType::Test;
+        assert_ne!(MemoryProviderType::CapabilityAware, MemoryProviderType::Test;
     }
 
     #[test]
     fn test_engine_types() {
-        assert_ne!(EngineType::Stackless, EngineType::CapabilityAware);
-        assert_ne!(EngineType::Stackless, EngineType::Wast);
-        assert_ne!(EngineType::CapabilityAware, EngineType::Wast);
+        assert_ne!(EngineType::Stackless, EngineType::CapabilityAware;
+        assert_ne!(EngineType::Stackless, EngineType::Wast;
+        assert_ne!(EngineType::CapabilityAware, EngineType::Wast;
     }
 
     #[test]
     fn test_lazy_engine_creation() {
-        let config = EngineConfig::new(EngineType::Stackless);
-        let lazy_engine = LazyEngine::new(config);
+        let config = EngineConfig::new(EngineType::Stackless;
+        let lazy_engine = LazyEngine::new(config;
         
-        assert!(!lazy_engine.is_initialized());
+        assert!(!lazy_engine.is_initialized();
     }
 
     #[test]
     fn test_engine_statistics() {
-        let mut stats = EngineStatistics::default();
+        let mut stats = EngineStatistics::default(;
         stats.modules_loaded = 5;
         stats.functions_executed = 100;
         
-        assert_eq!(stats.modules_loaded, 5);
-        assert_eq!(stats.functions_executed, 100);
+        assert_eq!(stats.modules_loaded, 5;
+        assert_eq!(stats.functions_executed, 100;
     }
 }

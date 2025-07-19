@@ -36,25 +36,25 @@ impl EngineBuilder {
 
     /// Set the target ASIL level for the engine
     pub fn with_asil_level(mut self, level: ASILExecutionMode) -> Self {
-        self.asil_level = Some(level);
+        self.asil_level = Some(level;
         self
     }
 
     /// Set the engine preset (overrides ASIL level)
     pub fn with_preset(mut self, preset: EnginePreset) -> Self {
-        self.preset = Some(preset);
+        self.preset = Some(preset;
         self
     }
 
     /// Set a custom capability context (overrides all other settings)
     pub fn with_custom_context(mut self, context: MemoryCapabilityContext) -> Self {
-        self.custom_context = Some(context);
+        self.custom_context = Some(context;
         self
     }
 
     /// Set resource limits configuration from a WebAssembly binary
     pub fn with_resource_config(mut self, config: ASILExecutionConfig) -> Self {
-        self.resource_config = Some(config);
+        self.resource_config = Some(config;
         self
     }
 
@@ -99,7 +99,7 @@ impl EngineBuilder {
             if let Ok(Some(config)) = extract_resource_limits_from_binary(binary, *asil_mode) {
                 return Ok(Self::new()
                     .with_asil_level(config.mode)
-                    .with_resource_config(config));
+                    .with_resource_config(config;
             }
         }
 
@@ -112,12 +112,12 @@ impl EngineBuilder {
         // Priority order: custom_context > preset > asil_level > default QM
         
         if let Some(context) = self.custom_context {
-            let preset = self.preset.unwrap_or(EnginePreset::QM);
-            return CapabilityAwareEngine::with_context_and_preset(context, preset);
+            let preset = self.preset.unwrap_or(EnginePreset::QM;
+            return CapabilityAwareEngine::with_context_and_preset(context, preset;
         }
 
         if let Some(preset) = self.preset {
-            return CapabilityAwareEngine::with_preset(preset);
+            return CapabilityAwareEngine::with_preset(preset;
         }
 
         if let Some(asil_level) = self.asil_level {
@@ -128,7 +128,7 @@ impl EngineBuilder {
                 ASILExecutionMode::ASIL_C => EnginePreset::AsilC,
                 ASILExecutionMode::ASIL_D => EnginePreset::AsilD,
             };
-            return CapabilityAwareEngine::with_preset(preset);
+            return CapabilityAwareEngine::with_preset(preset;
         }
 
         // Default to QM
@@ -152,7 +152,7 @@ mod tests {
         // Test that engine was created successfully
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ));
+        ;
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         // Test that engine was created successfully
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ));
+        ;
     }
 
     #[test]
@@ -174,7 +174,7 @@ mod tests {
         // Test that engine was created successfully
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ));
+        ;
     }
 
     #[test]
@@ -191,7 +191,7 @@ mod tests {
         // Should fall back to QM mode
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ));
+        ;
     }
 
     #[test]
@@ -207,6 +207,6 @@ mod tests {
         
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ));
+        ;
     }
 }

@@ -273,7 +273,7 @@ mod types {
                 Value::List(list) => {
                     // Determine element type from first element, or default to Bool
                     let element_type =
-                        list.first().map(|v| v.value_type()).unwrap_or(ValType::Bool);
+                        list.first().map(|v| v.value_type()).unwrap_or(ValType::Bool;
                     ValType::List(Box::new(element_type))
                 }
                 Value::Record(_) => {
@@ -291,7 +291,7 @@ mod types {
                 }
                 Value::Enum(_) => ValType::Enum(Enum::default()),
                 Value::Option(opt) => {
-                    let inner_type = opt.as_ref().map(|v| v.value_type()).unwrap_or(ValType::Bool);
+                    let inner_type = opt.as_ref().map(|v| v.value_type()).unwrap_or(ValType::Bool;
                     ValType::Option(Box::new(inner_type))
                 }
                 Value::Result(result) => {
@@ -299,8 +299,8 @@ mod types {
                         .as_ref()
                         .ok()
                         .and_then(|opt| opt.as_ref())
-                        .map(|v| Box::new(v.value_type()));
-                    let err_type = result.as_ref().err().map(|v| Box::new(v.value_type()));
+                        .map(|v| Box::new(v.value_type();
+                    let err_type = result.as_ref().err().map(|v| Box::new(v.value_type();
                     ValType::Result(Result_ { ok: ok_type, err: err_type })
                 }
                 Value::Flags(_) => ValType::Flags(Flags::default()),
@@ -475,7 +475,7 @@ mod types {
         #[test]
         fn test_valtype_creation() {
             let val_type = ValType::S32;
-            assert_eq!(val_type, ValType::S32);
+            assert_eq!(val_type, ValType::S32;
         }
 
         #[test]
@@ -486,24 +486,24 @@ mod types {
                     Field { name: "y".to_string(), ty: ValType::F64 },
                 ],
             };
-            assert_eq!(record.fields.len(), 2);
+            assert_eq!(record.fields.len(), 2;
         }
 
         #[test]
         fn test_value_type_inference() {
-            let value = Value::S32(42);
-            assert_eq!(value.value_type(), ValType::S32);
+            let value = Value::S32(42;
+            assert_eq!(value.value_type(), ValType::S32;
 
-            let list_value = Value::List(vec![Value::S32(1), Value::S32(2)]);
-            assert_eq!(list_value.value_type(), ValType::List(Box::new(ValType::S32)));
+            let list_value = Value::List(vec![Value::S32(1), Value::S32(2)];
+            assert_eq!(list_value.value_type(), ValType::List(Box::new(ValType::S32);
         }
 
         #[test]
         fn test_func_type_creation() {
             let func_type =
                 FuncType { params: vec![ValType::S32, ValType::S32], results: vec![ValType::S32] };
-            assert_eq!(func_type.params.len(), 2);
-            assert_eq!(func_type.results.len(), 1);
+            assert_eq!(func_type.params.len(), 2;
+            assert_eq!(func_type.results.len(), 1;
         }
     }
 }

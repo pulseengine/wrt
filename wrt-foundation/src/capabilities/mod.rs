@@ -334,9 +334,9 @@ mod tests {
 
     #[test]
     fn test_capability_mask_intersection() {
-        let mask1 = CapabilityMask::all();
-        let mask2 = CapabilityMask::read_only();
-        let result = mask1.intersect(&mask2);
+        let mask1 = CapabilityMask::all(;
+        let mask2 = CapabilityMask::read_only(;
+        let result = mask1.intersect(&mask2;
 
         assert!(result.read);
         assert!(!result.write);
@@ -346,10 +346,10 @@ mod tests {
     #[test]
     fn test_memory_operation_requires_capability() {
         let read_op = MemoryOperation::Read { offset: 0, len: 100 };
-        let write_mask = CapabilityMask::read_only();
-        let read_mask = CapabilityMask::all();
+        let write_mask = CapabilityMask::read_only(;
+        let read_mask = CapabilityMask::all(;
 
-        assert!(!read_op.requires_capability(&write_mask));
-        assert!(read_op.requires_capability(&read_mask));
+        assert!(!read_op.requires_capability(&write_mask);
+        assert!(read_op.requires_capability(&read_mask);
     }
 }

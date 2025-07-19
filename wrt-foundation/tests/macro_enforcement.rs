@@ -26,21 +26,21 @@ mod macro_enforcement_tests {
 
         // Test standard sizes
         let small = wrt_foundation::safe_provider!(small)?;
-        assert_eq!(small.capacity(), 4096);
+        assert_eq!(small.capacity(), 4096;
 
         let medium = wrt_foundation::safe_provider!(medium)?;
-        assert_eq!(medium.capacity(), 65536);
+        assert_eq!(medium.capacity(), 65536;
 
         let large = wrt_foundation::safe_provider!(large)?;
-        assert_eq!(large.capacity(), 1048576);
+        assert_eq!(large.capacity(), 1048576;
 
         // Test with explicit size
         let custom = wrt_foundation::safe_provider!(8192)?;
-        assert_eq!(custom.capacity(), 8192);
+        assert_eq!(custom.capacity(), 8192;
 
         // Test with explicit crate
         let explicit = wrt_foundation::safe_provider!(16384, CrateId::Runtime)?;
-        assert_eq!(explicit.capacity(), 16384);
+        assert_eq!(explicit.capacity(), 16384;
 
         Ok(())
     }
@@ -53,13 +53,13 @@ mod macro_enforcement_tests {
         let vec = wrt_foundation::budget_collection!(
             vec: u32, capacity: 50, size: 2048
         )?;
-        assert_eq!(vec.capacity(), 50);
+        assert_eq!(vec.capacity(), 50;
 
         // Test string creation
         let string = wrt_foundation::budget_collection!(
             string: capacity: 128, size: 512
         )?;
-        assert_eq!(string.capacity(), 128);
+        assert_eq!(string.capacity(), 128;
 
         Ok(())
     }
@@ -72,13 +72,13 @@ mod macro_enforcement_tests {
         let provider1 = wrt_foundation::constrained_provider!(
             2048, CrateId::Foundation, max: 4096
         )?;
-        assert_eq!(provider1.capacity(), 2048);
+        assert_eq!(provider1.capacity(), 2048;
 
         // Test range constraint
         let provider2 = wrt_foundation::constrained_provider!(
             3072, CrateId::Foundation, range: 1024..=4096
         )?;
-        assert_eq!(provider2.capacity(), 3072);
+        assert_eq!(provider2.capacity(), 3072;
 
         // These would fail at compile time:
         // constrained_provider!(8192, CrateId::Foundation, max: 4096)
@@ -97,7 +97,7 @@ mod macro_enforcement_tests {
         wrt_foundation::static_assert!(4096 <= 65536);
 
         // This would fail at compile time:
-        // static_assert!(1 + 1 == 3); // Compile error!
+        // static_assert!(1 + 1 == 3)); // Compile error!
 
         Ok(())
     }
@@ -129,8 +129,8 @@ mod macro_enforcement_tests {
         }
 
         let good_provider = BudgetProvider::<1024>::new(CrateId::Runtime)?;
-        let crate_id = only_budget_aware(good_provider);
-        assert_eq!(crate_id, CrateId::Runtime);
+        let crate_id = only_budget_aware(good_provider;
+        assert_eq!(crate_id, CrateId::Runtime;
 
         // This would not compile:
         // let guard = safe_managed_alloc!(1024, CrateId::Foundation)?;
@@ -153,7 +153,7 @@ mod macro_enforcement_tests {
         }
 
         let provider = BudgetProvider::<2048>::new(CrateId::Component)?;
-        assert!(process_with_constraint(provider));
+        assert!(process_with_constraint(provider);
 
         // NoStdProvider would not implement ProviderConstraint
 
@@ -172,7 +172,7 @@ mod macro_enforcement_tests {
         }
 
         let vec: BoundedVec<u32, 100, _> = create_collection()?;
-        assert_eq!(vec.capacity(), 100);
+        assert_eq!(vec.capacity(), 100;
 
         Ok(())
     }
@@ -189,14 +189,14 @@ mod macro_enforcement_tests {
         let _large = BudgetProvider::<{ 512 * 1024 }>::new(CrateId::Panic)?;
 
         // Macro should properly propagate errors
-        let result = wrt_foundation::safe_provider!(1024 * 1024, CrateId::Panic);
-        assert!(result.is_err());
+        let result = wrt_foundation::safe_provider!(1024 * 1024, CrateId::Panic;
+        assert!(result.is_err();
 
         // Constrained provider should also handle errors
         let result2 = wrt_foundation::constrained_provider!(
             1024 * 1024, CrateId::Panic, max: 2 * 1024 * 1024
-        );
-        assert!(result2.is_err());
+        ;
+        assert!(result2.is_err();
 
         Ok(())
     }
@@ -207,17 +207,17 @@ mod macro_enforcement_tests {
 
         // This should compile but with deprecation warning
         #[allow(deprecated)]
-        let old_style = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
+        let old_style = wrt_foundation::safe_memory::NoStdProvider::<1024>::default(;
 
         // Can still be used (for now)
         #[allow(deprecated)]
         let vec = BoundedVec::<u8, 10, _>::new(old_style)?;
-        assert_eq!(vec.capacity(), 10);
+        assert_eq!(vec.capacity(), 10;
 
         // But we should use the new style
         let new_style = BudgetProvider::<1024>::new(CrateId::Foundation)?;
         let vec2 = BoundedVec::<u8, 10, _>::new(new_style)?;
-        assert_eq!(vec2.capacity(), 10);
+        assert_eq!(vec2.capacity(), 10;
 
         Ok(())
     }
@@ -237,7 +237,7 @@ mod macro_enforcement_tests {
 
         // Use with collection macro
         let vec = BoundedVec::<u16, 200, _>::new(provider)?;
-        assert_eq!(vec.capacity(), 200);
+        assert_eq!(vec.capacity(), 200;
 
         Ok(())
     }
@@ -256,9 +256,9 @@ mod macro_enforcement_tests {
         let medium = wrt_foundation::safe_provider!(MEDIUM_SIZE)?;
         let large = wrt_foundation::safe_provider!(LARGE_SIZE)?;
 
-        assert_eq!(small.capacity(), SMALL_SIZE);
-        assert_eq!(medium.capacity(), MEDIUM_SIZE);
-        assert_eq!(large.capacity(), LARGE_SIZE);
+        assert_eq!(small.capacity(), SMALL_SIZE;
+        assert_eq!(medium.capacity(), MEDIUM_SIZE;
+        assert_eq!(large.capacity(), LARGE_SIZE;
 
         Ok(())
     }

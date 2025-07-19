@@ -168,7 +168,7 @@ impl<'a> Section<'a> {
 
         // Verify size matches data length
         if self.size as usize != self.data.len() {
-            return Err(Error::validation_error("Section size mismatch"));
+            return Err(Error::validation_error("Section size mismatch";
         }
         Ok(())
     }

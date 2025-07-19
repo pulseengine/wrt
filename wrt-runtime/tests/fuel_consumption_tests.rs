@@ -17,9 +17,9 @@ mod fuel_consumption_tests {
 
     /// Helper to create a test engine with fuel tracking
     fn create_test_engine(fuel: Option<u64>, verification_level: VerificationLevel) -> StacklessEngine {
-        let mut engine = StacklessEngine::new();
-        engine.set_fuel(fuel);
-        engine.set_verification_level(verification_level);
+        let mut engine = StacklessEngine::new(;
+        engine.set_fuel(fuel;
+        engine.set_verification_level(verification_level;
         engine
     }
 
@@ -28,17 +28,17 @@ mod fuel_consumption_tests {
     where
         F: FnOnce(&mut StacklessEngine) -> Result<()>,
     {
-        reset_global_operations();
-        let mut engine = create_test_engine(Some(initial_fuel), verification_level);
+        reset_global_operations(;
+        let mut engine = create_test_engine(Some(initial_fuel), verification_level;
         
         operation(&mut engine)?;
         
-        let remaining_fuel = engine.get_fuel().unwrap_or(0);
+        let remaining_fuel = engine.get_fuel().unwrap_or(0;
         let consumed = initial_fuel - remaining_fuel;
         
         // Also verify against global fuel tracking
-        let global_consumed = global_fuel_consumed();
-        assert_eq!(consumed, global_consumed, "Engine fuel and global fuel tracking mismatch");
+        let global_consumed = global_fuel_consumed(;
+        assert_eq!(consumed, global_consumed, "Engine fuel and global fuel tracking mismatch";
         
         Ok(consumed)
     }
@@ -50,18 +50,18 @@ mod fuel_consumption_tests {
             engine.consume_instruction_fuel(InstructionFuelType::SimpleConstant)
         }).unwrap();
         
-        assert_eq!(consumed, 1, "SimpleConstant should consume 1 fuel at VerificationLevel::Off");
+        assert_eq!(consumed, 1, "SimpleConstant should consume 1 fuel at VerificationLevel::Off";
         
         // Test with different verification levels
         let consumed_basic = measure_fuel_consumption(1000, VerificationLevel::Basic, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::SimpleConstant)
         }).unwrap();
-        assert_eq!(consumed_basic, 1, "SimpleConstant should consume 1 fuel at Basic (1.1x = 1)");
+        assert_eq!(consumed_basic, 1, "SimpleConstant should consume 1 fuel at Basic (1.1x = 1)";
         
         let consumed_full = measure_fuel_consumption(1000, VerificationLevel::Full, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::SimpleConstant)
         }).unwrap();
-        assert_eq!(consumed_full, 2, "SimpleConstant should consume 2 fuel at Full (2.0x)");
+        assert_eq!(consumed_full, 2, "SimpleConstant should consume 2 fuel at Full (2.0x)";
     }
 
     #[test]
@@ -70,19 +70,19 @@ mod fuel_consumption_tests {
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::SimpleArithmetic)
         }).unwrap();
-        assert_eq!(consumed, 1, "SimpleArithmetic should consume 1 fuel");
+        assert_eq!(consumed, 1, "SimpleArithmetic should consume 1 fuel";
         
         // Test ComplexArithmetic (3 fuel base)
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)
         }).unwrap();
-        assert_eq!(consumed, 3, "ComplexArithmetic should consume 3 fuel");
+        assert_eq!(consumed, 3, "ComplexArithmetic should consume 3 fuel";
         
         // Test FloatArithmetic (4 fuel base)
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::FloatArithmetic)
         }).unwrap();
-        assert_eq!(consumed, 4, "FloatArithmetic should consume 4 fuel");
+        assert_eq!(consumed, 4, "FloatArithmetic should consume 4 fuel";
     }
 
     #[test]
@@ -91,19 +91,19 @@ mod fuel_consumption_tests {
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::MemoryLoad)
         }).unwrap();
-        assert_eq!(consumed, 5, "MemoryLoad should consume 5 fuel");
+        assert_eq!(consumed, 5, "MemoryLoad should consume 5 fuel";
         
         // Test MemoryStore (6 fuel base)
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::MemoryStore)
         }).unwrap();
-        assert_eq!(consumed, 6, "MemoryStore should consume 6 fuel");
+        assert_eq!(consumed, 6, "MemoryStore should consume 6 fuel";
         
         // Test MemoryManagement (50 fuel base)
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::MemoryManagement)
         }).unwrap();
-        assert_eq!(consumed, 50, "MemoryManagement should consume 50 fuel");
+        assert_eq!(consumed, 50, "MemoryManagement should consume 50 fuel";
     }
 
     #[test]
@@ -112,19 +112,19 @@ mod fuel_consumption_tests {
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::SimpleControl)
         }).unwrap();
-        assert_eq!(consumed, 2, "SimpleControl should consume 2 fuel");
+        assert_eq!(consumed, 2, "SimpleControl should consume 2 fuel";
         
         // Test ComplexControl (8 fuel base)
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::ComplexControl)
         }).unwrap();
-        assert_eq!(consumed, 8, "ComplexControl should consume 8 fuel");
+        assert_eq!(consumed, 8, "ComplexControl should consume 8 fuel";
         
         // Test FunctionCall (10 fuel base)
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::FunctionCall)
         }).unwrap();
-        assert_eq!(consumed, 10, "FunctionCall should consume 10 fuel");
+        assert_eq!(consumed, 10, "FunctionCall should consume 10 fuel";
     }
 
     #[test]
@@ -133,13 +133,13 @@ mod fuel_consumption_tests {
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::SimdOperation)
         }).unwrap();
-        assert_eq!(consumed, 6, "SimdOperation should consume 6 fuel");
+        assert_eq!(consumed, 6, "SimdOperation should consume 6 fuel";
         
         // Test AtomicOperation (15 fuel base)
         let consumed = measure_fuel_consumption(1000, VerificationLevel::Off, |engine| {
             engine.consume_instruction_fuel(InstructionFuelType::AtomicOperation)
         }).unwrap();
-        assert_eq!(consumed, 15, "AtomicOperation should consume 15 fuel");
+        assert_eq!(consumed, 15, "AtomicOperation should consume 15 fuel";
     }
 
     #[test]
@@ -159,25 +159,25 @@ mod fuel_consumption_tests {
                 engine.consume_instruction_fuel(InstructionFuelType::ComplexArithmetic)
             }).unwrap();
             assert_eq!(consumed, expected, 
-                "ComplexArithmetic at {:?} should consume {} fuel", level, expected);
+                "ComplexArithmetic at {:?} should consume {} fuel", level, expected;
         }
     }
 
     #[test]
     fn test_fuel_exhaustion() {
         // Test that execution stops when fuel is exhausted
-        let mut engine = create_test_engine(Some(5), VerificationLevel::Off);
+        let mut engine = create_test_engine(Some(5), VerificationLevel::Off;
         
         // Consume 5 fuel (should succeed)
         engine.consume_instruction_fuel(InstructionFuelType::MemoryLoad).unwrap();
-        assert_eq!(engine.get_fuel(), Some(0));
+        assert_eq!(engine.get_fuel(), Some(0;
         
         // Try to consume more fuel (should fail)
-        let result = engine.consume_instruction_fuel(InstructionFuelType::SimpleConstant);
-        assert!(result.is_err());
+        let result = engine.consume_instruction_fuel(InstructionFuelType::SimpleConstant;
+        assert!(result.is_err();
         
         if let Err(e) = result {
-            assert!(e.message().contains("Fuel exhausted"));
+            assert!(e.message().contains("Fuel exhausted");
         }
     }
 
@@ -205,9 +205,9 @@ mod fuel_consumption_tests {
         ];
         
         for (fuel_type, op_type, expected_cost) in mappings {
-            let cost = op_type.cost();
+            let cost = op_type.cost(;
             assert_eq!(cost, expected_cost, 
-                "{:?} should have base cost of {}", fuel_type, expected_cost);
+                "{:?} should have base cost of {}", fuel_type, expected_cost;
         }
     }
 
@@ -225,26 +225,26 @@ mod fuel_consumption_tests {
             }).unwrap()
         };
         
-        let first_run = run_test();
-        let second_run = run_test();
-        let third_run = run_test();
+        let first_run = run_test(;
+        let second_run = run_test(;
+        let third_run = run_test(;
         
-        assert_eq!(first_run, second_run, "Fuel consumption should be deterministic");
-        assert_eq!(second_run, third_run, "Fuel consumption should be deterministic");
+        assert_eq!(first_run, second_run, "Fuel consumption should be deterministic";
+        assert_eq!(second_run, third_run, "Fuel consumption should be deterministic";
         
         // Expected: (1 + 1 + 5 + 10) * 2.0 = 34
-        assert_eq!(first_run, 34, "Total fuel consumption should be 34");
+        assert_eq!(first_run, 34, "Total fuel consumption should be 34";
     }
 
     #[test]
     fn test_no_fuel_tracking() {
         // Test that operations work without fuel tracking
-        let mut engine = create_test_engine(None, VerificationLevel::Off);
+        let mut engine = create_test_engine(None, VerificationLevel::Off;
         
         // Should succeed even without fuel
         engine.consume_instruction_fuel(InstructionFuelType::MemoryManagement).unwrap();
         engine.consume_instruction_fuel(InstructionFuelType::AtomicOperation).unwrap();
         
-        assert_eq!(engine.get_fuel(), None);
+        assert_eq!(engine.get_fuel(), None;
     }
 }

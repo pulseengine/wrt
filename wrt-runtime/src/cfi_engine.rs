@@ -86,9 +86,9 @@ pub struct ShadowStackEntry {
     
     impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            checksum.update_slice(&self.return_address.to_le_bytes());
-            checksum.update_slice(&self.stack_pointer.to_le_bytes());
-            checksum.update_slice(&self.function_index.to_le_bytes());
+            checksum.update_slice(&self.return_address.to_le_bytes(;
+            checksum.update_slice(&self.stack_pointer.to_le_bytes(;
+            checksum.update_slice(&self.function_index.to_le_bytes(;
         }
     }
     
@@ -117,13 +117,13 @@ pub struct ShadowStackEntry {
             let mut bytes = [0u8; 4];
             
             reader.read_exact(&mut bytes)?;
-            let return_address = u32::from_le_bytes(bytes);
+            let return_address = u32::from_le_bytes(bytes;
             
             reader.read_exact(&mut bytes)?;
-            let stack_pointer = u32::from_le_bytes(bytes);
+            let stack_pointer = u32::from_le_bytes(bytes;
             
             reader.read_exact(&mut bytes)?;
-            let function_index = u32::from_le_bytes(bytes);
+            let function_index = u32::from_le_bytes(bytes;
             
             Ok(Self {
                 return_address,
@@ -336,10 +336,10 @@ pub struct LandingPadExpectation {
 
 impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes());
-        checksum.update_slice(&self.instruction_offset.to_le_bytes());
+        checksum.update_slice(&self.function_index.to_le_bytes(;
+        checksum.update_slice(&self.instruction_offset.to_le_bytes(;
         if let Some(deadline) = self.deadline {
-            checksum.update_slice(&deadline.to_le_bytes());
+            checksum.update_slice(&deadline.to_le_bytes(;
         }
     }
 }
@@ -367,11 +367,11 @@ impl wrt_foundation::traits::FromBytes for LandingPadExpectation {
     ) -> wrt_foundation::Result<Self> {
         let mut func_bytes = [0u8; 4];
         reader.read_exact(&mut func_bytes)?;
-        let function_index = u32::from_le_bytes(func_bytes);
+        let function_index = u32::from_le_bytes(func_bytes;
         
         let mut inst_bytes = [0u8; 4];
         reader.read_exact(&mut inst_bytes)?;
-        let instruction_offset = u32::from_le_bytes(inst_bytes);
+        let instruction_offset = u32::from_le_bytes(inst_bytes;
         
         Ok(Self {
             function_index,
@@ -502,7 +502,7 @@ impl CfiExecutionEngine {
         instruction: &crate::prelude::Instruction,
         execution_context: &mut ExecutionContext,
     ) -> Result<CfiExecutionResult> {
-        let start_time = self.get_timestamp();
+        let start_time = self.get_timestamp(;
 
         // Update CFI context with current execution state
         self.update_cfi_context(execution_context)?;
@@ -552,9 +552,9 @@ impl CfiExecutionEngine {
         self.validate_post_execution(instruction, &result)?;
 
         // Update statistics
-        let end_time = self.get_timestamp();
+        let end_time = self.get_timestamp(;
         self.statistics.instructions_protected += 1;
-        self.statistics.cfi_overhead_ns += end_time.saturating_sub(start_time);
+        self.statistics.cfi_overhead_ns += end_time.saturating_sub(start_time;
 
         result
     }
@@ -567,7 +567,7 @@ impl CfiExecutionEngine {
     ) -> Result<CfiExecutionResult> {
         // Simplified CFI validation for direct call
         // In a full implementation, this would validate the call target
-        execution_context.stats.increment_instructions(1);
+        execution_context.stats.increment_instructions(1;
         
         // Execute the call (simplified for this implementation)
         Ok(CfiExecutionResult::Regular { 
@@ -705,7 +705,7 @@ impl CfiExecutionEngine {
 
         // Update peak shadow stack depth tracking
         if self.cfi_context.shadow_stack.len() > self.statistics.peak_shadow_stack_depth {
-            self.statistics.peak_shadow_stack_depth = self.cfi_context.shadow_stack.len();
+            self.statistics.peak_shadow_stack_depth = self.cfi_context.shadow_stack.len(;
         }
 
         Ok(())
@@ -713,11 +713,11 @@ impl CfiExecutionEngine {
 
     /// Check for expected landing pads
     fn check_landing_pad_expectations(&mut self) -> Result<()> {
-        let current_time = self.get_timestamp();
+        let current_time = self.get_timestamp(;
 
         // Check if we're at an expected landing pad
         let current_location =
-            (self.cfi_context.current_function, self.cfi_context.current_instruction);
+            (self.cfi_context.current_function, self.cfi_context.current_instruction;
 
         // Check for timed out expectations first
         let mut violations_detected = false;
@@ -745,12 +745,12 @@ impl CfiExecutionEngine {
                     true // Keep expectation (no deadline)
                 }
             }
-        });
+        };
         
         // Update metrics and handle violations after borrowing is done
         self.cfi_context.metrics.landing_pads_validated += metrics_landing_pads_validated;
         if violations_detected {
-            self.handle_cfi_violation(CfiViolationType::LandingPadTimeout);
+            self.handle_cfi_violation(CfiViolationType::LandingPadTimeout;
         }
 
         Ok(())
@@ -772,12 +772,12 @@ impl CfiExecutionEngine {
         if self.cfi_context.shadow_stack.len()
             > self.cfi_protection.software_config.max_shadow_stack_depth
         {
-            return Err(Error::runtime_trap_error("Shadow stack overflow detected"));
+            return Err(Error::runtime_trap_error("Shadow stack overflow detected";
         }
 
         // Check for excessive violation count
         if self.cfi_context.violation_count > 10 {
-            return Err(Error::runtime_trap_error("Excessive CFI violations detected"));
+            return Err(Error::runtime_trap_error("Excessive CFI violations detected";
         }
 
         Ok(())
@@ -857,7 +857,7 @@ impl CfiExecutionEngine {
 
         // Log violation details (in real implementation)
         #[cfg(feature = "std")]
-        eprintln!("CFI Violation detected: {:?}", violation_type);
+        eprintln!("CFI Violation detected: {:?}", violation_type;
 
         // Apply violation policy
         match self.violation_policy {
@@ -867,14 +867,14 @@ impl CfiExecutionEngine {
             CfiViolationPolicy::Terminate => {
                 // Would terminate execution (panic in real implementation)
                 #[cfg(feature = "std")]
-                panic!("CFI violation: {:?}", violation_type);
+                panic!("CFI violation: {:?}", violation_type;
             }
             CfiViolationPolicy::ReturnError => {
                 // Would return error to caller
             }
             CfiViolationPolicy::AttemptRecovery => {
                 // Would attempt to recover from violation
-                self.attempt_violation_recovery(violation_type);
+                self.attempt_violation_recovery(violation_type;
             }
         }
     }
@@ -914,7 +914,7 @@ impl CfiExecutionEngine {
             // TODO: Replace with safe hardware timer access
             // For now, use a simple fallback based on atomic counter
             use core::sync::atomic::{AtomicU64, Ordering};
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            static COUNTER: AtomicU64 = AtomicU64::new(0;
             COUNTER.fetch_add(1, Ordering::Relaxed)
         }
         #[cfg(target_arch = "riscv64")]
@@ -922,7 +922,7 @@ impl CfiExecutionEngine {
             // TODO: Replace with safe hardware timer access  
             // For now, use a simple fallback based on atomic counter
             use core::sync::atomic::{AtomicU64, Ordering};
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            static COUNTER: AtomicU64 = AtomicU64::new(0;
             COUNTER.fetch_add(1, Ordering::Relaxed)
         }
         #[cfg(not(any(target_arch = "aarch64", target_arch = "riscv64")))]
@@ -949,7 +949,7 @@ impl CfiExecutionEngine {
         // use crate::stackless::StacklessExecutionState; // TEMPORARILY DISABLED
 
         execution_context.enter_function()?;
-        execution_context.stats.increment_instructions(1);
+        execution_context.stats.increment_instructions(1;
 
         // Update stackless engine state for call - TEMPORARILY DISABLED
         // if let Some(engine) = &mut self.stackless_engine {
@@ -962,7 +962,7 @@ impl CfiExecutionEngine {
         //     engine.exec_stack.pc += 1;
         // }
         // Stub: track call for CFI purposes
-        let _call_tracking = (type_idx, table_idx);
+        let _call_tracking = (type_idx, table_idx;
 
         Ok(ExecutionResult::Continue)
     }
@@ -973,8 +973,8 @@ impl CfiExecutionEngine {
     ) -> Result<ExecutionResult> {
         // use crate::stackless::StacklessExecutionState; // TEMPORARILY DISABLED
 
-        execution_context.exit_function();
-        execution_context.stats.increment_instructions(1);
+        execution_context.exit_function(;
+        execution_context.stats.increment_instructions(1;
 
         // Update stackless engine state for return - TEMPORARILY DISABLED
         // if let Some(engine) = &mut self.stackless_engine {
@@ -995,7 +995,7 @@ impl CfiExecutionEngine {
     ) -> Result<ExecutionResult> {
         // use crate::stackless::StacklessExecutionState; // TEMPORARILY DISABLED
 
-        execution_context.stats.increment_instructions(1);
+        execution_context.stats.increment_instructions(1;
 
         // Update stackless engine state for branch - TEMPORARILY DISABLED
         // if let Some(engine) = &mut self.stackless_engine {
@@ -1006,7 +1006,7 @@ impl CfiExecutionEngine {
         //     engine.exec_stack.pc = label_idx as usize;
         // }
         // Stub: track branch for CFI purposes
-        let _branch_tracking = (label_idx, conditional);
+        let _branch_tracking = (label_idx, conditional;
 
         Ok(ExecutionResult::Branch)
     }
@@ -1016,7 +1016,7 @@ impl CfiExecutionEngine {
         instruction: &crate::prelude::Instruction,
         execution_context: &mut ExecutionContext,
     ) -> Result<ExecutionResult> {
-        execution_context.stats.increment_instructions(1);
+        execution_context.stats.increment_instructions(1;
 
         // Update stackless engine program counter - TEMPORARILY DISABLED
         // if let Some(engine) = &mut self.stackless_engine {
@@ -1026,7 +1026,7 @@ impl CfiExecutionEngine {
 
         // Consume minimal fuel for CFI overhead
         if let Err(e) = execution_context.stats.use_gas(1) {
-            return Err(Error::runtime_execution_error("Fuel exhausted"));
+            return Err(Error::runtime_execution_error("Fuel exhausted";
         }
 
         Ok(ExecutionResult::Continue)
@@ -1045,7 +1045,7 @@ impl CfiExecutionEngine {
     /// Reset CFI state (for testing or recovery)
     pub fn reset_cfi_state(&mut self) -> Result<()> {
         self.cfi_context = CfiExecutionContext::new()?;
-        self.statistics = CfiEngineStatistics::default();
+        self.statistics = CfiEngineStatistics::default(;
         Ok(())
     }
 }
@@ -1147,42 +1147,42 @@ mod tests {
 
     #[test]
     fn test_cfi_engine_creation() {
-        let protection = CfiControlFlowProtection::default();
+        let protection = CfiControlFlowProtection::default(;
         let engine = CfiExecutionEngine::new(protection).expect("Ok");
 
-        assert_eq!(engine.violation_policy, CfiViolationPolicy::ReturnError);
-        assert_eq!(engine.statistics.instructions_protected, 0);
-        assert_eq!(engine.cfi_context.violation_count, 0);
+        assert_eq!(engine.violation_policy, CfiViolationPolicy::ReturnError;
+        assert_eq!(engine.statistics.instructions_protected, 0;
+        assert_eq!(engine.cfi_context.violation_count, 0;
     }
 
     #[test]
     fn test_cfi_engine_with_policy() {
-        let protection = CfiControlFlowProtection::default();
+        let protection = CfiControlFlowProtection::default(;
         let policy = CfiViolationPolicy::LogAndContinue;
         let engine = CfiExecutionEngine::new_with_policy(protection, policy).expect("Ok");
 
-        assert_eq!(engine.violation_policy, CfiViolationPolicy::LogAndContinue);
+        assert_eq!(engine.violation_policy, CfiViolationPolicy::LogAndContinue;
     }
 
     #[test]
     fn test_cfi_statistics_default() {
-        let stats = CfiEngineStatistics::default();
-        assert_eq!(stats.instructions_protected, 0);
-        assert_eq!(stats.violations_detected, 0);
-        assert_eq!(stats.peak_shadow_stack_depth, 0);
+        let stats = CfiEngineStatistics::default(;
+        assert_eq!(stats.instructions_protected, 0;
+        assert_eq!(stats.violations_detected, 0;
+        assert_eq!(stats.peak_shadow_stack_depth, 0;
     }
 
     #[test]
     fn test_cfi_violation_handling() {
-        let protection = CfiControlFlowProtection::default();
+        let protection = CfiControlFlowProtection::default(;
         let mut engine =
             CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue).expect("Ok");
 
         let initial_violations = engine.statistics.violations_detected;
-        engine.handle_cfi_violation(CfiViolationType::ShadowStackMismatch);
+        engine.handle_cfi_violation(CfiViolationType::ShadowStackMismatch;
 
-        assert_eq!(engine.statistics.violations_detected, initial_violations + 1);
-        assert_eq!(engine.cfi_context.violation_count, 1);
+        assert_eq!(engine.statistics.violations_detected, initial_violations + 1;
+        assert_eq!(engine.cfi_context.violation_count, 1;
     }
 
     // TODO: Fix smart quote issue in test_cfi_context_update test

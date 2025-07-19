@@ -85,7 +85,7 @@ mod factory {
         /// Create a new runtime type factory
         pub fn new() -> Self {
             let provider = crate::safe_managed_alloc!(BUFFER_SIZE, crate::budget_aware_provider::CrateId::Foundation)
-                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default());
+                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default(;
             Self { provider }
         }
 
@@ -154,7 +154,7 @@ mod factory {
         /// Create a new component type factory
         pub fn new() -> Self {
             let provider = crate::safe_managed_alloc!(BUFFER_SIZE, crate::budget_aware_provider::CrateId::Foundation)
-                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default());
+                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default(;
             Self { provider }
         }
 
@@ -296,44 +296,44 @@ mod factory {
 
         #[test]
         fn test_runtime_factory_creation() {
-            let factory = RuntimeTypeFactory::<1024>::new();
+            let factory = RuntimeTypeFactory::<1024>::new(;
             // Verify that factory was created successfully
             assert!(factory.provider().size() > 0);
         }
 
         #[test]
         fn test_component_factory_creation() {
-            let factory = ComponentTypeFactory::<1024>::new();
+            let factory = ComponentTypeFactory::<1024>::new(;
             // Verify that factory was created successfully
             assert!(factory.provider().size() > 0);
         }
 
         #[test]
         fn test_bounded_string_creation() {
-            let factory = RuntimeTypeFactory::<1024>::new();
+            let factory = RuntimeTypeFactory::<1024>::new(;
             let bounded_str = factory.create_bounded_string::<64>("test").unwrap();
-            assert_eq!(bounded_str.as_str().unwrap(), "test");
+            assert_eq!(bounded_str.as_str().unwrap(), "test";
         }
 
         #[test]
         fn test_factory_builder() {
-            let builder = FactoryBuilder::<1024>::new();
-            let runtime_factory = builder.build_runtime_factory();
+            let builder = FactoryBuilder::<1024>::new(;
+            let runtime_factory = builder.build_runtime_factory(;
 
-            let builder2 = FactoryBuilder::<1024>::new();
-            let component_factory = builder2.build_component_factory();
+            let builder2 = FactoryBuilder::<1024>::new(;
+            let component_factory = builder2.build_component_factory(;
 
             // Just ensure they can be created
-            assert!(!core::ptr::eq(runtime_factory.provider(), component_factory.provider()));
+            assert!(!core::ptr::eq(runtime_factory.provider(), component_factory.provider());
         }
 
         #[test]
         fn test_type_converter() {
             let field = CleanField { name: "test_field".to_string(), ty: CleanValType::S32 };
 
-            let converted = TypeConverter::convert_field_from_bounded(&field);
-            assert_eq!(converted.name, field.name);
-            assert_eq!(converted.ty, field.ty);
+            let converted = TypeConverter::convert_field_from_bounded(&field;
+            assert_eq!(converted.name, field.name;
+            assert_eq!(converted.ty, field.ty;
         }
     }
 }

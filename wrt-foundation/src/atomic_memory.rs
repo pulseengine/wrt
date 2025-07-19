@@ -49,8 +49,8 @@ impl<P: Provider + Clone> Clone for AtomicMemoryOps<P> {
 impl<P: Provider + PartialEq> PartialEq for AtomicMemoryOps<P> {
     fn eq(&self, other: &Self) -> bool {
         // Compare the underlying handlers (requires locking both)
-        let self_handler = self.handler.lock();
-        let other_handler = other.handler.lock();
+        let self_handler = self.handler.lock(;
+        let other_handler = other.handler.lock(;
         *self_handler == *other_handler && self.verification_level == other.verification_level
     }
 }
@@ -62,7 +62,7 @@ impl<P: Provider> AtomicMemoryOps<P> {
     ///
     /// This wraps the handler in a mutex to ensure atomic operations.
     pub fn new(handler: SafeMemoryHandler<P>) -> Self {
-        let verification_level = handler.verification_level();
+        let verification_level = handler.verification_level(;
         Self { handler: WrtMutex::new(handler), verification_level }
     }
 
@@ -74,8 +74,8 @@ impl<P: Provider> AtomicMemoryOps<P> {
     where
         P: Sized + Clone,
     {
-        let handler = SafeMemoryHandler::new(provider);
-        let verification_level = handler.verification_level();
+        let handler = SafeMemoryHandler::new(provider;
+        let verification_level = handler.verification_level(;
         Ok(Self { handler: WrtMutex::new(handler), verification_level })
     }
 
@@ -92,8 +92,8 @@ impl<P: Provider> AtomicMemoryOps<P> {
     #[cfg(feature = "std")]
     pub fn read_data(&self, offset: usize, len: usize) -> Result<Vec<u8>> {
         // Lock the handler for atomic access
-        let handler = self.handler.lock();
-        record_global_operation(OperationType::MemoryRead, self.verification_level);
+        let handler = self.handler.lock(;
+        record_global_operation(OperationType::MemoryRead, self.verification_level;
 
         // Get the slice and copy the data to avoid lifetime issues
         let slice = handler.borrow_slice(offset, len)?;
@@ -119,8 +119,8 @@ impl<P: Provider> AtomicMemoryOps<P> {
     /// verification fails.
     pub fn atomic_write_with_checksum(&self, offset: usize, data: &[u8]) -> Result<()> {
         // Lock the handler for atomic access with Acquire ordering
-        let mut handler = self.handler.lock();
-        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        let mut handler = self.handler.lock(;
+        record_global_operation(OperationType::MemoryWrite, self.verification_level;
 
         // Verify that the access is valid
         handler.verify_access(offset, data.len())?;
@@ -132,11 +132,11 @@ impl<P: Provider> AtomicMemoryOps<P> {
         let slice_data = slice.data_mut()?;
 
         // Copy the data while holding the lock
-        slice_data.copy_from_slice(data);
+        slice_data.copy_from_slice(data;
 
         // Update the checksum while still holding the lock
         // This ensures no bit flips can occur between write and checksum update
-        slice.update_checksum();
+        slice.update_checksum(;
 
         // Lock is released automatically when handler goes out of scope
 
@@ -157,8 +157,8 @@ impl<P: Provider> AtomicMemoryOps<P> {
         len: usize,
     ) -> Result<()> {
         // Lock the handler for atomic access
-        let mut handler = self.handler.lock();
-        record_global_operation(OperationType::MemoryCopy, self.verification_level);
+        let mut handler = self.handler.lock(;
+        record_global_operation(OperationType::MemoryCopy, self.verification_level;
 
         // Verify that the source access is valid
         handler.verify_access(src_offset, len)?;
@@ -179,15 +179,15 @@ impl<P: Provider> AtomicMemoryOps<P> {
             {
                 let source_slice = handler.borrow_slice(src_offset + src_pos, chunk_size)?;
                 let source_data = source_slice.data()?;
-                buffer[..chunk_size].copy_from_slice(&source_data[..chunk_size]);
+                buffer[..chunk_size].copy_from_slice(&source_data[..chunk_size];
             } // source_slice is dropped here, releasing immutable borrow
 
             // Write to the destination atomically with checksum update
             let mut dst_slice =
                 handler.provider_mut().get_slice_mut(dst_offset + dst_pos, chunk_size)?;
             let dst_data = dst_slice.data_mut()?;
-            dst_data.copy_from_slice(&buffer[..chunk_size]);
-            dst_slice.update_checksum();
+            dst_data.copy_from_slice(&buffer[..chunk_size];
+            dst_slice.update_checksum(;
 
             remaining -= chunk_size;
             src_pos += chunk_size;
@@ -208,19 +208,19 @@ impl<P: Provider> AtomicMemoryOps<P> {
     /// underlying provider.
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
-        let mut handler = self.handler.lock();
-        handler.set_verification_level(level);
+        let mut handler = self.handler.lock(;
+        handler.set_verification_level(level;
     }
 
     /// Gets the underlying memory provider's size.
     pub fn size(&self) -> usize {
-        let handler = self.handler.lock();
+        let handler = self.handler.lock(;
         handler.size()
     }
 
     /// Gets the underlying memory provider's capacity.
     pub fn capacity(&self) -> usize {
-        let handler = self.handler.lock();
+        let handler = self.handler.lock(;
         handler.capacity()
     }
 
@@ -242,7 +242,7 @@ impl<P: Provider> AtomicMemoryOps<P> {
     ///
     /// Returns an error if an integrity violation is detected.
     pub fn verify_integrity(&self) -> Result<()> {
-        let handler = self.handler.lock();
+        let handler = self.handler.lock(;
         handler.provider().verify_integrity()
     }
 }
@@ -288,13 +288,13 @@ mod tests {
 
         #[cfg(not(feature = "std"))]
         let read_data = {
-            let handler = atomic_ops.handler.lock();
+            let handler = atomic_ops.handler.lock(;
             let slice = handler.borrow_slice(0, test_data.len()).unwrap();
             slice.data().unwrap()
         };
 
         // Verify the data
-        assert_eq!(read_data, &test_data);
+        assert_eq!(read_data, &test_data;
         Ok(())
     }
 
@@ -314,14 +314,14 @@ mod tests {
         atomic_ops.atomic_write_with_checksum(0, &test_data).unwrap();
 
         // Verify integrity explicitly at both provider and slice levels
-        let handler = atomic_ops.handler.lock();
-        assert!(handler.provider().verify_integrity().is_ok());
+        let handler = atomic_ops.handler.lock(;
+        assert!(handler.provider().verify_integrity().is_ok();
 
         // Access the internal slice to check its checksum
         let slice = handler.borrow_slice(0, test_data.len()).unwrap();
 
         // Verify integrity of the slice, which internally compares checksums
-        assert!(slice.verify_integrity().is_ok());
+        assert!(slice.verify_integrity().is_ok();
         Ok(())
     }
 
@@ -349,13 +349,13 @@ mod tests {
 
         #[cfg(not(feature = "std"))]
         let read_data = {
-            let handler = atomic_ops.handler.lock();
+            let handler = atomic_ops.handler.lock(;
             let slice = handler.borrow_slice(20, 5).unwrap();
             slice.data().unwrap()
         };
 
         // Verify the data was copied correctly
-        assert_eq!(read_data, &[3, 4, 5, 6, 7]);
+        assert_eq!(read_data, &[3, 4, 5, 6, 7];
         Ok(())
     }
 }

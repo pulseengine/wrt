@@ -131,7 +131,7 @@ impl FaultDetector {
     
     /// Enable or disable fault detection
     pub fn set_enabled(&self, enabled: bool) {
-        self.enabled.store(enabled, Ordering::Release);
+        self.enabled.store(enabled, Ordering::Release;
     }
     
     /// Check if fault detection is enabled
@@ -142,27 +142,27 @@ impl FaultDetector {
     /// Report a detected fault
     pub fn report_fault(&self, fault: FaultType, context: &FaultContext) -> Result<()> {
         if !self.is_enabled() {
-            return Ok(());
+            return Ok((;
         }
         
         // Increment appropriate counter
         match fault {
             FaultType::BudgetExceeded { .. } => {
-                self.budget_violations.fetch_add(1, Ordering::Relaxed);
+                self.budget_violations.fetch_add(1, Ordering::Relaxed;
             }
             FaultType::BoundsViolation { .. } => {
-                self.bounds_violations.fetch_add(1, Ordering::Relaxed);
+                self.bounds_violations.fetch_add(1, Ordering::Relaxed;
             }
             FaultType::CapabilityViolation { .. } => {
-                self.capability_violations.fetch_add(1, Ordering::Relaxed);
+                self.capability_violations.fetch_add(1, Ordering::Relaxed;
             }
             _ => {
-                self.memory_violations.fetch_add(1, Ordering::Relaxed);
+                self.memory_violations.fetch_add(1, Ordering::Relaxed;
             }
         }
         
         // Log the fault (platform-specific implementation needed)
-        self.log_fault(&fault, context);
+        self.log_fault(&fault, context;
         
         // Take action based on response mode
         match self.response_mode {
@@ -202,8 +202,8 @@ impl FaultDetector {
             Err(Error::foundation_memory_provider_failed("Memory budget exceeded"))
         } else {
             // Update watermark if this would be a new high
-            let current_usage = available.saturating_sub(requested);
-            self.update_watermark(current_usage);
+            let current_usage = available.saturating_sub(requested;
+            self.update_watermark(current_usage;
             Ok(())
         }
     }
@@ -227,7 +227,7 @@ impl FaultDetector {
     
     /// Update memory usage watermark
     fn update_watermark(&self, usage: usize) {
-        let mut current = self.memory_watermark.load(Ordering::Relaxed);
+        let mut current = self.memory_watermark.load(Ordering::Relaxed;
         loop {
             if usage <= current {
                 break;
@@ -256,7 +256,7 @@ impl FaultDetector {
                 false,
                 "Fault detected: {:?} in {:?} for {:?}",
                 fault, context.operation, context.crate_id
-            );
+            ;
         }
         
         // In production, this would integrate with platform logging
@@ -302,10 +302,10 @@ impl FaultDetector {
     
     /// Reset fault counters (for testing/diagnostics)
     pub fn reset_counters(&self) {
-        self.memory_violations.store(0, Ordering::Relaxed);
-        self.budget_violations.store(0, Ordering::Relaxed);
-        self.bounds_violations.store(0, Ordering::Relaxed);
-        self.capability_violations.store(0, Ordering::Relaxed);
+        self.memory_violations.store(0, Ordering::Relaxed;
+        self.budget_violations.store(0, Ordering::Relaxed;
+        self.bounds_violations.store(0, Ordering::Relaxed;
+        self.capability_violations.store(0, Ordering::Relaxed;
     }
 }
 
@@ -329,7 +329,7 @@ pub struct FaultStatistics {
 }
 
 /// Global fault detector instance
-static FAULT_DETECTOR: FaultDetector = FaultDetector::new(FaultResponseMode::GracefulDegradation);
+static FAULT_DETECTOR: FaultDetector = FaultDetector::new(FaultResponseMode::GracefulDegradation;
 
 /// Get the global fault detector
 pub fn fault_detector() -> &'static FaultDetector {
@@ -370,7 +370,7 @@ mod tests {
     
     #[test]
     fn test_bounds_checking() {
-        let detector = FaultDetector::new(FaultResponseMode::LogOnly);
+        let detector = FaultDetector::new(FaultResponseMode::LogOnly;
         let context = FaultContext {
             crate_id: CrateId::Foundation,
             operation: OperationType::BoundsCheck,
@@ -379,20 +379,20 @@ mod tests {
         };
         
         // Valid bounds check
-        assert!(detector.check_bounds(5, 10, &context).is_ok());
+        assert!(detector.check_bounds(5, 10, &context).is_ok();
         
         // Invalid bounds check
-        assert!(detector.check_bounds(10, 10, &context).is_err());
-        assert!(detector.check_bounds(15, 10, &context).is_err());
+        assert!(detector.check_bounds(10, 10, &context).is_err();
+        assert!(detector.check_bounds(15, 10, &context).is_err();
         
         // Check statistics
-        let stats = detector.get_statistics();
-        assert_eq!(stats.bounds_violations, 2);
+        let stats = detector.get_statistics(;
+        assert_eq!(stats.bounds_violations, 2;
     }
     
     #[test]
     fn test_budget_checking() {
-        let detector = FaultDetector::new(FaultResponseMode::LogOnly);
+        let detector = FaultDetector::new(FaultResponseMode::LogOnly;
         let context = FaultContext {
             crate_id: CrateId::Component,
             operation: OperationType::Allocate,
@@ -401,20 +401,20 @@ mod tests {
         };
         
         // Valid budget check
-        assert!(detector.check_budget(512, 1024, &context).is_ok());
+        assert!(detector.check_budget(512, 1024, &context).is_ok();
         
         // Invalid budget check
-        assert!(detector.check_budget(2048, 1024, &context).is_err());
+        assert!(detector.check_budget(2048, 1024, &context).is_err();
         
         // Check statistics
-        let stats = detector.get_statistics();
-        assert_eq!(stats.budget_violations, 1);
+        let stats = detector.get_statistics(;
+        assert_eq!(stats.budget_violations, 1;
         assert!(stats.memory_watermark >= 512);
     }
     
     #[test]
     fn test_alignment_checking() {
-        let detector = FaultDetector::new(FaultResponseMode::LogOnly);
+        let detector = FaultDetector::new(FaultResponseMode::LogOnly;
         let context = FaultContext {
             crate_id: CrateId::Runtime,
             operation: OperationType::Read,
@@ -423,23 +423,23 @@ mod tests {
         };
         
         // Valid alignment
-        assert!(detector.check_alignment(0x1000, 4, &context).is_ok());
-        assert!(detector.check_alignment(0x1004, 4, &context).is_ok());
+        assert!(detector.check_alignment(0x1000, 4, &context).is_ok();
+        assert!(detector.check_alignment(0x1004, 4, &context).is_ok();
         
         // Invalid alignment
-        assert!(detector.check_alignment(0x1001, 4, &context).is_err());
-        assert!(detector.check_alignment(0x1002, 4, &context).is_err());
+        assert!(detector.check_alignment(0x1001, 4, &context).is_err();
+        assert!(detector.check_alignment(0x1002, 4, &context).is_err();
         
         // Check statistics
-        let stats = detector.get_statistics();
-        assert_eq!(stats.memory_violations, 2);
+        let stats = detector.get_statistics(;
+        assert_eq!(stats.memory_violations, 2;
     }
     
     #[test]
     fn test_fault_detection_modes() {
         // LogOnly mode - should not return errors for non-fatal faults
-        let detector = FaultDetector::new(FaultResponseMode::LogOnly);
-        detector.set_enabled(true);
+        let detector = FaultDetector::new(FaultResponseMode::LogOnly;
+        detector.set_enabled(true;
         
         let context = FaultContext {
             crate_id: CrateId::Foundation,
@@ -454,10 +454,10 @@ mod tests {
         };
         
         // In LogOnly mode, report_fault should succeed
-        assert!(detector.report_fault(fault, &context).is_ok());
+        assert!(detector.report_fault(fault, &context).is_ok();
         
         // Verify the fault was counted
-        let stats = detector.get_statistics();
-        assert_eq!(stats.budget_violations, 1);
+        let stats = detector.get_statistics(;
+        assert_eq!(stats.budget_violations, 1;
     }
 }

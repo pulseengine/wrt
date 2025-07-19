@@ -34,7 +34,7 @@ impl<T> CapabilityBox<T> {
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Box<T>> {
-        let size = core::mem::size_of::<T>();
+        let size = core::mem::size_of::<T>(;
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         
@@ -66,7 +66,7 @@ impl<T> CapabilityVec<T> {
         crate_id: CrateId,
         capacity: usize,
     ) -> Result<Vec<T>> {
-        let size = capacity * core::mem::size_of::<T>();
+        let size = capacity * core::mem::size_of::<T>(;
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         
@@ -79,7 +79,7 @@ impl<T> CapabilityVec<T> {
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Vec<T>> {
-        let size = elements.capacity() * core::mem::size_of::<T>();
+        let size = elements.capacity() * core::mem::size_of::<T>(;
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         
@@ -95,7 +95,7 @@ impl<T> CapabilityVec<T> {
     where
         T: Clone,
     {
-        let size = slice.len() * core::mem::size_of::<T>();
+        let size = slice.len() * core::mem::size_of::<T>(;
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
         
@@ -209,14 +209,14 @@ mod tests {
         let mut context = MemoryCapabilityContext::new(
             crate::verification::VerificationLevel::Standard,
             false
-        );
+        ;
         
         // Register capability for testing
-        let _ = context.register_dynamic_capability(CrateId::Runtime, 1024);
+        let _ = context.register_dynamic_capability(CrateId::Runtime, 1024;
         
-        let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime);
-        assert!(boxed_value.is_ok());
-        assert_eq!(*boxed_value.unwrap(), 42);
+        let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime;
+        assert!(boxed_value.is_ok();
+        assert_eq!(*boxed_value.unwrap(), 42;
     }
     
     #[cfg(any(feature = "std", feature = "alloc"))]
@@ -225,16 +225,16 @@ mod tests {
         let mut context = MemoryCapabilityContext::new(
             crate::verification::VerificationLevel::Standard,
             false
-        );
+        ;
         
         // Register capability for testing
-        let _ = context.register_dynamic_capability(CrateId::Runtime, 1024);
+        let _ = context.register_dynamic_capability(CrateId::Runtime, 1024;
         
-        let vec_result = CapabilityVec::<u32>::new(&context, CrateId::Runtime, 10);
-        assert!(vec_result.is_ok());
+        let vec_result = CapabilityVec::<u32>::new(&context, CrateId::Runtime, 10;
+        assert!(vec_result.is_ok();
         
         let vec = vec_result.unwrap();
-        assert_eq!(vec.capacity(), 10);
+        assert_eq!(vec.capacity(), 10;
     }
     
     #[cfg(any(feature = "std", feature = "alloc"))]
@@ -243,10 +243,10 @@ mod tests {
         let context = MemoryCapabilityContext::new(
             crate::verification::VerificationLevel::Standard,
             false
-        );
+        ;
         
         // Don't register any capabilities
-        let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime);
-        assert!(boxed_value.is_err());
+        let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime;
+        assert!(boxed_value.is_err();
     }
 }

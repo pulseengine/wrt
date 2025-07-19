@@ -33,17 +33,17 @@ mod visualization_integration_tests {
         let _provider3 = BudgetProvider::<{ 16 * 1024 }>::new(CrateId::Foundation)?;
 
         // Generate ASCII visualization
-        let config = VisualizationConfig::default();
+        let config = VisualizationConfig::default(;
         let ascii_viz = BudgetVisualizer::generate_visualization(config)?;
 
         // Verify content
-        assert!(ascii_viz.contains("WRT Memory Budget Visualization"));
-        assert!(ascii_viz.contains("Total Active Providers"));
-        assert!(ascii_viz.contains("Foundation"));
-        assert!(ascii_viz.contains("Runtime"));
-        assert!(ascii_viz.contains("Component"));
+        assert!(ascii_viz.contains("WRT Memory Budget Visualization");
+        assert!(ascii_viz.contains("Total Active Providers");
+        assert!(ascii_viz.contains("Foundation");
+        assert!(ascii_viz.contains("Runtime");
+        assert!(ascii_viz.contains("Component");
 
-        println!("Generated ASCII visualization:\n{}", ascii_viz);
+        println!("Generated ASCII visualization:\n{}", ascii_viz;
         Ok(())
     }
 
@@ -65,14 +65,14 @@ mod visualization_integration_tests {
         let json_viz = BudgetVisualizer::generate_visualization(config)?;
 
         // Verify JSON structure
-        assert!(json_viz.starts_with('{'));
-        assert!(json_viz.ends_with('}'));
-        assert!(json_viz.contains("timestamp"));
-        assert!(json_viz.contains("global_stats"));
-        assert!(json_viz.contains("crates"));
-        assert!(json_viz.contains("shared_pool"));
+        assert!(json_viz.starts_with('{');
+        assert!(json_viz.ends_with('}');
+        assert!(json_viz.contains("timestamp");
+        assert!(json_viz.contains("global_stats");
+        assert!(json_viz.contains("crates");
+        assert!(json_viz.contains("shared_pool");
 
-        println!("Generated JSON visualization:\n{}", json_viz);
+        println!("Generated JSON visualization:\n{}", json_viz;
         Ok(())
     }
 
@@ -90,15 +90,15 @@ mod visualization_integration_tests {
         let csv_viz = BudgetVisualizer::generate_visualization(config)?;
 
         // Verify CSV structure
-        assert!(csv_viz.contains("timestamp,crate,allocated_bytes"));
-        assert!(csv_viz.contains("Format"));
-        assert!(csv_viz.contains("Host"));
+        assert!(csv_viz.contains("timestamp,crate,allocated_bytes");
+        assert!(csv_viz.contains("Format");
+        assert!(csv_viz.contains("Host");
 
         // Should have multiple lines
         let lines: Vec<&str> = csv_viz.lines().collect();
-        assert!(lines.len() > 1); // Header + data
+        assert!(lines.len() > 1)); // Header + data
 
-        println!("Generated CSV visualization:\n{}", csv_viz);
+        println!("Generated CSV visualization:\n{}", csv_viz;
         Ok(())
     }
 
@@ -120,12 +120,12 @@ mod visualization_integration_tests {
         let html_viz = BudgetVisualizer::generate_visualization(config)?;
 
         // Verify HTML structure
-        assert!(html_viz.contains("<!DOCTYPE html>"));
-        assert!(html_viz.contains("<title>WRT Memory Budget Report</title>"));
-        assert!(html_viz.contains("<h1>WRT Memory Budget Report</h1>"));
-        assert!(html_viz.contains("</html>"));
+        assert!(html_viz.contains("<!DOCTYPE html>");
+        assert!(html_viz.contains("<title>WRT Memory Budget Report</title>");
+        assert!(html_viz.contains("<h1>WRT Memory Budget Report</h1>");
+        assert!(html_viz.contains("</html>");
 
-        println!("Generated HTML visualization length: {} chars", html_viz.len());
+        println!("Generated HTML visualization length: {} chars", html_viz.len(;
         Ok(())
     }
 
@@ -151,12 +151,12 @@ mod visualization_integration_tests {
         let md_viz = BudgetVisualizer::generate_visualization(config)?;
 
         // Verify Markdown structure
-        assert!(md_viz.contains("# WRT Memory Budget Report"));
-        assert!(md_viz.contains("## Global Statistics"));
-        assert!(md_viz.contains("## Crate Memory Usage"));
-        assert!(md_viz.contains("| Crate | Allocated |"));
+        assert!(md_viz.contains("# WRT Memory Budget Report");
+        assert!(md_viz.contains("## Global Statistics");
+        assert!(md_viz.contains("## Crate Memory Usage");
+        assert!(md_viz.contains("| Crate | Allocated |");
 
-        println!("Generated Markdown visualization:\n{}", md_viz);
+        println!("Generated Markdown visualization:\n{}", md_viz;
         Ok(())
     }
 
@@ -165,7 +165,7 @@ mod visualization_integration_tests {
         setup_test_environment()?;
 
         // Create complex memory usage scenario
-        let mut allocations = Vec::new();
+        let mut allocations = Vec::new(;
 
         // Mix of small and large allocations
         for i in 0..5 {
@@ -178,18 +178,18 @@ mod visualization_integration_tests {
         let debug_dump = DebugDumper::generate_debug_dump()?;
 
         // Verify debug dump content
-        assert!(debug_dump.contains("WRT MEMORY DEBUG DUMP"));
-        assert!(debug_dump.contains("SYSTEM INFORMATION"));
-        assert!(debug_dump.contains("GLOBAL MEMORY STATISTICS"));
-        assert!(debug_dump.contains("PER-CRATE BREAKDOWN"));
-        assert!(debug_dump.contains("SHARED POOL DETAILS"));
-        assert!(debug_dump.contains("MEMORY HEALTH ANALYSIS"));
-        assert!(debug_dump.contains("END OF DEBUG DUMP"));
+        assert!(debug_dump.contains("WRT MEMORY DEBUG DUMP");
+        assert!(debug_dump.contains("SYSTEM INFORMATION");
+        assert!(debug_dump.contains("GLOBAL MEMORY STATISTICS");
+        assert!(debug_dump.contains("PER-CRATE BREAKDOWN");
+        assert!(debug_dump.contains("SHARED POOL DETAILS");
+        assert!(debug_dump.contains("MEMORY HEALTH ANALYSIS");
+        assert!(debug_dump.contains("END OF DEBUG DUMP");
 
         // Should contain Runtime usage
-        assert!(debug_dump.contains("Runtime:"));
+        assert!(debug_dump.contains("Runtime:");
 
-        println!("Debug dump length: {} chars", debug_dump.len());
+        println!("Debug dump length: {} chars", debug_dump.len(;
         Ok(())
     }
 
@@ -201,20 +201,20 @@ mod visualization_integration_tests {
         let _provider = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Foundation)?;
 
         // Test quick functions
-        let ascii_result = quick_ascii_dump();
-        assert!(ascii_result.is_ok());
+        let ascii_result = quick_ascii_dump(;
+        assert!(ascii_result.is_ok();
         let ascii_content = ascii_result?;
-        assert!(ascii_content.contains("WRT Memory Budget Visualization"));
+        assert!(ascii_content.contains("WRT Memory Budget Visualization");
 
-        let json_result = quick_json_dump();
-        assert!(json_result.is_ok());
+        let json_result = quick_json_dump(;
+        assert!(json_result.is_ok();
         let json_content = json_result?;
-        assert!(json_content.starts_with('{'));
+        assert!(json_content.starts_with('{');
 
-        let debug_result = quick_debug_dump();
-        assert!(debug_result.is_ok());
+        let debug_result = quick_debug_dump(;
+        assert!(debug_result.is_ok();
         let debug_content = debug_result?;
-        assert!(debug_content.contains("WRT MEMORY DEBUG DUMP"));
+        assert!(debug_content.contains("WRT MEMORY DEBUG DUMP");
 
         Ok(())
     }
@@ -250,7 +250,7 @@ mod visualization_integration_tests {
         ];
 
         for (i, config) in configs.iter().enumerate() {
-            let result = BudgetVisualizer::generate_visualization(config.clone());
+            let result = BudgetVisualizer::generate_visualization(config.clone();
             assert!(result.is_ok(), "Config {} failed", i);
 
             let content = result?;
@@ -258,10 +258,10 @@ mod visualization_integration_tests {
 
             // Verify configuration effects
             if !config.include_crate_details {
-                assert!(!content.contains("Crate Budget Utilization"));
+                assert!(!content.contains("Crate Budget Utilization");
             }
             if !config.include_shared_pool {
-                assert!(!content.contains("Shared Pool Status"));
+                assert!(!content.contains("Shared Pool Status");
             }
         }
 
@@ -286,14 +286,14 @@ mod visualization_integration_tests {
         let after = DebugDumper::capture_memory_snapshot()?;
 
         // Compare snapshots
-        let comparison = DebugDumper::compare_snapshots(&before, &after);
+        let comparison = DebugDumper::compare_snapshots(&before, &after;
 
         // Verify comparison content
-        assert!(comparison.contains("MEMORY SNAPSHOT COMPARISON"));
-        assert!(comparison.contains("Total Memory Change:"));
-        assert!(comparison.contains("Per-Crate Changes:"));
+        assert!(comparison.contains("MEMORY SNAPSHOT COMPARISON");
+        assert!(comparison.contains("Total Memory Change:");
+        assert!(comparison.contains("Per-Crate Changes:");
 
-        println!("Snapshot comparison:\n{}", comparison);
+        println!("Snapshot comparison:\n{}", comparison;
         Ok(())
     }
 
@@ -302,7 +302,7 @@ mod visualization_integration_tests {
         setup_test_environment()?;
 
         // Create high memory usage to test visualization under pressure
-        let mut providers = Vec::new();
+        let mut providers = Vec::new(;
 
         // Allocate until we get significant utilization
         for _ in 0..20 {
@@ -320,18 +320,18 @@ mod visualization_integration_tests {
             ..Default::default()
         };
 
-        let result = BudgetVisualizer::generate_visualization(config);
+        let result = BudgetVisualizer::generate_visualization(config;
 
         // Should still work under pressure
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         let content = result?;
 
         // Should show high utilization
-        assert!(content.contains("Runtime"));
+        assert!(content.contains("Runtime");
 
         // Generate debug dump as well
         let debug_dump = DebugDumper::generate_debug_dump()?;
-        assert!(debug_dump.contains("Runtime:"));
+        assert!(debug_dump.contains("Runtime:");
 
         Ok(())
     }
@@ -344,22 +344,22 @@ mod visualization_integration_tests {
         let result = wrt_foundation::monitor_operation!("test operation", {
             let provider = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Foundation)?;
             BoundedVec::<u8, 100, _>::new(provider)
-        });
+        };
 
-        assert!(result.is_ok());
+        assert!(result.is_ok();
 
         // Test print_memory_status! macro
-        wrt_foundation::print_memory_status!("Test Status");
+        wrt_foundation::print_memory_status!("Test Status";
 
         // Test debug_memory_dump! macro
-        wrt_foundation::debug_memory_dump!("Test Debug");
+        wrt_foundation::debug_memory_dump!("Test Debug";
 
         // Test assert_memory_usage! macro
         wrt_foundation::assert_memory_usage!(total < 50 * 1024 * 1024); // 50MB limit
-        wrt_foundation::assert_memory_usage!(crate_usage(CrateId::Foundation) < 10 * 1024 * 1024);
+        wrt_foundation::assert_memory_usage!(crate_usage(CrateId::Foundation) < 10 * 1024 * 1024;
 
         // Test check_memory_health! macro
-        wrt_foundation::check_memory_health!("Integration test");
+        wrt_foundation::check_memory_health!("Integration test";
 
         Ok(())
     }
@@ -369,8 +369,8 @@ mod visualization_integration_tests {
         // Test without initializing memory system
         // This should handle errors gracefully
 
-        let config = VisualizationConfig::default();
-        let result = BudgetVisualizer::generate_visualization(config);
+        let config = VisualizationConfig::default(;
+        let result = BudgetVisualizer::generate_visualization(config;
 
         // Should either succeed (if already initialized) or fail gracefully
         match result {
@@ -379,7 +379,7 @@ mod visualization_integration_tests {
         }
 
         // Test debug dump without initialization
-        let debug_result = DebugDumper::generate_debug_dump();
+        let debug_result = DebugDumper::generate_debug_dump(;
         match debug_result {
             Ok(content) => assert!(!content.is_empty()),
             Err(_) => {} // Expected if not initialized

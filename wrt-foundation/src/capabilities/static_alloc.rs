@@ -160,7 +160,7 @@ impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
         if !operation.requires_capability(&self.allowed_operations) {
             return Err(Error::capability_violation(
                 "Operation not allowed by static capability mask",
-            ));
+            ;
         }
 
         // Additional checks based on operation type
@@ -169,33 +169,33 @@ impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
                 if *size > N {
                     return Err(Error::capability_violation(
                         "Allocation exceeds compile-time limit",
-                    ));
+                    ;
                 }
             }
             MemoryOperation::Read { offset, len } => {
                 if offset.saturating_add(*len) > N {
                     return Err(Error::capability_violation(
                         "Read operation exceeds compile-time bounds",
-                    ));
+                    ;
                 }
             }
             MemoryOperation::Write { offset, len } => {
                 if offset.saturating_add(*len) > N {
                     return Err(Error::capability_violation(
                         "Write operation exceeds compile-time bounds",
-                    ));
+                    ;
                 }
             }
             MemoryOperation::Delegate { subset } => {
                 if !self.allowed_operations.delegate {
                     return Err(Error::capability_violation(
                         "Static capability delegation not allowed",
-                    ));
+                    ;
                 }
                 if subset.max_size > N {
                     return Err(Error::capability_violation(
                         "Delegated size exceeds compile-time limit",
-                    ));
+                    ;
                 }
             }
             MemoryOperation::Deallocate => {
@@ -215,12 +215,12 @@ impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
         if crate_id != self.owner_crate {
             return Err(Error::capability_violation(
                 "Crate cannot use static capability owned by different crate",
-            ));
+            ;
         }
 
         // For static allocation, we create a region from the compile-time buffer
         let region = StaticMemoryRegion::new(size, self.region_base.get())?;
-        let guard = StaticMemoryGuard::new(region, self);
+        let guard = StaticMemoryGuard::new(region, self;
 
         Ok(guard)
     }
@@ -278,10 +278,10 @@ impl<const N: usize> StaticMemoryRegion<N> {
         if size > N {
             return Err(Error::runtime_execution_error(
                 "Static region size exceeds capability bounds"
-            ));
+            ;
         }
 
-        Ok(Self { size, buffer: [0; N], base_ptr: ThreadSafePtr::new(base_ptr) })
+        Ok(Self { size, buffer: [0); N], base_ptr: ThreadSafePtr::new(base_ptr) })
     }
 
     /// Get access to the static buffer
@@ -351,10 +351,10 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
         if !self.region.contains_range(offset, len) {
             return Err(Error::runtime_execution_error(
                 "Read range exceeds static memory region bounds"
-            ));
+            ;
         }
 
-        let buffer = self.region.buffer();
+        let buffer = self.region.buffer(;
         Ok(&buffer[offset..offset + len])
     }
 
@@ -366,11 +366,11 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write range exceeds static memory region bounds"));
+                "Write range exceeds static memory region bounds";
         }
 
-        let buffer = self.region.buffer_mut();
-        buffer[offset..offset + data.len()].copy_from_slice(data);
+        let buffer = self.region.buffer_mut(;
+        buffer[offset..offset + data.len()].copy_from_slice(data;
         Ok(())
     }
 
@@ -395,46 +395,46 @@ mod tests {
     #[test]
     fn test_static_capability_creation() {
         let capability =
-            StaticMemoryCapability::<1024>::new(CrateId::Foundation, VerificationLevel::Standard);
+            StaticMemoryCapability::<1024>::new(CrateId::Foundation, VerificationLevel::Standard;
 
-        assert_eq!(capability.max_allocation_size(), 1024);
-        assert_eq!(StaticMemoryCapability::<1024>::compile_time_size(), 1024);
+        assert_eq!(capability.max_allocation_size(), 1024;
+        assert_eq!(StaticMemoryCapability::<1024>::compile_time_size(), 1024;
     }
 
     #[test]
     fn test_static_allocation_verification() {
         let capability =
-            StaticMemoryCapability::<100>::new(CrateId::Foundation, VerificationLevel::Standard);
+            StaticMemoryCapability::<100>::new(CrateId::Foundation, VerificationLevel::Standard;
 
         let valid_op = MemoryOperation::Allocate { size: 50 };
-        assert!(capability.verify_access(&valid_op).is_ok());
+        assert!(capability.verify_access(&valid_op).is_ok();
 
         let invalid_op = MemoryOperation::Allocate { size: 200 };
-        assert!(capability.verify_access(&invalid_op).is_err());
+        assert!(capability.verify_access(&invalid_op).is_err();
     }
 
     #[test]
     fn test_compile_time_bounds_checking() {
         let capability =
-            StaticMemoryCapability::<1000>::new(CrateId::Foundation, VerificationLevel::Standard);
+            StaticMemoryCapability::<1000>::new(CrateId::Foundation, VerificationLevel::Standard;
 
         let valid_read = MemoryOperation::Read { offset: 0, len: 500 };
-        assert!(capability.verify_access(&valid_read).is_ok());
+        assert!(capability.verify_access(&valid_read).is_ok();
 
         let invalid_read = MemoryOperation::Read { offset: 500, len: 600 };
-        assert!(capability.verify_access(&invalid_read).is_err());
+        assert!(capability.verify_access(&invalid_read).is_err();
     }
 
     #[test]
     fn test_static_region_access() {
         let mut region = StaticMemoryRegion::<1024>::new(100, None).unwrap();
 
-        assert_eq!(region.size(), 100);
-        assert_eq!(region.buffer().len(), 100);
+        assert_eq!(region.size(), 100;
+        assert_eq!(region.buffer().len(), 100;
 
         // Test write and read
         let test_data = b"Hello, World!";
-        region.buffer_mut()[0..test_data.len()].copy_from_slice(test_data);
-        assert_eq!(&region.buffer()[0..test_data.len()], test_data);
+        region.buffer_mut()[0..test_data.len()].copy_from_slice(test_data;
+        assert_eq!(&region.buffer()[0..test_data.len()], test_data;
     }
 }

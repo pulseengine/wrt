@@ -2,11 +2,11 @@
 //!
 //! This file provides a concrete implementation of the component runtime.
 
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, sync::Arc};
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{collections::BTreeMap, sync::Arc};
 
 // Components traits imported below with full set
@@ -72,11 +72,11 @@ pub mod no_alloc {
             {
                 // Basic validation - just check magic number
                 if binary.len() < 8 {
-                    return Err(Error::parse_invalid_binary("Binary too small to be a valid component"));
+                    return Err(Error::parse_invalid_binary("Binary too small to be a valid component";
                 }
                 // Check for WASM magic number (0x00 0x61 0x73 0x6D)
                 if &binary[0..4] != b"\0asm" {
-                    return Err(Error::parse_invalid_binary("Invalid WASM magic number"));
+                    return Err(Error::parse_invalid_binary("Invalid WASM magic number";
                 }
                 Ok(())
             }
@@ -181,7 +181,7 @@ impl<
         // Convert to SafeStack
         let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
         let mut safe_stack = wrt_foundation::safe_memory::SafeStack::new(provider)?;
-        safe_stack.set_verification_level(self.verification_level);
+        safe_stack.set_verification_level(self.verification_level;
 
         // Add all values to the safe stack
         for value in vec_result.iter() {
@@ -223,7 +223,7 @@ impl HostFunctionFactory for DefaultHostFunctionFactory {
             implementation: Arc::new(move |_args: &[wrt_foundation::Value]| {
                 let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
                 let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
-                result.set_verification_level(verification_level);
+                result.set_verification_level(verification_level;
                 Ok(result)
             }),
         };
@@ -294,7 +294,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             let _factory_id = self.host_factories.len() as u32;
             let _ = self.host_factories.push(_factory_id);
             // We don't actually store the factory in no_std mode for simplicity
-            core::mem::drop(factory);
+            core::mem::drop(factory;
         }
 
         if self.verification_level.should_verify(128) {
@@ -318,7 +318,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         let memory_data = vec![0; memory_size];
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let memory_data = {
-            let mut data = wrt_foundation::bounded::BoundedVec::new();
+            let mut data = wrt_foundation::bounded::BoundedVec::new(;
             for _ in 0..memory_size.min(65536) {
                 data.push(0u8).unwrap();
             }
@@ -327,23 +327,23 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
         // Collect host function names and types for tracking
         #[cfg(feature = "std")]
-        let mut host_function_names = Vec::new();
+        let mut host_function_names = Vec::new(;
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
-        let mut host_function_names = wrt_foundation::bounded::BoundedVec::new();
+        let mut host_function_names = wrt_foundation::bounded::BoundedVec::new(;
 
         #[cfg(feature = "std")]
         let mut host_functions = {
             #[cfg(feature = "std")]
-            let mut map = HashMap::new();
+            let mut map = HashMap::new(;
             #[cfg(not(feature = "std"))]
-            let mut map = BTreeMap::new();
+            let mut map = BTreeMap::new(;
             
             for name in self.host_functions.keys() {
-                host_function_names.push(name.clone());
+                host_function_names.push(name.clone();
                 if let Some(func) = self.host_functions.get(name) {
-                    map.insert(name.clone(), Some(func.get_type().clone()));
+                    map.insert(name.clone(), Some(func.get_type().clone();
                 } else {
-                    map.insert(name.clone(), None);
+                    map.insert(name.clone(), None;
                 }
             }
             map
@@ -353,7 +353,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         let host_functions = {
             // Binary std/no_std choice
             for (name, _id) in self.host_functions.iter() {
-                host_function_names.push(name.clone());
+                host_function_names.push(name.clone();
             }
             // Return empty map-like structure for no_std
             ()
@@ -399,14 +399,14 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             #[cfg(feature = "std")]
             let name_string = name.to_string();
             #[cfg(not(feature = "std"))]
-            let name_string = alloc::string::String::from(name);
+            let name_string = alloc::string::String::from(name;
             
-            self.host_functions.insert(name_string, Box::new(func_impl));
+            self.host_functions.insert(name_string, Box::new(func_impl;
         }
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             // Binary std/no_std choice
-            let _ = (name, ty, function);
+            let _ = (name, ty, function;
         }
 
         Ok(())
@@ -431,7 +431,7 @@ impl ComponentRuntimeImpl {
     /// This is a convenience method for creating a ComponentRuntimeImpl with
     /// a specific verification level.
     pub fn with_verification_level(level: VerificationLevel) -> Self {
-        let mut runtime = Self::new();
+        let mut runtime = Self::new(;
         runtime.verification_level = level;
         runtime
     }
@@ -488,15 +488,15 @@ impl ComponentInstance for ComponentInstanceImpl {
             // Check that argument types match the expected types
             if name.is_empty() {
                 return Err(wrt_error::Error::runtime_execution_error(",
-                ));
+                ;
             }
         }
 
         // Check if this is a function that's known to the runtime
         #[cfg(feature = "std")]
-        let name_check = self.host_function_names.contains(&name.to_string());
+        let name_check = self.host_function_names.contains(&name.to_string();
         #[cfg(not(feature = "std"))]
-        let name_check = self.host_function_names.contains(&alloc::string::String::from(name));
+        let name_check = self.host_function_names.contains(&alloc::string::String::from(name;
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let name_check = {
             let mut found = false;
@@ -513,7 +513,7 @@ impl ComponentInstance for ComponentInstanceImpl {
             // Create an empty SafeStack for the result
             let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
             let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
-            result.set_verification_level(self.verification_level);
+            result.set_verification_level(self.verification_level;
 
             // For testing purposes, just return a constant value
             match name {
@@ -535,13 +535,13 @@ impl ComponentInstance for ComponentInstanceImpl {
                 }
             }
 
-            return Ok(result);
+            return Ok(result;
         }
 
         // Create an empty SafeStack for the result
         let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
         let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
-        result.set_verification_level(self.verification_level);
+        result.set_verification_level(self.verification_level;
 
         // Simulate function execution based on the function name
         match name {
@@ -560,7 +560,7 @@ impl ComponentInstance for ComponentInstanceImpl {
                         result.push(wrt_foundation::Value::I32(a + b))?;
                     } else {
                         return Err(wrt_error::Error::runtime_execution_error(",
-                        ));
+                        ;
                     }
                 } else {
                     return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
@@ -570,7 +570,7 @@ impl ComponentInstance for ComponentInstanceImpl {
             _ => {
                 // Unknown function
                 return Err(wrt_error::Error::runtime_execution_error(",
-                ));
+                ;
             }
         }
 
@@ -595,7 +595,7 @@ impl ComponentInstance for ComponentInstanceImpl {
             // Check that offset and size are valid
             if offset + size > self.memory_store.size() as u32 {
                 return Err(wrt_error::Error::runtime_execution_error(",
-                ));
+                ;
             }
         }
 
@@ -616,7 +616,7 @@ impl ComponentInstance for ComponentInstanceImpl {
             // Check that offset and size are valid
             if offset + bytes.len() as u32 > self.memory_store.size() as u32 {
                 return Err(wrt_error::Error::runtime_execution_error(",
-                ));
+                ;
             }
         }
 
@@ -629,7 +629,7 @@ impl ComponentInstance for ComponentInstanceImpl {
         // Check the component type for the export
         for export in &self.component_type.exports {
             if export.name.as_str().map_or(false, |s| s == name) {
-                return Ok(export.ty.clone());
+                return Ok(export.ty.clone();
             }
         }
 
@@ -679,7 +679,7 @@ mod tests {
                     // Create a new SafeStack with the right verification level
                     let provider = safe_managed_alloc!(1024, CrateId::Runtime)?;
                     let mut result = SafeStack::new(provider)?;
-                    result.set_verification_level(verification_level);
+                    result.set_verification_level(verification_level;
 
                     // Add all arguments to the stack
                     for arg in args {
@@ -704,10 +704,10 @@ mod tests {
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple legacy echo function
             let func_type = FuncType::new(wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(), {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(;
                 Vec::new(provider)?
             }, {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(;
                 Vec::new(provider)?
             })?;
 
@@ -725,33 +725,33 @@ mod tests {
     #[test]
     fn test_component_runtime_safety() -> Result<()> {
         // Create a new runtime with different verification levels
-        let mut runtime = ComponentRuntimeImpl::with_verification_level(VerificationLevel::Full);
+        let mut runtime = ComponentRuntimeImpl::with_verification_level(VerificationLevel::Full;
 
         // Check initial state
-        assert_eq!(runtime.factory_count(), 0);
+        assert_eq!(runtime.factory_count(), 0;
 
         // Register host function factories
         runtime
-            .register_host_factory(Box::new(TestHostFunctionFactory::new(VerificationLevel::Full)));
+            .register_host_factory(Box::new(TestHostFunctionFactory::new(VerificationLevel::Full);
 
         // Verify integrity
         runtime.verify_integrity()?;
 
         // Check count after registration
-        assert_eq!(runtime.factory_count(), 1);
+        assert_eq!(runtime.factory_count(), 1;
 
         // Test with another verification level
         let mut runtime =
-            ComponentRuntimeImpl::with_verification_level(VerificationLevel::Standard);
+            ComponentRuntimeImpl::with_verification_level(VerificationLevel::Standard;
         runtime.register_host_factory(Box::new(TestHostFunctionFactory::new(
             VerificationLevel::Standard,
-        )));
+        );
         runtime.verify_integrity()?;
 
         // Test with legacy factory
         let mut runtime =
-            ComponentRuntimeImpl::with_verification_level(VerificationLevel::Standard);
-        runtime.register_host_factory(Box::new(LegacyTestHostFunctionFactory));
+            ComponentRuntimeImpl::with_verification_level(VerificationLevel::Standard;
+        runtime.register_host_factory(Box::new(LegacyTestHostFunctionFactory;
         runtime.verify_integrity()?;
 
         Ok(())
@@ -763,15 +763,15 @@ mod tests {
         let component_type =
             ComponentType { 
                 imports: {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(;
                 Vec::new(provider)?
             }, 
                 exports: {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(;
                 Vec::new(provider)?
             }, 
                 instances: {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(;
                 Vec::new(provider)?
             } 
             };
@@ -783,7 +783,7 @@ mod tests {
             verification_level: VerificationLevel::Standard,
             memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<131072>>::new(data),
             host_function_names: {
-                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default();
+                let provider = wrt_provider!(131072, CrateId::Runtime).unwrap_or_default(;
                 Vec::new(provider)?
             },
             #[cfg(feature = "std")]
@@ -802,7 +802,7 @@ mod tests {
         // Verify the data - compare just the first 5 bytes
         let data = slice.data()?;
         let data_slice = &data[0..5];
-        assert_eq!(data_slice, &[1, 2, 3, 4, 5]);
+        assert_eq!(data_slice, &[1, 2, 3, 4, 5];
 
         Ok(())
     }

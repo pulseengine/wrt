@@ -3,7 +3,7 @@
 //! This module provides unified component types that integrate with the platform-aware
 //! memory system and resolve type conflicts between different runtime components.
 
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 use crate::unified_types::{PlatformMemoryAdapter, UnifiedMemoryAdapter};
 
@@ -21,20 +21,20 @@ use crate::bounded_runtime_infra::{DefaultRuntimeProvider, create_runtime_provid
 // Import Box for no_std compatibility
 #[cfg(feature = "std")]
 use std::boxed::Box;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::boxed::Box;
 
 // DefaultRuntimeProvider definition moved to bounded_runtime_infra.rs to avoid conflicts
 
 /// Unique identifier for component instances
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(u32);
+pub struct ComponentId(u32;
 
 impl ComponentId {
     /// Create a new unique component ID
     pub fn new() -> Self {
         use core::sync::atomic::{AtomicU32, Ordering};
-        static NEXT_ID: AtomicU32 = AtomicU32::new(1);
+        static NEXT_ID: AtomicU32 = AtomicU32::new(1;
         Self(NEXT_ID.fetch_add(1, Ordering::Relaxed))
     }
     
@@ -98,12 +98,12 @@ where
             .unwrap_or_else(|e| {
                 // Log the error if logging is available
                 #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to create memory adapter during clone: {}", e);
+                eprintln!("Warning: Failed to create memory adapter during clone: {}", e;
                 
                 // Create a minimal fallback adapter
                 PlatformMemoryAdapter::new(1024 * 1024) // Try with 1MB
                     .unwrap_or_else(|_| panic!("Critical: Unable to allocate even minimal memory adapter"))
-            });
+            };
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         let memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
@@ -113,7 +113,7 @@ where
                     Ok(adapter) => adapter,
                     Err(_) => PlatformMemoryAdapter::new(64 * 1024).unwrap_or_else(|_| panic!("Critical: Cannot create minimal memory adapter"))
                 }
-            });
+            };
         
         Self {
             id: self.id,
@@ -169,16 +169,16 @@ where
         Self::new_default().unwrap_or_else(|e| {
             // Log the error if logging is available
             #[cfg(feature = "std")]
-            eprintln!("Error creating default component instance: {}. Creating minimal fallback instance.", e);
+            eprintln!("Error creating default component instance: {}. Creating minimal fallback instance.", e;
             
             // Create a minimal instance with reduced memory requirements
             #[cfg(any(feature = "std", feature = "alloc"))]
             let memory_adapter = PlatformMemoryAdapter::new(1024 * 1024) // 1MB fallback
-                .unwrap_or_else(|_| panic!("Critical: Cannot create even minimal component instance"));
+                .unwrap_or_else(|_| panic!("Critical: Cannot create even minimal component instance";
             
             #[cfg(not(any(feature = "std", feature = "alloc")))]
             let memory_adapter = PlatformMemoryAdapter::new(1024 * 1024)
-                .unwrap_or_else(|_| panic!("Critical: Cannot create component instance in no_std"));
+                .unwrap_or_else(|_| panic!("Critical: Cannot create component instance in no_std";
             
             Self {
                 id: ComponentId::default(),
@@ -203,10 +203,10 @@ where
     Provider: MemoryProvider + Default + Clone + PartialEq + Eq,
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.id.as_u32().to_le_bytes());
-        self.component_type.update_checksum(checksum);
-        self.exports.update_checksum(checksum);
-        self.imports.update_checksum(checksum);
+        checksum.update_slice(&self.id.as_u32().to_le_bytes(;
+        self.component_type.update_checksum(checksum;
+        self.exports.update_checksum(checksum;
+        self.imports.update_checksum(checksum;
     }
 }
 
@@ -241,7 +241,7 @@ where
     ) -> wrt_foundation::Result<Self> {
         let mut id_bytes = [0u8; 4];
         reader.read_exact(&mut id_bytes)?;
-        let id = ComponentId(u32::from_le_bytes(id_bytes));
+        let id = ComponentId(u32::from_le_bytes(id_bytes;
         
         let component_type = ComponentType::from_bytes_with_provider(reader, provider)?;
         let exports = ExportMap::from_bytes_with_provider(reader, provider)?;
@@ -396,7 +396,7 @@ where
     /// Create a new unified component runtime with default limits
     #[cfg(not(feature = "comprehensive-limits"))]
     pub fn new_default() -> core::result::Result<Self, wrt_error::Error> {
-        let memory_budget = ComponentMemoryBudget::default();
+        let memory_budget = ComponentMemoryBudget::default(;
         let global_memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
             .map_err(|_| Error::memory_error("Failed to create memory adapter"))?; // 64MB default
         
@@ -420,7 +420,7 @@ where
             
             // Check memory budget
             if config.total_memory_requirement.total() > self.memory_budget.available_component_memory {
-                return Err(Error::memory_error("Component memory requirements exceed available budget"));
+                return Err(Error::memory_error("Component memory requirements exceed available budget";
             }
         }
         
@@ -449,7 +449,7 @@ where
     /// Get a reference to a component instance
     pub fn get_instance(&self, id: ComponentId) -> Option<&UnifiedComponentInstance<Provider>> {
         #[cfg(any(feature = "std", feature = "alloc"))]
-        return self.instances.iter().find(|instance| instance.id == id);
+        return self.instances.iter().find(|instance| instance.id == id;
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
@@ -462,7 +462,7 @@ where
     /// Get a mutable reference to a component instance
     pub fn get_instance_mut(&mut self, id: ComponentId) -> Option<&mut UnifiedComponentInstance<Provider>> {
         #[cfg(any(feature = "std", feature = "alloc"))]
-        return self.instances.iter_mut().find(|instance| instance.id == id);
+        return self.instances.iter_mut().find(|instance| instance.id == id;
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
@@ -523,7 +523,7 @@ impl ComponentMemoryBudget {
         
         let used_memory = wasm_linear_memory + component_overhead + debug_overhead;
         if used_memory > total_memory {
-            return Err(Error::runtime_execution_error("Component overhead exceeds available memory"));
+            return Err(Error::runtime_execution_error("Component overhead exceeds available memory";
         }
         
         Ok(Self {
@@ -594,21 +594,21 @@ mod tests {
     
     #[test]
     fn test_component_id_generation() {
-        let id1 = ComponentId::new();
-        let id2 = ComponentId::new();
+        let id1 = ComponentId::new(;
+        let id2 = ComponentId::new(;
         
-        assert_ne!(id1, id2);
-        assert_ne!(id1.as_u32(), id2.as_u32());
+        assert_ne!(id1, id2;
+        assert_ne!(id1.as_u32(), id2.as_u32(;
     }
     
     #[test]
     fn test_component_memory_budget() {
-        let budget = ComponentMemoryBudget::default();
+        let budget = ComponentMemoryBudget::default(;
         
         assert!(budget.total_memory > 0);
         assert!(budget.available_component_memory <= budget.total_memory);
-        assert!(budget.can_allocate(1024, 0));
-        assert!(!budget.can_allocate(budget.available_component_memory + 1, 0));
+        assert!(budget.can_allocate(1024, 0);
+        assert!(!budget.can_allocate(budget.available_component_memory + 1, 0);
     }
     
     #[test]
@@ -619,28 +619,28 @@ mod tests {
             used: 700,
         };
         
-        assert_eq!(stats.usage_percentage(), 70.0);
-        assert!(stats.is_above_threshold(50.0));
-        assert!(!stats.is_above_threshold(80.0));
+        assert_eq!(stats.usage_percentage(), 70.0;
+        assert!(stats.is_above_threshold(50.0);
+        assert!(!stats.is_above_threshold(80.0);
     }
     
     #[test]
     fn test_component_execution_state() {
         let mut state = ComponentExecutionState::Instantiating;
         
-        assert!(!matches!(state, ComponentExecutionState::Ready));
+        assert!(!matches!(state, ComponentExecutionState::Ready);
         
         state = ComponentExecutionState::Ready;
-        assert!(matches!(state, ComponentExecutionState::Ready));
+        assert!(matches!(state, ComponentExecutionState::Ready);
     }
     
     #[test]
     fn test_unified_component_runtime_creation() {
-        let runtime = UnifiedComponentRuntime::<DefaultRuntimeProvider>::new_default();
-        assert!(runtime.is_ok());
+        let runtime = UnifiedComponentRuntime::<DefaultRuntimeProvider>::new_default(;
+        assert!(runtime.is_ok();
         
         let runtime = runtime.unwrap();
-        assert_eq!(runtime.instance_count(), 0);
-        assert!(runtime.can_instantiate_component(1024));
+        assert_eq!(runtime.instance_count(), 0;
+        assert!(runtime.can_instantiate_component(1024);
     }
 }

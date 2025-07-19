@@ -277,7 +277,7 @@ pub struct MinimalPlatform {
 
 impl MinimalPlatform {
     pub fn new() -> Self {
-        let limits = PlatformLimits::minimal();
+        let limits = PlatformLimits::minimal(;
         Self {
             safety_context: SafetyContext::new(limits.asil_level),
             limits,
@@ -339,7 +339,7 @@ pub struct StdPlatform {
 #[cfg(feature = "std")]
 impl StdPlatform {
     pub fn new() -> Self {
-        let limits = PlatformLimits::default();
+        let limits = PlatformLimits::default(;
         Self {
             safety_context: SafetyContext::new(limits.asil_level),
             limits,
@@ -436,7 +436,7 @@ pub fn current_time_ns() -> u64 {
     
     #[cfg(not(feature = "std"))]
     {
-        static TIME_PROVIDER: NoStdTimeProvider = NoStdTimeProvider::new();
+        static TIME_PROVIDER: NoStdTimeProvider = NoStdTimeProvider::new(;
         TIME_PROVIDER.current_time_ns()
     }
 }

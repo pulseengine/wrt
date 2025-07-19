@@ -18,7 +18,7 @@ mod tests {
         };
 
         // Create a runtime
-        let mut runtime = ComponentRuntimeImpl::new();
+        let mut runtime = ComponentRuntimeImpl::new(;
 
         // Register the hello function implementation
         runtime.register_host_function(
@@ -37,7 +37,7 @@ mod tests {
         let result = instance.execute_function("hello", &[])?;
 
         // Check the result
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
 
         // Get the first value directly instead of using indexing
         let value = result.get(0)?;
@@ -65,7 +65,7 @@ mod tests {
         };
 
         // Create a runtime
-        let mut runtime = ComponentRuntimeImpl::new();
+        let mut runtime = ComponentRuntimeImpl::new(;
 
         // Register a host function
         runtime.register_host_function(
@@ -101,7 +101,7 @@ mod tests {
         let result = instance.execute_function("add", &[Value::I32(3), Value::I32(4)])?;
 
         // Check the result
-        assert_eq!(result.len(), 1);
+        assert_eq!(result.len(), 1;
 
         // Get the first value directly instead of using indexing
         let value = result.get(0)?;
@@ -129,7 +129,7 @@ mod tests {
         };
 
         // Create a runtime
-        let runtime = ComponentRuntimeImpl::new();
+        let runtime = ComponentRuntimeImpl::new(;
 
         // Instantiate the component
         let mut instance = runtime.instantiate(&component_type)?;
@@ -145,7 +145,7 @@ mod tests {
         // since SafeSlice data() may return more than the requested size
         let data = read_bytes.data()?;
         let data_slice = &data[0..5]; // Get just the first 5 bytes
-        assert_eq!(data_slice, &bytes);
+        assert_eq!(data_slice, &bytes;
 
         Ok(())
     }

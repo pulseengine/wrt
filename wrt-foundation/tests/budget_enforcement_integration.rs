@@ -39,7 +39,7 @@ mod budget_enforcement_integration_tests {
         })?;
 
         // Enable memory analysis
-        MemoryAnalyzer::enable();
+        MemoryAnalyzer::enable(;
 
         Ok(())
     }
@@ -60,15 +60,15 @@ mod budget_enforcement_integration_tests {
         assert!(
             updated_stats.current_allocation > initial_stats.current_allocation,
             "Allocation not tracked properly"
-        );
+        ;
 
         // Test 2: Dropping should return allocation
-        drop(vec);
+        drop(vec;
         let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Foundation)?;
         assert_eq!(
             final_stats.current_allocation, initial_stats.current_allocation,
             "Memory not returned on drop"
-        );
+        ;
 
         Ok(())
     }
@@ -80,7 +80,7 @@ mod budget_enforcement_integration_tests {
         // Each crate should have its own budget
         let crates = [CrateId::Runtime, CrateId::Component, CrateId::Decoder, CrateId::Format];
 
-        let mut providers = Vec::new();
+        let mut providers = Vec::new(;
 
         // Allocate from each crate
         for &crate_id in &crates {
@@ -105,7 +105,7 @@ mod budget_enforcement_integration_tests {
 
         // Other crates should still be able to allocate
         for &crate_id in &[CrateId::Component, CrateId::Decoder] {
-            let provider = BudgetProvider::<1024>::new(crate_id);
+            let provider = BudgetProvider::<1024>::new(crate_id;
             assert!(provider.is_ok(), "Cross-crate interference detected");
         }
 
@@ -121,7 +121,7 @@ mod budget_enforcement_integration_tests {
         let budget = stats.budget_limit;
 
         // Try to allocate more than the budget allows
-        let mut allocations = Vec::new();
+        let mut allocations = Vec::new(;
         let allocation_size = 65536; // 64KB chunks
 
         // Allocate until we hit the limit
@@ -140,19 +140,19 @@ mod budget_enforcement_integration_tests {
 
             // Safety check to prevent infinite loop
             if total_allocated > budget * 2 {
-                panic!("Budget enforcement not working!");
+                panic!("Budget enforcement not working!";
             }
         }
 
         // Verify we're near the budget limit
         let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Foundation)?;
-        assert!(final_stats.current_allocation >= (budget * 80 / 100));
+        assert!(final_stats.current_allocation >= (budget * 80 / 100);
 
         // Free some memory
-        allocations.truncate(allocations.len() / 2);
+        allocations.truncate(allocations.len() / 2;
 
         // Should be able to allocate again
-        let provider = BudgetProvider::<1024>::new(CrateId::Foundation);
+        let provider = BudgetProvider::<1024>::new(CrateId::Foundation;
         assert!(provider.is_ok(), "Cannot allocate after freeing memory");
 
         Ok(())
@@ -163,14 +163,14 @@ mod budget_enforcement_integration_tests {
         init_test_env()?;
 
         // Migration providers should still be tracked
-        let provider = migration_provider::<1024>();
+        let provider = migration_provider::<1024>(;
         let vec = BoundedVec::<u8, 100, _>::new(provider)?;
 
         // Check that some allocation is tracked
         let stats = BudgetAwareProviderFactory::get_global_stats()?;
         assert!(stats.total_allocated > 0, "Migration provider not tracked");
 
-        drop(vec);
+        drop(vec;
 
         Ok(())
     }
@@ -190,7 +190,7 @@ mod budget_enforcement_integration_tests {
 
         // Test shared pool limits
         let pool_size = stats.total_size;
-        let mut shared_allocations = Vec::new();
+        let mut shared_allocations = Vec::new(;
 
         // Try to exhaust shared pool
         let chunk_size = 4096;
@@ -202,7 +202,7 @@ mod budget_enforcement_integration_tests {
         }
 
         // Verify we can't allocate more
-        let result = BudgetAwareProviderFactory::create_shared_provider::<4096>();
+        let result = BudgetAwareProviderFactory::create_shared_provider::<4096>(;
         assert!(result.is_err(), "Shared pool limit not enforced");
 
         Ok(())
@@ -213,7 +213,7 @@ mod budget_enforcement_integration_tests {
         init_test_env()?;
 
         // Allocate significant memory to trigger alerts
-        let mut providers = Vec::new();
+        let mut providers = Vec::new(;
 
         // Allocate 70% of Runtime budget
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime)?;
@@ -268,7 +268,7 @@ mod budget_enforcement_integration_tests {
         // Modern system: no unsafe memory extraction possible
         // let bad_vec = BoundedVec::<u32, 10, _>::new(bad_provider)?;
 
-        assert_eq!(vec1.capacity(), vec2.capacity());
+        assert_eq!(vec1.capacity(), vec2.capacity(;
 
         Ok(())
     }
@@ -287,7 +287,7 @@ mod budget_enforcement_integration_tests {
 
         // Verify snapshot contains data
         assert!(snapshot.total_allocated > 0);
-        assert!(!snapshot.crate_usage.is_empty());
+        assert!(!snapshot.crate_usage.is_empty();
         assert!(snapshot.crate_usage.len() >= 3);
 
         // Check access pattern analysis
@@ -297,7 +297,7 @@ mod budget_enforcement_integration_tests {
         // Generate health report
         let health = MemoryAnalyzer::generate_health_report()?;
         assert!(health.health_score > 0);
-        assert_eq!(health.critical_issue_count, 0);
+        assert_eq!(health.critical_issue_count, 0;
 
         Ok(())
     }
@@ -321,12 +321,12 @@ mod budget_enforcement_integration_tests {
 
         // Test with different simulated platforms
         for platform in &["embedded", "iot", "desktop"] {
-            std::env::set_var("WRT_TEST_PLATFORM", platform);
+            std::env::set_var("WRT_TEST_PLATFORM", platform;
 
             // Re-initialize for platform
             init_test_env()?;
 
-            let discovery = PlatformDiscovery::new();
+            let discovery = PlatformDiscovery::new(;
             let caps = discovery.discover_extended()?;
 
             // Verify platform-appropriate limits
@@ -379,7 +379,7 @@ mod budget_enforcement_integration_tests {
         // This compiles but is deprecated
 
         // 2. Migration providers are tracked
-        let migration = migration_provider::<1024>();
+        let migration = migration_provider::<1024>(;
         let stats_before = BudgetAwareProviderFactory::get_global_stats()?;
         let _vec = BoundedVec::<u8, 100, _>::new(migration)?;
         let stats_after = BudgetAwareProviderFactory::get_global_stats()?;
@@ -387,7 +387,7 @@ mod budget_enforcement_integration_tests {
 
         // 3. Type constraints prevent misuse in generic contexts
         fn only_budget_provider<P: wrt_foundation::enforcement::BudgetProviderOnly>(p: P) {
-            let _ = p.crate_id();
+            let _ = p.crate_id(;
         }
 
         let good = BudgetProvider::<1024>::new(CrateId::Foundation)?;
@@ -407,8 +407,8 @@ mod budget_enforcement_integration_tests {
         use std::sync::Arc;
         use std::thread;
 
-        let success_count = Arc::new(AtomicUsize::new(0));
-        let fail_count = Arc::new(AtomicUsize::new(0));
+        let success_count = Arc::new(AtomicUsize::new(0;
+        let fail_count = Arc::new(AtomicUsize::new(0;
 
         // Spawn multiple threads trying to allocate
         let mut handles = vec![];
@@ -422,16 +422,16 @@ mod budget_enforcement_integration_tests {
                 for _ in 0..100 {
                     match BudgetProvider::<1024>::new(CrateId::Runtime) {
                         Ok(_provider) => {
-                            success.fetch_add(1, Ordering::Relaxed);
+                            success.fetch_add(1, Ordering::Relaxed;
                             // Hold provider briefly
-                            thread::yield_now();
+                            thread::yield_now(;
                         }
                         Err(_) => {
-                            fail.fetch_add(1, Ordering::Relaxed);
+                            fail.fetch_add(1, Ordering::Relaxed;
                         }
                     }
                 }
-            });
+            };
 
             handles.push(handle);
         }
@@ -441,11 +441,11 @@ mod budget_enforcement_integration_tests {
             handle.join().unwrap();
         }
 
-        let total_success = success_count.load(Ordering::Relaxed);
-        let total_fail = fail_count.load(Ordering::Relaxed);
+        let total_success = success_count.load(Ordering::Relaxed;
+        let total_fail = fail_count.load(Ordering::Relaxed;
 
         // Verify results
-        println!("Concurrent test: {} success, {} failed", total_success, total_fail);
+        println!("Concurrent test: {} success, {} failed", total_success, total_fail;
         assert!(total_success > 0, "No successful allocations");
 
         // Verify final state is consistent

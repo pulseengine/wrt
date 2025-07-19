@@ -76,7 +76,7 @@
 //! // Read data from memory
 //! let mut buffer = [0; 4];
 //! memory.read(0, &mut buffer).unwrap();
-//! assert_eq!(buffer, [1, 2, 3, 4]);
+//! assert_eq!(buffer, [1, 2, 3, 4];
 //!
 //! // Grow memory by 1 page
 //! let old_size = memory.grow(1).unwrap();
@@ -84,7 +84,7 @@
 //! ```
 
 // Import BorrowMut for SafeMemoryHandler
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 // Core/std library imports
 use core::alloc::Layout;
@@ -294,19 +294,19 @@ impl Clone for Memory {
     fn clone(&self) -> Self {
         // Create new SafeMemoryHandler by copying bytes
         let current_bytes =
-            self.data.to_vec().unwrap_or_else(|e| panic!("Failed to clone memory data: {}", e));
+            self.data.to_vec().unwrap_or_else(|e| panic!("Failed to clone memory data: {}", e;
         // Convert BoundedVec to appropriate provider
         let new_data = {
             #[cfg(feature = "std")]
             {
                 // Use LargeMemoryProvider for consistency with struct definition
-                let new_provider = LargeMemoryProvider::default();
+                let new_provider = LargeMemoryProvider::default(;
                 SafeMemoryHandler::new(new_provider)
             }
             #[cfg(not(feature = "std"))]
             {
                 // Use LargeMemoryProvider for consistency with struct definition
-                let new_provider = LargeMemoryProvider::default();
+                let new_provider = LargeMemoryProvider::default(;
                 SafeMemoryHandler::new(new_provider)
             }
         };
@@ -328,7 +328,7 @@ impl Clone for Memory {
 
         #[cfg(not(feature = "std"))]
         let cloned_metrics = {
-            let guard = self.metrics.read();
+            let guard = self.metrics.read(;
             RwLock::new((*guard).clone()) // Assuming MemoryMetrics is Clone
         };
 
@@ -368,9 +368,9 @@ impl Default for Memory {
 
 impl wrt_foundation::traits::Checksummable for Memory {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.ty.limits.min.to_le_bytes());
+        checksum.update_slice(&self.ty.limits.min.to_le_bytes(;
         if let Some(max) = self.ty.limits.max {
-            checksum.update_slice(&max.to_le_bytes());
+            checksum.update_slice(&max.to_le_bytes(;
         }
     }
 }
@@ -398,11 +398,11 @@ impl wrt_foundation::traits::FromBytes for Memory {
     ) -> wrt_foundation::Result<Self> {
         let mut min_bytes = [0u8; 4];
         reader.read_exact(&mut min_bytes)?;
-        let min = u32::from_le_bytes(min_bytes);
+        let min = u32::from_le_bytes(min_bytes;
         
         let mut max_bytes = [0u8; 4];
         reader.read_exact(&mut max_bytes)?;
-        let max = u32::from_le_bytes(max_bytes);
+        let max = u32::from_le_bytes(max_bytes;
         
         use wrt_foundation::types::{Limits, MemoryType};
         let memory_type = MemoryType {
@@ -451,13 +451,13 @@ impl Memory {
         // Create memory provider based on available features
         #[cfg(feature = "std")]
         let data_handler = {
-            let provider = LargeMemoryProvider::default();
+            let provider = LargeMemoryProvider::default(;
             SafeMemoryHandler::new(provider)
         };
 
         #[cfg(not(feature = "std"))]
         let data_handler = {
-            let provider = LargeMemoryProvider::default();
+            let provider = LargeMemoryProvider::default(;
             SafeMemoryHandler::new(provider)
         };
 
@@ -504,7 +504,7 @@ impl Memory {
         memory.debug_name = Some(wrt_foundation::bounded::BoundedString::from_str(
             name, 
             SmallMemoryProvider::default()
-        ).map_err(|_| Error::memory_error("Debug name too long"))?);
+        ).map_err(|_| Error::memory_error("Debug name too long"))?;
         Ok(memory)
     }
 
@@ -519,7 +519,7 @@ impl Memory {
                 name,
                 SmallMemoryProvider::default()
             ).unwrap()
-        }));
+        };
     }
 
     /// Returns the debug name of this memory instance, if any
@@ -545,7 +545,7 @@ impl Memory {
     /// The current size in bytes
     #[must_use]
     pub fn size_in_bytes(&self) -> usize {
-        let pages = self.current_pages.load(Ordering::Relaxed);
+        let pages = self.current_pages.load(Ordering::Relaxed;
         wasm_offset_to_usize(pages).unwrap_or(0) * PAGE_SIZE
     }
 
@@ -562,9 +562,9 @@ impl Memory {
     pub fn buffer(&self) -> Result<Vec<u8>> {
         // Use the SafeMemoryHandler to get data through a safe slice to ensure
         // memory integrity is verified during the operation
-        let data_size = self.data.size();
+        let data_size = self.data.size(;
         if data_size == 0 {
-            return Ok(Vec::new());
+            return Ok(Vec::new(;
         }
 
         // Get a safe slice over the entire memory
@@ -574,7 +574,7 @@ impl Memory {
         let memory_data = safe_slice.data()?;
 
         // Create a new RuntimeVec with the data
-        let mut result = Vec::with_capacity(data_size);
+        let mut result = Vec::with_capacity(data_size;
         for &byte in memory_data.iter().take(result.capacity()) {
             result.push(byte);
             }
@@ -592,7 +592,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read();
+            let metrics = self.metrics.read(;
             metrics.peak_usage
         }
 
@@ -606,7 +606,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read();
+            let metrics = self.metrics.read(;
             metrics.access_count
         }
 
@@ -614,29 +614,29 @@ impl Memory {
     fn increment_access_count(&self, offset: usize, len: usize) {
         #[cfg(feature = "std")]
         {
-            self.metrics.access_count.fetch_add(1, Ordering::Relaxed);
-            self.metrics.max_access_size.fetch_max(len, Ordering::Relaxed);
-            self.metrics.last_access_offset.store(offset, Ordering::Relaxed);
-            self.metrics.last_access_length.store(len, Ordering::Relaxed);
+            self.metrics.access_count.fetch_add(1, Ordering::Relaxed;
+            self.metrics.max_access_size.fetch_max(len, Ordering::Relaxed;
+            self.metrics.last_access_offset.store(offset, Ordering::Relaxed;
+            self.metrics.last_access_length.store(len, Ordering::Relaxed;
         }
 
         #[cfg(not(feature = "std"))]
         {
             // Use write() method with WrtRwLock
-            let mut metrics = self.metrics.write();
+            let mut metrics = self.metrics.write(;
             metrics.access_count += 1;
-            metrics.max_access_size = metrics.max_access_size.max(len);
+            metrics.max_access_size = metrics.max_access_size.max(len;
             metrics.last_access_offset = offset;
             metrics.last_access_length = len;
         }
 
     /// Update the peak memory usage statistic
     fn update_peak_memory(&self) {
-        let current_size = self.size_in_bytes();
+        let current_size = self.size_in_bytes(;
 
         #[cfg(feature = "std")]
         {
-            let mut current_peak = self.metrics.peak_usage.load(Ordering::Relaxed);
+            let mut current_peak = self.metrics.peak_usage.load(Ordering::Relaxed;
             while current_size > current_peak {
                 match self.metrics.peak_usage.compare_exchange(
                     current_peak,
@@ -652,8 +652,8 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use write() method with WrtRwLock
-            let mut metrics = self.metrics.write();
-            metrics.peak_usage = metrics.peak_usage.max(current_size);
+            let mut metrics = self.metrics.write(;
+            metrics.peak_usage = metrics.peak_usage.max(current_size;
         }
 
     /// Returns the maximum size of any memory access
@@ -666,7 +666,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read();
+            let metrics = self.metrics.read(;
             metrics.max_access_size
         }
 
@@ -680,7 +680,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read();
+            let metrics = self.metrics.read(;
             metrics.unique_regions
         }
 
@@ -694,7 +694,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read();
+            let metrics = self.metrics.read(;
             metrics.last_access_offset
         }
 
@@ -708,7 +708,7 @@ impl Memory {
         #[cfg(not(feature = "std"))]
         {
             // Use read() method with WrtRwLock
-            let metrics = self.metrics.read();
+            let metrics = self.metrics.read(;
             metrics.last_access_length
         }
 
@@ -728,11 +728,11 @@ impl Memory {
     pub fn grow(&mut self, pages: u32) -> Result<u32> {
         // Return early if not growing
         if pages == 0 {
-            return Ok(self.current_pages.load(Ordering::Relaxed));
+            return Ok(self.current_pages.load(Ordering::Relaxed;
         }
 
         // Check that growing wouldn't exceed max pages
-        let current_pages_val = self.current_pages.load(Ordering::Relaxed);
+        let current_pages_val = self.current_pages.load(Ordering::Relaxed;
         let new_page_count = current_pages_val.checked_add(pages).ok_or_else(|| {
             Error::runtime_execution_error(",
             )
@@ -741,26 +741,26 @@ impl Memory {
         // Check against the maximum allowed by type
         if let Some(max) = self.ty.limits.max {
             if new_page_count > max {
-                return Err(Error::resource_limit_exceeded("));
+                return Err(Error::resource_limit_exceeded(";
             }
 
         // Check against the absolute maximum (4GB)
         if new_page_count > MAX_PAGES {
-            return Err(Error::resource_limit_exceeded("Runtime operation error"));
+            return Err(Error::resource_limit_exceeded("Runtime operation error";
         }
 
         // Calculate the new size in bytes
-        let old_size = self.data.size();
+        let old_size = self.data.size(;
         let new_size = wasm_offset_to_usize(new_page_count)? * PAGE_SIZE;
 
         // Resize the underlying data
         self.data.resize(new_size)?;
 
         // Update the page count
-        let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed);
+        let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed;
 
         // Update peak memory usage
-        self.update_peak_memory();
+        self.update_peak_memory(;
 
         Ok(old_pages)
     }
@@ -782,21 +782,21 @@ impl Memory {
     pub fn read(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
         // Empty read is always successful
         if buffer.is_empty() {
-            return Ok(());
+            return Ok((;
         }
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len();
+        let size = buffer.len(;
 
         // Track this access for profiling
-        self.increment_access_count(offset_usize, size);
+        self.increment_access_count(offset_usize, size;
 
         // Use safe memory get_slice to get a verified slice
         let safe_slice = self.data.get_slice(offset_usize, size)?;
 
         // Copy from the safe slice to the buffer
-        buffer.copy_from_slice(safe_slice.data()?);
+        buffer.copy_from_slice(safe_slice.data()?;
 
         Ok(())
     }
@@ -818,29 +818,29 @@ impl Memory {
     pub fn write(&mut self, offset: u32, buffer: &[u8]) -> Result<()> {
         // Empty write is always successful
         if buffer.is_empty() {
-            return Ok(());
+            return Ok((;
         }
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len();
+        let size = buffer.len(;
         let end = offset_usize.checked_add(size).ok_or_else(|| {
             Error::memory_out_of_bounds("Memory write would overflow")
         })?;
 
         // Verify the access is within memory bounds
         if end > self.size_in_bytes() {
-            return Err(Error::memory_out_of_bounds("Runtime operation error"));
+            return Err(Error::memory_out_of_bounds("Runtime operation error";
         }
 
         // Track this access for profiling
-        self.increment_access_count(offset_usize, size);
+        self.increment_access_count(offset_usize, size;
 
         // Use the SafeMemoryHandler's write_data method for efficient direct writing
         self.data.write_data(offset_usize, buffer)?;
 
         // Update the peak memory usage
-        self.update_peak_memory();
+        self.update_peak_memory(;
 
         Ok(())
     }
@@ -860,11 +860,11 @@ impl Memory {
     /// Returns an error if the offset is out of bounds
     pub fn get_byte(&self, offset: u32) -> Result<u8> {
         if !self.verify_bounds(offset, 1) {
-            return Err(Error::validation_error("Memory access out of bounds"));
+            return Err(Error::validation_error("Memory access out of bounds";
         }
 
         let offset_usize = wasm_offset_to_usize(offset)?;
-        self.increment_access_count(offset_usize, 1);
+        self.increment_access_count(offset_usize, 1;
 
         // Use SafeMemoryHandler to get a safe slice
         let slice = self.data.get_slice(offset_usize, 1)?;
@@ -888,11 +888,11 @@ impl Memory {
     /// Returns an error if the offset is out of bounds
     pub fn set_byte(&mut self, offset: u32, value: u8) -> Result<()> {
         if !self.verify_bounds(offset, 1) {
-            return Err(Error::validation_error("Memory access out of bounds"));
+            return Err(Error::validation_error("Memory access out of bounds";
         }
 
         let offset_usize = wasm_offset_to_usize(offset)?;
-        self.increment_access_count(offset_usize, 1);
+        self.increment_access_count(offset_usize, 1;
 
         // This is a simpler case - just write a single byte
         // using the write method which handles all the safety checks
@@ -915,7 +915,7 @@ impl Memory {
         }
 
         // Get current data size
-        let data_size = self.data.len();
+        let data_size = self.data.len(;
 
         // Get the last byte that would be accessed
         let end_offset = match offset.checked_add(len) {
@@ -933,13 +933,13 @@ impl Memory {
     /// Check alignment for memory accesses
     pub fn check_alignment(&self, addr: u32, access_size: u32, align: u32) -> Result<()> {
         if addr % align != 0 {
-            return Err(Error::validation_error("Runtime operation error"));
+            return Err(Error::validation_error("Runtime operation error";
         }
 
         let addr = wasm_offset_to_usize(addr)?;
         let access_size = wasm_offset_to_usize(access_size)?;
         if addr + access_size > self.data.size() {
-            return Err(Error::validation_error("Memory access out of bounds"));
+            return Err(Error::validation_error("Memory access out of bounds";
         }
 
         Ok(())

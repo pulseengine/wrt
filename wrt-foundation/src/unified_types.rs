@@ -129,7 +129,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default();
+        let provider = DefaultNoStdProvider::default(;
         BoundedVec::new(provider)
     }
 
@@ -137,7 +137,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default();
+        let provider = DefaultNoStdProvider::default(;
         BoundedVec::new(provider)
     }
 
@@ -145,12 +145,12 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default();
+        let provider = DefaultNoStdProvider::default(;
         BoundedVec::new(provider)
     }
 
     fn create_runtime_string() -> WrtResult<BoundedString<MEDIUM, DefaultNoStdProvider>> {
-        let provider = DefaultNoStdProvider::default();
+        let provider = DefaultNoStdProvider::default(;
         BoundedString::from_str("", provider).map_err(|_| Error::runtime_execution_error("Failed to create runtime string"))
     }
 }
@@ -161,37 +161,37 @@ mod tests {
 
     #[test]
     fn test_platform_capacities_validation() {
-        let valid_caps = PlatformCapacities::default();
-        assert!(valid_caps.validate());
+        let valid_caps = PlatformCapacities::default(;
+        assert!(valid_caps.validate();
 
-        let embedded_caps = PlatformCapacities::embedded();
-        assert!(embedded_caps.validate());
+        let embedded_caps = PlatformCapacities::embedded(;
+        assert!(embedded_caps.validate();
 
-        let desktop_caps = PlatformCapacities::desktop();
-        assert!(desktop_caps.validate());
+        let desktop_caps = PlatformCapacities::desktop(;
+        assert!(desktop_caps.validate();
 
-        let safety_caps = PlatformCapacities::safety_critical();
-        assert!(safety_caps.validate());
+        let safety_caps = PlatformCapacities::safety_critical(;
+        assert!(safety_caps.validate();
     }
 
     #[test]
     fn test_unified_types_configuration_validation() {
-        assert!(DefaultTypes::validate_configuration());
-        assert!(EmbeddedTypes::validate_configuration());
-        assert!(DesktopTypes::validate_configuration());
-        assert!(SafetyCriticalTypes::validate_configuration());
+        assert!(DefaultTypes::validate_configuration();
+        assert!(EmbeddedTypes::validate_configuration();
+        assert!(DesktopTypes::validate_configuration();
+        assert!(SafetyCriticalTypes::validate_configuration();
     }
 
     #[test]
     fn test_capacities() {
-        let default_caps = DefaultTypes::capacities();
-        assert_eq!(default_caps.small_capacity, 64);
-        assert_eq!(default_caps.medium_capacity, 1024);
-        assert_eq!(default_caps.large_capacity, 65536);
+        let default_caps = DefaultTypes::capacities(;
+        assert_eq!(default_caps.small_capacity, 64;
+        assert_eq!(default_caps.medium_capacity, 1024;
+        assert_eq!(default_caps.large_capacity, 65536;
 
-        let embedded_caps = EmbeddedTypes::capacities();
-        assert_eq!(embedded_caps.small_capacity, 16);
-        assert_eq!(embedded_caps.medium_capacity, 128);
-        assert_eq!(embedded_caps.large_capacity, 1024);
+        let embedded_caps = EmbeddedTypes::capacities(;
+        assert_eq!(embedded_caps.small_capacity, 16;
+        assert_eq!(embedded_caps.medium_capacity, 128;
+        assert_eq!(embedded_caps.large_capacity, 1024;
     }
 }

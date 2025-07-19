@@ -129,11 +129,11 @@ fn test_function_execution() -> Result<()> {
     let results = engine.execute(instance_handle, "add", &args)?;
     
     // Verify result
-    assert_eq!(results.len(), 1);
+    assert_eq!(results.len(), 1;
     if let Value::I32(result) = &results[0] {
-        assert_eq!(*result, 42);
+        assert_eq!(*result, 42;
     } else {
-        return Err(Error::runtime_error("Unexpected result type"));
+        return Err(Error::runtime_error("Unexpected result type";
     }
     
     Ok(())
@@ -152,9 +152,9 @@ fn test_capability_validation() -> Result<()> {
     let results = engine.execute_with_validation(instance_handle, "add", &args)?;
     
     // Verify capability-validated execution works
-    assert_eq!(results.len(), 1);
+    assert_eq!(results.len(), 1;
     if let Value::I32(result) = &results[0] {
-        assert_eq!(*result, 12);
+        assert_eq!(*result, 12;
     }
     
     Ok(())
@@ -183,19 +183,19 @@ fn test_host_function_integration() -> Result<()> {
 fn test_wasi_support_by_asil_level() -> Result<()> {
     // QM should support WASI
     let mut qm_engine = CapabilityAwareEngine::with_preset(EnginePreset::QM)?;
-    assert!(qm_engine.enable_wasi().is_ok());
+    assert!(qm_engine.enable_wasi().is_ok();
     
     // ASIL-A should support WASI
     let mut asil_a_engine = CapabilityAwareEngine::with_preset(EnginePreset::AsilA)?;
-    assert!(asil_a_engine.enable_wasi().is_ok());
+    assert!(asil_a_engine.enable_wasi().is_ok();
     
     // ASIL-B should support limited WASI
     let mut asil_b_engine = CapabilityAwareEngine::with_preset(EnginePreset::AsilB)?;
-    assert!(asil_b_engine.enable_wasi().is_ok());
+    assert!(asil_b_engine.enable_wasi().is_ok();
     
     // ASIL-D should reject WASI
     let mut asil_d_engine = CapabilityAwareEngine::with_preset(EnginePreset::AsilD)?;
-    assert!(asil_d_engine.enable_wasi().is_err());
+    assert!(asil_d_engine.enable_wasi().is_err();
     
     Ok(())
 }
@@ -206,13 +206,13 @@ fn test_error_handling() -> Result<()> {
     
     // Test with invalid WebAssembly binary
     let invalid_wasm = &[0x00, 0x01, 0x02, 0x03]; // Invalid magic number
-    let result = engine.load_module(invalid_wasm);
-    assert!(result.is_err());
+    let result = engine.load_module(invalid_wasm;
+    assert!(result.is_err();
     
     // Test function call on non-existent instance  
-    let fake_handle = wrt_runtime::engine::InstanceHandle::new();
-    let result = engine.execute(fake_handle, "test", &[]);
-    assert!(result.is_err());
+    let fake_handle = wrt_runtime::engine::InstanceHandle::new(;
+    let result = engine.execute(fake_handle, "test", &[];
+    assert!(result.is_err();
     
     Ok(())
 }
@@ -250,9 +250,9 @@ fn test_full_execution_pipeline() -> Result<()> {
     let results = engine.execute(instance_handle, "add", &args)?;
     
     // Step 5: Verify results
-    assert_eq!(results.len(), 1);
+    assert_eq!(results.len(), 1;
     if let Value::I32(result) = &results[0] {
-        assert_eq!(*result, 42);
+        assert_eq!(*result, 42;
     }
     
     Ok(())
@@ -278,8 +278,8 @@ fn test_multiple_instances() -> Result<()> {
     
     // Verify independent execution
     if let (Value::I32(r1), Value::I32(r2)) = (&results1[0], &results2[0]) {
-        assert_eq!(*r1, 3);
-        assert_eq!(*r2, 30);
+        assert_eq!(*r1, 3;
+        assert_eq!(*r2, 30;
     }
     
     Ok(())
@@ -294,7 +294,7 @@ fn test_complete_integration() -> Result<()> {
         
         // Host function registration should work for less restrictive levels
         if matches!(preset, EnginePreset::QM | EnginePreset::AsilA) {
-            let _ = engine.register_host_function("test", "func", |_| Ok(vec![]));
+            let _ = engine.register_host_function("test", "func", |_| Ok(vec![];
         }
         
         // Module loading should work for all levels
@@ -306,9 +306,9 @@ fn test_complete_integration() -> Result<()> {
         let results = engine.execute(instance_handle, "add", &args)?;
         
         // Verify results are consistent across ASIL levels
-        assert_eq!(results.len(), 1);
+        assert_eq!(results.len(), 1;
         if let Value::I32(result) = &results[0] {
-            assert_eq!(*result, 42);
+            assert_eq!(*result, 42;
         }
     }
     

@@ -17,7 +17,7 @@ mod tests {
     impl InstructionContext for MockContext {
         fn read_u8(&mut self) -> Result<u8, crate::prelude::Error> {
             if self.position >= self.bytecode.len() {
-                return Err(crate::prelude::Error::runtime_execution_error("Unexpected end of bytecode"));
+                return Err(crate::prelude::Error::runtime_execution_error("Unexpected end of bytecode";
             }
             let byte = self.bytecode[self.position];
             self.position += 1;
@@ -40,7 +40,7 @@ mod tests {
                     return Err(crate::prelude::Error::new(
                         crate::prelude::ErrorCategory::Parse,
                         wrt_error::codes::PARSE_ERROR,
-                        "LEB128 integer too large"));
+                        "LEB128 integer too large";
                 }
             }
             
@@ -84,7 +84,7 @@ mod tests {
         };
         
         let inst = parse_instruction(&mut ctx).unwrap();
-        assert!(matches!(inst, Instruction::Nop));
+        assert!(matches!(inst, Instruction::Nop);
     }
     
     #[test]
@@ -95,7 +95,7 @@ mod tests {
         };
         
         let inst = parse_instruction(&mut ctx).unwrap();
-        assert!(matches!(inst, Instruction::Unreachable));
+        assert!(matches!(inst, Instruction::Unreachable);
     }
     
     #[test]
@@ -162,7 +162,7 @@ mod tests {
         };
         
         let inst = parse_instruction(&mut ctx).unwrap();
-        assert!(matches!(inst, Instruction::I32Add));
+        assert!(matches!(inst, Instruction::I32Add);
     }
     
     #[test]
@@ -173,7 +173,7 @@ mod tests {
         };
         
         let inst = parse_instruction(&mut ctx).unwrap();
-        assert!(matches!(inst, Instruction::Return));
+        assert!(matches!(inst, Instruction::Return);
     }
     
     #[test]
@@ -184,7 +184,7 @@ mod tests {
         };
         
         let inst = parse_instruction(&mut ctx).unwrap();
-        assert!(matches!(inst, Instruction::End));
+        assert!(matches!(inst, Instruction::End);
     }
     
     #[test]
@@ -194,8 +194,8 @@ mod tests {
             position: 0,
         };
         
-        let result = parse_instruction(&mut ctx);
-        assert!(result.is_err());
+        let result = parse_instruction(&mut ctx;
+        assert!(result.is_err();
     }
     
     #[test]
@@ -205,7 +205,7 @@ mod tests {
             position: 0,
         };
         
-        let result = parse_instruction(&mut ctx);
-        assert!(result.is_err());
+        let result = parse_instruction(&mut ctx;
+        assert!(result.is_err();
     }
 }

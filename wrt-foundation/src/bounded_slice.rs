@@ -200,44 +200,44 @@ mod tests {
     
     #[test]
     fn test_bounded_slice_creation() {
-        let provider = NoStdProvider::<1024>::default();
+        let provider = NoStdProvider::<1024>::default(;
         let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
         vec.push(1).unwrap();
         vec.push(2).unwrap();
         vec.push(3).unwrap();
         
-        let slice = vec.as_slice();
-        assert_eq!(slice.len(), 3);
-        assert_eq!(slice.get(0), Some(1));
-        assert_eq!(slice.get(1), Some(2));
-        assert_eq!(slice.get(2), Some(3));
+        let slice = vec.as_slice(;
+        assert_eq!(slice.len(), 3;
+        assert_eq!(slice.get(0), Some(1;
+        assert_eq!(slice.get(1), Some(2;
+        assert_eq!(slice.get(2), Some(3;
     }
     
     #[test]
     fn test_bounded_slice_range() {
-        let provider = NoStdProvider::<1024>::default();
+        let provider = NoStdProvider::<1024>::default(;
         let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
         for i in 0..5 {
             vec.push(i).unwrap();
         }
         
         let slice = vec.slice(1..4).unwrap();
-        assert_eq!(slice.len(), 3);
-        assert_eq!(slice.get(0), Some(1));
-        assert_eq!(slice.get(1), Some(2));
-        assert_eq!(slice.get(2), Some(3));
+        assert_eq!(slice.len(), 3;
+        assert_eq!(slice.get(0), Some(1;
+        assert_eq!(slice.get(1), Some(2;
+        assert_eq!(slice.get(2), Some(3;
     }
     
     #[test]
     fn test_bounded_slice_iterator() {
-        let provider = NoStdProvider::<1024>::default();
+        let provider = NoStdProvider::<1024>::default(;
         let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
         for i in 0..5 {
             vec.push(i).unwrap();
         }
         
-        let slice = vec.as_slice();
+        let slice = vec.as_slice(;
         let collected: Vec<i32> = slice.iter().collect();
-        assert_eq!(collected, vec![0, 1, 2, 3, 4]);
+        assert_eq!(collected, vec![0, 1, 2, 3, 4];
     }
 }

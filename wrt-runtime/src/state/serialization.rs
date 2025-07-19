@@ -3,9 +3,8 @@
 //! This module provides utilities for serializing and deserializing WebAssembly
 //! runtime state using custom sections.
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-#[cfg(not(feature = "std"))]
+// alloc is imported in lib.rs with proper feature gates
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
@@ -113,13 +112,13 @@ pub fn create_state_section(
     compression_type: CompressionType,
 ) -> Result<CustomSection> {
     // Create header
-    let mut header = Vec::with_capacity(17);
+    let mut header = Vec::with_capacity(17;
 
     // Magic bytes
-    header.extend_from_slice(STATE_MAGIC);
+    header.extend_from_slice(STATE_MAGIC;
 
     // Version
-    header.extend_from_slice(&STATE_VERSION.to_le_bytes());
+    header.extend_from_slice(&STATE_VERSION.to_le_bytes(;
 
     // Section type
     header.push(section_type as u8);
@@ -129,7 +128,7 @@ pub fn create_state_section(
 
     // Original uncompressed size
     let uncompressed_size = data.len() as u32;
-    header.extend_from_slice(&uncompressed_size.to_le_bytes());
+    header.extend_from_slice(&uncompressed_size.to_le_bytes(;
 
     // Compress data
     let compressed_data = match compression_type {
@@ -139,12 +138,12 @@ pub fn create_state_section(
 
     // Serialized data size
     let compressed_size = compressed_data.len() as u32;
-    header.extend_from_slice(&compressed_size.to_le_bytes());
+    header.extend_from_slice(&compressed_size.to_le_bytes(;
 
     // Create complete section contents: header + compressed data
-    let mut section_data = Vec::with_capacity(header.len() + compressed_data.len());
-    section_data.extend_from_slice(&header);
-    section_data.extend_from_slice(&compressed_data);
+    let mut section_data = Vec::with_capacity(header.len() + compressed_data.len(;
+    section_data.extend_from_slice(&header;
+    section_data.extend_from_slice(&compressed_data;
 
     // Create custom section with name and data
     Ok(CustomSection::new(section_type.name(), section_data))
@@ -163,16 +162,16 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Parse header
     if data.len() < 17 {
-        return Err(Error::validation_parse_error("State section header too small"));
+        return Err(Error::validation_parse_error("State section header too small";
     }
 
     // Verify magic bytes
     if data[0..4] != *STATE_MAGIC {
-        return Err(Error::validation_parse_error("Invalid state section magic bytes"));
+        return Err(Error::validation_parse_error("Invalid state section magic bytes";
     }
 
     // Parse version
-    let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
+    let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]];
 
     // Version check
     if version != STATE_VERSION {
@@ -187,26 +186,26 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Verify section type matches the name
     if parsed_section_type != section_type {
-        return Err(Error::validation_parse_error("Section type mismatch"));
+        return Err(Error::validation_parse_error("Section type mismatch";
     }
 
     // Parse compression type
     let compression_type = match CompressionType::from_u8(data[9]) {
         Some(t) => t,
         None => {
-            return Err(Error::validation_parse_error("Unknown compression type"));
+            return Err(Error::validation_parse_error("Unknown compression type";
         }
     };
 
     // Parse uncompressed size
-    let uncompressed_size = u32::from_le_bytes([data[10], data[11], data[12], data[13]]);
+    let uncompressed_size = u32::from_le_bytes([data[10], data[11], data[12], data[13]];
 
     // Parse compressed size
-    let compressed_size = u32::from_le_bytes([data[14], data[15], data[16], data[17]]);
+    let compressed_size = u32::from_le_bytes([data[14], data[15], data[16], data[17]];
 
     // Extract the compressed data
     if data.len() < 18 + compressed_size as usize {
-        return Err(Error::validation_parse_error("Compressed data truncated"));
+        return Err(Error::validation_parse_error("Compressed data truncated";
     }
 
     let compressed_data = &data[18..18 + compressed_size as usize];
@@ -219,7 +218,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Verify decompressed size
     if decompressed_data.len() != uncompressed_size as usize {
-        return Err(Error::validation_parse_error("Decompressed size mismatch"));
+        return Err(Error::validation_parse_error("Decompressed size mismatch";
     }
 
     // Create header

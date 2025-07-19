@@ -4,7 +4,7 @@
 //! providing safe, efficient multi-threaded execution of WebAssembly modules
 //! with proper isolation and resource management.
 
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 use crate::prelude::{BoundedCapacity, Debug, Eq, PartialEq, str};
 use core::sync::atomic::AtomicU32;
@@ -211,7 +211,7 @@ impl ThreadExecutionContext {
     pub fn update_state(&mut self, new_state: ThreadState) {
         self.info.state = new_state;
         if new_state.is_completed() {
-            self.info.completed_at = Some(wrt_platform::time::current_time_ns());
+            self.info.completed_at = Some(wrt_platform::time::current_time_ns(;
         }
     }
     
@@ -324,13 +324,13 @@ impl ThreadManager {
     ) -> Result<ThreadId> {
         // Check thread limits
         if self.active_thread_count() >= self.config.max_threads {
-            return Err(Error::resource_exhausted("Maximum thread limit reached"));
+            return Err(Error::resource_exhausted("Maximum thread limit reached";
         }
         
         // Validate stack size
-        let stack_size = stack_size.unwrap_or(self.config.default_stack_size);
+        let stack_size = stack_size.unwrap_or(self.config.default_stack_size;
         if stack_size > self.config.max_stack_size {
-            return Err(Error::validation_error("Stack size exceeds maximum allowed"));
+            return Err(Error::validation_error("Stack size exceeds maximum allowed";
         }
         
         // Generate thread ID
@@ -344,7 +344,7 @@ impl ThreadManager {
             stack_size,
             self.config.priority,
             parent_thread,
-        );
+        ;
         
         // Create thread execution context
         let context = ThreadExecutionContext::new(thread_info)?;
@@ -353,9 +353,9 @@ impl ThreadManager {
         // Store thread context in array
         if thread_id as usize >= MAX_MANAGED_THREADS {
             return Err(Error::runtime_execution_error("Runtime execution error"
-            ));
+            ;
         }
-        self.threads[thread_id as usize] = Some(context);
+        self.threads[thread_id as usize] = Some(context;
         
         self.stats.threads_spawned += 1;
         
@@ -367,7 +367,7 @@ impl ThreadManager {
         let context = self.get_thread_context_mut(thread_id)?;
         
         if context.info.state != ThreadState::Ready {
-            return Err(Error::runtime_execution_error("Thread not in ready state"));
+            return Err(Error::runtime_execution_error("Thread not in ready state";
         }
         
         // Create thread spawn options
@@ -400,8 +400,8 @@ impl ThreadManager {
         #[cfg(not(feature = "std"))]
         let handle = ThreadHandle { id: thread_id };
         
-        context.handle = Some(handle);
-        context.update_state(ThreadState::Running);
+        context.handle = Some(handle;
+        context.update_state(ThreadState::Running;
         
         self.stats.threads_started += 1;
         
@@ -417,7 +417,7 @@ impl ThreadManager {
             handle.terminate().map_err(|_| Error::runtime_execution_error("Failed to terminate thread"))?;
         }
         
-        context.update_state(ThreadState::Terminated);
+        context.update_state(ThreadState::Terminated;
         self.stats.threads_terminated += 1;
         
         Ok(())
@@ -431,17 +431,17 @@ impl ThreadManager {
             if let Some(handle) = context.handle.take() {
                 // Wait for thread completion
                 let result = if let Some(timeout) = timeout_ms {
-                    let duration = core::time::Duration::from_millis(timeout);
+                    let duration = core::time::Duration::from_millis(timeout;
                     handle.join_timeout(duration).map(|opt| opt.unwrap_or_default())
                 } else {
                     handle.join()
                 };
                 
                 if let Ok(_result_data) = result {
-                    context.update_state(ThreadState::Completed);
+                    context.update_state(ThreadState::Completed;
                 } else {
-                    context.update_state(ThreadState::Failed);
-                    return Err(Error::runtime_execution_error("Thread join failed"));
+                    context.update_state(ThreadState::Failed;
+                    return Err(Error::runtime_execution_error("Thread join failed";
                 }
             }
             
@@ -489,7 +489,7 @@ impl ThreadManager {
     
     /// Cleanup completed threads
     pub fn cleanup_completed_threads(&mut self) -> usize {
-        let initial_count = self.thread_count();
+        let initial_count = self.thread_count(;
         
         #[cfg(feature = "std")]
         {
@@ -625,63 +625,63 @@ mod tests {
     
     #[test]
     fn test_thread_config_default() {
-        let config = ThreadConfig::default();
-        assert_eq!(config.max_threads, 128);
-        assert_eq!(config.default_stack_size, 1024 * 1024);
+        let config = ThreadConfig::default(;
+        assert_eq!(config.max_threads, 128;
+        assert_eq!(config.default_stack_size, 1024 * 1024;
         assert!(config.enable_tls);
     }
     
     #[test]
     fn test_thread_info_creation() {
-        let info = ThreadInfo::new(1, 42, 1024 * 1024, 50, None);
-        assert_eq!(info.thread_id, 1);
-        assert_eq!(info.function_index, 42);
-        assert_eq!(info.state, ThreadState::Ready);
-        assert!(info.is_active());
-        assert!(!info.is_completed());
+        let info = ThreadInfo::new(1, 42, 1024 * 1024, 50, None;
+        assert_eq!(info.thread_id, 1;
+        assert_eq!(info.function_index, 42;
+        assert_eq!(info.state, ThreadState::Ready;
+        assert!(info.is_active();
+        assert!(!info.is_completed();
     }
     
     #[test]
     fn test_thread_manager_creation() {
-        let config = ThreadConfig::default();
+        let config = ThreadConfig::default(;
         let manager = ThreadManager::new(config).unwrap();
-        assert_eq!(manager.thread_count(), 0);
-        assert_eq!(manager.active_thread_count(), 0);
+        assert_eq!(manager.thread_count(), 0;
+        assert_eq!(manager.active_thread_count(), 0;
     }
     
     #[cfg(feature = "std")]
     #[test]
     fn test_thread_spawning() {
-        let mut manager = ThreadManager::default();
+        let mut manager = ThreadManager::default(;
         
         let thread_id = manager.spawn_thread(42, Some(2 * 1024 * 1024), None).unwrap();
-        assert_eq!(thread_id, 1);
-        assert_eq!(manager.thread_count(), 1);
-        assert_eq!(manager.active_thread_count(), 1);
+        assert_eq!(thread_id, 1;
+        assert_eq!(manager.thread_count(), 1;
+        assert_eq!(manager.active_thread_count(), 1;
         
         let info = manager.get_thread_info(thread_id).unwrap();
-        assert_eq!(info.function_index, 42);
-        assert_eq!(info.stack_size, 2 * 1024 * 1024);
+        assert_eq!(info.function_index, 42;
+        assert_eq!(info.stack_size, 2 * 1024 * 1024;
     }
     
     #[test]
     fn test_thread_stats() {
-        let mut stats = ThreadExecutionStats::new();
-        stats.record_instruction();
-        stats.record_function_call();
-        stats.record_atomic_operation();
-        stats.update_memory_usage(1024);
+        let mut stats = ThreadExecutionStats::new(;
+        stats.record_instruction(;
+        stats.record_function_call(;
+        stats.record_atomic_operation(;
+        stats.update_memory_usage(1024;
         
-        assert_eq!(stats.instructions_executed, 1);
-        assert_eq!(stats.function_calls, 1);
-        assert_eq!(stats.atomic_operations, 1);
-        assert_eq!(stats.peak_memory_usage, 1024);
+        assert_eq!(stats.instructions_executed, 1;
+        assert_eq!(stats.function_calls, 1;
+        assert_eq!(stats.atomic_operations, 1;
+        assert_eq!(stats.peak_memory_usage, 1024;
     }
     
     #[test]
     fn test_manager_stats() {
-        let stats = ThreadManagerStats::new();
-        assert_eq!(stats.success_rate(), 0.0);
-        assert!(!stats.is_healthy());
+        let stats = ThreadManagerStats::new(;
+        assert_eq!(stats.success_rate(), 0.0;
+        assert!(!stats.is_healthy();
     }
 }

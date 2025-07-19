@@ -163,7 +163,7 @@ mod tests {
 
     // Test crate ID
     #[derive(Debug, Clone, Copy)]
-    struct TestCrateId(u8);
+    struct TestCrateId(u8;
 
     impl CrateIdentifier for TestCrateId {
         fn as_index(&self) -> usize {
@@ -204,16 +204,16 @@ mod tests {
     #[test]
     fn test_generic_factory() {
         static COORDINATOR: GenericMemoryCoordinator<TestCrateId, 10> =
-            GenericMemoryCoordinator::new();
+            GenericMemoryCoordinator::new(;
 
         // Initialize
         COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap();
 
         // Create factory
-        let factory = create_budget_factory!(TestFactory, &COORDINATOR);
+        let factory = create_budget_factory!(TestFactory, &COORDINATOR;
 
         // Create provider
         let guard = factory.create_provider(256, TestCrateId(0)).unwrap();
-        assert_eq!(guard.size(), 256);
+        assert_eq!(guard.size(), 256;
     }
 }

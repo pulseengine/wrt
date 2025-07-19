@@ -6,11 +6,11 @@
 
 // Decoder imports are optional during development
 // use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
 
 use wrt_foundation::{
@@ -41,7 +41,7 @@ use crate::memory_adapter::StdMemoryProvider;
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::format;
 
 // String type for runtime - use std::string::String or BoundedString
@@ -55,8 +55,8 @@ pub trait RuntimeModuleBuilder {
     type Module;
     
     fn new() -> Self;
-    fn set_name(&mut self, name: String);
-    fn set_start(&mut self, start_func: u32);
+    fn set_name(&mut self, name: String;
+    fn set_start(&mut self, start_func: u32;
     fn add_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32>;
     fn add_function_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32>;
     fn add_import(&mut self, import: WrtImport) -> Result<u32>;
@@ -147,7 +147,7 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         use crate::module::{Function, WrtExpr};
         
         // Convert BoundedVec to slice for parsing
-        let bytecode_slice = body.as_slice();
+        let bytecode_slice = body.as_slice(;
         
         // For now, create empty function with proper types
         // TODO: Implement proper bytecode parsing with compatible types
@@ -202,7 +202,7 @@ fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::Bo
     let mut locals = BoundedVec::new(provider)?;
     
     if bytecode.is_empty() {
-        return Ok(locals);
+        return Ok(locals;
     }
     
     let mut offset = 0;
@@ -214,7 +214,7 @@ fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::Bo
     // Parse each local entry
     for _ in 0..local_count {
         if offset >= bytecode.len() {
-            return Err(Error::parse_error("Unexpected end of bytecode while parsing locals"));
+            return Err(Error::parse_error("Unexpected end of bytecode while parsing locals";
         }
         
         // Read count of this local type
@@ -222,7 +222,7 @@ fn parse_locals_from_body(bytecode: &[u8]) -> Result<wrt_foundation::bounded::Bo
         offset += consumed;
         
         if offset >= bytecode.len() {
-            return Err(Error::parse_error("Unexpected end of bytecode while parsing local type"));
+            return Err(Error::parse_error("Unexpected end of bytecode while parsing local type";
         }
         
         // Read value type
@@ -250,7 +250,7 @@ fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
     
     loop {
         if offset + consumed >= bytecode.len() {
-            return Err(Error::parse_error("Unexpected end of bytecode while reading LEB128"));
+            return Err(Error::parse_error("Unexpected end of bytecode while reading LEB128";
         }
         
         let byte = bytecode[offset + consumed];
@@ -264,7 +264,7 @@ fn read_leb128_u32(bytecode: &[u8], offset: usize) -> Result<(u32, usize)> {
         
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 value too large"));
+            return Err(Error::parse_error("LEB128 value too large";
         }
     }
     

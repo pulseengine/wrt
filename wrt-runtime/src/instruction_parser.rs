@@ -28,7 +28,7 @@ pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
     let mut offset = 0;
     while offset < bytecode.len() {
         let (instruction, consumed) = parse_instruction(bytecode, offset)?;
-        let is_end = matches!(instruction, Instruction::End);
+        let is_end = matches!(instruction, Instruction::End;
         instructions.push(instruction).map_err(|_| {
             Error::capacity_limit_exceeded("Too many instructions in function")
         })?;
@@ -46,7 +46,7 @@ pub fn parse_instructions(bytecode: &[u8]) -> Result<InstructionVec> {
 /// Parse a single instruction from bytecode
 fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<InstructionProvider>, usize)> {
     if offset >= bytecode.len() {
-        return Err(Error::parse_error("Unexpected end of bytecode"));
+        return Err(Error::parse_error("Unexpected end of bytecode";
     }
     
     let opcode = bytecode[offset];
@@ -60,21 +60,21 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<Inst
             // Block with block type
             let block_type = parse_block_type(bytecode, offset + 1)?;
             consumed += 1; // Simplified - actual block type parsing may consume more
-            let block_type_idx = block_type_to_index(&block_type);
+            let block_type_idx = block_type_to_index(&block_type;
             Instruction::Block { block_type_idx }
         }
         0x03 => {
             // Loop with block type
             let block_type = parse_block_type(bytecode, offset + 1)?;
             consumed += 1;
-            let block_type_idx = block_type_to_index(&block_type);
+            let block_type_idx = block_type_to_index(&block_type;
             Instruction::Loop { block_type_idx }
         }
         0x04 => {
             // If with block type
             let block_type = parse_block_type(bytecode, offset + 1)?;
             consumed += 1;
-            let block_type_idx = block_type_to_index(&block_type);
+            let block_type_idx = block_type_to_index(&block_type;
             Instruction::If { block_type_idx }
         }
         0x05 => Instruction::Else,
@@ -261,7 +261,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<Inst
         }
         0x43 => {
             if offset + 5 > bytecode.len() {
-                return Err(Error::parse_error("F32 constant extends beyond bytecode"));
+                return Err(Error::parse_error("F32 constant extends beyond bytecode";
             }
             let bytes = [bytecode[offset + 1], bytecode[offset + 2], bytecode[offset + 3], bytecode[offset + 4]];
             let value = u32::from_le_bytes(bytes); // Use bit representation
@@ -270,10 +270,10 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<Inst
         }
         0x44 => {
             if offset + 9 > bytecode.len() {
-                return Err(Error::parse_error("F64 constant extends beyond bytecode"));
+                return Err(Error::parse_error("F64 constant extends beyond bytecode";
             }
             let mut bytes = [0u8; 8];
-            bytes.copy_from_slice(&bytecode[offset + 1..offset + 9]);
+            bytes.copy_from_slice(&bytecode[offset + 1..offset + 9];
             let value = u64::from_le_bytes(bytes); // Use bit representation
             consumed += 8;
             Instruction::F64Const(value)
@@ -368,7 +368,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<Inst
         0xBB => Instruction::F64PromoteF32,
         
         _ => {
-            return Err(Error::parse_error("Unknown instruction opcode"));
+            return Err(Error::parse_error("Unknown instruction opcode";
         }
     };
     
@@ -378,7 +378,7 @@ fn parse_instruction(bytecode: &[u8], offset: usize) -> Result<(Instruction<Inst
 /// Parse a block type
 fn parse_block_type(bytecode: &[u8], offset: usize) -> Result<BlockType> {
     if offset >= bytecode.len() {
-        return Err(Error::parse_error("Unexpected end while parsing block type"));
+        return Err(Error::parse_error("Unexpected end while parsing block type";
     }
     
     match bytecode[offset] {
@@ -408,7 +408,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     
     loop {
         if offset + consumed >= data.len() {
-            return Err(Error::parse_error("Unexpected end of data while reading LEB128"));
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128";
         }
         
         let byte = data[offset + consumed];
@@ -422,7 +422,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
         
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 value too large for u32"));
+            return Err(Error::parse_error("LEB128 value too large for u32";
         }
     }
     
@@ -438,7 +438,7 @@ fn read_leb128_i32(data: &[u8], offset: usize) -> Result<(i32, usize)> {
     
     loop {
         if offset + consumed >= data.len() {
-            return Err(Error::parse_error("Unexpected end of data while reading LEB128"));
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128";
         }
         
         byte = data[offset + consumed];
@@ -469,7 +469,7 @@ fn read_leb128_i64(data: &[u8], offset: usize) -> Result<(i64, usize)> {
     
     loop {
         if offset + consumed >= data.len() {
-            return Err(Error::parse_error("Unexpected end of data while reading LEB128"));
+            return Err(Error::parse_error("Unexpected end of data while reading LEB128";
         }
         
         byte = data[offset + consumed];

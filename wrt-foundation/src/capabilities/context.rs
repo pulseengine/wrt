@@ -125,15 +125,15 @@ impl MemoryCapabilityContext {
         max_allocation: usize,
     ) -> Result<()> {
         let capability =
-            DynamicMemoryCapability::new(max_allocation, crate_id, self.default_verification_level);
-        let boxed_capability = Box::new(capability);
+            DynamicMemoryCapability::new(max_allocation, crate_id, self.default_verification_level;
+        let boxed_capability = Box::new(capability;
         self.register_capability(crate_id, boxed_capability)
     }
 
     /// Register a static memory capability for a crate
     pub fn register_static_capability<const N: usize>(&mut self, crate_id: CrateId) -> Result<()> {
         let capability =
-            StaticMemoryCapability::<N>::new(crate_id, self.default_verification_level);
+            StaticMemoryCapability::<N>::new(crate_id, self.default_verification_level;
 
         self.register_capability(crate_id, Box::new(capability))
     }
@@ -161,14 +161,14 @@ impl MemoryCapabilityContext {
         let mut inserted = false;
         for (key, value) in self.capabilities.iter_mut() {
             if key.is_none() || *key == Some(crate_id) {
-                *key = Some(crate_id);
-                *value = Some(capability);
+                *key = Some(crate_id;
+                *value = Some(capability;
                 inserted = true;
                 break;
             }
         }
         if !inserted {
-            return Err(memory_limit_exceeded_error("Maximum number of capabilities exceeded"));
+            return Err(memory_limit_exceeded_error("Maximum number of capabilities exceeded";
         }
 
         Ok(())
@@ -180,7 +180,7 @@ impl MemoryCapabilityContext {
         for (key, value) in self.capabilities.iter() {
             if *key == Some(crate_id) {
                 if let Some(ref cap) = value {
-                    return Ok(cap.as_ref());
+                    return Ok(cap.as_ref(;
                 }
             }
         }
@@ -207,7 +207,7 @@ impl MemoryCapabilityContext {
             }
         }
         if !found {
-            return Err(Error::no_capability("No capability found for crate"));
+            return Err(Error::no_capability("No capability found for crate";
         }
         Ok(())
     }
@@ -233,7 +233,7 @@ impl MemoryCapabilityContext {
         for (crate_id, value) in self.capabilities.iter() {
             if index < MAX_CAPABILITIES {
                 if let (Some(id), Some(_)) = (crate_id, value) {
-                    result[index] = Some(*id);
+                    result[index] = Some(*id;
                     index += 1;
                 }
             } else {
@@ -271,7 +271,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         capability.verify_access(&operation)?;
 
         if capability.max_allocation_size() < N {
-            return Err(Error::capability_violation("Provider size exceeds capability limit"));
+            return Err(Error::capability_violation("Provider size exceeds capability limit";
         }
 
         Ok(Self { capability, _phantom: PhantomData })
@@ -362,53 +362,53 @@ mod tests {
 
     #[test]
     fn test_capability_context_creation() {
-        let context = MemoryCapabilityContext::default();
-        assert_eq!(context.capability_count(), 0);
-        assert!(!context.has_capability(CrateId::Foundation));
+        let context = MemoryCapabilityContext::default(;
+        assert_eq!(context.capability_count(), 0;
+        assert!(!context.has_capability(CrateId::Foundation);
     }
 
     #[test]
     fn test_dynamic_capability_registration() {
-        let mut context = MemoryCapabilityContext::default();
+        let mut context = MemoryCapabilityContext::default(;
 
-        assert!(context.register_dynamic_capability(CrateId::Foundation, 1024).is_ok());
-        assert!(context.has_capability(CrateId::Foundation));
-        assert_eq!(context.capability_count(), 1);
+        assert!(context.register_dynamic_capability(CrateId::Foundation, 1024).is_ok();
+        assert!(context.has_capability(CrateId::Foundation);
+        assert_eq!(context.capability_count(), 1;
     }
 
     #[test]
     fn test_static_capability_registration() {
-        let mut context = MemoryCapabilityContext::default();
+        let mut context = MemoryCapabilityContext::default(;
 
-        assert!(context.register_static_capability::<4096>(CrateId::Runtime).is_ok());
-        assert!(context.has_capability(CrateId::Runtime));
+        assert!(context.register_static_capability::<4096>(CrateId::Runtime).is_ok();
+        assert!(context.has_capability(CrateId::Runtime);
 
         let capability = context.get_capability(CrateId::Runtime).unwrap();
-        assert_eq!(capability.max_allocation_size(), 4096);
+        assert_eq!(capability.max_allocation_size(), 4096;
     }
 
     #[test]
     fn test_operation_verification() {
-        let mut context = MemoryCapabilityContext::default();
+        let mut context = MemoryCapabilityContext::default(;
         context.register_dynamic_capability(CrateId::Foundation, 1000).unwrap();
 
         let valid_op = MemoryOperation::Allocate { size: 500 };
-        assert!(context.verify_operation(CrateId::Foundation, &valid_op).is_ok());
+        assert!(context.verify_operation(CrateId::Foundation, &valid_op).is_ok();
 
         let invalid_op = MemoryOperation::Allocate { size: 2000 };
-        assert!(context.verify_operation(CrateId::Foundation, &invalid_op).is_err());
+        assert!(context.verify_operation(CrateId::Foundation, &invalid_op).is_err();
     }
 
     #[test]
     fn test_capability_guarded_provider() {
-        let mut context = MemoryCapabilityContext::default();
+        let mut context = MemoryCapabilityContext::default(;
         context.register_dynamic_capability(CrateId::Foundation, 8192).unwrap();
 
-        let provider = context.create_provider::<4096>(CrateId::Foundation);
-        assert!(provider.is_ok());
+        let provider = context.create_provider::<4096>(CrateId::Foundation;
+        assert!(provider.is_ok();
 
         let provider = provider.unwrap();
-        assert_eq!(provider.size(), 4096);
+        assert_eq!(provider.size(), 4096;
     }
 
     #[test]
@@ -416,9 +416,9 @@ mod tests {
         let context = CapabilityContextBuilder::new()
             .with_verification_level(VerificationLevel::Redundant)
             .with_runtime_verification(true)
-            .build();
+            .build(;
 
-        assert_eq!(context.default_verification_level, VerificationLevel::Redundant);
+        assert_eq!(context.default_verification_level, VerificationLevel::Redundant;
         assert!(context.runtime_verification);
     }
 }

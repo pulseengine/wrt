@@ -27,10 +27,10 @@ use wrt_instructions::conversion_ops::{ConversionOp, ConversionContext};
 use wrt_instructions::prelude::PureInstruction;
 
 // Imports for no_std compatibility
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 #[cfg(feature = "std")] 
 use std::{sync::Mutex, vec, vec::Vec, collections::BTreeMap as HashMap, boxed::Box};
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec, collections::BTreeMap as HashMap, boxed::Box};
 
 // Import memory provider
@@ -39,7 +39,7 @@ use wrt_foundation::traits::DefaultMemoryProvider;
 // For no_std, we'll use a simple wrapper instead of Mutex
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
-pub struct Mutex<T>(core::cell::RefCell<T>);
+pub struct Mutex<T>(core::cell::RefCell<T>;
 
 #[cfg(not(feature = "std"))]
 impl<T> Mutex<T> {
@@ -269,7 +269,7 @@ impl StacklessStack {
     /// Creates a new `StacklessStack` with the given module.
     #[must_use]
     pub fn new(module: Arc<Module>, instance_idx: usize) -> Self {
-        let provider = DefaultMemoryProvider::default();
+        let provider = DefaultMemoryProvider::default(;
         Self {
             values: BoundedVec::new(provider.clone()).unwrap(),
             labels: BoundedVec::new(provider).unwrap(),
@@ -291,7 +291,7 @@ impl StacklessStack {
 
     /// Set the module reference for this stack
     pub fn set_module(&mut self, module: Arc<Module>) {
-        self.module = Some(module);
+        self.module = Some(module;
     }
 }
 
@@ -304,14 +304,14 @@ impl Default for StacklessEngine {
 impl StacklessEngine {
     /// Creates a new stackless execution engine
     pub fn new() -> Self {
-        let provider = DefaultMemoryProvider::default();
+        let provider = DefaultMemoryProvider::default(;
         
         // Create empty collections that will work for basic operations
         // The actual memory management will be handled by the capability system
-        let values = BoundedVec::default();
-        let labels = BoundedVec::default();
-        let operand_stack = BoundedVec::default();
-        let locals = BoundedVec::default();
+        let values = BoundedVec::default(;
+        let labels = BoundedVec::default(;
+        let operand_stack = BoundedVec::default(;
+        let locals = BoundedVec::default(;
         
         Self {
             exec_stack: StacklessStack {
@@ -361,7 +361,7 @@ impl StacklessEngine {
     /// Consume fuel for an operation with automatic recording
     pub fn consume_fuel(&mut self, op_type: wrt_foundation::operations::Type) -> Result<()> {
         // Always record the operation for tracking, regardless of fuel setting
-        wrt_foundation::operations::record_global_operation(op_type, self.verification_level);
+        wrt_foundation::operations::record_global_operation(op_type, self.verification_level;
         
         // If fuel tracking is enabled, consume fuel
         if let Some(fuel) = &mut self.fuel {
@@ -371,7 +371,7 @@ impl StacklessEngine {
             )?;
             
             if *fuel < cost {
-                return Err(Error::runtime_execution_error("Fuel exhausted"));
+                return Err(Error::runtime_execution_error("Fuel exhausted";
             }
             
             *fuel -= cost;
@@ -431,7 +431,7 @@ impl StacklessEngine {
         // Store the module instance as the current module
         // In a full implementation, we'd store multiple instances
         // For now, we store the most recent one as current
-        self.current_module = Some(Arc::new(module_instance));
+        self.current_module = Some(Arc::new(module_instance;
         
         Ok(instance_idx)
     }
@@ -447,7 +447,7 @@ impl StacklessEngine {
         self.ensure_initialized()?;
         
         // Store the module instance reference
-        self.current_module = Some(instance);
+        self.current_module = Some(instance;
         self.instance_count += 1;
         Ok(self.instance_count as u32 - 1)
     }
@@ -468,7 +468,7 @@ impl StacklessEngine {
         // ASIL-B: Bounds check memory index
         if memory_idx > 0 {
             // Multi-memory support - validate index
-            return Err(Error::memory_not_found("Memory index out of bounds"));
+            return Err(Error::memory_not_found("Memory index out of bounds";
         }
         
         // Get memory with error propagation
@@ -479,7 +479,7 @@ impl StacklessEngine {
     fn execute_memory_load(&mut self, mem_op: MemoryLoad, memory_idx: u32) -> Result<()> {
         // ASIL-B: Get memory with safety checks
         let memory_wrapper = self.get_memory_safe(memory_idx)?;
-        let memory = memory_wrapper.inner();
+        let memory = memory_wrapper.inner(;
         
         // Pop the address from the stack
         let addr_value = self.pop_control_value()?;
@@ -496,7 +496,7 @@ impl StacklessEngine {
         let result = mem_op.execute(memory.as_ref(), &Value::I32(effective_addr as i32))?;
         
         // Update statistics
-        self.stats.increment_memory_reads(1);
+        self.stats.increment_memory_reads(1;
         
         // Push result to stack
         self.push_control_value(result)
@@ -527,50 +527,50 @@ impl StacklessEngine {
                 if let Value::I32(val) = value {
                     memory_wrapper.write_i32(effective_addr, val)?;
                 } else {
-                    return Err(Error::type_error("Expected i32 value"));
+                    return Err(Error::type_error("Expected i32 value";
                 }
             },
             wrt_instructions::ValueType::I64 => {
                 if let Value::I64(val) = value {
                     memory_wrapper.write_i64(effective_addr, val)?;
                 } else {
-                    return Err(Error::type_error("Expected i64 value"));
+                    return Err(Error::type_error("Expected i64 value";
                 }
             },
             wrt_instructions::ValueType::F32 => {
                 if let Value::F32(val) = value {
                     memory_wrapper.write_f32(effective_addr, f32::from_bits(val.to_bits()))?;
                 } else {
-                    return Err(Error::type_error("Expected f32 value"));
+                    return Err(Error::type_error("Expected f32 value";
                 }
             },
             wrt_instructions::ValueType::F64 => {
                 if let Value::F64(val) = value {
                     memory_wrapper.write_f64(effective_addr, f64::from_bits(val.to_bits()))?;
                 } else {
-                    return Err(Error::type_error("Expected f64 value"));
+                    return Err(Error::type_error("Expected f64 value";
                 }
             },
             _ => {
-                return Err(Error::runtime_execution_error("Unsupported data type for memory store"));
+                return Err(Error::runtime_execution_error("Unsupported data type for memory store";
             }
         }
         
         // Update statistics
-        self.stats.increment_memory_writes(1);
+        self.stats.increment_memory_writes(1;
         
         Ok(())
     }
     
     /// Create a new stackless execution engine with a module
     pub fn new_with_module(module: crate::module::Module) -> Result<Self> {
-        let mut engine = Self::new();
+        let mut engine = Self::new(;
         let instance_idx = engine.instantiate(module)?;
         
         // Initialize the execution stack with the instantiated module
         if let Some(ref current_module) = engine.current_module {
             let arc_module = current_module.module().clone();
-            engine.exec_stack = StacklessStack::new(arc_module, instance_idx);
+            engine.exec_stack = StacklessStack::new(arc_module, instance_idx;
         }
         
         Ok(engine)
@@ -584,8 +584,8 @@ impl StacklessEngine {
         self.exec_stack.pc = 0;
         
         // Clear the operand stack and initialize locals with function arguments
-        self.exec_stack.values.clear();
-        self.locals.clear();
+        self.exec_stack.values.clear(;
+        self.locals.clear(;
         
         // Initialize local variables with function parameters
         for arg in args {
@@ -609,7 +609,7 @@ impl StacklessEngine {
         loop {
             instruction_count += 1;
             if instruction_count >= MAX_INSTRUCTIONS {
-                return Err(Error::runtime_execution_error("Instruction limit exceeded"));
+                return Err(Error::runtime_execution_error("Instruction limit exceeded";
             }
             
             match &self.exec_stack.state {
@@ -630,10 +630,10 @@ impl StacklessEngine {
                             // Increment program counter
                             self.exec_stack.pc += 1;
                         } else {
-                            return Err(Error::runtime_execution_error("Invalid function index"));
+                            return Err(Error::runtime_execution_error("Invalid function index";
                         }
                     } else {
-                        return Err(Error::runtime_execution_error("No module available for execution"));
+                        return Err(Error::runtime_execution_error("No module available for execution";
                     }
                 }
                 StacklessExecutionState::Completed | StacklessExecutionState::Finished => {
@@ -641,7 +641,7 @@ impl StacklessEngine {
                     break;
                 }
                 StacklessExecutionState::Error(ref error) => {
-                    return Err(error.clone());
+                    return Err(error.clone();
                 }
                 StacklessExecutionState::Calling { instance_idx, func_idx, args, return_pc } => {
                     // We've just entered a new function
@@ -685,12 +685,12 @@ impl StacklessEngine {
     
     /// Collect results from the operand stack
     fn collect_results(&mut self) -> Result<Vec<Value>> {
-        let mut results = Vec::new();
+        let mut results = Vec::new(;
         
         // Get the function type to determine expected results
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(self.exec_stack.func_idx as usize) {
-                let result_count = func_type.results.len();
+                let result_count = func_type.results.len(;
                 
                 // Pop results from stack (in reverse order)
                 for _ in 0..result_count {
@@ -700,7 +700,7 @@ impl StacklessEngine {
                         }
                         None => {
                             // If not enough values, return a default value
-                            results.insert(0, Value::I32(0));
+                            results.insert(0, Value::I32(0;
                         }
                     }
                 }
@@ -710,7 +710,7 @@ impl StacklessEngine {
         // If no function type found or no results expected, return what's on the stack
         if results.is_empty() {
             while let Ok(Some(value)) = self.exec_stack.values.pop() {
-                results.insert(0, value);
+                results.insert(0, value;
             }
         }
         
@@ -735,21 +735,21 @@ impl StacklessEngine {
                 // block
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 let block_type = self.read_block_type(code)?;
-                let block = Block::Block(block_type);
+                let block = Block::Block(block_type;
                 self.enter_block(block)
             }
             0x03 => {
                 // loop
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 let block_type = self.read_block_type(code)?;
-                let block = Block::Loop(block_type);
+                let block = Block::Loop(block_type;
                 self.enter_block(block)
             }
             0x04 => {
                 // if
                 self.consume_instruction_fuel(InstructionFuelType::SimpleControl)?;
                 let block_type = self.read_block_type(code)?;
-                let block = Block::If(block_type);
+                let block = Block::If(block_type;
                 self.enter_block(block)
             }
             0x05 => {
@@ -1017,11 +1017,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::validation_error("Invalid alignment for i32.load"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load";
                 }
                 
                 // Create memory load operation
-                let mem_op = MemoryLoad::i32_legacy(offset, 1u32 << align);
+                let mem_op = MemoryLoad::i32_legacy(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1035,11 +1035,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for i64
-                    return Err(Error::validation_error("Invalid alignment for i64.load"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load";
                 }
                 
                 // Create memory load operation
-                let mem_op = MemoryLoad::i64(offset, 1u32 << align);
+                let mem_op = MemoryLoad::i64(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1053,11 +1053,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for f32
-                    return Err(Error::validation_error("Invalid alignment for f32.load"));
+                    return Err(Error::validation_error("Invalid alignment for f32.load";
                 }
                 
                 // Create memory load operation
-                let mem_op = MemoryLoad::f32(offset, 1u32 << align);
+                let mem_op = MemoryLoad::f32(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1071,11 +1071,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for f64
-                    return Err(Error::validation_error("Invalid alignment for f64.load"));
+                    return Err(Error::validation_error("Invalid alignment for f64.load";
                 }
                 
                 // Create memory load operation
-                let mem_op = MemoryLoad::f64(offset, 1u32 << align);
+                let mem_op = MemoryLoad::f64(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1089,11 +1089,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::validation_error("Invalid alignment for i32.load8_s"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load8_s";
                 }
                 
                 // Create memory load operation (signed 8-bit)
-                let mem_op = MemoryLoad::i32_load8(offset, 1u32 << align, true);
+                let mem_op = MemoryLoad::i32_load8(offset, 1u32 << align, true;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1107,11 +1107,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::validation_error("Invalid alignment for i32.load8_u"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load8_u";
                 }
                 
                 // Create memory load operation (unsigned 8-bit)
-                let mem_op = MemoryLoad::i32_load8(offset, 1u32 << align, false);
+                let mem_op = MemoryLoad::i32_load8(offset, 1u32 << align, false;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1125,11 +1125,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::validation_error("Invalid alignment for i32.load16_s"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load16_s";
                 }
                 
                 // Create memory load operation (signed 16-bit)
-                let mem_op = MemoryLoad::i32_load16(offset, 1u32 << align, true);
+                let mem_op = MemoryLoad::i32_load16(offset, 1u32 << align, true;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1143,11 +1143,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::validation_error("Invalid alignment for i32.load16_u"));
+                    return Err(Error::validation_error("Invalid alignment for i32.load16_u";
                 }
                 
                 // Create memory load operation (unsigned 16-bit)
-                let mem_op = MemoryLoad::i32_load16(offset, 1u32 << align, false);
+                let mem_op = MemoryLoad::i32_load16(offset, 1u32 << align, false;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1161,11 +1161,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::validation_error("Invalid alignment for i64.load8_s"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load8_s";
                 }
                 
                 // Create memory load operation (signed 8-bit to i64)
-                let mem_op = MemoryLoad::i64_load8(offset, 1u32 << align, true);
+                let mem_op = MemoryLoad::i64_load8(offset, 1u32 << align, true;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1179,11 +1179,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::validation_error("Invalid alignment for i64.load8_u"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load8_u";
                 }
                 
                 // Create memory load operation (unsigned 8-bit to i64)
-                let mem_op = MemoryLoad::i64_load8(offset, 1u32 << align, false);
+                let mem_op = MemoryLoad::i64_load8(offset, 1u32 << align, false;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1197,11 +1197,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::validation_error("Invalid alignment for i64.load16_s"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load16_s";
                 }
                 
                 // Create memory load operation (signed 16-bit to i64)
-                let mem_op = MemoryLoad::i64_load16(offset, 1u32 << align, true);
+                let mem_op = MemoryLoad::i64_load16(offset, 1u32 << align, true;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1215,11 +1215,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::validation_error("Invalid alignment for i64.load16_u"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load16_u";
                 }
                 
                 // Create memory load operation (unsigned 16-bit to i64)
-                let mem_op = MemoryLoad::i64_load16(offset, 1u32 << align, false);
+                let mem_op = MemoryLoad::i64_load16(offset, 1u32 << align, false;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1233,11 +1233,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::validation_error("Invalid alignment for i64.load32_s"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load32_s";
                 }
                 
                 // Create memory load operation (signed 32-bit to i64)
-                let mem_op = MemoryLoad::i64_load32(offset, 1u32 << align, true);
+                let mem_op = MemoryLoad::i64_load32(offset, 1u32 << align, true;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1251,11 +1251,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::validation_error("Invalid alignment for i64.load32_u"));
+                    return Err(Error::validation_error("Invalid alignment for i64.load32_u";
                 }
                 
                 // Create memory load operation (unsigned 32-bit to i64)
-                let mem_op = MemoryLoad::i64_load32(offset, 1u32 << align, false);
+                let mem_op = MemoryLoad::i64_load32(offset, 1u32 << align, false;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_load(mem_op, 0)
@@ -1269,11 +1269,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::validation_error("Invalid alignment for i32.store"));
+                    return Err(Error::validation_error("Invalid alignment for i32.store";
                 }
                 
                 // Create memory store operation
-                let mem_op = MemoryStore::i32(offset, 1u32 << align);
+                let mem_op = MemoryStore::i32(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1287,11 +1287,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for i64
-                    return Err(Error::validation_error("Invalid alignment for i64.store"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store";
                 }
                 
                 // Create memory store operation
-                let mem_op = MemoryStore::i64(offset, 1u32 << align);
+                let mem_op = MemoryStore::i64(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1305,11 +1305,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for f32
-                    return Err(Error::validation_error("Invalid alignment for f32.store"));
+                    return Err(Error::validation_error("Invalid alignment for f32.store";
                 }
                 
                 // Create memory store operation
-                let mem_op = MemoryStore::f32(offset, 1u32 << align);
+                let mem_op = MemoryStore::f32(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1323,11 +1323,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 3 { // 2^3 = 8 bytes max for f64
-                    return Err(Error::validation_error("Invalid alignment for f64.store"));
+                    return Err(Error::validation_error("Invalid alignment for f64.store";
                 }
                 
                 // Create memory store operation
-                let mem_op = MemoryStore::f64(offset, 1u32 << align);
+                let mem_op = MemoryStore::f64(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1341,11 +1341,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::validation_error("Invalid alignment for i32.store8"));
+                    return Err(Error::validation_error("Invalid alignment for i32.store8";
                 }
                 
                 // Create memory store operation (8-bit)
-                let mem_op = MemoryStore::i32_store8(offset, 1u32 << align);
+                let mem_op = MemoryStore::i32_store8(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1359,11 +1359,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::validation_error("Invalid alignment for i32.store16"));
+                    return Err(Error::validation_error("Invalid alignment for i32.store16";
                 }
                 
                 // Create memory store operation (16-bit)
-                let mem_op = MemoryStore::i32_store16(offset, 1u32 << align);
+                let mem_op = MemoryStore::i32_store16(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1377,11 +1377,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 0 { // 2^0 = 1 byte max for i8
-                    return Err(Error::validation_error("Invalid alignment for i64.store8"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store8";
                 }
                 
                 // Create memory store operation (8-bit from i64)
-                let mem_op = MemoryStore::i64_store8(offset, 1u32 << align);
+                let mem_op = MemoryStore::i64_store8(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1395,11 +1395,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 1 { // 2^1 = 2 bytes max for i16
-                    return Err(Error::validation_error("Invalid alignment for i64.store16"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store16";
                 }
                 
                 // Create memory store operation (16-bit from i64)
-                let mem_op = MemoryStore::i64_store16(offset, 1u32 << align);
+                let mem_op = MemoryStore::i64_store16(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1413,11 +1413,11 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate alignment is power of 2 and within bounds
                 if align > 2 { // 2^2 = 4 bytes max for i32
-                    return Err(Error::validation_error("Invalid alignment for i64.store32"));
+                    return Err(Error::validation_error("Invalid alignment for i64.store32";
                 }
                 
                 // Create memory store operation (32-bit from i64)
-                let mem_op = MemoryStore::i64_store32(offset, 1u32 << align);
+                let mem_op = MemoryStore::i64_store32(offset, 1u32 << align;
                 
                 // Execute the memory operation directly with proper error handling
                 self.execute_memory_store(mem_op, 0)
@@ -1430,7 +1430,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate memory index
                 if mem_idx != 0 {
-                    return Err(Error::memory_not_found("Invalid memory index"));
+                    return Err(Error::memory_not_found("Invalid memory index";
                 }
                 
                 // Get memory with safety checks
@@ -1448,7 +1448,7 @@ impl StacklessEngine {
                 
                 // ASIL-B: Validate memory index
                 if mem_idx != 0 {
-                    return Err(Error::memory_not_found("Invalid memory index"));
+                    return Err(Error::memory_not_found("Invalid memory index";
                 }
                 
                 // Pop delta pages from stack
@@ -1457,7 +1457,7 @@ impl StacklessEngine {
                     Value::I32(d) => {
                         // ASIL-B: Validate non-negative growth
                         if d < 0 {
-                            return Err(Error::runtime_invalid_parameter("Memory grow delta must be non-negative"));
+                            return Err(Error::runtime_invalid_parameter("Memory grow delta must be non-negative";
                         }
                         d as u32
                     },
@@ -2553,7 +2553,7 @@ impl StacklessEngine {
     fn read_block_type(&mut self, code: &[u8]) -> Result<wrt_foundation::BlockType> {
         self.exec_stack.pc += 1;
         if self.exec_stack.pc >= code.len() {
-            return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading block type"));
+            return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading block type";
         }
         
         let byte = code[self.exec_stack.pc];
@@ -2574,7 +2574,7 @@ impl StacklessEngine {
     /// Read single byte from bytecode
     fn read_u8(&mut self, code: &[u8]) -> Result<u8> {
         if self.exec_stack.pc >= code.len() {
-            return Err(Error::runtime_execution_error("Insufficient data for u8"));
+            return Err(Error::runtime_execution_error("Insufficient data for u8";
         }
         
         let byte = code[self.exec_stack.pc];
@@ -2585,7 +2585,7 @@ impl StacklessEngine {
     /// Read 32-bit float from bytecode
     fn read_f32(&mut self, code: &[u8]) -> Result<f32> {
         if self.exec_stack.pc + 4 >= code.len() {
-            return Err(Error::runtime_execution_error("Insufficient data for f32 constant"));
+            return Err(Error::runtime_execution_error("Insufficient data for f32 constant";
         }
         
         let bytes = [
@@ -2602,11 +2602,11 @@ impl StacklessEngine {
     /// Read 64-bit float from bytecode
     fn read_f64(&mut self, code: &[u8]) -> Result<f64> {
         if self.exec_stack.pc + 8 >= code.len() {
-            return Err(Error::runtime_execution_error("Insufficient data for f64 constant"));
+            return Err(Error::runtime_execution_error("Insufficient data for f64 constant";
         }
         
         let mut bytes = [0u8; 8];
-        bytes.copy_from_slice(&code[self.exec_stack.pc + 1..self.exec_stack.pc + 9]);
+        bytes.copy_from_slice(&code[self.exec_stack.pc + 1..self.exec_stack.pc + 9];
         self.exec_stack.pc += 8;
         
         Ok(f64::from_le_bytes(bytes))
@@ -2617,7 +2617,7 @@ impl StacklessEngine {
         // Read vector length
         let len = self.read_leb128_u32(code)?;
         
-        let mut targets = Vec::new();
+        let mut targets = Vec::new(;
         for _ in 0..len {
             let target = self.read_leb128_u32(code)?;
             targets.push(target);
@@ -2638,7 +2638,7 @@ impl StacklessEngine {
                     if label.kind == LabelKind::If {
                         // Convert if to else
                         label.kind = LabelKind::Block; // Treat else as a block
-                        return Ok(());
+                        return Ok((;
                     }
                 }
                 None => return Err(Error::runtime_execution_error("Label access error")),
@@ -2701,7 +2701,7 @@ impl StacklessEngine {
         loop {
             self.exec_stack.pc += 1;
             if self.exec_stack.pc >= code.len() {
-                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128"));
+                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128";
             }
             
             let byte = code[self.exec_stack.pc];
@@ -2713,7 +2713,7 @@ impl StacklessEngine {
             
             shift += 7;
             if shift >= 32 {
-                return Err(Error::runtime_execution_error("LEB128 value too large"));
+                return Err(Error::runtime_execution_error("LEB128 value too large";
             }
         }
         
@@ -2728,7 +2728,7 @@ impl StacklessEngine {
         loop {
             self.exec_stack.pc += 1;
             if self.exec_stack.pc >= code.len() {
-                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128"));
+                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128";
             }
             
             let byte = code[self.exec_stack.pc];
@@ -2737,14 +2737,14 @@ impl StacklessEngine {
             if (byte & 0x80) == 0 {
                 // Sign extend if necessary
                 if shift < 32 && (byte & 0x40) != 0 {
-                    result |= (!0i32) << (shift + 7);
+                    result |= (!0i32) << (shift + 7;
                 }
                 break;
             }
             
             shift += 7;
             if shift >= 32 {
-                return Err(Error::runtime_execution_error("LEB128 value too large"));
+                return Err(Error::runtime_execution_error("LEB128 value too large";
             }
         }
         
@@ -2759,7 +2759,7 @@ impl StacklessEngine {
         loop {
             self.exec_stack.pc += 1;
             if self.exec_stack.pc >= code.len() {
-                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128"));
+                return Err(Error::runtime_execution_error("Unexpected end of bytecode while reading LEB128";
             }
             
             let byte = code[self.exec_stack.pc];
@@ -2768,14 +2768,14 @@ impl StacklessEngine {
             if (byte & 0x80) == 0 {
                 // Sign extend if necessary
                 if shift < 64 && (byte & 0x40) != 0 {
-                    result |= (!0i64) << (shift + 7);
+                    result |= (!0i64) << (shift + 7;
                 }
                 break;
             }
             
             shift += 7;
             if shift >= 64 {
-                return Err(Error::runtime_execution_error("LEB128 value too large"));
+                return Err(Error::runtime_execution_error("LEB128 value too large";
             }
         }
         
@@ -2963,7 +2963,7 @@ impl StacklessEngine {
                     };
                     
                     // Calculate effective address
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     // Get memory instance
                     if let Some(module_instance) = &self.current_module {
@@ -2974,10 +2974,10 @@ impl StacklessEngine {
                         memory.read(effective_addr, &mut bytes)?;
                         
                         // Convert to i32 and push
-                        let value = i32::from_le_bytes(bytes);
+                        let value = i32::from_le_bytes(bytes;
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3001,17 +3001,17 @@ impl StacklessEngine {
                     };
                     
                     // Calculate effective address
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     // Get memory instance
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?; // Memory index 0 for now
                         
                         // Write 4 bytes to memory
-                        let bytes = value_i32.to_le_bytes();
+                        let bytes = value_i32.to_le_bytes(;
                         memory.write(effective_addr, &bytes)?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3024,16 +3024,16 @@ impl StacklessEngine {
                         Value::I32(a) => a as u32,
                         _ => return Err(Error::type_error("Expected i32 address")),
                     };
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?;
                         let mut bytes = [0u8; 8];
                         memory.read(effective_addr, &mut bytes)?;
-                        let value = i64::from_le_bytes(bytes);
+                        let value = i64::from_le_bytes(bytes;
                         self.exec_stack.values.push(Value::I64(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3053,14 +3053,14 @@ impl StacklessEngine {
                         Value::I32(a) => a as u32,
                         _ => return Err(Error::type_error("Expected i32 address")),
                     };
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?;
-                        let bytes = value_i64.to_le_bytes();
+                        let bytes = value_i64.to_le_bytes(;
                         memory.write(effective_addr, &bytes)?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3070,7 +3070,7 @@ impl StacklessEngine {
                         let size = memory.size(); // Returns size in pages
                         self.exec_stack.values.push(Value::I32(size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3088,7 +3088,7 @@ impl StacklessEngine {
                         let prev_size = memory.grow(delta_u32)?;
                         self.exec_stack.values.push(Value::I32(prev_size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3097,13 +3097,13 @@ impl StacklessEngine {
                 wrt_foundation::types::Instruction::Call(func_idx) => {
                     // Get the function from the module
                     if let Some(module_instance) = &self.current_module {
-                        let module = module_instance.module();
+                        let module = module_instance.module(;
                         if let Some(function) = module.get_function(func_idx) {
                             // Get function type
                             if let Some(func_type) = module.get_function_type(function.type_idx) {
                             
                             // Pop arguments from stack
-                            let provider = DefaultMemoryProvider::default();
+                            let provider = DefaultMemoryProvider::default(;
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
@@ -3130,7 +3130,7 @@ impl StacklessEngine {
                             self.exec_stack.frame_count += 1;
                             
                             // Initialize locals with parameters
-                            self.locals.clear();
+                            self.locals.clear(;
                             for arg in &args {
                                 self.locals.push(arg.clone())?;
                             }
@@ -3157,13 +3157,13 @@ impl StacklessEngine {
                                 return_pc,
                             };
                             } else {
-                                return Err(Error::runtime_type_mismatch("Function type not found"));
+                                return Err(Error::runtime_type_mismatch("Function type not found";
                             }
                         } else {
-                            return Err(Error::runtime_function_not_found("Function not found"));
+                            return Err(Error::runtime_function_not_found("Function not found";
                         }
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3192,7 +3192,7 @@ impl StacklessEngine {
                         };
                         
                         // Validate function type matches expected type
-                        let module = module_instance.module();
+                        let module = module_instance.module(;
                         let expected_type = module.get_function_type(type_idx).ok_or_else(|| {
                             Error::type_error("Expected function type not found ")
                         })?;
@@ -3204,18 +3204,18 @@ impl StacklessEngine {
                         })?;
                         
                         if expected_type != actual_type {
-                            return Err(Error::type_error("Function type mismatch in indirect call"));
+                            return Err(Error::type_error("Function type mismatch in indirect call";
                         }
                         
                         // Now perform the call with the actual function index
                         // Duplicate the Call instruction logic
-                        let module = module_instance.module();
+                        let module = module_instance.module(;
                         if let Some(function) = module.get_function(actual_func_idx) {
                             // Get function type
                             if let Some(func_type) = module.get_function_type(function.type_idx) {
                             
                             // Pop arguments from stack
-                            let provider = DefaultMemoryProvider::default();
+                            let provider = DefaultMemoryProvider::default(;
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
@@ -3242,7 +3242,7 @@ impl StacklessEngine {
                             self.exec_stack.frame_count += 1;
                             
                             // Initialize locals with parameters
-                            self.locals.clear();
+                            self.locals.clear(;
                             for arg in &args {
                                 self.locals.push(arg.clone())?;
                             }
@@ -3269,13 +3269,13 @@ impl StacklessEngine {
                                 return_pc,
                             };
                             } else {
-                                return Err(Error::type_error("Function type not found for indirect call"));
+                                return Err(Error::type_error("Function type not found for indirect call";
                             }
                         } else {
-                            return Err(Error::runtime_function_not_found("Function not found in indirect call"));
+                            return Err(Error::runtime_function_not_found("Function not found in indirect call";
                         }
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3542,10 +3542,10 @@ impl StacklessEngine {
                         if let Some(value) = table.get(index_u32)? {
                             self.exec_stack.values.push(value)?;
                         } else {
-                            return Err(Error::runtime_null_reference("Table entry is null"));
+                            return Err(Error::runtime_null_reference("Table entry is null";
                         }
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3567,17 +3567,17 @@ impl StacklessEngine {
                         let table = module_instance.table(table_idx)?;
                         table.set(index_u32, Some(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
                 wrt_foundation::types::Instruction::TableSize(table_idx) => {
                     if let Some(module_instance) = &self.current_module {
                         let table = module_instance.table(table_idx)?;
-                        let size = table.size();
+                        let size = table.size(;
                         self.exec_stack.values.push(Value::I32(size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3599,7 +3599,7 @@ impl StacklessEngine {
                         let prev_size = table.grow(delta_u32, init_value)?;
                         self.exec_stack.values.push(Value::I32(prev_size as i32))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3613,7 +3613,7 @@ impl StacklessEngine {
                         Value::I32(a) => a as u32,
                         _ => return Err(Error::type_error("Expected i32 address")),
                     };
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?;
@@ -3622,7 +3622,7 @@ impl StacklessEngine {
                         let value = bytes[0] as i8 as i32; // Sign extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3634,7 +3634,7 @@ impl StacklessEngine {
                         Value::I32(a) => a as u32,
                         _ => return Err(Error::type_error("Expected i32 address")),
                     };
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?;
@@ -3643,7 +3643,7 @@ impl StacklessEngine {
                         let value = bytes[0] as i32; // Zero extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3655,7 +3655,7 @@ impl StacklessEngine {
                         Value::I32(a) => a as u32,
                         _ => return Err(Error::type_error("Expected i32 address")),
                     };
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?;
@@ -3664,7 +3664,7 @@ impl StacklessEngine {
                         let value = i16::from_le_bytes(bytes) as i32; // Sign extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3676,7 +3676,7 @@ impl StacklessEngine {
                         Value::I32(a) => a as u32,
                         _ => return Err(Error::type_error("Expected i32 address")),
                     };
-                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset);
+                    let effective_addr = addr_u32.wrapping_add(mem_arg.offset;
                     
                     if let Some(module_instance) = &self.current_module {
                         let memory = module_instance.memory(0)?;
@@ -3685,7 +3685,7 @@ impl StacklessEngine {
                         let value = u16::from_le_bytes(bytes) as i32; // Zero extend
                         self.exec_stack.values.push(Value::I32(value))?;
                     } else {
-                        return Err(Error::runtime_error("No module instance "));
+                        return Err(Error::runtime_error("No module instance ";
                     }
                     Ok(())
                 }
@@ -3729,13 +3729,13 @@ impl StacklessEngine {
                     }
                     wrt_foundation::types::Instruction::Else if depth == 1 => {
                         self.exec_stack.pc = pc;
-                        return Ok(());
+                        return Ok((;
                     }
                     wrt_foundation::types::Instruction::End => {
                         depth -= 1;
                         if depth == 0 {
                             self.exec_stack.pc = pc;
-                            return Ok(());
+                            return Ok((;
                         }
                     }
                     _ => {}
@@ -3764,7 +3764,7 @@ impl StacklessEngine {
                         depth -= 1;
                         if depth == 0 {
                             self.exec_stack.pc = pc;
-                            return Ok(());
+                            return Ok((;
                         }
                     }
                     _ => {}
@@ -3778,9 +3778,9 @@ impl StacklessEngine {
     
     /// Branch to a label at the given depth
     fn branch_to_label(&mut self, label_depth: u32) -> Result<()> {
-        let labels_len = self.exec_stack.labels.len();
+        let labels_len = self.exec_stack.labels.len(;
         if label_depth as usize >= labels_len {
-            return Err(Error::runtime_execution_error("Invalid label depth"));
+            return Err(Error::runtime_execution_error("Invalid label depth";
         }
         
         // Get the target label
@@ -3974,7 +3974,7 @@ impl ControlContext for StacklessEngine {
     /// Exit the current block
     fn exit_block(&mut self) -> Result<Block> {
         if self.exec_stack.labels.is_empty() {
-            return Err(Error::runtime_stack_underflow("No block to exit"));
+            return Err(Error::runtime_stack_underflow("No block to exit";
         }
         let last_idx = self.exec_stack.labels.len() - 1;
         let label = self.exec_stack.labels.remove(last_idx).map_err(|_| {
@@ -4011,7 +4011,7 @@ impl ControlContext for StacklessEngine {
                         })?;
                     }
                     None => {
-                        return Err(Error::runtime_stack_underflow("Not enough values for branch"));
+                        return Err(Error::runtime_stack_underflow("Not enough values for branch";
                     }
                 }
             }
@@ -4033,7 +4033,7 @@ impl ControlContext for StacklessEngine {
         // Get function type to determine return arity
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(self.exec_stack.func_idx as usize) {
-                let return_arity = func_type.results.len();
+                let return_arity = func_type.results.len(;
                 
                 // Pop the required number of return values from the stack
                 for _ in 0..return_arity {
@@ -4045,7 +4045,7 @@ impl ControlContext for StacklessEngine {
                             })?;
                         }
                         None => {
-                            return Err(Error::runtime_stack_underflow("Not enough values for function return"));
+                            return Err(Error::runtime_stack_underflow("Not enough values for function return";
                         }
                     }
                 }
@@ -4068,7 +4068,7 @@ impl ControlContext for StacklessEngine {
         // Get function type to determine parameter arity
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(func_idx as usize) {
-                let param_arity = func_type.params.len();
+                let param_arity = func_type.params.len(;
                 
                 // Pop the required number of arguments from the stack
                 for _ in 0..param_arity {
@@ -4080,7 +4080,7 @@ impl ControlContext for StacklessEngine {
                             })?;
                         }
                         None => {
-                            return Err(Error::runtime_stack_underflow("Not enough arguments for function call"));
+                            return Err(Error::runtime_stack_underflow("Not enough arguments for function call";
                         }
                     }
                 }
@@ -4104,7 +4104,7 @@ impl ControlContext for StacklessEngine {
         })?;
         
         if func_idx < 0 {
-            return Err(Error::runtime_error("Invalid function index for call_indirect"));
+            return Err(Error::runtime_error("Invalid function index for call_indirect";
         }
         
         // Execute indirect call with validation
@@ -4118,12 +4118,12 @@ impl ControlContext for StacklessEngine {
         
         // Validate function exists in current module before tail call
         if let Some(module_instance) = &self.current_module {
-            let module = module_instance.module();
+            let module = module_instance.module(;
             if (func_idx as usize) >= module.functions.len() {
-                return Err(Error::runtime_function_not_found("Function index out of bounds for tail call"));
+                return Err(Error::runtime_function_not_found("Function index out of bounds for tail call";
             }
         } else {
-            return Err(Error::runtime_error("No module instance "));
+            return Err(Error::runtime_error("No module instance ";
         }
         
         self.call_function(func_idx)
@@ -4137,7 +4137,7 @@ impl ControlContext for StacklessEngine {
         })?;
         
         if func_idx < 0 {
-            return Err(Error::runtime_error("Invalid function index for return_call_indirect"));
+            return Err(Error::runtime_error("Invalid function index for return_call_indirect";
         }
         
         // Execute tail call indirect
@@ -4146,8 +4146,8 @@ impl ControlContext for StacklessEngine {
 
     /// Trap the execution (unreachable)
     fn trap(&mut self, _message: &str) -> Result<()> {
-        let error = Error::runtime_execution_error("Execution trapped");
-        self.exec_stack.state = StacklessExecutionState::Error(error.clone());
+        let error = Error::runtime_execution_error("Execution trapped";
+        self.exec_stack.state = StacklessExecutionState::Error(error.clone();
         Err(error)
     }
 
@@ -4170,7 +4170,7 @@ impl ControlContext for StacklessEngine {
     /// Execute call_indirect with full validation
     fn execute_call_indirect(&mut self, table_idx: u32, type_idx: u32, func_idx: i32) -> Result<()> {
         if func_idx < 0 {
-            return Err(Error::runtime_error("Invalid function index"));
+            return Err(Error::runtime_error("Invalid function index";
         }
         
         // Implement table lookup and type validation
@@ -4178,12 +4178,12 @@ impl ControlContext for StacklessEngine {
             // Check table exists
             if (table_idx as usize) >= module_instance.module().tables.len() {
                 return Err(Error::runtime_execution_error("Runtime execution error"
-                ));
+                ;
             }
             
             // Check type exists
             if (type_idx as usize) >= module_instance.module().types.len() {
-                return Err(Error::runtime_type_mismatch("Type index out of bounds"));
+                return Err(Error::runtime_type_mismatch("Type index out of bounds";
             }
             
             // Get table and validate function reference
@@ -4199,7 +4199,7 @@ impl ControlContext for StacklessEngine {
             };
             
             // Validate function type matches expected
-            let module = module_instance.module();
+            let module = module_instance.module(;
             let expected_type = module.get_function_type(type_idx as u32).ok_or_else(|| {
                 Error::type_error("Expected function type not found ")
             })?;
@@ -4211,7 +4211,7 @@ impl ControlContext for StacklessEngine {
             })?;
             
             if expected_type != actual_type {
-                return Err(Error::type_error("Function type mismatch in indirect tail call "));
+                return Err(Error::type_error("Function type mismatch in indirect tail call ";
             }
             
             self.call_function(actual_func_idx)
@@ -4318,8 +4318,8 @@ pub enum LabelKind {
 // Implement required traits for Label
 impl wrt_foundation::traits::Checksummable for Label {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.arity.update_checksum(checksum);
-        (self.pc as u32).update_checksum(checksum);
+        self.arity.update_checksum(checksum;
+        (self.pc as u32).update_checksum(checksum;
         match self.kind {
             LabelKind::Block => checksum.update_slice(&[0]),
             LabelKind::Loop => checksum.update_slice(&[1]),
@@ -4362,7 +4362,7 @@ impl wrt_foundation::traits::FromBytes for Label {
             2 => LabelKind::If,
             3 => LabelKind::Function,
             _ => {
-                return Err(wrt_error::Error::validation_error("Invalid label "));
+                return Err(wrt_error::Error::validation_error("Invalid label ";
             }
         };
         Ok(Label { kind, arity, pc })

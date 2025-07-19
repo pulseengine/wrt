@@ -73,6 +73,6 @@ impl Function {
     
     /// Set the function index
     pub fn set_index(&mut self, index: u32) {
-        self.function_index = Some(index);
+        self.function_index = Some(index;
     }
 }

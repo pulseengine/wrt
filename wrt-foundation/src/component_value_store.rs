@@ -54,7 +54,7 @@ use crate::{prelude::*, traits::BoundedCapacity}; // Added import
 
 /// An opaque reference (index) to a `ComponentValue` within the store.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct ValueRef(pub usize);
+pub struct ValueRef(pub usize;
 
 impl ValueRef {
     /// Creates a new `ValueRef`.
@@ -90,7 +90,7 @@ impl FromBytes for ValueRef {
 
 impl Checksummable for ValueRef {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.0.update_checksum(checksum);
+        self.0.update_checksum(checksum;
     }
 }
 
@@ -207,7 +207,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         P: Clone, // Needed for WasmName::from_str which takes P by value
     {
         #[cfg(feature = "std")]
-        let comp_val = ComponentValue::String(s.to_string());
+        let comp_val = ComponentValue::String(s.to_string();
 
         #[cfg(not(any(feature = "std")))]
         let comp_val = {
@@ -288,7 +288,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         }
 
         // Create ComponentValue::Tuple with BoundedVec<ValueRef, ...>
-        let tuple_comp_val = ComponentValue::Tuple(item_value_refs);
+        let tuple_comp_val = ComponentValue::Tuple(item_value_refs;
         let final_tuple_ref = self.add_value(tuple_comp_val)?;
         Ok(final_tuple_ref.0 as u32)
     }
@@ -320,7 +320,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
                     "Flag values capacity exceeded")
             })?;
         }
-        let flags_cv = ComponentValue::<P>::Flags(flag_values);
+        let flags_cv = ComponentValue::<P>::Flags(flag_values;
         let new_ref = self.add_value(flags_cv)?;
         Ok(new_ref.0 as u32)
     }
@@ -334,7 +334,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         let name = WasmName::from_str(case.as_ref(), self.provider.clone()).map_err(|_e| {
             Error::runtime_execution_error("Failed to create enum case name")
         })?;
-        let comp_val = ComponentValue::<P>::Enum(name);
+        let comp_val = ComponentValue::<P>::Enum(name;
         let new_ref = self.add_value(comp_val)?;
         Ok(new_ref.0 as u32)
     }
@@ -365,7 +365,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             for i in 0..self.type_to_ref_map.len() {
                 if let Ok((stored_type, type_ref)) = self.type_to_ref_map.get(i) {
                     if stored_type == ty {
-                        return Ok(type_ref);
+                        return Ok(type_ref;
                     }
                 }
             }
@@ -377,7 +377,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             // ty needs to be Clone for this path
             Error::runtime_execution_error("Failed to add type to store: capacity exceeded")
         })?;
-        let type_ref = ValTypeRef(type_idx);
+        let type_ref = ValTypeRef(type_idx;
 
         #[cfg(feature = "std")]
         {

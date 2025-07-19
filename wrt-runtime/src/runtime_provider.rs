@@ -33,17 +33,17 @@ impl SmartRuntimeProvider {
     pub fn new(size: usize, crate_id: CrateId) -> WrtResult<Self> {
         if size <= STACK_ALLOCATION_THRESHOLD {
             // Use stack allocation for small sizes
-            let base_provider = NoStdProvider::<4096>::default();
+            let base_provider = NoStdProvider::<4096>::default(;
             let capability = DynamicMemoryCapability::new(
                 STACK_ALLOCATION_THRESHOLD,
                 crate_id,
                 VerificationLevel::Standard,
-            );
+            ;
             let capability_provider = CapabilityAwareProvider::new(
                 base_provider,
                 Box::new(capability),
                 crate_id,
-            );
+            ;
             Ok(Self::Stack(capability_provider))
         } else {
             // Use heap allocation for large sizes
@@ -52,12 +52,12 @@ impl SmartRuntimeProvider {
                 size,
                 crate_id,
                 VerificationLevel::Standard,
-            );
+            ;
             let capability_provider = CapabilityAwareProvider::new(
                 base_provider,
                 Box::new(capability),
                 crate_id,
-            );
+            ;
             Ok(Self::Heap(capability_provider))
         }
     }

@@ -59,7 +59,7 @@ impl<T, const CRATE: u8, const MAX_SIZE: usize> WrtVec<T, CRATE, MAX_SIZE> {
     /// Force push (panics if capacity exceeded) - for compatibility
     pub fn force_push(&mut self, item: T) {
         if self.inner.len() >= MAX_SIZE {
-            panic!("WrtVec capacity exceeded: {} >= {}", self.inner.len(), MAX_SIZE);
+            panic!("WrtVec capacity exceeded: {} >= {}", self.inner.len(), MAX_SIZE;
         }
         self.inner.push(item);
     }
@@ -188,7 +188,7 @@ impl<const CRATE: u8, const MAX_SIZE: usize> WrtString<CRATE, MAX_SIZE> {
         if self.inner.len() + s.len() > MAX_SIZE {
             Err(CapacityError::Exceeded)
         } else {
-            self.inner.push_str(s);
+            self.inner.push_str(s;
             Ok(())
         }
     }
@@ -264,42 +264,42 @@ mod tests {
 
     #[test]
     fn test_wrt_vec_creation() {
-        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 100> = WrtVec::new();
-        assert_eq!(vec.len(), 0);
-        assert_eq!(WrtVec::<i32, { CrateId::Foundation as u8 }, 100>::max_capacity(), 100);
+        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 100> = WrtVec::new(;
+        assert_eq!(vec.len(), 0;
+        assert_eq!(WrtVec::<i32, { CrateId::Foundation as u8 }, 100>::max_capacity(), 100;
 
         // Test successful push
-        assert!(vec.push(42).is_ok());
-        assert_eq!(vec.len(), 1);
-        assert_eq!(vec[0], 42);
+        assert!(vec.push(42).is_ok();
+        assert_eq!(vec.len(), 1;
+        assert_eq!(vec[0], 42;
     }
 
     #[test]
     fn test_wrt_vec_capacity_limits() {
-        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 2> = WrtVec::new();
+        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 2> = WrtVec::new(;
 
         // Fill to capacity
-        assert!(vec.push(1).is_ok());
-        assert!(vec.push(2).is_ok());
+        assert!(vec.push(1).is_ok();
+        assert!(vec.push(2).is_ok();
 
         // Should fail on overflow
-        assert_eq!(vec.push(3), Err(CapacityError::Exceeded));
-        assert_eq!(vec.len(), 2);
+        assert_eq!(vec.push(3), Err(CapacityError::Exceeded;
+        assert_eq!(vec.len(), 2;
     }
 
     #[test]
     fn test_wrt_hashmap_creation() {
         let mut map: WrtHashMap<String, i32, { CrateId::Foundation as u8 }, 100> =
-            WrtHashMap::new();
-        assert_eq!(map.len(), 0);
+            WrtHashMap::new(;
+        assert_eq!(map.len(), 0;
         assert_eq!(
             WrtHashMap::<String, i32, { CrateId::Foundation as u8 }, 100>::max_capacity(),
             100
-        );
+        ;
 
         // Test successful insert
-        assert!(map.insert("key".to_string(), 42).is_ok());
-        assert_eq!(map.len(), 1);
-        assert_eq!(map.get("key"), Some(&42));
+        assert!(map.insert("key".to_string(), 42).is_ok();
+        assert_eq!(map.len(), 1;
+        assert_eq!(map.get("key"), Some(&42;
     }
 }

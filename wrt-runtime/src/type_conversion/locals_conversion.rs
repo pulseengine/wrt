@@ -12,8 +12,7 @@ use wrt_foundation::{
 };
 use wrt_error::Result;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 #[cfg(any(feature = "std", feature = "alloc"))]
 use alloc::vec::Vec;
 
@@ -29,7 +28,7 @@ pub fn convert_locals_to_bounded(
     let mut bounded_locals = BoundedVec::new(provider)?;
     
     if locals.is_empty() {
-        return Ok(bounded_locals);
+        return Ok(bounded_locals;
     }
     
     // Group consecutive locals of the same type
@@ -67,7 +66,7 @@ pub fn convert_locals_to_bounded(
 pub fn expand_locals_to_flat(
     bounded_locals: &BoundedVec<LocalEntry, 64, RuntimeProvider>
 ) -> Result<Vec<ValueType>> {
-    let mut flat_locals = Vec::new();
+    let mut flat_locals = Vec::new(;
     
     for local_entry in bounded_locals.iter() {
         for _ in 0..local_entry.count {
@@ -85,9 +84,9 @@ mod tests {
     
     #[test]
     fn test_convert_empty_locals() {
-        let locals = Vec::new();
+        let locals = Vec::new(;
         let result = convert_locals_to_bounded(&locals).unwrap();
-        assert_eq!(result.len(), 0);
+        assert_eq!(result.len(), 0;
     }
     
     #[test] 
@@ -95,9 +94,9 @@ mod tests {
         let locals = vec![ValueType::I32, ValueType::I32, ValueType::I32];
         let result = convert_locals_to_bounded(&locals).unwrap();
         
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].count, 3);
-        assert_eq!(result[0].value_type, ValueType::I32);
+        assert_eq!(result.len(), 1;
+        assert_eq!(result[0].count, 3;
+        assert_eq!(result[0].value_type, ValueType::I32;
     }
     
     #[test]
@@ -109,16 +108,16 @@ mod tests {
         ];
         let result = convert_locals_to_bounded(&locals).unwrap();
         
-        assert_eq!(result.len(), 3);
+        assert_eq!(result.len(), 3;
         
-        assert_eq!(result[0].count, 2);
-        assert_eq!(result[0].value_type, ValueType::I32);
+        assert_eq!(result[0].count, 2;
+        assert_eq!(result[0].value_type, ValueType::I32;
         
-        assert_eq!(result[1].count, 1);
-        assert_eq!(result[1].value_type, ValueType::F64);
+        assert_eq!(result[1].count, 1;
+        assert_eq!(result[1].value_type, ValueType::F64;
         
-        assert_eq!(result[2].count, 1);
-        assert_eq!(result[2].value_type, ValueType::I32);
+        assert_eq!(result[2].count, 1;
+        assert_eq!(result[2].value_type, ValueType::I32;
     }
     
     #[test]
@@ -132,6 +131,6 @@ mod tests {
         let bounded = convert_locals_to_bounded(&original).unwrap();
         let expanded = expand_locals_to_flat(&bounded).unwrap();
         
-        assert_eq!(original, expanded);
+        assert_eq!(original, expanded;
     }
 }

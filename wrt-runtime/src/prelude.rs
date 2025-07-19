@@ -55,7 +55,7 @@ macro_rules! vec {
     };
     ($elem:expr; $n:expr) => {
         {
-            let mut v = Vec::new();
+            let mut v = Vec::new(;
             for _ in 0..$n {
                 v.push($elem);
             }
@@ -64,7 +64,7 @@ macro_rules! vec {
     };
     ($($x:expr),*) => {
         {
-            let mut v = Vec::new();
+            let mut v = Vec::new(;
             $(v.push($x);)*
             v
         }
@@ -432,7 +432,7 @@ impl wrt_foundation::traits::Checksummable for Instruction {
             }
             Instruction::Call(func_idx) => {
                 checksum.update_slice(&[3u8]); // Variant discriminant
-                checksum.update_slice(&func_idx.to_le_bytes());
+                checksum.update_slice(&func_idx.to_le_bytes(;
             }
         }
     }
@@ -480,7 +480,7 @@ impl wrt_foundation::traits::FromBytes for Instruction {
             3 => {
                 let mut func_bytes = [0u8; 4];
                 reader.read_exact(&mut func_bytes)?;
-                let func_idx = u32::from_le_bytes(func_bytes);
+                let func_idx = u32::from_le_bytes(func_bytes;
                 Ok(Instruction::Call(func_idx))
             }
             _ => Err(wrt_error::Error::runtime_execution_error("Unsupported instruction discriminant"))

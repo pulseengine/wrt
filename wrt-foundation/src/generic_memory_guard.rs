@@ -80,13 +80,13 @@ where
     /// * `coordinator` - The coordinator for tracking allocations
     /// * `crate_id` - The crate requesting the allocation
     pub fn new(provider: P, coordinator: &'static C, crate_id: I) -> Result<Self> {
-        let size = provider.allocation_size();
+        let size = provider.allocation_size(;
 
         // Register with coordinator
         let allocation_id = coordinator.register_allocation(crate_id, size)?;
 
         // Record allocation in monitoring system
-        crate::monitoring::MEMORY_MONITOR.record_allocation(size);
+        crate::monitoring::MEMORY_MONITOR.record_allocation(size;
 
         Ok(Self {
             provider: ManuallyDrop::new(provider),
@@ -136,15 +136,15 @@ where
 
         // Return allocation to coordinator
         // Intentionally ignore errors in Drop to avoid panic
-        let _ = self.coordinator.return_allocation(self.crate_id, self.allocation_id, self.size);
+        let _ = self.coordinator.return_allocation(self.crate_id, self.allocation_id, self.size;
 
         // Record deallocation in monitoring system
-        crate::monitoring::MEMORY_MONITOR.record_deallocation(self.size);
+        crate::monitoring::MEMORY_MONITOR.record_deallocation(self.size;
 
         // Drop the provider
         #[allow(unsafe_code)]
         unsafe {
-            ManuallyDrop::drop(&mut self.provider);
+            ManuallyDrop::drop(&mut self.provider;
         }
 
         self.cleaned_up = true;
@@ -198,17 +198,17 @@ where
     }
 
     pub fn provider(mut self, provider: P) -> Self {
-        self.provider = Some(provider);
+        self.provider = Some(provider;
         self
     }
 
     pub fn coordinator(mut self, coordinator: &'static C) -> Self {
-        self.coordinator = Some(coordinator);
+        self.coordinator = Some(coordinator;
         self
     }
 
     pub fn crate_id(mut self, id: I) -> Self {
-        self.crate_id = Some(id);
+        self.crate_id = Some(id;
         self
     }
 
@@ -249,7 +249,7 @@ mod tests {
     }
 
     #[derive(Debug, Clone, Copy)]
-    struct TestCrateId(u8);
+    struct TestCrateId(u8;
 
     impl CrateIdentifier for TestCrateId {
         fn as_index(&self) -> usize {
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn test_generic_guard() {
         static COORDINATOR: GenericMemoryCoordinator<TestCrateId, 10> =
-            GenericMemoryCoordinator::new();
+            GenericMemoryCoordinator::new(;
 
         // Initialize coordinator
         COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap();
@@ -302,8 +302,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(guard.size(), 256);
-        assert_eq!(COORDINATOR.get_crate_allocation(TestCrateId(0)), 256);
+        assert_eq!(guard.size(), 256;
+        assert_eq!(COORDINATOR.get_crate_allocation(TestCrateId(0)), 256;
 
         // Guard drops here, should return allocation
     }

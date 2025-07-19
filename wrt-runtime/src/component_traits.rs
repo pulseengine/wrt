@@ -55,7 +55,7 @@ pub trait ComponentRuntime {
         Self: Sized;
 
     /// Register a host function factory
-    fn register_host_factory(&mut self, factory: Box<dyn HostFunctionFactory>);
+    fn register_host_factory(&mut self, factory: Box<dyn HostFunctionFactory>;
 
     /// Instantiate a component
     fn instantiate(&self, component_type: &ComponentType) -> Result<Box<dyn ComponentInstance>>;

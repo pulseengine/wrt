@@ -21,7 +21,7 @@ pub const MAX_RESOURCES_PER_TYPE: usize = 1024;
 
 /// Resource handle (32-bit index)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceHandle(pub u32);
+pub struct ResourceHandle(pub u32;
 
 /// Resource ownership type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,9 +90,9 @@ where
     T: Clone + PartialEq + Eq + wrt_foundation::traits::Checksummable,
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.resource.update_checksum(checksum);
-        self.ownership.update_checksum(checksum);
-        self.ref_count.update_checksum(checksum);
+        self.resource.update_checksum(checksum;
+        self.ownership.update_checksum(checksum;
+        self.ref_count.update_checksum(checksum;
     }
 }
 
@@ -194,12 +194,12 @@ where
             .map_err(|_| Error::resource_invalid_handle("Invalid owned handle index"))?;
         
         if current_entry.is_none() {
-            return Err(Error::resource_invalid_handle("Invalid owned handle - no entry"));
+            return Err(Error::resource_invalid_handle("Invalid owned handle - no entry";
         }
         
         let mut entry = current_entry.unwrap();
         if entry.ownership != ResourceOwnership::Owned {
-            return Err(Error::resource_invalid_handle("Can only borrow from owned resources"));
+            return Err(Error::resource_invalid_handle("Can only borrow from owned resources";
         }
         
         entry.ref_count += 1;
@@ -239,7 +239,7 @@ where
                     // Put it back, still has borrows
                     let _old = self.entries.set(handle.0 as usize, Some(entry))
                         .map_err(|_| Error::resource_error("Failed to restore resource entry"))?;
-                    return Err(Error::resource_error("Cannot drop owned resource with active borrows"));
+                    return Err(Error::resource_error("Cannot drop owned resource with active borrows";
                 }
                 Ok(Some(entry.resource))
             }
@@ -247,7 +247,7 @@ where
                 // Decrement ref count on the owned resource
                 // Note: Since we can't get_mut from BoundedVec, we need to get, modify, and set
                 if let Ok(Some(mut owned_entry)) = self.entries.get(handle.0 as usize) {
-                    owned_entry.ref_count = owned_entry.ref_count.saturating_sub(1);
+                    owned_entry.ref_count = owned_entry.ref_count.saturating_sub(1;
                     let _old = self.entries.set(handle.0 as usize, Some(owned_entry))
                         .map_err(|_| Error::resource_error("Failed to update ref count"))?;
                 }
@@ -266,7 +266,7 @@ where
             
             if self.entries.get(index).ok().flatten().is_none() {
                 self.next_handle = (index + 1) as u32;
-                return Ok(ResourceHandle(index as u32));
+                return Ok(ResourceHandle(index as u32;
             }
         }
         
@@ -289,25 +289,25 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_resource_table_basic() {
-        let provider = DefaultMemoryProvider::default();
+        let provider = DefaultMemoryProvider::default(;
         let mut table = ResourceTable::<u32, _>::new(provider).unwrap();
         
         // Create owned resource
         let owned = table.new_own(42u32).unwrap();
-        assert_eq!(table.get(owned), Some(&42u32));
+        assert_eq!(table.get(owned), Some(&42u32;
         
         // Create borrowed handle
         let borrowed = table.new_borrow(owned).unwrap();
-        assert_eq!(table.get(borrowed), Some(&42u32));
+        assert_eq!(table.get(borrowed), Some(&42u32;
         
         // Cannot drop owned while borrowed
-        assert!(table.drop_handle(owned).is_err());
+        assert!(table.drop_handle(owned).is_err();
         
         // Drop borrowed first
         table.drop_handle(borrowed).unwrap();
         
         // Now can drop owned
         let resource = table.drop_handle(owned).unwrap();
-        assert_eq!(resource, Some(42u32));
+        assert_eq!(resource, Some(42u32;
     }
 }

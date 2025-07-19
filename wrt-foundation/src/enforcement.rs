@@ -70,7 +70,7 @@ impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
     ) -> Result<crate::safe_memory::NoStdProvider<SIZE>> {
         // Verify crate ID matches compile-time constant
         if crate_id.as_index() != CRATE {
-            return Err(Error::runtime_execution_error("Crate ID mismatch in enforced allocation"));
+            return Err(Error::runtime_execution_error("Crate ID mismatch in enforced allocation";
         }
 
         crate::capabilities::memory_factory::MemoryFactory::create_with_context::<SIZE>(context, crate_id)
@@ -129,7 +129,7 @@ mod tests {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
 
         let guard = safe_managed_alloc!(1024, CrateId::Component).unwrap();
-        assert_eq!(guard.size(), 1024);
+        assert_eq!(guard.size(), 1024;
     }
 
     #[test]
@@ -137,18 +137,18 @@ mod tests {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
         
         // Create a capability context for testing
-        let mut context = MemoryCapabilityContext::default();
+        let mut context = MemoryCapabilityContext::default(;
         context.register_dynamic_capability(CrateId::Foundation, 1024).unwrap();
 
-        let token = AllocationToken::<512>::new(CrateId::Foundation);
+        let token = AllocationToken::<512>::new(CrateId::Foundation;
         let guard = token.allocate(&context).unwrap();
-        assert_eq!(guard.size(), 512);
+        assert_eq!(guard.size(), 512;
     }
 
     #[test]
     fn test_memory_region() {
-        let region = MemoryRegion::<0, 1024>::new();
-        assert_eq!(region.size(), 1024);
-        assert_eq!(region.start(), 0);
+        let region = MemoryRegion::<0, 1024>::new(;
+        assert_eq!(region.size(), 1024;
+        assert_eq!(region.start(), 0;
     }
 }

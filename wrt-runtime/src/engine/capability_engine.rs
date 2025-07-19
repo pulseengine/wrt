@@ -30,17 +30,17 @@ use wrt_decoder::decoder::decode_module;
 
 #[cfg(feature = "std")]
 use std::sync::Arc;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::sync::Arc;
 
 /// Handle for a loaded module
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct ModuleHandle(u32);
+pub struct ModuleHandle(u32;
 
 impl ModuleHandle {
     /// Create a new unique module handle
     pub fn new() -> Self {
-        static COUNTER: AtomicU32 = AtomicU32::new(1);
+        static COUNTER: AtomicU32 = AtomicU32::new(1;
         Self(COUNTER.fetch_add(1, Ordering::Relaxed))
     }
 }
@@ -48,7 +48,7 @@ impl ModuleHandle {
 impl wrt_foundation::traits::Checksummable for ModuleHandle {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for byte in self.0.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
     }
 }
@@ -79,7 +79,7 @@ impl wrt_foundation::traits::FromBytes for ModuleHandle {
 
 /// Handle for a module instance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct InstanceHandle(u32);
+pub struct InstanceHandle(u32;
 
 impl InstanceHandle {
     /// Create from an instance index
@@ -96,7 +96,7 @@ impl InstanceHandle {
 impl wrt_foundation::traits::Checksummable for InstanceHandle {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for byte in self.0.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
     }
 }
@@ -210,8 +210,8 @@ impl CapabilityAwareEngine {
     pub fn with_context_and_preset(context: MemoryCapabilityContext, preset: EnginePreset) -> Result<Self> {
         // Use simple NoStdProvider directly for internal structures to avoid recursion
         // These are internal engine data structures and don't need full capability checking
-        let modules_provider = BaseRuntimeProvider::default();
-        let instances_provider = BaseRuntimeProvider::default();
+        let modules_provider = BaseRuntimeProvider::default(;
+        let instances_provider = BaseRuntimeProvider::default(;
 
         // Initialize host integration based on preset
         let (host_registry, host_manager) = Self::create_host_integration(&preset)?;
@@ -221,7 +221,7 @@ impl CapabilityAwareEngine {
         let instances = BoundedMap::new(instances_provider)?;
 
         // Create the inner stackless engine
-        let inner_engine = StacklessEngine::new();
+        let inner_engine = StacklessEngine::new(;
         
         Ok(Self {
             inner: inner_engine,
@@ -255,32 +255,32 @@ impl CapabilityAwareEngine {
                 {
                     let builder = HostBuilder::new()
                         .with_component_name("wrt_qm_component")
-                        .with_host_id("wrt_qm_host");
+                        .with_host_id("wrt_qm_host";
                     let registry = builder.build()?;
                     Ok((Some(registry), None))
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    let limits = HostIntegrationLimits::qnx();
+                    let limits = HostIntegrationLimits::qnx(;
                     let manager = BoundedHostIntegrationManager::new(limits)?;
                     Ok((None, Some(manager)))
                 }
             }
             EnginePreset::AsilA => {
                 // ASIL-A: Bounded host functions with embedded limits
-                let limits = HostIntegrationLimits::embedded();
+                let limits = HostIntegrationLimits::embedded(;
                 let manager = BoundedHostIntegrationManager::new(limits)?;
                 Ok((None, Some(manager)))
             }
             EnginePreset::AsilB | EnginePreset::AsilC => {
                 // ASIL-B/C: Restricted host functions with strict limits
-                let limits = HostIntegrationLimits::embedded();
+                let limits = HostIntegrationLimits::embedded(;
                 let manager = BoundedHostIntegrationManager::new(limits)?;
                 Ok((None, Some(manager)))
             }
             EnginePreset::AsilD => {
                 // ASIL-D: Minimal or no host functions for maximum safety
-                let limits = HostIntegrationLimits::embedded();
+                let limits = HostIntegrationLimits::embedded(;
                 let manager = BoundedHostIntegrationManager::new(limits)?;
                 Ok((None, Some(manager)))
             }
@@ -370,7 +370,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         self.context.verify_operation(CrateId::Runtime, &operation)?;
 
         // Extract resource limits from binary if available
-        let asil_mode = self.preset_to_asil_mode();
+        let asil_mode = self.preset_to_asil_mode(;
         let _resource_config = extract_resource_limits_from_binary(binary, asil_mode)
             .unwrap_or(None); // Ignore errors, use defaults if extraction fails
 
@@ -384,7 +384,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let runtime_module = Module::from_wrt_module(&decoded)?;
 
         // Create and store with unique handle
-        let handle = ModuleHandle::new();
+        let handle = ModuleHandle::new(;
         self.modules.insert(handle, runtime_module)?;
 
         Ok(handle)
@@ -404,14 +404,14 @@ impl CapabilityEngine for CapabilityAwareEngine {
 
         // Create module instance
         let instance = ModuleInstance::new(module.clone(), self.next_instance_idx)?;
-        let instance_arc = Arc::new(instance.clone());
+        let instance_arc = Arc::new(instance.clone();
 
         // Register with inner engine
         let instance_idx = self.inner.set_current_module(instance_arc)?;
         self.next_instance_idx += 1;
 
         // Store mapping
-        let handle = InstanceHandle::from_index(instance_idx as usize);
+        let handle = InstanceHandle::from_index(instance_idx as usize;
         self.instances.insert(handle, instance)?;
 
         // Run start function if present
@@ -457,7 +457,7 @@ impl CapabilityAwareEngine {
             .get(&instance_handle)?
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
-        let mut functions = Vec::new();
+        let mut functions = Vec::new(;
         // TODO: BoundedMap doesn't support iteration, so we can't list all exports
         // For now, return an empty list as a placeholder
         // In a real implementation, we'd need an iterator interface on BoundedMap
@@ -506,24 +506,24 @@ mod tests {
 
     #[test]
     fn test_module_handle_creation() {
-        let handle1 = ModuleHandle::new();
-        let handle2 = ModuleHandle::new();
-        assert_ne!(handle1, handle2);
+        let handle1 = ModuleHandle::new(;
+        let handle2 = ModuleHandle::new(;
+        assert_ne!(handle1, handle2;
     }
 
     #[test]
     fn test_instance_handle_conversion() {
-        let handle = InstanceHandle::from_index(42);
-        assert_eq!(handle.index(), 42);
+        let handle = InstanceHandle::from_index(42;
+        assert_eq!(handle.index(), 42;
     }
 
     #[test]
     fn test_engine_preset_creation() {
         // Test that each preset can be created
-        let _qm = CapabilityAwareEngine::with_preset(EnginePreset::QM);
-        let _asil_a = CapabilityAwareEngine::with_preset(EnginePreset::AsilA);
-        let _asil_b = CapabilityAwareEngine::with_preset(EnginePreset::AsilB);
-        let _asil_c = CapabilityAwareEngine::with_preset(EnginePreset::AsilC);
-        let _asil_d = CapabilityAwareEngine::with_preset(EnginePreset::AsilD);
+        let _qm = CapabilityAwareEngine::with_preset(EnginePreset::QM;
+        let _asil_a = CapabilityAwareEngine::with_preset(EnginePreset::AsilA;
+        let _asil_b = CapabilityAwareEngine::with_preset(EnginePreset::AsilB;
+        let _asil_c = CapabilityAwareEngine::with_preset(EnginePreset::AsilC;
+        let _asil_d = CapabilityAwareEngine::with_preset(EnginePreset::AsilD;
     }
 }

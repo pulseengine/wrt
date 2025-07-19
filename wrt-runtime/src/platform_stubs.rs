@@ -26,7 +26,7 @@ use wrt_error::{Error, ErrorCategory, Result};
 // Box for trait objects
 #[cfg(feature = "std")]
 use std::boxed::Box;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::boxed::Box;
 
 // Re-export ASIL levels from foundation stubs temporarily
@@ -60,10 +60,10 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop();
+                core::hint::spin_loop(;
             }
             let value = unsafe { *self.value.get() };
-            self.lock.store(false, Ordering::Release);
+            self.lock.store(false, Ordering::Release;
             value
         }
         
@@ -71,10 +71,10 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop();
+                core::hint::spin_loop(;
             }
             unsafe { *self.value.get() = value; }
-            self.lock.store(false, Ordering::Release);
+            self.lock.store(false, Ordering::Release;
         }
         
         pub fn compare_exchange(
@@ -87,15 +87,15 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop();
+                core::hint::spin_loop(;
             }
             let old_value = unsafe { *self.value.get() };
             if old_value == current {
                 unsafe { *self.value.get() = new; }
-                self.lock.store(false, Ordering::Release);
+                self.lock.store(false, Ordering::Release;
                 Ok(old_value)
             } else {
-                self.lock.store(false, Ordering::Release);
+                self.lock.store(false, Ordering::Release;
                 Err(old_value)
             }
         }
@@ -104,11 +104,11 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop();
+                core::hint::spin_loop(;
             }
             let old_value = unsafe { *self.value.get() };
             unsafe { *self.value.get() = old_value.wrapping_add(value); }
-            self.lock.store(false, Ordering::Release);
+            self.lock.store(false, Ordering::Release;
             old_value
         }
     }
@@ -134,10 +134,10 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop();
+                core::hint::spin_loop(;
             }
             let value = unsafe { *self.value.get() };
-            self.lock.store(false, Ordering::Release);
+            self.lock.store(false, Ordering::Release;
             value
         }
         
@@ -145,21 +145,21 @@ mod atomic_fallback {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop();
+                core::hint::spin_loop(;
             }
             unsafe { *self.value.get() = value; }
-            self.lock.store(false, Ordering::Release);
+            self.lock.store(false, Ordering::Release;
         }
         
         pub fn fetch_add(&self, value: u64, _ordering: Ordering) -> u64 {
             while self.lock.compare_exchange_weak(
                 false, true, Ordering::Acquire, Ordering::Relaxed
             ).is_err() {
-                core::hint::spin_loop();
+                core::hint::spin_loop(;
             }
             let old_value = unsafe { *self.value.get() };
             unsafe { *self.value.get() = old_value.wrapping_add(value); }
-            self.lock.store(false, Ordering::Release);
+            self.lock.store(false, Ordering::Release;
             old_value
         }
     }
@@ -514,7 +514,7 @@ pub fn current_time_ns() -> u64 {
     #[cfg(all(not(feature = "std"), not(feature = "platform-sync")))]
     {
         // Fallback: use a simple counter for no_std environments
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        static COUNTER: AtomicU64 = AtomicU64::new(0;
         COUNTER.fetch_add(1, core::sync::atomic::Ordering::Relaxed)
     }
 }

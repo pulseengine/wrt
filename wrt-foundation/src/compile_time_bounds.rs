@@ -41,7 +41,7 @@ impl<const SIZE: usize, const CRATE: usize> CompileTimeBoundsValidator<SIZE, CRA
         assert!(SIZE <= CRATE_BUDGETS[CRATE], "Allocation exceeds crate budget");
 
         // Validate total system budget
-        let total_budget = calculate_total_budget();
+        let total_budget = calculate_total_budget(;
         assert!(total_budget <= TOTAL_MEMORY_BUDGET, "Total budget exceeds system memory");
 
         Self
@@ -88,7 +88,7 @@ impl<const SIZE: usize, const CRATE: usize> CompileTimeBoundsValidator<SIZE, CRA
 ///
 /// ```rust
 /// // This will compile successfully
-/// validate_allocation!(1024, CrateId::Component);
+/// validate_allocation!(1024, CrateId::Component;
 ///
 /// // This will cause a compile error
 /// validate_allocation!(999_999_999, CrateId::Component); // Too large
@@ -100,7 +100,7 @@ macro_rules! validate_allocation {
             let validator = $crate::compile_time_bounds::CompileTimeBoundsValidator::<
                 $size,
                 { $crate_id as usize },
-            >::validate();
+            >::validate(;
 
             // Additional compile-time checks
             assert!(validator.is_platform_safe(), "Allocation not safe for target platform");
@@ -207,7 +207,7 @@ impl SystemBoundsValidator {
     /// Validate entire system bounds at compile time
     pub const fn validate_system() {
         // Check total budget doesn't exceed system memory
-        let total_budget = calculate_total_budget();
+        let total_budget = calculate_total_budget(;
         assert!(total_budget <= TOTAL_MEMORY_BUDGET, "System budget validation failed");
 
         // Check crate budget distribution is reasonable
@@ -226,7 +226,7 @@ impl SystemBoundsValidator {
 }
 
 // Force system validation at compile time
-const _SYSTEM_VALIDATION: () = SystemBoundsValidator::validate_system();
+const _SYSTEM_VALIDATION: () = SystemBoundsValidator::validate_system(;
 
 /// Enhanced safe_managed_alloc macro with compile-time bounds validation
 ///
@@ -236,7 +236,7 @@ const _SYSTEM_VALIDATION: () = SystemBoundsValidator::validate_system();
 macro_rules! safe_managed_alloc_validated {
     ($size:expr, $crate_id:expr) => {{
         // Perform compile-time validation
-        $crate::validate_allocation!($size, $crate_id);
+        $crate::validate_allocation!($size, $crate_id;
 
         // Proceed with normal allocation
         $crate::safe_managed_alloc!($size, $crate_id)
@@ -250,20 +250,20 @@ mod compile_time_tests {
 
     // Test valid allocation
     const _TEST_VALID: CompileTimeBoundsValidator<1024, { CrateId::Component as usize }> =
-        CompileTimeBoundsValidator::validate();
+        CompileTimeBoundsValidator::validate(;
 
     // Test memory layout validation
-    const _TEST_LAYOUT: MemoryLayoutValidator<1024, 8> = MemoryLayoutValidator::validate();
+    const _TEST_LAYOUT: MemoryLayoutValidator<1024, 8> = MemoryLayoutValidator::validate(;
 
     // Test collection bounds
     const _TEST_COLLECTION: CollectionBoundsValidator<100, 64> =
-        CollectionBoundsValidator::validate();
+        CollectionBoundsValidator::validate(;
 
     // Test stack bounds
-    const _TEST_STACK: StackBoundsValidator<4096> = StackBoundsValidator::validate();
+    const _TEST_STACK: StackBoundsValidator<4096> = StackBoundsValidator::validate(;
 
     // Test resource limits
-    const _TEST_RESOURCES: ResourceLimitsValidator<256> = ResourceLimitsValidator::validate();
+    const _TEST_RESOURCES: ResourceLimitsValidator<256> = ResourceLimitsValidator::validate(;
 }
 
 /// Runtime verification functions for additional safety
@@ -301,16 +301,16 @@ mod tests {
     #[test]
     fn test_compile_time_validation_works() {
         // These should compile without issues
-        validate_allocation!(1024, CrateId::Component);
-        validate_allocation!({ 64 * 1024 }, CrateId::Runtime);
+        validate_allocation!(1024, CrateId::Component;
+        validate_allocation!({ 64 * 1024 }, CrateId::Runtime;
     }
 
     #[test]
     fn test_safe_managed_alloc_validated() {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
 
-        let result = safe_managed_alloc_validated!(4096, CrateId::Foundation);
-        assert!(result.is_ok());
+        let result = safe_managed_alloc_validated!(4096, CrateId::Foundation;
+        assert!(result.is_ok();
     }
 
     #[cfg(debug_assertions)]
@@ -318,22 +318,22 @@ mod tests {
     fn test_runtime_verification() {
         use runtime_verification::*;
 
-        assert!(verify_allocation_runtime(1024, CrateId::Component));
-        assert!(!verify_allocation_runtime(0, CrateId::Component));
-        assert!(!verify_allocation_runtime(usize::MAX, CrateId::Component));
+        assert!(verify_allocation_runtime(1024, CrateId::Component);
+        assert!(!verify_allocation_runtime(0, CrateId::Component);
+        assert!(!verify_allocation_runtime(usize::MAX, CrateId::Component);
 
-        assert!(verify_system_state());
+        assert!(verify_system_state();
     }
 
     #[test]
     fn test_memory_layout_validation() {
-        let validator = MemoryLayoutValidator::<1024, 8>::validate();
-        assert_eq!(validator.total_size_with_padding(), 1024);
+        let validator = MemoryLayoutValidator::<1024, 8>::validate(;
+        assert_eq!(validator.total_size_with_padding(), 1024;
     }
 
     #[test]
     fn test_collection_bounds_validation() {
-        let validator = CollectionBoundsValidator::<100, 64>::validate();
-        assert_eq!(validator.total_memory(), 6400);
+        let validator = CollectionBoundsValidator::<100, 64>::validate(;
+        assert_eq!(validator.total_memory(), 6400;
     }
 }

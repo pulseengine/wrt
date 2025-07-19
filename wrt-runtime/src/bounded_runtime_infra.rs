@@ -54,39 +54,39 @@ pub fn create_runtime_provider_with_context(_context: &wrt_foundation::capabilit
     #[cfg(any(feature = "std", feature = "alloc"))]
     {
         // Create provider directly without going through global context to avoid recursion
-        let base_provider = BaseRuntimeProvider::default();
+        let base_provider = BaseRuntimeProvider::default(;
         
         // Create a simple capability for the runtime
         let capability = DynamicMemoryCapability::new(
             RUNTIME_MEMORY_SIZE,
             CrateId::Runtime, 
             VerificationLevel::Standard
-        );
+        ;
         
         let provider = CapabilityAwareProvider::new(
             base_provider, 
             Box::new(capability),
             CrateId::Runtime
-        );
+        ;
         Ok(provider)
     }
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     {
         // In no_std environments, use the lightweight provider creation
-        let base_provider = BaseRuntimeProvider::default();
+        let base_provider = BaseRuntimeProvider::default(;
         
         // Create a simple capability for the runtime
         let capability = DynamicMemoryCapability::new(
             RUNTIME_MEMORY_SIZE,
             CrateId::Runtime, 
             VerificationLevel::Standard
-        );
+        ;
         
         let provider = CapabilityAwareProvider::new(
             base_provider, 
             Box::new(capability),
             CrateId::Runtime
-        );
+        ;
         Ok(provider)
     }
 }

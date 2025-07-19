@@ -76,7 +76,7 @@ pub fn qm() -> Result<MemoryCapabilityContext> {
     let mut context = MemoryCapabilityContext::new(
         VerificationLevel::Standard,
         false, // No runtime verification for performance
-    );
+    ;
 
     // Register dynamic capabilities for all crates
     for &(crate_id, budget) in QM_BUDGETS.iter() {
@@ -97,7 +97,7 @@ pub fn asil_a() -> Result<MemoryCapabilityContext> {
     let mut context = MemoryCapabilityContext::new(
         VerificationLevel::Sampling,
         true, // Runtime verification enabled
-    );
+    ;
 
     // Register static capabilities with bounded sizes
     for &(crate_id, size) in ASIL_A_STATIC_SIZES {
@@ -121,7 +121,7 @@ pub fn asil_b() -> Result<MemoryCapabilityContext> {
     let mut context = MemoryCapabilityContext::new(
         VerificationLevel::Full,
         true, // Strict runtime verification
-    );
+    ;
 
     // Register verified capabilities with proofs
     for &(crate_id, size) in ASIL_B_VERIFIED_SIZES {
@@ -145,7 +145,7 @@ pub fn asil_c() -> Result<MemoryCapabilityContext> {
     let mut context = MemoryCapabilityContext::new(
         VerificationLevel::Redundant,
         true, // Strict runtime verification with checksums
-    );
+    ;
 
     // Register strict capabilities with very limited sizes
     for &(crate_id, size) in ASIL_C_STRICT_SIZES {
@@ -168,7 +168,7 @@ pub fn asil_d() -> Result<MemoryCapabilityContext> {
     let mut context = MemoryCapabilityContext::new(
         VerificationLevel::Redundant, // Highest verification level
         true, // Complete runtime verification
-    );
+    ;
 
     // Register deterministic capabilities with minimal sizes
     for &(crate_id, size) in ASIL_D_DETERMINISTIC_SIZES {
@@ -187,7 +187,7 @@ pub fn asil_b_verified(proofs: &[(CrateId, VerificationProofs)]) -> Result<Memor
     let mut context = MemoryCapabilityContext::new(
         VerificationLevel::Redundant, // Highest verification level
         true, // Strict runtime verification
-    );
+    ;
 
     // Register verified capabilities with provided proofs
     for (crate_id, proof) in proofs {
@@ -215,9 +215,9 @@ mod tests {
         let context = qm().unwrap();
         
         // Verify QM capabilities are registered
-        assert!(context.has_capability(CrateId::Runtime));
-        assert!(context.has_capability(CrateId::Decoder));
-        assert!(context.has_capability(CrateId::Component));
+        assert!(context.has_capability(CrateId::Runtime);
+        assert!(context.has_capability(CrateId::Decoder);
+        assert!(context.has_capability(CrateId::Component);
     }
 
     #[test]
@@ -225,8 +225,8 @@ mod tests {
         let context = asil_a().unwrap();
         
         // Verify ASIL-A capabilities are registered
-        assert!(context.has_capability(CrateId::Runtime));
-        assert!(context.has_capability(CrateId::Foundation));
+        assert!(context.has_capability(CrateId::Runtime);
+        assert!(context.has_capability(CrateId::Foundation);
     }
 
     #[test]
@@ -234,8 +234,8 @@ mod tests {
         let context = asil_b().unwrap();
         
         // Verify ASIL-B capabilities are registered  
-        assert!(context.has_capability(CrateId::Runtime));
-        assert!(context.has_capability(CrateId::Instructions));
+        assert!(context.has_capability(CrateId::Runtime);
+        assert!(context.has_capability(CrateId::Instructions);
     }
 
     #[test]
@@ -243,8 +243,8 @@ mod tests {
         let context = asil_c().unwrap();
         
         // Verify ASIL-C capabilities are registered
-        assert!(context.has_capability(CrateId::Runtime));
-        assert!(context.has_capability(CrateId::Foundation));
+        assert!(context.has_capability(CrateId::Runtime);
+        assert!(context.has_capability(CrateId::Foundation);
     }
 
     #[test]
@@ -252,8 +252,8 @@ mod tests {
         let context = asil_d().unwrap();
         
         // Verify ASIL-D capabilities are registered
-        assert!(context.has_capability(CrateId::Runtime));
-        assert!(context.has_capability(CrateId::Component));
+        assert!(context.has_capability(CrateId::Runtime);
+        assert!(context.has_capability(CrateId::Component);
     }
 
     #[test]

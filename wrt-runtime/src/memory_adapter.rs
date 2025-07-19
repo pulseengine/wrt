@@ -4,12 +4,12 @@
 //! with integrated memory safety features for WebAssembly memory instances.
 
 // Use our prelude for consistent imports
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 // Import Arc from the correct location to match ArcMemoryExt
 #[cfg(feature = "std")]
 use std::sync::Arc;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::sync::Arc;
 
 use crate::{memory::Memory, prelude::*};
@@ -18,7 +18,7 @@ use crate::memory_helpers::*;
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::format;
 
 /// Invalid offset error code
@@ -213,7 +213,7 @@ impl StdMemoryProvider {
         len: usize,
     ) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         if offset + len > buffer.len() {
-            return Err(Error::memory_error("Memory access out of bounds"));
+            return Err(Error::memory_error("Memory access out of bounds";
         }
 
         // Instead of returning a reference, copy the data into a BoundedVec
@@ -236,7 +236,7 @@ impl SafeMemoryAdapter {
         let memory = Memory::new(memory_type)?;
 
         // Create a new adapter with the memory
-        let arc_memory = Arc::new(memory);
+        let arc_memory = Arc::new(memory;
         
         #[cfg(feature = "std")]
         let provider = {
@@ -245,7 +245,7 @@ impl SafeMemoryAdapter {
         };
         
         #[cfg(not(feature = "std"))]
-        let provider = StdMemoryProvider::default();
+        let provider = StdMemoryProvider::default(;
 
         // Return a Memory adapter
         let adapter = SafeMemoryAdapter { memory: arc_memory, provider };
@@ -308,7 +308,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     fn grow(&self, pages: u32) -> Result<u32> {
         // Get the current size
-        let result = self.memory.size();
+        let result = self.memory.size(;
 
         // Grow the memory - this should handle interior mutability internally
         ArcMemoryExt::grow_via_callback(&self.memory, pages)?;
@@ -319,7 +319,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     fn byte_size(&self) -> Result<usize> {
         // Convert WebAssembly page count to byte size safely
-        let pages = self.memory.size();
+        let pages = self.memory.size(;
         let page_size_bytes = wasm_offset_to_usize(pages)? * 65_536;
         Ok(page_size_bytes)
     }

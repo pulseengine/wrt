@@ -82,7 +82,7 @@ pub mod capability_factories {
         let capability = CapabilityProviderFactory::create_static_provider::<PROVIDER_SIZE>(crate_id, verification_level)?;
         
         // Create provider using safe default construction
-        let provider = NoStdProvider::<PROVIDER_SIZE>::default();
+        let provider = NoStdProvider::<PROVIDER_SIZE>::default(;
         
         let vec = BoundedVec::new(provider).map_err(|_| {
             Error::memory_error("Failed to create capability-managed bounded vector")
@@ -101,27 +101,8 @@ pub mod capability_factories {
 }
 
 
-/// Safe macro for creating providers without unsafe code
-///
-/// This macro replaces the unsafe `safe_managed_alloc!` pattern with a safe alternative.
-///
-/// # Examples
-///
-/// ```rust
-/// use wrt_foundation::{safe_managed_alloc, CrateId};
-///
-/// // Safe allocation with automatic budget tracking
-/// let provider = safe_managed_alloc!(131072, CrateId::Runtime)?;
-/// let vec = BoundedVec::new(provider)?;
-///
-/// // No unsafe code required!
-/// ```
-#[macro_export]
-macro_rules! safe_managed_alloc {
-    ($size:expr, $crate_id:expr) => {
-        $crate::capabilities::MemoryFactory::create::<$size>($crate_id)
-    };
-}
+// safe_managed_alloc macro moved to lib.rs to avoid duplicates
+// It's now the primary allocation interface for WRT
 
 /// Capability-aware macro for creating providers
 ///
@@ -132,7 +113,7 @@ macro_rules! safe_managed_alloc {
 /// ```rust
 /// use wrt_foundation::{capability_managed_alloc, CrateId, MemoryCapabilityContext};
 ///
-/// let context = MemoryCapabilityContext::new();
+/// let context = MemoryCapabilityContext::new(;
 /// // Capability-based allocation with context verification
 /// let provider = capability_managed_alloc!(131072, &context, CrateId::Runtime)?;
 /// let vec = BoundedVec::new(provider)?;

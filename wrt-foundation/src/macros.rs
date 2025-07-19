@@ -45,7 +45,7 @@
 macro_rules! managed_alloc {
     ($size:expr, $crate_id:expr) => {{
         // Ensure memory system is initialized (ignore errors for convenience)
-        drop($crate::memory_init::MemoryInitializer::initialize());
+        drop($crate::memory_init::MemoryInitializer::initialize(;
 
         // Create allocation through modern capability factory
         $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<$size>($crate_id)
@@ -68,7 +68,7 @@ macro_rules! managed_alloc {
 #[macro_export]
 macro_rules! create_provider {
     ($provider_type:ty, $crate_id:expr) => {{
-        drop($crate::memory_init::MemoryInitializer::initialize());
+        drop($crate::memory_init::MemoryInitializer::initialize(;
         // MIGRATION NOTE: create_typed_provider moved to capability system
         // This macro now requires explicit size specification in provider type
         $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<1024>($crate_id)
@@ -104,7 +104,7 @@ macro_rules! hierarchical_budget {
             $(($name:literal, $size:expr, $priority:expr)),* $(,)?
         ]
     } => {{
-        let mut budget = $crate::hierarchical_budgets::HierarchicalBudget::<8>::new($crate_id, $total);
+        let mut budget = $crate::hierarchical_budgets::HierarchicalBudget::<8>::new($crate_id, $total;
 
         $(
             budget.add_sub_budget($name, $size, $priority)?;
@@ -124,7 +124,7 @@ macro_rules! hierarchical_budget {
 /// use wrt_foundation::memory_region;
 ///
 /// // Compile-time validated region
-/// let region = memory_region!(start: 0, size: 4096);
+/// let region = memory_region!(start: 0, size: 4096;
 /// ```
 #[macro_export]
 macro_rules! memory_region {
@@ -142,7 +142,7 @@ macro_rules! memory_region {
 /// ```rust
 /// use wrt_foundation::{allocation_token, CrateId};
 ///
-/// let token = allocation_token!(size: 1024, crate_id: CrateId::Foundation);
+/// let token = allocation_token!(size: 1024, crate_id: CrateId::Foundation;
 /// let guard = token.allocate()?;
 /// ```
 #[macro_export]
@@ -205,12 +205,12 @@ macro_rules! debug_alloc {
             $size,
             $purpose,
             $crate_id.name()
-        );
+        ;
 
         let guard = $crate::safe_managed_alloc!($size, $crate_id)?;
 
         // Track allocation in debug mode
-        $crate::monitoring::debug_track_allocation($crate_id, $size, $purpose);
+        $crate::monitoring::debug_track_allocation($crate_id, $size, $purpose;
 
         guard
     }};
@@ -231,7 +231,7 @@ macro_rules! debug_alloc {
 macro_rules! debug_println {
     ($($arg:tt)*) => {{
         #[cfg(feature = "std")]
-        println!($($arg)*);
+        println!($($arg)*;
     }};
 }
 

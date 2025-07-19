@@ -148,15 +148,15 @@ impl TestingFramework {
 
     /// Print test execution summary
     fn print_summary(&self) {
-        println!("\n📊 Test Execution Summary:");
-        println!("========================");
-        println!("Total tests: {}", self.statistics.total_tests);
-        println!("✅ Passed: {}", self.statistics.passed);
-        println!("❌ Failed: {}", self.statistics.failed);
-        println!("⏭️  Skipped: {}", self.statistics.skipped);
-        println!("⏱️  Total time: {:.2}s", self.statistics.total_duration.as_secs_f64());
+        println!("\n📊 Test Execution Summary:";
+        println!("========================";
+        println!("Total tests: {}", self.statistics.total_tests;
+        println!("✅ Passed: {}", self.statistics.passed;
+        println!("❌ Failed: {}", self.statistics.failed;
+        println!("⏭️  Skipped: {}", self.statistics.skipped;
+        println!("⏱️  Total time: {:.2}s", self.statistics.total_duration.as_secs_f64(;
         println!("📈 Success rate: {:.1}%", 
-            (self.statistics.passed as f64 / self.statistics.total_tests as f64) * 100.0);
+            (self.statistics.passed as f64 / self.statistics.total_tests as f64) * 100.0;
     }
 
     /// Get test statistics
@@ -232,18 +232,18 @@ mod tests {
 
     #[test]
     fn test_framework_creation() {
-        let framework = TestingFramework::new();
-        assert_eq!(framework.test_cases.len(), 0);
-        assert_eq!(framework.results.len(), 0);
+        let framework = TestingFramework::new(;
+        assert_eq!(framework.test_cases.len(), 0;
+        assert_eq!(framework.results.len(), 0;
     }
 
     #[test]
     fn test_basic_test_suite_creation() {
-        let test_suite = create_basic_test_suite();
-        assert_eq!(test_suite.len(), 3);
+        let test_suite = create_basic_test_suite(;
+        assert_eq!(test_suite.len(), 3;
         
         let arithmetic_test = &test_suite[0];
-        assert_eq!(arithmetic_test.name, "arithmetic_add");
-        assert_eq!(arithmetic_test.test_type, TestType::Unit);
+        assert_eq!(arithmetic_test.name, "arithmetic_add";
+        assert_eq!(arithmetic_test.test_type, TestType::Unit;
     }
 }

@@ -4,15 +4,17 @@
 //! wrt-format and converting it to runtime representations. It establishes
 //! the runtime side of the boundary between format and runtime layers.
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 use crate::prelude::*;
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
+// For no_std without alloc, use type aliases with concrete providers
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+type Vec<T> = wrt_foundation::BoundedVec<T, 16, wrt_foundation::NoStdProvider<1024>>;
 
 /// Trait for types that can be initialized from format representations
 pub trait FromFormatBridge<FormatData> {
@@ -263,7 +265,7 @@ impl RuntimeModuleInitializer {
     fn validate_asil_constraints(&self, runtime_data: &FormatModuleRuntimeData) -> Result<()> {
         // Check initialization step limits
         if runtime_data.estimated_initialization_steps > self.context.max_initialization_steps {
-            return Err(Error::resource_exhausted("Too many initialization steps for ASIL constraints"));
+            return Err(Error::resource_exhausted("Too many initialization steps for ASIL constraints";
         }
         
         // Check memory allocation limits for ASIL-D
@@ -271,10 +273,10 @@ impl RuntimeModuleInitializer {
             let total_data_size: usize = runtime_data.data_extractions
                 .iter()
                 .map(|e| e.data_size)
-                .sum();
+                .sum(;
                 
             if total_data_size > self.context.asil_constraints.max_memory_allocation {
-                return Err(Error::resource_exhausted("Data size exceeds ASIL-D memory limits"));
+                return Err(Error::resource_exhausted("Data size exceeds ASIL-D memory limits";
             }
         }
         

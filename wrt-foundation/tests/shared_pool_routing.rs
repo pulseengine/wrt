@@ -27,7 +27,7 @@ mod shared_pool_routing_tests {
         setup_with_small_shared_pool()?;
 
         // Check the routing threshold
-        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold();
+        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold(;
         assert_eq!(threshold, 16 * 1024); // 16KB
 
         // Small allocation should go to shared pool
@@ -87,7 +87,7 @@ mod shared_pool_routing_tests {
         setup_with_small_shared_pool()?;
 
         // Exhaust the shared pool
-        let mut allocations = Vec::new();
+        let mut allocations = Vec::new(;
 
         // Keep allocating until shared pool is exhausted
         loop {
@@ -125,7 +125,7 @@ mod shared_pool_routing_tests {
         BudgetAwareProviderFactory::initialize_dynamic_budgets(dynamic_config)?;
 
         // Exhaust one crate's budget
-        let mut runtime_allocations = Vec::new();
+        let mut runtime_allocations = Vec::new(;
         while let Ok(provider) = BudgetProvider::<{ 64 * 1024 }>::new(CrateId::Runtime) {
             runtime_allocations.push(provider);
             if runtime_allocations.len() > 100 {
@@ -134,18 +134,18 @@ mod shared_pool_routing_tests {
         }
 
         // Try one more allocation - should trigger emergency borrowing
-        let borrowed_result = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Runtime);
+        let borrowed_result = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Runtime;
 
         // In a system with emergency borrowing, this might succeed
         // if other crates have unused budget
         match borrowed_result {
             Ok(_) => {
                 // Emergency borrowing worked
-                println!("Emergency borrowing succeeded");
+                println!("Emergency borrowing succeeded";
             }
             Err(_) => {
                 // Emergency borrowing couldn't find available budget
-                println!("Emergency borrowing failed - no available budget");
+                println!("Emergency borrowing failed - no available budget";
             }
         }
 
@@ -168,13 +168,13 @@ mod shared_pool_routing_tests {
 
         // Verify shared pool tracking
         let shared_stats = BudgetAwareProviderFactory::get_shared_pool_stats()?;
-        assert!(shared_stats.allocated >= 3 * 16384); // 3 allocations, each rounded up to 16KB
+        assert!(shared_stats.allocated >= 3 * 16384)); // 3 allocations, each rounded up to 16KB
 
         // Individual crate budgets should be minimally affected
         for &crate_id in &[CrateId::Foundation, CrateId::Runtime, CrateId::Component] {
             let stats = BudgetAwareProviderFactory::get_crate_stats(crate_id)?;
             // Provider count should increase but not allocated bytes (from shared pool)
-            assert_eq!(stats.provider_count, 1);
+            assert_eq!(stats.provider_count, 1;
         }
 
         Ok(())
@@ -188,13 +188,13 @@ mod shared_pool_routing_tests {
         BudgetAwareProviderFactory::set_auto_routing_enabled(true)?;
 
         // Test threshold queries
-        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold();
-        assert_eq!(threshold, 16 * 1024);
+        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold(;
+        assert_eq!(threshold, 16 * 1024;
 
         // Test shared pool availability checks
-        assert!(BudgetAwareProviderFactory::can_allocate_shared(4096));
-        assert!(BudgetAwareProviderFactory::can_allocate_shared(16384));
-        assert!(!BudgetAwareProviderFactory::can_allocate_shared(10 * 1024 * 1024)); // Too large
+        assert!(BudgetAwareProviderFactory::can_allocate_shared(4096);
+        assert!(BudgetAwareProviderFactory::can_allocate_shared(16384);
+        assert!(!BudgetAwareProviderFactory::can_allocate_shared(10 * 1024 * 1024))); // Too large
 
         Ok(())
     }
@@ -206,7 +206,7 @@ mod shared_pool_routing_tests {
         // Get initial stats
         let initial_stats = BudgetAwareProviderFactory::get_shared_pool_stats()?;
         assert!(initial_stats.total_budget > 0);
-        assert_eq!(initial_stats.allocated, 0);
+        assert_eq!(initial_stats.allocated, 0;
 
         // Make some allocations
         let _p1 = BudgetProvider::<4096>::new(CrateId::Foundation)?;
@@ -238,10 +238,10 @@ mod shared_pool_routing_tests {
 
         // Verify Foundation crate stats
         let foundation_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Foundation)?;
-        assert_eq!(foundation_stats.provider_count, 3);
+        assert_eq!(foundation_stats.provider_count, 3;
 
         // Large and medium should contribute to crate allocation
-        assert!(foundation_stats.allocated_bytes >= 65536 + 1048576); // medium + large
+        assert!(foundation_stats.allocated_bytes >= 65536 + 1048576)); // medium + large
 
         Ok(())
     }
@@ -253,10 +253,10 @@ mod shared_pool_routing_tests {
         // Test different allocation patterns
 
         // Pattern 1: Many small allocations (should use shared pool efficiently)
-        let mut small_allocations = Vec::new();
+        let mut small_allocations = Vec::new(;
         for i in 0..10 {
             let provider = BudgetProvider::<1024>::new(CrateId::Decoder)?;
-            small_allocations.push(BoundedVec::<u8, 100, _>::new(provider)?);
+            small_allocations.push(BoundedVec::<u8, 100, _>::new(provider)?;
         }
 
         // Pattern 2: Mixed allocation sizes
@@ -270,8 +270,8 @@ mod shared_pool_routing_tests {
         let shared_stats = BudgetAwareProviderFactory::get_shared_pool_stats()?;
         let global_stats = BudgetAwareProviderFactory::get_global_stats()?;
 
-        assert!(shared_stats.allocated > 0); // Shared pool used
-        assert!(global_stats.total_allocated_memory > 0); // Total tracking works
+        assert!(shared_stats.allocated > 0)); // Shared pool used
+        assert!(global_stats.total_allocated_memory > 0)); // Total tracking works
 
         Ok(())
     }
@@ -283,7 +283,7 @@ mod shared_pool_routing_tests {
         // Create usage patterns that would trigger recommendations
 
         // High utilization in Runtime
-        let mut runtime_providers = Vec::new();
+        let mut runtime_providers = Vec::new(;
         for _ in 0..20 {
             if let Ok(provider) = BudgetProvider::<{ 128 * 1024 }>::new(CrateId::Runtime) {
                 runtime_providers.push(provider);
@@ -299,12 +299,12 @@ mod shared_pool_routing_tests {
         let recommendations = BudgetAwareProviderFactory::get_recommendations()?;
 
         // Should have recommendations for high and low utilization
-        assert!(!recommendations.is_empty());
+        assert!(!recommendations.is_empty();
 
         for rec in &recommendations {
             assert!(rec.estimated_impact <= 100);
             assert!(rec.difficulty >= 1 && rec.difficulty <= 5);
-            assert!(!rec.description.is_empty());
+            assert!(!rec.description.is_empty();
         }
 
         Ok(())

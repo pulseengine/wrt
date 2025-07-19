@@ -90,7 +90,7 @@ pub struct PlatformServices {
 
 impl PlatformServices {
     pub fn minimal() -> Self {
-        static TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new();
+        static TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new(;
         Self {
             limits: PlatformLimits::minimal(),
             time_provider: &TIME_PROVIDER,
@@ -123,12 +123,12 @@ impl Default for PlatformServices {
 use core::sync::atomic::{AtomicPtr, Ordering};
 
 /// Global platform services instance using safer atomic pointer
-static PLATFORM_SERVICES: AtomicPtr<PlatformServices> = AtomicPtr::new(core::ptr::null_mut());
+static PLATFORM_SERVICES: AtomicPtr<PlatformServices> = AtomicPtr::new(core::ptr::null_mut(;
 
 /// Initialize platform services (call once at startup)
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub fn initialize_platform_services(services: PlatformServices) -> Result<()> {
-    let boxed = Box::into_raw(Box::new(services));
+    let boxed = Box::into_raw(Box::new(services;
     match PLATFORM_SERVICES.compare_exchange(
         core::ptr::null_mut(),
         boxed,
@@ -140,7 +140,7 @@ pub fn initialize_platform_services(services: PlatformServices) -> Result<()> {
             // Someone else already initialized, clean up our allocation
             #[allow(unsafe_code)] // Required for cleanup
             unsafe {
-                drop(Box::from_raw(boxed));
+                drop(Box::from_raw(boxed;
             }
             Err(Error::runtime_execution_error("Platform services already initialized"))
         }
@@ -156,7 +156,7 @@ pub fn initialize_platform_services(_services: PlatformServices) -> Result<()> {
 
 /// Get platform services (returns minimal defaults if not initialized)
 pub fn get_platform_services() -> &'static PlatformServices {
-    let ptr = PLATFORM_SERVICES.load(Ordering::Acquire);
+    let ptr = PLATFORM_SERVICES.load(Ordering::Acquire;
     if !ptr.is_null() {
         #[allow(unsafe_code)] // Required for pointer dereference
         unsafe {
@@ -164,7 +164,7 @@ pub fn get_platform_services() -> &'static PlatformServices {
         }
     } else {
         // Return static minimal services as fallback
-        static MINIMAL_TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new();
+        static MINIMAL_TIME_PROVIDER: CounterTimeProvider = CounterTimeProvider::new(;
         static MINIMAL_SERVICES: PlatformServices = PlatformServices {
             limits: PlatformLimits::minimal(),
             time_provider: &MINIMAL_TIME_PROVIDER,

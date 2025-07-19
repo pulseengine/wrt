@@ -4,7 +4,7 @@
 //! which represents a runtime instance of a WebAssembly module with its own
 //! memory, tables, globals, and functions.
 
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 #[cfg(feature = "debug-full")]
 use wrt_debug::FunctionInfo;
@@ -30,7 +30,7 @@ use crate::prelude::{Arc, Mutex};
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::format;
 
 /// Represents a runtime instance of a WebAssembly module
@@ -94,7 +94,7 @@ impl ModuleInstance {
             .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
         
         #[cfg(not(feature = "std"))]
-        let memories = self.memories.lock();
+        let memories = self.memories.lock(;
 
         let memory = memories
             .get(idx as usize)
@@ -111,7 +111,7 @@ impl ModuleInstance {
             .map_err(|_| Error::runtime_error("Failed to lock tables"))?;
         
         #[cfg(not(feature = "std"))]
-        let tables = self.tables.lock();
+        let tables = self.tables.lock(;
 
         let table = tables
             .get(idx as usize)
@@ -128,7 +128,7 @@ impl ModuleInstance {
             .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
         
         #[cfg(not(feature = "std"))]
-        let globals = self.globals.lock();
+        let globals = self.globals.lock(;
 
         let global = globals
             .get(idx as usize)
@@ -197,7 +197,7 @@ impl ModuleInstance {
             .map_err(|_| Error::runtime_error("Failed to lock memories"))?;
         
         #[cfg(not(feature = "std"))]
-        let mut memories = self.memories.lock();
+        let mut memories = self.memories.lock(;
 
         memories.push(MemoryWrapper::new(memory))
             .map_err(|_| Error::capacity_limit_exceeded("Memory capacity exceeded"))?;
@@ -213,7 +213,7 @@ impl ModuleInstance {
             .map_err(|_| Error::runtime_error("Failed to lock tables"))?;
         
         #[cfg(not(feature = "std"))]
-        let mut tables = self.tables.lock();
+        let mut tables = self.tables.lock(;
 
         tables.push(TableWrapper::new(table))
             .map_err(|_| Error::capacity_limit_exceeded("Table capacity exceeded"))?;
@@ -229,7 +229,7 @@ impl ModuleInstance {
             .map_err(|_| Error::runtime_error("Failed to lock globals"))?;
         
         #[cfg(not(feature = "std"))]
-        let mut globals = self.globals.lock();
+        let mut globals = self.globals.lock(;
 
         globals.push(GlobalWrapper::new(global))
             .map_err(|_| Error::capacity_limit_exceeded("Global capacity exceeded"))?;
@@ -239,12 +239,12 @@ impl ModuleInstance {
     /// Initialize debug information for this instance
     #[cfg(feature = "debug")]
     pub fn init_debug_info(&mut self, module_bytes: &'static [u8]) -> Result<()> {
-        let mut debug_info = DwarfDebugInfo::new(module_bytes);
+        let mut debug_info = DwarfDebugInfo::new(module_bytes;
 
         // TODO: Extract debug section offsets from the module
         // For now, this is a placeholder that would need module parsing integration
 
-        self.debug_info = Some(debug_info);
+        self.debug_info = Some(debug_info;
         Ok(())
     }
 
@@ -347,7 +347,7 @@ impl ReferenceOperations for ModuleInstance {
 impl Default for ModuleInstance {
     fn default() -> Self {
         // Create a default module instance with a default module
-        let default_module = Module::default();
+        let default_module = Module::default(;
         // Default implementation must succeed for basic functionality
         // Use minimal memory allocation that should always work
         match Self::new(default_module, 0) {
@@ -446,18 +446,18 @@ impl Eq for ModuleInstance {}
 impl Checksummable for ModuleInstance {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use instance ID and module checksum for unique identification
-        checksum.update_slice(&self.instance_id.to_le_bytes());
+        checksum.update_slice(&self.instance_id.to_le_bytes(;
         
         // Include module checksum if the module implements Checksummable
         // For now, use a simplified approach with module validation status
         if let Some(name) = self.module.name.as_ref() {
             if let Ok(name_str) = name.as_str() {
-                checksum.update_slice(name_str.as_bytes());
+                checksum.update_slice(name_str.as_bytes(;
             } else {
-                checksum.update_slice(b"invalid_module_name");
+                checksum.update_slice(b"invalid_module_name";
             }
         } else {
-            checksum.update_slice(b"unnamed_module_instance");
+            checksum.update_slice(b"unnamed_module_instance";
         }
         
         // Include counts of resources for uniqueness
@@ -476,9 +476,9 @@ impl Checksummable for ModuleInstance {
         #[cfg(not(feature = "std"))]
         let globals_count = self.globals.lock().len() as u32;
         
-        checksum.update_slice(&memories_count.to_le_bytes());
-        checksum.update_slice(&tables_count.to_le_bytes());
-        checksum.update_slice(&globals_count.to_le_bytes());
+        checksum.update_slice(&memories_count.to_le_bytes(;
+        checksum.update_slice(&tables_count.to_le_bytes(;
+        checksum.update_slice(&globals_count.to_le_bytes(;
     }
 }
 
@@ -520,7 +520,7 @@ impl ToBytes for ModuleInstance {
         // Write module name (simplified)
         if let Some(name) = self.module.name.as_ref() {
             if let Ok(name_str) = name.as_str() {
-                let name_bytes = name_str.as_bytes();
+                let name_bytes = name_str.as_bytes(;
                 writer.write_all(&(name_bytes.len() as u32).to_le_bytes())?;
                 writer.write_all(name_bytes)?;
             } else {
@@ -544,7 +544,7 @@ impl FromBytes for ModuleInstance {
         // Read instance ID
         let mut instance_id_bytes = [0u8; 8];
         reader.read_exact(&mut instance_id_bytes)?;
-        let instance_id = usize::from_le_bytes(instance_id_bytes);
+        let instance_id = usize::from_le_bytes(instance_id_bytes;
         
         // Read resource counts (for validation, but create empty collections)
         let mut counts = [0u8; 12];
@@ -557,6 +557,9 @@ impl FromBytes for ModuleInstance {
         
         // Skip reading the name for now (simplified implementation)
         if name_len > 0 {
+            #[cfg(feature = "std")]
+            let mut name_bytes = std::vec![0u8; name_len];
+            #[cfg(all(feature = "alloc", not(feature = "std")))]
             let mut name_bytes = alloc::vec![0u8; name_len];
             reader.read_exact(&mut name_bytes)?;
         }
@@ -564,7 +567,7 @@ impl FromBytes for ModuleInstance {
         // Create a default module instance with empty collections
         // This is a simplified implementation - in a real scenario, 
         // you'd need to reconstruct the actual module
-        let default_module = Module::default();
+        let default_module = Module::default(;
         
         // Create the instance using the new method
         Self::new(default_module, instance_id)

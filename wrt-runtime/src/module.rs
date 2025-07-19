@@ -3,14 +3,8 @@
 // This module provides the core runtime implementation of WebAssembly modules
 // used by the runtime execution engine.
 
-// Binary std/no_std choice - use our own memory management
-#[cfg(feature = "std")]
-extern crate alloc;
-
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
-#[cfg(not(feature = "std"))]
+// Use alloc when available through lib.rs
+#[cfg(any(feature = "std", feature = "alloc"))]
 use alloc::format;
 
 use wrt_foundation::{
@@ -45,7 +39,7 @@ use crate::prelude::{ToString, RuntimeString};
 // Use clean types for collections instead of provider-embedded ones
 #[cfg(feature = "std")]
 use std::{vec::Vec, collections::HashMap, string::String, sync::Arc};
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec::Vec, string::String, sync::Arc};
 // HashMap is not needed with clean architecture using BoundedMap
 use wrt_foundation::bounded_collections::BoundedMap;
@@ -140,9 +134,9 @@ impl Export {
 
 impl wrt_foundation::traits::Checksummable for Export {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.name.update_checksum(checksum);
-        checksum.update_slice(&(self.kind as u8).to_le_bytes());
-        checksum.update_slice(&self.index.to_le_bytes());
+        self.name.update_checksum(checksum;
+        checksum.update_slice(&(self.kind as u8).to_le_bytes(;
+        checksum.update_slice(&self.index.to_le_bytes(;
     }
 }
 
@@ -181,7 +175,7 @@ impl wrt_foundation::traits::FromBytes for Export {
         
         let mut index_bytes = [0u8; 4];
         reader.read_exact(&mut index_bytes)?;
-        let index = u32::from_le_bytes(index_bytes);
+        let index = u32::from_le_bytes(index_bytes;
         
         Ok(Self { name, kind, index })
     }
@@ -234,8 +228,8 @@ impl Eq for Import {}
 
 impl wrt_foundation::traits::Checksummable for Import {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.module.update_checksum(checksum);
-        self.name.update_checksum(checksum);
+        self.module.update_checksum(checksum;
+        self.name.update_checksum(checksum;
     }
 }
 
@@ -302,7 +296,7 @@ impl Eq for Function {}
 
 impl wrt_foundation::traits::Checksummable for Function {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.type_idx.to_le_bytes());
+        checksum.update_slice(&self.type_idx.to_le_bytes(;
     }
 }
 
@@ -327,7 +321,7 @@ impl wrt_foundation::traits::FromBytes for Function {
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
-        let type_idx = u32::from_le_bytes(bytes);
+        let type_idx = u32::from_le_bytes(bytes;
         let provider = create_runtime_provider().map_err(|_| wrt_error::Error::memory_error("Failed to allocate provider for function locals"))?;
         Ok(Self {
             type_idx,
@@ -372,9 +366,9 @@ impl wrt_foundation::traits::Checksummable for Element {
             WrtElementMode::Passive => 1u8,
             WrtElementMode::Declarative => 2u8,
         };
-        checksum.update_slice(&mode_byte.to_le_bytes());
+        checksum.update_slice(&mode_byte.to_le_bytes(;
         if let Some(table_idx) = self.table_idx {
-            checksum.update_slice(&table_idx.to_le_bytes());
+            checksum.update_slice(&table_idx.to_le_bytes(;
         }
     }
 }
@@ -414,7 +408,7 @@ impl wrt_foundation::traits::FromBytes for Element {
         
         let mut idx_bytes = [0u8; 4];
         reader.read_exact(&mut idx_bytes)?;
-        let table_idx = Some(u32::from_le_bytes(idx_bytes));
+        let table_idx = Some(u32::from_le_bytes(idx_bytes;
         
         Ok(Self {
             mode,
@@ -445,11 +439,11 @@ impl wrt_foundation::traits::Checksummable for Data {
             WrtDataMode::Active { .. } => 0u8,
             WrtDataMode::Passive => 1u8,
         };
-        checksum.update_slice(&mode_byte.to_le_bytes());
+        checksum.update_slice(&mode_byte.to_le_bytes(;
         if let Some(memory_idx) = self.memory_idx {
-            checksum.update_slice(&memory_idx.to_le_bytes());
+            checksum.update_slice(&memory_idx.to_le_bytes(;
         }
-        checksum.update_slice(&(self.init.len() as u32).to_le_bytes());
+        checksum.update_slice(&(self.init.len() as u32).to_le_bytes(;
     }
 }
 
@@ -487,10 +481,10 @@ impl wrt_foundation::traits::FromBytes for Data {
         
         let mut idx_bytes = [0u8; 4];
         reader.read_exact(&mut idx_bytes)?;
-        let memory_idx = Some(u32::from_le_bytes(idx_bytes));
+        let memory_idx = Some(u32::from_le_bytes(idx_bytes;
         
         reader.read_exact(&mut idx_bytes)?;
-        let _len = u32::from_le_bytes(idx_bytes);
+        let _len = u32::from_le_bytes(idx_bytes;
         
         Ok(Self {
             mode,
@@ -583,7 +577,7 @@ impl Module {
         
         // Use empty() instead of new() to avoid memory allocation during initialization
         // This prevents stack overflow when the memory system isn't fully initialized
-        let mut runtime_module = Self::empty();
+        let mut runtime_module = Self::empty(;
         
         // Map start function if present
         runtime_module.start = wrt_module.start;
@@ -669,7 +663,7 @@ impl Module {
         wrt_foundation::memory_init::MemoryInitializer::ensure_initialized()?;
         
         // Use empty() instead of new() to avoid memory allocation during initialization
-        let mut runtime_module = Self::empty();
+        let mut runtime_module = Self::empty(;
         
         // Map start function if present
         runtime_module.start = wrt_module.start;
@@ -714,7 +708,7 @@ impl Module {
                 }
                 FormatImportDesc::Tag(tag_idx) => {
                     // Handle Tag import - convert to appropriate runtime representation
-                    return Err(Error::parse_error("Tag imports not yet supported"));
+                    return Err(Error::parse_error("Tag imports not yet supported";
                 }
             };
             
@@ -827,7 +821,7 @@ impl Module {
 
         // TODO: wrt_module doesn't have a name field currently
         // if let Some(name) = &wrt_module.name {
-        //     runtime_module.name = Some(name.clone());
+        //     runtime_module.name = Some(name.clone();
         // }
         // Map start function if present
         runtime_module.start = wrt_module.start_func;
@@ -932,7 +926,7 @@ impl Module {
             // and code_entries matches this.
             let func_idx_in_defined_funcs = runtime_module.functions.len(); // 0-indexed among defined functions
             if func_idx_in_defined_funcs >= wrt_module.functions.len() {
-                return Err(Error::validation_error("Mismatch between code entries and function type declarations"));
+                return Err(Error::validation_error("Mismatch between code entries and function type declarations";
             }
             let type_idx = wrt_module.functions.get(func_idx_in_defined_funcs).map_err(|_| Error::validation_function_not_found("Function index out of bounds"))?;
 
@@ -941,14 +935,14 @@ impl Module {
             let mut runtime_locals = wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, RuntimeProvider>::new(provider)?;
             for local in &code_entry.locals {
                 if runtime_locals.push(local).is_err() {
-                    return Err(Error::runtime_execution_error("Runtime execution error: locals capacity exceeded"));
+                    return Err(Error::runtime_execution_error("Runtime execution error: locals capacity exceeded";
                 }
             }
             
             // Convert body to WrtExpr
             // For now, just use the default empty expression
             // TODO: Properly convert the instruction sequence
-            let runtime_body = WrtExpr::default();
+            let runtime_body = WrtExpr::default(;
             
             runtime_module.functions.push(Function {
                 type_idx,
@@ -1213,13 +1207,13 @@ impl Module {
             &name,
             create_runtime_provider()?
         )?;
-        self.name = Some(bounded_name);
+        self.name = Some(bounded_name;
         Ok(())
     }
 
     /// Set the start function index
     pub fn set_start(&mut self, start: u32) -> Result<()> {
-        self.start = Some(start);
+        self.start = Some(start;
         Ok(())
     }
 
@@ -1445,7 +1439,7 @@ impl Module {
     /// Add a function to the module
     pub fn add_function_type(&mut self, type_idx: u32) -> Result<()> {
         if type_idx as usize >= self.types.len() {
-            return Err(Error::validation_type_mismatch("Function type index out of bounds"));
+            return Err(Error::validation_type_mismatch("Function type index out of bounds";
         }
 
         let provider = create_runtime_provider()?;
@@ -1483,7 +1477,7 @@ impl Module {
         if index as usize >= self.functions.len() {
             return Err(Error::validation_error(
                 "Export function index out of bounds"
-            ));
+            ;
         }
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
@@ -1500,7 +1494,7 @@ impl Module {
         if index as usize >= self.tables.len() {
             return Err(Error::validation_error(
                 "Export table index out of bounds"
-            ));
+            ;
         }
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
@@ -1517,7 +1511,7 @@ impl Module {
         if index as usize >= self.memories.len() {
             return Err(Error::validation_error(
                 "Export memory index out of bounds"
-            ));
+            ;
         }
 
         let export = Export::new(String::from(name), ExportKind::Memory, index)?;
@@ -1535,7 +1529,7 @@ impl Module {
         if index as usize >= self.globals.len() {
             return Err(Error::validation_error(
                 "Export global index out of bounds"
-            ));
+            ;
         }
 
         let export = Export::new(String::from(name), ExportKind::Global, index)?;
@@ -1596,7 +1590,7 @@ impl Module {
     ) -> Result<()> {
         if func_idx as usize > self.functions.len() {
             // Allow appending
-            return Err(Error::runtime_function_not_found("Function index out of bounds for set_function_body"));
+            return Err(Error::runtime_function_not_found("Function index out of bounds for set_function_body";
         }
         
         // Convert Vec<WrtLocalEntry> to BoundedVec
@@ -1657,7 +1651,7 @@ impl Module {
         for byte in binary {
             bounded_binary.push(byte)?;
         }
-        self.binary = Some(bounded_binary);
+        self.binary = Some(bounded_binary;
         Ok(())
     }
 
@@ -1838,7 +1832,7 @@ impl Module {
         for byte in binary {
             bounded_binary.push(byte)?;
         }
-        self.binary = Some(bounded_binary);
+        self.binary = Some(bounded_binary;
         Ok(())
     }
 
@@ -1856,7 +1850,7 @@ impl Module {
         
         // Ensure this is a core module
         if !wasm_info.is_core_module() {
-            return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module"));
+            return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module";
         }
         
         let module_info = wasm_info.require_module_info()?;
@@ -2005,7 +1999,7 @@ impl Module {
             #[cfg(not(feature = "std"))]
             let full_runtime_module = Module::from_wrt_module_nostd(&decoded_module)?;
             
-            return Ok(full_runtime_module);
+            return Ok(full_runtime_module;
         }
 
         Ok(runtime_module)
@@ -2021,7 +2015,7 @@ impl Module {
         
         if let Ok(Some(export)) = self.exports.get(&bounded_name) {
             if export.kind == ExportKind::Function {
-                return Some(export.index);
+                return Some(export.index;
             }
         }
         None
@@ -2107,22 +2101,22 @@ impl wrt_foundation::traits::Checksummable for Module {
         // Use module name (if available) and validation status for checksum
         if let Some(ref name) = self.name {
             if let Ok(name_str) = name.as_str() {
-                checksum.update_slice(name_str.as_bytes());
+                checksum.update_slice(name_str.as_bytes(;
             }
         } else {
             // Use a default identifier if no name is available
-            checksum.update_slice(b"unnamed_module");
+            checksum.update_slice(b"unnamed_module";
         }
-        checksum.update_slice(&[if self.validated { 1 } else { 0 }]);
-        checksum.update_slice(&(self.types.len() as u32).to_le_bytes());
-        checksum.update_slice(&(self.functions.len() as u32).to_le_bytes());
+        checksum.update_slice(&[if self.validated { 1 } else { 0 }];
+        checksum.update_slice(&(self.types.len() as u32).to_le_bytes(;
+        checksum.update_slice(&(self.functions.len() as u32).to_le_bytes(;
     }
 }
 
 impl wrt_foundation::traits::ToBytes for Module {
     fn serialized_size(&self) -> usize {
         // Simple size calculation for module metadata
-        let name_size = self.name.as_ref().map_or(0, |n| n.len());
+        let name_size = self.name.as_ref().map_or(0, |n| n.len(;
         8 + name_size + 1 + 4 + 4 // magic(4) + name_len(4) + name + validated(1) + types_len(4) + functions_len(4)
     }
     
@@ -2166,13 +2160,13 @@ impl wrt_foundation::traits::FromBytes for Module {
         let mut magic = [0u8; 4];
         reader.read_exact(&mut magic)?;
         if u32::from_le_bytes(magic) != 0x6D6F6475 {
-            return Err(wrt_error::Error::runtime_error("Invalid module magic number"));
+            return Err(wrt_error::Error::runtime_error("Invalid module magic number";
         }
         
         // Read module name
         let mut name_len_bytes = [0u8; 4];
         reader.read_exact(&mut name_len_bytes)?;
-        let name_len = u32::from_le_bytes(name_len_bytes);
+        let name_len = u32::from_le_bytes(name_len_bytes;
         
         let name = if name_len > 0 && name_len <= 128 {
             // Use a fixed-size buffer for reading the name
@@ -2215,7 +2209,7 @@ use wrt_foundation::component::ExternType; // For error handling
 
 /// Wrapper for Arc<Table> to enable trait implementations
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TableWrapper(pub Arc<Table>);
+pub struct TableWrapper(pub Arc<Table>;
 
 impl Default for TableWrapper {
     fn default() -> Self {
@@ -2304,7 +2298,7 @@ impl MemoryGuard {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MemoryWrapper(pub Arc<Memory>);
+pub struct MemoryWrapper(pub Arc<Memory>;
 
 impl Default for MemoryWrapper {
     fn default() -> Self {
@@ -2419,7 +2413,7 @@ impl MemoryWrapper {
 
 /// Wrapper for Arc<Global> to enable trait implementations
 #[derive(Debug, Clone, PartialEq, Eq)]  
-pub struct GlobalWrapper(pub Arc<Global>);
+pub struct GlobalWrapper(pub Arc<Global>;
 
 impl Default for GlobalWrapper {
     fn default() -> Self {
@@ -2491,8 +2485,8 @@ use wrt_foundation::verification::Checksum;
 impl Checksummable for TableWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use table size and element type for checksum
-        checksum.update_slice(&self.0.size().to_le_bytes());
-        checksum.update_slice(&(self.0.ty.element_type as u8).to_le_bytes());
+        checksum.update_slice(&self.0.size().to_le_bytes(;
+        checksum.update_slice(&(self.0.ty.element_type as u8).to_le_bytes(;
     }
 }
 
@@ -2540,8 +2534,8 @@ impl FromBytes for TableWrapper {
 impl Checksummable for MemoryWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use memory size for checksum
-        checksum.update_slice(&self.0.size().to_le_bytes());
-        checksum.update_slice(&self.0.size_in_bytes().to_le_bytes());
+        checksum.update_slice(&self.0.size().to_le_bytes(;
+        checksum.update_slice(&self.0.size_in_bytes().to_le_bytes(;
     }
 }
 
@@ -2557,7 +2551,7 @@ impl ToBytes for MemoryWrapper {
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&self.0.size().to_le_bytes())?;
         writer.write_all(&self.0.ty.limits.min.to_le_bytes())?;
-        let max = self.0.ty.limits.max.unwrap_or(u32::MAX);
+        let max = self.0.ty.limits.max.unwrap_or(u32::MAX;
         writer.write_all(&max.to_le_bytes())?;
         Ok(())
     }
@@ -2608,8 +2602,8 @@ fn value_type_to_u8(vt: WrtValueType) -> u8 {
 impl Checksummable for GlobalWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use global value type for checksum
-        checksum.update_slice(&value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes());
-        checksum.update_slice(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes());
+        checksum.update_slice(&value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes(;
+        checksum.update_slice(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes(;
     }
 }
 

@@ -28,9 +28,8 @@ use crate::{
 #[cfg(feature = "std")]
 use std::{boxed::Box, vec, vec::Vec};
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// alloc is imported in lib.rs with proper feature gates
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{boxed::Box, vec, vec::Vec};
 
 // For no_std without alloc, use BoundedVec instead of Vec
@@ -122,7 +121,7 @@ impl PlatformAwareRuntime {
     /// Create new platform-aware runtime using platform discovery
     #[cfg(feature = "std")]
     pub fn new() -> Result<Self> {
-        let mut discoverer = PlatformLimitDiscoverer::new();
+        let mut discoverer = PlatformLimitDiscoverer::new(;
         let limits = discoverer.discover().map_err(|e| {
             Error::runtime_execution_error("Platform limit discovery failed")
         })?;
@@ -132,8 +131,8 @@ impl PlatformAwareRuntime {
     /// Create new platform-aware runtime for no_std environments
     #[cfg(not(feature = "std"))]
     pub fn new() -> Result<Self> {
-        let cfi_protection = Self::create_basic_cfi_protection();
-        let execution_engine = CfiExecutionEngine::new(cfi_protection);
+        let cfi_protection = Self::create_basic_cfi_protection(;
+        let execution_engine = CfiExecutionEngine::new(cfi_protection;
         let safety_context = SafetyContext::new(AsilLevel::D); // Default to highest safety level for no_std
         
         Ok(Self {
@@ -149,9 +148,9 @@ impl PlatformAwareRuntime {
         #[cfg(all(any(feature = "std", feature = "alloc"), feature = "platform"))]
         let memory_allocator = Self::create_memory_allocator(&limits)?;
         
-        let cfi_protection = Self::create_cfi_protection(&limits);
+        let cfi_protection = Self::create_cfi_protection(&limits;
         let execution_engine = CfiExecutionEngine::new(cfi_protection)?;
-        let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level));
+        let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level;
         
         Ok(Self {
             execution_engine,
@@ -172,9 +171,9 @@ impl PlatformAwareRuntime {
         #[cfg(all(any(feature = "std", feature = "alloc"), feature = "platform"))]
         let memory_allocator = Self::create_memory_allocator(&limits)?;
         
-        let cfi_protection = Self::create_cfi_protection(&limits);
+        let cfi_protection = Self::create_cfi_protection(&limits;
         let execution_engine = CfiExecutionEngine::new_with_policy(cfi_protection, cfi_policy)?;
-        let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level));
+        let safety_context = SafetyContext::new(convert_asil_level(limits.asil_level;
         
         Ok(Self {
             execution_engine,
@@ -192,7 +191,7 @@ impl PlatformAwareRuntime {
         function: &RuntimeFunction,
         args: &[Value],
     ) -> Result<ValueVec> {
-        let start_time = self.get_timestamp();
+        let start_time = self.get_timestamp(;
         
         // Validate execution against platform limits
         #[cfg(feature = "std")]
@@ -202,24 +201,24 @@ impl PlatformAwareRuntime {
         #[cfg(feature = "std")]
         let mut execution_context = ExecutionContext::new_with_limits(
             self.platform_limits.max_stack_bytes / 8, // Approximate stack depth
-        );
+        ;
         
         #[cfg(not(feature = "std"))]
         let mut execution_context = ExecutionContext::new_with_limits(256); // Default stack depth for no_std
         
         // Execute with CFI protection
-        let instruction = self.create_call_instruction(function);
+        let instruction = self.create_call_instruction(function;
         let cfi_result = self.execution_engine.execute_instruction_with_cfi(
             &instruction,
             &mut execution_context,
         )?;
         
         // Update metrics
-        let end_time = self.get_timestamp();
+        let end_time = self.get_timestamp(;
         self.metrics.instructions_executed += 1;
-        self.metrics.execution_time_ns += end_time.saturating_sub(start_time);
+        self.metrics.execution_time_ns += end_time.saturating_sub(start_time;
         #[cfg(feature = "std")]
-        self.update_memory_metrics();
+        self.update_memory_metrics(;
         
         // Extract return values from CFI result
         self.extract_return_values(cfi_result, args.len())
@@ -233,14 +232,14 @@ impl PlatformAwareRuntime {
             let requirements = self.analyze_component_requirements(component_bytes)?;
             
             if requirements.memory_usage > self.available_memory() {
-                return Err(Error::runtime_execution_error("Insufficient memory for component"));
+                return Err(Error::runtime_execution_error("Insufficient memory for component";
             }
             
             if self.metrics.components_instantiated >= self.platform_limits.max_components as u32 {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     wrt_error::codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Maximum component limit exceeded"));
+                    "Maximum component limit exceeded";
             }
         }
         
@@ -248,19 +247,19 @@ impl PlatformAwareRuntime {
         {
             // For no_std, use basic validation
             if component_bytes.len() > 1024 * 1024 { // 1MB limit
-                return Err(Error::runtime_execution_error("Component size exceeds limit"));
+                return Err(Error::runtime_execution_error("Component size exceeds limit";
             }
             
             if self.metrics.components_instantiated >= 16 { // Fixed limit for no_std
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     wrt_error::codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Component instantiation limit exceeded"));
+                    "Component instantiation limit exceeded";
             }
         }
         
         // Create component instance with bounded resources
-        let component_id = ComponentId::new(self.metrics.components_instantiated);
+        let component_id = ComponentId::new(self.metrics.components_instantiated;
         self.metrics.components_instantiated += 1;
         
         Ok(component_id)
@@ -321,21 +320,21 @@ impl PlatformAwareRuntime {
                 let allocator = wrt_platform::LinuxAllocatorBuilder::new()
                     .with_maximum_pages(max_pages as u32)
                     .with_guard_pages(true)
-                    .build();
+                    .build(;
                 Ok(Box::new(allocator))
             },
             #[cfg(all(feature = "platform-qnx", target_os = "nto"))]
             PlatformId::QNX => {
                 let allocator = wrt_platform::QnxAllocatorBuilder::new()
                     .with_maximum_pages(max_pages as u32)
-                    .build();
+                    .build(;
                 Ok(Box::new(allocator))
             },
             #[cfg(all(feature = "platform-macos", target_os = "macos"))]
             PlatformId::MacOS => {
                 let allocator = wrt_platform::MacOsAllocatorBuilder::new()
                     .with_maximum_pages(max_pages as u32)
-                    .build();
+                    .build(;
                 Ok(Box::new(allocator))
             },
             _ => {
@@ -354,7 +353,7 @@ impl PlatformAwareRuntime {
                     fn allocate(&mut self, initial_pages: u32, maximum_pages: Option<u32>) -> Result<(NonNull<u8>, usize)> {
                         if initial_pages > self.max_pages {
                             return Err(Error::runtime_execution_error("Runtime execution error"
-                            ));
+                            ;
                         }
                         // Return a dummy pointer for basic functionality
                         let size = initial_pages as usize * WASM_PAGE_SIZE;
@@ -366,7 +365,7 @@ impl PlatformAwareRuntime {
                             return Err(Error::new(
                                 ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                                "Memory growth would exceed limit"));
+                                "Memory growth would exceed limit";
                         }
                         Ok(())
                     }
@@ -410,7 +409,7 @@ impl PlatformAwareRuntime {
         // Check stack depth estimate
         let estimated_stack = (args.len() + 32) * 8; // Rough estimate
         if estimated_stack > self.platform_limits.max_stack_bytes {
-            return Err(Error::runtime_execution_error("Stack size exceeds platform limit"));
+            return Err(Error::runtime_execution_error("Stack size exceeds platform limit";
         }
         
         // Check memory availability
@@ -418,7 +417,7 @@ impl PlatformAwareRuntime {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::MEMORY_ALLOCATION_ERROR,
-                "Insufficient memory available"));
+                "Insufficient memory available";
         }
         
         Ok(())
@@ -445,7 +444,7 @@ impl PlatformAwareRuntime {
     /// Update memory usage metrics
     #[cfg(feature = "std")]
     fn update_memory_metrics(&mut self) {
-        let current_usage = self.total_memory() - self.available_memory();
+        let current_usage = self.total_memory() - self.available_memory(;
         self.metrics.memory_allocated = current_usage;
         if current_usage > self.metrics.peak_memory_usage {
             self.metrics.peak_memory_usage = current_usage;
@@ -472,7 +471,7 @@ impl PlatformAwareRuntime {
             
             // Use capability-aware allocation
             let mut result = capability_vec(context, CrateId::Runtime, 1)?;
-            result.push(Value::I32(0));
+            result.push(Value::I32(0);
             Ok(result)
         }
         #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -506,7 +505,7 @@ impl PlatformAwareRuntime {
         {
             // Simple counter for no_std environments
             use core::sync::atomic::{AtomicU64, Ordering};
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            static COUNTER: AtomicU64 = AtomicU64::new(0;
             COUNTER.fetch_add(1, Ordering::Relaxed)
         }
     }
@@ -520,27 +519,27 @@ mod tests {
 
     #[test]
     fn test_platform_runtime_creation() {
-        let runtime = PlatformAwareRuntime::new();
-        assert!(runtime.is_ok());
+        let runtime = PlatformAwareRuntime::new(;
+        assert!(runtime.is_ok();
     }
     
     #[test]
     fn test_platform_runtime_with_limits() {
-        let mut discoverer = PlatformLimitDiscoverer::new();
+        let mut discoverer = PlatformLimitDiscoverer::new(;
         if let Ok(limits) = discoverer.discover_limits() {
-            let runtime = PlatformAwareRuntime::new_with_limits(limits.clone());
-            assert!(runtime.is_ok());
+            let runtime = PlatformAwareRuntime::new_with_limits(limits.clone();
+            assert!(runtime.is_ok();
             
             let runtime = runtime.unwrap();
-            assert_eq!(runtime.platform_limits.platform_id, limits.platform_id);
+            assert_eq!(runtime.platform_limits.platform_id, limits.platform_id;
         }
     }
     
     #[test]
     fn test_memory_capacity() {
         if let Ok(runtime) = PlatformAwareRuntime::new() {
-            let total_memory = runtime.total_memory();
-            let available_memory = runtime.available_memory();
+            let total_memory = runtime.total_memory(;
+            let available_memory = runtime.available_memory(;
             assert!(total_memory > 0);
             assert!(available_memory <= total_memory);
         }
@@ -551,9 +550,9 @@ mod tests {
         if let Ok(mut runtime) = PlatformAwareRuntime::new() {
             // Test component instantiation with dummy data
             let component_bytes = b"dummy component";
-            let result = runtime.instantiate_component(component_bytes);
+            let result = runtime.instantiate_component(component_bytes;
             // Should either succeed or fail due to actual limits, not crash
-            assert!(result.is_ok() || result.is_err());
+            assert!(result.is_ok() || result.is_err();
         }
     }
 }

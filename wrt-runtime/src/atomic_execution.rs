@@ -14,7 +14,7 @@
 #![allow(clippy::unsafe_block)]
 #![allow(clippy::unsafe_derive_deserialize)]
 
-extern crate alloc;
+// alloc is imported in lib.rs with proper feature gates
 
 use crate::prelude::Debug;
 use crate::thread_manager::{ThreadManager, ThreadId, ThreadExecutionStats};
@@ -128,7 +128,7 @@ impl AtomicMemoryContext {
         
         // Update thread statistics
         if let Ok(context) = self.thread_manager.get_thread_context_mut(thread_id) {
-            context.stats.record_atomic_operation();
+            context.stats.record_atomic_operation(;
         }
         
         match op {
@@ -164,26 +164,26 @@ impl AtomicMemoryContext {
         
         // Update thread statistics
         if let Ok(context) = self.thread_manager.get_thread_context_mut(thread_id) {
-            context.stats.record_atomic_operation();
+            context.stats.record_atomic_operation(;
         }
         
         match op {
             AtomicOp::Load(load_op) => self.execute_atomic_load(load_op),
             AtomicOp::Store(store_op) => {
                 // Get value from operands
-                let value = operands.get(0).copied().unwrap_or(0u64);
+                let value = operands.get(0).copied().unwrap_or(0u64;
                 self.execute_atomic_store(store_op, value)?;
                 result_vec![]
             },
             AtomicOp::RMW(rmw_op) => {
                 // Get value from operands
-                let value = operands.get(0).copied().unwrap_or(0u64);
+                let value = operands.get(0).copied().unwrap_or(0u64;
                 self.execute_atomic_rmw(rmw_op, value)
             },
             AtomicOp::Cmpxchg(cmpxchg_op) => {
                 // Get expected and replacement values from operands
-                let expected = operands.get(0).copied().unwrap_or(0u64);
-                let replacement = operands.get(1).copied().unwrap_or(0u64);
+                let expected = operands.get(0).copied().unwrap_or(0u64;
+                let replacement = operands.get(1).copied().unwrap_or(0u64;
                 self.execute_atomic_cmpxchg(cmpxchg_op, expected, replacement)
             },
             AtomicOp::WaitNotify(wait_notify_op) => self.execute_wait_notify(thread_id, wait_notify_op),
@@ -211,27 +211,27 @@ impl AtomicMemoryContext {
             },
             AtomicLoadOp::I32AtomicLoad8U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = u32::from(self.atomic_load_u8(addr, MemoryOrdering::SeqCst)?);
+                let value = u32::from(self.atomic_load_u8(addr, MemoryOrdering::SeqCst)?;
                 result_vec![value]
             },
             AtomicLoadOp::I32AtomicLoad16U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = u32::from(self.atomic_load_u16(addr, MemoryOrdering::SeqCst)?);
+                let value = u32::from(self.atomic_load_u16(addr, MemoryOrdering::SeqCst)?;
                 result_vec![value]
             },
             AtomicLoadOp::I64AtomicLoad8U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = u64::from(self.atomic_load_u8(addr, MemoryOrdering::SeqCst)?);
+                let value = u64::from(self.atomic_load_u8(addr, MemoryOrdering::SeqCst)?;
                 result_vec![value as u32, (value >> 32) as u32]
             },
             AtomicLoadOp::I64AtomicLoad16U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = u64::from(self.atomic_load_u16(addr, MemoryOrdering::SeqCst)?);
+                let value = u64::from(self.atomic_load_u16(addr, MemoryOrdering::SeqCst)?;
                 result_vec![value as u32, (value >> 32) as u32]
             },
             AtomicLoadOp::I64AtomicLoad32U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
-                let value = u64::from(self.atomic_load_u32(addr, MemoryOrdering::SeqCst)?);
+                let value = u64::from(self.atomic_load_u32(addr, MemoryOrdering::SeqCst)?;
                 result_vec![value as u32, (value >> 32) as u32]
             },
         }
@@ -392,19 +392,19 @@ impl AtomicMemoryContext {
         self.stats.fence_operations += 1;
         
         // Execute memory fence with specified ordering
-        let ordering: AtomicOrdering = convert_memory_ordering(fence.ordering);
+        let ordering: AtomicOrdering = convert_memory_ordering(fence.ordering;
         
         // Platform-specific fence implementation
         match ordering {
             AtomicOrdering::SeqCst => {
                 // Full memory barrier
-                core::sync::atomic::fence(AtomicOrdering::SeqCst);
+                core::sync::atomic::fence(AtomicOrdering::SeqCst;
             },
             AtomicOrdering::Relaxed => {
                 // No fence needed for relaxed ordering
             },
             _ => {
-                core::sync::atomic::fence(ordering);
+                core::sync::atomic::fence(ordering;
             }
         }
         
@@ -416,7 +416,7 @@ impl AtomicMemoryContext {
     fn calculate_address(&self, memarg: MemArg) -> Result<usize> {
         let addr = memarg.offset as usize;
         if addr >= self.memory_size.load(AtomicOrdering::Relaxed) {
-            return Err(Error::runtime_execution_error("Atomic operation address out of bounds"));
+            return Err(Error::runtime_execution_error("Atomic operation address out of bounds";
         }
         Ok(addr)
     }
@@ -444,7 +444,7 @@ impl AtomicMemoryContext {
     
     fn atomic_load_u16(&self, addr: usize, ordering: MemoryOrdering) -> Result<u16> {
         if addr % 2 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u16 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u16 access";
         }
         // SAFETY: Bounds and alignment checked, using helper function
         let atomic_ref: &AtomicU16 = unsafe { self.get_atomic_ref(addr) };
@@ -453,7 +453,7 @@ impl AtomicMemoryContext {
     
     fn atomic_load_u32(&self, addr: usize, ordering: MemoryOrdering) -> Result<u32> {
         if addr % 4 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u32 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u32 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
@@ -462,7 +462,7 @@ impl AtomicMemoryContext {
     
     fn atomic_load_u64(&self, addr: usize, ordering: MemoryOrdering) -> Result<u64> {
         if addr % 8 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u64 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u64 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
@@ -472,47 +472,47 @@ impl AtomicMemoryContext {
     fn atomic_store_u8(&self, addr: usize, value: u8, ordering: MemoryOrdering) -> Result<()> {
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU8 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, convert_memory_ordering(ordering));
+        atomic_ref.store(value, convert_memory_ordering(ordering;
         Ok(())
     }
     
     fn atomic_store_u16(&self, addr: usize, value: u16, ordering: MemoryOrdering) -> Result<()> {
         if addr % 2 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u16 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u16 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU16 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, convert_memory_ordering(ordering));
+        atomic_ref.store(value, convert_memory_ordering(ordering;
         Ok(())
     }
     
     fn atomic_store_u32(&self, addr: usize, value: u32, ordering: MemoryOrdering) -> Result<()> {
         if addr % 4 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u32 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u32 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, convert_memory_ordering(ordering));
+        atomic_ref.store(value, convert_memory_ordering(ordering;
         Ok(())
     }
     
     fn atomic_store_u64(&self, addr: usize, value: u64, ordering: MemoryOrdering) -> Result<()> {
         if addr % 8 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u64 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u64 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, convert_memory_ordering(ordering));
+        atomic_ref.store(value, convert_memory_ordering(ordering;
         Ok(())
     }
     
     fn atomic_rmw_u32(&self, addr: usize, value: u32, op: AtomicRMWOp, ordering: MemoryOrdering) -> Result<u32> {
         if addr % 4 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u32 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u32 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
-        let ordering = convert_memory_ordering(ordering);
+        let ordering = convert_memory_ordering(ordering;
         
         Ok(match op {
             AtomicRMWOp::Add => atomic_ref.fetch_add(value, ordering),
@@ -526,11 +526,11 @@ impl AtomicMemoryContext {
     
     fn atomic_rmw_u64(&self, addr: usize, value: u64, op: AtomicRMWOp, ordering: MemoryOrdering) -> Result<u64> {
         if addr % 8 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u64 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u64 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
-        let ordering = convert_memory_ordering(ordering);
+        let ordering = convert_memory_ordering(ordering;
         
         Ok(match op {
             AtomicRMWOp::Add => atomic_ref.fetch_add(value, ordering),
@@ -544,7 +544,7 @@ impl AtomicMemoryContext {
     
     fn atomic_cmpxchg_u32(&self, addr: usize, expected: u32, replacement: u32, ordering: MemoryOrdering) -> Result<u32> {
         if addr % 4 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u32 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u32 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
@@ -557,7 +557,7 @@ impl AtomicMemoryContext {
     
     fn atomic_cmpxchg_u64(&self, addr: usize, expected: u64, replacement: u64, ordering: MemoryOrdering) -> Result<u64> {
         if addr % 8 != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic u64 access"));
+            return Err(Error::runtime_execution_error("Unaligned atomic u64 access";
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
@@ -605,7 +605,7 @@ impl AtomicMemoryContext {
                     // Find empty slot in queue
                     for slot in queue.iter_mut() {
                         if slot.is_none() {
-                            *slot = Some(thread_id);
+                            *slot = Some(thread_id;
                             found = true;
                             break;
                         }
@@ -618,7 +618,7 @@ impl AtomicMemoryContext {
                 for (wait_addr, queue) in &mut self.wait_queues {
                     if *wait_addr == 0 {  // 0 means unused
                         *wait_addr = addr as u32;
-                        queue[0] = Some(thread_id);
+                        queue[0] = Some(thread_id;
                         break;
                     }
                 }
@@ -647,7 +647,7 @@ impl AtomicMemoryContext {
         #[cfg(feature = "std")]
         {
             if let Ok(Some(queue)) = self.wait_queues.get_mut(&(addr as u64)) {
-                let to_notify = core::cmp::min(count as usize, queue.len());
+                let to_notify = core::cmp::min(count as usize, queue.len(;
                 for _ in 0..to_notify {
                     if let Ok(Some(_thread_id)) = queue.pop() {
                         // In real implementation, would wake up the thread
@@ -749,16 +749,16 @@ mod tests {
     
     #[test]
     fn test_atomic_execution_stats() {
-        let stats = AtomicExecutionStats::new();
-        assert_eq!(stats.total_operations, 0);
-        assert_eq!(stats.throughput(), 0.0);
-        assert!(!stats.is_healthy());
+        let stats = AtomicExecutionStats::new(;
+        assert_eq!(stats.total_operations, 0;
+        assert_eq!(stats.throughput(), 0.0;
+        assert!(!stats.is_healthy();
     }
     
     #[test]
     fn test_memory_ordering_conversion() {
-        assert_eq!(AtomicOrdering::from(MemoryOrdering::Unordered), AtomicOrdering::Relaxed);
-        assert_eq!(AtomicOrdering::from(MemoryOrdering::SeqCst), AtomicOrdering::SeqCst);
+        assert_eq!(AtomicOrdering::from(MemoryOrdering::Unordered), AtomicOrdering::Relaxed;
+        assert_eq!(AtomicOrdering::from(MemoryOrdering::SeqCst), AtomicOrdering::SeqCst;
     }
     
     #[cfg(feature = "std")]
@@ -766,7 +766,7 @@ mod tests {
     fn test_atomic_context_creation() -> Result<(), wrt_error::Error> {
         let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap();
         let mut memory = result_vec![0u8; 1024]?;
-        let context = AtomicMemoryContext::new(memory.as_mut_ptr(), memory.len(), thread_manager);
-        assert!(context.is_ok());
+        let context = AtomicMemoryContext::new(memory.as_mut_ptr(), memory.len(), thread_manager;
+        assert!(context.is_ok();
     }
 }

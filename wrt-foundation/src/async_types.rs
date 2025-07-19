@@ -14,11 +14,11 @@ pub const MAX_STREAM_BUFFER: usize = 64;
 
 /// Handle to a Component Model future
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FutureHandle(pub u32);
+pub struct FutureHandle(pub u32;
 
 /// Handle to a Component Model stream  
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StreamHandle(pub u32);
+pub struct StreamHandle(pub u32;
 
 /// Status of a Component Model future
 #[derive(Debug, Clone, PartialEq)]
@@ -59,14 +59,14 @@ impl<T> ComponentFuture<T> {
 
     /// Set a waker to be notified when the future completes
     pub fn set_waker(&mut self, waker: Waker) {
-        self.waker = Some(waker);
+        self.waker = Some(waker;
     }
 
     /// Complete the future with a value
     pub fn complete(&mut self, value: T) {
-        self.status = ComponentFutureStatus::Ready(value);
+        self.status = ComponentFutureStatus::Ready(value;
         if let Some(waker) = self.waker.take() {
-            waker.wake();
+            waker.wake(;
         }
     }
 }
@@ -120,17 +120,17 @@ impl<T> ComponentStream<T> {
     /// Try to write a value to the stream
     pub fn try_write(&mut self, value: T) -> Result<(), &'static str> {
         if self.state != StreamState::Open {
-            return Err("Stream closed for writing");
+            return Err("Stream closed for writing";
         }
 
         if self.buffer_item.is_some() {
-            return Err("Stream buffer full");
+            return Err("Stream buffer full";
         }
 
-        self.buffer_item = Some(value);
+        self.buffer_item = Some(value;
 
         if let Some(waker) = self.read_waker.take() {
-            waker.wake();
+            waker.wake(;
         }
 
         Ok(())
@@ -145,18 +145,18 @@ impl<T> ComponentStream<T> {
     pub fn close_write(&mut self) {
         self.state = StreamState::WriteClosed;
         if let Some(waker) = self.read_waker.take() {
-            waker.wake();
+            waker.wake(;
         }
     }
 
     /// Set a waker for read availability
     pub fn set_read_waker(&mut self, waker: Waker) {
-        self.read_waker = Some(waker);
+        self.read_waker = Some(waker;
     }
 
     /// Set a waker for write availability
     pub fn set_write_waker(&mut self, waker: Waker) {
-        self.write_waker = Some(waker);
+        self.write_waker = Some(waker;
     }
 }
 
@@ -179,13 +179,13 @@ impl ErrorContext {
 
     /// Add an error code
     pub fn with_code(mut self, code: u32) -> Self {
-        self.code = Some(code);
+        self.code = Some(code;
         self
     }
 
     /// Add a trace or additional context
     pub fn with_trace(mut self, trace: &'static str) -> Self {
-        self.trace = Some(trace);
+        self.trace = Some(trace;
         self
     }
 }
@@ -213,19 +213,19 @@ mod tests {
 
     #[test]
     fn test_component_future() {
-        let mut future: ComponentFuture<u32> = ComponentFuture::new(FutureHandle(1), ValType::I32);
+        let mut future: ComponentFuture<u32> = ComponentFuture::new(FutureHandle(1), ValType::I32;
 
         // Initially pending
-        assert!(matches!(future.poll_status().unwrap(), ComponentFutureStatus::Pending));
+        assert!(matches!(future.poll_status().unwrap(), ComponentFutureStatus::Pending);
 
         // Complete the future
-        future.complete(42);
-        assert!(matches!(future.poll_status().unwrap(), ComponentFutureStatus::Ready(42)));
+        future.complete(42;
+        assert!(matches!(future.poll_status().unwrap(), ComponentFutureStatus::Ready(42));
     }
 
     #[test]
     fn test_component_stream() {
-        let mut stream: ComponentStream<u32> = ComponentStream::new(StreamHandle(1), ValType::I32);
+        let mut stream: ComponentStream<u32> = ComponentStream::new(StreamHandle(1), ValType::I32;
 
         // Write some values
         stream.try_write(1).unwrap();
@@ -233,18 +233,18 @@ mod tests {
         stream.try_write(3).unwrap();
 
         // Read values
-        assert_eq!(stream.try_read().unwrap(), Some(1));
-        assert_eq!(stream.try_read().unwrap(), Some(2));
-        assert_eq!(stream.try_read().unwrap(), Some(3));
+        assert_eq!(stream.try_read().unwrap(), Some(1;
+        assert_eq!(stream.try_read().unwrap(), Some(2;
+        assert_eq!(stream.try_read().unwrap(), Some(3;
 
         // No more values
-        assert!(stream.try_read().is_err());
+        assert!(stream.try_read().is_err();
 
         // Close and check
-        stream.close_write();
-        assert!(!stream.is_closed()); // Still have buffered values
+        stream.close_write(;
+        assert!(!stream.is_closed())); // Still have buffered values
 
         stream.state = StreamState::Closed;
-        assert!(stream.is_closed()); // Now fully closed
+        assert!(stream.is_closed())); // Now fully closed
     }
 }
