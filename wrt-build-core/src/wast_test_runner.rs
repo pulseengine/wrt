@@ -96,7 +96,7 @@ impl WastTestRunner {
 
     /// Set maximum number of failures before stopping
     pub fn max_failures(mut self, max_failures: usize) -> Self {
-        self.max_failures = Some(max_failures);
+        self.max_failures = Some(max_failures;
         self
     }
 
@@ -105,15 +105,15 @@ impl WastTestRunner {
         println!(
             "🧪 Running WAST tests from directory: {}",
             test_dir.display()
-        );
+        ;
 
         let test_files = self.discover_test_files(test_dir)?;
-        println!("📁 Found {} test files", test_files.len());
+        println!("📁 Found {} test files", test_files.len(;
 
         for test_file in test_files {
             if let Some(max) = self.max_failures {
                 if self.stats.failed >= max {
-                    println!("⚠️  Reached maximum failure limit ({}), stopping", max);
+                    println!("⚠️  Reached maximum failure limit ({}), stopping", max;
                     break;
                 }
             }
@@ -121,7 +121,7 @@ impl WastTestRunner {
             match self.run_test_file(&test_file) {
                 Ok(_) => {
                     self.stats.total_files += 1;
-                    println!("✅ {}", test_file.file_name().unwrap().to_string_lossy());
+                    println!("✅ {}", test_file.file_name().unwrap().to_string_lossy(;
                 },
                 Err(e) => {
                     self.stats.total_files += 1;
@@ -129,18 +129,18 @@ impl WastTestRunner {
                         "❌ {}: {}",
                         test_file.file_name().unwrap().to_string_lossy(),
                         e
-                    );
-                    println!("{}", error_msg);
+                    ;
+                    println!("{}", error_msg;
                     self.stats.errors.push(error_msg);
 
                     if !self.continue_on_failure {
-                        return Err(e);
+                        return Err(e;
                     }
                 },
             }
         }
 
-        self.print_summary();
+        self.print_summary(;
         Ok(&self.stats)
     }
 
@@ -159,7 +159,7 @@ impl WastTestRunner {
         let mut wast: Wast = parser::parse(&buf).context("Failed to parse WAST content")?;
 
         let mut engine = WastEngine::new()?;
-        let source = source_name.unwrap_or("inline");
+        let source = source_name.unwrap_or("inline";
 
         for (directive_idx, directive) in wast.directives.iter_mut().enumerate() {
             self.stats.total_directives += 1;
@@ -170,11 +170,11 @@ impl WastTestRunner {
                 },
                 Err(e) => {
                     self.stats.failed += 1;
-                    let error_msg = format!("{}:{}: {}", source, directive_idx, e);
-                    self.stats.errors.push(error_msg.clone());
+                    let error_msg = format!("{}:{}: {}", source, directive_idx, e;
+                    self.stats.errors.push(error_msg.clone();
 
                     if !self.continue_on_failure {
-                        return Err(anyhow::anyhow!(error_msg));
+                        return Err(anyhow::anyhow!(error_msg;
                     }
                 },
             }
@@ -193,7 +193,7 @@ impl WastTestRunner {
     ) -> Result<()> {
         match directive {
             WastDirective::Module(module) => {
-                let binary = module.encode().unwrap_or_default();
+                let binary = module.encode().unwrap_or_default(;
                 engine.load_module(None, &binary).context("Failed to load module")?;
             },
             WastDirective::AssertReturn { exec, results, .. } => {
@@ -203,7 +203,7 @@ impl WastTestRunner {
                     "(assert_return {} {})",
                     format_execute_for_wast(exec),
                     format_results_for_wast(results)
-                );
+                ;
                 run_simple_wast_test(&wast_content).with_context(|| {
                     format!("AssertReturn failed at directive {}", directive_idx)
                 })?;
@@ -213,7 +213,7 @@ impl WastTestRunner {
                     "(assert_trap {} \"{}\")",
                     format_execute_for_wast(exec),
                     message
-                );
+                ;
                 run_simple_wast_test(&wast_content)
                     .with_context(|| format!("AssertTrap failed at directive {}", directive_idx))?;
             },
@@ -225,7 +225,7 @@ impl WastTestRunner {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
                             "Expected invalid module but encoding succeeded"
-                        ));
+                        ;
                     },
                     Err(_) => {
                         // Expected failure
@@ -240,7 +240,7 @@ impl WastTestRunner {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
                             "Expected malformed module but encoding succeeded"
-                        ));
+                        ;
                     },
                     Err(_) => {
                         // Expected failure
@@ -251,12 +251,12 @@ impl WastTestRunner {
                 module, message, ..
             } => {
                 // Test unlinkable modules
-                let binary = module.encode().unwrap_or_default();
+                let binary = module.encode().unwrap_or_default(;
                 match engine.load_module(None, &binary) {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
                             "Expected unlinkable module but loading succeeded"
-                        ));
+                        ;
                     },
                     Err(_) => {
                         // Expected failure
@@ -265,7 +265,7 @@ impl WastTestRunner {
             },
             WastDirective::Register { module, name, .. } => {
                 // Register module for imports - placeholder implementation
-                println!("Register: {} (placeholder)", name);
+                println!("Register: {} (placeholder)", name;
             },
             WastDirective::Invoke(invoke) => {
                 // Execute function without checking result
@@ -273,7 +273,7 @@ impl WastTestRunner {
                     "(invoke \"{}\" {})",
                     invoke.name,
                     format_args_for_wast(&invoke.args)
-                );
+                ;
                 run_simple_wast_test(&wast_content)
                     .with_context(|| format!("Invoke failed at directive {}", directive_idx))?;
             },
@@ -283,7 +283,7 @@ impl WastTestRunner {
                     "(assert_exhaustion {} \"{}\")",
                     format_invoke_for_wast(call),
                     message
-                );
+                ;
                 run_simple_wast_test(&wast_content).with_context(|| {
                     format!("AssertExhaustion failed at directive {}", directive_idx)
                 })?;
@@ -301,30 +301,30 @@ impl WastTestRunner {
 
     /// Discover test files in directory
     fn discover_test_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
-        let mut test_files = Vec::new();
+        let mut test_files = Vec::new(;
 
         if !dir.is_dir() {
             return Err(anyhow::anyhow!(
                 "Test directory does not exist: {}",
                 dir.display()
-            ));
+            ;
         }
 
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
-            let path = entry.path();
+            let path = entry.path(;
 
             if path.is_file() && path.extension().map_or(false, |ext| ext == "wast") {
-                let filename = path.file_name().unwrap().to_string_lossy();
+                let filename = path.file_name().unwrap().to_string_lossy(;
 
                 // Check include patterns
                 let included = self.include_patterns.iter().any(|pattern| {
                     pattern == "*" || pattern == "*.wast" || filename.contains(pattern)
-                });
+                };
 
                 // Check exclude patterns
                 let excluded =
-                    self.exclude_patterns.iter().any(|pattern| filename.contains(pattern));
+                    self.exclude_patterns.iter().any(|pattern| filename.contains(pattern;
 
                 if included && !excluded {
                     test_files.push(path);
@@ -332,25 +332,25 @@ impl WastTestRunner {
             }
         }
 
-        test_files.sort();
+        test_files.sort(;
         Ok(test_files)
     }
 
     /// Print test execution summary
     fn print_summary(&self) {
-        println!("\n📊 WAST Test Summary:");
-        println!("==================");
-        println!("Files tested: {}", self.stats.total_files);
-        println!("Total directives: {}", self.stats.total_directives);
-        println!("✅ Passed: {}", self.stats.passed);
-        println!("❌ Failed: {}", self.stats.failed);
-        println!("⏭️  Skipped: {}", self.stats.skipped);
-        println!("📈 Success rate: {:.1}%", self.stats.success_rate());
+        println!("\n📊 WAST Test Summary:";
+        println!("==================";
+        println!("Files tested: {}", self.stats.total_files;
+        println!("Total directives: {}", self.stats.total_directives;
+        println!("✅ Passed: {}", self.stats.passed;
+        println!("❌ Failed: {}", self.stats.failed;
+        println!("⏭️  Skipped: {}", self.stats.skipped;
+        println!("📈 Success rate: {:.1}%", self.stats.success_rate(;
 
         if !self.stats.errors.is_empty() {
-            println!("\n❌ Errors:");
+            println!("\n❌ Errors:";
             for error in &self.stats.errors {
-                println!("  {}", error);
+                println!("  {}", error;
             }
         }
     }
@@ -430,10 +430,10 @@ mod tests {
 
     #[test]
     fn test_wast_runner_creation() {
-        let runner = WastTestRunner::new();
-        assert_eq!(runner.stats.total_files, 0);
-        assert_eq!(runner.stats.total_directives, 0);
-        assert_eq!(runner.continue_on_failure, true);
+        let runner = WastTestRunner::new(;
+        assert_eq!(runner.stats.total_files, 0;
+        assert_eq!(runner.stats.total_directives, 0;
+        assert_eq!(runner.continue_on_failure, true;
     }
 
     #[test]
@@ -442,17 +442,17 @@ mod tests {
             .include_pattern("test_*.wast".to_string())
             .exclude_pattern("skip_*.wast".to_string())
             .continue_on_failure(false)
-            .max_failures(10);
+            .max_failures(10;
 
         assert_eq!(runner.include_patterns.len(), 2); // default + added
-        assert_eq!(runner.exclude_patterns.len(), 1);
-        assert_eq!(runner.continue_on_failure, false);
-        assert_eq!(runner.max_failures, Some(10));
+        assert_eq!(runner.exclude_patterns.len(), 1;
+        assert_eq!(runner.continue_on_failure, false;
+        assert_eq!(runner.max_failures, Some(10;
     }
 
     #[test]
     fn test_simple_wast_execution() {
-        let mut runner = WastTestRunner::new();
+        let mut runner = WastTestRunner::new(;
 
         let simple_wast = r#"
             (module
@@ -464,16 +464,16 @@ mod tests {
             (assert_return (invoke "add" (i32.const 2) (i32.const 3)) (i32.const 5))
         "#;
 
-        let result = runner.run_wast_content(simple_wast, Some("test_simple"));
+        let result = runner.run_wast_content(simple_wast, Some("test_simple";
         assert!(result.is_ok(), "Simple WAST execution should succeed");
-        assert_eq!(runner.stats.passed, 1);
-        assert_eq!(runner.stats.failed, 0);
+        assert_eq!(runner.stats.passed, 1;
+        assert_eq!(runner.stats.failed, 0;
     }
 
     #[test]
     fn test_test_file_discovery() {
         let temp_dir = tempdir().unwrap();
-        let test_dir = temp_dir.path();
+        let test_dir = temp_dir.path(;
 
         // Create test files
         let mut file1 = File::create(test_dir.join("test1.wast")).unwrap();
@@ -486,7 +486,7 @@ mod tests {
         writeln!(file3, "(module)").unwrap();
 
         // Test discovery with exclusion
-        let runner = WastTestRunner::new().exclude_pattern("skip_".to_string());
+        let runner = WastTestRunner::new().exclude_pattern("skip_".to_string();
 
         let discovered = runner.discover_test_files(test_dir).unwrap();
         assert_eq!(discovered.len(), 2); // Should exclude skip_test.wast
@@ -494,11 +494,11 @@ mod tests {
 
     #[test]
     fn test_statistics_calculation() {
-        let mut stats = WastTestStats::default();
+        let mut stats = WastTestStats::default(;
         stats.total_directives = 10;
         stats.passed = 8;
         stats.failed = 2;
 
-        assert_eq!(stats.success_rate(), 80.0);
+        assert_eq!(stats.success_rate(), 80.0;
     }
 }

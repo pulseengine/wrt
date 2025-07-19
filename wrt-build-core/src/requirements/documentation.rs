@@ -72,7 +72,7 @@ impl DocumentationVerificationFramework {
 
     /// Add a requirement to be verified for documentation
     pub fn add_requirement(&mut self, requirement: SafetyRequirement) {
-        self.requirement_registry.add_requirement(requirement);
+        self.requirement_registry.add_requirement(requirement;
     }
 
     /// Verify documentation for all requirements with diagnostic integration
@@ -82,14 +82,14 @@ impl DocumentationVerificationFramework {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "documentation-verification".to_string(),
-        );
+        ;
 
         let requirements = self.requirement_registry.requirements.clone();
-        let mut violations = Vec::new();
+        let mut violations = Vec::new(;
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
-            let analysis = self.analyze_requirement_documentation(requirement, &mut diagnostics);
+            let analysis = self.analyze_requirement_documentation(requirement, &mut diagnostics;
 
             if analysis.is_compliant() {
                 compliant_requirements += 1;
@@ -102,11 +102,11 @@ impl DocumentationVerificationFramework {
                         "documentation-verification".to_string(),
                     )
                     .with_code("doc-compliant".to_string()),
-                );
+                ;
             } else {
                 // Collect violations and convert to diagnostics
                 for violation in &analysis.violations {
-                    violations.push(violation.clone());
+                    violations.push(violation.clone();
 
                     let severity = match violation.severity {
                         DocumentationViolationSeverity::Critical => Severity::Error,
@@ -125,14 +125,14 @@ impl DocumentationVerificationFramework {
                             "documentation-verification".to_string(),
                         )
                         .with_code(format!("doc-{:?}", violation.violation_type).to_lowercase()),
-                    );
+                    ;
                 }
             }
 
             self.documentation_analysis.push(analysis);
         }
 
-        let total_requirements = requirements.len();
+        let total_requirements = requirements.len(;
         let compliance_percentage = if total_requirements > 0 {
             (compliant_requirements as f64 / total_requirements as f64) * 100.0
         } else {
@@ -162,7 +162,7 @@ impl DocumentationVerificationFramework {
                     "documentation-verification".to_string(),
                 )
                 .with_code("doc-certification-ready".to_string()),
-            );
+            ;
         } else {
             diagnostics.add_diagnostic(
                 Diagnostic::new(
@@ -176,7 +176,7 @@ impl DocumentationVerificationFramework {
                     "documentation-verification".to_string(),
                 )
                 .with_code("doc-certification-not-ready".to_string()),
-            );
+            ;
         }
 
         Ok((result, diagnostics))
@@ -190,25 +190,25 @@ impl DocumentationVerificationFramework {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             format!("documentation-verification-{}", asil_level),
-        );
+        ;
 
-        let requirements = self.requirement_registry.get_requirements_by_asil(asil_level);
-        let mut violations = Vec::new();
+        let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
+        let mut violations = Vec::new(;
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
-            let analysis = self.analyze_requirement_documentation(requirement, &mut diagnostics);
+            let analysis = self.analyze_requirement_documentation(requirement, &mut diagnostics;
 
             if analysis.is_compliant() {
                 compliant_requirements += 1;
             } else {
                 for violation in &analysis.violations {
-                    violations.push(violation.clone());
+                    violations.push(violation.clone();
                 }
             }
         }
 
-        let total_requirements = requirements.len();
+        let total_requirements = requirements.len(;
         let compliance_percentage = if total_requirements > 0 {
             (compliant_requirements as f64 / total_requirements as f64) * 100.0
         } else {
@@ -237,7 +237,7 @@ impl DocumentationVerificationFramework {
                 "documentation-verification".to_string(),
             )
             .with_code("asil-doc-compliance".to_string()),
-        );
+        ;
 
         Ok((result, diagnostics))
     }
@@ -247,7 +247,7 @@ impl DocumentationVerificationFramework {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "documentation-report".to_string(),
-        );
+        ;
 
         let overall_compliance = if !self.documentation_analysis.is_empty() {
             self.documentation_analysis.iter().map(|a| a.compliance_score).sum::<f64>()
@@ -256,14 +256,14 @@ impl DocumentationVerificationFramework {
             100.0
         };
 
-        let total_violations = self.documentation_analysis.iter().map(|a| a.violations.len()).sum();
+        let total_violations = self.documentation_analysis.iter().map(|a| a.violations.len()).sum(;
 
         let critical_violations = self
             .documentation_analysis
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.severity == DocumentationViolationSeverity::Critical)
-            .count();
+            .count(;
 
         let report = DocumentationReport {
             overall_compliance,
@@ -288,7 +288,7 @@ impl DocumentationVerificationFramework {
                 "documentation-verification".to_string(),
             )
             .with_code("doc-overall-compliance".to_string()),
-        );
+        ;
 
         if critical_violations > 0 {
             diagnostics.add_diagnostic(
@@ -303,7 +303,7 @@ impl DocumentationVerificationFramework {
                     "documentation-verification".to_string(),
                 )
                 .with_code("doc-critical-violations".to_string()),
-            );
+            ;
         }
 
         (report, diagnostics)
@@ -314,7 +314,7 @@ impl DocumentationVerificationFramework {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "documentation-verification".to_string(),
-        );
+        ;
 
         // Add compliance diagnostics for each requirement
         for analysis in &self.documentation_analysis {
@@ -331,7 +331,7 @@ impl DocumentationVerificationFramework {
                         "documentation-verification".to_string(),
                     )
                     .with_code("doc-compliant".to_string()),
-                );
+                ;
             } else {
                 diagnostics.add_diagnostic(
                     Diagnostic::new(
@@ -347,7 +347,7 @@ impl DocumentationVerificationFramework {
                         "documentation-verification".to_string(),
                     )
                     .with_code("doc-non-compliant".to_string()),
-                );
+                ;
             }
         }
 
@@ -372,8 +372,8 @@ impl DocumentationVerificationFramework {
         requirement: &SafetyRequirement,
         diagnostics: &mut DiagnosticCollection,
     ) -> DocumentationAnalysis {
-        let mut violations = Vec::new();
-        let required_standards = self.get_documentation_standards_for_asil(requirement.asil_level);
+        let mut violations = Vec::new(;
+        let required_standards = self.get_documentation_standards_for_asil(requirement.asil_level;
 
         // Check requirement documentation completeness
         if requirement.description.trim().is_empty() {
@@ -475,7 +475,7 @@ impl DocumentationVerificationFramework {
             violations.push(violation);
         }
 
-        let compliance_score = self.calculate_compliance_score(&violations, &required_standards);
+        let compliance_score = self.calculate_compliance_score(&violations, &required_standards;
 
         DocumentationAnalysis {
             requirement_id: requirement.id.clone(),
@@ -544,7 +544,7 @@ impl DocumentationVerificationFramework {
     /// Verify that an implementation has proper documentation
     fn verify_implementation_documented(&self, implementation_ref: &str) -> bool {
         // Check if the implementation file exists and has documentation
-        let impl_path = self.workspace_root.join(implementation_ref);
+        let impl_path = self.workspace_root.join(implementation_ref;
 
         if !impl_path.exists() {
             return false;
@@ -579,7 +579,7 @@ impl DocumentationVerificationFramework {
         }
 
         let total_penalty: f64 =
-            violations.iter().map(|v| self.get_violation_penalty(&v.severity)).sum();
+            violations.iter().map(|v| self.get_violation_penalty(&v.severity)).sum(;
         let max_possible_penalty = 100.0; // Maximum penalty possible
 
         ((max_possible_penalty - total_penalty) / max_possible_penalty * 100.0).max(0.0)
@@ -641,7 +641,7 @@ impl DocumentationVerificationFramework {
 
     /// Calculate compliance per ASIL level
     fn calculate_asil_compliance(&self) -> HashMap<AsilLevel, f64> {
-        let mut asil_compliance = HashMap::new();
+        let mut asil_compliance = HashMap::new(;
 
         for asil_level in [
             AsilLevel::QM,
@@ -659,7 +659,7 @@ impl DocumentationVerificationFramework {
             if !asil_analyses.is_empty() {
                 let compliance = asil_analyses.iter().map(|a| a.compliance_score).sum::<f64>()
                     / asil_analyses.len() as f64;
-                asil_compliance.insert(asil_level, compliance);
+                asil_compliance.insert(asil_level, compliance;
             }
         }
 
@@ -668,20 +668,20 @@ impl DocumentationVerificationFramework {
 
     /// Generate recommendations for improving documentation
     fn generate_recommendations(&self) -> Vec<String> {
-        let mut recommendations = Vec::new();
+        let mut recommendations = Vec::new(;
 
         let critical_violations = self
             .documentation_analysis
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.severity == DocumentationViolationSeverity::Critical)
-            .count();
+            .count(;
 
         if critical_violations > 0 {
             recommendations.push(format!(
                 "Address {} critical documentation violations immediately",
                 critical_violations
-            ));
+            ;
         }
 
         let missing_descriptions = self
@@ -689,13 +689,13 @@ impl DocumentationVerificationFramework {
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.violation_type == DocumentationViolationType::MissingDescription)
-            .count();
+            .count(;
 
         if missing_descriptions > 0 {
             recommendations.push(format!(
                 "Add detailed descriptions for {} requirements",
                 missing_descriptions
-            ));
+            ;
         }
 
         let undocumented_implementations = self
@@ -703,13 +703,13 @@ impl DocumentationVerificationFramework {
             .iter()
             .flat_map(|a| &a.violations)
             .filter(|v| v.violation_type == DocumentationViolationType::UndocumentedImplementation)
-            .count();
+            .count(;
 
         if undocumented_implementations > 0 {
             recommendations.push(format!(
                 "Add documentation for {} implementations",
                 undocumented_implementations
-            ));
+            ;
         }
 
         recommendations
@@ -901,17 +901,17 @@ mod tests {
 
     #[test]
     fn test_documentation_verification_framework_creation() {
-        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
+        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
         let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
 
-        assert_eq!(result.total_requirements, 0);
-        assert_eq!(result.compliance_percentage, 100.0);
+        assert_eq!(result.total_requirements, 0;
+        assert_eq!(result.compliance_percentage, 100.0;
         assert!(result.is_certification_ready);
     }
 
     #[test]
     fn test_requirement_documentation_analysis() {
-        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
+        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
 
         let requirement = SafetyRequirement::new(
             RequirementId::new("DOC_TEST_001"),
@@ -919,36 +919,36 @@ mod tests {
             "A".to_string(), // Very short description - should trigger violation
             RequirementType::Safety,
             AsilLevel::C,
-        );
+        ;
 
-        framework.add_requirement(requirement);
+        framework.add_requirement(requirement;
 
         let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
 
-        assert_eq!(result.total_requirements, 1);
-        assert_eq!(result.compliant_requirements, 0);
-        assert!(!result.violations.is_empty());
+        assert_eq!(result.total_requirements, 1;
+        assert_eq!(result.compliant_requirements, 0;
+        assert!(!result.violations.is_empty();
         assert!(!result.is_certification_ready);
     }
 
     #[test]
     fn test_asil_specific_documentation_standards() {
-        let framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
+        let framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
 
-        let qm_standards = framework.get_documentation_standards_for_asil(AsilLevel::QM);
-        let asil_d_standards = framework.get_documentation_standards_for_asil(AsilLevel::D);
+        let qm_standards = framework.get_documentation_standards_for_asil(AsilLevel::QM;
+        let asil_d_standards = framework.get_documentation_standards_for_asil(AsilLevel::D;
 
         assert!(asil_d_standards.min_description_length > qm_standards.min_description_length);
         assert!(asil_d_standards.requires_verification_document);
         assert!(!qm_standards.requires_verification_document);
         assert!(
             asil_d_standards.required_compliance_score > qm_standards.required_compliance_score
-        );
+        ;
     }
 
     #[test]
     fn test_compliant_requirement_documentation() {
-        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
+        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
 
         let mut requirement = SafetyRequirement::new(
             RequirementId::new("DOC_TEST_002"),
@@ -959,49 +959,49 @@ mod tests {
                 .to_string(),
             RequirementType::Safety,
             AsilLevel::A,
-        );
+        ;
 
-        requirement.add_implementation("well_documented_impl.rs".to_string());
-        requirement.add_test("comprehensive_test.rs".to_string());
+        requirement.add_implementation("well_documented_impl.rs".to_string();
+        requirement.add_test("comprehensive_test.rs".to_string();
 
-        framework.add_requirement(requirement);
+        framework.add_requirement(requirement;
 
         let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
 
-        assert_eq!(result.total_requirements, 1);
-        assert_eq!(result.compliant_requirements, 1);
-        assert_eq!(result.compliance_percentage, 100.0);
+        assert_eq!(result.total_requirements, 1;
+        assert_eq!(result.compliant_requirements, 1;
+        assert_eq!(result.compliance_percentage, 100.0;
         assert!(result.is_certification_ready);
     }
 
     #[test]
     fn test_documentation_report_generation() {
-        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
-        let (report, _diagnostics) = framework.generate_report();
+        let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
+        let (report, _diagnostics) = framework.generate_report(;
 
-        assert_eq!(report.overall_compliance, 100.0);
-        assert_eq!(report.total_requirements, 0);
-        assert_eq!(report.total_violations, 0);
-        assert_eq!(report.critical_violations, 0);
+        assert_eq!(report.overall_compliance, 100.0;
+        assert_eq!(report.total_requirements, 0;
+        assert_eq!(report.total_violations, 0;
+        assert_eq!(report.critical_violations, 0;
     }
 
     #[test]
     fn test_violation_severity_mapping() {
-        let framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp"));
+        let framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
 
         let asil_d_missing_desc = framework
-            .get_violation_severity(AsilLevel::D, DocumentationViolationType::MissingDescription);
+            .get_violation_severity(AsilLevel::D, DocumentationViolationType::MissingDescription;
 
         let qm_missing_desc = framework.get_violation_severity(
             AsilLevel::QM,
             DocumentationViolationType::MissingDescription,
-        );
+        ;
 
         assert_eq!(
             asil_d_missing_desc,
             DocumentationViolationSeverity::Critical
-        );
-        assert_eq!(qm_missing_desc, DocumentationViolationSeverity::Info);
+        ;
+        assert_eq!(qm_missing_desc, DocumentationViolationSeverity::Info;
         assert!(asil_d_missing_desc > qm_missing_desc);
     }
 }

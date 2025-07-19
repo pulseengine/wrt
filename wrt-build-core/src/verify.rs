@@ -160,13 +160,13 @@ impl Default for VerificationOptions {
     fn default() -> Self {
         // Try to load allowed-unsafe.toml if it exists
         let allowed_unsafe = std::env::current_dir().ok().and_then(|cwd| {
-            let config_path = cwd.join("allowed-unsafe.toml");
+            let config_path = cwd.join("allowed-unsafe.toml";
             if config_path.exists() {
                 AllowedUnsafeConfig::load_from_file(&config_path).ok()
             } else {
                 None
             }
-        });
+        };
 
         Self {
             target_asil: AsilLevel::QM,
@@ -191,19 +191,19 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<DiagnosticCollection> {
-        let start_time = std::time::Instant::now();
+        let start_time = std::time::Instant::now(;
         let mut collection =
-            DiagnosticCollection::new(self.workspace.root.clone(), "verify".to_string());
+            DiagnosticCollection::new(self.workspace.root.clone(), "verify".to_string();
 
         // 1. Basic safety checks with structured output
         let basic_diagnostics =
             self.run_basic_safety_checks_with_diagnostics_and_options(options)?;
-        collection.add_diagnostics(basic_diagnostics);
+        collection.add_diagnostics(basic_diagnostics;
 
         // 2. Memory safety verification
         if options.memory_safety {
             let memory_diagnostics = self.run_memory_safety_checks_with_diagnostics()?;
-            collection.add_diagnostics(memory_diagnostics);
+            collection.add_diagnostics(memory_diagnostics;
         }
 
         // 3. Kani formal verification
@@ -217,7 +217,7 @@ impl BuildSystem {
                         Severity::Error,
                         format!("Kani verification failed: {}", e),
                         "kani".to_string(),
-                    ));
+                    ;
                 },
             }
         }
@@ -233,7 +233,7 @@ impl BuildSystem {
                         Severity::Warning,
                         format!("MIRI verification failed: {}", e),
                         "miri".to_string(),
-                    ));
+                    ;
                 },
             }
         }
@@ -249,12 +249,12 @@ impl BuildSystem {
                         Severity::Info,
                         format!("Security audit had issues: {}", e),
                         "cargo-audit".to_string(),
-                    ));
+                    ;
                 },
             }
         }
 
-        let duration = start_time.elapsed();
+        let duration = start_time.elapsed(;
         Ok(collection.finalize(duration.as_millis() as u64))
     }
 
@@ -266,18 +266,18 @@ impl BuildSystem {
         println!(
             "{} Running SCORE-inspired safety verification...",
             "🛡️".bright_blue()
-        );
+        ;
 
-        let start_time = std::time::Instant::now();
-        let mut checks = Vec::new();
-        let mut report_sections: Vec<String> = Vec::new();
+        let start_time = std::time::Instant::now(;
+        let mut checks = Vec::new(;
+        let mut report_sections: Vec<String> = Vec::new(;
 
         // 1. Basic safety checks
-        checks.extend(self.run_basic_safety_checks_with_options(options)?);
+        checks.extend(self.run_basic_safety_checks_with_options(options)?;
 
         // 2. Memory safety verification
         if options.memory_safety {
-            checks.extend(self.run_memory_safety_checks()?);
+            checks.extend(self.run_memory_safety_checks()?;
         }
 
         // 3. Kani formal verification
@@ -290,7 +290,7 @@ impl BuildSystem {
                         passed:   false,
                         details:  format!("Kani verification failed: {}", e),
                         severity: VerificationSeverity::Major,
-                    });
+                    };
                 },
             }
         }
@@ -305,7 +305,7 @@ impl BuildSystem {
                         passed:   false,
                         details:  format!("MIRI verification failed: {}", e),
                         severity: VerificationSeverity::Major,
-                    });
+                    };
                 },
             }
         }
@@ -320,25 +320,25 @@ impl BuildSystem {
                         passed:   false,
                         details:  format!("Security audit failed: {}", e),
                         severity: VerificationSeverity::Minor,
-                    });
+                    };
                 },
             }
         }
 
         // Calculate overall results
-        let duration = start_time.elapsed();
+        let duration = start_time.elapsed(;
         let critical_failures = checks
             .iter()
             .filter(|c| !c.passed && matches!(c.severity, VerificationSeverity::Critical))
-            .count();
+            .count(;
 
         let major_failures = checks
             .iter()
             .filter(|c| !c.passed && matches!(c.severity, VerificationSeverity::Major))
-            .count();
+            .count(;
 
         let success = critical_failures == 0 && major_failures == 0;
-        let achieved_asil = self.calculate_asil_level(&checks, &options.target_asil);
+        let achieved_asil = self.calculate_asil_level(&checks, &options.target_asil;
 
         // Generate report
         let report = self.generate_verification_report(&checks, &achieved_asil, duration)?;
@@ -349,14 +349,14 @@ impl BuildSystem {
                 "✅".bright_green(),
                 achieved_asil,
                 duration.as_secs_f64()
-            );
+            ;
         } else {
             println!(
                 "{} Safety verification failed! ({} critical, {} major failures)",
                 "❌".bright_red(),
                 critical_failures,
                 major_failures
-            );
+            ;
         }
 
         Ok(VerificationResults {
@@ -378,19 +378,19 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<VerificationCheck>> {
-        let mut checks = Vec::new();
+        let mut checks = Vec::new(;
 
         // Check for unsafe code usage
-        checks.push(self.check_unsafe_code_usage_with_options(options)?);
+        checks.push(self.check_unsafe_code_usage_with_options(options)?;
 
         // Check for panic usage
-        checks.push(self.check_panic_usage()?);
+        checks.push(self.check_panic_usage()?;
 
         // Check for unwrap usage
-        checks.push(self.check_unwrap_usage()?);
+        checks.push(self.check_unwrap_usage()?;
 
         // Check build matrix compliance
-        checks.push(self.check_build_matrix()?);
+        checks.push(self.check_build_matrix()?;
 
         Ok(checks)
     }
@@ -405,7 +405,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new();
+        let searcher = TextSearcher::new(;
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
 
         // Filter out allowed unsafe blocks if configuration is provided
@@ -421,7 +421,7 @@ impl BuildSystem {
             matches
         };
 
-        let unsafe_count = count_production_matches(&filtered_matches);
+        let unsafe_count = count_production_matches(&filtered_matches;
 
         Ok(VerificationCheck {
             name:     "Unsafe Code Usage".to_string(),
@@ -440,9 +440,9 @@ impl BuildSystem {
 
     /// Check for panic usage
     fn check_panic_usage(&self) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new();
+        let searcher = TextSearcher::new(;
         let matches = searcher.search_panic_usage(&self.workspace.root)?;
-        let panic_count = count_production_matches(&matches);
+        let panic_count = count_production_matches(&matches;
 
         Ok(VerificationCheck {
             name:     "Panic Usage".to_string(),
@@ -458,9 +458,9 @@ impl BuildSystem {
 
     /// Check for unwrap usage
     fn check_unwrap_usage(&self) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new();
+        let searcher = TextSearcher::new(;
         let matches = searcher.search_unwrap_usage(&self.workspace.root)?;
-        let unwrap_count = count_production_matches(&matches);
+        let unwrap_count = count_production_matches(&matches;
 
         Ok(VerificationCheck {
             name:     "Unwrap Usage".to_string(),
@@ -539,10 +539,10 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         // Check for unsafe code usage
-        let searcher = TextSearcher::new();
+        let searcher = TextSearcher::new(;
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
 
         // Filter matches based on allowed unsafe configuration
@@ -559,7 +559,7 @@ impl BuildSystem {
                 matches
             };
 
-        let unsafe_count = count_production_matches(&filtered_matches);
+        let unsafe_count = count_production_matches(&filtered_matches;
 
         if unsafe_count > 0 {
             for search_match in filtered_matches.iter().take(10) {
@@ -584,13 +584,13 @@ impl BuildSystem {
                         "wrt-verify".to_string(),
                     )
                     .with_code("SAFETY001".to_string()),
-                );
+                ;
             }
         }
 
         // Check for panic usage
         let panic_matches = searcher.search_panic_usage(&self.workspace.root)?;
-        let panic_count = count_production_matches(&panic_matches);
+        let panic_count = count_production_matches(&panic_matches;
 
         if panic_count > 0 {
             for search_match in panic_matches.iter().take(10) {
@@ -614,13 +614,13 @@ impl BuildSystem {
                         "wrt-verify".to_string(),
                     )
                     .with_code("SAFETY002".to_string()),
-                );
+                ;
             }
         }
 
         // Check for unwrap usage
         let unwrap_matches = searcher.search_unwrap_usage(&self.workspace.root)?;
-        let unwrap_count = count_production_matches(&unwrap_matches);
+        let unwrap_count = count_production_matches(&unwrap_matches;
 
         if unwrap_count > 0 {
             for search_match in unwrap_matches.iter().take(10) {
@@ -647,7 +647,7 @@ impl BuildSystem {
                         "wrt-verify".to_string(),
                     )
                     .with_code("SAFETY003".to_string()),
-                );
+                ;
             }
         }
 
@@ -669,7 +669,7 @@ impl BuildSystem {
     /// Run Kani formal verification with diagnostic output
     fn run_kani_verification_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         // Check if kani is available
-        let kani_check = Command::new("cargo").arg("kani").arg("--version").output();
+        let kani_check = Command::new("cargo").arg("kani").arg("--version").output(;
 
         match kani_check {
             Err(_) => {
@@ -680,7 +680,7 @@ impl BuildSystem {
                     "Kani not available. Install with: cargo install --locked kani-verifier"
                         .to_string(),
                     "kani".to_string(),
-                )]);
+                )];
             },
             Ok(output) if !output.status.success() => {
                 return Ok(vec![Diagnostic::new(
@@ -690,20 +690,20 @@ impl BuildSystem {
                     "Kani not available. Install with: cargo install --locked kani-verifier"
                         .to_string(),
                     "kani".to_string(),
-                )]);
+                )];
             },
             Ok(_) => {}, // Kani is available, continue
         }
 
         // Run kani verification
-        let mut cmd = Command::new("cargo");
-        cmd.arg("kani").arg("--workspace").current_dir(&self.workspace.root);
+        let mut cmd = Command::new("cargo";
+        cmd.arg("kani").arg("--workspace").current_dir(&self.workspace.root;
 
         let output = cmd
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to run kani: {}", e)))?;
 
-        let parser = KaniOutputParser::new(&self.workspace.root);
+        let parser = KaniOutputParser::new(&self.workspace.root;
         parser.parse_output(
             &String::from_utf8_lossy(&output.stdout),
             &String::from_utf8_lossy(&output.stderr),
@@ -714,8 +714,8 @@ impl BuildSystem {
     /// Run MIRI checks with diagnostic output
     fn run_miri_checks_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         // Run cargo miri test
-        let mut cmd = Command::new("cargo");
-        cmd.arg("miri").arg("test").arg("--workspace").current_dir(&self.workspace.root);
+        let mut cmd = Command::new("cargo";
+        cmd.arg("miri").arg("test").arg("--workspace").current_dir(&self.workspace.root;
 
         let output = cmd
             .output()
@@ -730,7 +730,7 @@ impl BuildSystem {
                 "miri".to_string(),
             )])
         } else {
-            let parser = MiriOutputParser::new(&self.workspace.root);
+            let parser = MiriOutputParser::new(&self.workspace.root;
             parser.parse_output(
                 &String::from_utf8_lossy(&output.stdout),
                 &String::from_utf8_lossy(&output.stderr),
@@ -742,8 +742,8 @@ impl BuildSystem {
     /// Run security audit with diagnostic output
     fn run_security_audit_with_diagnostics(&self) -> BuildResult<Vec<Diagnostic>> {
         // Run cargo audit if available
-        let mut cmd = Command::new("cargo");
-        cmd.arg("audit").arg("--format").arg("json").current_dir(&self.workspace.root);
+        let mut cmd = Command::new("cargo";
+        cmd.arg("audit").arg("--format").arg("json").current_dir(&self.workspace.root;
 
         let output = cmd
             .output()
@@ -758,7 +758,7 @@ impl BuildSystem {
                 "cargo-audit".to_string(),
             )])
         } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stderr = String::from_utf8_lossy(&output.stderr;
             if stderr.contains("not found") || stderr.contains("not installed") {
                 Ok(vec![Diagnostic::new(
                     "<audit>".to_string(),
@@ -769,7 +769,7 @@ impl BuildSystem {
                     "cargo-audit".to_string(),
                 )])
             } else {
-                let parser = CargoAuditOutputParser::new(&self.workspace.root);
+                let parser = CargoAuditOutputParser::new(&self.workspace.root;
                 parser.parse_output(
                     &String::from_utf8_lossy(&output.stdout),
                     &stderr,
@@ -783,11 +783,11 @@ impl BuildSystem {
     fn calculate_asil_level(&self, checks: &[VerificationCheck], target: &AsilLevel) -> AsilLevel {
         let has_critical_failures = checks
             .iter()
-            .any(|c| !c.passed && matches!(c.severity, VerificationSeverity::Critical));
+            .any(|c| !c.passed && matches!(c.severity, VerificationSeverity::Critical;
 
         let has_major_failures = checks
             .iter()
-            .any(|c| !c.passed && matches!(c.severity, VerificationSeverity::Major));
+            .any(|c| !c.passed && matches!(c.severity, VerificationSeverity::Major;
 
         if has_critical_failures {
             AsilLevel::QM
@@ -808,31 +808,31 @@ impl BuildSystem {
         asil_level: &AsilLevel,
         duration: core::time::Duration,
     ) -> BuildResult<String> {
-        let mut report = String::new();
+        let mut report = String::new(;
 
-        report.push_str("# Safety Verification Report\n\n");
+        report.push_str("# Safety Verification Report\n\n";
         report.push_str(&format!(
             "**Generated:** {}\n",
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
-        ));
-        report.push_str(&format!("**Duration:** {:.2}s\n", duration.as_secs_f64()));
-        report.push_str(&format!("**ASIL Level Achieved:** {:?}\n\n", asil_level));
+        ;
+        report.push_str(&format!("**Duration:** {:.2}s\n", duration.as_secs_f64();
+        report.push_str(&format!("**ASIL Level Achieved:** {:?}\n\n", asil_level;
 
         // Summary
-        let passed = checks.iter().filter(|c| c.passed).count();
-        let total = checks.len();
-        report.push_str("## Summary\n\n");
-        report.push_str(&format!("- **Total Checks:** {}\n", total));
-        report.push_str(&format!("- **Passed:** {}\n", passed));
-        report.push_str(&format!("- **Failed:** {}\n\n", total - passed));
+        let passed = checks.iter().filter(|c| c.passed).count(;
+        let total = checks.len(;
+        report.push_str("## Summary\n\n";
+        report.push_str(&format!("- **Total Checks:** {}\n", total;
+        report.push_str(&format!("- **Passed:** {}\n", passed;
+        report.push_str(&format!("- **Failed:** {}\n\n", total - passed;
 
         // Detailed results
-        report.push_str("## Detailed Results\n\n");
+        report.push_str("## Detailed Results\n\n";
         for check in checks {
             let status = if check.passed { "✅ PASS" } else { "❌ FAIL" };
-            report.push_str(&format!("### {} - {}\n", status, check.name));
-            report.push_str(&format!("**Severity:** {:?}\n", check.severity));
-            report.push_str(&format!("**Details:** {}\n\n", check.details));
+            report.push_str(&format!("### {} - {}\n", status, check.name;
+            report.push_str(&format!("**Severity:** {:?}\n", check.severity;
+            report.push_str(&format!("**Details:** {}\n\n", check.details;
         }
 
         Ok(report)
@@ -845,7 +845,7 @@ mod tests {
 
     #[test]
     fn test_verification_options() {
-        let options = VerificationOptions::default();
+        let options = VerificationOptions::default(;
         assert!(options.kani);
         assert!(options.memory_safety);
     }
@@ -860,6 +860,6 @@ mod tests {
         };
 
         assert!(check.passed);
-        assert_eq!(check.name, "Test Check");
+        assert_eq!(check.name, "Test Check";
     }
 }

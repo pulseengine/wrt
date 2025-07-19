@@ -188,7 +188,7 @@ impl Diagnostic {
 
     /// Set error code
     pub fn with_code(mut self, code: String) -> Self {
-        self.code = Some(code);
+        self.code = Some(code;
         self
     }
 
@@ -231,7 +231,7 @@ impl DiagnosticSummary {
         let mut warnings = 0;
         let mut infos = 0;
         let mut hints = 0;
-        let mut files = std::collections::HashSet::new();
+        let mut files = std::collections::HashSet::new(;
 
         for diagnostic in diagnostics {
             match diagnostic.severity {
@@ -240,7 +240,7 @@ impl DiagnosticSummary {
                 Severity::Info => infos += 1,
                 Severity::Hint => hints += 1,
             }
-            files.insert(&diagnostic.file);
+            files.insert(&diagnostic.file;
         }
 
         Self {
@@ -285,7 +285,7 @@ pub struct DiagnosticCollection {
 impl DiagnosticCollection {
     /// Create a new diagnostic collection
     pub fn new(workspace_root: PathBuf, command: String) -> Self {
-        let timestamp = chrono::Utc::now().to_rfc3339();
+        let timestamp = chrono::Utc::now().to_rfc3339(;
         let workspace_root_str = workspace_root.to_string_lossy().to_string();
 
         Self {
@@ -318,7 +318,7 @@ impl DiagnosticCollection {
 
     /// Finalize the collection with timing information
     pub fn finalize(mut self, duration_ms: u64) -> Self {
-        self.summary = DiagnosticSummary::from_diagnostics(&self.diagnostics, duration_ms);
+        self.summary = DiagnosticSummary::from_diagnostics(&self.diagnostics, duration_ms;
         self
     }
 
@@ -339,7 +339,7 @@ impl DiagnosticCollection {
 
     /// Group diagnostics by file
     pub fn group_by_file(&self) -> HashMap<String, Vec<&Diagnostic>> {
-        let mut groups = HashMap::new();
+        let mut groups = HashMap::new(;
         for diagnostic in &self.diagnostics {
             groups.entry(diagnostic.file.clone()).or_insert_with(Vec::new).push(diagnostic);
         }
@@ -382,22 +382,22 @@ mod tests {
 
     #[test]
     fn test_position_creation() {
-        let pos = Position::new(5, 10);
-        assert_eq!(pos.line, 5);
-        assert_eq!(pos.character, 10);
+        let pos = Position::new(5, 10;
+        assert_eq!(pos.line, 5;
+        assert_eq!(pos.character, 10;
 
-        let pos_1_indexed = Position::from_line_1_indexed(6, 10);
-        assert_eq!(pos_1_indexed.line, 5);
-        assert_eq!(pos_1_indexed.character, 10);
+        let pos_1_indexed = Position::from_line_1_indexed(6, 10;
+        assert_eq!(pos_1_indexed.line, 5;
+        assert_eq!(pos_1_indexed.character, 10;
     }
 
     #[test]
     fn test_range_creation() {
-        let range = Range::single_line(5, 0, 10);
-        assert_eq!(range.start.line, 5);
-        assert_eq!(range.start.character, 0);
-        assert_eq!(range.end.line, 5);
-        assert_eq!(range.end.character, 10);
+        let range = Range::single_line(5, 0, 10;
+        assert_eq!(range.start.line, 5;
+        assert_eq!(range.start.character, 0;
+        assert_eq!(range.end.line, 5;
+        assert_eq!(range.end.character, 10;
     }
 
     #[test]
@@ -409,18 +409,18 @@ mod tests {
             "undefined variable".to_string(),
             "rustc".to_string(),
         )
-        .with_code("E0425".to_string());
+        .with_code("E0425".to_string();
 
-        assert_eq!(diagnostic.file, "src/main.rs");
-        assert_eq!(diagnostic.severity, Severity::Error);
-        assert_eq!(diagnostic.code, Some("E0425".to_string()));
-        assert_eq!(diagnostic.source, "rustc");
+        assert_eq!(diagnostic.file, "src/main.rs";
+        assert_eq!(diagnostic.severity, Severity::Error;
+        assert_eq!(diagnostic.code, Some("E0425".to_string();
+        assert_eq!(diagnostic.source, "rustc";
     }
 
     #[test]
     fn test_diagnostic_collection() {
         let mut collection =
-            DiagnosticCollection::new(PathBuf::from("/workspace"), "build".to_string());
+            DiagnosticCollection::new(PathBuf::from("/workspace"), "build".to_string();
 
         let diagnostic1 = Diagnostic::new(
             "src/main.rs".to_string(),
@@ -428,7 +428,7 @@ mod tests {
             Severity::Error,
             "error message".to_string(),
             "rustc".to_string(),
-        );
+        ;
 
         let diagnostic2 = Diagnostic::new(
             "src/lib.rs".to_string(),
@@ -436,19 +436,19 @@ mod tests {
             Severity::Warning,
             "warning message".to_string(),
             "clippy".to_string(),
-        );
+        ;
 
-        collection.add_diagnostic(diagnostic1);
-        collection.add_diagnostic(diagnostic2);
+        collection.add_diagnostic(diagnostic1;
+        collection.add_diagnostic(diagnostic2;
 
-        let collection = collection.finalize(1000);
+        let collection = collection.finalize(1000;
 
-        assert_eq!(collection.summary.total, 2);
-        assert_eq!(collection.summary.errors, 1);
-        assert_eq!(collection.summary.warnings, 1);
-        assert_eq!(collection.summary.files_with_diagnostics, 2);
-        assert!(collection.has_errors());
-        assert!(!collection.is_success());
+        assert_eq!(collection.summary.total, 2;
+        assert_eq!(collection.summary.errors, 1;
+        assert_eq!(collection.summary.warnings, 1;
+        assert_eq!(collection.summary.files_with_diagnostics, 2;
+        assert!(collection.has_errors();
+        assert!(!collection.is_success();
     }
 
     #[test]
@@ -477,16 +477,16 @@ mod tests {
             ),
         ];
 
-        let summary = DiagnosticSummary::from_diagnostics(&diagnostics, 500);
+        let summary = DiagnosticSummary::from_diagnostics(&diagnostics, 500;
 
-        assert_eq!(summary.total, 3);
-        assert_eq!(summary.errors, 1);
-        assert_eq!(summary.warnings, 1);
-        assert_eq!(summary.infos, 1);
-        assert_eq!(summary.hints, 0);
-        assert_eq!(summary.files_with_diagnostics, 2);
-        assert_eq!(summary.duration_ms, 500);
-        assert!(summary.has_errors());
-        assert!(!summary.is_success());
+        assert_eq!(summary.total, 3;
+        assert_eq!(summary.errors, 1;
+        assert_eq!(summary.warnings, 1;
+        assert_eq!(summary.infos, 1;
+        assert_eq!(summary.hints, 0;
+        assert_eq!(summary.files_with_diagnostics, 2;
+        assert_eq!(summary.duration_ms, 500;
+        assert!(summary.has_errors();
+        assert!(!summary.is_success();
     }
 }

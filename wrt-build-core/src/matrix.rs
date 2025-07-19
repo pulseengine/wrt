@@ -171,7 +171,7 @@ pub struct MatrixVerifier {
 impl MatrixVerifier {
     /// Create a new matrix verifier with default configurations
     pub fn new(verbose: bool) -> Self {
-        let configurations = Self::default_configurations();
+        let configurations = Self::default_configurations(;
         Self {
             configurations,
             verbose,
@@ -305,12 +305,12 @@ impl MatrixVerifier {
 
     /// Run the full verification matrix
     pub fn run_verification(&self) -> BuildResult<VerificationResults> {
-        println!("{} Starting Build Matrix Verification", "🔍".bright_blue());
-        println!();
+        println!("{} Starting Build Matrix Verification", "🔍".bright_blue(;
+        println!(;
 
-        let start_time = Instant::now();
-        let mut results = Vec::new();
-        let mut all_architectural_issues = HashSet::new();
+        let start_time = Instant::now(;
+        let mut results = Vec::new(;
+        let mut all_architectural_issues = HashSet::new(;
         let mut all_passed = true;
 
         for config in &self.configurations {
@@ -321,14 +321,14 @@ impl MatrixVerifier {
             }
 
             for issue in &result.architectural_issues {
-                all_architectural_issues.insert(issue.clone());
+                all_architectural_issues.insert(issue.clone();
             }
 
             results.push(result);
         }
 
         // Run Kani verification if available
-        let kani_result = self.run_kani_verification();
+        let kani_result = self.run_kani_verification(;
 
         let verification_results = VerificationResults {
             configurations: results,
@@ -338,83 +338,83 @@ impl MatrixVerifier {
             kani_result,
         };
 
-        let duration = start_time.elapsed();
-        println!();
+        let duration = start_time.elapsed(;
+        println!(;
         println!(
             "{} Verification completed in {:.2}s",
             "✅".bright_green(),
             duration.as_secs_f64()
-        );
+        ;
 
         Ok(verification_results)
     }
 
     /// Test a single configuration
     fn test_configuration(&self, config: &BuildConfiguration) -> BuildResult<ConfigurationResult> {
-        println!("{} Testing: {}", "📦".bright_blue(), config.name);
+        println!("{} Testing: {}", "📦".bright_blue(), config.name;
 
         // Clean build directory for accurate testing
-        let _ = Command::new("cargo").arg("clean").arg("-p").arg(&config.package).output();
+        let _ = Command::new("cargo").arg("clean").arg("-p").arg(&config.package).output(;
 
         // Build test
-        print!("  Building... ");
+        print!("  Building... ";
         std::io::stdout().flush().unwrap();
 
-        let mut build_cmd = Command::new("cargo");
-        build_cmd.arg("build").arg("-p").arg(&config.package);
+        let mut build_cmd = Command::new("cargo";
+        build_cmd.arg("build").arg("-p").arg(&config.package;
 
         if !config.features.is_empty() {
-            build_cmd.arg("--features").arg(config.features.join(","));
+            build_cmd.arg("--features").arg(config.features.join(",";
         }
 
         let build_output = build_cmd
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to execute build: {}", e)))?;
 
-        let build_passed = build_output.status.success();
-        let mut architectural_issues = Vec::new();
+        let build_passed = build_output.status.success(;
+        let mut architectural_issues = Vec::new(;
         let mut error_output = None;
 
         if build_passed {
-            println!("{}", "✓".bright_green());
+            println!("{}", "✓".bright_green(;
         } else {
-            println!("{}", "✗".bright_red());
-            let stderr = String::from_utf8_lossy(&build_output.stderr);
-            error_output = Some(stderr.to_string());
-            architectural_issues = self.analyze_failure(&config.name, &stderr, &config.features);
+            println!("{}", "✗".bright_red(;
+            let stderr = String::from_utf8_lossy(&build_output.stderr;
+            error_output = Some(stderr.to_string();
+            architectural_issues = self.analyze_failure(&config.name, &stderr, &config.features;
         }
 
         // Test execution
-        print!("  Testing... ");
+        print!("  Testing... ";
         std::io::stdout().flush().unwrap();
 
-        let mut test_cmd = Command::new("cargo");
-        test_cmd.arg("test").arg("-p").arg(&config.package);
+        let mut test_cmd = Command::new("cargo";
+        test_cmd.arg("test").arg("-p").arg(&config.package;
 
         if !config.features.is_empty() {
-            test_cmd.arg("--features").arg(config.features.join(","));
+            test_cmd.arg("--features").arg(config.features.join(",";
         }
 
-        test_cmd.arg("--").arg("--nocapture");
+        test_cmd.arg("--").arg("--nocapture";
 
         let test_output = test_cmd
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to execute tests: {}", e)))?;
 
-        let test_passed = test_output.status.success();
+        let test_passed = test_output.status.success(;
 
         if test_passed {
-            println!("{}", "✓".bright_green());
+            println!("{}", "✓".bright_green(;
         } else {
-            println!("{}", "✗".bright_red());
+            println!("{}", "✗".bright_red(;
             if error_output.is_none() {
-                let stderr = String::from_utf8_lossy(&test_output.stderr);
-                error_output = Some(stderr.to_string());
+                let stderr = String::from_utf8_lossy(&test_output.stderr;
+                error_output = Some(stderr.to_string();
                 let test_issues = self.analyze_failure(
                     &format!("{} - Tests", config.name),
                     &stderr,
                     &config.features,
-                );
+                ;
                 for issue in test_issues {
                     if !architectural_issues.contains(&issue) {
                         architectural_issues.push(issue);
@@ -426,23 +426,23 @@ impl MatrixVerifier {
         // ASIL-specific checks
         let asil_check_passed = if matches!(config.asil_level, AsilLevel::AsilC | AsilLevel::AsilD)
         {
-            print!("  ASIL compliance check... ");
+            print!("  ASIL compliance check... ";
             std::io::stdout().flush().unwrap();
 
-            let check_result = self.check_asil_compliance(&config.package, &config.features);
+            let check_result = self.check_asil_compliance(&config.package, &config.features;
             match check_result {
                 Ok(has_unsafe) => {
                     if has_unsafe {
-                        println!("{}", "⚠".bright_yellow());
+                        println!("{}", "⚠".bright_yellow(;
                         architectural_issues.push(ArchitecturalIssue::UnsafeInAsil);
                         Some(false)
                     } else {
-                        println!("{}", "✓".bright_green());
+                        println!("{}", "✓".bright_green(;
                         Some(true)
                     }
                 },
                 Err(_) => {
-                    println!("{}", "?".bright_yellow());
+                    println!("{}", "?".bright_yellow(;
                     None
                 },
             }
@@ -470,7 +470,7 @@ impl MatrixVerifier {
         error_output: &str,
         features: &[String],
     ) -> Vec<ArchitecturalIssue> {
-        let mut issues = Vec::new();
+        let mut issues = Vec::new(;
 
         // Check for common architectural problems
         if error_output.contains("cyclic package dependency") {
@@ -508,8 +508,8 @@ impl MatrixVerifier {
         }
 
         // Feature interaction analysis
-        let has_no_std = features.iter().any(|f| f.contains("no_std"));
-        let has_std = features.iter().any(|f| f == "std");
+        let has_no_std = features.iter().any(|f| f.contains("no_std";
+        let has_std = features.iter().any(|f| f == "std";
 
         if has_no_std && has_std {
             issues.push(ArchitecturalIssue::StdConflict);
@@ -521,7 +521,7 @@ impl MatrixVerifier {
                 "⚠".bright_yellow(),
                 config_name,
                 issues
-            );
+            ;
         }
 
         issues
@@ -529,19 +529,19 @@ impl MatrixVerifier {
 
     /// Check ASIL compliance (looking for unsafe code)
     fn check_asil_compliance(&self, package: &str, features: &[String]) -> BuildResult<bool> {
-        let mut cmd = Command::new("cargo");
-        cmd.arg("check").arg("-p").arg(package).arg("--message-format=json");
+        let mut cmd = Command::new("cargo";
+        cmd.arg("check").arg("-p").arg(package).arg("--message-format=json";
 
         if !features.is_empty() {
-            cmd.arg("--features").arg(features.join(","));
+            cmd.arg("--features").arg(features.join(",";
         }
 
         let output = cmd
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to run cargo check: {}", e)))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let has_unsafe = stdout.contains("unsafe");
+        let stdout = String::from_utf8_lossy(&output.stdout;
+        let has_unsafe = stdout.contains("unsafe";
 
         Ok(has_unsafe)
     }
@@ -549,14 +549,14 @@ impl MatrixVerifier {
     /// Run Kani formal verification if available
     fn run_kani_verification(&self) -> Option<bool> {
         // Check if cargo-kani is available
-        let check_kani = Command::new("cargo").arg("kani").arg("--version").output();
+        let check_kani = Command::new("cargo").arg("kani").arg("--version").output(;
 
         if check_kani.is_err() || !check_kani.unwrap().status.success() {
             return None;
         }
 
-        println!();
-        println!("{} Running Kani Verification", "🔬".bright_blue());
+        println!(;
+        println!("{} Running Kani Verification", "🔬".bright_blue(;
 
         let output = Command::new("cargo")
             .arg("kani")
@@ -564,20 +564,20 @@ impl MatrixVerifier {
             .arg("wrt")
             .arg("--features")
             .arg("no_std,alloc,kani,safety-asil-d")
-            .output();
+            .output(;
 
         match output {
             Ok(result) => {
                 if result.status.success() {
-                    println!("{} Kani verification passed", "✓".bright_green());
+                    println!("{} Kani verification passed", "✓".bright_green(;
                     Some(true)
                 } else {
-                    println!("{} Kani verification failed", "✗".bright_red());
+                    println!("{} Kani verification failed", "✗".bright_red(;
                     Some(false)
                 }
             },
             Err(_) => {
-                println!("{} Kani verification error", "⚠".bright_yellow());
+                println!("{} Kani verification error", "⚠".bright_yellow(;
                 None
             },
         }
@@ -593,8 +593,8 @@ impl MatrixVerifier {
             .map_err(|e| BuildError::Tool(format!("Failed to create output directory: {}", e)))?;
 
         let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-        let report_path = output_dir.join(format!("BUILD_VERIFICATION_REPORT_{}.md", timestamp));
-        let issues_path = output_dir.join(format!("ARCHITECTURAL_ISSUES_{}.md", timestamp));
+        let report_path = output_dir.join(format!("BUILD_VERIFICATION_REPORT_{}.md", timestamp;
+        let issues_path = output_dir.join(format!("ARCHITECTURAL_ISSUES_{}.md", timestamp;
 
         // Generate main report
         self.write_main_report(results, &report_path)?;
@@ -604,11 +604,11 @@ impl MatrixVerifier {
             self.write_issues_report(results, &issues_path)?;
         }
 
-        println!();
-        println!("Reports generated:");
-        println!("  - {}", report_path.display());
+        println!(;
+        println!("Reports generated:";
+        println!("  - {}", report_path.display();
         if !results.architectural_issues.is_empty() {
-            println!("  - {}", issues_path.display());
+            println!("  - {}", issues_path.display();
         }
 
         Ok(())
@@ -824,20 +824,20 @@ impl MatrixVerifier {
 
     /// Print summary to console
     pub fn print_summary(&self, results: &VerificationResults) {
-        println!();
-        println!("{}", "=== Verification Summary ===".bright_blue());
+        println!(;
+        println!("{}", "=== Verification Summary ===".bright_blue(;
 
         if results.all_passed {
-            println!("{} All configurations passed!", "✅".bright_green());
+            println!("{} All configurations passed!", "✅".bright_green(;
         } else {
-            println!("{} Some configurations failed!", "❌".bright_red());
+            println!("{} Some configurations failed!", "❌".bright_red(;
         }
 
         if !results.architectural_issues.is_empty() {
-            println!();
-            println!("{}", "=== Architectural Issues Detected ===".bright_red());
+            println!(;
+            println!("{}", "=== Architectural Issues Detected ===".bright_red(;
             for issue in &results.architectural_issues {
-                println!("- {}", issue.description());
+                println!("- {}", issue.description(;
             }
         }
     }

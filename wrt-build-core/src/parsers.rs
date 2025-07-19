@@ -168,9 +168,9 @@ impl CargoOutputParser {
 
     /// Convert compiler message to diagnostic
     fn message_to_diagnostic(&self, message: &CompilerMessage, primary_span: &Span) -> Diagnostic {
-        let file = self.make_relative_path(&primary_span.file_name);
-        let range = Self::span_to_range(primary_span);
-        let severity = Self::level_to_severity(&message.level);
+        let file = self.make_relative_path(&primary_span.file_name;
+        let range = Self::span_to_range(primary_span;
+        let severity = Self::level_to_severity(&message.level;
 
         let mut diagnostic = Diagnostic::new(
             file,
@@ -178,42 +178,42 @@ impl CargoOutputParser {
             severity,
             message.message.clone(),
             "rustc".to_string(),
-        );
+        ;
 
         // Add error code if present
         if let Some(code) = &message.code {
-            diagnostic = diagnostic.with_code(code.code.clone());
+            diagnostic = diagnostic.with_code(code.code.clone();
         }
 
         // Add related information from child messages and secondary spans
-        let mut related_info = Vec::new();
+        let mut related_info = Vec::new(;
 
         // Add secondary spans as related info
         for span in &message.spans {
             if !span.is_primary && !span.file_name.is_empty() {
-                let related_file = self.make_relative_path(&span.file_name);
-                let related_range = Self::span_to_range(span);
+                let related_file = self.make_relative_path(&span.file_name;
+                let related_range = Self::span_to_range(span;
                 let related_message = span.label.as_deref().unwrap_or("related").to_string();
 
                 related_info.push(RelatedInfo::new(
                     related_file,
                     related_range,
                     related_message,
-                ));
+                ;
             }
         }
 
         // Add child messages as related info
         for child in &message.children {
             if let Some(child_span) = child.spans.first() {
-                let related_file = self.make_relative_path(&child_span.file_name);
-                let related_range = Self::span_to_range(child_span);
+                let related_file = self.make_relative_path(&child_span.file_name;
+                let related_range = Self::span_to_range(child_span;
 
                 related_info.push(RelatedInfo::new(
                     related_file,
                     related_range,
                     child.message.clone(),
-                ));
+                ;
             }
         }
 
@@ -228,7 +228,7 @@ impl ToolOutputParser for CargoOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         // Parse JSON messages from stdout
         for line in stdout.lines() {
@@ -244,12 +244,12 @@ impl ToolOutputParser for CargoOutputParser {
                             // Handle messages with primary span
                             if let Some(primary_span) = message.spans.iter().find(|s| s.is_primary)
                             {
-                                let diagnostic = self.message_to_diagnostic(&message, primary_span);
+                                let diagnostic = self.message_to_diagnostic(&message, primary_span;
                                 diagnostics.push(diagnostic);
                             } else if !message.spans.is_empty() {
                                 // No primary span, use first span
                                 let diagnostic =
-                                    self.message_to_diagnostic(&message, &message.spans[0]);
+                                    self.message_to_diagnostic(&message, &message.spans[0];
                                 diagnostics.push(diagnostic);
                             } else {
                                 // No spans at all, create a generic diagnostic
@@ -262,7 +262,7 @@ impl ToolOutputParser for CargoOutputParser {
                                         "cargo".to_string(),
                                     )
                                     .with_code(message.code.map(|c| c.code).unwrap_or_default()),
-                                );
+                                ;
                             }
                         }
                     },
@@ -279,7 +279,7 @@ impl ToolOutputParser for CargoOutputParser {
                                         Severity::Error,
                                         "Build failed".to_string(),
                                         "cargo".to_string(),
-                                    ));
+                                    ;
                                 }
                             }
                         }
@@ -293,8 +293,8 @@ impl ToolOutputParser for CargoOutputParser {
         if !stderr.is_empty() && diagnostics.is_empty() {
             // Fallback to generic parsing if no JSON messages found
             let generic_parser =
-                GenericOutputParser::new("cargo".to_string(), &self.workspace_root);
-            let stderr_diagnostics = generic_parser.parse_error_patterns(stderr);
+                GenericOutputParser::new("cargo".to_string(), &self.workspace_root;
+            let stderr_diagnostics = generic_parser.parse_error_patterns(stderr;
             diagnostics.extend(stderr_diagnostics);
         }
 
@@ -330,7 +330,7 @@ impl GenericOutputParser {
 
     /// Parse generic error patterns from stderr
     fn parse_error_patterns(&self, stderr: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         for line in stderr.lines() {
             // Look for common error patterns
@@ -369,7 +369,7 @@ impl GenericOutputParser {
                     severity,
                     message,
                     self.tool_name.clone(),
-                ));
+                ;
             }
         }
 
@@ -381,7 +381,7 @@ impl GenericOutputParser {
                 severity,
                 line.to_string(),
                 self.tool_name.clone(),
-            ));
+            ;
         }
 
         None
@@ -424,10 +424,10 @@ impl MiriOutputParser {
 
     /// Parse Miri-specific output patterns
     fn parse_miri_output(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
         let mut current_error: Option<(String, String, Option<String>)> = None;
         let mut in_backtrace = false;
-        let mut backtrace_items = Vec::new();
+        let mut backtrace_items = Vec::new(;
 
         for line in output.lines() {
             // Detect start of Miri error
@@ -439,19 +439,19 @@ impl MiriOutputParser {
                         file,
                         code,
                         &backtrace_items,
-                    ));
-                    backtrace_items.clear();
+                    ;
+                    backtrace_items.clear(;
                 }
 
                 let error_msg = line.strip_prefix("error: ").unwrap_or(line).to_string();
-                current_error = Some((error_msg, String::new(), None));
+                current_error = Some((error_msg, String::new(), None;
                 in_backtrace = false;
             }
             // Parse error code like "error[E0080]:"
             else if line.contains("error[") && line.contains("]:") {
                 if let Some(code_match) = line.split('[').nth(1).and_then(|s| s.split(']').next()) {
                     if let Some((_, _, ref mut code)) = current_error {
-                        *code = Some(code_match.to_string());
+                        *code = Some(code_match.to_string();
                     }
                 }
             }
@@ -467,7 +467,7 @@ impl MiriOutputParser {
             else if line.contains("undefined behavior:") || line.contains("Undefined Behavior:") {
                 let ub_msg = line.trim().to_string();
                 if let Some((ref mut msg, _, _)) = current_error {
-                    msg.push_str(&format!(" - {}", ub_msg));
+                    msg.push_str(&format!(" - {}", ub_msg;
                 }
             }
             // Parse backtrace
@@ -475,20 +475,20 @@ impl MiriOutputParser {
                 in_backtrace = true;
             } else if in_backtrace && line.trim_start().starts_with("at ") {
                 if let Some(location) = line.trim_start().strip_prefix("at ") {
-                    backtrace_items.push(location.to_string());
+                    backtrace_items.push(location.to_string();
                 }
             }
             // Memory access errors
             else if line.contains("memory access") || line.contains("accessing memory") {
                 if let Some((ref mut msg, _, _)) = current_error {
-                    msg.push_str(&format!(" - {}", line.trim()));
+                    msg.push_str(&format!(" - {}", line.trim();
                 }
             }
         }
 
         // Don't forget the last error
         if let Some((msg, file, code)) = current_error {
-            diagnostics.push(self.create_miri_diagnostic(msg, file, code, &backtrace_items));
+            diagnostics.push(self.create_miri_diagnostic(msg, file, code, &backtrace_items);
         }
 
         // If no specific errors found but miri failed, create a generic error
@@ -499,7 +499,7 @@ impl MiriOutputParser {
                 Severity::Error,
                 "Miri detected undefined behavior".to_string(),
                 "miri".to_string(),
-            ));
+            ;
         }
 
         diagnostics
@@ -517,9 +517,9 @@ impl MiriOutputParser {
         let (file, range) = if !file_location.is_empty() {
             let parts: Vec<&str> = file_location.split(':').collect();
             if parts.len() >= 2 {
-                let file = self.make_relative_path(parts[0]);
-                let line = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
-                let col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
+                let file = self.make_relative_path(parts[0];
+                let line = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1;
+                let col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1;
                 (file, Range::from_line_1_indexed(line, col, col + 1))
             } else {
                 (file_location, Range::entire_line(0))
@@ -529,31 +529,31 @@ impl MiriOutputParser {
         };
 
         let mut diagnostic =
-            Diagnostic::new(file, range, Severity::Error, message, "miri".to_string());
+            Diagnostic::new(file, range, Severity::Error, message, "miri".to_string();
 
         if let Some(code) = code {
-            diagnostic = diagnostic.with_code(code);
+            diagnostic = diagnostic.with_code(code;
         }
 
         // Add backtrace as related information
-        let mut related_info = Vec::new();
+        let mut related_info = Vec::new(;
         for (i, location) in backtrace.iter().enumerate() {
             let parts: Vec<&str> = location.split(':').collect();
             if parts.len() >= 2 {
-                let bt_file = self.make_relative_path(parts[0]);
-                let bt_line = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
-                let bt_col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
+                let bt_file = self.make_relative_path(parts[0];
+                let bt_line = parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1;
+                let bt_col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1;
 
                 related_info.push(RelatedInfo::new(
                     bt_file,
                     Range::from_line_1_indexed(bt_line, bt_col, bt_col + 1),
                     format!("backtrace frame {}", i + 1),
-                ));
+                ;
             }
         }
 
         if !related_info.is_empty() {
-            diagnostic = diagnostic.with_related_infos(related_info);
+            diagnostic = diagnostic.with_related_infos(related_info;
         }
 
         diagnostic
@@ -576,13 +576,13 @@ impl ToolOutputParser for MiriOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         // Miri outputs to stderr
-        diagnostics.extend(self.parse_miri_output(stderr));
+        diagnostics.extend(self.parse_miri_output(stderr);
 
         // Also check stdout for any additional information
-        diagnostics.extend(self.parse_miri_output(stdout));
+        diagnostics.extend(self.parse_miri_output(stdout);
 
         Ok(diagnostics)
     }
@@ -607,7 +607,7 @@ impl KaniOutputParser {
 
     /// Parse Kani-specific output patterns
     fn parse_kani_output(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         for line in output.lines() {
             // Look for Kani verification failures
@@ -619,7 +619,7 @@ impl KaniOutputParser {
                     Severity::Error,
                     line.to_string(),
                     "kani".to_string(),
-                ));
+                ;
             } else if line.contains("VERIFICATION:- SUCCESSFUL") {
                 diagnostics.push(Diagnostic::new(
                     "<kani>".to_string(),
@@ -627,7 +627,7 @@ impl KaniOutputParser {
                     Severity::Info,
                     "Verification successful".to_string(),
                     "kani".to_string(),
-                ));
+                ;
             }
         }
 
@@ -642,8 +642,8 @@ impl ToolOutputParser for KaniOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = self.parse_kani_output(stdout);
-        diagnostics.extend(self.parse_kani_output(stderr));
+        let mut diagnostics = self.parse_kani_output(stdout;
+        diagnostics.extend(self.parse_kani_output(stderr);
         Ok(diagnostics)
     }
 
@@ -667,7 +667,7 @@ impl CargoAuditOutputParser {
 
     /// Parse cargo-audit JSON output
     fn parse_audit_json(&self, json_str: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         // Try to parse as JSON
         if let Ok(audit_report) = serde_json::from_str::<serde_json::Value>(json_str) {
@@ -677,17 +677,17 @@ impl CargoAuditOutputParser {
                     let advisory = &vuln["advisory"];
                     let package = &vuln["package"];
 
-                    let id = advisory["id"].as_str().unwrap_or("UNKNOWN");
-                    let title = advisory["title"].as_str().unwrap_or("Security vulnerability");
-                    let description = advisory["description"].as_str().unwrap_or("");
-                    let severity = advisory["severity"].as_str().unwrap_or("unknown");
-                    let package_name = package["name"].as_str().unwrap_or("unknown");
-                    let package_version = package["version"].as_str().unwrap_or("unknown");
+                    let id = advisory["id"].as_str().unwrap_or("UNKNOWN";
+                    let title = advisory["title"].as_str().unwrap_or("Security vulnerability";
+                    let description = advisory["description"].as_str().unwrap_or("";
+                    let severity = advisory["severity"].as_str().unwrap_or("unknown";
+                    let package_name = package["name"].as_str().unwrap_or("unknown";
+                    let package_version = package["version"].as_str().unwrap_or("unknown";
 
                     let message = format!(
                         "{}: {} in {} v{}\n{}",
                         id, title, package_name, package_version, description
-                    );
+                    ;
 
                     let severity_level = match severity.to_lowercase().as_str() {
                         "critical" | "high" => Severity::Error,
@@ -704,7 +704,7 @@ impl CargoAuditOutputParser {
                             "cargo-audit".to_string(),
                         )
                         .with_code(id.to_string()),
-                    );
+                    ;
                 }
             }
 
@@ -718,7 +718,7 @@ impl CargoAuditOutputParser {
                             Severity::Warning,
                             msg.to_string(),
                             "cargo-audit".to_string(),
-                        ));
+                        ;
                     }
                 }
             }
@@ -729,9 +729,9 @@ impl CargoAuditOutputParser {
 
     /// Parse cargo-audit text output (fallback)
     fn parse_audit_text(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
         let mut current_vuln: Option<(String, String, Severity)> = None;
-        let mut details = String::new();
+        let mut details = String::new(;
 
         for line in output.lines() {
             // Parse vulnerability header like "RUSTSEC-2021-0139: ansi_term is
@@ -748,21 +748,21 @@ impl CargoAuditOutputParser {
                             "cargo-audit".to_string(),
                         )
                         .with_code(id),
-                    );
-                    details.clear();
+                    ;
+                    details.clear(;
                 }
 
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
                 if parts.len() == 2 {
                     let id = parts[0].trim().to_string();
                     let title = parts[1].trim().to_string();
-                    current_vuln = Some((id, title, Severity::Warning));
+                    current_vuln = Some((id, title, Severity::Warning;
                 }
             }
             // Parse severity
             else if line.trim().starts_with("Severity:") {
                 if let Some((_, _, ref mut sev)) = current_vuln {
-                    let severity_str = line.trim().strip_prefix("Severity:").unwrap_or("").trim();
+                    let severity_str = line.trim().strip_prefix("Severity:").unwrap_or("").trim(;
                     *sev = match severity_str.to_lowercase().as_str() {
                         "critical" | "high" => Severity::Error,
                         "medium" => Severity::Warning,
@@ -772,7 +772,7 @@ impl CargoAuditOutputParser {
             }
             // Collect details
             else if current_vuln.is_some() && !line.trim().is_empty() {
-                details.push_str(line);
+                details.push_str(line;
                 details.push('\n');
             }
         }
@@ -788,7 +788,7 @@ impl CargoAuditOutputParser {
                     "cargo-audit".to_string(),
                 )
                 .with_code(id),
-            );
+            ;
         }
 
         // Check for summary line
@@ -798,7 +798,7 @@ impl CargoAuditOutputParser {
                 .find(|line| line.contains("vulnerabilities found"))
                 .and_then(|line| line.split_whitespace().next())
                 .and_then(|num| num.parse::<usize>().ok())
-                .unwrap_or(0);
+                .unwrap_or(0;
 
             if vuln_count > 0 {
                 diagnostics.push(Diagnostic::new(
@@ -810,7 +810,7 @@ impl CargoAuditOutputParser {
                         vuln_count
                     ),
                     "cargo-audit".to_string(),
-                ));
+                ;
             }
         }
 
@@ -825,14 +825,14 @@ impl ToolOutputParser for CargoAuditOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         // Try JSON parsing first (if --format json was used)
         if stdout.trim().starts_with('{') {
-            diagnostics.extend(self.parse_audit_json(stdout));
+            diagnostics.extend(self.parse_audit_json(stdout);
         } else {
             // Fall back to text parsing
-            diagnostics.extend(self.parse_audit_text(stdout));
+            diagnostics.extend(self.parse_audit_text(stdout);
         }
 
         // Check stderr for errors
@@ -845,7 +845,7 @@ impl ToolOutputParser for CargoAuditOutputParser {
                     "cargo-audit not available. Install with: cargo install cargo-audit"
                         .to_string(),
                     "cargo-audit".to_string(),
-                ));
+                ;
             } else {
                 diagnostics.push(Diagnostic::new(
                     "<audit>".to_string(),
@@ -853,7 +853,7 @@ impl ToolOutputParser for CargoAuditOutputParser {
                     Severity::Error,
                     format!("cargo-audit error: {}", stderr.trim()),
                     "cargo-audit".to_string(),
-                ));
+                ;
             }
         }
 
@@ -880,8 +880,8 @@ impl RustdocOutputParser {
 
     /// Parse rustdoc output
     fn parse_rustdoc_output(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
-        let mut current_file = String::new();
+        let mut diagnostics = Vec::new(;
+        let mut current_file = String::new(;
         let mut in_error = false;
 
         for line in output.lines() {
@@ -889,7 +889,7 @@ impl RustdocOutputParser {
             if line.trim_start().starts_with("error:") || line.trim_start().starts_with("warning:")
             {
                 in_error = true;
-                let is_error = line.contains("error:");
+                let is_error = line.contains("error:";
                 let message = line
                     .trim_start()
                     .strip_prefix("error:")
@@ -911,17 +911,17 @@ impl RustdocOutputParser {
                     severity,
                     message,
                     "rustdoc".to_string(),
-                ));
+                ;
             }
             // Parse file location " --> src/lib.rs:10:5"
             else if line.trim_start().starts_with("--> ") && in_error {
                 if let Some(location) = line.trim_start().strip_prefix("--> ") {
                     let parts: Vec<&str> = location.split(':').collect();
                     if parts.len() >= 2 {
-                        let file = self.make_relative_path(parts[0]);
+                        let file = self.make_relative_path(parts[0];
                         let line_num =
-                            parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
-                        let col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
+                            parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1;
+                        let col = parts.get(2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1;
 
                         // Update the last diagnostic with file info
                         if let Some(last_diag) = diagnostics.last_mut() {
@@ -931,7 +931,7 @@ impl RustdocOutputParser {
                                 last_diag.severity.clone(),
                                 last_diag.message.clone(),
                                 "rustdoc".to_string(),
-                            );
+                            ;
                             current_file = file;
                         }
                     }
@@ -946,7 +946,7 @@ impl RustdocOutputParser {
                     Severity::Error,
                     line.trim().to_string(),
                     "rustdoc".to_string(),
-                ));
+                ;
             }
             // Parse specific doc comment issues
             else if line.contains("missing code example") {
@@ -964,11 +964,11 @@ impl RustdocOutputParser {
                         "rustdoc".to_string(),
                     )
                     .with_code("DOC001".to_string()),
-                );
+                ;
             }
             // Parse broken links
             else if line.contains("unresolved link") || line.contains("broken link") {
-                let link_match = line.split('`').nth(1).unwrap_or("unknown");
+                let link_match = line.split('`').nth(1).unwrap_or("unknown";
 
                 diagnostics.push(
                     Diagnostic::new(
@@ -983,7 +983,7 @@ impl RustdocOutputParser {
                         "rustdoc".to_string(),
                     )
                     .with_code("DOC002".to_string()),
-                );
+                ;
             }
         }
 
@@ -995,7 +995,7 @@ impl RustdocOutputParser {
                 Severity::Error,
                 "Documentation generation failed".to_string(),
                 "rustdoc".to_string(),
-            ));
+            ;
         }
 
         diagnostics
@@ -1018,11 +1018,11 @@ impl ToolOutputParser for RustdocOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         // Parse both stdout and stderr as rustdoc outputs to both
-        diagnostics.extend(self.parse_rustdoc_output(stdout));
-        diagnostics.extend(self.parse_rustdoc_output(stderr));
+        diagnostics.extend(self.parse_rustdoc_output(stdout);
+        diagnostics.extend(self.parse_rustdoc_output(stderr);
 
         // If no specific diagnostics but rustdoc failed, add generic error
         if diagnostics.is_empty() && stderr.contains("aborting due to") {
@@ -1032,7 +1032,7 @@ impl ToolOutputParser for RustdocOutputParser {
                 Severity::Error,
                 "Documentation generation failed with errors".to_string(),
                 "rustdoc".to_string(),
-            ));
+            ;
         }
 
         Ok(diagnostics)
@@ -1058,7 +1058,7 @@ impl TarpaulinOutputParser {
 
     /// Parse tarpaulin JSON output
     fn parse_tarpaulin_json(&self, json_str: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         if let Ok(coverage_report) = serde_json::from_str::<serde_json::Value>(json_str) {
             // Parse overall coverage
@@ -1080,13 +1080,13 @@ impl TarpaulinOutputParser {
                         "tarpaulin".to_string(),
                     )
                     .with_code("COV001".to_string()),
-                );
+                ;
             }
 
             // Parse per-file coverage
             if let Some(files) = coverage_report["files"].as_object() {
                 for (file_path, file_data) in files {
-                    let relative_path = self.make_relative_path(file_path);
+                    let relative_path = self.make_relative_path(file_path;
 
                     if let Some(file_coverage) = file_data["coverage_percent"].as_f64() {
                         if file_coverage < 80.0 {
@@ -1105,7 +1105,7 @@ impl TarpaulinOutputParser {
                                     "tarpaulin".to_string(),
                                 )
                                 .with_code("COV002".to_string()),
-                            );
+                            ;
                         }
                     }
 
@@ -1122,7 +1122,7 @@ impl TarpaulinOutputParser {
                                         "tarpaulin".to_string(),
                                     )
                                     .with_code("COV003".to_string()),
-                                );
+                                ;
                             }
                         }
                     }
@@ -1135,15 +1135,15 @@ impl TarpaulinOutputParser {
 
     /// Parse tarpaulin text output
     fn parse_tarpaulin_text(&self, output: &str) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
-        let mut current_file = String::new();
+        let mut diagnostics = Vec::new(;
+        let mut current_file = String::new(;
 
         for line in output.lines() {
             // Parse overall coverage line like "Coverage Results: 85.50%"
             if line.contains("Coverage Results:") {
                 if let Some(pct_str) = line.split(':').nth(1) {
                     let coverage_pct =
-                        pct_str.trim().trim_end_matches('%').parse::<f64>().unwrap_or(0.0);
+                        pct_str.trim().trim_end_matches('%').parse::<f64>().unwrap_or(0.0;
 
                     let severity = if coverage_pct < 50.0 {
                         Severity::Error
@@ -1162,17 +1162,17 @@ impl TarpaulinOutputParser {
                             "tarpaulin".to_string(),
                         )
                         .with_code("COV001".to_string()),
-                    );
+                    ;
                 }
             }
             // Parse file coverage like "src/main.rs: 75.00%"
             else if line.contains(".rs:") && line.contains('%') {
                 let parts: Vec<&str> = line.split(':').collect();
                 if parts.len() >= 2 {
-                    current_file = self.make_relative_path(parts[0].trim());
+                    current_file = self.make_relative_path(parts[0].trim(;
 
                     if let Some(pct_str) = parts[1].trim().strip_suffix('%') {
-                        let file_coverage = pct_str.parse::<f64>().unwrap_or(0.0);
+                        let file_coverage = pct_str.parse::<f64>().unwrap_or(0.0;
 
                         if file_coverage < 80.0 {
                             let severity = if file_coverage < 50.0 {
@@ -1190,7 +1190,7 @@ impl TarpaulinOutputParser {
                                     "tarpaulin".to_string(),
                                 )
                                 .with_code("COV002".to_string()),
-                            );
+                            ;
                         }
                     }
                 }
@@ -1200,7 +1200,7 @@ impl TarpaulinOutputParser {
                 if let Some(lines_str) = line.split(':').nth(1) {
                     // Parse line ranges like "10-15, 20, 25-30"
                     for range_str in lines_str.split(',') {
-                        let range_str = range_str.trim();
+                        let range_str = range_str.trim(;
                         if range_str.contains('-') {
                             // Line range
                             let parts: Vec<&str> = range_str.split('-').collect();
@@ -1218,7 +1218,7 @@ impl TarpaulinOutputParser {
                                                 "tarpaulin".to_string(),
                                             )
                                             .with_code("COV003".to_string()),
-                                        );
+                                        ;
                                     }
                                 }
                             }
@@ -1234,7 +1234,7 @@ impl TarpaulinOutputParser {
                                         "tarpaulin".to_string(),
                                     )
                                     .with_code("COV003".to_string()),
-                                );
+                                ;
                             }
                         }
                     }
@@ -1262,14 +1262,14 @@ impl ToolOutputParser for TarpaulinOutputParser {
         stderr: &str,
         _working_dir: &Path,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Vec::new(;
 
         // Try JSON parsing first
         if stdout.trim().starts_with('{') {
-            diagnostics.extend(self.parse_tarpaulin_json(stdout));
+            diagnostics.extend(self.parse_tarpaulin_json(stdout);
         } else {
             // Fall back to text parsing
-            diagnostics.extend(self.parse_tarpaulin_text(stdout));
+            diagnostics.extend(self.parse_tarpaulin_text(stdout);
         }
 
         // Check for errors
@@ -1282,7 +1282,7 @@ impl ToolOutputParser for TarpaulinOutputParser {
                     "cargo-tarpaulin not available. Install with: cargo install cargo-tarpaulin"
                         .to_string(),
                     "tarpaulin".to_string(),
-                ));
+                ;
             } else if stderr.contains("error:") {
                 diagnostics.push(Diagnostic::new(
                     "<coverage>".to_string(),
@@ -1290,7 +1290,7 @@ impl ToolOutputParser for TarpaulinOutputParser {
                     Severity::Error,
                     "Coverage analysis failed".to_string(),
                     "tarpaulin".to_string(),
-                ));
+                ;
             }
         }
 
@@ -1310,54 +1310,54 @@ mod tests {
     fn test_cargo_message_parsing() {
         let json_message = r#"{"reason":"compiler-message","package_id":"test-package","message":{"message":"cannot find value `x` in this scope","code":{"code":"E0425","explanation":null},"level":"error","spans":[{"file_name":"/workspace/src/main.rs","byte_start":100,"byte_end":101,"line_start":10,"line_end":10,"column_start":5,"column_end":6,"is_primary":true,"text":[],"label":"not found in this scope","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":null}}"#;
 
-        let parser = CargoOutputParser::new("/workspace");
+        let parser = CargoOutputParser::new("/workspace";
         let diagnostics = parser.parse_output(json_message, "", Path::new("/workspace")).unwrap();
 
-        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics.len(), 1;
         let diagnostic = &diagnostics[0];
 
-        assert_eq!(diagnostic.file, "src/main.rs");
-        assert_eq!(diagnostic.severity, Severity::Error);
-        assert_eq!(diagnostic.code, Some("E0425".to_string()));
-        assert_eq!(diagnostic.message, "cannot find value `x` in this scope");
-        assert_eq!(diagnostic.source, "rustc");
+        assert_eq!(diagnostic.file, "src/main.rs";
+        assert_eq!(diagnostic.severity, Severity::Error;
+        assert_eq!(diagnostic.code, Some("E0425".to_string();
+        assert_eq!(diagnostic.message, "cannot find value `x` in this scope";
+        assert_eq!(diagnostic.source, "rustc";
 
         // Check position conversion (1-indexed to 0-indexed)
-        assert_eq!(diagnostic.range.start.line, 9);
-        assert_eq!(diagnostic.range.start.character, 4);
+        assert_eq!(diagnostic.range.start.line, 9;
+        assert_eq!(diagnostic.range.start.character, 4;
     }
 
     #[test]
     fn test_generic_parser() {
-        let parser = GenericOutputParser::new("test-tool".to_string(), "/workspace");
+        let parser = GenericOutputParser::new("test-tool".to_string(), "/workspace";
         let stderr = "file.rs:10:5: error: something went wrong";
 
         let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap();
 
-        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics.len(), 1;
         let diagnostic = &diagnostics[0];
 
-        assert_eq!(diagnostic.file, "file.rs");
-        assert_eq!(diagnostic.severity, Severity::Error);
+        assert_eq!(diagnostic.file, "file.rs";
+        assert_eq!(diagnostic.severity, Severity::Error;
         assert_eq!(diagnostic.range.start.line, 9); // 1-indexed to 0-indexed
-        assert_eq!(diagnostic.source, "test-tool");
+        assert_eq!(diagnostic.source, "test-tool";
     }
 
     #[test]
     fn test_kani_parser() {
-        let parser = KaniOutputParser::new("/workspace");
+        let parser = KaniOutputParser::new("/workspace";
         let output = "VERIFICATION:- FAILED\nassertion failed: x > 0";
 
         let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
 
-        assert_eq!(diagnostics.len(), 2);
-        assert_eq!(diagnostics[0].severity, Severity::Error);
-        assert_eq!(diagnostics[0].source, "kani");
+        assert_eq!(diagnostics.len(), 2;
+        assert_eq!(diagnostics[0].severity, Severity::Error;
+        assert_eq!(diagnostics[0].source, "kani";
     }
 
     #[test]
     fn test_miri_parser() {
-        let parser = MiriOutputParser::new("/workspace");
+        let parser = MiriOutputParser::new("/workspace";
         let stderr = r#"error: Undefined Behavior: accessing memory with invalid pointer
   --> /workspace/src/main.rs:10:5
    |
@@ -1371,19 +1371,19 @@ backtrace:
 
         let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap();
 
-        assert!(!diagnostics.is_empty());
+        assert!(!diagnostics.is_empty();
         let diag = &diagnostics[0];
-        assert_eq!(diag.severity, Severity::Error);
-        assert_eq!(diag.source, "miri");
-        assert!(diag.message.contains("Undefined Behavior"));
-        assert_eq!(diag.file, "src/main.rs");
+        assert_eq!(diag.severity, Severity::Error;
+        assert_eq!(diag.source, "miri";
+        assert!(diag.message.contains("Undefined Behavior");
+        assert_eq!(diag.file, "src/main.rs";
         assert_eq!(diag.range.start.line, 9); // 0-indexed
-        assert!(!diag.related_info.is_empty());
+        assert!(!diag.related_info.is_empty();
     }
 
     #[test]
     fn test_cargo_audit_json_parser() {
-        let parser = CargoAuditOutputParser::new("/workspace");
+        let parser = CargoAuditOutputParser::new("/workspace";
         let json_output = r#"{
             "vulnerabilities": {
                 "list": [
@@ -1405,17 +1405,17 @@ backtrace:
 
         let diagnostics = parser.parse_output(json_output, "", Path::new("/workspace")).unwrap();
 
-        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics.len(), 1;
         let diag = &diagnostics[0];
-        assert_eq!(diag.severity, Severity::Warning);
-        assert_eq!(diag.source, "cargo-audit");
-        assert!(diag.message.contains("RUSTSEC-2021-0139"));
-        assert!(diag.message.contains("ansi_term"));
+        assert_eq!(diag.severity, Severity::Warning;
+        assert_eq!(diag.source, "cargo-audit";
+        assert!(diag.message.contains("RUSTSEC-2021-0139");
+        assert!(diag.message.contains("ansi_term");
     }
 
     #[test]
     fn test_cargo_audit_text_parser() {
-        let parser = CargoAuditOutputParser::new("/workspace");
+        let parser = CargoAuditOutputParser::new("/workspace";
         let text_output = r#"RUSTSEC-2021-0139: ansi_term is Unmaintained
     Severity: Medium
     The ansi_term crate is unmaintained.
@@ -1425,15 +1425,15 @@ backtrace:
         let diagnostics = parser.parse_output(text_output, "", Path::new("/workspace")).unwrap();
 
         assert!(diagnostics.len() >= 2);
-        assert!(diagnostics.iter().any(|d| d.code == Some("RUSTSEC-2021-0139".to_string())));
+        assert!(diagnostics.iter().any(|d| d.code == Some("RUSTSEC-2021-0139".to_string()));
         assert!(diagnostics
             .iter()
-            .any(|d| d.message.contains("2 security vulnerabilities found")));
+            .any(|d| d.message.contains("2 security vulnerabilities found");
     }
 
     #[test]
     fn test_rustdoc_parser() {
-        let parser = RustdocOutputParser::new("/workspace");
+        let parser = RustdocOutputParser::new("/workspace";
         let output = r#"error: unresolved link to `NonExistent`
   --> /workspace/src/lib.rs:10:5
    |
@@ -1445,19 +1445,19 @@ warning: missing code example in documentation
 
         let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
 
-        assert_eq!(diagnostics.len(), 2);
-        assert_eq!(diagnostics[0].severity, Severity::Error);
-        assert_eq!(diagnostics[0].file, "src/lib.rs");
+        assert_eq!(diagnostics.len(), 2;
+        assert_eq!(diagnostics[0].severity, Severity::Error;
+        assert_eq!(diagnostics[0].file, "src/lib.rs";
 
         // Find the warning diagnostic
-        let warning = diagnostics.iter().find(|d| d.severity == Severity::Warning);
-        assert!(warning.is_some());
-        assert!(warning.unwrap().message.contains("missing code example"));
+        let warning = diagnostics.iter().find(|d| d.severity == Severity::Warning;
+        assert!(warning.is_some();
+        assert!(warning.unwrap().message.contains("missing code example");
     }
 
     #[test]
     fn test_tarpaulin_text_parser() {
-        let parser = TarpaulinOutputParser::new("/workspace");
+        let parser = TarpaulinOutputParser::new("/workspace";
         let output = r#"Coverage Results: 75.50%
 src/main.rs: 85.00%
 src/lib.rs: 45.00%
@@ -1467,10 +1467,10 @@ src/lib.rs: 45.00%
 
         // Should have overall coverage warning, file warning, and uncovered lines
         assert!(diagnostics.len() > 3);
-        assert!(diagnostics.iter().any(|d| d.message.contains("Overall test coverage: 75.50%")));
+        assert!(diagnostics.iter().any(|d| d.message.contains("Overall test coverage: 75.50%"));
         assert!(diagnostics
             .iter()
-            .any(|d| d.file == "src/lib.rs" && d.severity == Severity::Warning));
-        assert!(diagnostics.iter().any(|d| d.code == Some("COV003".to_string())));
+            .any(|d| d.file == "src/lib.rs" && d.severity == Severity::Warning;
+        assert!(diagnostics.iter().any(|d| d.code == Some("COV003".to_string()));
     }
 }

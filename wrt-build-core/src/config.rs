@@ -117,11 +117,11 @@ impl std::fmt::Display for AsilLevel {
 impl WorkspaceConfig {
     /// Load workspace configuration from Cargo.toml
     pub fn load(workspace_root: &std::path::Path) -> BuildResult<Self> {
-        let cargo_toml = workspace_root.join("Cargo.toml");
+        let cargo_toml = workspace_root.join("Cargo.toml";
         if !cargo_toml.exists() {
             return Err(BuildError::Workspace(
                 "Cargo.toml not found in workspace root".to_string(),
-            ));
+            ;
         }
 
         let content = std::fs::read_to_string(&cargo_toml)
@@ -141,12 +141,12 @@ impl WorkspaceConfig {
 
     /// Parse workspace members from Cargo.toml content
     fn parse_workspace_members(content: &str) -> BuildResult<Vec<String>> {
-        let mut members = Vec::new();
+        let mut members = Vec::new(;
         let mut in_workspace = false;
         let mut in_members = false;
 
         for line in content.lines() {
-            let line = line.trim();
+            let line = line.trim(;
 
             if line == "[workspace]" {
                 in_workspace = true;
@@ -170,9 +170,9 @@ impl WorkspaceConfig {
             }
 
             if in_members && !line.is_empty() {
-                let member = line.trim_matches(|c| c == '"' || c == ',' || c == ' ');
+                let member = line.trim_matches(|c| c == '"' || c == ',' || c == ' ';
                 if !member.starts_with('#') && !member.is_empty() {
-                    members.push(member.to_string());
+                    members.push(member.to_string();
                 }
             }
         }
@@ -196,10 +196,10 @@ mod tests {
 
     #[test]
     fn test_default_build_config() {
-        let config = BuildConfig::default();
+        let config = BuildConfig::default(;
         assert!(!config.verbose);
-        assert_eq!(config.jobs, -1);
-        assert!(matches!(config.profile, BuildProfile::Dev));
+        assert_eq!(config.jobs, -1;
+        assert!(matches!(config.profile, BuildProfile::Dev);
     }
 
     #[test]
@@ -215,6 +215,6 @@ members = [
         "#;
 
         let members = WorkspaceConfig::parse_workspace_members(content).unwrap();
-        assert_eq!(members, vec!["wrt", "wrt-runtime", "wrt-component"]);
+        assert_eq!(members, vec!["wrt", "wrt-runtime", "wrt-component"];
     }
 }

@@ -67,7 +67,7 @@ pub struct ProgressIndicator {
 impl ProgressIndicator {
     /// Create a new progress indicator
     pub fn new(config: ProgressConfig, output_format: OutputFormat) -> Self {
-        let now = Instant::now();
+        let now = Instant::now(;
         Self {
             config,
             start_time: now,
@@ -136,7 +136,7 @@ impl ProgressIndicator {
     pub fn start(&mut self) {
         if matches!(self.output_format, OutputFormat::Human) {
             self.is_active = true;
-            self.render();
+            self.render(;
         }
     }
 
@@ -152,9 +152,9 @@ impl ProgressIndicator {
             _ => {},
         }
 
-        let now = Instant::now();
+        let now = Instant::now(;
         if now.duration_since(self.last_update) >= self.config.update_interval {
-            self.render();
+            self.render(;
             self.last_update = now;
         }
     }
@@ -164,7 +164,7 @@ impl ProgressIndicator {
         if let ProgressStyle::Steps { current, .. } = &mut self.config.style {
             *current += 1;
         }
-        self.tick();
+        self.tick(;
     }
 
     /// Tick the progress indicator (for spinners)
@@ -174,9 +174,9 @@ impl ProgressIndicator {
         }
 
         self.frame += 1;
-        let now = Instant::now();
+        let now = Instant::now(;
         if now.duration_since(self.last_update) >= self.config.update_interval {
-            self.render();
+            self.render(;
             self.last_update = now;
         }
     }
@@ -187,8 +187,8 @@ impl ProgressIndicator {
             return;
         }
 
-        self.clear();
-        let elapsed = self.start_time.elapsed();
+        self.clear(;
+        let elapsed = self.start_time.elapsed(;
 
         if self.config.use_colors {
             println!(
@@ -196,9 +196,9 @@ impl ProgressIndicator {
                 "✅".bright_green(),
                 message.into().bright_white(),
                 format!("({})", format_duration(elapsed)).bright_black()
-            );
+            ;
         } else {
-            println!("✅ {} ({})", message.into(), format_duration(elapsed));
+            println!("✅ {} ({})", message.into(), format_duration(elapsed;
         }
 
         self.is_active = false;
@@ -206,7 +206,7 @@ impl ProgressIndicator {
 
     /// Finish with success
     pub fn finish(&mut self) {
-        self.finish_with_message(&self.config.message.clone());
+        self.finish_with_message(&self.config.message.clone();
     }
 
     /// Finish with error
@@ -215,8 +215,8 @@ impl ProgressIndicator {
             return;
         }
 
-        self.clear();
-        let elapsed = self.start_time.elapsed();
+        self.clear(;
+        let elapsed = self.start_time.elapsed(;
 
         if self.config.use_colors {
             println!(
@@ -224,9 +224,9 @@ impl ProgressIndicator {
                 "❌".bright_red(),
                 error.into().bright_red(),
                 format!("({})", format_duration(elapsed)).bright_black()
-            );
+            ;
         } else {
-            println!("❌ {} ({})", error.into(), format_duration(elapsed));
+            println!("❌ {} ({})", error.into(), format_duration(elapsed;
         }
 
         self.is_active = false;
@@ -235,8 +235,8 @@ impl ProgressIndicator {
     /// Clear the current progress line
     fn clear(&self) {
         if matches!(self.output_format, OutputFormat::Human) {
-            print!("\r\x1b[2K");
-            io::stdout().flush().unwrap_or(());
+            print!("\r\x1b[2K";
+            io::stdout().flush().unwrap_or((;
         }
     }
 
@@ -246,10 +246,10 @@ impl ProgressIndicator {
             return;
         }
 
-        self.clear();
+        self.clear(;
 
-        let elapsed = self.start_time.elapsed();
-        let mut line = String::new();
+        let elapsed = self.start_time.elapsed(;
+        let mut line = String::new(;
 
         // Add style-specific indicator
         match &self.config.style {
@@ -258,22 +258,22 @@ impl ProgressIndicator {
                 let spinner_char = spinner_chars[self.frame % spinner_chars.len()];
 
                 if self.config.use_colors {
-                    line.push_str(&format!("{} ", spinner_char.bright_blue()));
+                    line.push_str(&format!("{} ", spinner_char.bright_blue();
                 } else {
-                    line.push_str(&format!("{} ", spinner_char));
+                    line.push_str(&format!("{} ", spinner_char;
                 }
             },
             ProgressStyle::Bar { current, total } => {
-                let percentage = (*current as f64 / *total as f64 * 100.0).min(100.0);
+                let percentage = (*current as f64 / *total as f64 * 100.0).min(100.0;
                 let filled = (percentage / 100.0 * 30.0) as usize;
                 let empty = 30 - filled;
 
-                let bar = "█".repeat(filled) + &"░".repeat(empty);
+                let bar = "█".repeat(filled) + &"░".repeat(empty;
 
                 if self.config.use_colors {
-                    line.push_str(&format!("{} {:>3.0}% ", bar.bright_green(), percentage));
+                    line.push_str(&format!("{} {:>3.0}% ", bar.bright_green(), percentage;
                 } else {
-                    line.push_str(&format!("{} {:>3.0}% ", bar, percentage));
+                    line.push_str(&format!("{} {:>3.0}% ", bar, percentage;
                 }
             },
             ProgressStyle::Steps { current, total } => {
@@ -283,25 +283,25 @@ impl ProgressIndicator {
                         "📋".bright_blue(),
                         current.to_string().bright_white(),
                         total.to_string().bright_white()
-                    ));
+                    ;
                 } else {
-                    line.push_str(&format!("📋 Step {}/{} ", current, total));
+                    line.push_str(&format!("📋 Step {}/{} ", current, total;
                 }
             },
             ProgressStyle::Timer => {
                 if self.config.use_colors {
-                    line.push_str(&format!("{} ", "⏱️".bright_blue()));
+                    line.push_str(&format!("{} ", "⏱️".bright_blue();
                 } else {
-                    line.push_str("⏱️ ");
+                    line.push_str("⏱️ ";
                 }
             },
         }
 
         // Add message
         if self.config.use_colors {
-            line.push_str(&self.config.message.bright_white().to_string());
+            line.push_str(&self.config.message.bright_white().to_string();
         } else {
-            line.push_str(&self.config.message);
+            line.push_str(&self.config.message;
         }
 
         // Add timing information
@@ -310,9 +310,9 @@ impl ProgressIndicator {
                 line.push_str(&format!(
                     " {}",
                     format!("({})", format_duration(elapsed)).bright_black()
-                ));
+                ;
             } else {
-                line.push_str(&format!(" ({})", format_duration(elapsed)));
+                line.push_str(&format!(" ({})", format_duration(elapsed);
             }
         }
 
@@ -320,38 +320,38 @@ impl ProgressIndicator {
         if self.config.show_eta {
             if let ProgressStyle::Bar { current, total } = &self.config.style {
                 if *current > 0 && *current < *total {
-                    let rate = *current as f64 / elapsed.as_secs_f64();
+                    let rate = *current as f64 / elapsed.as_secs_f64(;
                     let remaining = (*total - *current) as f64 / rate;
-                    let eta = Duration::from_secs_f64(remaining);
+                    let eta = Duration::from_secs_f64(remaining;
 
                     if self.config.use_colors {
                         line.push_str(&format!(
                             " {}",
                             format!("ETA: {}", format_duration(eta)).bright_black()
-                        ));
+                        ;
                     } else {
-                        line.push_str(&format!(" ETA: {}", format_duration(eta)));
+                        line.push_str(&format!(" ETA: {}", format_duration(eta);
                     }
                 }
             }
         }
 
-        print!("{}", line);
-        io::stdout().flush().unwrap_or(());
+        print!("{}", line;
+        io::stdout().flush().unwrap_or((;
     }
 }
 
 impl Drop for ProgressIndicator {
     fn drop(&mut self) {
         if self.is_active {
-            self.clear();
+            self.clear(;
         }
     }
 }
 
 /// Format a duration for display
 fn format_duration(duration: Duration) -> String {
-    let total_secs = duration.as_secs();
+    let total_secs = duration.as_secs(;
 
     if total_secs < 60 {
         format!("{:.1}s", duration.as_secs_f64())
@@ -377,13 +377,13 @@ pub struct MultiStepProgress {
 impl MultiStepProgress {
     /// Create a new multi-step progress tracker
     pub fn new(steps: Vec<String>, output_format: OutputFormat, use_colors: bool) -> Self {
-        let total_steps = steps.len();
+        let total_steps = steps.len(;
         let step_indicator = ProgressIndicator::steps(
             "Starting...",
             total_steps,
             output_format.clone(),
             use_colors,
-        );
+        ;
 
         Self {
             steps,
@@ -395,7 +395,7 @@ impl MultiStepProgress {
 
     /// Start the multi-step progress
     pub fn start(&mut self) {
-        self.step_indicator.start();
+        self.step_indicator.start(;
     }
 
     /// Begin a new step
@@ -403,25 +403,25 @@ impl MultiStepProgress {
         if self.current_step < self.steps.len() {
             // Finish previous operation if any
             if let Some(ref mut op) = self.current_operation {
-                op.finish();
+                op.finish(;
             }
 
             let message = operation_message.into();
 
             // Update step progress
             self.step_indicator.config.message =
-                format!("{}: {}", self.steps[self.current_step], message);
-            self.step_indicator.advance();
+                format!("{}: {}", self.steps[self.current_step], message;
+            self.step_indicator.advance(;
 
             // Start new operation progress
             self.current_operation = Some(ProgressIndicator::spinner(
                 message.clone(),
                 self.step_indicator.output_format.clone(),
                 self.step_indicator.config.use_colors,
-            ));
+            ;
 
             if let Some(ref mut op) = self.current_operation {
-                op.start();
+                op.start(;
             }
 
             self.current_step += 1;
@@ -432,14 +432,14 @@ impl MultiStepProgress {
     pub fn update_operation(&mut self, message: impl Into<String>) {
         if let Some(ref mut op) = self.current_operation {
             op.config.message = message.into();
-            op.tick();
+            op.tick(;
         }
     }
 
     /// Finish current step with success
     pub fn finish_step(&mut self, message: impl Into<String>) {
         if let Some(ref mut op) = self.current_operation {
-            op.finish_with_message(message);
+            op.finish_with_message(message;
             self.current_operation = None;
         }
     }
@@ -447,7 +447,7 @@ impl MultiStepProgress {
     /// Finish current step with error
     pub fn finish_step_with_error(&mut self, error: impl Into<String>) {
         if let Some(ref mut op) = self.current_operation {
-            op.finish_with_error(error);
+            op.finish_with_error(error;
             self.current_operation = None;
         }
     }
@@ -455,17 +455,17 @@ impl MultiStepProgress {
     /// Finish all steps
     pub fn finish(&mut self, message: impl Into<String>) {
         if let Some(ref mut op) = self.current_operation {
-            op.finish();
+            op.finish(;
         }
-        self.step_indicator.finish_with_message(message);
+        self.step_indicator.finish_with_message(message;
     }
 
     /// Finish with error
     pub fn finish_with_error(&mut self, error: impl Into<String>) {
         let error_msg = error.into();
         if let Some(ref mut op) = self.current_operation {
-            op.finish_with_error(&error_msg);
+            op.finish_with_error(&error_msg;
         }
-        self.step_indicator.finish_with_error(error_msg);
+        self.step_indicator.finish_with_error(error_msg;
     }
 }

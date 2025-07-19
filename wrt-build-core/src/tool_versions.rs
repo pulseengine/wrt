@@ -172,7 +172,7 @@ impl ToolVersionConfig {
         // Try to find workspace root and load tool-versions.toml
         match crate::detect_workspace_root() {
             Ok(workspace_root) => {
-                let config_path = workspace_root.join("tool-versions.toml");
+                let config_path = workspace_root.join("tool-versions.toml";
                 let mut config = if config_path.exists() {
                     Self::load_from_file(&config_path)?
                 } else {
@@ -181,9 +181,9 @@ impl ToolVersionConfig {
                 };
 
                 // Load rust-toolchain.toml if it exists
-                let rust_toolchain_path = workspace_root.join("rust-toolchain.toml");
+                let rust_toolchain_path = workspace_root.join("rust-toolchain.toml";
                 if rust_toolchain_path.exists() {
-                    config.rust_toolchain = Some(Self::load_rust_toolchain(&rust_toolchain_path)?);
+                    config.rust_toolchain = Some(Self::load_rust_toolchain(&rust_toolchain_path)?;
                 }
 
                 Ok(config)
@@ -206,7 +206,7 @@ impl ToolVersionConfig {
             .map_err(|e| BuildError::Tool(format!("Failed to parse tool-versions.toml: {}", e)))?;
 
         // Convert from TOML format to internal format
-        let mut tools = HashMap::new();
+        let mut tools = HashMap::new(;
         for (name, toml_tool) in toml_config.tools {
             let requirement_type = match toml_tool.requirement_type.as_str() {
                 "Exact" => VersionRequirement::Exact,
@@ -217,7 +217,7 @@ impl ToolVersionConfig {
             };
 
             // Convert target-specific configurations
-            let mut target_specific = HashMap::new();
+            let mut target_specific = HashMap::new(;
             for (target, target_config) in toml_tool.target_specific {
                 target_specific.insert(
                     target,
@@ -228,7 +228,7 @@ impl ToolVersionConfig {
                         constraints:        target_config.constraints,
                         supported:          target_config.supported,
                     },
-                );
+                ;
             }
 
             tools.insert(
@@ -248,7 +248,7 @@ impl ToolVersionConfig {
                     description: toml_tool.description,
                     target_specific,
                 },
-            );
+            ;
         }
 
         Ok(ToolVersionConfig {
@@ -296,7 +296,7 @@ impl ToolVersionConfig {
 
     /// Create fallback configuration when file is not available  
     pub fn create_fallback_config() -> Self {
-        let mut tools = HashMap::new();
+        let mut tools = HashMap::new(;
 
         // Kani formal verification
         tools.insert(
@@ -314,7 +314,7 @@ impl ToolVersionConfig {
                 description:        "CBMC-based formal verification for Rust".to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         // Cargo-fuzz fuzzing tool
         tools.insert(
@@ -331,7 +331,7 @@ impl ToolVersionConfig {
                 description:        "Coverage-guided fuzzing for Rust".to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         // Rust toolchain components
         tools.insert(
@@ -347,7 +347,7 @@ impl ToolVersionConfig {
                 description:        "Rust linter for code quality checks".to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         tools.insert(
             "rustfmt".to_string(),
@@ -362,7 +362,7 @@ impl ToolVersionConfig {
                 description:        "Rust code formatter".to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         // Git version control
         tools.insert(
@@ -378,7 +378,7 @@ impl ToolVersionConfig {
                 description:        "Distributed version control".to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         // LLVM tools for coverage
         tools.insert(
@@ -394,7 +394,7 @@ impl ToolVersionConfig {
                 description:        "LLVM coverage analysis tools".to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         // Documentation tools
         tools.insert(
@@ -412,7 +412,7 @@ impl ToolVersionConfig {
                     .to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         tools.insert(
             "python-venv".to_string(),
@@ -434,7 +434,7 @@ impl ToolVersionConfig {
                     .to_string(),
                 target_specific:    HashMap::new(),
             },
-        );
+        ;
 
         Self {
             tools,
@@ -537,11 +537,11 @@ impl ToolVersionConfig {
     pub fn check_rustup_target_installed(&self, target: &str) -> bool {
         use std::process::Command;
 
-        let output = Command::new("rustup").args(["target", "list", "--installed"]).output();
+        let output = Command::new("rustup").args(["target", "list", "--installed"]).output(;
 
         match output {
             Ok(output) if output.status.success() => {
-                let installed_targets = String::from_utf8_lossy(&output.stdout);
+                let installed_targets = String::from_utf8_lossy(&output.stdout;
                 installed_targets.lines().any(|line| line.trim() == target)
             },
             _ => false,
@@ -643,11 +643,11 @@ fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
             .collect()
     };
 
-    let v1_parts = parse_version(v1);
-    let v2_parts = parse_version(v2);
+    let v1_parts = parse_version(v1;
+    let v2_parts = parse_version(v2;
 
     // Pad to ensure same length
-    let max_len = v1_parts.len().max(v2_parts.len());
+    let max_len = v1_parts.len().max(v2_parts.len(;
     let v1_padded: Vec<u32> =
         v1_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect();
     let v2_padded: Vec<u32> =
@@ -674,17 +674,17 @@ mod tests {
         assert_eq!(
             compare_versions("1.0.0", "1.0.0"),
             std::cmp::Ordering::Equal
-        );
+        ;
         assert_eq!(
             compare_versions("1.0.1", "1.0.0"),
             std::cmp::Ordering::Greater
-        );
-        assert_eq!(compare_versions("1.0.0", "1.0.1"), std::cmp::Ordering::Less);
+        ;
+        assert_eq!(compare_versions("1.0.0", "1.0.1"), std::cmp::Ordering::Less;
         assert_eq!(
             compare_versions("2.0.0", "1.9.9"),
             std::cmp::Ordering::Greater
-        );
-        assert_eq!(compare_versions("1.9.9", "2.0.0"), std::cmp::Ordering::Less);
+        ;
+        assert_eq!(compare_versions("1.9.9", "2.0.0"), std::cmp::Ordering::Less;
     }
 
     #[test]
@@ -694,51 +694,51 @@ mod tests {
         assert_eq!(
             extract_version_from_output(output, pattern),
             Some("0.63.0".to_string())
-        );
+        ;
 
         let output = "git version 2.39.5 (Apple Git-154)";
         let pattern = r"git version (\d+\.\d+\.\d+)";
         assert_eq!(
             extract_version_from_output(output, pattern),
             Some("2.39.5".to_string())
-        );
+        ;
     }
 
     #[test]
     fn test_version_compatibility_check() {
-        let config = ToolVersionConfig::default();
+        let config = ToolVersionConfig::default(;
 
         // Test exact version requirement
         if let Some(kani_version) = config.get_tool_version("kani") {
-            let comparison = config.check_version_compatibility("kani", "0.63.0");
-            assert_eq!(comparison, Some(VersionComparison::Satisfies));
+            let comparison = config.check_version_compatibility("kani", "0.63.0";
+            assert_eq!(comparison, Some(VersionComparison::Satisfies;
 
-            let comparison = config.check_version_compatibility("kani", "0.62.0");
+            let comparison = config.check_version_compatibility("kani", "0.62.0";
             assert!(matches!(
                 comparison,
                 Some(VersionComparison::Mismatch { .. })
-            ));
+            ;
         }
 
         // Test minimum version requirement
-        let comparison = config.check_version_compatibility("cargo-fuzz", "0.12.1");
-        assert!(matches!(comparison, Some(VersionComparison::Newer { .. })));
+        let comparison = config.check_version_compatibility("cargo-fuzz", "0.12.1";
+        assert!(matches!(comparison, Some(VersionComparison::Newer { .. }));
 
-        let comparison = config.check_version_compatibility("cargo-fuzz", "0.11.0");
-        assert!(matches!(comparison, Some(VersionComparison::TooOld { .. })));
+        let comparison = config.check_version_compatibility("cargo-fuzz", "0.11.0";
+        assert!(matches!(comparison, Some(VersionComparison::TooOld { .. }));
     }
 
     #[test]
     fn test_config_serialization() {
-        let config = ToolVersionConfig::default();
+        let config = ToolVersionConfig::default(;
         let toml_str = config.to_toml().expect("Should serialize to TOML");
         let loaded_config =
             ToolVersionConfig::from_toml(&toml_str).expect("Should deserialize from TOML");
 
-        assert_eq!(config.tools.len(), loaded_config.tools.len());
+        assert_eq!(config.tools.len(), loaded_config.tools.len(;
         assert_eq!(
             config.metadata.config_version,
             loaded_config.metadata.config_version
-        );
+        ;
     }
 }

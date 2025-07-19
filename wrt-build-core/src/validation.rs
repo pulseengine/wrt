@@ -88,36 +88,36 @@ impl CodeValidator {
         println!(
             "{} Checking for test files in src/ directories...",
             "🔍".bright_blue()
-        );
+        ;
 
-        let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let mut errors = Vec::new(;
+        let mut warnings = Vec::new(;
 
         // Walk through all Cargo.toml files to find crates
         let crates = self.find_workspace_crates()?;
 
         for crate_path in crates {
-            let src_dir = crate_path.join("src");
+            let src_dir = crate_path.join("src";
             if src_dir.exists() {
                 self.check_directory_for_test_files(&src_dir, &mut errors)?;
             }
         }
 
-        let success = errors.is_empty();
+        let success = errors.is_empty(;
 
         if success {
             println!(
                 "{} No test files found in src/ directories",
                 "✅".bright_green()
-            );
+            ;
         } else {
             println!(
                 "{} Found {} test files in src/ directories",
                 "❌".bright_red(),
                 errors.len()
-            );
+            ;
             for error in &errors {
-                println!("  - {}", error.file.display());
+                println!("  - {}", error.file.display();
             }
         }
 
@@ -134,10 +134,10 @@ impl CodeValidator {
         println!(
             "{} Checking module documentation coverage...",
             "📚".bright_blue()
-        );
+        ;
 
-        let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let mut errors = Vec::new(;
+        let mut warnings = Vec::new(;
         let mut total_modules = 0;
         let mut documented_modules = 0;
 
@@ -145,7 +145,7 @@ impl CodeValidator {
         let crates = self.find_workspace_crates()?;
 
         for crate_path in crates {
-            let src_dir = crate_path.join("src");
+            let src_dir = crate_path.join("src";
             if src_dir.exists() {
                 self.check_directory_documentation(
                     &src_dir,
@@ -166,8 +166,8 @@ impl CodeValidator {
             "{} Module documentation coverage: {:.1}%",
             "📊".bright_cyan(),
             coverage_percent
-        );
-        println!("  Documented: {}/{}", documented_modules, total_modules);
+        ;
+        println!("  Documented: {}/{}", documented_modules, total_modules;
 
         if coverage_percent < 80.0 {
             errors.push(ValidationError::new(
@@ -177,7 +177,7 @@ impl CodeValidator {
                     "Test coverage {:.1}% is below 80% threshold",
                     coverage_percent
                 ),
-            ));
+            ;
         }
 
         Ok(ValidationResults {
@@ -190,18 +190,18 @@ impl CodeValidator {
 
     /// Comprehensive documentation audit for all crates
     pub fn audit_crate_documentation(&self) -> BuildResult<ValidationResults> {
-        println!("{} Auditing crate documentation...", "📚".bright_blue());
+        println!("{} Auditing crate documentation...", "📚".bright_blue(;
 
-        let mut results = ValidationResults::new();
-        let start = std::time::Instant::now();
+        let mut results = ValidationResults::new(;
+        let start = std::time::Instant::now(;
 
         // Find all crate directories
-        let mut crates = Vec::new();
+        let mut crates = Vec::new(;
         for entry in fs::read_dir(&self.workspace_root)? {
             let entry = entry?;
-            let path = entry.path();
+            let path = entry.path(;
             if path.is_dir() {
-                let cargo_toml = path.join("Cargo.toml");
+                let cargo_toml = path.join("Cargo.toml";
                 if cargo_toml.exists() {
                     // Check if it's a crate (has [package] section)
                     let content = fs::read_to_string(&cargo_toml)?;
@@ -212,28 +212,28 @@ impl CodeValidator {
             }
         }
 
-        println!("    Found {} crates to audit", crates.len());
+        println!("    Found {} crates to audit", crates.len(;
 
-        let mut missing_readme = Vec::new();
-        let mut missing_metadata = Vec::new();
-        let mut poor_documentation = Vec::new();
+        let mut missing_readme = Vec::new(;
+        let mut missing_metadata = Vec::new(;
+        let mut poor_documentation = Vec::new(;
 
         for crate_path in &crates {
-            let crate_name = crate_path.file_name().unwrap().to_string_lossy();
+            let crate_name = crate_path.file_name().unwrap().to_string_lossy(;
 
             // Check README.md
-            let readme_path = crate_path.join("README.md");
+            let readme_path = crate_path.join("README.md";
             if !readme_path.exists() {
-                missing_readme.push(crate_name.to_string());
+                missing_readme.push(crate_name.to_string();
                 results.errors.push(ValidationError::new(
                     "missing-readme",
                     readme_path.clone(),
                     "Missing README.md file",
-                ));
+                ;
             }
 
             // Check Cargo.toml metadata
-            let cargo_toml_path = crate_path.join("Cargo.toml");
+            let cargo_toml_path = crate_path.join("Cargo.toml";
             let cargo_content = fs::read_to_string(&cargo_toml_path)?;
 
             let metadata_items = ["description", "documentation", "keywords", "categories"];
@@ -244,21 +244,21 @@ impl CodeValidator {
                     has_all_metadata = false;
                     results
                         .warnings
-                        .push(format!("{}: Missing {} in Cargo.toml", crate_name, item));
+                        .push(format!("{}: Missing {} in Cargo.toml", crate_name, item);
                 }
             }
 
             if !cargo_content.contains("[package.metadata.docs.rs]") {
                 has_all_metadata = false;
-                results.warnings.push(format!("{}: Missing docs.rs configuration", crate_name));
+                results.warnings.push(format!("{}: Missing docs.rs configuration", crate_name);
             }
 
             if !has_all_metadata {
-                missing_metadata.push(crate_name.to_string());
+                missing_metadata.push(crate_name.to_string();
             }
 
             // Check lib.rs documentation quality
-            let lib_rs_path = crate_path.join("src/lib.rs");
+            let lib_rs_path = crate_path.join("src/lib.rs";
             if lib_rs_path.exists() {
                 let lib_content = fs::read_to_string(&lib_rs_path)?;
                 let mut has_good_docs = true;
@@ -273,16 +273,16 @@ impl CodeValidator {
                             "Missing module-level documentation in {}",
                             lib_rs_path.display()
                         ),
-                    ));
+                    ;
                 } else {
                     // Check for examples in crate docs
                     let has_examples =
-                        lib_content.contains("//! ```rust") || lib_content.contains("//! ```");
+                        lib_content.contains("//! ```rust") || lib_content.contains("//! ```";
                     if !has_examples {
                         results.warnings.push(format!(
                             "{}: No examples in crate documentation",
                             crate_name
-                        ));
+                        ;
                     }
 
                     // Check for features section
@@ -292,7 +292,7 @@ impl CodeValidator {
                         results.warnings.push(format!(
                             "{}: No features section in documentation",
                             crate_name
-                        ));
+                        ;
                     }
                 }
 
@@ -304,35 +304,35 @@ impl CodeValidator {
                     results.warnings.push(format!(
                         "{}: Missing #![warn(missing_docs)] lint",
                         crate_name
-                    ));
+                    ;
                 }
 
                 if !has_good_docs {
-                    poor_documentation.push(crate_name.to_string());
+                    poor_documentation.push(crate_name.to_string();
                 }
             }
         }
 
-        results.duration = start.elapsed();
-        results.success = results.errors.is_empty();
+        results.duration = start.elapsed(;
+        results.success = results.errors.is_empty(;
 
         // Print summary
-        println!("\n  {} Summary:", "📊".bright_cyan());
-        println!("    Total crates: {}", crates.len());
-        println!("    Crates missing README: {}", missing_readme.len());
+        println!("\n  {} Summary:", "📊".bright_cyan(;
+        println!("    Total crates: {}", crates.len(;
+        println!("    Crates missing README: {}", missing_readme.len(;
         println!(
             "    Crates with incomplete metadata: {}",
             missing_metadata.len()
-        );
+        ;
         println!(
             "    Crates with poor documentation: {}",
             poor_documentation.len()
-        );
+        ;
 
         if !missing_readme.is_empty() {
-            println!("\n    {} Crates missing README:", "❌".bright_red());
+            println!("\n    {} Crates missing README:", "❌".bright_red(;
             for crate_name in &missing_readme {
-                println!("      - {}", crate_name);
+                println!("      - {}", crate_name;
             }
         }
 
@@ -340,9 +340,9 @@ impl CodeValidator {
             println!(
                 "\n    {} Crates with incomplete metadata:",
                 "⚠️".bright_yellow()
-            );
+            ;
             for crate_name in &missing_metadata {
-                println!("      - {}", crate_name);
+                println!("      - {}", crate_name;
             }
         }
 
@@ -350,9 +350,9 @@ impl CodeValidator {
             println!(
                 "\n    {} Crates with poor documentation:",
                 "⚠️".bright_yellow()
-            );
+            ;
             for crate_name in &poor_documentation {
-                println!("      - {}", crate_name);
+                println!("      - {}", crate_name;
             }
         }
 
@@ -360,9 +360,9 @@ impl CodeValidator {
             println!(
                 "\n  {} All crates have proper documentation!",
                 "✅".bright_green()
-            );
+            ;
         } else {
-            println!("\n  {} Documentation audit found issues", "❌".bright_red());
+            println!("\n  {} Documentation audit found issues", "❌".bright_red(;
         }
 
         Ok(results)
@@ -373,17 +373,17 @@ impl CodeValidator {
         let mut crates = vec![self.workspace_root.clone()];
 
         // Read workspace Cargo.toml
-        let workspace_toml = self.workspace_root.join("Cargo.toml");
+        let workspace_toml = self.workspace_root.join("Cargo.toml";
         if let Ok(content) = fs::read_to_string(&workspace_toml) {
             // Simple parsing - look for workspace members
             if let Some(members_start) = content.find("members = [") {
                 if let Some(members_end) = content[members_start..].find(']') {
                     let members_section = &content[members_start..members_start + members_end];
                     for line in members_section.lines() {
-                        let line = line.trim();
+                        let line = line.trim(;
                         if line.starts_with('"') && line.ends_with('"') {
-                            let member = line.trim_matches('"').trim_matches(',');
-                            let member_path = self.workspace_root.join(member);
+                            let member = line.trim_matches('"').trim_matches(',';
+                            let member_path = self.workspace_root.join(member;
                             if member_path.exists() {
                                 crates.push(member_path);
                             }
@@ -407,7 +407,7 @@ impl CodeValidator {
         })? {
             let entry = entry
                 .map_err(|e| BuildError::Tool(format!("Failed to read directory entry: {}", e)))?;
-            let path = entry.path();
+            let path = entry.path(;
 
             if path.is_file() {
                 if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
@@ -424,7 +424,7 @@ impl CodeValidator {
                             "security-vulnerability",
                             path.clone(),
                             format!("Security vulnerability found in {}", path.display()),
-                        ));
+                        ;
                     }
                 }
             } else if path.is_dir() {
@@ -453,7 +453,7 @@ impl CodeValidator {
         })? {
             let entry = entry
                 .map_err(|e| BuildError::Tool(format!("Failed to read directory entry: {}", e)))?;
-            let path = entry.path();
+            let path = entry.path(;
 
             if path.is_file() {
                 if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
@@ -468,7 +468,7 @@ impl CodeValidator {
 
                             // Look for //! at the start of the file
                             for line in lines.iter().take(10) {
-                                let trimmed = line.trim();
+                                let trimmed = line.trim(;
                                 if trimmed.starts_with("//!") {
                                     has_module_doc = true;
                                     break;
@@ -488,7 +488,7 @@ impl CodeValidator {
                                 warnings.push(format!(
                                     "Missing module documentation: {}",
                                     path.display()
-                                ));
+                                ;
                             }
                         }
                     }
@@ -502,7 +502,7 @@ impl CodeValidator {
                         && dir_name != "benches"
                     {
                         // Check mod.rs in subdirectories
-                        let mod_file = path.join("mod.rs");
+                        let mod_file = path.join("mod.rs";
                         if mod_file.exists() {
                             *total_modules += 1;
 
@@ -513,7 +513,7 @@ impl CodeValidator {
                                     warnings.push(format!(
                                         "Missing module documentation: {}",
                                         mod_file.display()
-                                    ));
+                                    ;
                                 }
                             }
                         }
@@ -535,10 +535,10 @@ impl CodeValidator {
 
 /// Run all validation checks
 pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<bool> {
-    let validator = CodeValidator::new(workspace_root.to_path_buf(), verbose);
+    let validator = CodeValidator::new(workspace_root.to_path_buf(), verbose;
 
-    println!("{} Running code validation checks...", "🔍".bright_blue());
-    println!();
+    println!("{} Running code validation checks...", "🔍".bright_blue(;
+    println!(;
 
     let mut all_passed = true;
 
@@ -548,7 +548,7 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
         all_passed = false;
     }
 
-    println!();
+    println!(;
 
     // Check module documentation
     let doc_result = validator.check_module_documentation()?;
@@ -556,7 +556,7 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
         all_passed = false;
     }
 
-    println!();
+    println!(;
 
     // Audit crate documentation
     let audit_result = validator.audit_crate_documentation()?;
@@ -564,12 +564,12 @@ pub fn run_all_validations(workspace_root: &Path, verbose: bool) -> BuildResult<
         all_passed = false;
     }
 
-    println!();
+    println!(;
 
     if all_passed {
-        println!("{} All validation checks passed!", "✅".bright_green());
+        println!("{} All validation checks passed!", "✅".bright_green(;
     } else {
-        println!("{} Some validation checks failed", "❌".bright_red());
+        println!("{} Some validation checks failed", "❌".bright_red(;
     }
 
     Ok(all_passed)

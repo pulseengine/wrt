@@ -161,7 +161,7 @@ impl ContextDetector {
         let git_context = self.detect_git_context().ok();
         let ci_context = self.detect_ci_context().ok();
         let recommendations =
-            self.generate_recommendations(&project_type, &features, &git_context, &ci_context);
+            self.generate_recommendations(&project_type, &features, &git_context, &ci_context;
 
         Ok(ProjectContext {
             workspace_root: self.workspace_root.clone(),
@@ -180,14 +180,14 @@ impl ContextDetector {
             && self.workspace_root.join("wrt-build-core").exists()
             && self.workspace_root.join("cargo-wrt").exists()
         {
-            return Ok(ProjectType::WrtWorkspace);
+            return Ok(ProjectType::WrtWorkspace;
         }
 
         // Check for single WRT crate
         if let Ok(manifest) = fs::read_to_string(self.workspace_root.join("Cargo.toml")) {
             if manifest.contains("wrt-") || manifest.contains("name = \"wrt") {
                 if let Some(name) = self.extract_crate_name(&manifest) {
-                    return Ok(ProjectType::WrtCrate { name });
+                    return Ok(ProjectType::WrtCrate { name };
                 }
             }
         }
@@ -196,9 +196,9 @@ impl ContextDetector {
         if self.workspace_root.join("Cargo.toml").exists() {
             if let Ok(manifest) = fs::read_to_string(self.workspace_root.join("Cargo.toml")) {
                 if manifest.contains("[workspace]") {
-                    return Ok(ProjectType::RustWorkspace);
+                    return Ok(ProjectType::RustWorkspace;
                 } else {
-                    return Ok(ProjectType::RustCrate);
+                    return Ok(ProjectType::RustCrate;
                 }
             }
         }
@@ -210,8 +210,8 @@ impl ContextDetector {
     fn extract_crate_name(&self, manifest: &str) -> Option<String> {
         for line in manifest.lines() {
             if let Some(name_part) = line.strip_prefix("name = ") {
-                let name = name_part.trim_matches('"').trim_matches('\'');
-                return Some(name.to_string());
+                let name = name_part.trim_matches('"').trim_matches('\'';
+                return Some(name.to_string();
             }
         }
         None
@@ -219,43 +219,43 @@ impl ContextDetector {
 
     /// Detect project features
     fn detect_features(&self) -> Result<ProjectFeatures> {
-        let mut features = ProjectFeatures::default();
+        let mut features = ProjectFeatures::default(;
 
         // Check for tests
         features.has_tests = self.workspace_root.join("tests").exists()
             || self.has_files_matching("**/tests/**/*.rs")
-            || self.has_files_matching("**/*test*.rs");
+            || self.has_files_matching("**/*test*.rs";
 
         // Check for benchmarks
         features.has_benchmarks = self.workspace_root.join("benches").exists()
-            || self.has_files_matching("**/benches/**/*.rs");
+            || self.has_files_matching("**/benches/**/*.rs";
 
         // Check for examples
-        features.has_examples = self.workspace_root.join("examples").exists();
+        features.has_examples = self.workspace_root.join("examples").exists(;
 
         // Check for documentation
         features.has_docs = self.workspace_root.join("docs").exists()
-            || self.workspace_root.join("README.md").exists();
+            || self.workspace_root.join("README.md").exists(;
 
         // Check for CI
         features.has_ci = self.workspace_root.join(".github").exists()
             || self.workspace_root.join(".gitlab-ci.yml").exists()
-            || self.workspace_root.join(".travis.yml").exists();
+            || self.workspace_root.join(".travis.yml").exists(;
 
         // Check for fuzzing
         features.has_fuzzing = self.workspace_root.join("fuzz").exists()
-            || self.has_files_matching("**/fuzz_targets/**/*.rs");
+            || self.has_files_matching("**/fuzz_targets/**/*.rs";
 
         // Check for safety verification
         features.has_safety_verification = self.workspace_root.join("requirements.toml").exists()
             || self.has_files_matching("**/*safety*.rs")
-            || self.has_files_matching("**/*verification*.rs");
+            || self.has_files_matching("**/*verification*.rs";
 
         // Check for no_std support
-        features.no_std_support = self.check_no_std_support();
+        features.no_std_support = self.check_no_std_support(;
 
         // Check for WebAssembly targets
-        features.webassembly_targets = self.check_wasm_targets();
+        features.webassembly_targets = self.check_wasm_targets(;
 
         Ok(features)
     }
@@ -287,9 +287,9 @@ impl ContextDetector {
     /// Detect git context
     fn detect_git_context(&self) -> Result<GitContext> {
         // Simplified implementation - would use git2 crate in practice
-        let git_dir = self.workspace_root.join(".git");
+        let git_dir = self.workspace_root.join(".git";
         if !git_dir.exists() {
-            anyhow::bail!("Not a git repository");
+            anyhow::bail!("Not a git repository";
         }
 
         Ok(GitContext {
@@ -305,7 +305,7 @@ impl ContextDetector {
     /// Detect CI context
     fn detect_ci_context(&self) -> Result<CiContext> {
         // Check environment variables for CI detection
-        let is_ci = std::env::var("CI").is_ok();
+        let is_ci = std::env::var("CI").is_ok(;
 
         let provider = if std::env::var("GITHUB_ACTIONS").is_ok() {
             CiProvider::GitHubActions
@@ -338,7 +338,7 @@ impl ContextDetector {
         git_context: &Option<GitContext>,
         ci_context: &Option<CiContext>,
     ) -> Vec<Recommendation> {
-        let mut recommendations = Vec::new();
+        let mut recommendations = Vec::new(;
 
         // Project setup recommendations
         match project_type {
@@ -351,7 +351,7 @@ impl ContextDetector {
                             .to_string(),
                         command:     Some("cargo-wrt init --wrt-requirements".to_string()),
                         priority:    RecommendationPriority::High,
-                    });
+                    };
                 }
             },
             ProjectType::Unknown => {
@@ -362,7 +362,7 @@ impl ContextDetector {
                         .to_string(),
                     command:     Some("cargo-wrt init".to_string()),
                     priority:    RecommendationPriority::Critical,
-                });
+                };
             },
             _ => {},
         }
@@ -375,7 +375,7 @@ impl ContextDetector {
                 description: "Create test suite to ensure code quality and reliability".to_string(),
                 command:     Some("cargo-wrt test --create-template".to_string()),
                 priority:    RecommendationPriority::Medium,
-            });
+            };
         }
 
         // Documentation recommendations
@@ -386,7 +386,7 @@ impl ContextDetector {
                 description: "Create comprehensive API documentation".to_string(),
                 command:     Some("cargo-wrt docs --open".to_string()),
                 priority:    RecommendationPriority::Low,
-            });
+            };
         }
 
         // CI/CD recommendations
@@ -397,7 +397,7 @@ impl ContextDetector {
                 description: "Add automated testing and verification workflows".to_string(),
                 command:     Some("cargo-wrt setup --ci".to_string()),
                 priority:    RecommendationPriority::Medium,
-            });
+            };
         }
 
         // Performance recommendations
@@ -413,12 +413,12 @@ impl ContextDetector {
                         .to_string(),
                     command:     Some("cargo-wrt benchmark --init".to_string()),
                     priority:    RecommendationPriority::Suggestion,
-                });
+                };
             }
         }
 
         // Sort by priority
-        recommendations.sort_by_key(|r| r.priority.clone());
+        recommendations.sort_by_key(|r| r.priority.clone();
         recommendations
     }
 }
@@ -439,14 +439,14 @@ impl SmartDefaults {
         // If in CI, suggest verify
         if let Some(ci) = &self.context.ci_context {
             if ci.is_running_in_ci {
-                return Some("verify --asil d".to_string());
+                return Some("verify --asil d".to_string();
             }
         }
 
         // If git has changes, suggest check first
         if let Some(git) = &self.context.git_context {
             if git.has_unstaged_changes || git.has_staged_changes {
-                return Some("check".to_string());
+                return Some("check".to_string();
             }
         }
 

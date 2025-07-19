@@ -118,17 +118,17 @@ impl MarkdownReportGenerator {
         requirements: &[RequirementData],
         formatter: &MarkdownFormatter,
     ) -> Result<String> {
-        let mut output = String::new();
+        let mut output = String::new(;
 
         // Header
         writeln!(output, "# 📋 Requirements Traceability Matrix\n")?;
 
         // Summary section
         if formatter.include_summary {
-            let total = requirements.len();
-            let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count();
-            let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count();
-            let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count();
+            let total = requirements.len(;
+            let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count(;
+            let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count(;
+            let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count(;
 
             let coverage =
                 if total > 0 { (implemented as f64 / total as f64) * 100.0 } else { 0.0 };
@@ -177,13 +177,13 @@ impl MarkdownReportGenerator {
 
         // Requirements table
         let table_content = format_requirements_table(requirements, formatter)?;
-        let section = formatter.format_section("Requirements Details", &table_content, "📊");
+        let section = formatter.format_section("Requirements Details", &table_content, "📊";
         write!(output, "{}", section)?;
 
         // ASIL breakdown
         let asil_breakdown = generate_asil_breakdown(requirements, formatter)?;
         if !asil_breakdown.is_empty() {
-            let section = formatter.format_section("ASIL Level Breakdown", &asil_breakdown, "🛡️");
+            let section = formatter.format_section("ASIL Level Breakdown", &asil_breakdown, "🛡️";
             write!(output, "\n{}", section)?;
         }
 
@@ -195,7 +195,7 @@ impl MarkdownReportGenerator {
         report: &SafetyReportData,
         formatter: &MarkdownFormatter,
     ) -> Result<String> {
-        let mut output = String::new();
+        let mut output = String::new(;
 
         // Header
         writeln!(output, "# 🛡️ Safety Verification Report\n")?;
@@ -220,19 +220,19 @@ impl MarkdownReportGenerator {
         // ASIL compliance table
         if !report.asil_compliance.is_empty() {
             let asil_table = format_asil_compliance_table(&report.asil_compliance, formatter)?;
-            let section = formatter.format_section("ASIL Level Compliance", &asil_table, "📊");
+            let section = formatter.format_section("ASIL Level Compliance", &asil_table, "📊";
             write!(output, "\n{}", section)?;
         }
 
         // Test summary
         let test_summary = format_test_summary(&report.test_summary, formatter)?;
-        let section = formatter.format_section("Test Summary", &test_summary, "🧪");
+        let section = formatter.format_section("Test Summary", &test_summary, "🧪";
         write!(output, "\n{}", section)?;
 
         // Recommendations
         if !report.recommendations.is_empty() {
             let recommendations = format_recommendations(&report.recommendations)?;
-            let section = formatter.format_section("Recommendations", &recommendations, "💡");
+            let section = formatter.format_section("Recommendations", &recommendations, "💡";
             write!(output, "\n{}", section)?;
         }
 
@@ -253,7 +253,7 @@ impl MarkdownReportGenerator {
         report: &DocumentationReportData,
         formatter: &MarkdownFormatter,
     ) -> Result<String> {
-        let mut output = String::new();
+        let mut output = String::new(;
 
         // Header
         writeln!(output, "# 📚 Documentation Compliance Report\n")?;
@@ -310,7 +310,7 @@ impl MarkdownReportGenerator {
         // ASIL compliance
         if !report.asil_compliance.is_empty() {
             let asil_docs = format_asil_documentation(&report.asil_compliance, formatter)?;
-            let section = formatter.format_section("Documentation by ASIL Level", &asil_docs, "📊");
+            let section = formatter.format_section("Documentation by ASIL Level", &asil_docs, "📊";
             write!(output, "\n{}", section)?;
         }
 
@@ -324,7 +324,7 @@ fn format_requirements_table(
     requirements: &[RequirementData],
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut output = String::new();
+    let mut output = String::new(;
 
     // Table header
     writeln!(
@@ -374,10 +374,10 @@ fn generate_asil_breakdown(
     requirements: &[RequirementData],
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut asil_counts: HashMap<&str, (usize, usize, usize, usize)> = HashMap::new();
+    let mut asil_counts: HashMap<&str, (usize, usize, usize, usize)> = HashMap::new(;
 
     for req in requirements {
-        let entry = asil_counts.entry(&req.asil_level).or_insert((0, 0, 0, 0));
+        let entry = asil_counts.entry(&req.asil_level).or_insert((0, 0, 0, 0;
         entry.0 += 1; // total
         if !req.implementations.is_empty() {
             entry.1 += 1;
@@ -391,10 +391,10 @@ fn generate_asil_breakdown(
     }
 
     if asil_counts.is_empty() {
-        return Ok(String::new());
+        return Ok(String::new(;
     }
 
-    let mut output = String::new();
+    let mut output = String::new(;
 
     writeln!(
         output,
@@ -406,7 +406,7 @@ fn generate_asil_breakdown(
     )?;
 
     let mut levels: Vec<_> = asil_counts.keys().collect();
-    levels.sort();
+    levels.sort(;
 
     for level in levels {
         let (total, impl_count, test_count, doc_count) = asil_counts[level];
@@ -431,13 +431,13 @@ fn format_asil_compliance_table(
     compliance: &HashMap<String, f64>,
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut output = String::new();
+    let mut output = String::new(;
 
     writeln!(output, "| ASIL Level | Compliance |")?;
     writeln!(output, "|:-----------|:-----------|")?;
 
     let mut levels: Vec<_> = compliance.keys().collect();
-    levels.sort();
+    levels.sort(;
 
     for level in levels {
         let percentage = compliance[level];
@@ -454,7 +454,7 @@ fn format_asil_compliance_table(
 }
 
 fn format_test_summary(summary: &TestSummaryData, formatter: &MarkdownFormatter) -> Result<String> {
-    let mut output = String::new();
+    let mut output = String::new(;
 
     if formatter.github_flavor {
         writeln!(output, "- **Total Tests**: {} tests", summary.total_tests)?;
@@ -485,7 +485,7 @@ fn format_test_summary(summary: &TestSummaryData, formatter: &MarkdownFormatter)
 }
 
 fn format_recommendations(recommendations: &[String]) -> Result<String> {
-    let mut output = String::new();
+    let mut output = String::new(;
 
     for (i, rec) in recommendations.iter().enumerate() {
         writeln!(output, "{}. {}", i + 1, rec)?;
@@ -498,13 +498,13 @@ fn format_asil_documentation(
     compliance: &HashMap<String, f64>,
     formatter: &MarkdownFormatter,
 ) -> Result<String> {
-    let mut output = String::new();
+    let mut output = String::new(;
 
     writeln!(output, "| ASIL Level | Documentation Compliance |")?;
     writeln!(output, "|:-----------|:------------------------|")?;
 
     let mut levels: Vec<_> = compliance.keys().collect();
-    levels.sort();
+    levels.sort(;
 
     for level in levels {
         let percentage = compliance[level];
@@ -534,25 +534,25 @@ pub fn create_github_pr_comment(
     summary: &str,
     details: Vec<(&str, &str)>, // (section_title, section_content)
 ) -> String {
-    let mut output = String::new();
+    let mut output = String::new(;
 
     // Main title and summary
-    output.push_str(&format!("## {}\n\n", title));
-    output.push_str(&format!("{}\n\n", summary));
+    output.push_str(&format!("## {}\n\n", title;
+    output.push_str(&format!("{}\n\n", summary;
 
     // Collapsible details sections
     for (section_title, section_content) in details {
         output.push_str(&format!(
             "<details>\n<summary><b>{}</b></summary>\n\n{}\n</details>\n\n",
             section_title, section_content
-        ));
+        ;
     }
 
     // Footer
-    output.push_str("---\n");
+    output.push_str("---\n";
     output.push_str(
         "_Generated by [cargo-wrt](https://github.com/pulseengine/wrt) safety verification_ 🤖\n",
-    );
+    ;
 
     output
 }

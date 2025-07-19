@@ -135,9 +135,9 @@ impl BuildSystem {
         &self,
         options: &VerificationToolOptions,
     ) -> BuildResult<VerificationToolResults> {
-        println!("{} Running verification tool checks...", "🔍".bright_blue());
+        println!("{} Running verification tool checks...", "🔍".bright_blue(;
 
-        let start_time = std::time::Instant::now();
+        let start_time = std::time::Instant::now(;
         let mut overall_success = true;
 
         // Run test files check
@@ -234,12 +234,12 @@ impl BuildSystem {
             None
         };
 
-        let duration = start_time.elapsed();
+        let duration = start_time.elapsed(;
 
         if overall_success {
-            println!("{} Verification tool checks passed!", "✅".bright_green());
+            println!("{} Verification tool checks passed!", "✅".bright_green(;
         } else {
-            println!("{} Some verification tool checks failed", "❌".bright_red());
+            println!("{} Some verification tool checks failed", "❌".bright_red(;
         }
 
         Ok(VerificationToolResults {
@@ -258,14 +258,14 @@ impl BuildSystem {
             println!(
                 "  {} Checking for test files in src/ directories...",
                 "🔍".bright_cyan()
-            );
+            ;
         }
 
         // This is a simplified implementation - the actual validation module
         // already has this functionality in validation.rs
         use crate::validation::CodeValidator;
 
-        let validator = CodeValidator::new(self.workspace.root.clone(), verbose);
+        let validator = CodeValidator::new(self.workspace.root.clone(), verbose;
         let result = validator
             .check_no_test_files_in_src()
             .map_err(|e| BuildError::Verification(format!("Test file check failed: {}", e)))?;
@@ -290,13 +290,13 @@ impl BuildSystem {
             println!(
                 "  {} Checking documentation coverage...",
                 "📚".bright_cyan()
-            );
+            ;
         }
 
         // This would integrate with the existing validation module
         use crate::validation::CodeValidator;
 
-        let validator = CodeValidator::new(self.workspace.root.clone(), verbose);
+        let validator = CodeValidator::new(self.workspace.root.clone(), verbose;
 
         let result = if audit {
             validator.audit_crate_documentation().map_err(|e| {
@@ -328,13 +328,13 @@ impl BuildSystem {
             println!(
                 "  {} Checking requirements traceability...",
                 "📋".bright_cyan()
-            );
+            ;
         }
 
         // This would integrate with the existing requirements module
         use crate::requirements::Requirements;
 
-        let req_path = self.workspace.root.join("requirements.toml");
+        let req_path = self.workspace.root.join("requirements.toml";
         if !req_path.exists() {
             return Ok(RequirementsCheckResult {
                 success:                 true, // Not having requirements is OK
@@ -343,7 +343,7 @@ impl BuildSystem {
                 missing_files:           vec![],
                 incomplete_requirements: vec![],
                 certification_readiness: 0.0,
-            });
+            };
         }
 
         let requirements = Requirements::load(&req_path)
@@ -370,7 +370,7 @@ impl BuildSystem {
         verbose: bool,
     ) -> BuildResult<PlatformCheckResult> {
         if verbose {
-            println!("  {} Running platform verification...", "🖥️".bright_cyan());
+            println!("  {} Running platform verification...", "🖥️".bright_cyan(;
         }
 
         // Simplified platform verification - integrates with requirements platform
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_verification_tool_options() {
-        let options = VerificationToolOptions::default();
+        let options = VerificationToolOptions::default(;
         assert!(options.check_test_files);
         assert!(options.check_docs);
         assert!(!options.audit_docs);
@@ -416,7 +416,7 @@ mod tests {
         };
 
         assert!(result.success);
-        assert!(result.test_files_in_src.is_empty());
-        assert!(result.error.is_none());
+        assert!(result.test_files_in_src.is_empty();
+        assert!(result.error.is_none();
     }
 }

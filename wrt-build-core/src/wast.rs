@@ -221,10 +221,10 @@ pub struct WastFileResult {
 impl WastTestRunner {
     /// Create a new WAST test runner
     pub fn new(config: WastConfig) -> Result<Self> {
-        eprintln!("DEBUG: Creating WastTestRunner...");
+        eprintln!("DEBUG: Creating WastTestRunner...";
         let engine = WastEngine::new().context("Failed to create WAST execution engine")?;
 
-        eprintln!("DEBUG: WastTestRunner created, creating Self...");
+        eprintln!("DEBUG: WastTestRunner created, creating Self...";
         let result = Ok(Self {
             module_registry: HashMap::new(),
             stats: WastTestStats::default(),
@@ -232,8 +232,8 @@ impl WastTestRunner {
             config,
             diagnostics: Vec::new(),
             engine: Box::new(engine),
-        });
-        eprintln!("DEBUG: WastTestRunner creation complete");
+        };
+        eprintln!("DEBUG: WastTestRunner creation complete";
         result
     }
 
@@ -244,26 +244,26 @@ impl WastTestRunner {
 
     /// Run all WAST files in the configured directory
     pub fn run_all_tests(&mut self) -> Result<Vec<WastFileResult>> {
-        eprintln!("DEBUG: Starting WAST test runner...");
-        eprintln!("DEBUG: Test directory: {:?}", self.config.test_directory);
-        eprintln!("DEBUG: Current dir: {:?}", std::env::current_dir());
-        let start_time = std::time::Instant::now();
-        let mut results = Vec::new();
+        eprintln!("DEBUG: Starting WAST test runner...";
+        eprintln!("DEBUG: Test directory: {:?}", self.config.test_directory;
+        eprintln!("DEBUG: Current dir: {:?}", std::env::current_dir(;
+        let start_time = std::time::Instant::now(;
+        let mut results = Vec::new(;
 
         // Collect WAST files
-        eprintln!("DEBUG: About to collect WAST files...");
+        eprintln!("DEBUG: About to collect WAST files...";
         let wast_files = match self.collect_wast_files() {
             Ok(files) => {
-                eprintln!("DEBUG: Collected {} WAST files", files.len());
+                eprintln!("DEBUG: Collected {} WAST files", files.len(;
                 files
             },
             Err(e) => {
-                eprintln!("DEBUG: Error collecting files: {}", e);
+                eprintln!("DEBUG: Error collecting files: {}", e;
                 // If we can't even collect files, return the error
-                return Err(e);
+                return Err(e;
             },
         };
-        self.stats.files_processed = wast_files.len();
+        self.stats.files_processed = wast_files.len(;
 
         for (idx, file_path) in wast_files.iter().enumerate() {
             eprintln!(
@@ -271,7 +271,7 @@ impl WastTestRunner {
                 idx + 1,
                 wast_files.len(),
                 file_path
-            );
+            ;
             match self.run_wast_file(&file_path) {
                 Ok(file_result) => {
                     results.push(file_result);
@@ -306,35 +306,35 @@ impl WastTestRunner {
                             "wast-runner".to_string(),
                         )
                         .with_code("WAST_PARSE_ERROR".to_string()),
-                    );
+                    ;
                 },
             }
         }
 
-        self.stats.total_execution_time_ms = start_time.elapsed().as_millis();
+        self.stats.total_execution_time_ms = start_time.elapsed().as_millis(;
         Ok(results)
     }
 
     /// Run a single WAST file
     pub fn run_wast_file(&mut self, file_path: &Path) -> Result<WastFileResult> {
-        println!("🔍 DEBUG: run_wast_file called with {:?}", file_path);
-        let start_time = std::time::Instant::now();
+        println!("🔍 DEBUG: run_wast_file called with {:?}", file_path;
+        let start_time = std::time::Instant::now(;
         let relative_path = file_path
             .strip_prefix(&self.config.test_directory)
             .unwrap_or(file_path)
             .to_string_lossy()
             .to_string();
-        eprintln!("DEBUG: relative_path = {:?}", relative_path);
+        eprintln!("DEBUG: relative_path = {:?}", relative_path;
 
         // Read file content
-        eprintln!("DEBUG: About to read file content...");
-        eprintln!("DEBUG: File path exists: {}", file_path.exists());
-        eprintln!("DEBUG: File path is_file: {}", file_path.is_file());
-        eprintln!("DEBUG: File path metadata: {:?}", file_path.metadata());
+        eprintln!("DEBUG: About to read file content...";
+        eprintln!("DEBUG: File path exists: {}", file_path.exists(;
+        eprintln!("DEBUG: File path is_file: {}", file_path.is_file(;
+        eprintln!("DEBUG: File path metadata: {:?}", file_path.metadata(;
 
         // Temporary: Try using a fixed simple content to isolate the issue
         let content = if file_path.to_string_lossy().contains("simple") {
-            eprintln!("DEBUG: Using hardcoded simple content to test");
+            eprintln!("DEBUG: Using hardcoded simple content to test";
             "(module (func (export \"test\") (result i32) i32.const 42))".to_string()
         } else {
             match fs::read_to_string(file_path) {
@@ -347,7 +347,7 @@ impl WastTestRunner {
                         status:            TestResult::Failed,
                         execution_time_ms: start_time.elapsed().as_millis(),
                         error_message:     Some(format!("Failed to read WAST file: {}", e)),
-                    });
+                    };
                 },
             }
         };
@@ -356,14 +356,14 @@ impl WastTestRunner {
         eprintln!(
             "DEBUG: About to create ParseBuffer for content length: {}",
             content.len()
-        );
+        ;
         let buf = match ParseBuffer::new(&content) {
             Ok(buf) => {
-                eprintln!("DEBUG: ParseBuffer created successfully");
+                eprintln!("DEBUG: ParseBuffer created successfully";
                 buf
             },
             Err(e) => {
-                eprintln!("DEBUG: ParseBuffer creation failed: {}", e);
+                eprintln!("DEBUG: ParseBuffer creation failed: {}", e;
                 return Ok(WastFileResult {
                     file_path:         relative_path,
                     directives_count:  0,
@@ -371,22 +371,22 @@ impl WastTestRunner {
                     status:            TestResult::Failed,
                     execution_time_ms: start_time.elapsed().as_millis(),
                     error_message:     Some(format!("Failed to create parse buffer: {}", e)),
-                });
+                };
             },
         };
 
-        eprintln!("DEBUG: About to parse WAST content");
+        eprintln!("DEBUG: About to parse WAST content";
         let wast: Wast = match parser::parse::<Wast>(&buf) {
             Ok(wast) => {
                 eprintln!(
                     "DEBUG: WAST parsed successfully with {} directives",
                     wast.directives.len()
-                );
+                ;
                 wast
             },
             Err(e) => {
-                eprintln!("DEBUG: Parse error for file {:?}: {}", file_path, e);
-                eprintln!("DEBUG: Parse error debug: {:?}", e);
+                eprintln!("DEBUG: Parse error for file {:?}: {}", file_path, e;
+                eprintln!("DEBUG: Parse error debug: {:?}", e;
                 return Ok(WastFileResult {
                     file_path:         relative_path,
                     directives_count:  0,
@@ -394,19 +394,19 @@ impl WastTestRunner {
                     status:            TestResult::Failed,
                     execution_time_ms: start_time.elapsed().as_millis(),
                     error_message:     Some(format!("Failed to parse WAST file: {}", e)),
-                });
+                };
             },
         };
 
-        let mut directive_results = Vec::new();
+        let mut directive_results = Vec::new(;
         let mut file_status = TestResult::Passed;
 
-        let directive_count = wast.directives.len();
-        eprintln!("DEBUG: Starting to process {} directives", directive_count);
+        let directive_count = wast.directives.len(;
+        eprintln!("DEBUG: Starting to process {} directives", directive_count;
 
         // Process each directive
         for (i, mut directive) in wast.directives.into_iter().enumerate() {
-            eprintln!("DEBUG: Processing directive {}/{}", i + 1, directive_count);
+            eprintln!("DEBUG: Processing directive {}/{}", i + 1, directive_count;
             match self.execute_directive(&mut directive, file_path) {
                 Ok(directive_info) => {
                     if directive_info.result == TestResult::Failed {
@@ -436,7 +436,7 @@ impl WastTestRunner {
                             "wast-runner".to_string(),
                         )
                         .with_code("WAST001".to_string()),
-                    );
+                    ;
                 },
             }
         }
@@ -457,14 +457,14 @@ impl WastTestRunner {
         directive: &mut WastDirective,
         file_path: &Path,
     ) -> Result<WastDirectiveInfo> {
-        eprintln!("DEBUG: execute_directive - Entry");
+        eprintln!("DEBUG: execute_directive - Entry";
         match directive {
             WastDirective::Module(ref mut wast_module) => {
-                eprintln!("DEBUG: execute_directive - Module directive");
+                eprintln!("DEBUG: execute_directive - Module directive";
                 // Handle QuoteWat to extract actual Module
                 match wast_module {
                     wast::QuoteWat::Wat(wast::Wat::Module(ref mut module)) => {
-                        eprintln!("DEBUG: execute_directive - Calling handle_module_directive");
+                        eprintln!("DEBUG: execute_directive - Calling handle_module_directive";
                         self.handle_module_directive(module, file_path)
                     },
                     _ => {
@@ -551,26 +551,26 @@ impl WastTestRunner {
         wast_module: &mut wast::core::Module,
         _file_path: &Path,
     ) -> Result<WastDirectiveInfo> {
-        eprintln!("DEBUG: handle_module_directive - Entry");
+        eprintln!("DEBUG: handle_module_directive - Entry";
 
-        eprintln!("DEBUG: handle_module_directive - Encoding WAST module to binary");
+        eprintln!("DEBUG: handle_module_directive - Encoding WAST module to binary";
         // Get the binary from the WAST module
         match wast_module.encode() {
             Ok(binary) => {
                 eprintln!(
                     "DEBUG: handle_module_directive - Module encoded successfully, {} bytes",
                     binary.len()
-                );
+                ;
 
                 // Store the module binary for potential registration
-                self.module_registry.insert("current".to_string(), binary.clone());
-                eprintln!("DEBUG: handle_module_directive - Module stored in registry");
+                self.module_registry.insert("current".to_string(), binary.clone();
+                eprintln!("DEBUG: handle_module_directive - Module stored in registry";
 
-                eprintln!("DEBUG: handle_module_directive - About to call engine.load_module");
+                eprintln!("DEBUG: handle_module_directive - About to call engine.load_module";
                 eprintln!(
                     "DEBUG: handle_module_directive - Binary size to load: {}",
                     binary.len()
-                );
+                ;
                 // Load the module into the execution engine
                 match self.engine.load_module(None, &binary) {
                     Ok(()) => {
@@ -633,19 +633,19 @@ impl WastTestRunner {
                         eprintln!(
                             "DEBUG: Comparing results - actual: {:?}, expected: {:?}",
                             actual_results, expected_results
-                        );
+                        ;
                         if actual_results.len() == expected_results.len() {
                             let results_match = actual_results
                                 .iter()
                                 .zip(expected_results.iter())
                                 .all(|(actual, expected)| {
-                                    let is_equal = values_equal(actual, expected);
+                                    let is_equal = values_equal(actual, expected;
                                     eprintln!(
                                         "DEBUG: values_equal({:?}, {:?}) = {}",
                                         actual, expected, is_equal
-                                    );
+                                    ;
                                     is_equal
-                                });
+                                };
 
                             if results_match {
                                 self.stats.passed += 1;
@@ -836,8 +836,8 @@ impl WastTestRunner {
                     },
                     Err(validation_error) => {
                         // Module validation failed as expected
-                        let error_msg = validation_error.to_string().to_lowercase();
-                        let expected_msg = expected_message.to_lowercase();
+                        let error_msg = validation_error.to_string().to_lowercase(;
+                        let expected_msg = expected_message.to_lowercase(;
 
                         if error_msg.contains(&expected_msg)
                             || contains_validation_keyword(&error_msg, &expected_msg)
@@ -870,8 +870,8 @@ impl WastTestRunner {
             },
             Err(encode_error) => {
                 // Encoding failed, which might indicate an invalid module
-                let error_msg = encode_error.to_string().to_lowercase();
-                let expected_msg = expected_message.to_lowercase();
+                let error_msg = encode_error.to_string().to_lowercase(;
+                let expected_msg = expected_message.to_lowercase(;
 
                 if error_msg.contains(&expected_msg)
                     || contains_validation_keyword(&error_msg, &expected_msg)
@@ -936,8 +936,8 @@ impl WastTestRunner {
                     },
                     Err(decode_error) => {
                         // Binary decoding/validation failed as expected
-                        let error_msg = decode_error.to_string().to_lowercase();
-                        let expected_msg = expected_message.to_lowercase();
+                        let error_msg = decode_error.to_string().to_lowercase(;
+                        let expected_msg = expected_message.to_lowercase(;
 
                         if error_msg.contains(&expected_msg)
                             || contains_malformed_keyword(&error_msg, &expected_msg)
@@ -970,8 +970,8 @@ impl WastTestRunner {
             },
             Err(encode_error) => {
                 // Encoding itself failed, which could indicate malformed WAT
-                let error_msg = encode_error.to_string().to_lowercase();
-                let expected_msg = expected_message.to_lowercase();
+                let error_msg = encode_error.to_string().to_lowercase(;
+                let expected_msg = expected_message.to_lowercase(;
 
                 if error_msg.contains(&expected_msg)
                     || contains_malformed_keyword(&error_msg, &expected_msg)
@@ -1034,8 +1034,8 @@ impl WastTestRunner {
                     },
                     Err(linking_error) => {
                         // Check if error message matches expectations
-                        let error_msg = linking_error.to_string().to_lowercase();
-                        let expected_msg = expected_message.to_lowercase();
+                        let error_msg = linking_error.to_string().to_lowercase(;
+                        let expected_msg = expected_message.to_lowercase(;
 
                         if error_msg.contains(&expected_msg)
                             || contains_linking_keyword(&error_msg, &expected_msg)
@@ -1102,7 +1102,7 @@ impl WastTestRunner {
                         // In real implementation, would set resource limits and execute
                         // For now, assume it passes if expected message contains exhaustion
                         // keywords
-                        let expected_msg = expected_message.to_lowercase();
+                        let expected_msg = expected_message.to_lowercase(;
                         if contains_exhaustion_keyword(&expected_msg, &expected_msg) {
                             self.stats.passed += 1;
                             Ok(WastDirectiveInfo {
@@ -1258,7 +1258,7 @@ impl WastTestRunner {
 
         // Register the current module if available
         if let Some(binary) = self.module_registry.get("current") {
-            self.module_registry.insert(name.to_string(), binary.clone());
+            self.module_registry.insert(name.to_string(), binary.clone();
 
             // Register the module in the execution engine
             match self.engine.register_module(name, "current") {
@@ -1366,28 +1366,28 @@ impl WastTestRunner {
 
     /// Collect all WAST files in the configured directory
     fn collect_wast_files(&self) -> Result<Vec<PathBuf>> {
-        eprintln!("DEBUG: Entering collect_wast_files...");
-        let mut files = Vec::new();
+        eprintln!("DEBUG: Entering collect_wast_files...";
+        let mut files = Vec::new(;
 
         eprintln!(
             "DEBUG: About to read test directory: {:?}",
             self.config.test_directory
-        );
+        ;
         // Try to read the main directory, but don't fail if we can't
         match fs::read_dir(&self.config.test_directory) {
             Ok(entries) => {
-                eprintln!("DEBUG: Successfully read directory, processing entries...");
+                eprintln!("DEBUG: Successfully read directory, processing entries...";
                 for entry in entries {
                     match entry {
                         Ok(entry) => {
-                            let path = entry.path();
-                            eprintln!("DEBUG: Checking path: {:?}", path);
+                            let path = entry.path(;
+                            eprintln!("DEBUG: Checking path: {:?}", path;
 
                             if path.extension().map_or(false, |ext| ext == "wast") {
                                 // Apply filter if specified
                                 if let Some(filter) = &self.config.file_filter {
                                     let file_name =
-                                        path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                                        path.file_name().and_then(|n| n.to_str()).unwrap_or("";
 
                                     if !file_name.contains(filter) {
                                         continue;
@@ -1399,7 +1399,7 @@ impl WastTestRunner {
                         },
                         Err(e) => {
                             // Log error but continue processing other entries
-                            eprintln!("Warning: Failed to read directory entry: {}", e);
+                            eprintln!("Warning: Failed to read directory entry: {}", e;
                         },
                     }
                 }
@@ -1409,23 +1409,23 @@ impl WastTestRunner {
                     "Failed to read test directory {}: {}",
                     self.config.test_directory.display(),
                     e
-                ));
+                ;
             },
         }
 
         // Also check proposals subdirectory
-        let proposals_dir = self.config.test_directory.join("proposals");
-        eprintln!("DEBUG: Checking proposals dir: {:?}", proposals_dir);
+        let proposals_dir = self.config.test_directory.join("proposals";
+        eprintln!("DEBUG: Checking proposals dir: {:?}", proposals_dir;
         if proposals_dir.exists() {
-            eprintln!("DEBUG: Proposals dir exists, collecting files recursively...");
+            eprintln!("DEBUG: Proposals dir exists, collecting files recursively...";
             if let Err(e) = self.collect_wast_files_recursive(&proposals_dir, &mut files) {
-                eprintln!("Warning: Failed to read proposals directory: {}", e);
+                eprintln!("Warning: Failed to read proposals directory: {}", e;
             }
         }
 
-        eprintln!("DEBUG: Collected {} files, sorting...", files.len());
-        files.sort();
-        eprintln!("DEBUG: Returning {} sorted files", files.len());
+        eprintln!("DEBUG: Collected {} files, sorting...", files.len(;
+        files.sort(;
+        eprintln!("DEBUG: Returning {} sorted files", files.len(;
         Ok(files)
     }
 
@@ -1436,7 +1436,7 @@ impl WastTestRunner {
                 for entry in entries {
                     match entry {
                         Ok(entry) => {
-                            let path = entry.path();
+                            let path = entry.path(;
 
                             if path.is_dir() {
                                 // Continue recursively, but don't fail if subdirectory fails
@@ -1445,13 +1445,13 @@ impl WastTestRunner {
                                         "Warning: Failed to read subdirectory {}: {}",
                                         path.display(),
                                         e
-                                    );
+                                    ;
                                 }
                             } else if path.extension().map_or(false, |ext| ext == "wast") {
                                 // Apply filter if specified
                                 if let Some(filter) = &self.config.file_filter {
                                     let file_name =
-                                        path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                                        path.file_name().and_then(|n| n.to_str()).unwrap_or("";
 
                                     if file_name.contains(filter) {
                                         files.push(path);
@@ -1466,7 +1466,7 @@ impl WastTestRunner {
                                 "Warning: Failed to read directory entry in {}: {}",
                                 dir.display(),
                                 e
-                            );
+                            ;
                         },
                     }
                 }
@@ -1476,7 +1476,7 @@ impl WastTestRunner {
                     "Failed to read directory {}: {}",
                     dir.display(),
                     e
-                ));
+                ;
             },
         }
         Ok(())
@@ -1489,9 +1489,9 @@ impl WastTestRunner {
 
     /// Generate a summary report
     pub fn generate_summary(&self, results: &[WastFileResult]) -> String {
-        let total_directives: usize = results.iter().map(|r| r.directives_count).sum();
-        let passed_files = results.iter().filter(|r| r.status == TestResult::Passed).count();
-        let failed_files = results.iter().filter(|r| r.status == TestResult::Failed).count();
+        let total_directives: usize = results.iter().map(|r| r.directives_count).sum(;
+        let passed_files = results.iter().filter(|r| r.status == TestResult::Passed).count(;
+        let failed_files = results.iter().filter(|r| r.status == TestResult::Failed).count(;
 
         format!(
             "WAST Test Summary:
@@ -1563,7 +1563,7 @@ fn convert_v128_pattern(pattern: &V128Pattern) -> Result<[u8; 16]> {
         V128Pattern::I16x8(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes();
+                let val_bytes = val.to_le_bytes(;
                 bytes[i * 2] = val_bytes[0];
                 bytes[i * 2 + 1] = val_bytes[1];
             }
@@ -1572,16 +1572,16 @@ fn convert_v128_pattern(pattern: &V128Pattern) -> Result<[u8; 16]> {
         V128Pattern::I32x4(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes();
-                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes);
+                let val_bytes = val.to_le_bytes(;
+                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
         },
         V128Pattern::I64x2(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes();
-                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes);
+                let val_bytes = val.to_le_bytes(;
+                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
         },
@@ -1593,8 +1593,8 @@ fn convert_v128_pattern(pattern: &V128Pattern) -> Result<[u8; 16]> {
                     NanPattern::CanonicalNan => f32::NAN,
                     NanPattern::ArithmeticNan => f32::NAN,
                 };
-                let val_bytes = val.to_le_bytes();
-                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes);
+                let val_bytes = val.to_le_bytes(;
+                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
         },
@@ -1606,8 +1606,8 @@ fn convert_v128_pattern(pattern: &V128Pattern) -> Result<[u8; 16]> {
                     NanPattern::CanonicalNan => f64::NAN,
                     NanPattern::ArithmeticNan => f64::NAN,
                 };
-                let val_bytes = val.to_le_bytes();
-                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes);
+                let val_bytes = val.to_le_bytes(;
+                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes;
             }
             Ok(bytes)
         },
@@ -1621,7 +1621,7 @@ enum WastValue {
     I64(i64),
     F32(f32),
     F64(f64),
-    V128([u8; 16]),
+    V128([u8); 16]),
 }
 
 // Helper functions for error message classification
@@ -1637,7 +1637,7 @@ fn contains_trap_keyword(message: &str) -> bool {
         "trap",
     ];
 
-    let msg = message.to_lowercase();
+    let msg = message.to_lowercase(;
     trap_keywords.iter().any(|keyword| msg.contains(keyword))
 }
 
@@ -1736,27 +1736,27 @@ mod tests {
             report_format:   ReportFormat::Human,
             test_timeout_ms: 5000,
         };
-        let runner = WastTestRunner::new(config);
-        assert!(runner.is_ok());
+        let runner = WastTestRunner::new(config;
+        assert!(runner.is_ok();
         if let Ok(runner) = runner {
-            assert_eq!(runner.stats.passed, 0);
-            assert_eq!(runner.stats.failed, 0);
+            assert_eq!(runner.stats.passed, 0;
+            assert_eq!(runner.stats.failed, 0;
         }
     }
 
     #[test]
     fn test_resource_limits_default() {
-        let limits = ResourceLimits::default();
-        assert_eq!(limits.max_stack_depth, 1024);
-        assert_eq!(limits.max_memory_size, 64 * 1024 * 1024);
+        let limits = ResourceLimits::default(;
+        assert_eq!(limits.max_stack_depth, 1024;
+        assert_eq!(limits.max_memory_size, 64 * 1024 * 1024;
     }
 
     #[test]
     fn test_error_keyword_detection() {
-        assert!(contains_trap_keyword("divide by zero"));
-        assert!(contains_validation_keyword("type mismatch error", ""));
-        assert!(contains_malformed_keyword("unexpected end of input", ""));
-        assert!(contains_linking_keyword("unknown import module", ""));
-        assert!(contains_exhaustion_keyword("stack overflow detected", ""));
+        assert!(contains_trap_keyword("divide by zero");
+        assert!(contains_validation_keyword("type mismatch error", "");
+        assert!(contains_malformed_keyword("unexpected end of input", "");
+        assert!(contains_linking_keyword("unknown import module", "");
+        assert!(contains_exhaustion_keyword("stack overflow detected", "");
     }
 }

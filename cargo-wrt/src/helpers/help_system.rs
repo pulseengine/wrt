@@ -71,7 +71,7 @@ impl HelpSystem {
         let mut system = Self {
             commands: HashMap::new(),
         };
-        system.register_builtin_commands();
+        system.register_builtin_commands(;
         system
     }
 
@@ -102,7 +102,7 @@ impl HelpSystem {
             ],
             see_also:    vec!["check", "test", "verify"],
             category:    CommandCategory::Build,
-        });
+        };
 
         // Test commands
         self.register_command(CommandDoc {
@@ -129,7 +129,7 @@ impl HelpSystem {
             ],
             see_also:    vec!["build", "verify", "coverage"],
             category:    CommandCategory::Test,
-        });
+        };
 
         // Verification commands
         self.register_command(CommandDoc {
@@ -156,7 +156,7 @@ impl HelpSystem {
             ],
             see_also:    vec!["kani-verify", "safety", "check"],
             category:    CommandCategory::Verification,
-        });
+        };
 
         // Check commands
         self.register_command(CommandDoc {
@@ -183,12 +183,12 @@ impl HelpSystem {
             ],
             see_also:    vec!["build", "verify", "autofix"],
             category:    CommandCategory::Build,
-        });
+        };
     }
 
     /// Register a new command
     pub fn register_command(&mut self, doc: CommandDoc) {
-        self.commands.insert(doc.name, doc);
+        self.commands.insert(doc.name, doc;
     }
 
     /// Get documentation for a specific command
@@ -199,7 +199,7 @@ impl HelpSystem {
     /// Generate formatted help for a command
     pub fn format_command_help(&self, name: &str, use_colors: bool) -> Option<String> {
         let doc = self.get_command_doc(name)?;
-        let mut output = String::new();
+        let mut output = String::new(;
 
         // Command header
         if use_colors {
@@ -207,41 +207,41 @@ impl HelpSystem {
                 "{} {}\n",
                 doc.category.emoji(),
                 doc.name.bright_blue().bold()
-            ));
-            output.push_str(&format!("  {}\n\n", doc.brief.bright_white()));
+            ;
+            output.push_str(&format!("  {}\n\n", doc.brief.bright_white();
         } else {
-            output.push_str(&format!("{} {}\n", doc.category.emoji(), doc.name));
-            output.push_str(&format!("  {}\n\n", doc.brief));
+            output.push_str(&format!("{} {}\n", doc.category.emoji(), doc.name;
+            output.push_str(&format!("  {}\n\n", doc.brief;
         }
 
         // Description
         if use_colors {
-            output.push_str(&format!("{}\n", "DESCRIPTION".bright_yellow().bold()));
+            output.push_str(&format!("{}\n", "DESCRIPTION".bright_yellow().bold();
         } else {
-            output.push_str("DESCRIPTION\n");
+            output.push_str("DESCRIPTION\n";
         }
-        output.push_str(&format!("  {}\n\n", doc.description));
+        output.push_str(&format!("  {}\n\n", doc.description;
 
         // Examples
         if !doc.examples.is_empty() {
             if use_colors {
-                output.push_str(&format!("{}\n", "EXAMPLES".bright_yellow().bold()));
+                output.push_str(&format!("{}\n", "EXAMPLES".bright_yellow().bold();
             } else {
-                output.push_str("EXAMPLES\n");
+                output.push_str("EXAMPLES\n";
             }
 
             for example in &doc.examples {
                 if use_colors {
-                    output.push_str(&format!("  {}\n", example.command.green()));
+                    output.push_str(&format!("  {}\n", example.command.green();
                 } else {
-                    output.push_str(&format!("  {}\n", example.command));
+                    output.push_str(&format!("  {}\n", example.command;
                 }
-                output.push_str(&format!("    {}\n", example.description));
+                output.push_str(&format!("    {}\n", example.description;
 
                 if let Some(sample) = example.output_sample {
-                    output.push_str("    Output:\n");
+                    output.push_str("    Output:\n";
                     for line in sample.lines() {
-                        output.push_str(&format!("      {}\n", line));
+                        output.push_str(&format!("      {}\n", line;
                     }
                 }
                 output.push('\n');
@@ -251,11 +251,11 @@ impl HelpSystem {
         // See also
         if !doc.see_also.is_empty() {
             if use_colors {
-                output.push_str(&format!("{}\n", "SEE ALSO".bright_yellow().bold()));
+                output.push_str(&format!("{}\n", "SEE ALSO".bright_yellow().bold();
             } else {
-                output.push_str("SEE ALSO\n");
+                output.push_str("SEE ALSO\n";
             }
-            output.push_str("  ");
+            output.push_str("  ";
             if use_colors {
                 output.push_str(
                     &doc.see_also
@@ -263,11 +263,11 @@ impl HelpSystem {
                         .map(|cmd| cmd.cyan().to_string())
                         .collect::<Vec<_>>()
                         .join(", "),
-                );
+                ;
             } else {
-                output.push_str(&doc.see_also.join(", "));
+                output.push_str(&doc.see_also.join(", ";
             }
-            output.push_str("\n\n");
+            output.push_str("\n\n";
         }
 
         Some(output)
@@ -275,7 +275,7 @@ impl HelpSystem {
 
     /// Generate overview help showing all commands by category
     pub fn format_overview_help(&self, use_colors: bool) -> String {
-        let mut output = String::new();
+        let mut output = String::new(;
 
         // Header
         if use_colors {
@@ -283,13 +283,13 @@ impl HelpSystem {
                 "{} {}\n\n",
                 "🚀".bright_blue(),
                 "cargo-wrt - WebAssembly Runtime Build System".bright_blue().bold()
-            ));
+            ;
         } else {
-            output.push_str("🚀 cargo-wrt - WebAssembly Runtime Build System\n\n");
+            output.push_str("🚀 cargo-wrt - WebAssembly Runtime Build System\n\n";
         }
 
         // Group commands by category
-        let mut by_category: HashMap<CommandCategory, Vec<&CommandDoc>> = HashMap::new();
+        let mut by_category: HashMap<CommandCategory, Vec<&CommandDoc>> = HashMap::new(;
         for doc in self.commands.values() {
             by_category.entry(doc.category).or_insert_with(Vec::new).push(doc);
         }
@@ -303,7 +303,7 @@ impl HelpSystem {
             CommandCategory::Documentation => 3,
             CommandCategory::Utility => 4,
             CommandCategory::Advanced => 5,
-        });
+        };
 
         for category in categories {
             if let Some(commands) = by_category.get(&category) {
@@ -313,20 +313,20 @@ impl HelpSystem {
                         "{} {}\n",
                         category.emoji(),
                         category.name().bright_green().bold()
-                    ));
+                    ;
                 } else {
-                    output.push_str(&format!("{} {}\n", category.emoji(), category.name()));
+                    output.push_str(&format!("{} {}\n", category.emoji(), category.name();
                 }
 
                 // Commands in category
                 let mut sorted_commands = commands.clone();
-                sorted_commands.sort_by_key(|doc| doc.name);
+                sorted_commands.sort_by_key(|doc| doc.name;
 
                 for doc in sorted_commands {
                     if use_colors {
-                        output.push_str(&format!("  {:<12} {}\n", doc.name.cyan(), doc.brief));
+                        output.push_str(&format!("  {:<12} {}\n", doc.name.cyan(), doc.brief;
                     } else {
-                        output.push_str(&format!("  {:<12} {}\n", doc.name, doc.brief));
+                        output.push_str(&format!("  {:<12} {}\n", doc.name, doc.brief;
                     }
                 }
                 output.push('\n');
@@ -339,19 +339,19 @@ impl HelpSystem {
                 "{}\n",
                 "Run 'cargo-wrt help <command>' for detailed help on a specific command."
                     .bright_black()
-            ));
+            ;
             output.push_str(&format!(
                 "{}\n",
                 "Run 'cargo-wrt help diagnostics' for comprehensive diagnostic system guide."
                     .bright_black()
-            ));
+            ;
         } else {
             output.push_str(
                 "Run 'cargo-wrt help <command>' for detailed help on a specific command.\n",
-            );
+            ;
             output.push_str(
                 "Run 'cargo-wrt help diagnostics' for comprehensive diagnostic system guide.\n",
-            );
+            ;
         }
 
         output

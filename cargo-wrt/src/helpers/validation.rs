@@ -56,20 +56,20 @@ impl StandardError {
 
 /// Validate a file path exists and is readable
 pub fn validate_file_path(path: impl AsRef<Path>) -> Result<PathBuf> {
-    let path = path.as_ref();
+    let path = path.as_ref(;
 
     if !path.exists() {
         return Err(ValidationError::FileNotFound {
             path: path.display().to_string(),
         }
-        .into());
+        .into();
     }
 
     if !path.is_file() {
         return Err(ValidationError::DirectoryNotFound {
             path: path.display().to_string(),
         }
-        .into());
+        .into();
     }
 
     Ok(path.to_path_buf())
@@ -77,20 +77,20 @@ pub fn validate_file_path(path: impl AsRef<Path>) -> Result<PathBuf> {
 
 /// Validate a directory path exists
 pub fn validate_directory_path(path: impl AsRef<Path>) -> Result<PathBuf> {
-    let path = path.as_ref();
+    let path = path.as_ref(;
 
     if !path.exists() {
         return Err(ValidationError::DirectoryNotFound {
             path: path.display().to_string(),
         }
-        .into());
+        .into();
     }
 
     if !path.is_dir() {
         return Err(ValidationError::FileNotFound {
             path: path.display().to_string(),
         }
-        .into());
+        .into();
     }
 
     Ok(path.to_path_buf())
@@ -103,7 +103,7 @@ pub fn validate_file_extension(path: impl AsRef<Path>, expected_ext: &str) -> Re
     if let Some(ext) = path.extension() {
         if let Some(ext_str) = ext.to_str() {
             if ext_str.eq_ignore_ascii_case(expected_ext) {
-                return Ok(path);
+                return Ok(path;
             }
         }
     }
@@ -143,13 +143,13 @@ pub fn validate_output_format(format: &str) -> Result<()> {
 
 /// Create a path that doesn't exist yet (useful for output files)
 pub fn prepare_output_path(path: impl AsRef<Path>, force: bool) -> Result<PathBuf> {
-    let path = path.as_ref();
+    let path = path.as_ref(;
 
     if path.exists() && !force {
         return Err(anyhow::anyhow!(
             "Output file already exists: {}. Use --force to overwrite",
             path.display()
-        ));
+        ;
     }
 
     // Create parent directories if they don't exist

@@ -69,7 +69,7 @@ pub struct MemoryBreakdown {
 impl BuildSystem {
     /// Analyze memory budget for all platforms
     pub fn analyze_memory_budget(&self) -> BuildResult<Vec<MemoryAnalysisResult>> {
-        println!("{} Analyzing memory budgets...", "🔍".bright_blue());
+        println!("{} Analyzing memory budgets...", "🔍".bright_blue(;
 
         let platforms = vec![
             PlatformMemoryBudget {
@@ -95,7 +95,7 @@ impl BuildSystem {
             },
         ];
 
-        let mut results = Vec::new();
+        let mut results = Vec::new(;
 
         for platform in platforms {
             let result = self.analyze_platform_memory(&platform)?;
@@ -133,18 +133,18 @@ impl BuildSystem {
 
         let usage_percentage = (total_used as f64 / platform.total_budget as f64) * 100.0;
 
-        let mut warnings = Vec::new();
+        let mut warnings = Vec::new(;
 
         if usage_percentage > 90.0 {
-            warnings.push(format!("Critical: Memory usage exceeds 90% of budget"));
+            warnings.push(format!("Critical: Memory usage exceeds 90% of budget");
         } else if usage_percentage > 80.0 {
-            warnings.push(format!("Warning: Memory usage exceeds 80% of budget"));
+            warnings.push(format!("Warning: Memory usage exceeds 80% of budget");
         }
 
         if breakdown.stack_usage > platform.stack_size * 80 / 100 {
             warnings.push(format!(
                 "Warning: Stack usage exceeds 80% of allocated size"
-            ));
+            ;
         }
 
         Ok(MemoryAnalysisResult {
@@ -166,9 +166,9 @@ impl BuildSystem {
         let results = self.analyze_memory_budget()?;
         let mut all_passed = true;
 
-        println!();
-        println!("{} Memory Budget Validation Results", "📊".bright_blue());
-        println!("{}", "─".repeat(60));
+        println!(;
+        println!("{} Memory Budget Validation Results", "📊".bright_blue(;
+        println!("{}", "─".repeat(60;
 
         for result in &results {
             let status_icon = if result.usage_percentage > critical_threshold as f64 {
@@ -186,30 +186,30 @@ impl BuildSystem {
                 result.platform.to_uppercase(),
                 result.usage_percentage,
                 format_bytes(result.total_budget)
-            );
+            ;
 
             if self.config.verbose {
-                println!("    Text:  {}", format_bytes(result.breakdown.text_size));
-                println!("    Data:  {}", format_bytes(result.breakdown.data_size));
-                println!("    BSS:   {}", format_bytes(result.breakdown.bss_size));
-                println!("    Stack: {}", format_bytes(result.breakdown.stack_usage));
-                println!("    Heap:  {}", format_bytes(result.breakdown.heap_usage));
+                println!("    Text:  {}", format_bytes(result.breakdown.text_size;
+                println!("    Data:  {}", format_bytes(result.breakdown.data_size;
+                println!("    BSS:   {}", format_bytes(result.breakdown.bss_size;
+                println!("    Stack: {}", format_bytes(result.breakdown.stack_usage;
+                println!("    Heap:  {}", format_bytes(result.breakdown.heap_usage;
             }
 
             for warning in &result.warnings {
-                println!("    {}", warning.bright_yellow());
+                println!("    {}", warning.bright_yellow(;
             }
         }
 
-        println!("{}", "─".repeat(60));
+        println!("{}", "─".repeat(60;
 
         if all_passed {
-            println!("{} All platforms within memory budget", "✅".bright_green());
+            println!("{} All platforms within memory budget", "✅".bright_green(;
         } else {
             println!(
                 "{} Some platforms exceed critical threshold",
                 "❌".bright_red()
-            );
+            ;
         }
 
         Ok(all_passed)
@@ -220,30 +220,30 @@ impl BuildSystem {
         let results = self.analyze_memory_budget()?;
 
         // Generate HTML report
-        let mut html = String::new();
-        html.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
-        html.push_str("<title>WRT Memory Budget Report</title>\n");
-        html.push_str("<style>\n");
-        html.push_str("body { font-family: Arial, sans-serif; margin: 40px; }\n");
-        html.push_str("table { border-collapse: collapse; width: 100%; }\n");
-        html.push_str("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }\n");
-        html.push_str("th { background-color: #4CAF50; color: white; }\n");
-        html.push_str(".warning { background-color: #fff3cd; }\n");
-        html.push_str(".critical { background-color: #f8d7da; }\n");
-        html.push_str(".good { background-color: #d4edda; }\n");
-        html.push_str("</style>\n</head>\n<body>\n");
+        let mut html = String::new(;
+        html.push_str("<!DOCTYPE html>\n<html>\n<head>\n";
+        html.push_str("<title>WRT Memory Budget Report</title>\n";
+        html.push_str("<style>\n";
+        html.push_str("body { font-family: Arial, sans-serif; margin: 40px); }\n";
+        html.push_str("table { border-collapse: collapse; width: 100%); }\n";
+        html.push_str("th, td { border: 1px solid #ddd; padding: 8px; text-align: left); }\n";
+        html.push_str("th { background-color: #4CAF50; color: white); }\n";
+        html.push_str(".warning { background-color: #fff3cd); }\n";
+        html.push_str(".critical { background-color: #f8d7da); }\n";
+        html.push_str(".good { background-color: #d4edda); }\n";
+        html.push_str("</style>\n</head>\n<body>\n";
 
-        html.push_str("<h1>WRT Memory Budget Report</h1>\n");
+        html.push_str("<h1>WRT Memory Budget Report</h1>\n";
         html.push_str(&format!(
             "<p>Generated: {}</p>\n",
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
-        ));
+        ;
 
-        html.push_str("<table>\n");
+        html.push_str("<table>\n";
         html.push_str(
             "<tr><th>Platform</th><th>Usage</th><th>Budget</th><th>Percentage</th><th>Status</\
              th></tr>\n",
-        );
+        ;
 
         for result in &results {
             let row_class = if result.usage_percentage > 90.0 {
@@ -268,11 +268,11 @@ impl BuildSystem {
                 } else {
                     "OK"
                 }
-            ));
+            ;
         }
 
-        html.push_str("</table>\n");
-        html.push_str("</body>\n</html>");
+        html.push_str("</table>\n";
+        html.push_str("</body>\n</html>";
 
         std::fs::create_dir_all(std::path::Path::new(output_path).parent().unwrap())
             .map_err(|e| BuildError::Tool(format!("Failed to create report directory: {}", e)))?;
@@ -284,7 +284,7 @@ impl BuildSystem {
             "{} Memory report generated: {}",
             "📄".bright_green(),
             output_path
-        );
+        ;
         Ok(())
     }
 }

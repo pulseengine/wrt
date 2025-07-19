@@ -215,7 +215,7 @@ impl PlatformVerificationEngine {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "platform-verification".to_string(),
-        );
+        ;
 
         // 1. Discover base platform limits
         let mut limits = self.discover_base_platform_limits(&mut diagnostics)?;
@@ -236,8 +236,8 @@ impl PlatformVerificationEngine {
         self.validate_limits(&limits, &mut diagnostics)?;
 
         // Store results
-        self.platform_limits = Some(limits.clone());
-        self.verified_limits = Some(limits.clone());
+        self.platform_limits = Some(limits.clone();
+        self.verified_limits = Some(limits.clone();
 
         // Add summary diagnostic
         diagnostics.add_diagnostic(
@@ -252,7 +252,7 @@ impl PlatformVerificationEngine {
                 "platform-verification".to_string(),
             )
             .with_code("platform-verified".to_string()),
-        );
+        ;
 
         Ok((limits, diagnostics))
     }
@@ -265,19 +265,19 @@ impl PlatformVerificationEngine {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             format!("platform-verification-{}", asil_level),
-        );
+        ;
 
         // Discover limits if not already done
         if self.verified_limits.is_none() {
             let (_limits, discovery_diagnostics) = self.discover_limits()?;
-            diagnostics.add_diagnostics(discovery_diagnostics.diagnostics);
+            diagnostics.add_diagnostics(discovery_diagnostics.diagnostics;
         }
 
         let limits = self.verified_limits.as_ref().unwrap();
 
         // ASIL-specific validation
-        let asil_requirements = self.get_asil_requirements(asil_level);
-        let mut violations = Vec::new();
+        let asil_requirements = self.get_asil_requirements(asil_level;
+        let mut violations = Vec::new(;
 
         // Check memory requirements
         if limits.max_total_memory < asil_requirements.min_total_memory {
@@ -304,7 +304,7 @@ impl PlatformVerificationEngine {
                     "platform-verification".to_string(),
                 )
                 .with_code("asil-memory-insufficient".to_string()),
-            );
+            ;
         }
 
         // Check component limits
@@ -351,7 +351,7 @@ impl PlatformVerificationEngine {
                     "platform-verification".to_string(),
                 )
                 .with_code("asil-container-incompatible".to_string()),
-            );
+            ;
         }
 
         let compliance_score = if violations.is_empty() {
@@ -365,12 +365,12 @@ impl PlatformVerificationEngine {
                     ViolationSeverity::Medium => 15.0,
                     ViolationSeverity::Low => 5.0,
                 })
-                .sum();
+                .sum(;
             (100.0 - penalty).max(0.0)
         };
 
-        let is_compliant = violations.is_empty();
-        let violations_count = violations.len();
+        let is_compliant = violations.is_empty(;
+        let violations_count = violations.len(;
         let result = PlatformVerificationResult {
             asil_level,
             platform_limits: limits.clone(),
@@ -395,7 +395,7 @@ impl PlatformVerificationEngine {
                     "platform-verification".to_string(),
                 )
                 .with_code("platform-compliant".to_string()),
-            );
+            ;
         } else {
             diagnostics.add_diagnostic(
                 Diagnostic::new(
@@ -409,7 +409,7 @@ impl PlatformVerificationEngine {
                     "platform-verification".to_string(),
                 )
                 .with_code("platform-non-compliant".to_string()),
-            );
+            ;
         }
 
         Ok((result, diagnostics))
@@ -420,7 +420,7 @@ impl PlatformVerificationEngine {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "platform-verification".to_string(),
-        );
+        ;
 
         if let Some(ref limits) = self.verified_limits {
             diagnostics.add_diagnostic(
@@ -437,7 +437,7 @@ impl PlatformVerificationEngine {
                     "platform-verification".to_string(),
                 )
                 .with_code("platform-info".to_string()),
-            );
+            ;
 
             diagnostics.add_diagnostic(
                 Diagnostic::new(
@@ -451,7 +451,7 @@ impl PlatformVerificationEngine {
                     "platform-verification".to_string(),
                 )
                 .with_code("container-runtime".to_string()),
-            );
+            ;
         }
 
         Ok(diagnostics)
@@ -474,10 +474,10 @@ impl PlatformVerificationEngine {
         &self,
         diagnostics: &mut DiagnosticCollection,
     ) -> BuildResult<ComprehensivePlatformLimits> {
-        let mut limits = ComprehensivePlatformLimits::default();
+        let mut limits = ComprehensivePlatformLimits::default(;
 
         // Detect platform
-        limits.platform_id = self.detect_platform_id();
+        limits.platform_id = self.detect_platform_id(;
 
         // Platform-specific adjustments
         match limits.platform_id {
@@ -519,7 +519,7 @@ impl PlatformVerificationEngine {
                 "platform-verification".to_string(),
             )
             .with_code("platform-detected".to_string()),
-        );
+        ;
 
         Ok(limits)
     }
@@ -557,7 +557,7 @@ impl PlatformVerificationEngine {
                         "platform-verification".to_string(),
                     )
                     .with_code("cli-override".to_string()),
-                );
+                ;
             } else if let Some(wasm_memory) = parse_memory_arg(arg, "--max-wasm-memory=") {
                 limits.max_wasm_linear_memory = wasm_memory;
                 diagnostics.add_diagnostic(
@@ -572,7 +572,7 @@ impl PlatformVerificationEngine {
                         "platform-verification".to_string(),
                     )
                     .with_code("cli-override".to_string()),
-                );
+                ;
             } else if let Some(stack) = parse_memory_arg(arg, "--max-stack=") {
                 limits.max_stack_bytes = stack;
             } else if let Some(components) = parse_number_arg(arg, "--max-components=") {
@@ -603,7 +603,7 @@ impl PlatformVerificationEngine {
                         "platform-verification".to_string(),
                     )
                     .with_code("env-override".to_string()),
-                );
+                ;
             }
         }
 
@@ -635,7 +635,7 @@ impl PlatformVerificationEngine {
         diagnostics: &mut DiagnosticCollection,
     ) -> BuildResult<()> {
         if let Some(ref config_path) = self.config.sources.config_file {
-            let full_path = self.workspace_root.join(config_path);
+            let full_path = self.workspace_root.join(config_path;
             if full_path.exists() {
                 let config_content = fs::read_to_string(&full_path).map_err(|e| {
                     BuildError::Workspace(format!("Failed to read configuration file: {}", e))
@@ -650,11 +650,11 @@ impl PlatformVerificationEngine {
                         "platform-verification".to_string(),
                     )
                     .with_code("config-loaded".to_string()),
-                );
+                ;
 
                 // Simple key=value parser
                 for line in config_content.lines() {
-                    let line = line.trim();
+                    let line = line.trim(;
                     if line.is_empty() || line.starts_with('#') {
                         continue;
                     }
@@ -718,7 +718,7 @@ impl PlatformVerificationEngine {
                                     "platform-verification".to_string(),
                                 )
                                 .with_code("docker-limit".to_string()),
-                            );
+                            ;
                         }
                     }
                 }
@@ -734,7 +734,7 @@ impl PlatformVerificationEngine {
 
                 if let Ok(limits_env) = env::var("KUBERNETES_MEMORY_LIMIT") {
                     if let Ok(memory) = parse_memory_string(&limits_env) {
-                        limits.max_total_memory = limits.max_total_memory.min(memory);
+                        limits.max_total_memory = limits.max_total_memory.min(memory;
                         limits.max_wasm_linear_memory = (limits.max_total_memory * 3) / 4;
                     }
                 }
@@ -757,7 +757,7 @@ impl PlatformVerificationEngine {
             if self.config.strict_validation {
                 return Err(BuildError::Verification(
                     "WASM memory limit exceeds total memory limit".to_string(),
-                ));
+                ;
             } else {
                 diagnostics.add_diagnostic(
                     Diagnostic::new(
@@ -769,7 +769,7 @@ impl PlatformVerificationEngine {
                         "platform-verification".to_string(),
                     )
                     .with_code("memory-limit-corrected".to_string()),
-                );
+                ;
             }
         }
 
@@ -778,20 +778,20 @@ impl PlatformVerificationEngine {
             // 1MB minimum
             return Err(BuildError::Verification(
                 "Total memory limit too small (minimum 1MB)".to_string(),
-            ));
+            ;
         }
 
         if limits.max_stack_bytes < 4096 {
             // 4KB minimum stack
             return Err(BuildError::Verification(
                 "Stack limit too small (minimum 4KB)".to_string(),
-            ));
+            ;
         }
 
         if limits.max_components == 0 {
             return Err(BuildError::Verification(
                 "Component limit cannot be zero".to_string(),
-            ));
+            ;
         }
 
         Ok(())
@@ -912,7 +912,7 @@ impl PlatformVerificationConfigBuilder {
 
     /// Set configuration file
     pub fn with_config_file<P: AsRef<str>>(mut self, path: P) -> Self {
-        self.config.sources.config_file = Some(path.as_ref().to_string());
+        self.config.sources.config_file = Some(path.as_ref().to_string();
         self
     }
 
@@ -933,13 +933,13 @@ impl PlatformVerificationConfigBuilder {
         // Auto-detect environment variables
         for (key, value) in env::vars() {
             if key.starts_with("WRT_") {
-                self.config.sources.env_vars.insert(key, value);
+                self.config.sources.env_vars.insert(key, value;
             }
         }
 
         // Auto-detect container runtime
         if self.config.sources.container_runtime == ContainerRuntime::None {
-            self.config.sources.container_runtime = detect_container_runtime();
+            self.config.sources.container_runtime = detect_container_runtime(;
         }
 
         self.config
@@ -1006,7 +1006,7 @@ fn parse_number_arg(arg: &str, prefix: &str) -> Option<usize> {
 
 /// Parse memory string with units (e.g., "256MB", "1GB")
 fn parse_memory_string(value: &str) -> Result<usize, BuildError> {
-    let value = value.trim().to_uppercase();
+    let value = value.trim().to_uppercase(;
 
     if let Some(stripped) = value.strip_suffix("KB") {
         stripped
@@ -1039,11 +1039,11 @@ mod tests {
 
     #[test]
     fn test_memory_string_parsing() {
-        assert_eq!(parse_memory_string("1024").unwrap(), 1024);
-        assert_eq!(parse_memory_string("1KB").unwrap(), 1024);
-        assert_eq!(parse_memory_string("1MB").unwrap(), 1024 * 1024);
-        assert_eq!(parse_memory_string("1GB").unwrap(), 1024 * 1024 * 1024);
-        assert_eq!(parse_memory_string("256mb").unwrap(), 256 * 1024 * 1024);
+        assert_eq!(parse_memory_string("1024").unwrap(), 1024;
+        assert_eq!(parse_memory_string("1KB").unwrap(), 1024;
+        assert_eq!(parse_memory_string("1MB").unwrap(), 1024 * 1024;
+        assert_eq!(parse_memory_string("1GB").unwrap(), 1024 * 1024 * 1024;
+        assert_eq!(parse_memory_string("256mb").unwrap(), 256 * 1024 * 1024;
     }
 
     #[test]
@@ -1051,12 +1051,12 @@ mod tests {
         assert_eq!(
             parse_memory_arg("--max-memory=256MB", "--max-memory=").unwrap(),
             256 * 1024 * 1024
-        );
+        ;
         assert_eq!(
             parse_number_arg("--max-components=512", "--max-components=").unwrap(),
             512
-        );
-        assert_eq!(parse_memory_arg("--other-arg=256MB", "--max-memory="), None);
+        ;
+        assert_eq!(parse_memory_arg("--other-arg=256MB", "--max-memory="), None;
     }
 
     #[test]
@@ -1065,18 +1065,18 @@ mod tests {
             .with_cli_args(vec!["--max-memory=1GB".to_string()])
             .with_strict_validation(true)
             .with_container_runtime(ContainerRuntime::Docker)
-            .build();
+            .build(;
 
         assert!(config.strict_validation);
-        assert_eq!(config.sources.container_runtime, ContainerRuntime::Docker);
-        assert_eq!(config.sources.cli_args.len(), 1);
+        assert_eq!(config.sources.container_runtime, ContainerRuntime::Docker;
+        assert_eq!(config.sources.cli_args.len(), 1;
     }
 
     #[test]
     fn test_verification_engine() {
-        let config = PlatformVerificationConfigBuilder::new().with_strict_validation(false).build();
+        let config = PlatformVerificationConfigBuilder::new().with_strict_validation(false).build(;
 
-        let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config);
+        let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
         let (limits, _diagnostics) = engine.discover_limits().unwrap();
 
         assert!(limits.max_total_memory > 0);
@@ -1088,7 +1088,7 @@ mod tests {
     #[test]
     fn test_container_detection() {
         // This test would depend on the actual runtime environment
-        let runtime = detect_container_runtime();
+        let runtime = detect_container_runtime(;
         // Just ensure it returns a valid value
         assert!(matches!(
             runtime,
@@ -1098,17 +1098,17 @@ mod tests {
                 | ContainerRuntime::LXC
                 | ContainerRuntime::SystemdNspawn
                 | ContainerRuntime::Other
-        ));
+        ;
     }
 
     #[test]
     fn test_asil_platform_verification() {
-        let config = PlatformVerificationConfigBuilder::new().build();
-        let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config);
+        let config = PlatformVerificationConfigBuilder::new().build(;
+        let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
 
         let (result, _diagnostics) = engine.verify_for_asil(AsilLevel::A).unwrap();
 
-        assert_eq!(result.asil_level, AsilLevel::A);
+        assert_eq!(result.asil_level, AsilLevel::A;
         assert!(!result.platform_limits.max_total_memory == 0);
     }
 }

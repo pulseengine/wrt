@@ -95,20 +95,20 @@ impl CategorizedError {
 
     /// Add context to the error
     pub fn with_context(mut self, context: impl Into<String>) -> Self {
-        self.context.push(context.into());
+        self.context.push(context.into();
         self
     }
 
     /// Add a suggestion for fixing the error
     pub fn with_suggestion(mut self, suggestion: impl Into<String>) -> Self {
-        self.suggestions.push(suggestion.into());
+        self.suggestions.push(suggestion.into();
         self
     }
 
     /// Format the error for human-readable output
     #[must_use]
     pub fn format_human(&self, use_colors: bool) -> String {
-        let mut output = String::new();
+        let mut output = String::new(;
 
         // Header with emoji and category
         if use_colors {
@@ -116,48 +116,48 @@ impl CategorizedError {
                 "{} {}\n",
                 self.category.emoji(),
                 self.category.name().color(self.category.color()).bold()
-            ));
+            ;
         } else {
             output.push_str(&format!(
                 "{} {}\n",
                 self.category.emoji(),
                 self.category.name()
-            ));
+            ;
         }
 
         // Main message
         if use_colors {
-            output.push_str(&format!("  {}\n", self.message.bright_white()));
+            output.push_str(&format!("  {}\n", self.message.bright_white();
         } else {
-            output.push_str(&format!("  {}\n", self.message));
+            output.push_str(&format!("  {}\n", self.message;
         }
 
         // Context information
         if !self.context.is_empty() {
-            output.push_str("\n");
+            output.push_str("\n";
             if use_colors {
-                output.push_str(&format!("  {}\n", "Context:".bright_blue().bold()));
+                output.push_str(&format!("  {}\n", "Context:".bright_blue().bold();
             } else {
-                output.push_str("  Context:\n");
+                output.push_str("  Context:\n";
             }
             for ctx in &self.context {
-                output.push_str(&format!("    • {}\n", ctx));
+                output.push_str(&format!("    • {}\n", ctx;
             }
         }
 
         // Suggestions
         if !self.suggestions.is_empty() {
-            output.push_str("\n");
+            output.push_str("\n";
             if use_colors {
-                output.push_str(&format!("  {}\n", "Suggestions:".bright_green().bold()));
+                output.push_str(&format!("  {}\n", "Suggestions:".bright_green().bold();
             } else {
-                output.push_str("  Suggestions:\n");
+                output.push_str("  Suggestions:\n";
             }
             for suggestion in &self.suggestions {
                 if use_colors {
-                    output.push_str(&format!("    💡 {}\n", suggestion.green()));
+                    output.push_str(&format!("    💡 {}\n", suggestion.green();
                 } else {
-                    output.push_str(&format!("    💡 {}\n", suggestion));
+                    output.push_str(&format!("    💡 {}\n", suggestion;
                 }
             }
         }
@@ -211,7 +211,7 @@ pub trait ErrorContext<T> {
 impl<T> ErrorContext<T> for Result<T> {
     fn with_category(self, category: ErrorCategory, message: impl Into<String>) -> Result<T> {
         self.map_err(|e| {
-            let categorized = CategorizedError::new(category, message.into());
+            let categorized = CategorizedError::new(category, message.into();
             anyhow::Error::new(categorized).context(e)
         })
     }

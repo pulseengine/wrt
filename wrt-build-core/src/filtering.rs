@@ -178,14 +178,14 @@ impl DiagnosticProcessor {
             filtered_diagnostics,
             options.sort_by,
             options.sort_direction,
-        );
+        ;
 
         // Apply pagination
         let paginated_diagnostics =
-            self.apply_pagination(sorted_diagnostics, options.offset, options.limit);
+            self.apply_pagination(sorted_diagnostics, options.offset, options.limit;
 
         // Apply grouping
-        let grouped = self.apply_grouping(paginated_diagnostics, options.group_by);
+        let grouped = self.apply_grouping(paginated_diagnostics, options.group_by;
 
         Ok(grouped)
     }
@@ -196,7 +196,7 @@ impl DiagnosticProcessor {
         diagnostics: &[Diagnostic],
         filter: &DiagnosticFilter,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut filtered = Vec::new();
+        let mut filtered = Vec::new(;
 
         // Compile regex pattern if provided
         let message_regex = if let Some(pattern) = &filter.message_pattern {
@@ -255,12 +255,12 @@ impl DiagnosticProcessor {
                 }
             }
 
-            filtered.push(diagnostic.clone());
+            filtered.push(diagnostic.clone();
         }
 
         // Apply count filters (group by file first)
         if filter.min_count.is_some() || filter.max_count.is_some() {
-            filtered = self.apply_count_filters(filtered, filter.min_count, filter.max_count);
+            filtered = self.apply_count_filters(filtered, filter.min_count, filter.max_count;
         }
 
         Ok(filtered)
@@ -274,7 +274,7 @@ impl DiagnosticProcessor {
         max_count: Option<usize>,
     ) -> Vec<Diagnostic> {
         // Group by file to count diagnostics per file
-        let mut file_counts: HashMap<String, Vec<Diagnostic>> = HashMap::new();
+        let mut file_counts: HashMap<String, Vec<Diagnostic>> = HashMap::new(;
         for diagnostic in diagnostics {
             file_counts
                 .entry(diagnostic.file.clone())
@@ -283,9 +283,9 @@ impl DiagnosticProcessor {
         }
 
         // Filter files based on count criteria
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         for (_, file_diagnostics) in file_counts {
-            let count = file_diagnostics.len();
+            let count = file_diagnostics.len(;
 
             if let Some(min) = min_count {
                 if count < min {
@@ -323,10 +323,10 @@ impl DiagnosticProcessor {
         }
 
         // Convert glob pattern to regex
-        let regex_pattern = pattern.replace(".", r"\.").replace("*", ".*").replace("?", ".");
+        let regex_pattern = pattern.replace(".", r"\.").replace("*", ".*").replace("?", ".";
 
         if let Ok(regex) = Regex::new(&format!("^{}$", regex_pattern)) {
-            return regex.is_match(file_path);
+            return regex.is_match(file_path;
         }
 
         // Fallback to simple string matching
@@ -343,23 +343,23 @@ impl DiagnosticProcessor {
         match sort_by {
             SortBy::File => {
                 diagnostics.sort_by(|a, b| {
-                    let cmp = a.file.cmp(&b.file);
+                    let cmp = a.file.cmp(&b.file;
                     match direction {
                         SortDirection::Ascending => cmp,
                         SortDirection::Descending => cmp.reverse(),
                     }
-                });
+                };
             },
             SortBy::Severity => {
                 diagnostics.sort_by(|a, b| {
-                    let order_a = severity_order(&a.severity);
-                    let order_b = severity_order(&b.severity);
-                    let cmp = order_a.cmp(&order_b);
+                    let order_a = severity_order(&a.severity;
+                    let order_b = severity_order(&b.severity;
+                    let cmp = order_a.cmp(&order_b;
                     match direction {
                         SortDirection::Ascending => cmp,
                         SortDirection::Descending => cmp.reverse(),
                     }
-                });
+                };
             },
             SortBy::Line => {
                 diagnostics.sort_by(|a, b| {
@@ -367,30 +367,30 @@ impl DiagnosticProcessor {
                         .file
                         .cmp(&b.file)
                         .then_with(|| a.range.start.line.cmp(&b.range.start.line))
-                        .then_with(|| a.range.start.character.cmp(&b.range.start.character));
+                        .then_with(|| a.range.start.character.cmp(&b.range.start.character;
                     match direction {
                         SortDirection::Ascending => cmp,
                         SortDirection::Descending => cmp.reverse(),
                     }
-                });
+                };
             },
             SortBy::Source => {
                 diagnostics.sort_by(|a, b| {
-                    let cmp = a.source.cmp(&b.source);
+                    let cmp = a.source.cmp(&b.source;
                     match direction {
                         SortDirection::Ascending => cmp,
                         SortDirection::Descending => cmp.reverse(),
                     }
-                });
+                };
             },
             SortBy::Code => {
                 diagnostics.sort_by(|a, b| {
-                    let cmp = a.code.cmp(&b.code);
+                    let cmp = a.code.cmp(&b.code;
                     match direction {
                         SortDirection::Ascending => cmp,
                         SortDirection::Descending => cmp.reverse(),
                     }
-                });
+                };
             },
             SortBy::None => {
                 // No sorting
@@ -407,7 +407,7 @@ impl DiagnosticProcessor {
         offset: Option<usize>,
         limit: Option<usize>,
     ) -> Vec<Diagnostic> {
-        let start = offset.unwrap_or(0);
+        let start = offset.unwrap_or(0;
         let end = if let Some(limit) = limit { start + limit } else { diagnostics.len() };
 
         diagnostics.into_iter().skip(start).take(end - start).collect()
@@ -419,8 +419,8 @@ impl DiagnosticProcessor {
         diagnostics: Vec<Diagnostic>,
         group_by: GroupBy,
     ) -> GroupedDiagnostics {
-        let total_count = diagnostics.len();
-        let mut groups: HashMap<String, Vec<Diagnostic>> = HashMap::new();
+        let total_count = diagnostics.len(;
+        let mut groups: HashMap<String, Vec<Diagnostic>> = HashMap::new(;
 
         match group_by {
             GroupBy::File => {
@@ -430,7 +430,7 @@ impl DiagnosticProcessor {
             },
             GroupBy::Severity => {
                 for diagnostic in diagnostics {
-                    let severity_key = format!("{:?}", diagnostic.severity);
+                    let severity_key = format!("{:?}", diagnostic.severity;
                     groups.entry(severity_key).or_insert_with(Vec::new).push(diagnostic);
                 }
             },
@@ -444,16 +444,16 @@ impl DiagnosticProcessor {
             },
             GroupBy::Code => {
                 for diagnostic in diagnostics {
-                    let code_key = diagnostic.code.clone().unwrap_or_else(|| "no-code".to_string());
+                    let code_key = diagnostic.code.clone().unwrap_or_else(|| "no-code".to_string();
                     groups.entry(code_key).or_insert_with(Vec::new).push(diagnostic);
                 }
             },
             GroupBy::None => {
-                groups.insert("all".to_string(), diagnostics);
+                groups.insert("all".to_string(), diagnostics;
             },
         }
 
-        let group_count = groups.len();
+        let group_count = groups.len(;
 
         GroupedDiagnostics {
             groups,
@@ -489,31 +489,31 @@ impl FilterOptionsBuilder {
 
     /// Filter by severities
     pub fn severities(mut self, severities: &[Severity]) -> Self {
-        self.options.filter.severities = Some(severities.iter().cloned().collect());
+        self.options.filter.severities = Some(severities.iter().cloned().collect();
         self
     }
 
     /// Filter by sources
     pub fn sources(mut self, sources: &[String]) -> Self {
-        self.options.filter.sources = Some(sources.iter().cloned().collect());
+        self.options.filter.sources = Some(sources.iter().cloned().collect();
         self
     }
 
     /// Filter by file patterns
     pub fn file_patterns(mut self, patterns: &[String]) -> Self {
-        self.options.filter.file_patterns = Some(patterns.to_vec());
+        self.options.filter.file_patterns = Some(patterns.to_vec(;
         self
     }
 
     /// Exclude file patterns
     pub fn exclude_patterns(mut self, patterns: &[String]) -> Self {
-        self.options.filter.exclude_patterns = Some(patterns.to_vec());
+        self.options.filter.exclude_patterns = Some(patterns.to_vec(;
         self
     }
 
     /// Filter by message pattern
     pub fn message_pattern(mut self, pattern: String) -> Self {
-        self.options.filter.message_pattern = Some(pattern);
+        self.options.filter.message_pattern = Some(pattern;
         self
     }
 
@@ -532,13 +532,13 @@ impl FilterOptionsBuilder {
 
     /// Limit results
     pub fn limit(mut self, limit: usize) -> Self {
-        self.options.limit = Some(limit);
+        self.options.limit = Some(limit;
         self
     }
 
     /// Skip results
     pub fn offset(mut self, offset: usize) -> Self {
-        self.options.offset = Some(offset);
+        self.options.offset = Some(offset;
         self
     }
 
@@ -585,7 +585,7 @@ mod tests {
     #[test]
     fn test_severity_filtering() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf());
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error message", None),
@@ -600,22 +600,22 @@ mod tests {
         ];
 
         let mut collection =
-            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
+            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string();
         for diag in diagnostics {
-            collection.add_diagnostic(diag);
+            collection.add_diagnostic(diag;
         }
 
-        let options = FilterOptionsBuilder::new().severities(&[Severity::Error]).build();
+        let options = FilterOptionsBuilder::new().severities(&[Severity::Error]).build(;
 
         let result = processor.process(&collection, &options).unwrap();
-        assert_eq!(result.total_count, 1);
-        assert_eq!(result.groups["all"][0].severity, Severity::Error);
+        assert_eq!(result.total_count, 1;
+        assert_eq!(result.groups["all"][0].severity, Severity::Error;
     }
 
     #[test]
     fn test_source_filtering() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf());
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error message", None),
@@ -629,22 +629,22 @@ mod tests {
         ];
 
         let mut collection =
-            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
+            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string();
         for diag in diagnostics {
-            collection.add_diagnostic(diag);
+            collection.add_diagnostic(diag;
         }
 
-        let options = FilterOptionsBuilder::new().sources(&["clippy".to_string()]).build();
+        let options = FilterOptionsBuilder::new().sources(&["clippy".to_string()]).build(;
 
         let result = processor.process(&collection, &options).unwrap();
-        assert_eq!(result.total_count, 1);
-        assert_eq!(result.groups["all"][0].source, "clippy");
+        assert_eq!(result.total_count, 1;
+        assert_eq!(result.groups["all"][0].source, "clippy";
     }
 
     #[test]
     fn test_file_grouping() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf());
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
 
         let diagnostics = vec![
             create_test_diagnostic("file1.rs", Severity::Error, "rustc", "error 1", None),
@@ -653,27 +653,27 @@ mod tests {
         ];
 
         let mut collection =
-            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string());
+            DiagnosticCollection::new(temp_dir.path().to_path_buf(), "test".to_string();
         for diag in diagnostics {
-            collection.add_diagnostic(diag);
+            collection.add_diagnostic(diag;
         }
 
-        let options = FilterOptionsBuilder::new().group_by(GroupBy::File).build();
+        let options = FilterOptionsBuilder::new().group_by(GroupBy::File).build(;
 
         let result = processor.process(&collection, &options).unwrap();
-        assert_eq!(result.group_count, 2);
-        assert_eq!(result.groups["file1.rs"].len(), 2);
-        assert_eq!(result.groups["file2.rs"].len(), 1);
+        assert_eq!(result.group_count, 2;
+        assert_eq!(result.groups["file1.rs"].len(), 2;
+        assert_eq!(result.groups["file2.rs"].len(), 1;
     }
 
     #[test]
     fn test_pattern_matching() {
         let temp_dir = TempDir::new().unwrap();
-        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf());
+        let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf(;
 
-        assert!(processor.matches_pattern("src/main.rs", "*.rs"));
-        assert!(processor.matches_pattern("src/lib.rs", "src/*"));
-        assert!(!processor.matches_pattern("README.md", "*.rs"));
-        assert!(processor.matches_pattern("any/file.txt", "*"));
+        assert!(processor.matches_pattern("src/main.rs", "*.rs");
+        assert!(processor.matches_pattern("src/lib.rs", "src/*");
+        assert!(!processor.matches_pattern("README.md", "*.rs");
+        assert!(processor.matches_pattern("any/file.txt", "*");
     }
 }

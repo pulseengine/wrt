@@ -181,7 +181,7 @@ impl WrtTestConfig {
                         "Invalid coverage percentage for ASIL-{}: {}",
                         level,
                         coverage
-                    );
+                    ;
                 }
             }
         }
@@ -263,7 +263,7 @@ impl WrtTestConfig {
 
     /// Generate an example configuration file
     pub fn example_config() -> Self {
-        let mut config = Self::default();
+        let mut config = Self::default(;
 
         // Add example ASIL configurations
         config.asil.insert(
@@ -280,7 +280,7 @@ impl WrtTestConfig {
                 require_no_std:    true,
                 min_coverage:      Some(95.0),
             },
-        );
+        ;
 
         // Add example package configurations
         config.packages.insert(
@@ -292,7 +292,7 @@ impl WrtTestConfig {
                 timeout_seconds: Some(300),
                 serial:          false,
             },
-        );
+        ;
 
         config
     }
@@ -327,43 +327,43 @@ mod tests {
 
     #[test]
     fn test_default_config() {
-        let config = WrtTestConfig::default();
-        assert_eq!(config.default_asil, AsilLevel::QM);
+        let config = WrtTestConfig::default(;
+        assert_eq!(config.default_asil, AsilLevel::QM;
         assert!(config.global.parallel);
-        assert!(config.asil.is_empty());
+        assert!(config.asil.is_empty();
     }
 
     #[test]
     fn test_config_serialization() {
-        let config = WrtTestConfig::example_config();
+        let config = WrtTestConfig::example_config(;
         let toml_str = toml::to_string_pretty(&config).unwrap();
 
         // Should be able to round-trip
         let parsed: WrtTestConfig = toml::from_str(&toml_str).unwrap();
-        assert_eq!(parsed.default_asil, config.default_asil);
+        assert_eq!(parsed.default_asil, config.default_asil;
     }
 
     #[test]
     fn test_config_file_operations() {
         let temp_dir = TempDir::new().unwrap();
-        let config_path = temp_dir.path().join("test-config.toml");
+        let config_path = temp_dir.path().join("test-config.toml";
 
-        let config = WrtTestConfig::example_config();
+        let config = WrtTestConfig::example_config(;
         config.save_to_file(&config_path).unwrap();
 
         let loaded_config = WrtTestConfig::load_from_file(&config_path).unwrap();
-        assert_eq!(loaded_config.default_asil, config.default_asil);
+        assert_eq!(loaded_config.default_asil, config.default_asil;
     }
 
     #[test]
     fn test_asil_level_defaults() {
-        let config = WrtTestConfig::default();
+        let config = WrtTestConfig::default(;
 
-        let d_config = config.get_asil_config(AsilLevel::D);
+        let d_config = config.get_asil_config(AsilLevel::D;
         assert!(d_config.require_no_std);
         assert!(d_config.min_coverage.unwrap() >= 90.0);
 
-        let qm_config = config.get_asil_config(AsilLevel::QM);
+        let qm_config = config.get_asil_config(AsilLevel::QM;
         assert!(!qm_config.require_no_std);
     }
 }

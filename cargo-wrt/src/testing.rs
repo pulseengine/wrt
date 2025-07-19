@@ -103,16 +103,16 @@ impl TestContext {
     /// Create a test context with specific configuration
     pub fn with_config(config: TestConfig) -> Result<Self> {
         let temp_dir = TempDir::new()?;
-        let workspace_root = temp_dir.path().to_path_buf();
+        let workspace_root = temp_dir.path().to_path_buf(;
 
         // Set up workspace structure based on type
         Self::setup_workspace(&workspace_root, &config)?;
 
         // Create mock build system
-        let build_system = MockBuildSystem::new(workspace_root.clone());
+        let build_system = MockBuildSystem::new(workspace_root.clone();
 
         // Create global args for testing
-        let output = OutputManager::new(config.output_format.clone()).with_color(config.use_colors);
+        let output = OutputManager::new(config.output_format.clone()).with_color(config.use_colors;
 
         let global_args = GlobalArgs {
             verbose: false,
@@ -346,7 +346,7 @@ edition = "2021"
 
     /// Create a test file in the workspace
     pub fn create_file(&self, path: &str, content: &str) -> Result<()> {
-        let file_path = self.workspace_root().join(path);
+        let file_path = self.workspace_root().join(path;
         if let Some(parent) = file_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -398,7 +398,7 @@ impl MockBuildSystem {
                 warnings: vec!["unused variable `x`".to_string()],
                 errors:   vec![],
             },
-        );
+        ;
 
         system.results.insert(
             "test_all".to_string(),
@@ -408,14 +408,14 @@ impl MockBuildSystem {
                 warnings: vec![],
                 errors:   vec![],
             },
-        );
+        ;
 
         system
     }
 
     /// Set mock result for a specific operation
     pub fn set_result(&mut self, operation: &str, result: MockBuildResult) {
-        self.results.insert(operation.to_string(), result);
+        self.results.insert(operation.to_string(), result;
     }
 
     /// Set operation to fail
@@ -428,7 +428,7 @@ impl MockBuildSystem {
                 warnings: vec![],
                 errors:   vec![error.to_string()],
             },
-        );
+        ;
     }
 
     /// Check if operation was called
@@ -443,7 +443,7 @@ impl MockBuildSystem {
 
     /// Clear call log
     pub fn clear_log(&mut self) {
-        self.call_log.clear();
+        self.call_log.clear(;
     }
 }
 
@@ -459,19 +459,19 @@ impl TestValidator {
 
     /// Validate progress indicator functionality
     pub fn validate_progress_indicators(&self) -> Result<ValidationReport> {
-        let mut report = ValidationReport::new("Progress Indicators");
+        let mut report = ValidationReport::new("Progress Indicators";
 
         // Test spinner progress
         let mut spinner = ProgressIndicator::spinner(
             "Test operation",
             self.context.config.output_format.clone(),
             self.context.config.use_colors,
-        );
-        spinner.start();
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        spinner.tick();
-        spinner.finish();
-        report.add_success("Spinner progress indicator works");
+        ;
+        spinner.start(;
+        std::thread::sleep(std::time::Duration::from_millis(100;
+        spinner.tick(;
+        spinner.finish(;
+        report.add_success("Spinner progress indicator works";
 
         // Test progress bar
         let mut bar = ProgressIndicator::bar(
@@ -479,48 +479,48 @@ impl TestValidator {
             100,
             self.context.config.output_format.clone(),
             self.context.config.use_colors,
-        );
-        bar.start();
+        ;
+        bar.start(;
         for i in 0..=100 {
-            bar.update(i);
+            bar.update(i;
             if i % 20 == 0 {
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                std::thread::sleep(std::time::Duration::from_millis(10;
             }
         }
-        bar.finish();
-        report.add_success("Progress bar works");
+        bar.finish(;
+        report.add_success("Progress bar works";
 
         Ok(report)
     }
 
     /// Validate command suggestion engine
     pub fn validate_command_suggestions(&self) -> Result<ValidationReport> {
-        let mut report = ValidationReport::new("Command Suggestions");
+        let mut report = ValidationReport::new("Command Suggestions";
 
-        let engine = CommandSuggestionEngine::new();
+        let engine = CommandSuggestionEngine::new(;
 
         // Test exact match
-        let suggestions = engine.suggest("build", None);
+        let suggestions = engine.suggest("build", None;
         if !suggestions.is_empty() && suggestions[0].command == "build" {
-            report.add_success("Exact command match works");
+            report.add_success("Exact command match works";
         } else {
-            report.add_failure("Exact command match failed");
+            report.add_failure("Exact command match failed";
         }
 
         // Test typo correction
-        let suggestions = engine.suggest("buld", None);
+        let suggestions = engine.suggest("buld", None;
         if !suggestions.is_empty() && suggestions[0].command == "build" {
-            report.add_success("Typo correction works");
+            report.add_success("Typo correction works";
         } else {
-            report.add_failure("Typo correction failed");
+            report.add_failure("Typo correction failed";
         }
 
         // Test similarity matching
-        let suggestions = engine.suggest("bui", None);
+        let suggestions = engine.suggest("bui", None;
         if !suggestions.is_empty() {
-            report.add_success("Similarity matching works");
+            report.add_success("Similarity matching works";
         } else {
-            report.add_failure("Similarity matching failed");
+            report.add_failure("Similarity matching failed";
         }
 
         Ok(report)
@@ -528,29 +528,29 @@ impl TestValidator {
 
     /// Validate performance optimization
     pub fn validate_performance_optimization(&self) -> Result<ValidationReport> {
-        let mut report = ValidationReport::new("Performance Optimization");
+        let mut report = ValidationReport::new("Performance Optimization";
 
-        let mut optimizer = PerformanceOptimizer::with_defaults();
+        let mut optimizer = PerformanceOptimizer::with_defaults(;
 
         // Test timer functionality
-        optimizer.start_timer("test_command");
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        optimizer.stop_timer("test_command");
+        optimizer.start_timer("test_command";
+        std::thread::sleep(std::time::Duration::from_millis(100;
+        optimizer.stop_timer("test_command";
 
         if optimizer.generate_report().metrics.command_times.contains_key("test_command") {
-            report.add_success("Performance timing works");
+            report.add_success("Performance timing works";
         } else {
-            report.add_failure("Performance timing failed");
+            report.add_failure("Performance timing failed";
         }
 
         // Test cache tracking
-        optimizer.record_cache_hit();
-        optimizer.record_cache_miss();
-        let ratio = optimizer.cache_hit_ratio();
+        optimizer.record_cache_hit(;
+        optimizer.record_cache_miss(;
+        let ratio = optimizer.cache_hit_ratio(;
         if ratio == 0.5 {
-            report.add_success("Cache tracking works");
+            report.add_success("Cache tracking works";
         } else {
-            report.add_failure("Cache tracking failed");
+            report.add_failure("Cache tracking failed";
         }
 
         Ok(report)
@@ -558,11 +558,11 @@ impl TestValidator {
 
     /// Run comprehensive validation
     pub fn validate_all(&self) -> Result<Vec<ValidationReport>> {
-        let mut reports = Vec::new();
+        let mut reports = Vec::new(;
 
-        reports.push(self.validate_progress_indicators()?);
-        reports.push(self.validate_command_suggestions()?);
-        reports.push(self.validate_performance_optimization()?);
+        reports.push(self.validate_progress_indicators()?;
+        reports.push(self.validate_command_suggestions()?;
+        reports.push(self.validate_performance_optimization()?;
 
         Ok(reports)
     }
@@ -588,15 +588,15 @@ impl ValidationReport {
     }
 
     pub fn add_success(&mut self, message: impl Into<String>) {
-        self.successes.push(message.into());
+        self.successes.push(message.into();
     }
 
     pub fn add_failure(&mut self, message: impl Into<String>) {
-        self.failures.push(message.into());
+        self.failures.push(message.into();
     }
 
     pub fn add_warning(&mut self, message: impl Into<String>) {
-        self.warnings.push(message.into());
+        self.warnings.push(message.into();
     }
 
     pub fn is_successful(&self) -> bool {
@@ -611,7 +611,7 @@ impl ValidationReport {
     pub fn format(&self, use_colors: bool) -> String {
         use colored::Colorize;
 
-        let mut output = String::new();
+        let mut output = String::new(;
 
         if use_colors {
             output.push_str(&format!(
@@ -620,7 +620,7 @@ impl ValidationReport {
                 self.name.bright_white().bold(),
                 self.successes.len().to_string().bright_green(),
                 self.total_tests().to_string().bright_white()
-            ));
+            ;
         } else {
             output.push_str(&format!(
                 "{} {} ({}/{} passed)\n",
@@ -628,30 +628,30 @@ impl ValidationReport {
                 self.name,
                 self.successes.len(),
                 self.total_tests()
-            ));
+            ;
         }
 
         for success in &self.successes {
             if use_colors {
-                output.push_str(&format!("  {} {}\n", "✓".bright_green(), success));
+                output.push_str(&format!("  {} {}\n", "✓".bright_green(), success;
             } else {
-                output.push_str(&format!("  ✓ {}\n", success));
+                output.push_str(&format!("  ✓ {}\n", success;
             }
         }
 
         for failure in &self.failures {
             if use_colors {
-                output.push_str(&format!("  {} {}\n", "✗".bright_red(), failure));
+                output.push_str(&format!("  {} {}\n", "✗".bright_red(), failure;
             } else {
-                output.push_str(&format!("  ✗ {}\n", failure));
+                output.push_str(&format!("  ✗ {}\n", failure;
             }
         }
 
         for warning in &self.warnings {
             if use_colors {
-                output.push_str(&format!("  {} {}\n", "⚠".bright_yellow(), warning));
+                output.push_str(&format!("  {} {}\n", "⚠".bright_yellow(), warning;
             } else {
-                output.push_str(&format!("  ⚠ {}\n", warning));
+                output.push_str(&format!("  ⚠ {}\n", warning;
             }
         }
 

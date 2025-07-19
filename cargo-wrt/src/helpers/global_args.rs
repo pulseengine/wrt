@@ -28,7 +28,7 @@ use crate::{
 
 /// Parse severity strings to Severity enum
 fn parse_severities(severity_strings: &[String]) -> Result<Vec<Severity>> {
-    let mut severities = Vec::new();
+    let mut severities = Vec::new(;
     for s in severity_strings {
         match s.to_lowercase().as_str() {
             "error" => severities.push(Severity::Error),
@@ -145,13 +145,13 @@ impl GlobalArgs {
             OutputFormat::Human => atty::is(Stream::Stdout),
             OutputFormat::Json | OutputFormat::JsonLines => false,
         };
-        let output = OutputManager::new(output_format.clone()).with_color(use_colors);
+        let output = OutputManager::new(output_format.clone()).with_color(use_colors;
 
         let features = cli
             .features
             .as_ref()
             .map(|f| f.split(',').map(|s| s.trim().to_string()).collect())
-            .unwrap_or_default();
+            .unwrap_or_default(;
 
         Ok(Self {
             verbose: cli.verbose,
@@ -178,39 +178,39 @@ impl GlobalArgs {
     #[must_use]
     pub fn build_filter_options(&mut self) -> Result<wrt_build_core::filtering::FilterOptions> {
         // Build filter options fresh each time
-        let mut builder = FilterOptionsBuilder::new();
+        let mut builder = FilterOptionsBuilder::new(;
 
         // Apply severity filter
         if let Some(severity_strings) = &self.filter_severity {
             let severities = parse_severities(severity_strings)?;
-            builder = builder.severities(&severities);
+            builder = builder.severities(&severities;
         }
 
         // Apply source filter
         if let Some(sources) = &self.filter_source {
-            builder = builder.sources(sources);
+            builder = builder.sources(sources;
         }
 
         // Apply file pattern filter
         if let Some(patterns) = &self.filter_file {
-            builder = builder.file_patterns(patterns);
+            builder = builder.file_patterns(patterns;
         }
 
         // Apply grouping
         if let Some(group_by) = self.group_by {
-            builder = builder.group_by(group_by);
+            builder = builder.group_by(group_by;
         }
 
         // Apply limit
         if let Some(limit) = self.limit {
-            builder = builder.limit(limit);
+            builder = builder.limit(limit;
         }
 
         // Default sorting
         builder = builder.sort_by(
             wrt_build_core::filtering::SortBy::File,
             wrt_build_core::filtering::SortDirection::Ascending,
-        );
+        ;
 
         Ok(builder.build())
     }
@@ -234,7 +234,7 @@ impl GlobalArgs {
             let workspace_root =
                 self.workspace.as_ref().map(std::path::PathBuf::from).unwrap_or_else(|| {
                     std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
-                });
+                };
 
             Some(workspace_root.join("target").join("wrt-cache").join("diagnostics.json"))
         } else {
