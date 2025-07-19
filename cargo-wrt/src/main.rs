@@ -3130,11 +3130,11 @@ async fn cmd_testsuite(
         let mut runner =
             WastTestRunner::new(config).context("Failed to create WAST test runner")?;
         eprintln!("DEBUG: WastTestRunner created successfully");
-        let start_time = std::time::Instant::now);
+        let start_time = std::time::Instant::now();
 
         match runner.run_all_tests() {
             Ok(results) => {
-                let total_time = start_time.elapsed);
+                let total_time = start_time.elapsed();
 
                 // Generate output based on format
                 match global.output_format {
@@ -3147,7 +3147,7 @@ async fn cmd_testsuite(
                                 "execution_time_ms": total_time.as_millis(),
                                 "diagnostics": runner.diagnostics()
                             }
-                        };
+                        });
 
                         if let Some(report_file) = wast_report {
                             let report_path = workspace_root.join(report_file);
@@ -3304,7 +3304,7 @@ async fn cmd_requirements(
                 "{} Initialized sample requirements file at {}",
                 "✅".bright_green(),
                 req_path.display()
-            ;
+            );
             Ok(())
         },
 
@@ -3326,22 +3326,22 @@ async fn cmd_requirements(
 
                 match output_format {
                     OutputFormat::Json | OutputFormat::JsonLines => {
-                        println!("{}", serde_json::to_string_pretty(&report)?;
+                        println!("{}", serde_json::to_string_pretty(&report)?);
                     },
                     OutputFormat::Human => {
-                        println!("{}", report.format_human();
+                        println!("{}", report.format_human());
 
                         if detailed {
                             println!("\n📋 Detailed Requirements Status:");
                             println!("─────────────────────────────────");
 
                             for req in &registry.requirements {
-                                println!("\n{} {}", req.id, req.title.bright_cyan();
+                                println!("\n{} {}", req.id, req.title.bright_cyan());
                                 println!("  Type: {}", req.req_type);
                                 println!("  ASIL: {}", req.asil_level);
                                 println!("  Status: {}", req.status);
                                 println!("  Coverage: {}", req.coverage);
-                                println!("  Score: {:.1}%", req.compliance_score() * 100.0;
+                                println!("  Score: {:.1}%", req.compliance_score() * 100.0);
                             }
                         }
                     },
@@ -3396,10 +3396,10 @@ async fn cmd_requirements(
 
             match output_format {
                 OutputFormat::Json | OutputFormat::JsonLines => {
-                    println!("{}", serde_json::to_string_pretty(&report)?;
+                    println!("{}", serde_json::to_string_pretty(&report)?);
                 },
                 OutputFormat::Human => {
-                    println!("{}", report.format_human();
+                    println!("{}", report.format_human());
 
                     if by_asil {
                         println!("\n📊 Compliance by ASIL Level:");
@@ -3422,7 +3422,7 @@ async fn cmd_requirements(
                             RequirementType::Platform,
                             RequirementType::Memory,
                         ] {
-                            let type_reqs = registry.get_requirements_by_type(req_type;
+                            let type_reqs = registry.get_requirements_by_type(req_type);
                             if !type_reqs.is_empty() {
                                 let score: f64 =
                                     type_reqs.iter().map(|r| r.compliance_score()).sum::<f64>()
@@ -3494,7 +3494,7 @@ async fn cmd_requirements(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::new);
+                    let formatter = MarkdownFormatter::new();
                     let registry = requirements.to_registry();
 
                     // Convert to data format
@@ -3522,7 +3522,7 @@ async fn cmd_requirements(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::github);
+                    let formatter = MarkdownFormatter::github();
                     let registry = requirements.to_registry();
 
                     // Convert to data format
@@ -3676,13 +3676,13 @@ async fn cmd_wasm(
             detailed,
             benchmark,
         } => {
-            let wasm_path = workspace_root.join(&file;
+            let wasm_path = workspace_root.join(&file);
 
             if !wasm_path.exists() {
                 anyhow::bail!("WebAssembly module not found: {}", wasm_path.display();
             }
 
-            let verifier = WasmVerifier::new(&wasm_path;
+            let verifier = WasmVerifier::new(&wasm_path);
             let result = verifier.verify()?;
 
             match output_format {
@@ -3722,13 +3722,13 @@ async fn cmd_wasm(
             builtins_only,
             module,
         } => {
-            let wasm_path = workspace_root.join(&file;
+            let wasm_path = workspace_root.join(&file);
 
             if !wasm_path.exists() {
                 anyhow::bail!("WebAssembly module not found: {}", wasm_path.display();
             }
 
-            let verifier = WasmVerifier::new(&wasm_path;
+            let verifier = WasmVerifier::new(&wasm_path);
             let result = verifier.verify()?;
 
             match output_format {
@@ -3741,7 +3741,7 @@ async fn cmd_wasm(
                             .iter()
                             .filter(|imp| module.as_ref().map_or(true, |m| &imp.module == m))
                             .collect();
-                        println!("{}", serde_json::to_string_pretty(&filtered_imports)?;
+                        println!("{}", serde_json::to_string_pretty(&filtered_imports)?);
                     }
                 },
                 OutputFormat::Human => {
@@ -3780,13 +3780,13 @@ async fn cmd_wasm(
         },
 
         WasmCommand::Exports { file, kind } => {
-            let wasm_path = workspace_root.join(&file;
+            let wasm_path = workspace_root.join(&file);
 
             if !wasm_path.exists() {
                 anyhow::bail!("WebAssembly module not found: {}", wasm_path.display();
             }
 
-            let verifier = WasmVerifier::new(&wasm_path;
+            let verifier = WasmVerifier::new(&wasm_path);
             let result = verifier.verify()?;
 
             let filtered_exports: Vec<_> = result
@@ -3797,15 +3797,15 @@ async fn cmd_wasm(
 
             match output_format {
                 OutputFormat::Json | OutputFormat::JsonLines => {
-                    println!("{}", serde_json::to_string_pretty(&filtered_exports)?;
+                    println!("{}", serde_json::to_string_pretty(&filtered_exports)?);
                 },
                 OutputFormat::Human => {
                     if filtered_exports.is_empty() {
                         println!("No exports found");
                     } else {
-                        println!("📤 Exports ({}):", filtered_exports.len();
+                        println!("📤 Exports ({}):", filtered_exports.len());
                         for export in filtered_exports {
-                            println!("  - {} ({})", export.name, export.kind;
+                            println!("  - {} ({})", export.name, export.kind);
                         }
                     }
                 },
@@ -3835,7 +3835,7 @@ async fn cmd_wasm(
                     },
                     Err(_) => {
                         // Not a glob pattern, treat as single file
-                        wasm_paths.push(workspace_root.join(pattern);
+                        wasm_paths.push(workspace_root.join(pattern));
                     },
                 }
             }
@@ -3848,12 +3848,12 @@ async fn cmd_wasm(
 
             match output_format {
                 OutputFormat::Json | OutputFormat::JsonLines => {
-                    println!("{}", serde_json::to_string_pretty(&results)?;
+                    println!("{}", serde_json::to_string_pretty(&results)?);
                 },
                 OutputFormat::Human => {
                     println!("🔍 WebAssembly Module Analysis");
                     println!("════════════════════════════");
-                    println!("Analyzed {} modules\n", results.len();
+                    println!("Analyzed {} modules\n", results.len());
 
                     let mut total_valid = 0;
                     let mut total_imports = 0;
@@ -3862,7 +3862,7 @@ async fn cmd_wasm(
 
                     for (path, result) in &results {
                         if summary {
-                            println!("📄 {}", path.bright_cyan();
+                            println!("📄 {}", path.bright_cyan());
                             println!(
                                 "  Status: {}",
                                 if result.valid { "✅ Valid" } else { "❌ Invalid" }
@@ -3881,23 +3881,23 @@ async fn cmd_wasm(
                             );
                             println!();
                         } else {
-                            let verifier = WasmVerifier::new(path;
-                            verifier.print_results(result;
+                            let verifier = WasmVerifier::new(path);
+                            verifier.print_results(result);
                             println!();
                         }
 
                         if result.valid {
                             total_valid += 1;
                         }
-                        total_imports += result.imports.len);
-                        total_exports += result.exports.len);
-                        total_builtins += result.builtin_imports.len);
+                        total_imports += result.imports.len();
+                        total_exports += result.exports.len();
+                        total_builtins += result.builtin_imports.len();
                     }
 
                     if summary {
                         println!("📊 Summary:");
                         println!("─────────");
-                        println!("  Valid modules: {}/{}", total_valid, results.len();
+                        println!("  Valid modules: {}/{}", total_valid, results.len());
                         println!("  Total imports: {}", total_imports);
                         println!("  Total exports: {}", total_exports);
                         println!("  Total builtins: {}", total_builtins);
@@ -3919,14 +3919,14 @@ async fn cmd_wasm(
                 vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00] // Just header
             };
 
-            let output_path = workspace_root.join(&output;
+            let output_path = workspace_root.join(&output);
             std::fs::write(&output_path, test_module)?;
 
             println!(
                 "{} Created test WebAssembly module at {}",
                 "✅".bright_green(),
                 output_path.display()
-            ;
+            );
 
             if with_builtins {
                 println!("  Module includes builtin imports (wasi_builtin::random)");
@@ -3957,7 +3957,7 @@ async fn cmd_safety(
             include_platform,
             detailed,
         } => {
-            let asil_level = wrt_build_core::config::AsilLevel::from(asil;
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
 
             // Import the safety verification framework
             use wrt_build_core::requirements::{
@@ -3965,19 +3965,19 @@ async fn cmd_safety(
                 SafetyVerificationFramework,
             };
 
-            let mut framework = SafetyVerificationFramework::new(workspace_root.clone();
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
 
             // Load WRT-specific safety requirements
             let (_count, load_diagnostics) =
                 framework.load_requirements_from_source(&requirements)?;
 
             // If we have a requirements file, load it too
-            let requirements_path = workspace_root.join(&requirements;
+            let requirements_path = workspace_root.join(&requirements);
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry);
+                let registry = reqs.to_registry();
                 for req in registry.requirements {
-                    framework.add_requirement(req;
+                    framework.add_requirement(req);
                 }
             }
 
@@ -4013,7 +4013,7 @@ async fn cmd_safety(
             if detailed {
                 match output_format {
                     OutputFormat::Json => {
-                        println!("{}", serde_json::to_string_pretty(&compliance_result)?;
+                        println!("{}", serde_json::to_string_pretty(&compliance_result)?);
                     },
                     _ => {
                         println!(
@@ -4040,7 +4040,7 @@ async fn cmd_safety(
                         );
 
                         if !compliance_result.violations.is_empty() {
-                            println!("\n{} Violations:", "⚠️ ".bright_yellow();
+                            println!("\n{} Violations:", "⚠️ ".bright_yellow());
                             for violation in &compliance_result.violations {
                                 println!(
                                     "  • {}: {}",
@@ -4061,22 +4061,22 @@ async fn cmd_safety(
             test_results,
             coverage_data,
         } => {
-            let asil_level = wrt_build_core::config::AsilLevel::from(asil;
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
 
             use wrt_build_core::requirements::{
                 Requirements,
                 SafetyVerificationFramework,
             };
 
-            let mut framework = SafetyVerificationFramework::new(workspace_root.clone();
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
 
             // Load requirements
-            let requirements_path = workspace_root.join(&requirements;
+            let requirements_path = workspace_root.join(&requirements);
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry);
+                let registry = reqs.to_registry();
                 for req in registry.requirements {
-                    framework.add_requirement(req;
+                    framework.add_requirement(req);
                 }
             }
 
@@ -4105,7 +4105,7 @@ async fn cmd_safety(
 
             match output_format {
                 OutputFormat::Json => {
-                    println!("{}", serde_json::to_string_pretty(&readiness)?;
+                    println!("{}", serde_json::to_string_pretty(&readiness)?);
                 },
                 _ => {
                     println!(
@@ -4132,14 +4132,14 @@ async fn cmd_safety(
                     );
 
                     if !readiness.blocking_issues.is_empty() {
-                        println!("\n{} Blocking Issues:", "🚫".bright_red();
+                        println!("\n{} Blocking Issues:", "🚫".bright_red());
                         for issue in &readiness.blocking_issues {
                             println!("  • {}", issue);
                         }
                     }
 
                     if !readiness.recommendations.is_empty() {
-                        println!("\n{} Recommendations:", "💡".bright_blue();
+                        println!("\n{} Recommendations:", "💡".bright_blue());
                         for rec in &readiness.recommendations {
                             println!("  • {}", rec);
                         }
@@ -4161,20 +4161,20 @@ async fn cmd_safety(
                 SafetyVerificationFramework,
             };
 
-            let mut framework = SafetyVerificationFramework::new(workspace_root.clone();
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
 
             // Load requirements
-            let requirements_path = workspace_root.join(&requirements;
+            let requirements_path = workspace_root.join(&requirements);
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry);
+                let registry = reqs.to_registry();
                 for req in registry.requirements {
-                    framework.add_requirement(req;
+                    framework.add_requirement(req);
                 }
             }
 
             // Generate comprehensive safety report
-            let (safety_report, diagnostics) = framework.generate_safety_report);
+            let (safety_report, diagnostics) = framework.generate_safety_report();
 
             // Format output based on requested format
             let report_content = match format.as_str() {
@@ -4220,7 +4220,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::new);
+                    let formatter = MarkdownFormatter::new();
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = safety_report
@@ -4252,7 +4252,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::github);
+                    let formatter = MarkdownFormatter::github();
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = safety_report
@@ -4370,8 +4370,8 @@ async fn cmd_safety(
                 TestResult,
             };
 
-            let mut framework = SafetyVerificationFramework::new(workspace_root.clone();
-            let asil_level = wrt_build_core::config::AsilLevel::from(asil;
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
 
             // Parse verified requirements
             let verified_requirements = if let Some(req_list) = verifies {
@@ -4468,7 +4468,7 @@ async fn cmd_safety(
         } => {
             use wrt_build_core::requirements::PlatformVerification;
 
-            let asil_level = wrt_build_core::config::AsilLevel::from(asil;
+            let asil_level = wrt_build_core::config::AsilLevel::from(asil);
 
             let verified = verified_features
                 .unwrap_or_default()
@@ -4513,7 +4513,7 @@ async fn cmd_safety(
         } => {
             use wrt_build_core::requirements::SafetyVerificationFramework;
 
-            let mut framework = SafetyVerificationFramework::new(workspace_root.clone();
+            let mut framework = SafetyVerificationFramework::new(workspace_root.clone());
 
             if wrt_requirements {
                 // Initialize with WRT-specific safety requirements
@@ -4546,7 +4546,7 @@ async fn cmd_safety(
             interactive,
             certification,
         } => {
-            let demo_path = workspace_root.join(&output_dir;
+            let demo_path = workspace_root.join(&output_dir);
             std::fs::create_dir_all(&demo_path)?;
 
             println!(
@@ -4585,21 +4585,21 @@ async fn cmd_safety(
             // Configure the framework based on options
             let mut config = DocumentationVerificationConfig::default);
             config.enable_api_documentation_check = check_api;
-            framework = framework.with_config(config;
+            framework = framework.with_config(config);
 
             // Load requirements
-            let requirements_path = workspace_root.join(&requirements;
+            let requirements_path = workspace_root.join(&requirements);
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry);
+                let registry = reqs.to_registry();
                 for req in registry.requirements {
-                    framework.add_requirement(req;
+                    framework.add_requirement(req);
                 }
             }
 
             // Perform documentation verification
             let (result, diagnostics) = if let Some(asil_level) = asil {
-                let asil_level = wrt_build_core::config::AsilLevel::from(asil_level;
+                let asil_level = wrt_build_core::config::AsilLevel::from(asil_level);
                 framework.verify_asil_documentation(asil_level)?
             } else {
                 framework.verify_all_documentation()?
@@ -4616,7 +4616,7 @@ async fn cmd_safety(
             if detailed {
                 match output_format {
                     OutputFormat::Json => {
-                        println!("{}", serde_json::to_string_pretty(&result)?;
+                        println!("{}", serde_json::to_string_pretty(&result)?);
                     },
                     _ => {
                         println!(
@@ -4667,12 +4667,12 @@ async fn cmd_safety(
             let mut framework = DocumentationVerificationFramework::new(workspace_root.clone();
 
             // Load requirements
-            let requirements_path = workspace_root.join(&requirements;
+            let requirements_path = workspace_root.join(&requirements);
             if requirements_path.exists() {
                 let reqs = Requirements::load(&requirements_path)?;
-                let registry = reqs.to_registry);
+                let registry = reqs.to_registry();
                 for req in registry.requirements {
-                    framework.add_requirement(req;
+                    framework.add_requirement(req);
                 }
             }
 
@@ -4719,7 +4719,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::new);
+                    let formatter = MarkdownFormatter::new();
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = doc_report
@@ -4747,7 +4747,7 @@ async fn cmd_safety(
                         MarkdownReportGenerator,
                     };
 
-                    let formatter = MarkdownFormatter::github);
+                    let formatter = MarkdownFormatter::github();
 
                     // Convert to data format
                     let asil_compliance: HashMap<String, f64> = doc_report
@@ -4789,7 +4789,7 @@ async fn cmd_safety(
                     ));
 
                     if all_asil && !doc_report.asil_compliance.is_empty() {
-                        content.push_str("📊 ASIL Documentation Compliance:\n";
+                        content.push_str("📊 ASIL Documentation Compliance:\n");
                         let mut sorted_asil: Vec<_> = doc_report.asil_compliance.iter().collect();
                         sorted_asil.sort_by_key(|(asil, _)| match asil {
                             wrt_build_core::config::AsilLevel::QM => 0,
@@ -4817,7 +4817,7 @@ async fn cmd_safety(
 
             // Output to file or stdout
             if let Some(output_file) = output {
-                let output_path = workspace_root.join(output_file;
+                let output_path = workspace_root.join(output_file);
                 std::fs::write(&output_path, report_content)?;
                 println!(
                     "{} Documentation report written to {}",
@@ -5009,14 +5009,14 @@ fn generate_markdown_report(
 ) -> String {
     let mut report = String::new);
 
-    report.push_str("# WAST Test Suite Report\n\n";
+    report.push_str("# WAST Test Suite Report\n\n");
     report.push_str(&format!(
         "Generated on: {}\n\n",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()
     );
 
     // Summary
-    report.push_str("## Summary\n\n";
+    report.push_str("## Summary\n\n");
     report.push_str(&format!(
         "- **Files processed**: {}\n",
         runner.stats.files_processed
@@ -5031,7 +5031,7 @@ fn generate_markdown_report(
     );
 
     // Test type breakdown
-    report.push_str("\n## Test Type Breakdown\n\n";
+    report.push_str("\n## Test Type Breakdown\n\n");
     report.push_str(&format!(
         "- **assert_return**: {}\n",
         runner.stats.assert_return_count
@@ -5062,9 +5062,9 @@ fn generate_markdown_report(
     );
 
     // File results
-    report.push_str("\n## File Results\n\n";
-    report.push_str("| File | Status | Directives | Execution Time |\n";
-    report.push_str("|------|--------|------------|----------------|\n";
+    report.push_str("\n## File Results\n\n");
+    report.push_str("| File | Status | Directives | Execution Time |\n");
+    report.push_str("|------|--------|------------|----------------|\n");
 
     for file_result in results {
         let status_icon = match file_result.status {
@@ -5087,7 +5087,7 @@ fn generate_markdown_report(
         .filter(|r| r.status == wrt_build_core::wast::TestResult::Failed)
         .collect();
     if !failed_files.is_empty() {
-        report.push_str("\n## Failed Tests Details\n\n";
+        report.push_str("\n## Failed Tests Details\n\n");
         for file_result in failed_files {
             report.push_str(&format!("### {}\n\n", file_result.file_path);
 
@@ -5104,12 +5104,12 @@ fn generate_markdown_report(
                     );
                 }
             }
-            report.push_str("\n";
+            report.push_str("\n");
         }
     }
 
-    report.push_str("\n---\n";
-    report.push_str("*Generated by cargo-wrt testsuite*\n";
+    report.push_str("\n---\n");
+    report.push_str("*Generated by cargo-wrt testsuite*\n");
 
     report
 }

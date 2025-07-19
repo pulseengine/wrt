@@ -32,10 +32,10 @@ mod helper_tests {
 
     #[test]
     fn test_output_manager_human_format() {
-        let output = OutputManager::new(OutputFormat::Human).with_color(false;
+        let output = OutputManager::new(OutputFormat::Human).with_color(false);
 
-        assert_eq!(output.format(), &OutputFormat::Human;
-        assert!(!output.is_colored();
+        assert_eq!(output.format(), &OutputFormat::Human);
+        assert!(!output.is_colored());
 
         // Test basic output methods (these would normally write to stdout)
         // In a real test, we'd capture stdout or use a mock writer
@@ -43,15 +43,15 @@ mod helper_tests {
 
     #[test]
     fn test_output_manager_json_format() {
-        let output = OutputManager::new(OutputFormat::Json).with_color(false;
+        let output = OutputManager::new(OutputFormat::Json).with_color(false);
 
-        assert_eq!(output.format(), &OutputFormat::Json;
-        assert!(!output.is_colored();
+        assert_eq!(output.format(), &OutputFormat::Json);
+        assert!(!output.is_colored());
     }
 
     #[test]
     fn test_progress_indicator_creation() {
-        let progress = ProgressIndicator::spinner("Test operation", OutputFormat::Human, false;
+        let progress = ProgressIndicator::spinner("Test operation", OutputFormat::Human, false);
 
         // Progress indicator created successfully
         // In a real test, we'd test the actual progress display
@@ -59,56 +59,56 @@ mod helper_tests {
 
     #[test]
     fn test_command_suggestion_engine() {
-        let engine = CommandSuggestionEngine::new);
+        let engine = CommandSuggestionEngine::new();
 
         // Test exact match
-        let suggestions = engine.suggest("build", None;
-        assert!(!suggestions.is_empty();
-        assert_eq!(suggestions[0].command, "build";
+        let suggestions = engine.suggest("build", None);
+        assert!(!suggestions.is_empty());
+        assert_eq!(suggestions[0].command, "build");
 
         // Test typo correction
-        let suggestions = engine.suggest("buld", None;
-        assert!(!suggestions.is_empty();
-        assert_eq!(suggestions[0].command, "build";
+        let suggestions = engine.suggest("buld", None);
+        assert!(!suggestions.is_empty());
+        assert_eq!(suggestions[0].command, "build");
 
         // Test empty input
-        let suggestions = engine.suggest("", None;
+        let suggestions = engine.suggest("", None);
         // Should handle empty input gracefully
     }
 
     #[test]
     fn test_performance_optimizer() {
-        let mut optimizer = PerformanceOptimizer::with_defaults);
+        let mut optimizer = PerformanceOptimizer::with_defaults();
 
         // Test timing
-        optimizer.start_timer("test_command";
-        std::thread::sleep(Duration::from_millis(10;
-        optimizer.stop_timer("test_command";
+        optimizer.start_timer("test_command");
+        std::thread::sleep(Duration::from_millis(10));
+        optimizer.stop_timer("test_command");
 
-        let report = optimizer.generate_report);
-        assert!(report.metrics.command_times.contains_key("test_command");
+        let report = optimizer.generate_report();
+        assert!(report.metrics.command_times.contains_key("test_command"));
 
         // Test cache tracking
-        optimizer.record_cache_hit);
-        optimizer.record_cache_miss);
-        optimizer.record_cache_hit);
+        optimizer.record_cache_hit();
+        optimizer.record_cache_miss();
+        optimizer.record_cache_hit();
 
-        let ratio = optimizer.cache_hit_ratio);
-        assert!((ratio - 0.666).abs() < 0.01)); // 2/3 ≈ 0.666
+        let ratio = optimizer.cache_hit_ratio();
+        assert!((ratio - 0.666).abs() < 0.01); // 2/3 ≈ 0.666
     }
 
     #[test]
     fn test_categorized_error() {
         let error = CategorizedError::system_error("Test error")
             .with_context("Additional context")
-            .with_suggestion("Try running cargo clean";
+            .with_suggestion("Try running cargo clean");
 
-        assert_eq!(error.category, ErrorCategory::Build;
+        assert_eq!(error.category, ErrorCategory::Build);
         assert!(error.context.contains(&"Additional context".to_string());
         assert!(error.suggestions.contains(&"Try running cargo clean".to_string());
 
         // Test formatting
-        let human_format = error.format_human(false;
+        let human_format = error.format_human(false);
         assert!(human_format.contains("Build Error");
         assert!(human_format.contains("Test error");
 
@@ -204,7 +204,7 @@ mod validation_tests {
         };
 
         let context = TestContext::with_config(config)?;
-        let validator = TestValidator::new(context;
+        let validator = TestValidator::new(context);
 
         let reports = validator.validate_all()?;
 
@@ -236,10 +236,10 @@ mod validation_tests {
 
     #[test]
     fn test_validation_report_formatting() {
-        let mut report = cargo_wrt::testing::ValidationReport::new("Test Report";
-        report.add_success("Test passed";
-        report.add_failure("Test failed";
-        report.add_warning("Test warning";
+        let mut report = cargo_wrt::testing::ValidationReport::new("Test Report");
+        report.add_success("Test passed");
+        report.add_failure("Test failed");
+        report.add_warning("Test warning");
 
         let formatted = report.format(false);
         assert!(formatted.contains("Test Report");
@@ -291,7 +291,7 @@ mod workspace_tests {
         assert!(context.file_exists("test-file.txt");
 
         let content = context.read_file("test-file.txt")?;
-        assert_eq!(content, "test content";
+        assert_eq!(content, "test content");
 
         Ok(())
     }
@@ -339,7 +339,7 @@ mod mock_build_tests {
         // Test default successful result
         mock_system.call_log.push("build_all".to_string();
         assert!(mock_system.was_called("build_all");
-        assert_eq!(mock_system.call_count("build_all"), 1;
+        assert_eq!(mock_system.call_count("build_all"), 1);
 
         // Test setting custom result
         mock_system.set_result(
@@ -353,7 +353,7 @@ mod mock_build_tests {
         ;
 
         // Test setting failure
-        mock_system.set_failure("failing_operation", "Operation failed";
+        mock_system.set_failure("failing_operation", "Operation failed");
 
         // Test call logging
         mock_system.call_log.push("custom_operation".to_string();
@@ -399,10 +399,10 @@ mod performance_tests {
         }
 
         // Test context detection performance
-        let start = std::time::Instant::now);
+        let start = std::time::Instant::now();
         let detector = ContextDetector::new(context.workspace_root().to_path_buf);
         let _project_context = detector.detect()?;
-        let duration = start.elapsed);
+        let duration = start.elapsed();
 
         // Should complete quickly even with many files
         assert!(duration < Duration::from_secs(1);
@@ -428,8 +428,8 @@ mod performance_tests {
                     progress.start);
 
                     for _ in 0..10 {
-                        progress.tick);
-                        thread::sleep(Duration::from_millis(10;
+                        progress.tick();
+                        thread::sleep(Duration::from_millis(10));
                     }
 
                     progress.finish);
@@ -454,9 +454,9 @@ mod error_handling_tests {
     fn test_invalid_workspace_handling() {
         // Test with completely invalid workspace
         let temp_dir = TempDir::new().unwrap();
-        let invalid_path = temp_dir.path().join("non_existent";
+        let invalid_path = temp_dir.path().join("non_existent");
 
-        let detector = ContextDetector::new(invalid_path;
+        let detector = ContextDetector::new(invalid_path);
         let result = detector.detect);
 
         // Should handle invalid paths gracefully
@@ -475,40 +475,40 @@ mod error_handling_tests {
 
     #[test]
     fn test_command_suggestions_edge_cases() {
-        let engine = CommandSuggestionEngine::new);
+        let engine = CommandSuggestionEngine::new();
 
         // Test very long input
-        let long_input = "a".repeat(1000;
-        let suggestions = engine.suggest(&long_input, None;
+        let long_input = "a".repeat(1000);
+        let suggestions = engine.suggest(&long_input, None);
         // Should not panic or take excessive time
 
         // Test special characters
         let special_input = "!@#$%^&*()";
-        let suggestions = engine.suggest(special_input, None;
+        let suggestions = engine.suggest(special_input, None);
         // Should handle gracefully
 
         // Test unicode input
         let unicode_input = "测试";
-        let suggestions = engine.suggest(unicode_input, None;
+        let suggestions = engine.suggest(unicode_input, None);
         // Should handle gracefully
     }
 
     #[test]
     fn test_performance_optimizer_edge_cases() {
-        let mut optimizer = PerformanceOptimizer::with_defaults);
+        let mut optimizer = PerformanceOptimizer::with_defaults();
 
         // Test stopping timer that was never started
-        optimizer.stop_timer("never_started";
+        optimizer.stop_timer("never_started");
         // Should not panic
 
         // Test starting same timer multiple times
-        optimizer.start_timer("duplicate";
-        optimizer.start_timer("duplicate";
-        optimizer.stop_timer("duplicate";
+        optimizer.start_timer("duplicate");
+        optimizer.start_timer("duplicate");
+        optimizer.stop_timer("duplicate");
         // Should handle gracefully
 
         // Test cache operations with no data
-        let ratio = optimizer.cache_hit_ratio);
-        assert_eq!(ratio, 0.0;
+        let ratio = optimizer.cache_hit_ratio();
+        assert_eq!(ratio, 0.0);
     }
 }

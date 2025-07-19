@@ -58,7 +58,7 @@ impl SimdProvider for AArch64SimdProvider {
     }
     
     // Arithmetic operations - i8x16
-    fn v128_i8x16_add(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i8x16_add(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u8(a.as_ptr);
@@ -75,7 +75,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i8x16_sub(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i8x16_sub(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u8(a.as_ptr);
@@ -92,7 +92,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i8x16_neg(&self, a: &[u8); 16]) -> [u8; 16] {
+    fn v128_i8x16_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_s8(a.as_ptr() as *const i8;
@@ -109,7 +109,7 @@ impl SimdProvider for AArch64SimdProvider {
     }
     
     // Arithmetic operations - i16x8
-    fn v128_i16x8_add(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i16x8_add(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u16(a.as_ptr() as *const u16;
@@ -126,7 +126,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i16x8_sub(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i16x8_sub(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u16(a.as_ptr() as *const u16;
@@ -143,7 +143,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i16x8_mul(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i16x8_mul(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u16(a.as_ptr() as *const u16;
@@ -160,7 +160,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i16x8_neg(&self, a: &[u8); 16]) -> [u8; 16] {
+    fn v128_i16x8_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_s16(a.as_ptr() as *const i16;
@@ -177,7 +177,7 @@ impl SimdProvider for AArch64SimdProvider {
     }
     
     // Arithmetic operations - i32x4
-    fn v128_i32x4_add(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i32x4_add(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u32(a.as_ptr() as *const u32;
@@ -194,7 +194,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i32x4_sub(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i32x4_sub(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u32(a.as_ptr() as *const u32;
@@ -211,7 +211,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i32x4_mul(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i32x4_mul(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u32(a.as_ptr() as *const u32;
@@ -228,7 +228,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i32x4_neg(&self, a: &[u8); 16]) -> [u8; 16] {
+    fn v128_i32x4_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_s32(a.as_ptr() as *const i32;
@@ -245,7 +245,7 @@ impl SimdProvider for AArch64SimdProvider {
     }
     
     // Arithmetic operations - i64x2
-    fn v128_i64x2_add(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i64x2_add(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u64(a.as_ptr() as *const u64;
@@ -262,7 +262,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i64x2_sub(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i64x2_sub(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_u64(a.as_ptr() as *const u64;
@@ -279,12 +279,12 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_i64x2_mul(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_i64x2_mul(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         // i64 multiplication is not available in base NEON, delegate to scalar
         self.scalar_fallback.v128_i64x2_mul(a, b)
     }
     
-    fn v128_i64x2_neg(&self, a: &[u8); 16]) -> [u8; 16] {
+    fn v128_i64x2_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_s64(a.as_ptr() as *const i64;
@@ -301,7 +301,7 @@ impl SimdProvider for AArch64SimdProvider {
     }
     
     // Arithmetic operations - f32x4
-    fn v128_f32x4_add(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f32x4_add(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f32(a.as_ptr() as *const f32;
@@ -318,7 +318,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f32x4_sub(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f32x4_sub(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f32(a.as_ptr() as *const f32;
@@ -335,7 +335,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f32x4_mul(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f32x4_mul(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f32(a.as_ptr() as *const f32;
@@ -352,7 +352,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f32x4_div(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f32x4_div(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f32(a.as_ptr() as *const f32;
@@ -369,7 +369,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f32x4_neg(&self, a: &[u8); 16]) -> [u8; 16] {
+    fn v128_f32x4_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f32(a.as_ptr() as *const f32;
@@ -385,7 +385,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f32x4_sqrt(&self, a: &[u8); 16]) -> [u8; 16] {
+    fn v128_f32x4_sqrt(&self, a: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f32(a.as_ptr() as *const f32;
@@ -402,7 +402,7 @@ impl SimdProvider for AArch64SimdProvider {
     }
     
     // Arithmetic operations - f64x2
-    fn v128_f64x2_add(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f64x2_add(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f64(a.as_ptr() as *const f64;
@@ -419,7 +419,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f64x2_sub(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f64x2_sub(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f64(a.as_ptr() as *const f64;
@@ -436,7 +436,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f64x2_mul(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f64x2_mul(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f64(a.as_ptr() as *const f64;
@@ -453,7 +453,7 @@ impl SimdProvider for AArch64SimdProvider {
         }
     }
     
-    fn v128_f64x2_div(&self, a: &[u8; 16], b: &[u8); 16]) -> [u8; 16] {
+    fn v128_f64x2_div(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         #[cfg(target_arch = "aarch64")]
         unsafe {
             let a_vec = vld1q_f64(a.as_ptr() as *const f64;
