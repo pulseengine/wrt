@@ -20,7 +20,7 @@
 //! use wrt_foundation::safety_system::{SafetyContext, AsilLevel};
 //!
 //! // Create a safety-aware mutex
-//! let safety_ctx = SafetyContext::new(AsilLevel::AsilC;
+//! let safety_ctx = SafetyContext::new(AsilLevel::AsilC);
 //! let mutex = SafeMutex::new(42, safety_ctx)?;
 //!
 //! // Use bounded channels for communication
@@ -129,8 +129,8 @@ impl<T> SafeMutex<T> {
     pub fn lock(&self) -> WrtResult<SafeMutexGuard<'_, T>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
-            self.safety_context.record_violation);
-            return Err(Error::Safety;
+            self.safety_context.record_violation();
+            return Err(Error::Safety);
         }
 
         // Acquire the lock using compare-and-swap
@@ -143,20 +143,20 @@ impl<T> SafeMutex<T> {
             // Yield or spin based on ASIL level
             match self.safety_context.effective_asil() {
                 AsilLevel::QM | AsilLevel::AsilA => {
-                    core::hint::spin_loop);
+                    core::hint::spin_loop();
                 }
                 AsilLevel::AsilB | AsilLevel::AsilC | AsilLevel::AsilD => {
                     // For higher ASIL levels, be more cooperative
                     #[cfg(feature = "std")]
-                    std::thread::yield_now);
+                    std::thread::yield_now();
                     #[cfg(not(feature = "std"))]
-                    core::hint::spin_loop);
+                    core::hint::spin_loop();
                 }
             }
         }
 
         // Increment lock counter for verification
-        self.lock_count.fetch_add(1, Ordering::Relaxed;
+        self.lock_count.fetch_add(1, Ordering::Relaxed);
 
         Ok(SafeMutexGuard {
             mutex: self,
@@ -172,8 +172,8 @@ impl<T> SafeMutex<T> {
     pub fn try_lock(&self) -> WrtResult<Option<SafeMutexGuard<'_, T>>> {
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_lock_safety() {
-            self.safety_context.record_violation);
-            return Err(Error::Safety;
+            self.safety_context.record_violation();
+            return Err(Error::Safety);
         }
 
         match self.locked.compare_exchange(
@@ -183,7 +183,7 @@ impl<T> SafeMutex<T> {
             Ordering::Relaxed,
         ) {
             Ok(_) => {
-                self.lock_count.fetch_add(1, Ordering::Relaxed;
+                self.lock_count.fetch_add(1, Ordering::Relaxed);
                 Ok(Some(SafeMutexGuard {
                     mutex: self,
                     _phantom: PhantomData,
@@ -195,7 +195,7 @@ impl<T> SafeMutex<T> {
 
     /// Verify lock safety based on ASIL requirements
     fn verify_lock_safety(&self) -> bool {
-        let lock_count = self.lock_count.load(Ordering::Relaxed;
+        let lock_count = self.lock_count.load(Ordering::Relaxed);
         
         match self.safety_context.effective_asil() {
             AsilLevel::QM => true, // No restrictions
@@ -241,7 +241,7 @@ impl<'a, T> SafeMutexGuard<'a, T> {
 impl<'a, T> Drop for SafeMutexGuard<'a, T> {
     fn drop(&mut self) {
         // Release the lock
-        self.mutex.locked.store(false, Ordering::Release;
+        self.mutex.locked.store(false, Ordering::Release);
     }
 }
 
@@ -290,7 +290,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
     /// A tuple of (sender, receiver) handles.
     pub fn create_channel(safety_context: SafetyContext) -> WrtResult<(BoundedSender<T, CAPACITY>, BoundedReceiver<T, CAPACITY>)> {
         if CAPACITY == 0 {
-            return Err(Error::Capacity;
+            return Err(Error::Capacity);
         }
 
         let channel = Self {
@@ -311,7 +311,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
     fn send_impl(&self, _item: T) -> WrtResult<()> {
         // Verify channel safety before sending
         if !self.verify_channel_safety() {
-            return Err(Error::Safety;
+            return Err(Error::Safety);
         }
         
         // Simplified implementation - just return unimplemented for now
@@ -322,7 +322,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
     fn recv_impl(&self) -> WrtResult<Option<T>> {
         // Verify channel safety before receiving
         if !self.verify_channel_safety() {
-            return Err(Error::Safety;
+            return Err(Error::Safety);
         }
         
         // Simplified implementation - just return None for now
@@ -331,7 +331,7 @@ impl<T, const CAPACITY: usize> BoundedChannel<T, CAPACITY> {
 
     /// Verify channel safety based on ASIL requirements
     fn verify_channel_safety(&self) -> bool {
-        let count = self.count.load(Ordering::Relaxed;
+        let count = self.count.load(Ordering::Relaxed);
         
         match self.safety_context.effective_asil() {
             AsilLevel::QM => true,
@@ -417,26 +417,26 @@ impl SafeAtomicCounter {
     ///
     /// The new counter value, or an error if the increment would exceed bounds.
     pub fn increment(&self) -> WrtResult<usize> {
-        let current = self.value.load(Ordering::Relaxed;
+        let current = self.value.load(Ordering::Relaxed);
         
         if current >= self.max_value {
-            self.safety_context.record_violation);
-            return Err(Error::Capacity;
+            self.safety_context.record_violation();
+            return Err(Error::Capacity);
         }
 
         // Perform safety verification if required
         if self.safety_context.should_verify() && !self.verify_counter_safety(current + 1) {
-            self.safety_context.record_violation);
-            return Err(Error::Safety;
+            self.safety_context.record_violation();
+            return Err(Error::Safety);
         }
 
         let new_value = self.value.fetch_add(1, Ordering::AcqRel) + 1;
         
         if new_value > self.max_value {
             // Rollback the increment
-            self.value.fetch_sub(1, Ordering::AcqRel;
-            self.safety_context.record_violation);
-            return Err(Error::Capacity;
+            self.value.fetch_sub(1, Ordering::AcqRel);
+            self.safety_context.record_violation();
+            return Err(Error::Capacity);
         }
 
         Ok(new_value)
@@ -448,10 +448,10 @@ impl SafeAtomicCounter {
     ///
     /// The new counter value, or an error if the counter is already zero.
     pub fn decrement(&self) -> WrtResult<usize> {
-        let current = self.value.load(Ordering::Relaxed;
+        let current = self.value.load(Ordering::Relaxed);
         
         if current == 0 {
-            return Err(Error::Capacity;
+            return Err(Error::Capacity);
         }
 
         Ok(self.value.fetch_sub(1, Ordering::AcqRel) - 1)
@@ -482,85 +482,85 @@ mod tests {
 
     #[test]
     fn test_safe_mutex_basic() -> WrtResult<()> {
-        let safety_ctx = SafetyContext::new(AsilLevel::AsilB;
-        let mutex = SafeMutex::new(42, safety_ctx;
+        let safety_ctx = SafetyContext::new(AsilLevel::AsilB);
+        let mutex = SafeMutex::new(42, safety_ctx);
         
         let guard = mutex.lock()?;
-        assert_eq!(*guard, 42;
+        assert_eq!(*guard, 42);
         
-        drop(guard;
+        drop(guard);
         
         let mut guard = mutex.lock()?;
         *guard = 100;
-        assert_eq!(*guard, 100;
+        assert_eq!(*guard, 100);
         
         Ok(())
     }
 
     #[test]
     fn test_safe_mutex_try_lock() -> WrtResult<()> {
-        let safety_ctx = SafetyContext::new(AsilLevel::AsilC;
-        let mutex = SafeMutex::new(42, safety_ctx;
+        let safety_ctx = SafetyContext::new(AsilLevel::AsilC);
+        let mutex = SafeMutex::new(42, safety_ctx);
         
         let guard1 = mutex.try_lock()?.unwrap();
         let guard2 = mutex.try_lock()?;
         
-        assert!(guard2.is_none();
-        drop(guard1;
+        assert!(guard2.is_none());
+        drop(guard1);
         
         let guard3 = mutex.try_lock()?.unwrap();
-        assert_eq!(*guard3, 42;
+        assert_eq!(*guard3, 42);
         
         Ok(())
     }
 
     #[test]
     fn test_bounded_channel() -> WrtResult<()> {
-        let safety_ctx = SafetyContext::new(AsilLevel::AsilA;
+        let safety_ctx = SafetyContext::new(AsilLevel::AsilA);
         let (sender, receiver) = BoundedChannel::<i32, 4>::create_channel(safety_ctx)?;
         
         // Note: Implementation is incomplete, so these operations will fail
         // This test verifies the API surface and error handling
         
         // Try to send items (will fail with current implementation)
-        assert!(sender.send(1).is_err();
+        assert!(sender.send(1).is_err());
         
         // Try to receive items (will return None)
-        assert_eq!(receiver.recv()?, None;
+        assert_eq!(receiver.recv()?, None);
         
         Ok(())
     }
 
     #[test]
     fn test_safe_atomic_counter() -> WrtResult<()> {
-        let safety_ctx = SafetyContext::new(AsilLevel::AsilB;
-        let counter = SafeAtomicCounter::new(10, safety_ctx;
+        let safety_ctx = SafetyContext::new(AsilLevel::AsilB);
+        let counter = SafeAtomicCounter::new(10, safety_ctx);
         
-        assert_eq!(counter.get(), 0;
+        assert_eq!(counter.get(), 0);
         
-        assert_eq!(counter.increment()?, 1;
-        assert_eq!(counter.increment()?, 2;
-        assert_eq!(counter.get(), 2;
+        assert_eq!(counter.increment()?, 1);
+        assert_eq!(counter.increment()?, 2);
+        assert_eq!(counter.get(), 2);
         
-        assert_eq!(counter.decrement()?, 1;
-        assert_eq!(counter.get(), 1;
+        assert_eq!(counter.decrement()?, 1);
+        assert_eq!(counter.get(), 1);
         
         Ok(())
     }
 
     #[test]
     fn test_counter_bounds() {
-        let safety_ctx = SafetyContext::new(AsilLevel::QM;
-        let counter = SafeAtomicCounter::new(2, safety_ctx;
+        let safety_ctx = SafetyContext::new(AsilLevel::QM);
+        let counter = SafeAtomicCounter::new(2, safety_ctx);
         
-        assert!(counter.increment().is_ok();
-        assert!(counter.increment().is_ok();
+        assert!(counter.increment().is_ok());
+        assert!(counter.increment().is_ok());
         
         // Should fail because we've reached max_value
-        assert!(counter.increment().is_err();
+        assert!(counter.increment().is_err());
         
         // Decrement should work
-        assert!(counter.decrement().is_ok();
-        assert!(counter.increment().is_ok();
+        assert!(counter.decrement().is_ok());
+        assert!(counter.increment().is_ok());
     }
 }

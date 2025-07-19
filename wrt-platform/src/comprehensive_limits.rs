@@ -100,7 +100,7 @@ pub struct LinuxLimitProvider;
 
 impl ComprehensiveLimitProvider for LinuxLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default);
+        let mut limits = ComprehensivePlatformLimits::default();
         limits.platform_id = PlatformId::Linux;
         
         #[cfg(feature = "std")]
@@ -108,7 +108,7 @@ impl ComprehensiveLimitProvider for LinuxLimitProvider {
             // Read /proc/meminfo for memory information
             if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
                 if let Some(total_memory) = parse_meminfo_value(&meminfo, "MemTotal:") {
-                    limits.max_total_memory = (total_memory * 1024).min(limits.max_total_memory;
+                    limits.max_total_memory = (total_memory * 1024).min(limits.max_total_memory);
                     // Reserve 25% for system, use 75% for WebAssembly
                     limits.max_wasm_linear_memory = (limits.max_total_memory * 3) / 4;
                 }
@@ -174,7 +174,7 @@ pub struct MacOsLimitProvider;
 
 impl ComprehensiveLimitProvider for MacOsLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default);
+        let mut limits = ComprehensivePlatformLimits::default();
         limits.platform_id = PlatformId::MacOS;
         
         #[cfg(all(feature = "std", target_os = "macos"))]
@@ -252,7 +252,7 @@ impl PlatformLimitDiscoverer {
     /// Discover platform limits with caching
     pub fn discover(&mut self) -> Result<ComprehensivePlatformLimits, Error> {
         if let Some(ref limits) = self.cached_limits {
-            return Ok(limits.clone();
+            return Ok(limits.clone());
         }
         
         #[cfg(feature = "std")]
@@ -267,7 +267,7 @@ impl PlatformLimitDiscoverer {
             provider.discover_limits()?
         };
         
-        self.cached_limits = Some(limits.clone();
+        self.cached_limits = Some(limits.clone());
         
         Ok(limits)
     }
@@ -276,19 +276,19 @@ impl PlatformLimitDiscoverer {
     #[cfg(feature = "std")]
     fn create_provider(&self) -> Result<Box<dyn ComprehensiveLimitProvider>, Error> {
         #[cfg(target_os = "linux")]
-        return Ok(Box::new(LinuxLimitProvider;
+        return Ok(Box::new(LinuxLimitProvider));
         
         #[cfg(target_os = "nto")]  
-        return Ok(Box::new(QnxLimitProvider;
+        return Ok(Box::new(QnxLimitProvider));
         
         #[cfg(target_os = "macos")]
-        return Ok(Box::new(MacOsLimitProvider;
+        return Ok(Box::new(MacOsLimitProvider));
         
         #[cfg(not(any(target_os = "linux", target_os = "nto", target_os = "macos")))]
         return Ok(Box::new(EmbeddedLimitProvider::new(
             64 * 1024 * 1024, // 64MB default
             AsilLevel::QM,
-        );
+        )));
     }
     
     /// Create appropriate provider for current platform (no_std version)
@@ -325,8 +325,8 @@ mod tests {
     
     #[test]
     fn test_default_limits() {
-        let limits = ComprehensivePlatformLimits::default);
-        assert_eq!(limits.platform_id, PlatformId::Unknown;
+        let limits = ComprehensivePlatformLimits::default();
+        assert_eq!(limits.platform_id, PlatformId::Unknown);
         assert!(limits.max_total_memory > 0);
         assert!(limits.max_wasm_linear_memory > 0);
         assert!(limits.max_stack_bytes > 0);
@@ -335,37 +335,37 @@ mod tests {
     
     #[test]
     fn test_embedded_provider() {
-        let provider = EmbeddedLimitProvider::new(1024 * 1024, AsilLevel::AsilC;
+        let provider = EmbeddedLimitProvider::new(1024 * 1024, AsilLevel::AsilC);
         let limits = provider.discover_limits().unwrap();
         
-        assert_eq!(limits.platform_id, PlatformId::Embedded;
-        assert_eq!(limits.max_total_memory, 1024 * 1024;
+        assert_eq!(limits.platform_id, PlatformId::Embedded);
+        assert_eq!(limits.max_total_memory, 1024 * 1024);
         assert!(limits.max_wasm_linear_memory < limits.max_total_memory);
         assert!(limits.max_stack_bytes < limits.max_total_memory);
     }
     
     #[test]
     fn test_discoverer() {
-        let mut discoverer = PlatformLimitDiscoverer::new);
+        let mut discoverer = PlatformLimitDiscoverer::new();
         let limits1 = discoverer.discover().unwrap();
         let limits2 = discoverer.discover().unwrap();
         
         // Should be cached and identical
-        assert_eq!(limits1.platform_id, limits2.platform_id;
-        assert_eq!(limits1.max_total_memory, limits2.max_total_memory;
+        assert_eq!(limits1.platform_id, limits2.platform_id);
+        assert_eq!(limits1.max_total_memory, limits2.max_total_memory);
     }
     
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_meminfo() {
         let meminfo = "MemTotal:       16384000 kB\nMemFree:         8192000 kB\n";
-        let value = parse_meminfo_value(meminfo, "MemTotal:";
-        assert_eq!(value, Some(16384000;
+        let value = parse_meminfo_value(meminfo, "MemTotal:");
+        assert_eq!(value, Some(16384000));
         
-        let value = parse_meminfo_value(meminfo, "MemFree:";
-        assert_eq!(value, Some(8192000;
+        let value = parse_meminfo_value(meminfo, "MemFree:");
+        assert_eq!(value, Some(8192000));
         
-        let value = parse_meminfo_value(meminfo, "NonExistent:";
-        assert_eq!(value, None;
+        let value = parse_meminfo_value(meminfo, "NonExistent:");
+        assert_eq!(value, None);
     }
 }

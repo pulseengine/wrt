@@ -48,7 +48,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         capability.verify_access(&operation)?;
 
         if capability.max_allocation_size() < N {
-            return Err(Error::security_access_denied("Provider size exceeds capability limit";
+            return Err(Error::security_access_denied("Provider size exceeds capability limit"));
         }
 
         Ok(Self { capability, provider: None, _phantom: PhantomData })
@@ -61,7 +61,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
             use crate::{safe_managed_alloc, budget_aware_provider::CrateId};
             let provider = safe_managed_alloc!(N, CrateId::Foundation)
                 .map_err(|_| Error::memory_error("Failed to allocate provider"))?;
-            self.provider = Some(provider;
+            self.provider = Some(provider);
         }
 
         self.provider.as_mut().ok_or_else(|| Error::memory_error("Provider not initialized"))
@@ -78,7 +78,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         if offset + len > N {
             return Err(Error::runtime_execution_error(
                 "Read range exceeds provider capacity"
-            ;
+            ));
         }
 
         // Return a slice from the provider's buffer
@@ -97,12 +97,13 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write range exceeds provider capacity";
+                "Write range exceeds provider capacity"
+            ));
         }
 
         // Write to the provider's buffer
         let mut slice = provider.get_slice_mut(offset, data.len())?;
-        slice.data_mut()?.copy_from_slice(data;
+        slice.data_mut()?.copy_from_slice(data);
         Ok(())
     }
 
@@ -163,6 +164,6 @@ mod tests {
         let provider = MemoryFactory::create::<1024>(CrateId::Foundation).unwrap();
         
         // Test basic provider properties
-        assert_eq!(provider.size(), 1024;
+        assert_eq!(provider.size(), 1024);
     }
 }

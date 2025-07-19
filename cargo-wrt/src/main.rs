@@ -2010,7 +2010,7 @@ async fn cmd_verify(
     options.detailed_reports = detailed;
 
     // Load allowed unsafe configuration if it exists
-    let allowed_unsafe_path = build_system.workspace_root().join("allowed-unsafe.toml";
+    let allowed_unsafe_path = build_system.workspace_root().join("allowed-unsafe.toml");
     if allowed_unsafe_path.exists() {
         match wrt_build_core::verify::AllowedUnsafeConfig::load_from_file(&allowed_unsafe_path) {
             Ok(config) => {
@@ -2122,20 +2122,20 @@ async fn cmd_verify(
                         "{} Safety verification passed! ASIL level: {:?}",
                         "✅".bright_green(),
                         results.asil_level
-                    ;
+                    );
                 } else {
                     println!(
                         "Safety verification passed! ASIL level: {:?}",
                         results.asil_level
-                    ;
+                    );
                 }
             } else {
                 if use_colors {
-                    println!("{} Safety verification failed", "❌".bright_red();
+                    println!("{} Safety verification failed", "❌".bright_red());
                 } else {
-                    println!("Safety verification failed";
+                    println!("Safety verification failed");
                 }
-                anyhow::bail!("Safety verification failed";
+                anyhow::bail!("Safety verification failed");
             }
 
             if detailed {
@@ -2172,7 +2172,7 @@ async fn cmd_docs(
         println!(
             "📚 Generating multi-version documentation for: {:?}",
             versions
-        ;
+        );
         build_system
             .generate_multi_version_docs(versions)
             .context("Multi-version documentation generation failed")?;
@@ -2181,7 +2181,7 @@ async fn cmd_docs(
     }
 
     // Check documentation dependencies first
-    let tool_manager = ToolManager::new);
+    let tool_manager = ToolManager::new();
     let python_status = tool_manager.check_tool("python3");
     let venv_status = tool_manager.check_tool("python-venv");
 
@@ -2218,13 +2218,13 @@ async fn cmd_coverage(
         println!(
             "{} Running coverage analysis in best-effort mode...",
             "📊".bright_blue()
-        ;
+        );
         println!(
             "{} Will continue on errors and generate coverage for working components",
             "ℹ️".bright_yellow()
-        ;
+        );
     } else {
-        println!("{} Running coverage analysis...", "📊".bright_blue();
+        println!("{} Running coverage analysis...", "📊".bright_blue());
     }
 
     if best_effort {
@@ -2235,11 +2235,11 @@ async fn cmd_coverage(
                 "✅".bright_green()
             ),
             Err(e) => {
-                println!("{} Coverage analysis failed: {}", "⚠️".bright_yellow(), e;
+                println!("{} Coverage analysis failed: {}", "⚠️".bright_yellow(), e);
                 println!(
                     "{} Continuing in best-effort mode - partial results may be available",
                     "ℹ️".bright_yellow()
-                ;
+                );
             },
         }
     } else {
@@ -2251,7 +2251,7 @@ async fn cmd_coverage(
         println!(
             "{} Opening coverage report in browser...",
             "🌐".bright_blue()
-        ;
+        );
         // TODO: Implement browser opening
     }
 
@@ -2327,7 +2327,7 @@ async fn cmd_check(
         },
         OutputFormat::Human => {
             // Use traditional output for human format
-            output.progress("Running static analysis...";
+            output.progress("Running static analysis...");
 
             // Get diagnostics for auto-fix even in human mode
             if fix {
@@ -2335,23 +2335,23 @@ async fn cmd_check(
                     .run_static_analysis_with_diagnostics(strict)
                     .context("Static analysis failed")?;
 
-                output.progress("Auto-fixing issues...";
-                let autofix_manager = AutoFixManager::new(output.clone(), global.dry_run;
+                output.progress("Auto-fixing issues...");
+                let autofix_manager = AutoFixManager::new(output.clone(), global.dry_run);
                 let fix_result = autofix_manager.apply_fixes(&diagnostics)?;
 
                 if fix_result.has_fixes() {
-                    output.success(&format!("Applied {} fixes", fix_result.successful_fixes);
+                    output.success(&format!("Applied {} fixes", fix_result.successful_fixes));
                     if fix_result.failed_fixes > 0 {
-                        output.warning(&format!("{} fixes failed", fix_result.failed_fixes);
+                        output.warning(&format!("{} fixes failed", fix_result.failed_fixes));
                     }
                 } else {
-                    output.info("No auto-fixable issues found";
+                    output.info("No auto-fixable issues found");
                 }
             } else {
                 build_system.run_static_analysis().context("Static analysis failed")?;
             }
 
-            output.success("Static analysis completed";
+            output.success("Static analysis completed");
         },
     }
 
@@ -2365,22 +2365,22 @@ async fn cmd_no_std(
     detailed: bool,
     output: &OutputManager,
 ) -> Result<()> {
-    output.progress("Verifying no_std compatibility...";
+    output.progress("Verifying no_std compatibility...");
 
     if output.is_json_mode() {
         // Use diagnostic-based verification for structured output
         build_system.verify_no_std().context("no_std verification failed")?;
 
-        output.success("no_std verification completed successfully";
+        output.success("no_std verification completed successfully");
     } else {
         // Use traditional verification for human output
         match build_system.verify_no_std() {
             Ok(()) => output.success("no_std compatibility verified"),
             Err(e) => {
                 if continue_on_error {
-                    output.warning(&format!("no_std verification failed: {}", e);
+                    output.warning(&format!("no_std verification failed: {}", e));
                 } else {
-                    return Err(anyhow::anyhow!("no_std verification failed: {}", e);
+                    return Err(anyhow::anyhow!("no_std verification failed: {}", e));
                 }
             },
         }
@@ -2396,12 +2396,12 @@ async fn cmd_wrtd(
     test: bool,
     cross: bool,
 ) -> Result<()> {
-    println!("{} Building WRTD binaries...", "🏗️".bright_blue();
+    println!("{} Building WRTD binaries...", "🏗️".bright_blue());
 
     build_system.build_wrtd_binaries().context("WRTD build failed")?;
 
     if test {
-        println!("{} Testing WRTD binaries...", "🧪".bright_blue();
+        println!("{} Testing WRTD binaries...", "🧪".bright_blue());
         // TODO: Implement WRTD testing
     }
 
@@ -2410,66 +2410,66 @@ async fn cmd_wrtd(
 
 /// CI command implementation
 async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Result<()> {
-    println!("{} Running comprehensive CI checks...", "🤖".bright_blue();
+    println!("{} Running comprehensive CI checks...", "🤖".bright_blue());
 
-    let mut errors = Vec::new);
+    let mut errors = Vec::new();
 
     // 1. Build
-    println!("  {} Building...", "🔨".bright_cyan();
+    println!("  {} Building...", "🔨".bright_cyan());
     if let Err(e) = build_system.build_all() {
-        errors.push(format!("Build failed: {}", e);
+        errors.push(format!("Build failed: {}", e));
         if fail_fast {
-            anyhow::bail!("Build failed: {}", e;
+            anyhow::bail!("Build failed: {}", e);
         }
     }
 
     // 2. Tests
-    println!("  {} Testing...", "🧪".bright_cyan();
+    println!("  {} Testing...", "🧪".bright_cyan());
     if let Err(e) = build_system.run_tests() {
-        errors.push(format!("Tests failed: {}", e);
+        errors.push(format!("Tests failed: {}", e));
         if fail_fast {
-            anyhow::bail!("Tests failed: {}", e;
+            anyhow::bail!("Tests failed: {}", e);
         }
     }
 
     // 3. Static analysis
-    println!("  {} Static analysis...", "🔍".bright_cyan();
+    println!("  {} Static analysis...", "🔍".bright_cyan());
     if let Err(e) = build_system.run_static_analysis() {
-        errors.push(format!("Static analysis failed: {}", e);
+        errors.push(format!("Static analysis failed: {}", e));
         if fail_fast {
-            anyhow::bail!("Static analysis failed: {}", e;
+            anyhow::bail!("Static analysis failed: {}", e);
         }
     }
 
     // 4. Safety verification
-    println!("  {} Safety verification...", "🛡️".bright_cyan();
+    println!("  {} Safety verification...", "🛡️".bright_cyan());
     if let Err(e) = build_system.verify_safety() {
-        errors.push(format!("Safety verification failed: {}", e);
+        errors.push(format!("Safety verification failed: {}", e));
         if fail_fast {
-            anyhow::bail!("Safety verification failed: {}", e;
+            anyhow::bail!("Safety verification failed: {}", e);
         }
     }
 
     // 5. Advanced tests
-    println!("  {} Advanced tests...", "🧪".bright_cyan();
+    println!("  {} Advanced tests...", "🧪".bright_cyan());
     if let Err(e) = build_system.run_advanced_tests() {
-        errors.push(format!("Advanced tests failed: {}", e);
+        errors.push(format!("Advanced tests failed: {}", e));
         if fail_fast {
-            anyhow::bail!("Advanced tests failed: {}", e;
+            anyhow::bail!("Advanced tests failed: {}", e);
         }
     }
 
     // 6. Integrity checks
-    println!("  {} Integrity checks...", "🔒".bright_cyan();
+    println!("  {} Integrity checks...", "🔒".bright_cyan());
     if let Err(e) = build_system.run_integrity_checks() {
-        errors.push(format!("Integrity checks failed: {}", e);
+        errors.push(format!("Integrity checks failed: {}", e));
         if fail_fast {
-            anyhow::bail!("Integrity checks failed: {}", e;
+            anyhow::bail!("Integrity checks failed: {}", e);
         }
     }
 
     if errors.is_empty() {
-        println!("{} All CI checks passed!", "✅".bright_green();
+        println!("{} All CI checks passed!", "✅".bright_green());
         Ok(())
     } else {
         if json {
@@ -2477,15 +2477,15 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
                 "status": "failed",
                 "errors": errors,
                 "timestamp": chrono::Utc::now().to_rfc3339()
-            };
-            println!("{}", serde_json::to_string_pretty(&report)?;
+            });
+            println!("{}", serde_json::to_string_pretty(&report)?);
         } else {
-            println!("{} CI checks failed:", "❌".bright_red();
+            println!("{} CI checks failed:", "❌".bright_red());
             for error in &errors {
-                println!("  - {}", error;
+                println!("  - {}", error);
             }
         }
-        anyhow::bail!("{} errors in CI checks", errors.len();
+        anyhow::bail!("{} errors in CI checks", errors.len());
     }
 }
 
@@ -2497,47 +2497,47 @@ async fn cmd_clean(build_system: &BuildSystem, all: bool, global: &mut GlobalArg
     };
 
     let output = &global.output;
-    output.progress("Cleaning build artifacts...";
+    output.progress("Cleaning build artifacts...");
 
-    let workspace_root = build_system.workspace_root);
+    let workspace_root = build_system.workspace_root();
 
     if all {
         // Remove all target directories
-        let target_dir = workspace_root.join("target";
+        let target_dir = workspace_root.join("target");
         if target_dir.exists() {
             std::fs::remove_dir_all(&target_dir).context("Failed to remove target directory")?;
-            output.indent(&format!("Removed {}", target_dir.display());
+            output.indent(&format!("Removed {}", target_dir.display()));
         }
 
         // Remove cargo-wrt target if it exists
-        let cargo_wrt_target = workspace_root.join("cargo-wrt").join("target";
+        let cargo_wrt_target = workspace_root.join("cargo-wrt").join("target");
         if cargo_wrt_target.exists() {
             std::fs::remove_dir_all(&cargo_wrt_target)
                 .context("Failed to remove cargo-wrt target directory")?;
-            output.indent(&format!("Removed {}", cargo_wrt_target.display());
+            output.indent(&format!("Removed {}", cargo_wrt_target.display()));
         }
 
         // Remove wrt-build-core target if it exists
-        let build_core_target = workspace_root.join("wrt-build-core").join("target";
+        let build_core_target = workspace_root.join("wrt-build-core").join("target");
         if build_core_target.exists() {
             std::fs::remove_dir_all(&build_core_target)
                 .context("Failed to remove wrt-build-core target directory")?;
-            output.indent(&format!("Removed {}", build_core_target.display());
+            output.indent(&format!("Removed {}", build_core_target.display()));
         }
     } else {
         // Standard cargo clean
-        let mut cmd = process::Command::new("cargo";
-        cmd.arg("clean").current_dir(workspace_root;
+        let mut cmd = process::Command::new("cargo");
+        cmd.arg("clean").current_dir(workspace_root);
 
         let command_output =
             cmd.output().context("Failed to run cargo clean - is cargo installed?")?;
 
         if !command_output.status.success() {
-            return Err(build_errors::compilation_failed("cargo clean failed").into();
+            return Err(build_errors::compilation_failed("cargo clean failed").into());
         }
     }
 
-    output.success("Clean completed";
+    output.success("Clean completed");
     Ok(())
 }
 
@@ -2550,18 +2550,18 @@ async fn cmd_verify_matrix(
 ) -> Result<()> {
     use wrt_build_core::matrix::MatrixVerifier;
 
-    let verifier = MatrixVerifier::new(verbose;
+    let verifier = MatrixVerifier::new(verbose);
     let results = verifier.run_verification()?;
 
-    verifier.print_summary(&results;
+    verifier.print_summary(&results);
 
     if report {
-        let output_path = std::path::Path::new(&output_dir;
+        let output_path = std::path::Path::new(&output_dir);
         verifier.generate_report(&results, output_path)?;
     }
 
     if !results.all_passed {
-        anyhow::bail!("Build matrix verification failed";
+        anyhow::bail!("Build matrix verification failed");
     }
 
     Ok(())
@@ -2576,14 +2576,14 @@ async fn cmd_simulate_ci(
     use wrt_build_core::ci::CiSimulator;
 
     let workspace_root = build_system.workspace_root().to_path_buf();
-    let simulator = CiSimulator::new(workspace_root, verbose;
+    let simulator = CiSimulator::new(workspace_root, verbose);
 
     let results = simulator.run_simulation().context("CI simulation failed")?;
 
-    simulator.print_summary(&results;
+    simulator.print_summary(&results);
 
     if !results.overall_passed {
-        anyhow::bail!("CI simulation found issues that need to be addressed";
+        anyhow::bail!("CI simulation found issues that need to be addressed");
     }
 
     Ok(())
@@ -2712,7 +2712,7 @@ async fn cmd_validate(
     }
 
     if any_failed {
-        anyhow::bail!("Validation checks failed";
+        anyhow::bail!("Validation checks failed");
     }
 
     Ok(())
@@ -2743,8 +2743,8 @@ async fn cmd_setup(
         println!("{} Checking tool availability...", "🔍".bright_cyan();
 
         use wrt_build_core::tools::ToolManager;
-        let tool_manager = ToolManager::new);
-        tool_manager.print_tool_status);
+        let tool_manager = ToolManager::new();
+        tool_manager.print_tool_status();
         println!();
 
         if check && !all && !hooks && !install {
@@ -2757,10 +2757,10 @@ async fn cmd_setup(
         println!("{} Installing optional tools...", "💿".bright_cyan();
 
         use wrt_build_core::tools::ToolManager;
-        let tool_manager = ToolManager::new);
+        let tool_manager = ToolManager::new();
 
         if let Err(e) = tool_manager.install_all_needed_tools() {
-            println!("    ⚠️ Some tools failed to install: {}", e;
+            println!("    ⚠️ Some tools failed to install: {}", e);
         }
 
         println!();
@@ -2784,14 +2784,14 @@ async fn cmd_setup(
         let output = git_cmd.output().context("Failed to configure git hooks")?;
 
         if output.status.success() {
-            println!("{} Git hooks configured successfully!", "✅".bright_green();
-            println!("  Pre-commit hook will prevent test files in src/ directories";
+            println!("{} Git hooks configured successfully!", "✅".bright_green());
+            println!("  Pre-commit hook will prevent test files in src/ directories");
             println!();
-            println!("  To bypass hooks temporarily (not recommended), use:";
-            println!("    git commit --no-verify";
+            println!("  To bypass hooks temporarily (not recommended), use:");
+            println!("    git commit --no-verify");
         } else {
-            let stderr = String::from_utf8_lossy(&output.stderr;
-            anyhow::bail!("Failed to configure git hooks: {}", stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Failed to configure git hooks: {}", stderr);
         }
     }
 
@@ -2800,15 +2800,15 @@ async fn cmd_setup(
             "{} No setup options specified. Available options:",
             "ℹ️".bright_blue()
         ;
-        println!("  --check    Check status of all tools";
-        println!("  --hooks    Setup git hooks";
+        println!("  --check    Check status of all tools");
+        println!("  --hooks    Setup git hooks");
         println!("  --install  Install optional tools (cargo-fuzz, kani-verifier)";
         println!("  --all      Do everything (check + hooks + install)";
         println!();
-        println!("Examples:";
-        println!("  cargo-wrt setup --check";
-        println!("  cargo-wrt setup --install";
-        println!("  cargo-wrt setup --all";
+        println!("Examples:");
+        println!("  cargo-wrt setup --check");
+        println!("  cargo-wrt setup --install");
+        println!("  cargo-wrt setup --all");
     }
 
     Ok(())
@@ -2857,14 +2857,14 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                 config.get_managed_tools().len()
             ;
             println!();
-            println!("  💡 Edit the file to customize tool versions and requirements";
-            println!("  🔄 Run 'cargo-wrt tool-versions check' to validate";
+            println!("  💡 Edit the file to customize tool versions and requirements");
+            println!("  🔄 Run 'cargo-wrt tool-versions check' to validate");
         },
 
         ToolVersionCommand::Check { verbose, tool } => {
-            println!("{} Checking tool versions...", "🔍".bright_blue();
+            println!("{} Checking tool versions...", "🔍".bright_blue());
 
-            let tool_manager = ToolManager::new);
+            let tool_manager = ToolManager::new();
 
             if let Some(tool_name) = tool {
                 // Check specific tool
@@ -2876,12 +2876,12 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                         if status.available { "✅ Yes" } else { "❌ No" }
                     ;
                     if let Some(version) = &status.version {
-                        println!("  Version: {}", version;
+                        println!("  Version: {}", version);
                     }
                     if let Some(error) = &status.error {
                         println!("  Error: {}", error.bright_red();
                     }
-                    println!("  Version Status: {:?}", status.version_status;
+                    println!("  Version Status: {:?}", status.version_status);
                     println!(
                         "  Needs Action: {}",
                         if status.needs_action { "Yes" } else { "No" }
@@ -2920,19 +2920,19 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
             }
 
             if tool.is_some() {
-                println!("  🚧 Updating specific tools is not yet implemented";
+                println!("  🚧 Updating specific tools is not yet implemented");
                 println!(
                     "  💡 For now, please edit {} manually",
                     config_path.display()
                 ;
             } else if all {
-                println!("  🚧 Auto-updating all tools is not yet implemented";
+                println!("  🚧 Auto-updating all tools is not yet implemented");
                 println!(
                     "  💡 For now, please edit {} manually",
                     config_path.display()
                 ;
             } else {
-                println!("  ℹ️ Specify --tool <name> or --all to update versions";
+                println!("  ℹ️ Specify --tool <name> or --all to update versions");
                 println!("  📝 Current file: {}", config_path.display();
             }
         },
@@ -2959,15 +2959,15 @@ async fn cmd_fuzz(
         match build_system.list_fuzz_targets() {
             Ok(targets) => {
                 if targets.is_empty() {
-                    println!("  No fuzz targets found. Run 'cargo fuzz init' to set up fuzzing.";
+                    println!("  No fuzz targets found. Run 'cargo fuzz init' to set up fuzzing.");
                 } else {
                     for target in targets {
-                        println!("  - {}", target;
+                        println!("  - {}", target);
                     }
                 }
             },
             Err(e) => {
-                println!("  Failed to list fuzz targets: {}", e;
+                println!("  Failed to list fuzz targets: {}", e);
             },
         }
         return Ok(());
@@ -3004,7 +3004,7 @@ async fn cmd_fuzz(
                     results.crashed_targets.len()
                 ;
                 for target in &results.crashed_targets {
-                    println!("    - {}", target;
+                    println!("    - {}", target);
                 }
             }
         },
@@ -3031,11 +3031,11 @@ async fn cmd_test_features(
     }
 
     if combinations {
-        println!("  Testing all feature combinations";
+        println!("  Testing all feature combinations");
     }
 
     if groups {
-        println!("  Testing predefined feature groups";
+        println!("  Testing predefined feature groups");
     }
 
     // TODO: Implement feature testing through wrt-build-core
@@ -3058,7 +3058,7 @@ async fn cmd_testsuite(
     test_timeout_ms: u64,
     global: &mut GlobalArgs,
 ) -> Result<()> {
-    eprintln!("DEBUG: cmd_testsuite called with run_wast={}", run_wast;
+    eprintln!("DEBUG: cmd_testsuite called with run_wast={}", run_wast);
     if clean {
         println!("{} Cleaning extracted test files...", "🧹".bright_blue();
         // TODO: Implement cleaning through wrt-build-core
@@ -3071,7 +3071,7 @@ async fn cmd_testsuite(
             "📦".bright_blue()
         ;
         if let Some(wabt) = wabt_path {
-            println!("  Using WABT tools at: {}", wabt;
+            println!("  Using WABT tools at: {}", wabt);
         }
         // TODO: Implement extraction through wrt-build-core
     }
@@ -3088,19 +3088,19 @@ async fn cmd_testsuite(
             WastTestRunner,
         };
 
-        eprintln!("DEBUG: run_wast is true, starting WAST test suite...";
+        eprintln!("DEBUG: run_wast is true, starting WAST test suite...");
 
         // Initialize the memory system before running WAST tests
-        eprintln!("DEBUG: Initializing memory system...";
+        eprintln!("DEBUG: Initializing memory system...");
         // The memory system initialization is handled by wrt-build-core internally
         // No need to initialize it here as the WastEngine will do it when needed
-        eprintln!("DEBUG: Memory system initialization delegated to WastEngine";
+        eprintln!("DEBUG: Memory system initialization delegated to WastEngine");
 
         println!("{} Running WAST test suite...", "🧪".bright_blue();
 
         let workspace_root = build_system.workspace_root);
-        eprintln!("DEBUG: workspace_root = {:?}", workspace_root;
-        eprintln!("DEBUG: wast_dir = {:?}", wast_dir;
+        eprintln!("DEBUG: workspace_root = {:?}", workspace_root);
+        eprintln!("DEBUG: wast_dir = {:?}", wast_dir);
         let test_directory = workspace_root.join(&wast_dir;
 
         if !test_directory.exists() {
@@ -3126,10 +3126,10 @@ async fn cmd_testsuite(
         };
 
         // Create and run WAST test runner
-        eprintln!("DEBUG: About to create WastTestRunner with config...";
+        eprintln!("DEBUG: About to create WastTestRunner with config...");
         let mut runner =
             WastTestRunner::new(config).context("Failed to create WAST test runner")?;
-        eprintln!("DEBUG: WastTestRunner created successfully";
+        eprintln!("DEBUG: WastTestRunner created successfully");
         let start_time = std::time::Instant::now);
 
         match runner.run_all_tests() {
@@ -3164,7 +3164,7 @@ async fn cmd_testsuite(
                     OutputFormat::Human => {
                         // Human-readable output
                         let summary = runner.generate_summary(&results;
-                        println!("{}", summary;
+                        println!("{}", summary);
 
                         if per_assertion {
                             println!("\n{} Per-assertion Results:", "📊".bright_cyan();
@@ -3255,15 +3255,15 @@ async fn cmd_testsuite(
             "{} No testsuite operations specified. Available options:",
             "ℹ️".bright_blue()
         ;
-        println!("  --extract      Extract test modules from .wast files";
-        println!("  --validate     Run validation tests";
-        println!("  --clean        Clean extracted test files";
-        println!("  --run-wast     Run WAST test suite";
+        println!("  --extract      Extract test modules from .wast files");
+        println!("  --validate     Run validation tests");
+        println!("  --clean        Clean extracted test files");
+        println!("  --run-wast     Run WAST test suite");
         println!();
-        println!("Examples:";
-        println!("  cargo-wrt testsuite --run-wast";
-        println!("  cargo-wrt testsuite --run-wast --wast-filter \"simd\"";
-        println!("  cargo-wrt testsuite --run-wast --per-assertion --output json";
+        println!("Examples:");
+        println!("  cargo-wrt testsuite --run-wast");
+        println!("  cargo-wrt testsuite --run-wast --wast-filter \"simd\"");
+        println!("  cargo-wrt testsuite --run-wast --per-assertion --output json");
     }
 
     Ok(())
@@ -3332,15 +3332,15 @@ async fn cmd_requirements(
                         println!("{}", report.format_human();
 
                         if detailed {
-                            println!("\n📋 Detailed Requirements Status:";
-                            println!("─────────────────────────────────";
+                            println!("\n📋 Detailed Requirements Status:");
+                            println!("─────────────────────────────────");
 
                             for req in &registry.requirements {
                                 println!("\n{} {}", req.id, req.title.bright_cyan();
-                                println!("  Type: {}", req.req_type;
-                                println!("  ASIL: {}", req.asil_level;
-                                println!("  Status: {}", req.status;
-                                println!("  Coverage: {}", req.coverage;
+                                println!("  Type: {}", req.req_type);
+                                println!("  ASIL: {}", req.asil_level);
+                                println!("  Status: {}", req.status);
+                                println!("  Coverage: {}", req.coverage);
                                 println!("  Score: {:.1}%", req.compliance_score() * 100.0;
                             }
                         }
@@ -3357,8 +3357,8 @@ async fn cmd_requirements(
                     },
                     OutputFormat::Human => {
                         println!("{} Requirements Verification Report", "📊".bright_blue();
-                        println!("  Total Requirements: {}", result.total_requirements;
-                        println!("  Verified: {}", result.verified_requirements;
+                        println!("  Total Requirements: {}", result.total_requirements);
+                        println!("  Verified: {}", result.verified_requirements);
                         println!(
                             "  Certification Readiness: {:.1}%",
                             result.certification_readiness
@@ -3367,14 +3367,14 @@ async fn cmd_requirements(
                         if !result.missing_files.is_empty() {
                             println!("\n{} Missing Files:", "⚠️ ".yellow();
                             for file in &result.missing_files {
-                                println!("  - {}", file;
+                                println!("  - {}", file);
                             }
                         }
 
                         if !result.incomplete_requirements.is_empty() {
                             println!("\n{} Incomplete Requirements:", "❌".red();
                             for req in &result.incomplete_requirements {
-                                println!("  - {}", req;
+                                println!("  - {}", req);
                             }
                         }
                     },
@@ -3402,16 +3402,16 @@ async fn cmd_requirements(
                     println!("{}", report.format_human();
 
                     if by_asil {
-                        println!("\n📊 Compliance by ASIL Level:";
-                        println!("───────────────────────────";
+                        println!("\n📊 Compliance by ASIL Level:");
+                        println!("───────────────────────────");
                         for (asil, score) in &report.asil_compliance {
-                            println!("  {}: {:.1}%", asil, score * 100.0;
+                            println!("  {}: {:.1}%", asil, score * 100.0);
                         }
                     }
 
                     if by_type {
-                        println!("\n📊 Compliance by Requirement Type:";
-                        println!("──────────────────────────────────";
+                        println!("\n📊 Compliance by Requirement Type:");
+                        println!("──────────────────────────────────");
                         for req_type in &[
                             RequirementType::Functional,
                             RequirementType::Performance,
@@ -3427,7 +3427,7 @@ async fn cmd_requirements(
                                 let score: f64 =
                                     type_reqs.iter().map(|r| r.compliance_score()).sum::<f64>()
                                         / type_reqs.len() as f64;
-                                println!("  {}: {:.1}%", req_type, score * 100.0;
+                                println!("  {}: {:.1}%", req_type, score * 100.0);
                             }
                         }
                     }
@@ -3557,7 +3557,7 @@ async fn cmd_requirements(
                     output_file
                 ;
             } else {
-                println!("{}", matrix;
+                println!("{}", matrix);
             }
             Ok(())
         },
@@ -3580,7 +3580,7 @@ async fn cmd_requirements(
                 if !missing_impl.is_empty() {
                     println!("{} Requirements Missing Implementation:", "⚠️ ".yellow();
                     for req in missing_impl {
-                        println!("  - {} {}", req.id, req.title;
+                        println!("  - {} {}", req.id, req.title);
                     }
                     println!();
                 }
@@ -3603,7 +3603,7 @@ async fn cmd_requirements(
                 if !missing_docs.is_empty() {
                     println!("{} Requirements Missing Documentation:", "⚠️ ".yellow();
                     for req in missing_docs {
-                        println!("  - {} {}", req.id, req.title;
+                        println!("  - {} {}", req.id, req.title);
                     }
                 }
             }
@@ -3615,10 +3615,10 @@ async fn cmd_requirements(
             interactive,
         } => {
             println!("{} SCORE Methodology Demo", "🎓".bright_blue();
-            println!("════════════════════════";
+            println!("════════════════════════");
 
             if interactive {
-                println!("Interactive demo not yet implemented";
+                println!("Interactive demo not yet implemented");
             } else {
                 // Create demo directory
                 std::fs::create_dir_all(&output_dir)?;
@@ -3628,14 +3628,14 @@ async fn cmd_requirements(
                 Requirements::init_sample(&req_path)?;
 
                 println!("✅ Created sample requirements at {}", req_path.display();
-                println!("\n📚 SCORE Methodology Overview:";
-                println!("  - Safety requirements with ASIL levels";
-                println!("  - Multiple verification methods";
-                println!("  - Coverage level tracking";
-                println!("  - Compliance scoring";
-                println!("  - Traceability to implementation, tests, and docs";
+                println!("\n📚 SCORE Methodology Overview:");
+                println!("  - Safety requirements with ASIL levels");
+                println!("  - Multiple verification methods");
+                println!("  - Coverage level tracking");
+                println!("  - Compliance scoring");
+                println!("  - Traceability to implementation, tests, and docs");
 
-                println!("\n🚀 Try these commands:";
+                println!("\n🚀 Try these commands:");
                 println!(
                     "  cargo-wrt requirements verify --enhanced --path {}",
                     req_path.display()
@@ -3693,10 +3693,10 @@ async fn cmd_wasm(
                     verifier.print_results(&result;
 
                     if detailed && !result.errors.is_empty() {
-                        println!("\n🔍 Detailed Error Analysis:";
-                        println!("───────────────────────────";
+                        println!("\n🔍 Detailed Error Analysis:");
+                        println!("───────────────────────────");
                         for (i, error) in result.errors.iter().enumerate() {
-                            println!("  {}. {}", i + 1, error;
+                            println!("  {}. {}", i + 1, error);
                         }
                     }
                 },
@@ -3706,8 +3706,8 @@ async fn cmd_wasm(
             if !result.errors.is_empty() {
                 let diagnostics = verifier.to_diagnostics(&result;
                 if cli.verbose {
-                    println!("\n📋 Diagnostic Output:";
-                    println!("───────────────────";
+                    println!("\n📋 Diagnostic Output:");
+                    println!("───────────────────");
                     let formatter =
                         wrt_build_core::formatters::FormatterFactory::create(*output_format;
                     println!("{}", formatter.format_collection(&diagnostics);
@@ -3747,11 +3747,11 @@ async fn cmd_wasm(
                 OutputFormat::Human => {
                     if builtins_only {
                         if result.builtin_imports.is_empty() {
-                            println!("No builtin imports found";
+                            println!("No builtin imports found");
                         } else {
                             println!("🔧 Builtin Imports ({}):", result.builtin_imports.len();
                             for builtin in &result.builtin_imports {
-                                println!("  - wasi_builtin::{}", builtin;
+                                println!("  - wasi_builtin::{}", builtin);
                             }
                         }
                     } else {
@@ -3762,7 +3762,7 @@ async fn cmd_wasm(
                             .collect();
 
                         if filtered_imports.is_empty() {
-                            println!("No imports found";
+                            println!("No imports found");
                         } else {
                             println!("📥 Imports ({}):", filtered_imports.len();
                             for import in filtered_imports {
@@ -3801,7 +3801,7 @@ async fn cmd_wasm(
                 },
                 OutputFormat::Human => {
                     if filtered_exports.is_empty() {
-                        println!("No exports found";
+                        println!("No exports found");
                     } else {
                         println!("📤 Exports ({}):", filtered_exports.len();
                         for export in filtered_exports {
@@ -3819,11 +3819,11 @@ async fn cmd_wasm(
             summary,
             performance,
         } => {
-            let mut wasm_paths = Vec::new);
+            let mut wasm_paths = Vec::new();
 
             // Expand glob patterns
             for pattern in &files {
-                let full_pattern = workspace_root.join(pattern;
+                let full_pattern = workspace_root.join(pattern);
                 match glob::glob(&full_pattern.to_string_lossy()) {
                     Ok(paths) => {
                         for path in paths {
@@ -3851,8 +3851,8 @@ async fn cmd_wasm(
                     println!("{}", serde_json::to_string_pretty(&results)?;
                 },
                 OutputFormat::Human => {
-                    println!("🔍 WebAssembly Module Analysis";
-                    println!("════════════════════════════";
+                    println!("🔍 WebAssembly Module Analysis");
+                    println!("════════════════════════════");
                     println!("Analyzed {} modules\n", results.len();
 
                     let mut total_valid = 0;
@@ -3869,8 +3869,8 @@ async fn cmd_wasm(
                             ;
                             if performance {
                                 if let Some(perf) = result.performance.as_ref() {
-                                    println!("  Parse time: {}ms", perf.parse_time_ms;
-                                    println!("  Size: {} bytes", perf.module_size;
+                                    println!("  Parse time: {}ms", perf.parse_time_ms);
+                                    println!("  Size: {} bytes", perf.module_size);
                                 }
                             }
                             println!(
@@ -3895,12 +3895,12 @@ async fn cmd_wasm(
                     }
 
                     if summary {
-                        println!("📊 Summary:";
-                        println!("─────────";
+                        println!("📊 Summary:");
+                        println!("─────────");
                         println!("  Valid modules: {}/{}", total_valid, results.len();
-                        println!("  Total imports: {}", total_imports;
-                        println!("  Total exports: {}", total_exports;
-                        println!("  Total builtins: {}", total_builtins;
+                        println!("  Total imports: {}", total_imports);
+                        println!("  Total exports: {}", total_exports);
+                        println!("  Total builtins: {}", total_builtins);
                     }
                 },
             }
@@ -4025,7 +4025,7 @@ async fn cmd_safety(
                             "  Total Requirements: {}",
                             compliance_result.total_requirements
                         ;
-                        println!("  Verified: {}", compliance_result.verified_requirements;
+                        println!("  Verified: {}", compliance_result.verified_requirements);
                         println!(
                             "  Compliance: {:.1}%",
                             compliance_result.compliance_percentage
@@ -4083,13 +4083,13 @@ async fn cmd_safety(
             // Load test results if provided
             if let Some(test_file) = test_results {
                 // TODO: Implement test results loading from JSON
-                println!("Loading test results from: {}", test_file;
+                println!("Loading test results from: {}", test_file);
             }
 
             // Load coverage data if provided
             if let Some(coverage_file) = coverage_data {
                 // TODO: Implement coverage data loading from JSON
-                println!("Loading coverage data from: {}", coverage_file;
+                println!("Loading coverage data from: {}", coverage_file);
             }
 
             // Check certification readiness
@@ -4134,14 +4134,14 @@ async fn cmd_safety(
                     if !readiness.blocking_issues.is_empty() {
                         println!("\n{} Blocking Issues:", "🚫".bright_red();
                         for issue in &readiness.blocking_issues {
-                            println!("  • {}", issue;
+                            println!("  • {}", issue);
                         }
                     }
 
                     if !readiness.recommendations.is_empty() {
                         println!("\n{} Recommendations:", "💡".bright_blue();
                         for rec in &readiness.recommendations {
-                            println!("  • {}", rec;
+                            println!("  • {}", rec);
                         }
                     }
                 },
@@ -4340,7 +4340,7 @@ async fn cmd_safety(
                     output_path.display()
                 ;
             } else {
-                println!("{}", report_content;
+                println!("{}", report_content);
             }
 
             // Also output diagnostics
@@ -4436,7 +4436,7 @@ async fn cmd_safety(
 
             let coverage_data = if let Some(file) = coverage_file {
                 // TODO: Load from JSON file
-                println!("Loading coverage data from: {}", file;
+                println!("Loading coverage data from: {}", file);
                 CoverageData::new()
             } else {
                 CoverageData {
@@ -4448,8 +4448,8 @@ async fn cmd_safety(
             };
 
             println!("{} Coverage data updated:", "📊".bright_blue();
-            println!("  Line Coverage: {:.1}%", coverage_data.line_coverage;
-            println!("  Branch Coverage: {:.1}%", coverage_data.branch_coverage;
+            println!("  Line Coverage: {:.1}%", coverage_data.line_coverage);
+            println!("  Branch Coverage: {:.1}%", coverage_data.branch_coverage);
             println!(
                 "  Function Coverage: {:.1}%",
                 coverage_data.function_coverage
@@ -4556,11 +4556,11 @@ async fn cmd_safety(
             ;
 
             if interactive {
-                println!("🔄 Interactive demo mode not yet implemented";
+                println!("🔄 Interactive demo mode not yet implemented");
             }
 
             if certification {
-                println!("🏆 Certification workflow demo not yet implemented";
+                println!("🏆 Certification workflow demo not yet implemented");
             }
 
             println!("{} SCORE demo setup complete", "✅".bright_green();
@@ -4623,9 +4623,9 @@ async fn cmd_safety(
                             "\n{} Documentation Compliance Verification:",
                             "📚".bright_blue()
                         ;
-                        println!("  Total Requirements: {}", result.total_requirements;
-                        println!("  Compliant: {}", result.compliant_requirements;
-                        println!("  Compliance: {:.1}%", result.compliance_percentage;
+                        println!("  Total Requirements: {}", result.total_requirements);
+                        println!("  Compliant: {}", result.compliant_requirements);
+                        println!("  Compliance: {:.1}%", result.compliance_percentage);
                         println!(
                             "  Certification Ready: {}",
                             if result.is_certification_ready {
@@ -4825,7 +4825,7 @@ async fn cmd_safety(
                     output_path.display()
                 ;
             } else {
-                println!("{}", report_content;
+                println!("{}", report_content);
             }
 
             // Also output diagnostics

@@ -89,7 +89,7 @@ extern crate wrt_panic;
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     // Simple infinite loop for minimal panic handling
     loop {
-        core::hint::spin_loop);
+        core::hint::spin_loop();
     }
 }
 // Module declarations
@@ -340,7 +340,7 @@ mod tests {
     #[test]
     fn it_works() {
         // Basic sanity check test
-        assert_eq!(2 + 2, 4;
+        assert_eq!(2 + 2, 4);
     }
 
     #[test]
@@ -368,22 +368,22 @@ mod tests {
             .with_maximum_pages(100)
             .with_guard_pages(true)
             .with_memory_tagging(true)
-            .build);
+            .build();
 
         // Binary std/no_std choice
         // We can't test its settings without accessing private fields
-        assert_eq!(core::mem::size_of_val(&allocator) > 0, true;
+        assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
 
     #[cfg(all(feature = "platform-linux", target_os = "linux"))]
     #[test]
     fn test_linux_allocator_builder() {
         let allocator =
-            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build);
+            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build();
 
         // Binary std/no_std choice
         // We can't test its settings without accessing private fields
-        assert_eq!(core::mem::size_of_val(&allocator) > 0, true;
+        assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
 
     #[cfg(all(
@@ -398,20 +398,20 @@ mod tests {
             .with_maximum_pages(100)
             .with_guard_pages(true)
             .with_mte_mode(MteMode::Synchronous)
-            .build);
+            .build();
 
         // Binary std/no_std choice
         // We can't test its settings without accessing private fields
-        assert_eq!(core::mem::size_of_val(&allocator) > 0, true;
+        assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
 
     #[cfg(all(feature = "platform-linux", target_os = "linux"))]
     #[test]
     fn test_linux_futex_builder() {
-        let futex = LinuxFutexBuilder::new().with_initial_value(42).build);
+        let futex = LinuxFutexBuilder::new().with_initial_value(42).build();
 
         // Test that the futex was created successfully
-        assert_eq!(core::mem::size_of_val(&futex) > 0, true;
+        assert_eq!(core::mem::size_of_val(&futex) > 0, true);
     }
 
     #[cfg(feature = "platform-zephyr")]
@@ -421,28 +421,28 @@ mod tests {
             .with_maximum_pages(100)
             .with_memory_domains(true)
             .with_guard_regions(true)
-            .build);
+            .build();
 
         // Binary std/no_std choice
-        assert_eq!(core::mem::size_of_val(&allocator) > 0, true;
+        assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
 
     #[cfg(feature = "platform-zephyr")]
     #[test]
     fn test_zephyr_futex_builder() {
-        let futex = ZephyrFutexBuilder::new().with_initial_value(42).build);
+        let futex = ZephyrFutexBuilder::new().with_initial_value(42).build();
 
         // Test that the futex was created successfully
-        assert_eq!(core::mem::size_of_val(&futex) > 0, true;
+        assert_eq!(core::mem::size_of_val(&futex) > 0, true);
     }
 
     #[cfg(feature = "platform-zephyr")]
     #[test]
     fn test_zephyr_semaphore_futex() {
-        let futex = ZephyrSemaphoreFutex::new(0;
+        let futex = ZephyrSemaphoreFutex::new(0);
 
         // Test that the semaphore futex was created successfully
-        assert_eq!(core::mem::size_of_val(&futex) > 0, true;
+        assert_eq!(core::mem::size_of_val(&futex) > 0, true);
     }
 
     #[cfg(feature = "platform-tock")]
@@ -450,10 +450,10 @@ mod tests {
     fn test_tock_allocator_builder() {
         let builder = TockAllocatorBuilder::new()
             .with_maximum_pages(64)
-            .with_verification_level(VerificationLevel::Full;
+            .with_verification_level(VerificationLevel::Full);
 
-        assert_eq!(builder.maximum_pages, 64;
-        assert_eq!(builder.verification_level, VerificationLevel::Full;
+        assert_eq!(builder.maximum_pages, 64);
+        assert_eq!(builder.verification_level, VerificationLevel::Full);
     }
 
     #[cfg(feature = "platform-tock")]
@@ -461,7 +461,7 @@ mod tests {
     fn test_tock_futex_builder() {
         let futex = TockFutexBuilder::new().with_initial_value(123).with_ipc(true).build().unwrap();
 
-        assert_eq!(futex.load(), 123;
+        assert_eq!(futex.load(), 123);
     }
 
     #[test]
@@ -470,22 +470,22 @@ mod tests {
 
         // Test configuration creation for different paradigms
         let posix_config =
-            PlatformConfig::<paradigm::Posix>::new().with_max_pages(1024).with_guard_pages(true;
-        assert_eq!(posix_config.max_pages, 1024;
+            PlatformConfig::<paradigm::Posix>::new().with_max_pages(1024).with_guard_pages(true);
+        assert_eq!(posix_config.max_pages, 1024);
         assert!(posix_config.guard_pages);
 
         let security_config = PlatformConfig::<paradigm::SecurityFirst>::new()
             .with_max_pages(512)
             .with_static_allocation(64 * 1024)
-            .with_isolation_level(IsolationLevel::Hardware;
-        assert_eq!(security_config.max_pages, 512;
-        assert_eq!(security_config.static_allocation_size, Some(64 * 1024;
-        assert_eq!(security_config.isolation_level, Some(IsolationLevel::Hardware;
+            .with_isolation_level(IsolationLevel::Hardware);
+        assert_eq!(security_config.max_pages, 512);
+        assert_eq!(security_config.static_allocation_size, Some(64 * 1024));
+        assert_eq!(security_config.isolation_level, Some(IsolationLevel::Hardware));
 
         let realtime_config =
-            PlatformConfig::<paradigm::RealTime>::new().with_max_pages(256).with_rt_priority(10;
-        assert_eq!(realtime_config.max_pages, 256;
-        assert_eq!(realtime_config.rt_priority, Some(10;
+            PlatformConfig::<paradigm::RealTime>::new().with_max_pages(256).with_rt_priority(10);
+        assert_eq!(realtime_config.max_pages, 256);
+        assert_eq!(realtime_config.rt_priority, Some(10));
     }
 
     #[test]
@@ -493,7 +493,7 @@ mod tests {
         use crate::platform_abstraction::platform_select;
 
         // Test that we can create auto-selected platform
-        let _platform = platform_select::create_auto_platform);
+        let _platform = platform_select::create_auto_platform();
 
         // The actual type will depend on which features are enabled
         // This test mainly ensures the compilation works
@@ -503,14 +503,14 @@ mod tests {
     fn test_runtime_detection() {
         use crate::runtime_detection::PlatformDetector;
 
-        let mut detector = PlatformDetector::new);
+        let mut detector = PlatformDetector::new();
         let capabilities = detector.detect().unwrap();
 
         // Test that we can detect basic capabilities
         assert!(capabilities.memory.allocation_granularity > 0);
-        assert!(capabilities.supports_wasm_runtime();
+        assert!(capabilities.supports_wasm_runtime());
 
-        let paradigm = capabilities.recommended_paradigm);
+        let paradigm = capabilities.recommended_paradigm();
         assert!(paradigm == "SecurityFirst" || paradigm == "RealTime" || paradigm == "Posix");
 
         // Test caching works
@@ -518,7 +518,7 @@ mod tests {
         assert_eq!(
             capabilities.memory.allocation_granularity,
             capabilities2.memory.allocation_granularity
-        ;
+        );
     }
 
     #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
@@ -529,9 +529,9 @@ mod tests {
             .max_pages(512)
             .use_dedicated_partition(true)
             .enable_guard_pages(true)
-            .build);
+            .build();
 
-        assert!(allocator.is_ok();
+        assert!(allocator.is_ok());
     }
 
     #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
@@ -539,9 +539,9 @@ mod tests {
     fn test_vxworks_futex_builder() {
         let futex = VxWorksFutexBuilder::new(VxWorksContext::Rtp)
             .initial_value(42)
-            .build);
+            .build();
 
-        assert!(futex.is_ok();
+        assert!(futex.is_ok());
     }
 
     #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
@@ -556,8 +556,8 @@ mod tests {
             ..Default::default()
         };
 
-        assert_eq!(thread_config.stack_size, 16384;
-        assert_eq!(thread_config.name.as_ref().unwrap(), "test_thread";
+        assert_eq!(thread_config.stack_size, 16384);
+        assert_eq!(thread_config.name.as_ref().unwrap(), "test_thread");
         assert!(thread_config.floating_point);
         assert!(thread_config.detached);
     }

@@ -12,26 +12,26 @@ use crate::WrtResult;
 
 // Mutually exclusive features
 #[cfg(all(feature = "dynamic-allocation", feature = "no-runtime-allocation"))]
-compile_error!("Cannot enable both dynamic-allocation and no-runtime-allocation";
+compile_error!("Cannot enable both dynamic-allocation and no-runtime-allocation");
 
 #[cfg(all(feature = "static-allocation", feature = "dynamic-allocation"))]
-compile_error!("Cannot enable both static-allocation and dynamic-allocation";
+compile_error!("Cannot enable both static-allocation and dynamic-allocation");
 
 // Feature dependencies
 #[cfg(all(feature = "verified-static-allocation", not(feature = "formal-verification-required")))]
-compile_error!("verified-static-allocation requires formal-verification-required";
+compile_error!("verified-static-allocation requires formal-verification-required");
 
 #[cfg(all(feature = "mathematical-proofs", not(feature = "compile-time-memory-layout")))]
-compile_error!("mathematical-proofs requires compile-time-memory-layout";
+compile_error!("mathematical-proofs requires compile-time-memory-layout");
 
 #[cfg(all(feature = "hardware-isolation", not(feature = "component-isolation")))]
-compile_error!("hardware-isolation requires component-isolation";
+compile_error!("hardware-isolation requires component-isolation");
 
 #[cfg(all(feature = "component-isolation", not(feature = "memory-isolation")))]
-compile_error!("component-isolation requires memory-isolation";
+compile_error!("component-isolation requires memory-isolation");
 
 #[cfg(all(feature = "memory-isolation", not(feature = "memory-budget-enforcement")))]
-compile_error!("memory-isolation requires memory-budget-enforcement";
+compile_error!("memory-isolation requires memory-budget-enforcement");
 
 /// Memory allocation strategies based on enabled features
 pub mod allocation {
@@ -54,7 +54,7 @@ pub mod allocation {
                 compile_time_assert!(
                     $size <= 65536,
                     "ASIL-A/B: allocation size exceeds 64KB limit"
-                ;
+                );
                 crate::safe_managed_alloc!($size, $crate_id)
             }
 
@@ -74,7 +74,7 @@ pub mod allocation {
                 const_assert!(
                     $size.is_power_of_two(),
                     "ASIL-D: allocation size must be power of 2"
-                ;
+                );
                 crate::safe_managed_alloc!($size, $crate_id)
             }
         }};
@@ -113,7 +113,7 @@ pub mod allocation {
         }
     }
 
-    pub const MEMORY_STRATEGY: u8 = get_memory_strategy);
+    pub const MEMORY_STRATEGY: u8 = get_memory_strategy();
 }
 
 /// Safety standard mapping
@@ -287,7 +287,7 @@ macro_rules! compile_time_assert {
     ($condition:expr, $message:expr) => {
         const _: () = {
             if !$condition {
-                panic!($message;
+                panic!($message);
             }
         };
     };
@@ -306,22 +306,22 @@ mod tests {
 
     #[test]
     fn test_current_safety_level() {
-        let level = runtime::current_safety_level);
+        let level = runtime::current_safety_level();
         assert!(!level.is_empty(), "Safety level should be determined");
 
         // Verify that the detected level makes sense
         match level {
             "maximum-safety" => {
-                assert!(runtime::has_capability("verified-static-allocation");
+                assert!(runtime::has_capability("verified-static-allocation"));
             }
             "static-memory-safety" => {
-                assert!(runtime::has_capability("static-allocation");
+                assert!(runtime::has_capability("static-allocation"));
             }
             "bounded-collections" => {
-                assert!(runtime::has_capability("bounded-collections");
+                assert!(runtime::has_capability("bounded-collections"));
             }
             "dynamic-allocation" => {
-                assert!(runtime::has_capability("dynamic-allocation");
+                assert!(runtime::has_capability("dynamic-allocation"));
             }
             _ => panic!("Unknown safety level: {}", level),
         }
@@ -329,8 +329,8 @@ mod tests {
 
     #[test]
     fn test_max_allocation_size() {
-        let max_size = runtime::max_allocation_size);
-        let level = runtime::current_safety_level);
+        let max_size = runtime::max_allocation_size();
+        let level = runtime::current_safety_level();
 
         match level {
             "maximum-safety" => assert_eq!(max_size, 16384),
@@ -349,6 +349,6 @@ mod tests {
         assert!(
             AsilLevel::validates_current_config(),
             "Current feature configuration should be valid for some ASIL level"
-        ;
+        );
     }
 }

@@ -115,7 +115,7 @@ pub const MAX_TYPE_ENUM_NAMES: usize = 64;
 const MAX_ITEM_SERIALIZED_SIZE: usize = 256;
 
 /// Size of the checksum in bytes, typically the size of a u32.
-pub const CHECKSUM_SIZE: usize = core::mem::size_of::<u32>);
+pub const CHECKSUM_SIZE: usize = core::mem::size_of::<u32>();
 
 #[cfg(feature = "std")]
 extern crate alloc;
@@ -565,7 +565,7 @@ where
         provider_arg: P,
         level: VerificationLevel,
     ) -> Result<Self> {
-        let item_serialized_size = T::default().serialized_size);
+        let item_serialized_size = T::default().serialized_size();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             // Prevent division by zero or logical errors if N_ELEMENTS > 0 but items are
             // ZSTs. Or, if this is allowed, ensure memory_needed is handled
@@ -606,7 +606,7 @@ where
         let offset = self.length.saturating_mul(self.item_serialized_size;
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
 
-        let item_size = item.serialized_size);
+        let item_size = item.serialized_size();
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
@@ -975,7 +975,7 @@ where
     /// Assumes all instances of T will have the same serialized size as
     /// T::default().
     pub fn new(provider_arg: P) -> Result<Self> {
-        let item_s_size = T::default().serialized_size);
+        let item_s_size = T::default().serialized_size();
         if item_s_size == 0 && N_ELEMENTS > 0 {
             return Err(crate::Error::runtime_execution_error("Item serialized size cannot be zero with non-zero capacity";
         }
@@ -999,7 +999,7 @@ where
         provider_arg: P, // Renamed provider to provider_arg
         verification_level: VerificationLevel,
     ) -> Result<Self> {
-        let item_size = T::default().serialized_size);
+        let item_size = T::default().serialized_size();
         if item_size == 0 && N_ELEMENTS > 0 {
             return Err(crate::Error::foundation_bounded_capacity_exceeded(
                 "Item serialized size cannot be zero with non-zero capacity"
@@ -1048,7 +1048,7 @@ where
         let offset = self.length.saturating_mul(self.item_serialized_size;
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
 
-        let item_size = item.serialized_size);
+        let item_size = item.serialized_size();
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::runtime_execution_error("Operation failed";
         }
@@ -1509,7 +1509,7 @@ where
 
         // Serialize the new value
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-        let item_size = value.serialized_size);
+        let item_size = value.serialized_size();
 
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
@@ -1615,7 +1615,7 @@ where
             // Move it one position forward
             let dest_offset = (i + 1) * self.item_serialized_size;
             let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-            let item_size = current_item.serialized_size);
+            let item_size = current_item.serialized_size();
 
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(
@@ -1649,7 +1649,7 @@ where
         // Now write the new value at the specified index
         let offset = index * self.item_serialized_size;
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-        let item_size = value.serialized_size);
+        let item_size = value.serialized_size();
 
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
@@ -1759,7 +1759,7 @@ where
             // Write it at the current position
             let dest_offset = i * self.item_serialized_size;
             let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
-            let item_size = next_item.serialized_size);
+            let item_size = next_item.serialized_size();
 
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(

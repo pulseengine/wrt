@@ -142,7 +142,7 @@ pub trait MemoryProvider: Send + Sync {
     fn verification_level(&self) -> VerificationLevel;
 
     /// Sets the verification level.
-    fn set_verification_level(&mut self, level: VerificationLevel;
+    fn set_verification_level(&mut self, level: VerificationLevel);
 
     /// Writes data to the specified offset.
     ///
@@ -180,7 +180,7 @@ impl NoStdProvider {
         // For this stub, we just create a dummy static buffer
         static mut DUMMY_BUFFER: [u8; 4096] = [0; 4096];
 
-        let actual_size = core::cmp::min(size, 4096;
+        let actual_size = core::cmp::min(size, 4096);
 
         Self { buffer: unsafe { &mut DUMMY_BUFFER[0..actual_size] }, verification_level }
     }
@@ -242,7 +242,7 @@ impl NoStdProviderBuilder {
         NoStdProvider {
             buffer: unsafe {
                 static mut DUMMY_BUFFER: [u8; 4096] = [0; 4096];
-                let actual_size = core::cmp::min(self.size, 4096;
+                let actual_size = core::cmp::min(self.size, 4096);
                 &mut DUMMY_BUFFER[0..actual_size]
             },
             verification_level: self.verification_level,
@@ -265,13 +265,13 @@ impl MemoryProvider for NoStdProvider {
 
     fn write_data(&mut self, offset: usize, data: &[u8]) -> wrt_error::Result<usize> {
         if offset >= self.buffer.len() {
-            return Err(wrt_error::Error::runtime_execution_error("Write offset out of bounds";
+            return Err(wrt_error::Error::runtime_execution_error("Write offset out of bounds"));
         }
 
         let available = self.buffer.len() - offset;
-        let write_size = core::cmp::min(available, data.len);
+        let write_size = core::cmp::min(available, data.len));
 
-        self.buffer[offset..offset + write_size].copy_from_slice(&data[0..write_size];
+        self.buffer[offset..offset + write_size].copy_from_slice(&data[0..write_size]);
 
         Ok(write_size)
     }
@@ -284,9 +284,9 @@ impl MemoryProvider for NoStdProvider {
         }
 
         let available = self.buffer.len() - offset;
-        let read_size = core::cmp::min(available, buffer.len);
+        let read_size = core::cmp::min(available, buffer.len));
 
-        buffer[0..read_size].copy_from_slice(&self.buffer[offset..offset + read_size];
+        buffer[0..read_size].copy_from_slice(&self.buffer[offset..offset + read_size]);
 
         Ok(read_size)
     }
@@ -332,7 +332,7 @@ mod tests {
             max_pages: Option<u32>,
         ) -> Result<(NonNull<u8>, usize)> {
             if self.allocated_ptr.is_some() {
-                return Err(wrt_error::Error::runtime_execution_error("Memory already allocated";
+                return Err(wrt_error::Error::runtime_execution_error("Memory already allocated"));
             }
             let size = initial_pages as usize * WASM_PAGE_SIZE;
 
@@ -345,7 +345,7 @@ mod tests {
                 NonNull::new(1 as *mut u8).unwrap()
             };
 
-            self.allocated_ptr = Some(ptr;
+            self.allocated_ptr = Some(ptr);
             self.allocated_size = size;
             self.max_pages = max_pages;
             Ok((self.allocated_ptr.unwrap(), size))
@@ -360,7 +360,7 @@ mod tests {
             let new_total_pages = current_pages + additional_pages;
             if let Some(max) = self.max_pages {
                 if new_total_pages > max {
-                    return Err(wrt_error::Error::runtime_execution_error("Memory growth would exceed maximum pages";
+                    return Err(wrt_error::Error::runtime_execution_error("Memory growth would exceed maximum pages"));
                 }
             }
             let new_size = new_total_pages as usize * WASM_PAGE_SIZE;
@@ -383,7 +383,7 @@ mod tests {
                 || self.allocated_ptr.unwrap() != ptr
                 || self.allocated_size != size
             {
-                return Err(wrt_error::Error::runtime_execution_error("Deallocation mismatch";
+                return Err(wrt_error::Error::runtime_execution_error("Deallocation mismatch"));
             }
             self.allocated_ptr = None;
             self.allocated_size = 0;

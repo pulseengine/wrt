@@ -92,17 +92,17 @@ impl ExecutionStats {
 
     /// Reset all statistics to zero
     pub fn reset(&mut self) {
-        *self = Self::default);
+        *self = Self::default();
     }
 
     /// Add instruction count
     pub fn add_instructions(&mut self, count: u64) {
-        self.instructions_executed = self.instructions_executed.saturating_add(count;
+        self.instructions_executed = self.instructions_executed.saturating_add(count);
     }
 
     /// Add fuel consumption
     pub fn add_fuel(&mut self, fuel: u64) {
-        self.fuel_consumed = self.fuel_consumed.saturating_add(fuel;
+        self.fuel_consumed = self.fuel_consumed.saturating_add(fuel);
     }
 
     /// Update peak memory usage if current usage is higher
@@ -114,7 +114,7 @@ impl ExecutionStats {
 
     /// Record a function call
     pub fn record_function_call(&mut self, call_depth: u32) {
-        self.function_calls = self.function_calls.saturating_add(1;
+        self.function_calls = self.function_calls.saturating_add(1);
         if call_depth > self.max_call_depth_reached {
             self.max_call_depth_reached = call_depth;
         }

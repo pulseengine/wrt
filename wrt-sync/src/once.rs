@@ -114,7 +114,7 @@ impl<T> WrtOnce<T> {
         }
 
         // We are the thread to initialize it.
-        let value = f);
+        let value = f();
         // # Safety
         // This `unsafe` block writes to the `UnsafeCell<MaybeUninit<T>>` via
         // `get().write()`. It is safe because:
@@ -125,12 +125,12 @@ impl<T> WrtOnce<T> {
         //    value.
         unsafe {
             // Write the initialized value.
-            (*self.data.get()).write(value;
+            (*self.data.get()).write(value);
         }
 
         // Mark as initialized. Release ordering ensures that the write to `data`
         // happens-before any subsequent Acquire load of `initialized` by other threads.
-        self.initialized.store(true, Ordering::Release;
+        self.initialized.store(true, Ordering::Release);
 
         // Safety: We just initialized it.
         // # Safety
@@ -211,7 +211,7 @@ impl<T> Drop for WrtOnce<T> {
             unsafe {
                 // Safety: We have exclusive access (`&mut self`) and `initialized` is true,
                 // so `data` contains an initialized `T`.
-                (*self.data.get_mut()).assume_init_drop);
+                (*self.data.get_mut()).assume_init_drop();
             }
         }
     }
