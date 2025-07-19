@@ -250,7 +250,7 @@ impl ComponentMemoryManager {
         let initial_size = limits.min as usize * WASM_PAGE_SIZE;
         if self.total_allocated + initial_size > self.max_memory {
             return Err(wrt_error::Error::resource_exhausted("Memory limit exceeded"))
-            );
+            ;
         }
 
         // Create memory data
@@ -323,14 +323,14 @@ impl ComponentMemoryManager {
         // Check permissions
         if !self.check_read_permission(memory_id, instance_id)? {
             return Err(wrt_error::Error::runtime_error("Read permission denied"))
-            );
+            ;
         }
 
         // Check bounds
         let end_offset = offset as usize + size as usize;
         if end_offset > memory.data.len() {
             return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
-            );
+            ;
         }
 
         // Read data
@@ -340,7 +340,7 @@ impl ComponentMemoryManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let mut result = Vec::new();
+            let mut result = Vec::new(;
             for i in offset as usize..end_offset {
                 result.push(memory.data[i]);
             }
@@ -362,7 +362,7 @@ impl ComponentMemoryManager {
                 success: false,
                 bytes_accessed: 0,
                 error: Some(BoundedString::from_str("Write permission denied").unwrap_or_default()),
-            });
+            };
         }
 
         let memory = self
@@ -371,7 +371,7 @@ impl ComponentMemoryManager {
             ))?;
 
         // Check bounds
-        let end_offset = offset as usize + data.len();
+        let end_offset = offset as usize + data.len(;
         if end_offset > memory.data.len() {
             return Ok(MemoryAccess {
                 success: false,
@@ -379,7 +379,7 @@ impl ComponentMemoryManager {
                 error: Some(
                     BoundedString::from_str("Memory access out of bounds").unwrap_or_default(),
                 ),
-            });
+            };
         }
 
         // Write data
@@ -405,7 +405,7 @@ impl ComponentMemoryManager {
         // Check permissions
         if !self.check_write_permission(memory_id, instance_id)? {
             return Err(wrt_error::Error::runtime_error("Write permission denied"))
-            );
+            ;
         }
 
         let current_pages = memory.data.len() / WASM_PAGE_SIZE;
@@ -415,7 +415,7 @@ impl ComponentMemoryManager {
         if let Some(max) = memory.limits.max {
             if new_pages > max as usize {
                 return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
-                );
+                ;
             }
         }
 
@@ -423,14 +423,14 @@ impl ComponentMemoryManager {
         let additional_size = pages as usize * WASM_PAGE_SIZE;
         if self.total_allocated + additional_size > self.max_memory {
             return Err(wrt_error::Error::resource_exhausted("Memory limit exceeded"))
-            );
+            ;
         }
 
         // Grow memory
-        let old_size = memory.data.len();
+        let old_size = memory.data.len(;
         #[cfg(feature = "std")]
         {
-            memory.data.resize(old_size + additional_size, 0);
+            memory.data.resize(old_size + additional_size, 0;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -454,13 +454,13 @@ impl ComponentMemoryManager {
             ))?;
 
         if !memory.permissions.read {
-            return Ok(false);
+            return Ok(false;
         }
 
         // Check sharing policy
         for policy in &self.sharing_policies {
             if policy.memory_id == memory_id {
-                return self.check_instance_allowed(&policy.allowed_instances, instance_id);
+                return self.check_instance_allowed(&policy.allowed_instances, instance_id;
             }
         }
 
@@ -480,7 +480,7 @@ impl ComponentMemoryManager {
             ))?;
 
         if !memory.permissions.write {
-            return Ok(false);
+            return Ok(false;
         }
 
         // Check sharing policy
@@ -488,13 +488,13 @@ impl ComponentMemoryManager {
             if policy.memory_id == memory_id {
                 match policy.mode {
                     SharingMode::Private => {
-                        return Ok(memory.owner == instance_id);
+                        return Ok(memory.owner == instance_id;
                     }
                     SharingMode::ReadOnly => {
                         return Ok(false); // No write access in read-only mode
                     }
                     SharingMode::ReadWrite | SharingMode::CopyOnWrite => {
-                        return self.check_instance_allowed(&policy.allowed_instances, instance_id);
+                        return self.check_instance_allowed(&policy.allowed_instances, instance_id;
                     }
                 }
             }
@@ -650,7 +650,7 @@ impl ComponentTableManager {
 
         if index as usize >= table.elements.len() {
             return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
-            );
+            ;
         }
 
         table.elements[index as usize] = element;
@@ -664,21 +664,21 @@ impl ComponentTableManager {
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
-        let current_size = table.elements.len();
+        let current_size = table.elements.len(;
         let new_size = current_size + size as usize;
 
         // Check limits
         if let Some(max) = table.limits.max {
             if new_size > max as usize {
                 return Err(wrt_error::Error::validation_invalid_input("Invalid input"))
-            );
+            ;
             }
         }
 
         // Grow table
         #[cfg(feature = "std")]
         {
-            table.elements.resize(new_size, init);
+            table.elements.resize(new_size, init;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -755,8 +755,8 @@ mod tests {
     #[test]
     fn test_memory_manager_creation() {
         let manager = ComponentMemoryManager::new().unwrap();
-        assert_eq!(manager.memory_count(), 0);
-        assert_eq!(manager.total_allocated(), 0);
+        assert_eq!(manager.memory_count(), 0;
+        assert_eq!(manager.total_allocated(), 0;
     }
 
     #[test]
@@ -765,9 +765,9 @@ mod tests {
         let limits = MemoryLimits { min: 1, max: Some(10) };
 
         let memory_id = manager.create_memory(limits, false, Some(1)).unwrap();
-        assert_eq!(memory_id, 0);
-        assert_eq!(manager.memory_count(), 1);
-        assert_eq!(manager.total_allocated(), WASM_PAGE_SIZE);
+        assert_eq!(memory_id, 0;
+        assert_eq!(manager.memory_count(), 1;
+        assert_eq!(manager.total_allocated(), WASM_PAGE_SIZE;
     }
 
     #[test]
@@ -781,17 +781,17 @@ mod tests {
         let data = vec![1, 2, 3, 4];
         let access = manager.write_memory(memory_id, 0, &data, Some(1)).unwrap();
         assert!(access.success);
-        assert_eq!(access.bytes_accessed, 4);
+        assert_eq!(access.bytes_accessed, 4;
 
         // Read data back
         let read_data = manager.read_memory(memory_id, 0, 4, Some(1)).unwrap();
-        assert_eq!(read_data, data);
+        assert_eq!(read_data, data;
     }
 
     #[test]
     fn test_table_manager_creation() {
         let manager = ComponentTableManager::new().unwrap();
-        assert_eq!(manager.table_count(), 0);
+        assert_eq!(manager.table_count(), 0;
     }
 
     #[test]
@@ -800,8 +800,8 @@ mod tests {
         let limits = TableLimits { min: 10, max: Some(100) };
 
         let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
-        assert_eq!(table_id, 0);
-        assert_eq!(manager.table_count(), 1);
+        assert_eq!(table_id, 0;
+        assert_eq!(manager.table_count(), 1;
     }
 
     #[test]
@@ -812,7 +812,7 @@ mod tests {
         let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
 
         // Set element
-        let element = TableElement::FuncRef(42);
+        let element = TableElement::FuncRef(42;
         manager.set_element(table_id, 0, element.clone()).unwrap();
 
         // Get element back
@@ -825,15 +825,15 @@ mod tests {
 
     #[test]
     fn test_sharing_mode_display() {
-        assert_eq!(SharingMode::Private.to_string(), "private");
-        assert_eq!(SharingMode::ReadOnly.to_string(), "readonly");
-        assert_eq!(SharingMode::ReadWrite.to_string(), "readwrite");
-        assert_eq!(SharingMode::CopyOnWrite.to_string(), "copyonwrite");
+        assert_eq!(SharingMode::Private.to_string(), "private";
+        assert_eq!(SharingMode::ReadOnly.to_string(), "readonly";
+        assert_eq!(SharingMode::ReadWrite.to_string(), "readwrite";
+        assert_eq!(SharingMode::CopyOnWrite.to_string(), "copyonwrite";
     }
 
     #[test]
     fn test_memory_permissions_default() {
-        let perms = MemoryPermissions::default();
+        let perms = MemoryPermissions::default(;
         assert!(perms.read);
         assert!(perms.write);
         assert!(!perms.execute);

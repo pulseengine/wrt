@@ -241,7 +241,10 @@ impl AdvancedThread {
             #[cfg(feature = "std")]
             thread_locals: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            thread_locals: BoundedMap::new(provider.clone())?,
+            thread_locals: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedMap::new(provider)?
+            },
             result: None,
             error: None,
             parent_thread: None,
@@ -356,7 +359,10 @@ impl AdvancedThreadRegistry {
             #[cfg(feature = "std")]
             threads: HashMap::new(),
             #[cfg(not(any(feature = "std", )))]
-            threads: BoundedMap::new(provider.clone())?,
+            threads: {
+                let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+                BoundedMap::new(provider)?
+            },
         }
     }
 
@@ -439,7 +445,7 @@ impl AdvancedThreadingBuiltins {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message neededMissing messageMissing messageMissing message"))?;
+                "Error message needed"))?;
         let registry = registry_ref.as_ref()
             .ok_or_else(|| Error::runtime_execution_error("Error occurred"))?;
         Ok(f(registry))
@@ -454,7 +460,7 @@ impl AdvancedThreadingBuiltins {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message neededMissing messageMissing messageMissing message"))?;
+                "Error message needed"))?;
         let registry = registry_ref.as_mut()
             .ok_or_else(|| Error::runtime_execution_error("Error occurred"))?;
         f(registry)
@@ -494,7 +500,7 @@ impl AdvancedThreadingBuiltins {
             }
             
             Ok(id)
-        })?
+        })
     }
 
     /// `thread.spawn_indirect` canonical built-in
@@ -531,7 +537,7 @@ impl AdvancedThreadingBuiltins {
             }
             
             Ok(id)
-        })?
+        })
     }
 
     /// `thread.join` canonical built-in
@@ -590,7 +596,7 @@ impl AdvancedThreadingBuiltins {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::RESOURCE_INVALID_HANDLE,
-                    "Error message neededMissing messageMissing messageMissing message"))
+                    "Error message needed"))
             }
         })
     }
@@ -638,7 +644,7 @@ impl AdvancedThreadingBuiltins {
 
     /// Get thread count
     pub fn thread_count() -> Result<usize> {
-        Self::with_registry(|registry| registry.thread_count()
+        Self::with_registry(|registry| registry.thread_count())
     }
 }
 
@@ -684,7 +690,7 @@ pub mod advanced_threading_helpers {
                     }
                 }
             }
-            Ok(()
+            Ok(())
         })?;
         
         Ok(cancelled)
@@ -717,7 +723,7 @@ pub mod advanced_threading_helpers {
         F: FnOnce(CancellationToken) -> Result<R>,
     {
         let token = CancellationToken::new();
-        with_cancellation_scope(token.clone(), || f(token)
+        with_cancellation_scope(token.clone(), || f(token))
     }
 }
 
@@ -749,7 +755,7 @@ mod tests {
                 0,
                 42
             );
-            assert_eq!(func_ref.name(), "test_functionMissing message");
+            assert_eq!(func_ref.name(), "test_function");
             assert_eq!(func_ref.module_index, 0);
             assert_eq!(func_ref.function_index, 42);
         }
@@ -762,7 +768,7 @@ mod tests {
                 0,
                 42
             ).unwrap();
-            assert_eq!(func_ref.name(), "test_functionMissing message");
+            assert_eq!(func_ref.name(), "test_function");
             assert_eq!(func_ref.module_index, 0);
             assert_eq!(func_ref.function_index, 42);
         }
@@ -778,8 +784,8 @@ mod tests {
             assert_eq!(indirect_call.table_index, 0);
             assert_eq!(indirect_call.function_index, 10);
             assert_eq!(indirect_call.type_index, 1);
-            assert_eq!(indirect_call.argument_count(), 2);
-            assert_eq!(indirect_call.get_argument(0), Some(&ComponentValue::I32(42));
+            assert_eq!(indirect_call.argument_count(), 2;
+            assert_eq!(indirect_call.get_argument(0), Some(&ComponentValue::I32(42)));
         }
 
         #[cfg(not(any(feature = "std", )))]
@@ -788,30 +794,30 @@ mod tests {
             assert_eq!(indirect_call.table_index, 0);
             assert_eq!(indirect_call.function_index, 10);
             assert_eq!(indirect_call.type_index, 1);
-            assert_eq!(indirect_call.argument_count(), 2);
-            assert_eq!(indirect_call.get_argument(0), Some(&ComponentValue::I32(42));
+            assert_eq!(indirect_call.argument_count(), 2;
+            assert_eq!(indirect_call.get_argument(0), Some(&ComponentValue::I32(42)));
         }
     }
 
     #[test]
     fn test_advanced_thread_state_methods() {
-        assert!(AdvancedThreadState::Starting.is_active();
-        assert!(AdvancedThreadState::Running.is_active();
-        assert!(!AdvancedThreadState::Completed.is_active();
-        assert!(!AdvancedThreadState::Cancelled.is_active();
-        assert!(!AdvancedThreadState::Failed.is_active();
+        assert!(AdvancedThreadState::Starting.is_active());
+        assert!(AdvancedThreadState::Running.is_active());
+        assert!(!AdvancedThreadState::Completed.is_active());
+        assert!(!AdvancedThreadState::Cancelled.is_active());
+        assert!(!AdvancedThreadState::Failed.is_active());
 
-        assert!(!AdvancedThreadState::Starting.is_finished();
-        assert!(!AdvancedThreadState::Running.is_finished();
-        assert!(AdvancedThreadState::Completed.is_finished();
-        assert!(AdvancedThreadState::Cancelled.is_finished();
-        assert!(AdvancedThreadState::Failed.is_finished();
+        assert!(!AdvancedThreadState::Starting.is_finished());
+        assert!(!AdvancedThreadState::Running.is_finished());
+        assert!(AdvancedThreadState::Completed.is_finished());
+        assert!(AdvancedThreadState::Cancelled.is_finished());
+        assert!(AdvancedThreadState::Failed.is_finished());
 
-        assert!(!AdvancedThreadState::Starting.can_join();
-        assert!(!AdvancedThreadState::Running.can_join();
-        assert!(AdvancedThreadState::Completed.can_join();
-        assert!(AdvancedThreadState::Cancelled.can_join();
-        assert!(AdvancedThreadState::Failed.can_join();
+        assert!(!AdvancedThreadState::Starting.can_join());
+        assert!(!AdvancedThreadState::Running.can_join());
+        assert!(AdvancedThreadState::Completed.can_join());
+        assert!(AdvancedThreadState::Cancelled.can_join());
+        assert!(AdvancedThreadState::Failed.can_join());
     }
 
     #[test]
@@ -823,15 +829,15 @@ mod tests {
         let mut thread = AdvancedThread::new(config).unwrap();
         
         assert_eq!(thread.state, AdvancedThreadState::Starting);
-        assert!(thread.result.is_none();
-        assert!(thread.error.is_none();
+        assert!(thread.result.is_none());
+        assert!(thread.error.is_none());
 
         thread.start();
         assert_eq!(thread.state, AdvancedThreadState::Running);
 
-        thread.complete(ComponentValue::Bool(true);
+        thread.complete(ComponentValue::Bool(true));
         assert_eq!(thread.state, AdvancedThreadState::Completed);
-        assert!(thread.result.is_some();
+        assert!(thread.result.is_some());
     }
 
     #[test]
@@ -857,8 +863,8 @@ mod tests {
 
         // Remove thread local value
         let removed = thread.remove_thread_local(1);
-        assert!(removed.is_some();
-        assert!(thread.get_thread_local(1).is_none();
+        assert!(removed.is_some());
+        assert!(thread.get_thread_local(1).is_none());
     }
 
     #[test]
@@ -868,7 +874,7 @@ mod tests {
             priority: Some(5),
         };
         
-        let parent_id = AdvancedThreadId::new();
+        let parent_id = AdvancedThreadId::new(;
         let mut parent = AdvancedThread::new(config.clone()).unwrap();
         parent.id = parent_id;
 
@@ -878,7 +884,7 @@ mod tests {
         assert_eq!(child.parent_thread, Some(parent_id);
         
         #[cfg(feature = "std")]
-        parent.add_child(child_id);
+        parent.add_child(child_id;
         #[cfg(not(any(feature = "std", )))]
         parent.add_child(child_id).unwrap();
         
@@ -887,7 +893,7 @@ mod tests {
 
     #[test]
     fn test_advanced_thread_registry() {
-        let mut registry = AdvancedThreadRegistry::new();
+        let mut registry = AdvancedThreadRegistry::new(;
         assert_eq!(registry.thread_count(), 0);
 
         let config = ThreadSpawnConfig {
@@ -898,14 +904,14 @@ mod tests {
         let thread_id = thread.id;
 
         registry.register_thread(thread).unwrap();
-        assert_eq!(registry.thread_count(), 1);
+        assert_eq!(registry.thread_count(), 1;
 
-        let retrieved_thread = registry.get_thread(thread_id);
-        assert!(retrieved_thread.is_some();
-        assert_eq!(retrieved_thread.unwrap().id, thread_id);
+        let retrieved_thread = registry.get_thread(thread_id;
+        assert!(retrieved_thread.is_some());
+        assert_eq!(retrieved_thread.unwrap().id, thread_id;
 
-        let removed_thread = registry.remove_thread(thread_id);
-        assert!(removed_thread.is_some();
+        let removed_thread = registry.remove_thread(thread_id;
+        assert!(removed_thread.is_some());
         assert_eq!(registry.thread_count(), 0);
     }
 
@@ -921,7 +927,7 @@ mod tests {
         };
         
         #[cfg(feature = "std")]
-        let func_ref = FunctionReference::new("test_func".to_string(), signature, 0, 42);
+        let func_ref = FunctionReference::new("test_func".to_string(), signature, 0, 42;
         #[cfg(not(any(feature = "std", )))]
         let func_ref = FunctionReference::new("test_func", signature, 0, 42).unwrap();
 
@@ -935,11 +941,11 @@ mod tests {
         
         // Test thread state
         let state = AdvancedThreadingBuiltins::thread_state(thread_id).unwrap();
-        assert_eq!(state, AdvancedThreadState::Running);
+        assert_eq!(state, AdvancedThreadState::Running;
 
         // Test thread.join (would timeout since nothing is ready)
         let join_result = AdvancedThreadingBuiltins::thread_join(thread_id).unwrap();
-        assert_eq!(join_result, ThreadJoinResult::NotReady);
+        assert_eq!(join_result, ThreadJoinResult::NotReady;
 
         // Test thread cancellation
         AdvancedThreadingBuiltins::thread_cancel(thread_id).unwrap();
@@ -958,7 +964,7 @@ mod tests {
         
         #[cfg(feature = "std")]
         let func_ref = FunctionReference::new("test_func".to_string(), 
-            FunctionSignature { params: vec![], results: vec![] }, 0, 0);
+            FunctionSignature { params: vec![], results: vec![] }, 0, 0;
         #[cfg(not(any(feature = "std", )))]
         let func_ref = FunctionReference::new("test_func", 
             FunctionSignature { params: vec![], results: vec![] }, 0, 0).unwrap();

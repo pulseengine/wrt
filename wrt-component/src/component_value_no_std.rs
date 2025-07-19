@@ -360,7 +360,7 @@ pub fn serialize_component_value_no_std(
             // Void needs no serialization, it has no data
         }
         _ => {
-            return Err(Error::component_not_found("Component not found"));
+            return Err(Error::component_not_found("Component not found";
         }
     }
 
@@ -427,19 +427,19 @@ mod tests {
     #[test]
     fn test_serialize_simple_types() {
         // Test boolean serialization
-        let bool_value = ComponentValue::Bool(true);
+        let bool_value = ComponentValue::Bool(true;
         let serialized = serialize_component_value_no_std(&bool_value).unwrap();
-        assert_eq!(serialized.as_slice(), &[1]);
+        assert_eq!(serialized.as_slice(), &[1];
 
         // Test u32 serialization
-        let u32_value = ComponentValue::U32(0x12345678);
+        let u32_value = ComponentValue::U32(0x12345678;
         let serialized = serialize_component_value_no_std(&u32_value).unwrap();
         assert_eq!(serialized.as_slice(), &[0x78, 0x56, 0x34, 0x12]); // Little endian
 
         // Test string serialization
-        let string_value = ComponentValue::String("test".to_string());
+        let string_value = ComponentValue::String("test".to_string();
         let serialized = serialize_component_value_no_std(&string_value).unwrap();
-        assert_eq!(serialized.as_slice(), &[4, 0, 0, 0, b't', b'e', b's', b't']);
+        assert_eq!(serialized.as_slice(), &[4, 0, 0, 0, b't', b'e', b's', b't'];
     }
 
     #[test]

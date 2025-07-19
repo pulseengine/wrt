@@ -123,7 +123,7 @@ impl TaskCleanupContext {
         self.callbacks.push(callback)?;
         
         // Sort by priority (highest first)
-        self.callbacks.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.callbacks.sort_by(|a, b| b.priority.cmp(&a.priority;
         
         Ok(())
     }
@@ -179,10 +179,10 @@ impl TaskCleanupContext {
     ) -> Result<Vec<ContextualError>> {
         // Check if already executed
         if self.cleanup_executed.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new());
+            return Ok(Vec::new(;
         }
         
-        let mut errors = Vec::new();
+        let mut errors = Vec::new(;
         
         // Execute callbacks in priority order
         for callback in self.callbacks.drain(..) {
@@ -192,7 +192,7 @@ impl TaskCleanupContext {
                     errors.push(self.create_error(
                         AsyncErrorKind::FuelExhausted,
                         "Critical cleanup failed due to fuel exhaustion",
-                    )?);
+                    )?;
                 }
                 continue;
             }
@@ -220,7 +220,7 @@ impl TaskCleanupContext {
                     errors.push(self.create_error(
                         AsyncErrorKind::TaskCancelled,
                         &format!("Cleanup failed: {}", e.message()),
-                    )?);
+                    )?;
                 }
             }
         }
@@ -273,8 +273,8 @@ impl TaskCleanupContext {
             self.verification_level,
         )?;
         
-        let total = amount.saturating_add(adjusted);
-        self.cleanup_fuel_consumed.fetch_add(total, Ordering::AcqRel);
+        let total = amount.saturating_add(adjusted;
+        self.cleanup_fuel_consumed.fetch_add(total, Ordering::AcqRel;
         record_global_operation(OperationType::Other)?;
         
         Ok(())
@@ -312,13 +312,13 @@ impl GlobalCleanupManager {
         
         let resource_tracker = Arc::new(Mutex::new(
             ComponentResourceTracker::new(global_fuel_budget / 3)?
-        ));
+        ;
         let stream_manager = Arc::new(Mutex::new(
             FuelStreamManager::new(global_fuel_budget / 3)?
-        ));
+        ;
         let handle_manager = Arc::new(Mutex::new(
             HandleTableManager::new(global_fuel_budget / 3)?
-        ));
+        ;
         
         Ok(Self {
             contexts,
@@ -365,9 +365,9 @@ impl GlobalCleanupManager {
         )?;
         
         // Update stats
-        self.total_cleanups.fetch_add(1, Ordering::Relaxed);
+        self.total_cleanups.fetch_add(1, Ordering::Relaxed;
         if !errors.is_empty() {
-            self.failed_cleanups.fetch_add(1, Ordering::Relaxed);
+            self.failed_cleanups.fetch_add(1, Ordering::Relaxed;
         }
         
         Ok(errors)
@@ -381,7 +381,7 @@ impl GlobalCleanupManager {
             .map(|(id, _)| *id)
             .collect();
         
-        let mut all_errors = Vec::new();
+        let mut all_errors = Vec::new(;
         
         for task_id in task_ids {
             match self.cancel_task(task_id) {
@@ -445,7 +445,7 @@ impl TaskCleanupGuard {
     /// Cancel the task early
     pub fn cancel(&self) -> Result<Vec<ContextualError>> {
         if self.cancelled.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new());
+            return Ok(Vec::new(;
         }
         
         self.manager.lock()?.cancel_task(self.task_id)
@@ -455,7 +455,7 @@ impl TaskCleanupGuard {
 impl Drop for TaskCleanupGuard {
     fn drop(&mut self) {
         if !self.cancelled.load(Ordering::Acquire) {
-            let _ = self.cancel();
+            let _ = self.cancel(;
         }
     }
 }
@@ -469,12 +469,12 @@ mod tests {
         let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap();
         
         // Register various resources
-        assert!(context.register_resource(ResourceHandle(1)).is_ok());
-        assert!(context.register_stream(1).is_ok());
-        assert!(context.register_handle(1, GenerationalHandle::new(0, 1)).is_ok());
+        assert!(context.register_resource(ResourceHandle(1)).is_ok();
+        assert!(context.register_stream(1).is_ok();
+        assert!(context.register_handle(1, GenerationalHandle::new(0, 1)).is_ok();
         
         // Should have 3 callbacks
-        assert_eq!(context.callbacks.len(), 3);
+        assert_eq!(context.callbacks.len(), 3;
     }
     
     #[test]
@@ -504,9 +504,9 @@ mod tests {
         )).unwrap();
         
         // Verify priority order (highest first)
-        assert_eq!(context.callbacks[0].priority, 100);
-        assert_eq!(context.callbacks[1].priority, 50);
-        assert_eq!(context.callbacks[2].priority, 10);
+        assert_eq!(context.callbacks[0].priority, 100;
+        assert_eq!(context.callbacks[1].priority, 50;
+        assert_eq!(context.callbacks[2].priority, 10;
     }
     
     #[test]
@@ -514,7 +514,7 @@ mod tests {
         let mut manager = GlobalCleanupManager::new(10000).unwrap();
         
         // Register task
-        assert!(manager.register_task(1, 1, VerificationLevel::Basic).is_ok());
+        assert!(manager.register_task(1, 1, VerificationLevel::Basic).is_ok();
         
         // Get context and register resources
         {
@@ -524,30 +524,30 @@ mod tests {
         
         // Cancel task
         let errors = manager.cancel_task(1).unwrap();
-        assert!(errors.is_empty());
+        assert!(errors.is_empty();
         
         // Stats should show cleanup
-        let stats = manager.stats();
-        assert_eq!(stats.total_cleanups, 1);
-        assert_eq!(stats.failed_cleanups, 0);
+        let stats = manager.stats(;
+        assert_eq!(stats.total_cleanups, 1;
+        assert_eq!(stats.failed_cleanups, 0;
     }
     
     #[test]
     fn test_cleanup_guard() {
         let manager = Arc::new(Mutex::new(
             GlobalCleanupManager::new(10000).unwrap()
-        ));
+        ;
         
         // Register task
         manager.lock().unwrap().register_task(1, 1, VerificationLevel::Basic).unwrap();
         
         {
-            let _guard = TaskCleanupGuard::new(1, manager.clone());
+            let _guard = TaskCleanupGuard::new(1, manager.clone();
             // Guard will cancel task when dropped
         }
         
         // Task should be cleaned up
-        let stats = manager.lock().unwrap().stats();
-        assert_eq!(stats.total_cleanups, 1);
+        let stats = manager.lock().unwrap().stats(;
+        assert_eq!(stats.total_cleanups, 1;
     }
 }

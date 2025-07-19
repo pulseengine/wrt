@@ -166,7 +166,7 @@ impl PostReturnContext {
     /// Add a cleanup entry to be executed during post-return
     pub fn add_cleanup(&mut self, entry: PostReturnEntry) -> Result<()> {
         if self.is_executing {
-            return Err(Error::runtime_invalid_state("cannot_add_cleanup_during_post_return"));
+            return Err(Error::runtime_invalid_state("cannot_add_cleanup_during_post_return";
         }
 
         #[cfg(feature = "std")]
@@ -183,12 +183,12 @@ impl PostReturnContext {
         // Sort by priority (highest first)
         #[cfg(feature = "std")]
         {
-            self.entries.sort_by(|a, b| b.priority.cmp(&a.priority));
+            self.entries.sort_by(|a, b| b.priority.cmp(&a.priority;
         }
         #[cfg(not(feature = "std"))]
         {
             // Simple bubble sort for no_std
-            let len = self.entries.len();
+            let len = self.entries.len(;
             for i in 0..len {
                 for j in 0..len - 1 - i {
                     if self.entries.get(j).unwrap().priority < self.entries.get(j + 1).unwrap().priority {
@@ -207,7 +207,7 @@ impl PostReturnContext {
     /// Execute all pending post-return cleanup operations
     pub fn execute_post_return(&mut self, instance: &mut Instance, memory: &mut Memory, options: &CanonicalOptions) -> Result<()> {
         if self.is_executing {
-            return Err(Error::runtime_invalid_state("post_return_already_executing"));
+            return Err(Error::runtime_invalid_state("post_return_already_executing";
         }
 
         if !options.has_post_return() {
@@ -215,13 +215,13 @@ impl PostReturnContext {
         }
 
         self.is_executing = true;
-        let start_time = current_time_us();
-        let mut errors = Vec::new();
+        let start_time = current_time_us(;
+        let mut errors = Vec::new(;
 
         // Execute each cleanup operation in priority order
-        let entries = mem::take(&mut self.entries);
+        let entries = mem::take(&mut self.entries;
         for entry in entries {
-            let operation_start = current_time_us();
+            let operation_start = current_time_us(;
             
             match self.execute_cleanup_entry(instance, memory, &entry) {
                 Ok(()) => {
@@ -229,7 +229,7 @@ impl PostReturnContext {
                 }
                 Err(e) => {
                     self.stats.operations_failed += 1;
-                    errors.push((entry.resource_type, e));
+                    errors.push((entry.resource_type, e);
                     
                     match self.error_recovery {
                         ErrorRecoveryMode::StopOnError => break,
@@ -251,7 +251,7 @@ impl PostReturnContext {
         // Handle collected errors based on recovery mode
         if !errors.is_empty() && self.error_recovery == ErrorRecoveryMode::StopOnError {
             let (resource_type, error) = errors.into_iter().next().unwrap();
-            return Err(Error::runtime_execution_error(&format!("Post-return cleanup failed for {}: {}", resource_type, error)));
+            return Err(Error::runtime_execution_error(&format!("Post-return cleanup failed for {}: {}", resource_type, error);
         }
 
         Ok(())
@@ -260,19 +260,19 @@ impl PostReturnContext {
     /// Execute a single cleanup entry
     fn execute_cleanup_entry(&self, instance: &mut Instance, memory: &mut Memory, entry: &PostReturnEntry) -> Result<()> {
         // Convert ComponentValue args to raw values for function call
-        let mut raw_args = Vec::new();
+        let mut raw_args = Vec::new(;
         
         #[cfg(feature = "std")]
         {
             for arg in &entry.args {
-                raw_args.push(self.component_value_to_raw(arg)?);
+                raw_args.push(self.component_value_to_raw(arg)?;
             }
         }
         #[cfg(not(feature = "std"))]
         {
             for i in 0..entry.args.len() {
                 if let Some(arg) = entry.args.get(i) {
-                    raw_args.push(self.component_value_to_raw(arg)?);
+                    raw_args.push(self.component_value_to_raw(arg)?;
                 }
             }
         }
@@ -325,7 +325,7 @@ impl PostReturnContext {
 
     /// Reset statistics
     pub fn reset_stats(&mut self) {
-        self.stats = PostReturnStats::default();
+        self.stats = PostReturnStats::default(;
     }
 
     /// Check if post-return is currently executing
@@ -413,7 +413,7 @@ fn current_time_us() -> u64 {
     {
         // ASIL-D safe: Use atomic counter instead of unsafe static mut
         use core::sync::atomic::{AtomicU64, Ordering};
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        static COUNTER: AtomicU64 = AtomicU64::new(0;
         COUNTER.fetch_add(1, Ordering::Relaxed)
     }
 }
@@ -425,25 +425,25 @@ mod tests {
     #[test]
     fn test_post_return_context_creation() {
         let context = PostReturnContext::new().unwrap();
-        assert_eq!(context.pending_operations(), 0);
-        assert!(!context.is_executing());
-        assert_eq!(context.stats().operations_executed, 0);
+        assert_eq!(context.pending_operations(), 0;
+        assert!(!context.is_executing();
+        assert_eq!(context.stats().operations_executed, 0;
     }
 
     #[test]
     fn test_cleanup_entry_creation() {
         let entry = helpers::create_memory_cleanup(1, 0x1000, 4096).unwrap();
-        assert_eq!(entry.func_index, 1);
-        assert_eq!(entry.priority, CleanupPriority::High);
-        assert_eq!(entry.resource_type, ResourceType::Memory);
+        assert_eq!(entry.func_index, 1;
+        assert_eq!(entry.priority, CleanupPriority::High;
+        assert_eq!(entry.resource_type, ResourceType::Memory;
         
         #[cfg(feature = "std")]
         {
-            assert_eq!(entry.args.len(), 2);
+            assert_eq!(entry.args.len(), 2;
         }
         #[cfg(not(feature = "std"))]
         {
-            assert_eq!(entry.args.len(), 2);
+            assert_eq!(entry.args.len(), 2;
         }
     }
 
@@ -481,31 +481,31 @@ mod tests {
         context.add_cleanup(low_entry).unwrap();
         context.add_cleanup(high_entry).unwrap();
         
-        assert_eq!(context.pending_operations(), 2);
+        assert_eq!(context.pending_operations(), 2;
         
         // High priority should be first after sorting
         #[cfg(feature = "std")]
         {
-            assert_eq!(context.entries[0].priority, CleanupPriority::High);
-            assert_eq!(context.entries[1].priority, CleanupPriority::Low);
+            assert_eq!(context.entries[0].priority, CleanupPriority::High;
+            assert_eq!(context.entries[1].priority, CleanupPriority::Low;
         }
     }
 
     #[test]
     fn test_error_recovery_modes() {
-        let mut context = PostReturnContext::new();
+        let mut context = PostReturnContext::new(;
         
-        context.set_error_recovery(ErrorRecoveryMode::StopOnError);
-        assert_eq!(context.error_recovery, ErrorRecoveryMode::StopOnError);
+        context.set_error_recovery(ErrorRecoveryMode::StopOnError;
+        assert_eq!(context.error_recovery, ErrorRecoveryMode::StopOnError;
         
-        context.set_error_recovery(ErrorRecoveryMode::BestEffort);
-        assert_eq!(context.error_recovery, ErrorRecoveryMode::BestEffort);
+        context.set_error_recovery(ErrorRecoveryMode::BestEffort;
+        assert_eq!(context.error_recovery, ErrorRecoveryMode::BestEffort;
     }
 
     #[test]
     fn test_resource_type_display() {
-        assert_eq!(ResourceType::Memory.to_string(), "memory");
-        assert_eq!(ResourceType::File.to_string(), "file");
-        assert_eq!(ResourceType::Stream.to_string(), "stream");
+        assert_eq!(ResourceType::Memory.to_string(), "memory";
+        assert_eq!(ResourceType::File.to_string(), "file";
+        assert_eq!(ResourceType::Stream.to_string(), "stream";
     }
 }

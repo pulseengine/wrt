@@ -296,7 +296,7 @@ impl CoreModuleAdapter {
 
     /// Convert this adapter to a component
     pub fn to_component(&self) -> Result<Component> {
-        let mut component = Component::new(WrtComponentType::default());
+        let mut component = Component::new(WrtComponentType::default(;
 
         // Convert function adapters to component functions
         for func_adapter in &self.functions {
@@ -410,9 +410,9 @@ impl CoreModuleAdapter {
         }
         #[cfg(not(feature = "std"))]
         {
-            let mut result = Vec::new();
+            let mut result = Vec::new(;
             for arg in args {
-                result.push(arg.clone());
+                result.push(arg.clone();
             }
             Ok(result)
         }
@@ -573,7 +573,7 @@ macro_rules! impl_basic_traits {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
                 // Simple checksum without unsafe code
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -600,15 +600,15 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to all adapter types
-impl_basic_traits!(FunctionAdapter, FunctionAdapter::default());
-impl_basic_traits!(MemoryAdapter, MemoryAdapter::default());
-impl_basic_traits!(TableAdapter, TableAdapter::default());
-impl_basic_traits!(GlobalAdapter, GlobalAdapter::default());
-impl_basic_traits!(MemoryLimits, MemoryLimits::default());
-impl_basic_traits!(TableLimits, TableLimits::default());
-impl_basic_traits!(CoreValType, CoreValType::default());
-impl_basic_traits!(AdaptationMode, AdaptationMode::default());
-impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default());
+impl_basic_traits!(FunctionAdapter, FunctionAdapter::default(;
+impl_basic_traits!(MemoryAdapter, MemoryAdapter::default(;
+impl_basic_traits!(TableAdapter, TableAdapter::default(;
+impl_basic_traits!(GlobalAdapter, GlobalAdapter::default(;
+impl_basic_traits!(MemoryLimits, MemoryLimits::default(;
+impl_basic_traits!(TableLimits, TableLimits::default(;
+impl_basic_traits!(CoreValType, CoreValType::default(;
+impl_basic_traits!(AdaptationMode, AdaptationMode::default(;
+impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default(;
 
 mod tests {
     use super::*;
@@ -617,16 +617,16 @@ mod tests {
     fn test_core_module_adapter_creation() {
         #[cfg(feature = "std")]
         {
-            let adapter = CoreModuleAdapter::new("test_module".to_string());
-            assert_eq!(adapter.name, "test_module");
-            assert_eq!(adapter.functions.len(), 0);
+            let adapter = CoreModuleAdapter::new("test_module".to_string();
+            assert_eq!(adapter.name, "test_module";
+            assert_eq!(adapter.functions.len(), 0;
         }
         #[cfg(not(feature = "std"))]
         {
             let name = BoundedString::from_str("test_module").unwrap();
             let adapter = CoreModuleAdapter::new(name).unwrap();
-            assert_eq!(adapter.name.as_str(), "test_module");
-            assert_eq!(adapter.functions.len(), 0);
+            assert_eq!(adapter.name.as_str(), "test_module";
+            assert_eq!(adapter.functions.len(), 0;
         }
     }
 
@@ -637,50 +637,50 @@ mod tests {
         core_sig.add_result(CoreValType::I32).unwrap();
 
         let adapter =
-            FunctionAdapter::new(0, WrtComponentType::Unit, core_sig, AdaptationMode::Direct);
+            FunctionAdapter::new(0, WrtComponentType::Unit, core_sig, AdaptationMode::Direct;
 
-        assert_eq!(adapter.core_index, 0);
-        assert_eq!(adapter.mode, AdaptationMode::Direct);
-        assert!(!adapter.needs_canonical_abi());
+        assert_eq!(adapter.core_index, 0;
+        assert_eq!(adapter.mode, AdaptationMode::Direct;
+        assert!(!adapter.needs_canonical_abi();
     }
 
     #[test]
     fn test_core_val_type_display() {
-        assert_eq!(CoreValType::I32.to_string(), "i32");
-        assert_eq!(CoreValType::F64.to_string(), "f64");
-        assert_eq!(CoreValType::FuncRef.to_string(), "funcref");
+        assert_eq!(CoreValType::I32.to_string(), "i32";
+        assert_eq!(CoreValType::F64.to_string(), "f64";
+        assert_eq!(CoreValType::FuncRef.to_string(), "funcref";
     }
 
     #[test]
     fn test_adaptation_mode_display() {
-        assert_eq!(AdaptationMode::Direct.to_string(), "direct");
-        assert_eq!(AdaptationMode::Lift.to_string(), "lift");
-        assert_eq!(AdaptationMode::Bidirectional.to_string(), "bidirectional");
+        assert_eq!(AdaptationMode::Direct.to_string(), "direct";
+        assert_eq!(AdaptationMode::Lift.to_string(), "lift";
+        assert_eq!(AdaptationMode::Bidirectional.to_string(), "bidirectional";
     }
 
     #[test]
     fn test_memory_adapter() {
-        let adapter = MemoryAdapter::new(0, 1, Some(10), false);
-        assert_eq!(adapter.core_index, 0);
-        assert_eq!(adapter.limits.min, 1);
-        assert_eq!(adapter.limits.max, Some(10));
+        let adapter = MemoryAdapter::new(0, 1, Some(10), false;
+        assert_eq!(adapter.core_index, 0;
+        assert_eq!(adapter.limits.min, 1;
+        assert_eq!(adapter.limits.max, Some(10;
         assert!(!adapter.shared);
     }
 
     #[test]
     fn test_table_adapter() {
-        let adapter = TableAdapter::new(0, CoreValType::FuncRef, 0, None);
-        assert_eq!(adapter.core_index, 0);
-        assert_eq!(adapter.element_type, CoreValType::FuncRef);
-        assert_eq!(adapter.limits.min, 0);
-        assert_eq!(adapter.limits.max, None);
+        let adapter = TableAdapter::new(0, CoreValType::FuncRef, 0, None;
+        assert_eq!(adapter.core_index, 0;
+        assert_eq!(adapter.element_type, CoreValType::FuncRef;
+        assert_eq!(adapter.limits.min, 0;
+        assert_eq!(adapter.limits.max, None;
     }
 
     #[test]
     fn test_global_adapter() {
-        let adapter = GlobalAdapter::new(0, CoreValType::I32, true);
-        assert_eq!(adapter.core_index, 0);
-        assert_eq!(adapter.global_type, CoreValType::I32);
+        let adapter = GlobalAdapter::new(0, CoreValType::I32, true;
+        assert_eq!(adapter.core_index, 0;
+        assert_eq!(adapter.global_type, CoreValType::I32;
         assert!(adapter.mutable);
     }
 }

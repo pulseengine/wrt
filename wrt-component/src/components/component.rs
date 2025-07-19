@@ -45,9 +45,9 @@ impl<K: PartialEq + Clone, V: Clone> SimpleMap<K, V> {
     
     pub fn insert(&mut self, key: K, value: V) {
         // Remove existing entry if present
-        self.entries.retain(|(k, _)| k != &key);
+        self.entries.retain(|(k, _)| k != &key;
         // Add new entry
-        let _ = self.entries.push((key, value));
+        let _ = self.entries.push((key, value);
     }
     
     pub fn get(&self, key: &K) -> Option<&V> {
@@ -299,7 +299,7 @@ impl RuntimeInstance {
     /// Register an exported function
     pub fn register_function(&mut self, name: String, function: ExternValue) -> Result<()> {
         if let ExternValue::Function(_) = &function {
-            self.functions.insert(name, function);
+            self.functions.insert(name, function;
             Ok(())
         } else {
             Err(Error::validation_error("Invalid function type"))
@@ -308,7 +308,7 @@ impl RuntimeInstance {
 
     /// Register an exported memory
     pub fn register_memory(&mut self, name: String, memory: MemoryValue) -> Result<()> {
-        self.memories.insert(name, memory);
+        self.memories.insert(name, memory;
         Ok(())
     }
 
@@ -340,19 +340,19 @@ impl RuntimeInstance {
                         "Expected {} arguments, got {}",
                         func_value.ty.params.len(),
                         args.len()
-                    )));
+                    );
             }
 
             // Type check arguments
             for (i, (arg, param_type)) in args.iter().zip(func_value.ty.params.iter()).enumerate() {
-                let arg_type = arg.value_type();
+                let arg_type = arg.value_type(;
                 let expected_type = &param_type;
 
                 if !self.is_type_compatible(&arg_type, expected_type) {
                     return Err(Error::validation_error(&format!(
                             "Type mismatch for argument {}: expected {:?}, got {:?}",
                             i, expected_type, arg_type
-                        )));
+                        );
                 }
             }
 
@@ -362,11 +362,11 @@ impl RuntimeInstance {
                 // This interface will be extended as needed
 
                 #[cfg(feature = "std")]
-                debug!("Module instance execution not yet implemented for function: {}", name);
+                debug!("Module instance execution not yet implemented for function: {}", name;
 
                 // For MVP, we need to return that execution isn't implemented
                 // without hard-coding specific function behavior
-                return Err(Error::runtime_execution_error("Function execution failed"));
+                return Err(Error::runtime_execution_error("Function execution failed";
             }
 
             // If we reach here, there's no module instance to handle the execution,
@@ -413,22 +413,22 @@ impl RuntimeInstance {
     pub fn get_export_value(&self, name: &str) -> Option<ExternValue> {
         // Check function exports first
         if let Some(function) = self.functions.get(name) {
-            return Some(function.clone());
+            return Some(function.clone();
         }
         
         // Check memory exports
         if let Some(memory) = self.memories.get(name) {
-            return Some(ExternValue::Memory(memory.clone()));
+            return Some(ExternValue::Memory(memory.clone();
         }
         
         // Check table exports
         if let Some(table) = self.tables.get(name) {
-            return Some(ExternValue::Table(table.clone()));
+            return Some(ExternValue::Table(table.clone();
         }
         
         // Check global exports
         if let Some(global) = self.globals.get(name) {
-            return Some(ExternValue::Global(global.clone()));
+            return Some(ExternValue::Global(global.clone();
         }
         
         None
@@ -452,7 +452,7 @@ impl RuntimeInstance {
         // In a real implementation, this would come from the module's export table
         let mut hash: u32 = 0;
         for byte in name.bytes() {
-            hash = hash.wrapping_mul(31).wrapping_add(byte as u32);
+            hash = hash.wrapping_mul(31).wrapping_add(byte as u32;
         }
         // Keep within reasonable function index range
         hash % 1024
@@ -715,7 +715,7 @@ impl MemoryValue {
             Error::memory_error("Failed to acquire memory write lock")
         })?;
 
-        memory.set_debug_name(name);
+        memory.set_debug_name(name;
         Ok(())
     }
 
@@ -767,7 +767,7 @@ impl Host {
 
     /// Adds a host function
     pub fn add_function(&mut self, name: String, func: FunctionValue) {
-        self.functions.insert(name, func);
+        self.functions.insert(name, func;
     }
 
     /// Gets a host function by name
@@ -785,7 +785,7 @@ impl Host {
 
         // Validate arguments
         if args.len() != function.ty.params.len() {
-            return Err(Error::validation_error("Argument count mismatch"));
+            return Err(Error::validation_error("Argument count mismatch";
         }
 
         // Actual function calling would happen here
@@ -820,7 +820,7 @@ impl Component {
     ) {
         self.verification_level = level;
         // Propagate to resource table
-        self.resource_table.set_verification_level(convert_verification_level(level));
+        self.resource_table.set_verification_level(convert_verification_level(level;
     }
 
     /// Get the current verification level
@@ -844,7 +844,7 @@ impl BuiltinRequirements {
 
     /// Add a requirement for a specific built-in type
     pub fn add_requirement(&mut self, builtin_type: BuiltinType) {
-        self.requirements.insert(builtin_type);
+        self.requirements.insert(builtin_type;
     }
 
     /// Get the set of required built-ins
@@ -875,7 +875,7 @@ impl BuiltinRequirements {
 /// Scans a binary for required builtins
 pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
     // Helper to avoid boilerplate
-    let mut requirements = BuiltinRequirements::new();
+    let mut requirements = BuiltinRequirements::new(;
 
     // Try to decode as component or module
     #[cfg(feature = "std")]
@@ -883,10 +883,10 @@ pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
         match wrt_decoder::component::decode_component(bytes) {
             Ok(component) => {
                 scan_functions_for_builtins(&component, &mut requirements)?;
-                return Ok(requirements);
+                return Ok(requirements;
             }
             Err(err) => {
-                return Err(Error::component_not_found("Component not found"));
+                return Err(Error::component_not_found("Component not found";
             }
         }
     }
@@ -934,10 +934,10 @@ fn scan_functions_for_builtins(
     for type_def in component.types() {
         if let TypeDef::Resource(_) = type_def {
             // Resources typically require the ResourceCreate built-in
-            requirements.add_requirement(BuiltinType::ResourceCreate);
-            requirements.add_requirement(BuiltinType::ResourceDrop);
-            requirements.add_requirement(BuiltinType::ResourceRep);
-            requirements.add_requirement(BuiltinType::ResourceGet);
+            requirements.add_requirement(BuiltinType::ResourceCreate;
+            requirements.add_requirement(BuiltinType::ResourceDrop;
+            requirements.add_requirement(BuiltinType::ResourceRep;
+            requirements.add_requirement(BuiltinType::ResourceGet;
         }
     }
 
@@ -945,10 +945,10 @@ fn scan_functions_for_builtins(
     // Check for async functions which require the AsyncWait built-in
     for func in component.functions() {
         if func.is_async() {
-            requirements.add_requirement(BuiltinType::AsyncWait);
-            requirements.add_requirement(BuiltinType::AsyncNew);
-            requirements.add_requirement(BuiltinType::AsyncGet);
-            requirements.add_requirement(BuiltinType::AsyncPoll);
+            requirements.add_requirement(BuiltinType::AsyncWait;
+            requirements.add_requirement(BuiltinType::AsyncNew;
+            requirements.add_requirement(BuiltinType::AsyncGet;
+            requirements.add_requirement(BuiltinType::AsyncPoll;
             break; // Only need to identify one async function
         }
     }
@@ -975,10 +975,10 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
                         wrt_foundation::BoundedVec::<_, 16, _>::new(provider)?
                     }
                 }; // Create an empty vector as a placeholder
-                return Ok(modules);
+                return Ok(modules;
             }
             Err(err) => {
-                return Err(Error::component_not_found("Component not found"));
+                return Err(Error::component_not_found("Component not found";
             }
         }
     }
@@ -1050,43 +1050,43 @@ mod tests {
 
     #[test]
     fn test_runtime_instance_creation() {
-        let runtime = RuntimeInstance::new();
-        assert!(runtime.functions.is_empty());
-        assert!(runtime.memories.is_empty());
-        assert!(runtime.tables.is_empty());
-        assert!(runtime.globals.is_empty());
-        assert!(runtime.module_instance.is_none());
+        let runtime = RuntimeInstance::new(;
+        assert!(runtime.functions.is_empty();
+        assert!(runtime.memories.is_empty();
+        assert!(runtime.tables.is_empty();
+        assert!(runtime.globals.is_empty();
+        assert!(runtime.module_instance.is_none();
     }
 
     #[test]
     fn test_register_function() {
-        let mut runtime = RuntimeInstance::new();
+        let mut runtime = RuntimeInstance::new(;
         let func_type = wrt_runtime::func::FuncType {
             params: vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
         };
         let func_value = FunctionValue { ty: func_type, export_name: "test_function".to_string() };
-        let extern_value = ExternValue::Function(func_value);
+        let extern_value = ExternValue::Function(func_value;
 
-        assert!(runtime.register_function("test_function".to_string(), extern_value).is_ok());
-        assert_eq!(runtime.functions.len(), 1);
-        assert!(runtime.functions.contains_key("test_function"));
+        assert!(runtime.register_function("test_function".to_string(), extern_value).is_ok();
+        assert_eq!(runtime.functions.len(), 1;
+        assert!(runtime.functions.contains_key("test_function");
     }
 
     #[test]
     fn test_function_not_found() {
-        let runtime = RuntimeInstance::new();
+        let runtime = RuntimeInstance::new(;
 
         // Try to execute a non-existent function
         let args = vec![Value::I32(1)];
-        let result = runtime.execute_function("nonexistent", args);
+        let result = runtime.execute_function("nonexistent", args;
 
         // Verify the error
-        assert!(result.is_err());
+        assert!(result.is_err();
         match result {
             Err(e) => {
-                assert_eq!(e.category(), ErrorCategory::Runtime);
-                assert!(e.to_string().contains("not found"));
+                assert_eq!(e.category(), ErrorCategory::Runtime;
+                assert!(e.to_string().contains("not found");
             }
             _ => panic!("Expected an error"),
         }
@@ -1094,7 +1094,7 @@ mod tests {
 
     #[test]
     fn test_argument_count_validation() {
-        let mut runtime = RuntimeInstance::new();
+        let mut runtime = RuntimeInstance::new(;
 
         // Create and register a function expecting 2 arguments
         let func_type = wrt_runtime::func::FuncType {
@@ -1102,20 +1102,20 @@ mod tests {
             results: vec![ValueType::I32],
         };
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
-        let extern_value = ExternValue::Function(func_value);
+        let extern_value = ExternValue::Function(func_value;
 
         runtime.register_function("test_func".to_string(), extern_value).unwrap();
 
         // Call with wrong number of arguments
         let args = vec![Value::I32(1)]; // Only one argument
-        let result = runtime.execute_function("test_func", args);
+        let result = runtime.execute_function("test_func", args;
 
         // Verify the error
-        assert!(result.is_err());
+        assert!(result.is_err();
         match result {
             Err(e) => {
-                assert_eq!(e.category(), ErrorCategory::Validation);
-                assert!(e.to_string().contains("Expected 2 arguments"));
+                assert_eq!(e.category(), ErrorCategory::Validation;
+                assert!(e.to_string().contains("Expected 2 arguments");
             }
             _ => panic!("Expected an error"),
         }
@@ -1123,7 +1123,7 @@ mod tests {
 
     #[test]
     fn test_argument_type_validation() {
-        let mut runtime = RuntimeInstance::new();
+        let mut runtime = RuntimeInstance::new(;
 
         // Create and register a function expecting I32 arguments
         let func_type = wrt_runtime::func::FuncType {
@@ -1131,20 +1131,20 @@ mod tests {
             results: vec![ValueType::I32],
         };
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
-        let extern_value = ExternValue::Function(func_value);
+        let extern_value = ExternValue::Function(func_value;
 
         runtime.register_function("test_func".to_string(), extern_value).unwrap();
 
         // Call with wrong argument types
         let args = vec![Value::I32(1), Value::F32(2.0)]; // Second arg is F32
-        let result = runtime.execute_function("test_func", args);
+        let result = runtime.execute_function("test_func", args;
 
         // Verify the error
-        assert!(result.is_err());
+        assert!(result.is_err();
         match result {
             Err(e) => {
-                assert_eq!(e.category(), ErrorCategory::Validation);
-                assert!(e.to_string().contains("Type mismatch for argument"));
+                assert_eq!(e.category(), ErrorCategory::Validation;
+                assert!(e.to_string().contains("Type mismatch for argument");
             }
             _ => panic!("Expected an error"),
         }
@@ -1152,7 +1152,7 @@ mod tests {
 
     #[test]
     fn test_function_not_implemented() {
-        let mut runtime = RuntimeInstance::new();
+        let mut runtime = RuntimeInstance::new(;
 
         // Create and register a function
         let func_type = wrt_runtime::func::FuncType {
@@ -1160,21 +1160,21 @@ mod tests {
             results: vec![ValueType::I32],
         };
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
-        let extern_value = ExternValue::Function(func_value);
+        let extern_value = ExternValue::Function(func_value;
 
         runtime.register_function("test_func".to_string(), extern_value).unwrap();
 
         // Call with correct arguments
         let args = vec![Value::I32(1), Value::I32(2)];
-        let result = runtime.execute_function("test_func", args);
+        let result = runtime.execute_function("test_func", args;
 
         // Verify we get a NOT_IMPLEMENTED error
-        assert!(result.is_err());
+        assert!(result.is_err();
         match result {
             Err(e) => {
-                assert_eq!(e.category(), ErrorCategory::System);
-                assert_eq!(e.code(), codes::NOT_IMPLEMENTED);
-                assert!(e.to_string().contains("not implemented"));
+                assert_eq!(e.category(), ErrorCategory::System;
+                assert_eq!(e.code(), codes::NOT_IMPLEMENTED;
+                assert!(e.to_string().contains("not implemented");
             }
             _ => panic!("Expected a not implemented error"),
         }

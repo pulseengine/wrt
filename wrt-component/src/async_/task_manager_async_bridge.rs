@@ -204,7 +204,7 @@ impl TaskManagerAsyncBridge {
         component_id: ComponentInstanceId,
         limits: Option<ComponentResourceLimits>,
     ) -> Result<(), Error> {
-        let limits = limits.unwrap_or_else(|| self.config.default_limits.clone());
+        let limits = limits.unwrap_or_else(|| self.config.default_limits.clone();
         
         // Register with async bridge
         self.async_bridge.register_component(
@@ -250,12 +250,12 @@ impl TaskManagerAsyncBridge {
         })?;
 
         if context.async_state != ComponentAsyncState::Active {
-            return Err(Error::validation_invalid_state("Component async operations not active"));
+            return Err(Error::validation_invalid_state("Component async operations not active";
         }
 
         // Check resource limits
         if context.active_tasks.len() >= context.resource_limits.max_concurrent_tasks {
-            return Err(Error::resource_limit_exceeded("Component async task limit exceeded"));
+            return Err(Error::resource_limit_exceeded("Component async task limit exceeded";
         }
 
         // Create Component Model task
@@ -308,7 +308,7 @@ impl TaskManagerAsyncBridge {
         })?;
 
         // Update statistics
-        self.bridge_stats.total_async_tasks.fetch_add(1, Ordering::Relaxed);
+        self.bridge_stats.total_async_tasks.fetch_add(1, Ordering::Relaxed;
 
         Ok(component_task_id)
     }
@@ -324,11 +324,11 @@ impl TaskManagerAsyncBridge {
         })?;
 
         if context.futures.len() >= context.resource_limits.max_futures {
-            return Err(Error::resource_limit_exceeded("Component future limit exceeded"));
+            return Err(Error::resource_limit_exceeded("Component future limit exceeded";
         }
 
         // Generate unique handle
-        let handle = FutureHandle::new(self.generate_handle_id());
+        let handle = FutureHandle::new(self.generate_handle_id(;
         
         // Spawn task to handle future
         let task_id = self.spawn_async_task(
@@ -347,7 +347,7 @@ impl TaskManagerAsyncBridge {
             Error::resource_limit_exceeded("Future handle table full")
         })?;
 
-        self.bridge_stats.futures_created.fetch_add(1, Ordering::Relaxed);
+        self.bridge_stats.futures_created.fetch_add(1, Ordering::Relaxed;
 
         Ok(handle)
     }
@@ -363,10 +363,10 @@ impl TaskManagerAsyncBridge {
         })?;
 
         if context.streams.len() >= context.resource_limits.max_streams {
-            return Err(Error::resource_limit_exceeded("Component stream limit exceeded"));
+            return Err(Error::resource_limit_exceeded("Component stream limit exceeded";
         }
 
-        let handle = StreamHandle::new(self.generate_handle_id());
+        let handle = StreamHandle::new(self.generate_handle_id(;
         
         // Spawn task to handle stream
         let task_id = self.spawn_async_task(
@@ -384,7 +384,7 @@ impl TaskManagerAsyncBridge {
             Error::resource_limit_exceeded("Stream handle table full")
         })?;
 
-        self.bridge_stats.streams_created.fetch_add(1, Ordering::Relaxed);
+        self.bridge_stats.streams_created.fetch_add(1, Ordering::Relaxed;
 
         Ok(handle)
     }
@@ -400,13 +400,13 @@ impl TaskManagerAsyncBridge {
 
         // Check if any waitables are immediately ready
         if let Some(ready_index) = waitables.first_ready() {
-            return Ok(ready_index);
+            return Ok(ready_index;
         }
 
         // Update task with waitables
         if let Some(async_task) = self.async_tasks.get_mut(&current_task) {
-            async_task.waitables = Some(waitables.clone());
-            async_task.last_activity.store(self.get_timestamp(), Ordering::Release);
+            async_task.waitables = Some(waitables.clone();
+            async_task.last_activity.store(self.get_timestamp(), Ordering::Release;
         }
 
         // Delegate to task manager
@@ -431,7 +431,7 @@ impl TaskManagerAsyncBridge {
 
         // Update task activity
         if let Some(async_task) = self.async_tasks.get(&current_task) {
-            async_task.last_activity.store(self.get_timestamp(), Ordering::Release);
+            async_task.last_activity.store(self.get_timestamp(), Ordering::Release;
         }
 
         // Delegate to task manager
@@ -445,7 +445,7 @@ impl TaskManagerAsyncBridge {
         let mut result = self.async_bridge.poll_async_tasks()?;
 
         // Update Component Model task states
-        let mut completed_tasks = Vec::new();
+        let mut completed_tasks = Vec::new(;
         for (comp_task_id, async_task) in self.async_tasks.iter() {
             if self.async_bridge.is_task_ready(*comp_task_id)? {
                 // Task is ready, update Component Model task state
@@ -460,8 +460,8 @@ impl TaskManagerAsyncBridge {
         }
 
         // Update statistics
-        self.bridge_stats.completed_tasks.fetch_add(result.tasks_completed as u64, Ordering::Relaxed);
-        self.bridge_stats.failed_tasks.fetch_add(result.tasks_failed as u64, Ordering::Relaxed);
+        self.bridge_stats.completed_tasks.fetch_add(result.tasks_completed as u64, Ordering::Relaxed;
+        self.bridge_stats.failed_tasks.fetch_add(result.tasks_failed as u64, Ordering::Relaxed;
 
         Ok(result)
     }
@@ -517,11 +517,11 @@ impl TaskManagerAsyncBridge {
         if let Some(async_task) = self.async_tasks.remove(&task_id) {
             // Remove from component context
             if let Some(context) = self.async_contexts.get_mut(&async_task.component_id) {
-                context.active_tasks.retain(|&id| id != task_id);
+                context.active_tasks.retain(|&id| id != task_id;
             }
 
             // Remove mapping
-            self.task_mapping.remove(&task_id);
+            self.task_mapping.remove(&task_id;
         }
         Ok(())
     }
@@ -545,37 +545,37 @@ mod tests {
 
     #[test]
     fn test_bridge_creation() {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        let config = BridgeConfiguration::default();
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
+        let config = BridgeConfiguration::default(;
         
         let bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
-        assert_eq!(bridge.async_contexts.len(), 0);
+        assert_eq!(bridge.async_contexts.len(), 0;
     }
 
     #[test]
     fn test_component_initialization() {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        let config = BridgeConfiguration::default();
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
+        let config = BridgeConfiguration::default(;
         
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
         
-        assert!(bridge.async_contexts.contains_key(&component_id));
+        assert!(bridge.async_contexts.contains_key(&component_id);
     }
 
     #[test]
     fn test_async_task_spawning() {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        let config = BridgeConfiguration::default();
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
+        let config = BridgeConfiguration::default(;
         
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
         
         let task_id = bridge.spawn_async_task(
@@ -586,43 +586,43 @@ mod tests {
             Priority::Normal,
         ).unwrap();
         
-        assert!(bridge.async_tasks.contains_key(&task_id));
-        assert!(bridge.task_mapping.contains_key(&task_id));
+        assert!(bridge.async_tasks.contains_key(&task_id);
+        assert!(bridge.task_mapping.contains_key(&task_id);
     }
 
     #[test]
     fn test_future_handle_creation() {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        let config = BridgeConfiguration::default();
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
+        let config = BridgeConfiguration::default(;
         
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
         
         // Would need proper Future implementation for real test
-        // let future = Box::new(/* future implementation */);
+        // let future = Box::new(/* future implementation */;
         // let handle = bridge.create_future_handle(component_id, future).unwrap();
         
-        let stats = bridge.get_bridge_statistics();
-        assert_eq!(stats.active_components, 1);
+        let stats = bridge.get_bridge_statistics(;
+        assert_eq!(stats.active_components, 1;
     }
 
     #[test]
     fn test_component_suspension() {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        let config = BridgeConfiguration::default();
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
+        let config = BridgeConfiguration::default(;
         
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
         
         bridge.suspend_component_async(component_id).unwrap();
         
         let context = bridge.async_contexts.get(&component_id).unwrap();
-        assert_eq!(context.async_state, ComponentAsyncState::Suspended);
+        assert_eq!(context.async_state, ComponentAsyncState::Suspended;
     }
 }

@@ -36,9 +36,9 @@ fn load_test_module() -> Result<Module> {
 /// Helper function to create execution engine with module
 fn create_engine_with_module() -> Result<(StacklessEngine, usize)> {
     let runtime_module = load_test_module()?;
-    let mut engine = StacklessEngine::new();
+    let mut engine = StacklessEngine::new(;
     let instance = ModuleInstance::new(runtime_module, 0)?;
-    let instance_arc = Arc::new(instance);
+    let instance_arc = Arc::new(instance;
     let instance_idx = engine.set_current_module(instance_arc)?;
     Ok((engine, instance_idx))
 }
@@ -65,19 +65,19 @@ fn test_basic_arithmetic_operations() -> Result<()> {
     ];
 
     for (a, b, expected) in test_cases {
-        let args = create_test_args(a, b);
+        let args = create_test_args(a, b;
         let results = engine.execute(instance_idx, 0, args)?;
 
-        assert_eq!(results.len(), 1, "Expected exactly one result");
+        assert_eq!(results.len(), 1, "Expected exactly one result";
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "add({}, {}) should equal {}",
                 a, b, expected
-            );
+            ;
         } else {
-            panic!("Expected I32 result, got {:?}", results[0]);
+            panic!("Expected I32 result, got {:?}", results[0];
         }
     }
 
@@ -96,26 +96,26 @@ fn test_integer_overflow_behavior() -> Result<()> {
     ];
 
     for (a, b, expected) in overflow_cases {
-        let args = create_test_args(a, b);
+        let args = create_test_args(a, b;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
             results.len(),
             1,
             "Expected exactly one result for overflow case"
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "Overflow add({}, {}) should wrap to {}",
                 a, b, expected
-            );
+            ;
         } else {
             panic!(
                 "Expected I32 result for overflow test, got {:?}",
                 results[0]
-            );
+            ;
         }
     }
 
@@ -137,26 +137,26 @@ fn test_zero_and_identity_operations() -> Result<()> {
     ];
 
     for (a, b, expected) in identity_cases {
-        let args = create_test_args(a, b);
+        let args = create_test_args(a, b;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
             results.len(),
             1,
             "Expected exactly one result for identity case"
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "Identity add({}, {}) should equal {}",
                 a, b, expected
-            );
+            ;
         } else {
             panic!(
                 "Expected I32 result for identity test, got {:?}",
                 results[0]
-            );
+            ;
         }
     }
 
@@ -180,26 +180,26 @@ fn test_negative_number_operations() -> Result<()> {
     ];
 
     for (a, b, expected) in negative_cases {
-        let args = create_test_args(a, b);
+        let args = create_test_args(a, b;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
             results.len(),
             1,
             "Expected exactly one result for negative case"
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "Negative add({}, {}) should equal {}",
                 a, b, expected
-            );
+            ;
         } else {
             panic!(
                 "Expected I32 result for negative test, got {:?}",
                 results[0]
-            );
+            ;
         }
     }
 
@@ -211,11 +211,11 @@ fn test_execution_determinism() -> Result<()> {
     let (mut engine, instance_idx) = create_engine_with_module()?;
 
     // Test that execution is deterministic - same inputs produce same outputs
-    let test_input = (123, 456);
+    let test_input = (123, 456;
     let expected_result = 579;
 
     for iteration in 0..100 {
-        let args = create_test_args(test_input.0, test_input.1);
+        let args = create_test_args(test_input.0, test_input.1;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -223,19 +223,19 @@ fn test_execution_determinism() -> Result<()> {
             1,
             "Expected exactly one result in iteration {}",
             iteration
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected_result,
                 "Iteration {}: Deterministic execution failed for add({}, {})",
                 iteration, test_input.0, test_input.1
-            );
+            ;
         } else {
             panic!(
                 "Expected I32 result in iteration {}, got {:?}",
                 iteration, results[0]
-            );
+            ;
         }
     }
 
@@ -245,8 +245,8 @@ fn test_execution_determinism() -> Result<()> {
 #[test]
 fn test_multiple_engine_instances() -> Result<()> {
     // Test that multiple engine instances work independently
-    let mut engines = Vec::new();
-    let mut instance_indices = Vec::new();
+    let mut engines = Vec::new(;
+    let mut instance_indices = Vec::new(;
 
     // Create 5 independent engine instances
     for i in 0..5 {
@@ -263,7 +263,7 @@ fn test_multiple_engine_instances() -> Result<()> {
         let b = i as i32 * 5;
         let expected = a + b;
 
-        let args = create_test_args(a, b);
+        let args = create_test_args(a, b;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -271,19 +271,19 @@ fn test_multiple_engine_instances() -> Result<()> {
             1,
             "Expected exactly one result from engine {}",
             i
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "Engine {}: add({}, {}) should equal {}",
                 i, a, b, expected
-            );
+            ;
         } else {
             panic!(
                 "Expected I32 result from engine {}, got {:?}",
                 i, results[0]
-            );
+            ;
         }
     }
 
@@ -300,7 +300,7 @@ fn test_repeated_execution_same_engine() -> Result<()> {
         let b = (i * 7) % 100;
         let expected = a + b;
 
-        let args = create_test_args(a, b);
+        let args = create_test_args(a, b;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -308,19 +308,19 @@ fn test_repeated_execution_same_engine() -> Result<()> {
             1,
             "Expected exactly one result in execution {}",
             i
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "Execution {}: add({}, {}) should equal {}",
                 i, a, b, expected
-            );
+            ;
         } else {
             panic!(
                 "Expected I32 result in execution {}, got {:?}",
                 i, results[0]
-            );
+            ;
         }
     }
 
@@ -348,7 +348,7 @@ fn test_boundary_value_analysis() -> Result<()> {
     ];
 
     for (a, b, expected) in boundary_cases {
-        let args = create_test_args(a, b);
+        let args = create_test_args(a, b;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -357,19 +357,19 @@ fn test_boundary_value_analysis() -> Result<()> {
             "Expected exactly one result for boundary case add({}, {})",
             a,
             b
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "Boundary add({}, {}) should equal {}",
                 a, b, expected
-            );
+            ;
         } else {
             panic!(
                 "Expected I32 result for boundary test add({}, {}), got {:?}",
                 a, b, results[0]
-            );
+            ;
         }
     }
 
@@ -384,13 +384,13 @@ fn test_instruction_parsing_validation() -> Result<()> {
     assert!(
         !runtime_module.functions.is_empty(),
         "Module should have at least one function"
-    );
+    ;
 
     let function = runtime_module.functions.get(0)?;
     assert!(
         !function.body.is_empty(),
         "Function should have parsed instructions"
-    );
+    ;
 
     // Validate that we can access individual instructions
     for i in 0..function.body.len() {
@@ -401,7 +401,7 @@ fn test_instruction_parsing_validation() -> Result<()> {
     println!(
         "✅ Function 0 has {} instructions parsed from bytecode",
         function.body.len()
-    );
+    ;
 
     Ok(())
 }
@@ -413,14 +413,14 @@ fn test_memory_safety_execution() -> Result<()> {
 
     // Test with a large number of executions to catch memory issues
     for batch in 0..10 {
-        let mut results_in_batch = Vec::new();
+        let mut results_in_batch = Vec::new(;
 
         for i in 0..100 {
             let a = (batch * 100 + i) % 1000;
             let b = ((batch * 100 + i) * 3) % 1000;
             let expected = a + b;
 
-            let args = create_test_args(a, b);
+            let args = create_test_args(a, b;
             let results = engine.execute(instance_idx, 0, args)?;
 
             assert_eq!(
@@ -429,20 +429,20 @@ fn test_memory_safety_execution() -> Result<()> {
                 "Expected exactly one result in batch {} execution {}",
                 batch,
                 i
-            );
+            ;
 
             if let Value::I32(result) = &results[0] {
                 assert_eq!(
                     *result, expected,
                     "Batch {} execution {}: add({}, {}) should equal {}",
                     batch, i, a, b, expected
-                );
+                ;
                 results_in_batch.push(*result);
             } else {
                 panic!(
                     "Expected I32 result in batch {} execution {}, got {:?}",
                     batch, i, results[0]
-                );
+                ;
             }
         }
 
@@ -452,12 +452,12 @@ fn test_memory_safety_execution() -> Result<()> {
             100,
             "Batch {} should have 100 results",
             batch
-        );
+        ;
         println!(
             "✅ Batch {} completed successfully with {} executions",
             batch,
             results_in_batch.len()
-        );
+        ;
     }
 
     Ok(())
@@ -466,28 +466,28 @@ fn test_memory_safety_execution() -> Result<()> {
 #[test]
 fn test_error_handling_robustness() -> Result<()> {
     let runtime_module = load_test_module()?;
-    let mut engine = StacklessEngine::new();
+    let mut engine = StacklessEngine::new(;
     let instance = ModuleInstance::new(runtime_module, 0)?;
-    let instance_arc = Arc::new(instance);
+    let instance_arc = Arc::new(instance;
     let instance_idx = engine.set_current_module(instance_arc)?;
 
     // Test execution with correct number of arguments
-    let correct_args = create_test_args(42, 24);
+    let correct_args = create_test_args(42, 24;
     let results = engine.execute(instance_idx, 0, correct_args)?;
     assert_eq!(
         results.len(),
         1,
         "Expected exactly one result with correct args"
-    );
+    ;
 
     // Test with wrong number of arguments (should handle gracefully)
     let wrong_args_too_few = vec![Value::I32(42)]; // Only one argument instead of two
-    let result = engine.execute(instance_idx, 0, wrong_args_too_few);
+    let result = engine.execute(instance_idx, 0, wrong_args_too_few;
     // The execution should either succeed with default values or return an error
     // Both are acceptable error handling behaviors
 
     let wrong_args_too_many = vec![Value::I32(42), Value::I32(24), Value::I32(66)]; // Three arguments instead of two
-    let result = engine.execute(instance_idx, 0, wrong_args_too_many);
+    let result = engine.execute(instance_idx, 0, wrong_args_too_many;
     // Similarly, this should be handled gracefully
 
     Ok(())
@@ -500,15 +500,15 @@ fn test_asil_b_compliance_validation() -> Result<()> {
 
     // Test bounded execution characteristics
     let test_iterations = 100;
-    let mut execution_times = Vec::with_capacity(test_iterations);
+    let mut execution_times = Vec::with_capacity(test_iterations;
 
     for i in 0..test_iterations {
-        let start = std::time::Instant::now();
+        let start = std::time::Instant::now(;
 
-        let args = create_test_args(i, i * 2);
+        let args = create_test_args(i, i * 2;
         let results = engine.execute(instance_idx, 0, args)?;
 
-        let execution_time = start.elapsed();
+        let execution_time = start.elapsed(;
         execution_times.push(execution_time);
 
         // Validate result consistency
@@ -517,10 +517,10 @@ fn test_asil_b_compliance_validation() -> Result<()> {
             1,
             "ASIL-B: Expected exactly one result in iteration {}",
             i
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
-            let expected = i + (i * 2);
+            let expected = i + (i * 2;
             assert_eq!(
                 *result,
                 expected,
@@ -529,12 +529,12 @@ fn test_asil_b_compliance_validation() -> Result<()> {
                 i,
                 i * 2,
                 expected
-            );
+            ;
         } else {
             panic!(
                 "ASIL-B: Expected I32 result in iteration {}, got {:?}",
                 i, results[0]
-            );
+            ;
         }
     }
 
@@ -545,15 +545,15 @@ fn test_asil_b_compliance_validation() -> Result<()> {
     let avg_time =
         execution_times.iter().sum::<std::time::Duration>() / execution_times.len() as u32;
 
-    println!("✅ ASIL-B Execution Analysis:");
-    println!("   - {} executions completed", test_iterations);
-    println!("   - Min execution time: {:?}", min_time);
-    println!("   - Max execution time: {:?}", max_time);
-    println!("   - Avg execution time: {:?}", avg_time);
+    println!("✅ ASIL-B Execution Analysis:";
+    println!("   - {} executions completed", test_iterations;
+    println!("   - Min execution time: {:?}", min_time;
+    println!("   - Max execution time: {:?}", max_time;
+    println!("   - Avg execution time: {:?}", avg_time;
     println!(
         "   - Time variance: {:?}",
         max_time.saturating_sub(*min_time)
-    );
+    ;
 
     // All executions should complete within reasonable bounds for ASIL-B
     for (i, &time) in execution_times.iter().enumerate() {
@@ -562,7 +562,7 @@ fn test_asil_b_compliance_validation() -> Result<()> {
             "ASIL-B: Execution {} took too long: {:?}",
             i,
             time
-        );
+        ;
     }
 
     Ok(())
@@ -593,7 +593,7 @@ fn test_production_workload_simulation() -> Result<()> {
     ];
 
     for (iteration, (a, b, expected)) in production_cases.iter().enumerate() {
-        let args = create_test_args(*a, *b);
+        let args = create_test_args(*a, *b;
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -601,26 +601,26 @@ fn test_production_workload_simulation() -> Result<()> {
             1,
             "Production case {}: Expected exactly one result",
             iteration
-        );
+        ;
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, *expected,
                 "Production case {}: add({}, {}) should equal {}",
                 iteration, a, b, expected
-            );
+            ;
         } else {
             panic!(
                 "Production case {}: Expected I32 result, got {:?}",
                 iteration, results[0]
-            );
+            ;
         }
     }
 
     println!(
         "✅ Production workload simulation completed: {} test cases passed",
         production_cases.len()
-    );
+    ;
 
     Ok(())
 }
@@ -628,7 +628,7 @@ fn test_production_workload_simulation() -> Result<()> {
 #[test]
 fn test_comprehensive_execution_validation() -> Result<()> {
     // Comprehensive test combining all aspects
-    println!("🚀 Starting comprehensive execution validation...");
+    println!("🚀 Starting comprehensive execution validation...";
 
     // Test 1: Multiple engines with different workloads
     let mut total_executions = 0;
@@ -642,7 +642,7 @@ fn test_comprehensive_execution_validation() -> Result<()> {
                 let b = ((engine_id + 1) * 500 + batch * 50 + execution) % 10000;
                 let expected = a + b;
 
-                let args = create_test_args(a, b);
+                let args = create_test_args(a, b;
                 let results = engine.execute(instance_idx, 0, args)?;
 
                 assert_eq!(
@@ -652,19 +652,19 @@ fn test_comprehensive_execution_validation() -> Result<()> {
                     engine_id,
                     batch,
                     execution
-                );
+                ;
 
                 if let Value::I32(result) = &results[0] {
                     assert_eq!(
                         *result, expected,
                         "Engine {} batch {} execution {}: add({}, {}) should equal {}",
                         engine_id, batch, execution, a, b, expected
-                    );
+                    ;
                 } else {
                     panic!(
                         "Engine {} batch {} execution {}: Expected I32 result, got {:?}",
                         engine_id, batch, execution, results[0]
-                    );
+                    ;
                 }
 
                 total_executions += 1;
@@ -675,7 +675,7 @@ fn test_comprehensive_execution_validation() -> Result<()> {
     println!(
         "✅ Comprehensive validation completed: {} total executions across 5 engines",
         total_executions
-    );
+    ;
 
     Ok(())
 }

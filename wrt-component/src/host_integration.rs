@@ -347,13 +347,13 @@ impl HostIntegrationManager {
         // Check security policy
         if !self.security_policy.allow_arbitrary_host_calls {
             return Err(wrt_error::Error::runtime_error("Error occurred")
-            );
+            ;
         }
 
         // Check function permissions
         if !self.check_function_permissions(&function.permissions, caller_instance) {
             return Err(wrt_error::Error::runtime_error("Error occurred")
-            );
+            ;
         }
 
         // Emit function call event
@@ -369,9 +369,9 @@ impl HostIntegrationManager {
 
         // Call the function
         #[cfg(feature = "std")]
-        let result = function.implementation.call(args);
+        let result = function.implementation.call(args;
         #[cfg(not(any(feature = "std", )))]
-        let result = (function.implementation)(args);
+        let result = (function.implementation)(args;
 
         // Emit function return event
         self.emit_event(ComponentEvent {
@@ -400,7 +400,7 @@ impl HostIntegrationManager {
         self.event_handlers.push(event_handler);
 
         // Sort by priority (higher priority first)
-        self.event_handlers.sort_by(|a, b| b.priority.cmp(&a.priority);
+        self.event_handlers.sort_by(|a, b| b.priority.cmp(&a.priority;
 
         Ok(()
     }
@@ -428,9 +428,9 @@ impl HostIntegrationManager {
         for handler in &self.event_handlers {
             if handler.event_type == event.event_type {
                 #[cfg(feature = "std")]
-                let result = (handler.handler)(&event);
+                let result = (handler.handler)(&event;
                 #[cfg(not(any(feature = "std", )))]
-                let result = (handler.handler)(&event);
+                let result = (handler.handler)(&event;
 
                 if let Err(e) = result {
                     // Log error but continue with other handlers
@@ -452,7 +452,7 @@ impl HostIntegrationManager {
         // Check security policy
         if !self.security_policy.allowed_resource_types.contains(&resource_type) {
             return Err(wrt_error::Error::runtime_error("Error occurred")
-            );
+            ;
         }
 
         let resource_id = self.host_resources.resources.len() as u32;
@@ -489,11 +489,11 @@ impl HostIntegrationManager {
 
         if !resource.permissions.shareable {
             return Err(wrt_error::Error::runtime_error("Error occurred")
-            );
+            ;
         }
 
         #[cfg(feature = "std")]
-        let mut allowed_instances = Vec::new();
+        let mut allowed_instances = Vec::new(;
         #[cfg(not(any(feature = "std", )))]
         let mut allowed_instances = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -719,32 +719,32 @@ mod tests {
 
     #[test]
     fn test_host_integration_manager_creation() {
-        let manager = HostIntegrationManager::new();
-        assert_eq!(manager.host_functions.len(), 0);
-        assert_eq!(manager.event_handlers.len(), 0);
+        let manager = HostIntegrationManager::new(;
+        assert_eq!(manager.host_functions.len(), 0;
+        assert_eq!(manager.event_handlers.len(), 0;
     }
 
     #[test]
     fn test_security_policy_default() {
-        let policy = SecurityPolicy::default();
+        let policy = SecurityPolicy::default(;
         assert!(!policy.allow_arbitrary_host_calls);
-        assert_eq!(policy.max_memory_per_component, 64 * 1024 * 1024);
-        assert_eq!(policy.max_execution_time_ms, 5000);
+        assert_eq!(policy.max_memory_per_component, 64 * 1024 * 1024;
+        assert_eq!(policy.max_execution_time_ms, 5000;
         assert!(policy.enable_resource_isolation);
     }
 
     #[test]
     fn test_host_function_permissions_default() {
-        let perms = HostFunctionPermissions::default();
+        let perms = HostFunctionPermissions::default(;
         assert!(!perms.allow_host_resources);
         assert!(!perms.allow_memory_access);
         assert!(!perms.allow_resource_creation);
-        assert_eq!(perms.max_execution_time_ms, 1000);
+        assert_eq!(perms.max_execution_time_ms, 1000;
     }
 
     #[test]
     fn test_host_resource_permissions_default() {
-        let perms = HostResourcePermissions::default();
+        let perms = HostResourcePermissions::default(;
         assert!(perms.read);
         assert!(!perms.write);
         assert!(!perms.execute);
@@ -753,28 +753,28 @@ mod tests {
 
     #[test]
     fn test_event_type_display() {
-        assert_eq!(EventType::FunctionCalled.to_string(), "function_called");
-        assert_eq!(EventType::ResourceCreated.to_string(), "resource_created");
-        assert_eq!(EventType::Error.to_string(), "error");
+        assert_eq!(EventType::FunctionCalled.to_string(), "function_called";
+        assert_eq!(EventType::ResourceCreated.to_string(), "resource_created";
+        assert_eq!(EventType::Error.to_string(), "error";
     }
 
     #[test]
     fn test_host_resource_type_display() {
-        assert_eq!(HostResourceType::File.to_string(), "file");
-        assert_eq!(HostResourceType::Socket.to_string(), "socket");
-        assert_eq!(HostResourceType::Custom(42).to_string(), "custom_42");
+        assert_eq!(HostResourceType::File.to_string(), "file";
+        assert_eq!(HostResourceType::Socket.to_string(), "socket";
+        assert_eq!(HostResourceType::Custom(42).to_string(), "custom_42";
     }
 
     #[test]
     fn test_resource_sharing_mode_display() {
-        assert_eq!(ResourceSharingMode::ReadOnly.to_string(), "readonly");
-        assert_eq!(ResourceSharingMode::ReadWrite.to_string(), "readwrite");
-        assert_eq!(ResourceSharingMode::Exclusive.to_string(), "exclusive");
+        assert_eq!(ResourceSharingMode::ReadOnly.to_string(), "readonly";
+        assert_eq!(ResourceSharingMode::ReadWrite.to_string(), "readwrite";
+        assert_eq!(ResourceSharingMode::Exclusive.to_string(), "exclusive";
     }
 
     #[test]
     fn test_host_resource_manager() {
-        let manager = HostResourceManager::new();
-        assert_eq!(manager.resource_count(), 0);
+        let manager = HostResourceManager::new(;
+        assert_eq!(manager.resource_count(), 0;
     }
 }

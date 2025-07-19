@@ -324,7 +324,7 @@ pub struct ExecutionStats {
 
 /// Execution ID type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ExecutionId(pub u64);
+pub struct ExecutionId(pub u64;
 
 /// Async execution future for Rust integration
 pub struct AsyncExecutionFuture {
@@ -367,7 +367,7 @@ impl AsyncExecutionEngine {
         operation: AsyncExecutionOperation,
         parent: Option<ExecutionId>,
     ) -> Result<ExecutionId> {
-        let execution_id = ExecutionId(self.next_execution_id);
+        let execution_id = ExecutionId(self.next_execution_id;
         self.next_execution_id += 1;
         
         // Get or create execution context
@@ -483,7 +483,7 @@ impl AsyncExecutionEngine {
         
         // Cancel all children first
         for child_id in children {
-            let _ = self.cancel_execution(child_id);
+            let _ = self.cancel_execution(child_id;
         }
         
         // Cancel this execution
@@ -492,7 +492,7 @@ impl AsyncExecutionEngine {
         
         // Return context to pool
         let context = self.executions[execution_index].context.clone();
-        self.return_context_to_pool(context);
+        self.return_context_to_pool(context;
         
         Ok(())
     }
@@ -555,7 +555,7 @@ impl AsyncExecutionEngine {
     }
     
     fn return_context_to_pool(&mut self, mut context: ExecutionContext) {
-        context.reset();
+        context.reset(;
         let _ = self.context_pool.push(context);
     }
     
@@ -612,7 +612,7 @@ impl AsyncExecutionEngine {
             instructions_executed: 1000,
         };
         
-        self.executions[execution_index].result = Some(result);
+        self.executions[execution_index].result = Some(result;
         
         Ok(StepResult::Completed)
     }
@@ -666,7 +666,7 @@ impl AsyncExecutionEngine {
             instructions_executed: 100,
         };
         
-        self.executions[execution_index].result = Some(result);
+        self.executions[execution_index].result = Some(result;
         
         Ok(StepResult::Completed)
     }
@@ -717,7 +717,7 @@ impl AsyncExecutionEngine {
             instructions_executed: 50,
         };
         
-        self.executions[execution_index].result = Some(result);
+        self.executions[execution_index].result = Some(result;
         
         Ok(StepResult::Completed)
     }
@@ -794,7 +794,7 @@ impl AsyncExecutionEngine {
             instructions_executed: 100,
         };
         
-        self.executions[execution_index].result = Some(result);
+        self.executions[execution_index].result = Some(result;
         
         Ok(StepResult::Completed)
     }
@@ -849,10 +849,10 @@ impl ExecutionContext {
     /// Reset context for reuse
     pub fn reset(&mut self) {
         self.component_instance = 0;
-        self.function_name = BoundedString::new();
-        self.call_stack.clear();
-        self.locals.clear();
-        self.memory_views = MemoryViews::new();
+        self.function_name = BoundedString::new(;
+        self.call_stack.clear(;
+        self.locals.clear(;
+        self.memory_views = MemoryViews::new(;
     }
 }
 
@@ -941,15 +941,15 @@ mod tests {
     #[test]
     fn test_async_execution_engine_creation() -> Result<()> {
         let engine = AsyncExecutionEngine::new()?;
-        assert_eq!(engine.executions.len(), 0);
-        assert_eq!(engine.next_execution_id, 1);
+        assert_eq!(engine.executions.len(), 0;
+        assert_eq!(engine.next_execution_id, 1;
         Ok(())
     }
     
     #[test]
     fn test_start_execution() -> Result<()> {
         let mut engine = AsyncExecutionEngine::new()?;
-        let task_id = TaskId(1);
+        let task_id = TaskId(1;
         let operation = AsyncExecutionOperation::FunctionCall {
             name: BoundedString::from_str("test_function").unwrap(),
             args: {
@@ -968,16 +968,16 @@ mod tests {
         };
         
         let execution_id = engine.start_execution(task_id, operation, None)?;
-        assert_eq!(execution_id.0, 1);
-        assert_eq!(engine.executions.len(), 1);
-        assert_eq!(engine.stats.executions_started, 1);
+        assert_eq!(execution_id.0, 1;
+        assert_eq!(engine.executions.len(), 1;
+        assert_eq!(engine.stats.executions_started, 1;
         Ok(())
     }
     
     #[test]
     fn test_step_execution() -> Result<()> {
         let mut engine = AsyncExecutionEngine::new()?;
-        let task_id = TaskId(1);
+        let task_id = TaskId(1;
         let operation = AsyncExecutionOperation::FunctionCall {
             name: BoundedString::from_str("test_function").unwrap(),
             args: {
@@ -998,16 +998,16 @@ mod tests {
         let execution_id = engine.start_execution(task_id, operation, None)?;
         let result = engine.step_execution(execution_id)?;
         
-        assert_eq!(result, StepResult::Completed);
-        assert_eq!(engine.stats.executions_completed, 1);
-        assert_eq!(engine.stats.async_operations, 1);
+        assert_eq!(result, StepResult::Completed;
+        assert_eq!(engine.stats.executions_completed, 1;
+        assert_eq!(engine.stats.async_operations, 1;
         Ok(())
     }
     
     #[test]
     fn test_cancel_execution() -> Result<()> {
         let mut engine = AsyncExecutionEngine::new()?;
-        let task_id = TaskId(1);
+        let task_id = TaskId(1;
         let operation = AsyncExecutionOperation::StreamRead {
             handle: StreamHandle(1),
             count: 100,
@@ -1017,15 +1017,15 @@ mod tests {
         engine.cancel_execution(execution_id)?;
         
         let execution = engine.find_execution(execution_id)?;
-        assert_eq!(execution.state, AsyncExecutionState::Cancelled);
-        assert_eq!(engine.stats.executions_cancelled, 1);
+        assert_eq!(execution.state, AsyncExecutionState::Cancelled;
+        assert_eq!(engine.stats.executions_cancelled, 1;
         Ok(())
     }
     
     #[test]
     fn test_subtask_spawning() -> Result<()> {
         let mut engine = AsyncExecutionEngine::new()?;
-        let task_id = TaskId(1);
+        let task_id = TaskId(1;
         let operation = AsyncExecutionOperation::SpawnSubtask {
             function: BoundedString::from_str("child_function").unwrap(),
             args: {
@@ -1046,8 +1046,8 @@ mod tests {
         let parent_id = engine.start_execution(task_id, operation, None)?;
         let result = engine.step_execution(parent_id)?;
         
-        assert_eq!(result, StepResult::Completed);
-        assert_eq!(engine.stats.subtasks_spawned, 1);
+        assert_eq!(result, StepResult::Completed;
+        assert_eq!(engine.stats.subtasks_spawned, 1;
         assert_eq!(engine.executions.len(), 2); // Parent and child
         Ok(())
     }
@@ -1064,10 +1064,10 @@ mod tests {
         };
         
         context.call_stack.push(frame).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
-        assert_eq!(context.call_stack.len(), 1);
+        assert_eq!(context.call_stack.len(), 1;
         
-        context.reset();
-        assert_eq!(context.call_stack.len(), 0);
+        context.reset(;
+        assert_eq!(context.call_stack.len(), 0;
         Ok(())
     }
     
@@ -1095,8 +1095,8 @@ mod tests {
             },
         };
         
-        assert_eq!(wait_set.futures.len(), 2);
-        assert_eq!(wait_set.streams.len(), 1);
+        assert_eq!(wait_set.futures.len(), 2;
+        assert_eq!(wait_set.streams.len(), 1;
         
         Ok(())
     }

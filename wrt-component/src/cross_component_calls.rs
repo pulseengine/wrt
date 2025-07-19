@@ -358,7 +358,7 @@ impl CrossComponentCallManager {
     ) -> WrtResult<CrossCallResult> {
         // Check call depth
         if self.call_stack.len() >= self.max_call_depth {
-            return Err(wrt_error::Error::resource_exhausted("Maximum call depth exceeded"));
+            return Err(wrt_error::Error::resource_exhausted("Maximum call depth exceeded";
         }
 
         // Get target
@@ -371,11 +371,11 @@ impl CrossComponentCallManager {
         // Check permissions
         if !target.permissions.allowed {
             return Err(wrt_error::Error::runtime_error("Cross-component call not allowed")
-            );
+            ;
         }
 
         // Create call frame
-        let start_time = self.get_current_time();
+        let start_time = self.get_current_time(;
         let call_frame = CrossCallFrame {
             caller_instance,
             target_instance: target.target_instance,
@@ -413,10 +413,10 @@ impl CrossComponentCallManager {
 
         // Make the actual call
         let call_result =
-            engine.call_function(target.target_instance, target.function_index, &prepared_args);
+            engine.call_function(target.target_instance, target.function_index, &prepared_args;
 
         // Calculate statistics
-        let end_time = self.get_current_time();
+        let end_time = self.get_current_time(;
         let duration_ns = end_time - start_time;
         let stats = CallStatistics {
             duration_ns,
@@ -426,14 +426,14 @@ impl CrossComponentCallManager {
         };
 
         // Update call statistics for optimization
-        let signature_hash = self.calculate_signature_hash(&target.signature);
+        let signature_hash = self.calculate_signature_hash(&target.signature;
         self.update_call_stats(
             caller_instance,
             target.target_instance,
             &format!("func_{}", target.function_index), // Function name approximation
             signature_hash,
             duration_ns,
-        );
+        ;
 
         // Handle call result
         let result = match call_result {
@@ -462,11 +462,11 @@ impl CrossComponentCallManager {
         // Pop call frame
         #[cfg(feature = "std")]
         {
-            self.call_stack.pop();
+            self.call_stack.pop(;
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let _ = self.call_stack.pop();
+            let _ = self.call_stack.pop(;
         }
 
         Ok(result)
@@ -480,14 +480,14 @@ impl CrossComponentCallManager {
         caller_instance: u32,
     ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
         #[cfg(feature = "std")]
-        let mut prepared_args = Vec::new();
+        let mut prepared_args = Vec::new(;
         #[cfg(not(any(feature = "std", )))]
-        let mut prepared_args = Vec::new();
+        let mut prepared_args = Vec::new(;
 
         #[cfg(feature = "std")]
-        let mut transferred_resources = Vec::new();
+        let mut transferred_resources = Vec::new(;
         #[cfg(not(any(feature = "std", )))]
-        let mut transferred_resources = Vec::new();
+        let mut transferred_resources = Vec::new(;
 
         for arg in args {
             match arg {
@@ -502,15 +502,15 @@ impl CrossComponentCallManager {
                             transfer_type,
                         )?;
                         transferred_resources.push(transferred);
-                        prepared_args.push(arg.clone());
+                        prepared_args.push(arg.clone();
                     } else {
                         return Err(wrt_error::Error::runtime_error("Resource transfer not allowed")
-                        );
+                        ;
                     }
                 }
                 _ => {
                     // Regular value arguments
-                    prepared_args.push(arg.clone());
+                    prepared_args.push(arg.clone();
                 }
             }
         }
@@ -627,7 +627,7 @@ impl CrossComponentCallManager {
                 if let Some(mut_cached) = self.call_cache.get_mut(&key) {
                     mut_cached.hit_count += 1;
                 }
-                return Some(cached);
+                return Some(cached;
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -635,7 +635,7 @@ impl CrossComponentCallManager {
             for (cached_key, cached_target) in &mut self.call_cache {
                 if cached_key == &key {
                     cached_target.hit_count += 1;
-                    return Some(cached_target);
+                    return Some(cached_target;
                 }
             }
         }
@@ -661,13 +661,13 @@ impl CrossComponentCallManager {
 
         #[cfg(feature = "std")]
         {
-            let stats = self.call_frequency.entry(key).or_insert_with(CallStats::default);
+            let stats = self.call_frequency.entry(key).or_insert_with(CallStats::default;
             stats.call_count += 1;
             
             // Update running average
             let total_time = stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
             stats.avg_duration_ns = total_time / stats.call_count as u64;
-            stats.last_call_time = self.get_current_time();
+            stats.last_call_time = self.get_current_time(;
             
             // Determine if eligible for inlining (fast, frequent calls)
             stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000; // < 1μs
@@ -681,7 +681,7 @@ impl CrossComponentCallManager {
                     stats.call_count += 1;
                     let total_time = stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
                     stats.avg_duration_ns = total_time / stats.call_count as u64;
-                    stats.last_call_time = self.get_current_time();
+                    stats.last_call_time = self.get_current_time(;
                     stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000;
                     found = true;
                     break;
@@ -689,11 +689,11 @@ impl CrossComponentCallManager {
             }
             
             if !found {
-                let mut new_stats = CallStats::default();
+                let mut new_stats = CallStats::default(;
                 new_stats.call_count = 1;
                 new_stats.avg_duration_ns = duration_ns;
-                new_stats.last_call_time = self.get_current_time();
-                let _ = self.call_frequency.push((key, new_stats));
+                new_stats.last_call_time = self.get_current_time(;
+                let _ = self.call_frequency.push((key, new_stats);
             }
         }
     }
@@ -732,11 +732,11 @@ impl CrossComponentCallManager {
         #[cfg(feature = "std")]
         {
             if self.pending_transfers.is_empty() {
-                return Ok(());
+                return Ok((;
             }
 
             // Group transfers by target component for batch processing
-            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> = std::collections::HashMap::new();
+            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> = std::collections::HashMap::new(;
             
             for transfer in self.pending_transfers.drain(..) {
                 transfers_by_target.entry(transfer.target_component).or_insert_with(Vec::new).push(transfer);
@@ -807,7 +807,7 @@ impl CrossComponentCallManager {
 
         #[cfg(feature = "std")]
         {
-            self.call_cache.insert(key, cached_target);
+            self.call_cache.insert(key, cached_target;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -824,7 +824,7 @@ impl CrossComponentCallManager {
         // Simple hash implementation - in real implementation would use a proper hasher
         use core::hash::{Hash, Hasher};
         
-        struct SimpleHasher(u64);
+        struct SimpleHasher(u64;
         
         impl Hasher for SimpleHasher {
             fn finish(&self) -> u64 {
@@ -833,12 +833,12 @@ impl CrossComponentCallManager {
             
             fn write(&mut self, bytes: &[u8]) {
                 for &byte in bytes {
-                    self.0 = self.0.wrapping_mul(31).wrapping_add(byte as u64);
+                    self.0 = self.0.wrapping_mul(31).wrapping_add(byte as u64;
                 }
             }
         }
         
-        let mut hasher = SimpleHasher(0);
+        let mut hasher = SimpleHasher(0;
         // For now, just hash a simple representation of the type
         match signature {
             WrtComponentType::Unit => 0u8.hash(&mut hasher),
@@ -939,8 +939,8 @@ mod tests {
     #[test]
     fn test_call_manager_creation() {
         let manager = CrossComponentCallManager::new().unwrap();
-        assert_eq!(manager.call_depth(), 0);
-        assert_eq!(manager.targets.len(), 0);
+        assert_eq!(manager.call_depth(), 0;
+        assert_eq!(manager.targets.len(), 0;
     }
 
     #[test]
@@ -953,28 +953,28 @@ mod tests {
             WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::None,
-        );
+        ;
 
         let target_id = manager.register_target(target).unwrap();
-        assert_eq!(target_id, 0);
-        assert_eq!(manager.targets.len(), 1);
+        assert_eq!(target_id, 0;
+        assert_eq!(manager.targets.len(), 1;
     }
 
     #[test]
     fn test_call_permissions() {
-        let perms = CallPermissions::default();
+        let perms = CallPermissions::default(;
         assert!(perms.allowed);
         assert!(!perms.allow_resource_transfer);
         assert!(!perms.allow_memory_access);
-        assert_eq!(perms.max_frequency, 0);
+        assert_eq!(perms.max_frequency, 0;
     }
 
     #[test]
     fn test_resource_transfer_policy_display() {
-        assert_eq!(ResourceTransferPolicy::None.to_string(), "none");
-        assert_eq!(ResourceTransferPolicy::Transfer.to_string(), "transfer");
-        assert_eq!(ResourceTransferPolicy::Borrow.to_string(), "borrow");
-        assert_eq!(ResourceTransferPolicy::Copy.to_string(), "copy");
+        assert_eq!(ResourceTransferPolicy::None.to_string(), "none";
+        assert_eq!(ResourceTransferPolicy::Transfer.to_string(), "transfer";
+        assert_eq!(ResourceTransferPolicy::Borrow.to_string(), "borrow";
+        assert_eq!(ResourceTransferPolicy::Copy.to_string(), "copy";
     }
 
     #[test]
@@ -985,11 +985,11 @@ mod tests {
             WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::Borrow,
-        );
+        ;
 
-        assert_eq!(target.target_instance, 1);
-        assert_eq!(target.function_index, 0);
-        assert_eq!(target.resource_policy, ResourceTransferPolicy::Borrow);
+        assert_eq!(target.target_instance, 1;
+        assert_eq!(target.function_index, 0;
+        assert_eq!(target.resource_policy, ResourceTransferPolicy::Borrow;
     }
 
     #[test]
@@ -997,7 +997,7 @@ mod tests {
         let mut manager = CrossComponentCallManager::new().unwrap();
 
         // No targets registered - should not be allowed
-        assert!(!manager.is_call_allowed(0, 1));
+        assert!(!manager.is_call_allowed(0, 1);
 
         // Register a target
         let target = CallTarget::new(
@@ -1006,11 +1006,11 @@ mod tests {
             WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::None,
-        );
+        ;
         manager.register_target(target).unwrap();
 
         // Now should be allowed
-        assert!(manager.is_call_allowed(0, 1));
+        assert!(manager.is_call_allowed(0, 1);
     }
 
     #[test]
@@ -1018,8 +1018,8 @@ mod tests {
         let mut manager = CrossComponentCallManager::new().unwrap();
 
         // Test call stats update
-        manager.update_call_stats(0, 1, "test_func", 12345, 500);
-        manager.update_call_stats(0, 1, "test_func", 12345, 600);
+        manager.update_call_stats(0, 1, "test_func", 12345, 500;
+        manager.update_call_stats(0, 1, "test_func", 12345, 600;
 
         // Should have recorded 2 calls with average duration
         #[cfg(feature = "std")]
@@ -1031,7 +1031,7 @@ mod tests {
                 signature_hash: 12345,
             };
             let stats = manager.call_frequency.get(&key).unwrap();
-            assert_eq!(stats.call_count, 2);
+            assert_eq!(stats.call_count, 2;
             assert_eq!(stats.avg_duration_ns, 550); // (500 + 600) / 2
         }
     }
@@ -1046,16 +1046,16 @@ mod tests {
 
         #[cfg(feature = "std")]
         {
-            assert_eq!(manager.pending_transfers.len(), 2);
+            assert_eq!(manager.pending_transfers.len(), 2;
         }
 
         // Flush them
-        let result = manager.flush_pending_transfers();
-        assert!(result.is_ok());
+        let result = manager.flush_pending_transfers(;
+        assert!(result.is_ok();
 
         #[cfg(feature = "std")]
         {
-            assert_eq!(manager.pending_transfers.len(), 0);
+            assert_eq!(manager.pending_transfers.len(), 0;
         }
     }
 
@@ -1064,11 +1064,11 @@ mod tests {
         let manager = CrossComponentCallManager::new().unwrap();
 
         // Test that different types have different hashes
-        let hash1 = manager.calculate_signature_hash(&WrtComponentType::U32);
-        let hash2 = manager.calculate_signature_hash(&WrtComponentType::String);
-        let hash3 = manager.calculate_signature_hash(&WrtComponentType::U32);
+        let hash1 = manager.calculate_signature_hash(&WrtComponentType::U32;
+        let hash2 = manager.calculate_signature_hash(&WrtComponentType::String;
+        let hash3 = manager.calculate_signature_hash(&WrtComponentType::U32;
 
-        assert_ne!(hash1, hash2);
+        assert_ne!(hash1, hash2;
         assert_eq!(hash1, hash3); // Same type should have same hash
     }
 }

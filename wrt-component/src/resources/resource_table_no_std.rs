@@ -16,7 +16,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -64,7 +64,7 @@ pub struct Resource {
 impl Resource {
     /// Create a new resource
     pub fn new(type_idx: u32, data_ptr: usize) -> Self {
-        let now = Instant::now();
+        let now = Instant::now(;
         Self {
             type_idx,
             data_ptr,
@@ -77,14 +77,14 @@ impl Resource {
 
     /// Create a new resource with a debug name
     pub fn new_with_name(type_idx: u32, data_ptr: usize, name: &str) -> Self {
-        let mut resource = Self::new(type_idx, data_ptr);
+        let mut resource = Self::new(type_idx, data_ptr;
         resource.name = BoundedString::from_str(name).ok();
         resource
     }
 
     /// Record access to this resource
     pub fn record_access(&mut self) {
-        self.last_accessed = Instant::now();
+        self.last_accessed = Instant::now(;
         self.access_count += 1;
     }
 }
@@ -127,7 +127,7 @@ pub trait BufferPoolTrait {
     fn allocate(&mut self, size: usize) -> Option<usize>;
     
     /// Deallocate a buffer
-    fn deallocate(&mut self, ptr: usize, size: usize);
+    fn deallocate(&mut self, ptr: usize, size: usize;
     
     /// Get available memory
     fn available_memory(&self) -> usize;
@@ -175,14 +175,14 @@ impl ResourceTable {
 
     /// Insert a resource and return its ID
     pub fn insert(&mut self, resource: Resource) -> wrt_foundation::WrtResult<ResourceId> {
-        let id = ResourceId(self.next_id);
+        let id = ResourceId(self.next_id;
         self.next_id += 1;
 
         // Find an empty slot or add to the end
         for (i, slot) in self.resources.iter_mut().enumerate() {
             if slot.is_none() {
-                *slot = Some(resource);
-                return Ok(ResourceId(i as u32 + 1));
+                *slot = Some(resource;
+                return Ok(ResourceId(i as u32 + 1;
             }
         }
 
@@ -240,12 +240,12 @@ impl ResourceTable {
 
 impl Default for ResourceTable {
     fn default() -> Self {
-        Self::new().expect("Failed to create default ResourceTableMissing message")
+        Self::new().expect("Failed to create default ResourceTable")
     }
 }
 
 // Apply traits to the main types
-impl_basic_traits!(Resource, Resource::new(0, 0));
-impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap());
-impl_basic_traits!(MemoryStrategy, MemoryStrategy::default());
-impl_basic_traits!(VerificationLevel, VerificationLevel::default());
+impl_basic_traits!(Resource, Resource::new(0, 0;
+impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap();
+impl_basic_traits!(MemoryStrategy, MemoryStrategy::default(;
+impl_basic_traits!(VerificationLevel, VerificationLevel::default(;

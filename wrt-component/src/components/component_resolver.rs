@@ -143,9 +143,9 @@ impl ComponentResolver {
         provided_value: ImportValue,
     ) -> core::result::Result<ResolvedImport, ComponentError> {
         // Check cache first
-        let cache_key = (instance_id, import_name.clone());
+        let cache_key = (instance_id, import_name.clone();
         if let Some(cached) = self.import_cache.get(&cache_key) {
-            return Ok(cached.clone());
+            return Ok(cached.clone();
         }
 
         // Validate import type compatibility
@@ -153,7 +153,7 @@ impl ComponentResolver {
 
         let resolved = ResolvedImport { name: import_name, value: provided_value, val_type };
 
-        self.import_cache.insert(cache_key, resolved.clone());
+        self.import_cache.insert(cache_key, resolved.clone();
         Ok(resolved)
     }
 
@@ -165,9 +165,9 @@ impl ComponentResolver {
         export_value: ExportValue,
     ) -> core::result::Result<ResolvedExport, ComponentError> {
         // Check cache first
-        let cache_key = (instance_id, export_name.clone());
+        let cache_key = (instance_id, export_name.clone();
         if let Some(cached) = self.export_cache.get(&cache_key) {
-            return Ok(cached.clone());
+            return Ok(cached.clone();
         }
 
         // Validate export type
@@ -175,7 +175,7 @@ impl ComponentResolver {
 
         let resolved = ResolvedExport { name: export_name, value: export_value, val_type };
 
-        self.export_cache.insert(cache_key, resolved.clone());
+        self.export_cache.insert(cache_key, resolved.clone();
         Ok(resolved)
     }
 
@@ -231,7 +231,7 @@ impl ComponentResolver {
             export_type,
             import_type,
             crate::generative_types::BoundKind::Sub,
-        );
+        ;
 
         Ok(result == crate::type_bounds::RelationResult::Satisfied)
     }
@@ -289,8 +289,8 @@ impl ComponentResolver {
 
     /// Clear resolution caches
     pub fn clear_caches(&mut self) {
-        self.import_cache.clear();
-        self.export_cache.clear();
+        self.import_cache.clear(;
+        self.export_cache.clear(;
     }
 
     /// Get type registry reference
@@ -348,31 +348,31 @@ mod tests {
 
     #[test]
     fn test_resolver_creation() {
-        let resolver = ComponentResolver::new();
-        assert_eq!(resolver.import_cache.len(), 0);
-        assert_eq!(resolver.export_cache.len(), 0);
+        let resolver = ComponentResolver::new(;
+        assert_eq!(resolver.import_cache.len(), 0;
+        assert_eq!(resolver.export_cache.len(), 0;
     }
 
     #[test]
     fn test_import_resolution() {
-        let mut resolver = ComponentResolver::new();
-        let instance_id = ComponentInstanceId(1);
+        let mut resolver = ComponentResolver::new(;
+        let instance_id = ComponentInstanceId(1;
         let import_name = BoundedString::from_str("test_import").unwrap();
 
         let import_value =
             ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) };
 
-        let result = resolver.resolve_import(instance_id, import_name.clone(), import_value);
-        assert!(result.is_ok());
+        let result = resolver.resolve_import(instance_id, import_name.clone(), import_value;
+        assert!(result.is_ok();
 
         let resolved = result.unwrap();
-        assert_eq!(resolved.name, import_name);
+        assert_eq!(resolved.name, import_name;
     }
 
     #[test]
     fn test_export_resolution() {
-        let mut resolver = ComponentResolver::new();
-        let instance_id = ComponentInstanceId(1);
+        let mut resolver = ComponentResolver::new(;
+        let instance_id = ComponentInstanceId(1;
         let export_name = BoundedString::from_str("test_export").unwrap();
 
         let export_value = ExportValue::Value {
@@ -380,16 +380,16 @@ mod tests {
             value: ComponentValue::String(BoundedString::from_str("hello").unwrap()),
         };
 
-        let result = resolver.resolve_export(instance_id, export_name.clone(), export_value);
-        assert!(result.is_ok());
+        let result = resolver.resolve_export(instance_id, export_name.clone(), export_value;
+        assert!(result.is_ok();
 
         let resolved = result.unwrap();
-        assert_eq!(resolved.name, export_name);
+        assert_eq!(resolved.name, export_name;
     }
 
     #[test]
     fn test_import_export_compatibility() {
-        let mut resolver = ComponentResolver::new();
+        let mut resolver = ComponentResolver::new(;
 
         // Create matching import and export
         let import = ResolvedImport {
@@ -404,25 +404,25 @@ mod tests {
             val_type: Some(ValType::U32),
         };
 
-        let result = resolver.can_satisfy_import(&import, &export);
-        assert!(result.is_ok());
-        assert!(result.unwrap());
+        let result = resolver.can_satisfy_import(&import, &export;
+        assert!(result.is_ok();
+        assert!(result.unwrap();
     }
 
     #[test]
     fn test_type_compatibility() {
-        let resolver = ComponentResolver::new();
+        let resolver = ComponentResolver::new(;
 
         // Test primitive type compatibility
-        assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool));
-        assert!(resolver.are_types_compatible(&ValType::U32, &ValType::U32));
-        assert!(!resolver.are_types_compatible(&ValType::U32, &ValType::U64));
+        assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool);
+        assert!(resolver.are_types_compatible(&ValType::U32, &ValType::U32);
+        assert!(!resolver.are_types_compatible(&ValType::U32, &ValType::U64);
 
         // Test structural type compatibility
-        let list_u32 = ValType::List(Box::new(ValType::U32));
-        let list_u64 = ValType::List(Box::new(ValType::U64));
-        assert!(resolver.are_types_compatible(&list_u32, &list_u32));
-        assert!(!resolver.are_types_compatible(&list_u32, &list_u64));
+        let list_u32 = ValType::List(Box::new(ValType::U32;
+        let list_u64 = ValType::List(Box::new(ValType::U64;
+        assert!(resolver.are_types_compatible(&list_u32, &list_u32);
+        assert!(!resolver.are_types_compatible(&list_u32, &list_u64);
     }
 }
 
@@ -434,7 +434,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 

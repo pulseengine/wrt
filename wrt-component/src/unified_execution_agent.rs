@@ -591,7 +591,7 @@ impl UnifiedExecutionAgent {
             memory_base: 0,
             memory_size: self.config.max_memory,
         };
-        self.core_state.current_context = Some(context);
+        self.core_state.current_context = Some(context;
 
         // Create unified call frame
         let frame = UnifiedCallFrame {
@@ -605,7 +605,7 @@ impl UnifiedExecutionAgent {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 let mut locals = BoundedVec::new(provider)?;
                 for arg in args.iter().take(64) {
-                    let _ = locals.push(arg.clone());
+                    let _ = locals.push(arg.clone();
                 }
                 locals
             },
@@ -660,7 +660,7 @@ impl UnifiedExecutionAgent {
         #[cfg(feature = "std")]
         let function_name = "Component not found";
         #[cfg(not(feature = "std"))]
-        let function_name = BoundedString::from_str("Component operation result").unwrap_or_default();
+        let function_name = BoundedString::from_str("Component operation result").unwrap_or_default(;
         
         let component_values = self.convert_values_to_component(args)?;
         
@@ -671,11 +671,11 @@ impl UnifiedExecutionAgent {
         // Pop frame
         #[cfg(feature = "std")]
         {
-            self.core_state.call_stack.pop();
+            self.core_state.call_stack.pop(;
         }
         #[cfg(not(feature = "std"))]
         {
-            let _ = self.core_state.call_stack.pop();
+            let _ = self.core_state.call_stack.pop(;
         }
 
         self.core_state.state = UnifiedExecutionState::Completed;
@@ -820,15 +820,15 @@ impl UnifiedExecutionAgent {
 
     /// Reset the agent state
     pub fn reset(&mut self) {
-        self.core_state.call_stack.clear();
-        self.core_state.operand_stack.clear();
+        self.core_state.call_stack.clear(;
+        self.core_state.operand_stack.clear(;
         self.core_state.state = UnifiedExecutionState::Ready;
         self.core_state.current_context = None;
-        self.statistics = UnifiedExecutionStatistics::default();
+        self.statistics = UnifiedExecutionStatistics::default(;
         
         #[cfg(feature = "async")]
         {
-            self.async_state.executions.clear();
+            self.async_state.executions.clear(;
             self.async_state.next_execution_id = 1;
         }
     }
@@ -836,9 +836,9 @@ impl UnifiedExecutionAgent {
     /// Convert values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<ComponentValue>> {
-        let mut component_values = Vec::new();
+        let mut component_values = Vec::new(;
         for value in values {
-            component_values.push(value.clone().into());
+            component_values.push(value.clone().into();
         }
         Ok(component_values)
     }
@@ -922,7 +922,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -948,7 +948,7 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to UnifiedExecutionAgent
-impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default());
+impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default(;
 
 #[cfg(test)]
 mod tests {
@@ -957,8 +957,8 @@ mod tests {
     #[test]
     fn test_unified_agent_creation() {
         let agent = UnifiedExecutionAgent::new_default().unwrap();
-        assert_eq!(agent.state(), UnifiedExecutionState::Ready);
-        assert_eq!(agent.call_stack_depth(), 0);
+        assert_eq!(agent.state(), UnifiedExecutionState::Ready;
+        assert_eq!(agent.call_stack_depth(), 0;
     }
 
     #[test]
@@ -966,10 +966,10 @@ mod tests {
         let mut agent = UnifiedExecutionAgent::new_default().unwrap();
         let args = [Value::U32(42), Value::Bool(true)];
         
-        let result = agent.call_function(1, 2, &args);
-        assert!(result.is_ok());
-        assert_eq!(agent.state(), UnifiedExecutionState::Completed);
-        assert_eq!(agent.statistics().function_calls, 1);
+        let result = agent.call_function(1, 2, &args;
+        assert!(result.is_ok();
+        assert_eq!(agent.state(), UnifiedExecutionState::Completed;
+        assert_eq!(agent.statistics().function_calls, 1;
     }
 
     #[test]
@@ -977,9 +977,9 @@ mod tests {
         let mut agent = UnifiedExecutionAgent::new_stackless().unwrap();
         let args = [Value::U32(100)];
         
-        let result = agent.call_function(1, 5, &args);
-        assert!(result.is_ok());
-        assert_eq!(agent.statistics().stackless_frames, 1);
+        let result = agent.call_function(1, 5, &args;
+        assert!(result.is_ok();
+        assert_eq!(agent.statistics().stackless_frames, 1;
     }
 
     #[cfg(feature = "async")]
@@ -988,10 +988,10 @@ mod tests {
         let mut agent = UnifiedExecutionAgent::new_async().unwrap();
         let args = [Value::F32(3.14)];
         
-        let result = agent.call_function(2, 3, &args);
-        assert!(result.is_ok());
-        assert_eq!(agent.statistics().async_executions_started, 1);
-        assert_eq!(agent.statistics().async_executions_completed, 1);
+        let result = agent.call_function(2, 3, &args;
+        assert!(result.is_ok();
+        assert_eq!(agent.statistics().async_executions_started, 1;
+        assert_eq!(agent.statistics().async_executions_completed, 1;
     }
 
     #[test]
@@ -1004,9 +1004,9 @@ mod tests {
         let mut agent = UnifiedExecutionAgent::new_hybrid(flags).unwrap();
         let args = [Value::S64(-100)];
         
-        let result = agent.call_function(1, 1, &args);
-        assert!(result.is_ok());
-        assert_eq!(agent.statistics().stackless_frames, 1);
+        let result = agent.call_function(1, 1, &args;
+        assert!(result.is_ok();
+        assert_eq!(agent.statistics().stackless_frames, 1;
     }
 
     #[test]
@@ -1015,15 +1015,15 @@ mod tests {
         
         // Execute something first
         let args = [Value::U32(42)];
-        let _ = agent.call_function(1, 2, &args);
+        let _ = agent.call_function(1, 2, &args;
         
         // Verify state changed
-        assert_eq!(agent.statistics().function_calls, 1);
+        assert_eq!(agent.statistics().function_calls, 1;
         
         // Reset and verify clean state
-        agent.reset();
-        assert_eq!(agent.state(), UnifiedExecutionState::Ready);
-        assert_eq!(agent.call_stack_depth(), 0);
-        assert_eq!(agent.statistics().function_calls, 0);
+        agent.reset(;
+        assert_eq!(agent.state(), UnifiedExecutionState::Ready;
+        assert_eq!(agent.call_stack_depth(), 0;
+        assert_eq!(agent.statistics().function_calls, 0;
     }
 }

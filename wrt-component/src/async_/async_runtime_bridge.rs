@@ -64,7 +64,7 @@ pub mod rust_async_bridge {
                     // Register waker with task manager
                     // In a real implementation, this would notify the task manager
                     // to wake this future when the Component Model future completes
-                    cx.waker().wake_by_ref();
+                    cx.waker().wake_by_ref(;
                     Poll::Pending
                 }
             }
@@ -191,50 +191,50 @@ mod tests {
 
     #[test]
     fn test_component_model_async_without_rust_futures() {
-        let mut task_manager = TaskManager::new();
-        let component_id = ComponentInstanceId::new(1);
+        let mut task_manager = TaskManager::new(;
+        let component_id = ComponentInstanceId::new(1;
 
         // Create a Component Model future - no Rust Future trait needed!
-        let future_handle = FutureHandle(1);
-        let mut wasm_future = WasmFuture::<i32>::new(future_handle, ValType::I32);
+        let future_handle = FutureHandle(1;
+        let mut wasm_future = WasmFuture::<i32>::new(future_handle, ValType::I32;
 
         // Poll it manually
-        let result = poll_future(&mut wasm_future, &mut task_manager);
-        assert!(matches!(result, PollResult::Pending));
+        let result = poll_future(&mut wasm_future, &mut task_manager;
+        assert!(matches!(result, PollResult::Pending);
 
         // Complete the future
         wasm_future.set_value(42).unwrap();
 
         // Poll again
-        let result = poll_future(&mut wasm_future, &mut task_manager);
-        assert!(matches!(result, PollResult::Ready(42)));
+        let result = poll_future(&mut wasm_future, &mut task_manager;
+        assert!(matches!(result, PollResult::Ready(42));
     }
 
     #[test]
     fn test_component_model_stream_without_rust_futures() {
-        let mut task_manager = TaskManager::new();
+        let mut task_manager = TaskManager::new(;
 
         // Create a Component Model stream - no Rust Stream trait needed!
-        let stream_handle = StreamHandle(1);
-        let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType::String);
+        let stream_handle = StreamHandle(1;
+        let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType::String;
 
         // Add some values
         #[cfg(feature = "std")]
         {
-            wasm_stream.buffer.push("Hello".to_string());
-            wasm_stream.buffer.push("World".to_string());
+            wasm_stream.buffer.push("Hello".to_string();
+            wasm_stream.buffer.push("World".to_string();
         }
 
         // Poll values manually
-        let result1 = poll_stream(&mut wasm_stream, &mut task_manager);
-        assert!(matches!(result1, StreamPollResult::Item(ref s) if s == "Hello"));
+        let result1 = poll_stream(&mut wasm_stream, &mut task_manager;
+        assert!(matches!(result1, StreamPollResult::Item(ref s) if s == "Hello");
 
-        let result2 = poll_stream(&mut wasm_stream, &mut task_manager);
-        assert!(matches!(result2, StreamPollResult::Item(ref s) if s == "World"));
+        let result2 = poll_stream(&mut wasm_stream, &mut task_manager;
+        assert!(matches!(result2, StreamPollResult::Item(ref s) if s == "World");
 
         // Now empty
-        let result3 = poll_stream(&mut wasm_stream, &mut task_manager);
-        assert!(matches!(result3, StreamPollResult::Pending));
+        let result3 = poll_stream(&mut wasm_stream, &mut task_manager;
+        assert!(matches!(result3, StreamPollResult::Pending);
     }
 }
 

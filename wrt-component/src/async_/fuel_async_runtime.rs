@@ -143,14 +143,14 @@ impl FuelAsyncRuntime {
         let executor = Arc::new(Mutex::new(FuelAsyncExecutor::new(
             config.global_fuel_budget,
             config.verification_level,
-        )?);
+        )?;
         
         let components = BoundedMap::new(provider.clone())?;
         let task_results = BoundedMap::new(provider)?;
         
         let cleanup_manager = Arc::new(Mutex::new(
             GlobalCleanupManager::new(config.global_fuel_budget / 10)?
-        );
+        ;
         
         Ok(Self {
             executor,
@@ -196,7 +196,7 @@ impl FuelAsyncRuntime {
     ) -> Result<TaskId> {
         // Check runtime state
         if self.state != RuntimeState::Running && self.state != RuntimeState::Initializing {
-            return Err(Error::async_executor_state_violation("Runtime not in running state"));
+            return Err(Error::async_executor_state_violation("Runtime not in running state";
         }
         
         // Check fuel budget
@@ -212,7 +212,7 @@ impl FuelAsyncRuntime {
         let function_index = self.resolve_function_export(&component, function_name)?;
         
         // Create execution context
-        let mut execution_context = ExecutionContext::new(asil_mode);
+        let mut execution_context = ExecutionContext::new(asil_mode;
         execution_context.set_component_instance(component.clone();
         execution_context.current_function_index = function_index;
         execution_context.function_params = params;
@@ -239,13 +239,13 @@ impl FuelAsyncRuntime {
     /// Run the runtime until all tasks complete or fuel is exhausted
     pub fn run(&mut self) -> Result<RuntimeExecutionSummary> {
         self.state = RuntimeState::Running;
-        let start_fuel = global_fuel_consumed();
+        let start_fuel = global_fuel_consumed(;
         
         while self.has_active_tasks()? {
             // Check global fuel budget
             if self.total_fuel_consumed >= self.global_fuel_budget {
                 self.state = RuntimeState::Error;
-                return Err(Error::async_fuel_exhausted("Global runtime fuel budget exhausted"));
+                return Err(Error::async_fuel_exhausted("Global runtime fuel budget exhausted";
 "            }
             
             // Poll tasks
@@ -253,8 +253,8 @@ impl FuelAsyncRuntime {
             self.stats.polling_cycles += 1;
             
             // Update fuel consumption
-            let current_fuel = global_fuel_consumed();
-            self.total_fuel_consumed = current_fuel.saturating_sub(start_fuel);
+            let current_fuel = global_fuel_consumed(;
+            self.total_fuel_consumed = current_fuel.saturating_sub(start_fuel;
             self.stats.total_fuel_consumed = self.total_fuel_consumed;
             
             // If no tasks were polled and we have active tasks, wait briefly
@@ -287,7 +287,7 @@ impl FuelAsyncRuntime {
                     0,
                     Some(task_id),
                     "Task not found during execution",
-                )?);
+                )?;
             }
             
             // Poll tasks
@@ -300,7 +300,7 @@ impl FuelAsyncRuntime {
                     0,
                     Some(task_id),
                     "Global fuel budget exhausted",
-                )?);
+                )?;
             }
         }
         
@@ -322,7 +322,7 @@ impl FuelAsyncRuntime {
     
     /// Collect results from completed tasks
     fn collect_completed_tasks(&mut self) -> Result<()> {
-        let mut completed_tasks = Vec::new();
+        let mut completed_tasks = Vec::new(;
         
         // Get completed tasks from executor
         {
@@ -330,7 +330,7 @@ impl FuelAsyncRuntime {
             for (task_id, task) in executor.get_tasks() {
                 match task.state {
                     AsyncTaskState::Completed => {
-                        completed_tasks.push((*task_id, TaskResult::Completed(vec![]));
+                        completed_tasks.push((*task_id, TaskResult::Completed(vec![]);
                         self.stats.total_completed += 1;
                     },
                     AsyncTaskState::Failed => {
@@ -340,7 +340,7 @@ impl FuelAsyncRuntime {
                             Some(*task_id),
                             "Task execution failed",
                         )?;
-                        completed_tasks.push((*task_id, TaskResult::Failed(error));
+                        completed_tasks.push((*task_id, TaskResult::Failed(error);
                         self.stats.total_failed += 1;
                     },
                     AsyncTaskState::Cancelled => {
@@ -382,7 +382,7 @@ impl FuelAsyncRuntime {
     /// Check if a specific task is complete
     fn is_task_complete(&self, task_id: TaskId) -> Result<bool> {
         if let Some(_result) = self.task_results.get(&task_id) {
-            return Ok(true);
+            return Ok(true;
         }
         
         if let Some(task) = self.executor.lock()?.get_task(task_id) {
@@ -428,9 +428,9 @@ impl FuelAsyncRuntime {
         self.state = RuntimeState::ShuttingDown;
         
         // Cancel all active tasks
-        let active_tasks: Vec<TaskId> = self.executor.lock()?.get_active_task_ids();
+        let active_tasks: Vec<TaskId> = self.executor.lock()?.get_active_task_ids(;
         for task_id in active_tasks {
-            let _ = self.cancel_task(task_id);
+            let _ = self.cancel_task(task_id;
         }
         
         // Run global cleanup
@@ -448,7 +448,7 @@ impl FuelAsyncRuntime {
     ) -> Result<u32> {
         // Check if the function export exists
         if !component.has_function_export(function_name) {
-            return Err(Error::component_instantiation_runtime_error("Function not found in component exports"));
+            return Err(Error::component_instantiation_runtime_error("Function not found in component exports";
         }
 
         // Get the function index for the export
@@ -456,7 +456,7 @@ impl FuelAsyncRuntime {
             Some(function_index) => {
                 // Validate that the function index is reasonable
                 if function_index >= 65536 {
-                    return Err(Error::component_instantiation_runtime_error("Function index out of range"));
+                    return Err(Error::component_instantiation_runtime_error("Function index out of range";
 "                }
                 Ok(function_index)
             },
@@ -471,13 +471,13 @@ impl FuelAsyncRuntime {
             self.verification_level,
         )?;
         
-        let total_cost = amount.saturating_add(adjusted);
+        let total_cost = amount.saturating_add(adjusted;
         
         if self.total_fuel_consumed.saturating_add(total_cost) > self.global_fuel_budget {
-            return Err(Error::async_fuel_exhausted("Runtime fuel budget exceeded"));
+            return Err(Error::async_fuel_exhausted("Runtime fuel budget exceeded";
         }
         
-        self.total_fuel_consumed = self.total_fuel_consumed.saturating_add(total_cost);
+        self.total_fuel_consumed = self.total_fuel_consumed.saturating_add(total_cost;
         record_global_operation(OperationType::Other)?;
         
         Ok(())
@@ -559,13 +559,13 @@ mod tests {
     
     #[test]
     fn test_runtime_creation() {
-        let config = RuntimeConfig::default();
-        let runtime = FuelAsyncRuntime::new(config);
+        let config = RuntimeConfig::default(;
+        let runtime = FuelAsyncRuntime::new(config;
         assert!(runtime.is_ok();
         
         let runtime = runtime.unwrap();
-        assert_eq!(runtime.state(), RuntimeState::Initializing);
-        assert_eq!(runtime.stats().total_spawned, 0);
+        assert_eq!(runtime.state(), RuntimeState::Initializing;
+        assert_eq!(runtime.stats().total_spawned, 0;
     }
     
     #[test]
@@ -578,20 +578,20 @@ mod tests {
             enable_cleanup: true,
         };
         
-        let runtime = FuelAsyncRuntime::new(config);
+        let runtime = FuelAsyncRuntime::new(config;
         assert!(runtime.is_ok();
         
         let runtime = runtime.unwrap();
-        assert_eq!(runtime.global_fuel_budget, 500_000);
-        assert_eq!(runtime.verification_level, VerificationLevel::Full);
+        assert_eq!(runtime.global_fuel_budget, 500_000;
+        assert_eq!(runtime.verification_level, VerificationLevel::Full;
     }
     
     #[test]
     fn test_simple_executor() {
-        let executor = SimpleAsyncExecutor::new();
+        let executor = SimpleAsyncExecutor::new(;
         assert!(executor.is_ok();
         
         let executor = executor.unwrap();
-        assert_eq!(executor.runtime.state(), RuntimeState::Initializing);
+        assert_eq!(executor.runtime.state(), RuntimeState::Initializing;
     }
 }

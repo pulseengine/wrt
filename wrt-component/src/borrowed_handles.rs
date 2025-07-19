@@ -64,11 +64,11 @@ pub struct BorrowHandle<T> {
 
 /// Unique identifier for a borrow operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BorrowId(pub u64);
+pub struct BorrowId(pub u64;
 
 /// Lifetime scope for borrowed handles
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LifetimeScope(pub u32);
+pub struct LifetimeScope(pub u32;
 
 /// Handle lifetime tracker
 #[derive(Debug)]
@@ -373,7 +373,7 @@ impl HandleLifetimeTracker {
         owner: ComponentId,
         type_name: &str,
     ) -> Result<OwnHandle<T>> {
-        let handle = self.next_handle_id.fetch_add(1, Ordering::Relaxed);
+        let handle = self.next_handle_id.fetch_add(1, Ordering::Relaxed;
         let generation = 1; // First generation
         
         let entry = OwnedHandleEntry {
@@ -414,22 +414,22 @@ impl HandleLifetimeTracker {
         let source_entry = self.find_owned_handle(source.raw)?;
         if source_entry.generation != source.generation {
             return Err(Error::runtime_execution_error("Error occurred")
-            );
+            ;
         }
         
         if source_entry.dropped {
             return Err(Error::runtime_execution_error("Error occurred")
-            );
+            ;
         }
         
         // Validate scope
         if !self.is_scope_active(scope) {
             return Err(Error::runtime_execution_error("Error occurred")
-            );
+            ;
         }
         
-        let borrow_id = BorrowId(self.next_borrow_id.fetch_add(1, Ordering::Relaxed);
-        let borrowed_handle = self.next_handle_id.fetch_add(1, Ordering::Relaxed);
+        let borrow_id = BorrowId(self.next_borrow_id.fetch_add(1, Ordering::Relaxed;
+        let borrowed_handle = self.next_handle_id.fetch_add(1, Ordering::Relaxed;
         let borrow_generation = 1;
         
         let entry = BorrowedHandleEntry {
@@ -468,7 +468,7 @@ impl HandleLifetimeTracker {
         
         if entry.generation != handle.generation {
             return Err(Error::runtime_execution_error("Error occurred")
-            );
+            ;
         }
         
         if entry.dropped {
@@ -533,7 +533,7 @@ impl HandleLifetimeTracker {
     
     /// Create a new lifetime scope
     pub fn create_scope(&mut self, component: ComponentId, task: TaskId) -> Result<LifetimeScope> {
-        let scope = LifetimeScope(self.next_scope_id.fetch_add(1, Ordering::Relaxed);
+        let scope = LifetimeScope(self.next_scope_id.fetch_add(1, Ordering::Relaxed;
         
         let parent = self.scope_stack.last().map(|entry| entry.scope);
         
@@ -588,7 +588,7 @@ impl HandleLifetimeTracker {
                     
                     // Update source handle borrow count
                     if let Ok(source_entry) = self.find_owned_handle_mut(borrow_entry.source_handle) {
-                        source_entry.active_borrows = source_entry.active_borrows.saturating_sub(1);
+                        source_entry.active_borrows = source_entry.active_borrows.saturating_sub(1;
                     }
                 }
             }
@@ -599,7 +599,7 @@ impl HandleLifetimeTracker {
         
         // Remove scope from stack if it's the top scope
         if scope_index == self.scope_stack.len() - 1 {
-            self.scope_stack.remove(scope_index);
+            self.scope_stack.remove(scope_index;
             self.stats.active_scopes -= 1;
         }
         
@@ -616,14 +616,14 @@ impl HandleLifetimeTracker {
         // Remove invalid borrowed handles
         #[cfg(feature = "std")]
         {
-            self.borrowed_handles.retain(|entry| entry.valid);
+            self.borrowed_handles.retain(|entry| entry.valid;
         }
         #[cfg(not(any(feature = "std", )))]
         {
             let mut i = 0;
             while i < self.borrowed_handles.len() {
                 if !self.borrowed_handles[i].valid {
-                    self.borrowed_handles.remove(i);
+                    self.borrowed_handles.remove(i;
                 } else {
                     i += 1;
                 }
@@ -633,14 +633,14 @@ impl HandleLifetimeTracker {
         // Remove inactive scopes
         #[cfg(feature = "std")]
         {
-            self.scope_stack.retain(|entry| entry.active);
+            self.scope_stack.retain(|entry| entry.active;
         }
         #[cfg(not(any(feature = "std", )))]
         {
             let mut i = 0;
             while i < self.scope_stack.len() {
                 if !self.scope_stack[i].active {
-                    self.scope_stack.remove(i);
+                    self.scope_stack.remove(i;
                 } else {
                     i += 1;
                 }
@@ -741,7 +741,7 @@ impl Default for HandleLifetimeTracker {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| {
             // Fallback for Default trait - this should only be used in non-critical paths
-            panic!("Failed to create HandleLifetimeTracker with default memory allocationMissing message")
+            panic!("Failed to create HandleLifetimeTracker with default memory allocation")
         })
     }
 }
@@ -795,8 +795,8 @@ where
     F: FnOnce(LifetimeScope) -> Result<R>,
 {
     let scope = tracker.create_scope(component, task)?;
-    let result = f(scope);
-    let _ = tracker.end_scope(scope);
+    let result = f(scope;
+    let _ = tracker.end_scope(scope;
     result
 }
 
@@ -814,12 +814,12 @@ mod tests {
             "test_resource",
         ).unwrap();
         
-        assert_eq!(tracker.stats.owned_created, 1);
-        assert_eq!(tracker.stats.active_owned, 1);
+        assert_eq!(tracker.stats.owned_created, 1;
+        assert_eq!(tracker.stats.active_owned, 1;
         
         tracker.drop_owned_handle(&handle).unwrap();
-        assert_eq!(tracker.stats.owned_dropped, 1);
-        assert_eq!(tracker.stats.active_owned, 0);
+        assert_eq!(tracker.stats.owned_dropped, 1;
+        assert_eq!(tracker.stats.active_owned, 0;
     }
     
     #[test]
@@ -836,15 +836,15 @@ mod tests {
         
         let borrowed = tracker.borrow_handle(&owned, ComponentId(2), scope).unwrap();
         
-        assert_eq!(tracker.stats.borrowed_created, 1);
-        assert_eq!(tracker.stats.active_borrowed, 1);
+        assert_eq!(tracker.stats.borrowed_created, 1;
+        assert_eq!(tracker.stats.active_borrowed, 1;
         
-        let validation = tracker.validate_borrow(&borrowed);
+        let validation = tracker.validate_borrow(&borrowed;
         assert!(matches!(validation, BorrowValidation::Valid);
         
         // End scope should invalidate borrow
         tracker.end_scope(scope).unwrap();
-        let validation = tracker.validate_borrow(&borrowed);
+        let validation = tracker.validate_borrow(&borrowed;
         assert!(matches!(validation, BorrowValidation::ScopeEnded);
     }
     
@@ -862,12 +862,12 @@ mod tests {
         
         let borrowed = tracker.borrow_handle(&owned, ComponentId(2), scope).unwrap();
         
-        let validation = tracker.validate_borrow(&borrowed);
+        let validation = tracker.validate_borrow(&borrowed;
         assert!(matches!(validation, BorrowValidation::Valid);
         
         // Drop owned handle should invalidate borrow
         tracker.drop_owned_handle(&owned).unwrap();
-        let validation = tracker.validate_borrow(&borrowed);
+        let validation = tracker.validate_borrow(&borrowed;
         assert!(matches!(validation, BorrowValidation::SourceDropped);
     }
     
@@ -880,23 +880,23 @@ mod tests {
             ComponentId(1),
             TaskId(1),
             |scope| {
-                assert_eq!(tracker.stats.active_scopes, 1);
+                assert_eq!(tracker.stats.active_scopes, 1;
                 Ok(42)
             },
         ).unwrap();
         
-        assert_eq!(result, 42);
-        assert_eq!(tracker.stats.active_scopes, 0);
+        assert_eq!(result, 42;
+        assert_eq!(tracker.stats.active_scopes, 0;
     }
     
     #[test]
     fn test_handle_conversion() {
-        let handle: OwnHandle<u32> = OwnHandle::new(123, 1);
-        let value = handle.to_value();
+        let handle: OwnHandle<u32> = OwnHandle::new(123, 1;
+        let value = handle.to_value(;
         
-        assert!(matches!(value, Value::Own(123));
+        assert!(matches!(value, Value::Own(123);
         
         let converted = OwnHandle::<u32>::from_value(&value).unwrap();
-        assert_eq!(converted.raw(), 123);
+        assert_eq!(converted.raw(), 123;
     }
 }

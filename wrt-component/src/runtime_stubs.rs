@@ -58,7 +58,7 @@ impl GenericMemoryAdapter {
 impl UnifiedMemoryAdapter for GenericMemoryAdapter {
     fn allocate(&mut self, size: usize) -> core::result::Result<&mut [u8], wrt_error::Error> {
         if self.allocated + size > self.total_memory {
-            return Err(wrt_error::Error::OUT_OF_MEMORY);
+            return Err(wrt_error::Error::OUT_OF_MEMORY;
         }
         self.allocated += size;
         // This is a stub - real implementation would return actual memory
@@ -86,7 +86,7 @@ pub struct Function {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FunctionId(pub u32);
+pub struct FunctionId(pub u32;
 
 #[derive(Debug, Clone)]
 pub struct FunctionSignature {
@@ -105,10 +105,10 @@ pub enum ValueType {
 
 // Component and instance identifiers
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(pub u32);
+pub struct ComponentId(pub u32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InstanceId(pub u32);
+pub struct InstanceId(pub u32;
 
 // CFI engine stub
 pub struct CfiEngine {
@@ -169,7 +169,7 @@ pub struct CallFrame {
 
 impl ExecutionEngine {
     pub fn new(platform_limits: &ComprehensivePlatformLimits) -> core::result::Result<Self, wrt_error::Error> {
-        let limits = ExecutionLimits::from_platform(platform_limits);
+        let limits = ExecutionLimits::from_platform(platform_limits;
         let cfi_engine = CfiEngine::new(&limits)?;
         
         Ok(Self {
@@ -184,7 +184,7 @@ impl ExecutionEngine {
     pub fn execute_function(&mut self, function: &Function, args: &[Value]) -> core::result::Result<alloc::vec::Vec<Value>, wrt_error::Error> {
         // Validate execution against limits
         if self.call_stack.len() >= self.limits.max_stack_depth {
-            return Err(wrt_error::Error::StackOverflow);
+            return Err(wrt_error::Error::StackOverflow;
         }
         
         // CFI validation

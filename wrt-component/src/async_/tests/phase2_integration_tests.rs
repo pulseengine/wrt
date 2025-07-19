@@ -42,9 +42,9 @@ mod tests {
                 Poll::Ready(Ok(self.total_consumed.load(Ordering::Acquire)))
             } else {
                 self.polls_remaining -= 1;
-                let fuel = self.fuel_per_poll.load(Ordering::Acquire);
-                self.total_consumed.fetch_add(fuel, Ordering::AcqRel);
-                cx.waker().wake_by_ref();
+                let fuel = self.fuel_per_poll.load(Ordering::Acquire;
+                self.total_consumed.fetch_add(fuel, Ordering::AcqRel;
+                cx.waker().wake_by_ref(;
                 Poll::Pending
             }
         }
@@ -53,13 +53,13 @@ mod tests {
     #[test]
     fn test_dynamic_fuel_allocation() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(100_000);
+        executor.set_global_fuel_limit(100_000;
         executor.enable_dynamic_fuel_management(FuelAllocationPolicy::Adaptive).unwrap();
         
         // Create executor with self-reference
-        let executor_arc = Arc::new(Mutex::new(executor));
+        let executor_arc = Arc::new(Mutex::new(executor;
         if let Ok(mut exec) = executor_arc.lock() {
-            exec.set_self_ref(Arc::downgrade(&executor_arc));
+            exec.set_self_ref(Arc::downgrade(&executor_arc;
         }
 
         // Spawn task that will exhaust fuel
@@ -95,22 +95,22 @@ mod tests {
             let exec = executor_arc.lock().unwrap();
             exec.get_task_status(task_id).unwrap()
         };
-        assert_eq!(status.state, AsyncTaskState::Completed);
+        assert_eq!(status.state, AsyncTaskState::Completed;
     }
 
     #[test]
     fn test_priority_based_preemption() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(100_000);
+        executor.set_global_fuel_limit(100_000;
         executor.enable_preemption(PreemptionPolicy::PriorityBased).unwrap();
         
-        let executor_arc = Arc::new(Mutex::new(executor));
+        let executor_arc = Arc::new(Mutex::new(executor;
         if let Ok(mut exec) = executor_arc.lock() {
-            exec.set_self_ref(Arc::downgrade(&executor_arc));
+            exec.set_self_ref(Arc::downgrade(&executor_arc;
         }
 
         // Track execution order
-        let execution_order = Arc::new(Mutex::new(Vec::new()));
+        let execution_order = Arc::new(Mutex::new(Vec::new();
 
         // Spawn low priority task first
         let order_clone1 = execution_order.clone();
@@ -164,8 +164,8 @@ mod tests {
         // Verify both completed
         let low_status = executor_arc.lock().unwrap().get_task_status(low_task).unwrap();
         let high_status = executor_arc.lock().unwrap().get_task_status(high_task).unwrap();
-        assert_eq!(low_status.state, AsyncTaskState::Completed);
-        assert_eq!(high_status.state, AsyncTaskState::Completed);
+        assert_eq!(low_status.state, AsyncTaskState::Completed;
+        assert_eq!(high_status.state, AsyncTaskState::Completed;
     }
 
     #[test]
@@ -197,13 +197,13 @@ mod tests {
         ).unwrap();
 
         // Should get equal allocations in fair share mode
-        assert_eq!(alloc1, alloc2);
+        assert_eq!(alloc1, alloc2;
     }
 
     #[test]
     fn test_fuel_exhaustion_recovery() {
         let mut fuel_manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10_000).unwrap();
-        let task_id = crate::threading::task_manager::TaskId::new(1);
+        let task_id = crate::threading::task_manager::TaskId::new(1;
         
         // Simulate task execution
         fuel_manager.update_task_history(task_id, 1000, 10, false).unwrap();
@@ -213,14 +213,14 @@ mod tests {
         assert!(emergency_fuel > 0);
         
         // Check reserve was reduced
-        let stats = fuel_manager.get_allocation_stats();
+        let stats = fuel_manager.get_allocation_stats(;
         assert!(stats.reserve_fuel < 10_000);
     }
 
     #[test]
     fn test_preemption_with_dynamic_fuel() {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
         let mut bridge = ComponentAsyncBridge::new(
             task_manager.clone(),
             thread_manager.clone(),
@@ -230,7 +230,7 @@ mod tests {
         bridge.set_global_fuel_budget(100_000).unwrap();
         
         // Register component with limited budget
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.register_component(
             component_id,
             10, // max tasks
@@ -239,8 +239,8 @@ mod tests {
         ).unwrap();
 
         // Spawn multiple tasks that compete for fuel
-        let mut task_ids = Vec::new();
-        let completed = Arc::new(AtomicU64::new(0));
+        let mut task_ids = Vec::new(;
+        let completed = Arc::new(AtomicU64::new(0;
 
         for i in 0..5 {
             let completed_clone = completed.clone();
@@ -248,7 +248,7 @@ mod tests {
                 component_id,
                 async move {
                     // Simulate work
-                    completed_clone.fetch_add(1, Ordering::AcqRel);
+                    completed_clone.fetch_add(1, Ordering::AcqRel;
                     Ok(())
                 },
                 Some(5000), // Each wants 5000 fuel
@@ -268,11 +268,11 @@ mod tests {
         }
 
         // All should complete despite limited budget
-        assert_eq!(completed.load(Ordering::Acquire), 5);
+        assert_eq!(completed.load(Ordering::Acquire), 5;
         
         // Check component stats
         let stats = bridge.get_component_stats(component_id).unwrap();
-        assert_eq!(stats.active_tasks, 0);
+        assert_eq!(stats.active_tasks, 0;
         assert!(stats.fuel_consumed <= stats.fuel_budget);
     }
 
@@ -281,8 +281,8 @@ mod tests {
         let mut preemption_mgr = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
         // Register tasks with different quantums
-        let task1 = crate::threading::task_manager::TaskId::new(1);
-        let task2 = crate::threading::task_manager::TaskId::new(2);
+        let task1 = crate::threading::task_manager::TaskId::new(1;
+        let task2 = crate::threading::task_manager::TaskId::new(2;
         
         preemption_mgr.register_task(task1, Priority::Normal, true, 1000).unwrap();
         preemption_mgr.register_task(task2, Priority::Normal, true, 500).unwrap();
@@ -295,17 +295,17 @@ mod tests {
         // In real usage, this affects scheduling decisions
         
         // Refill quantums
-        preemption_mgr.refill_quantums(2000);
+        preemption_mgr.refill_quantums(2000;
         
-        let stats = preemption_mgr.get_statistics();
+        let stats = preemption_mgr.get_statistics(;
         assert_eq!(stats.total_preemptions, 0); // No preemptions yet
     }
 
     #[test]
     fn test_allocation_policy_comparison() {
         let base_fuel = 1000;
-        let task_id = crate::threading::task_manager::TaskId::new(1);
-        let component_id = ComponentInstanceId::new(1);
+        let task_id = crate::threading::task_manager::TaskId::new(1;
+        let component_id = ComponentInstanceId::new(1;
         
         // Test different policies
         let policies = vec![

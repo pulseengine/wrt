@@ -270,13 +270,13 @@ impl CrossComponentResourceSharingManager {
     }
 
     pub fn with_virtualization(mut self, virt_manager: VirtualizationManager) -> Self {
-        self.virt_manager = Some(virt_manager);
-        self.handle_manager = self.handle_manager.with_virtualization(virt_manager);
+        self.virt_manager = Some(virt_manager;
+        self.handle_manager = self.handle_manager.with_virtualization(virt_manager;
         self
     }
 
     pub fn set_policy_enforcement(&self, enforce: bool) {
-        self.enforce_policies.store(enforce, Ordering::SeqCst);
+        self.enforce_policies.store(enforce, Ordering::SeqCst;
     }
 
     pub fn establish_sharing_agreement(
@@ -296,7 +296,7 @@ impl CrossComponentResourceSharingManager {
             self.check_sharing_policies(source_component, target_component, &resource_types)?;
         }
 
-        let agreement_id = self.next_agreement_id.fetch_add(1, Ordering::SeqCst);
+        let agreement_id = self.next_agreement_id.fetch_add(1, Ordering::SeqCst;
 
         let agreement = SharingAgreement {
             id: agreement_id,
@@ -368,7 +368,7 @@ impl CrossComponentResourceSharingManager {
                 source_component: Some(agreement.source_component),
                 target_component: Some(agreement.target_component),
                 resource: Some(resource_handle),
-            });
+            };
         }
 
         // Create shared handle
@@ -436,7 +436,7 @@ impl CrossComponentResourceSharingManager {
         }
 
         // Add cleanup task for source component
-        let cleanup_task = CleanupTask::resource_cleanup(resource_handle);
+        let cleanup_task = CleanupTask::resource_cleanup(resource_handle;
         self.post_return_registry.add_cleanup_task(source_component, cleanup_task).map_err(
             |e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
@@ -476,7 +476,7 @@ impl CrossComponentResourceSharingManager {
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
-            });
+            };
         }
 
         // Check if resource is locked
@@ -487,11 +487,11 @@ impl CrossComponentResourceSharingManager {
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
-            });
+            };
         }
 
         // Increment access count
-        shared_resource.access_count.fetch_add(1, Ordering::SeqCst);
+        shared_resource.access_count.fetch_add(1, Ordering::SeqCst;
 
         // Perform operation through handle manager
         let result = self
@@ -536,7 +536,7 @@ impl CrossComponentResourceSharingManager {
 
         // Remove component from shared list
         if let Some(pos) = shared_resource.shared_with.iter().position(|&id| id == component_id) {
-            shared_resource.shared_with.remove(pos);
+            shared_resource.shared_with.remove(pos;
         }
 
         // Drop the handle for this component
@@ -629,7 +629,7 @@ impl CrossComponentResourceSharingManager {
                 source_component: Some(source),
                 target_component: Some(target),
                 resource: None,
-            });
+            };
         }
 
         // Check for circular dependencies
@@ -640,7 +640,7 @@ impl CrossComponentResourceSharingManager {
                 source_component: Some(source),
                 target_component: Some(target),
                 resource: None,
-            });
+            };
         }
 
         Ok(())
@@ -699,7 +699,7 @@ impl CrossComponentResourceSharingManager {
                             source_component: Some(source),
                             target_component: Some(target),
                             resource: None,
-                        });
+                        };
                     }
                 }
             }
@@ -712,7 +712,7 @@ impl CrossComponentResourceSharingManager {
                             source_component: Some(source),
                             target_component: Some(target),
                             resource: None,
-                        });
+                        };
                     }
                 }
             }
@@ -729,7 +729,7 @@ impl CrossComponentResourceSharingManager {
                                 source_component: Some(source),
                                 target_component: Some(target),
                                 resource: None,
-                            });
+                            };
                         }
                     }
                 }
@@ -906,7 +906,7 @@ impl CrossComponentResourceSharingManager {
     }
 
     fn count_active_agreements(&self) -> usize {
-        let current_time = self.get_current_time();
+        let current_time = self.get_current_time(;
 
         self.sharing_agreements
             .values()
@@ -997,28 +997,28 @@ mod tests {
     #[test]
     fn test_sharing_manager_creation() {
         let manager = CrossComponentResourceSharingManager::new().unwrap();
-        assert!(manager.enforce_policies.load(Ordering::Acquire));
+        assert!(manager.enforce_policies.load(Ordering::Acquire);
     }
 
     #[test]
     fn test_transfer_policy() {
-        assert_eq!(TransferPolicy::Copy, TransferPolicy::Copy);
-        assert_ne!(TransferPolicy::Move, TransferPolicy::Borrow);
+        assert_eq!(TransferPolicy::Copy, TransferPolicy::Copy;
+        assert_ne!(TransferPolicy::Move, TransferPolicy::Borrow;
     }
 
     #[test]
     fn test_sharing_statistics() {
-        let stats = SharingStatistics::default();
-        assert_eq!(stats.total_agreements, 0);
-        assert_eq!(stats.active_agreements, 0);
-        assert_eq!(stats.total_shared_resources, 0);
+        let stats = SharingStatistics::default(;
+        assert_eq!(stats.total_agreements, 0;
+        assert_eq!(stats.active_agreements, 0;
+        assert_eq!(stats.total_shared_resources, 0;
     }
 
     #[test]
     fn test_basic_policy_creation() {
         let policy = create_basic_sharing_policy("test-policy").unwrap();
-        assert_eq!(policy.name, "test-policy");
-        assert!(matches!(policy.applies_to, PolicyScope::Global));
+        assert_eq!(policy.name, "test-policy";
+        assert!(matches!(policy.applies_to, PolicyScope::Global);
         assert!(policy.enabled);
     }
 }

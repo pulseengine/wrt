@@ -60,7 +60,7 @@ impl Export {
 
     /// Set an attribute value
     pub fn set_attribute(&mut self, name: String, value: String) {
-        self.attributes.insert(name, value);
+        self.attributes.insert(name, value;
     }
 
     /// Convert the export type to a runtime extern type
@@ -103,13 +103,13 @@ mod tests {
             integrity_hash: None,
         };
 
-        assert_eq!(export.name, "addMissing message");
+        assert_eq!(export.name, "add";
         match &export.ty {
             ExternType::Function { params, results } => {
-                assert_eq!(params.len(), 2);
-                assert_eq!(results.len(), 1);
+                assert_eq!(params.len(), 2;
+                assert_eq!(results.len(), 1;
             }
-            _ => panic!("Expected function typeMissing message"),
+            _ => panic!("Expected function type"),
         }
     }
 }

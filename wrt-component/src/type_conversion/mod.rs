@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn test_complex_type_conversion() {
         // Create a registry with default conversions
-        let registry = TypeConversionRegistry::with_defaults();
+        let registry = TypeConversionRegistry::with_defaults(;
 
         // Create a complex nested type
         let format_type = FormatValType::Record(vec![
@@ -70,15 +70,15 @@ mod tests {
                 ]),
             ),
             ("score".to_string(), FormatValType::F32),
-        ]);
+        ];
 
         // Convert to types representation
-        let result = registry.convert::<FormatValType, TypesValType>(&format_type);
-        assert!(result.is_ok());
+        let result = registry.convert::<FormatValType, TypesValType>(&format_type;
+        assert!(result.is_ok();
 
         if let Ok(types_val) = result {
             // Verify the conversion worked
-            assert!(matches!(types_val, TypesValType::Record(_)));
+            assert!(matches!(types_val, TypesValType::Record(_));
         }
     }
 
@@ -89,14 +89,14 @@ mod tests {
         let format_val = FormatValType::S32;
         
         // Use bidirectional conversion
-        let types_val_via_bidirectional = format_valtype_to_types_valtype(&format_val);
+        let types_val_via_bidirectional = format_valtype_to_types_valtype(&format_val;
         
         // Use registry conversion
-        let registry = TypeConversionRegistry::with_defaults();
+        let registry = TypeConversionRegistry::with_defaults(;
         let types_val_via_registry = registry.convert::<FormatValType, TypesValType>(&format_val).unwrap();
         
         // They should produce the same result
-        assert_eq!(types_val_via_bidirectional, types_val_via_registry);
+        assert_eq!(types_val_via_bidirectional, types_val_via_registry;
     }
 
     // Note: The original integration_test.rs contained 214 lines of comprehensive

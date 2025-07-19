@@ -40,7 +40,7 @@ const MAX_TASK_CALL_DEPTH: usize = 64;
 
 /// Task identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TaskId(pub u32);
+pub struct TaskId(pub u32;
 
 /// Task management system
 pub struct TaskManager {
@@ -232,10 +232,10 @@ impl TaskManager {
     ) -> WrtResult<TaskId> {
         // Check task limit
         if self.tasks.len() >= self.max_concurrent_tasks {
-            return Err(wrt_error::Error::runtime_execution_error("Error occurred")));
+            return Err(wrt_error::Error::runtime_execution_error("Error occurred");
         }
 
-        let task_id = TaskId(self.next_task_id);
+        let task_id = TaskId(self.next_task_id;
         self.next_task_id += 1;
 
         let task = Task {
@@ -307,7 +307,7 @@ impl TaskManager {
         // Insert task
         #[cfg(feature = "std")]
         {
-            self.tasks.insert(task_id, task);
+            self.tasks.insert(task_id, task;
         }
         #[cfg(not(feature = "std"))]
         {
@@ -387,7 +387,7 @@ impl TaskManager {
                 for i in 1..self.ready_queue.len() {
                     self.ready_queue[i - 1] = self.ready_queue[i];
                 }
-                let _ = self.ready_queue.pop();
+                let _ = self.ready_queue.pop(;
                 Some(task_id)
             }
         }
@@ -398,7 +398,7 @@ impl TaskManager {
         if let Some(task) = self.get_task_mut(task_id) {
             if task.state == TaskState::Ready {
                 task.state = TaskState::Running;
-                self.current_task = Some(task_id);
+                self.current_task = Some(task_id;
                 Ok(())
             } else {
                 Err(wrt_error::Error::runtime_execution_error("Error occurred")))
@@ -406,7 +406,7 @@ impl TaskManager {
         } else {
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                 wrt_error::errors::codes::INVALID_INPUT,
-                "Error message neededMissing messageMissing messageMissing message"))
+                "Error message needed"))
         }
     }
 
@@ -417,7 +417,7 @@ impl TaskManager {
                 task.state = TaskState::Completed;
                 #[cfg(feature = "std")]
                 {
-                    task.return_values = Some(values);
+                    task.return_values = Some(values;
                 }
                 #[cfg(not(feature = "std"))]
                 {
@@ -430,7 +430,7 @@ impl TaskManager {
                             wrt_error::Error::runtime_execution_error("Error occurred"))
                         })?;
                     }
-                    task.return_values = Some(bounded_values);
+                    task.return_values = Some(bounded_values;
                 }
 
                 // Clean up borrowed resources
@@ -441,7 +441,7 @@ impl TaskManager {
             } else {
                 Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                     wrt_error::errors::codes::INVALID_INPUT,
-                    "Error message neededMissing messageMissing messageMissing message"))
+                    "Error message needed"))
             }
         } else {
             Err(wrt_error::Error::runtime_execution_error("Error occurred")))
@@ -453,17 +453,17 @@ impl TaskManager {
         if let Some(task_id) = self.current_task {
             // Check if any waitables are immediately ready
             if let Some(ready_index) = waitables.first_ready() {
-                return Ok(ready_index);
+                return Ok(ready_index;
             }
 
             // Put task in waiting state
             if let Some(task) = self.get_task_mut(task_id) {
                 task.state = TaskState::Waiting;
-                task.waiting_on = Some(waitables);
+                task.waiting_on = Some(waitables;
                 self.current_task = task.parent;
 
                 // Return special value indicating we're waiting
-                Ok(u32::MAX) // Convention: MAX means Missing messageMissing messageMissing message")
+                Ok(u32::MAX) // Convention: MAX means ")
             }
         } else {
             Err(wrt_error::Error::runtime_execution_error("Error occurred")))
@@ -499,7 +499,7 @@ impl TaskManager {
         } else {
             Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
                 wrt_error::errors::codes::INVALID_INPUT,
-                "Error message neededMissing messageMissing messageMissing message"))
+                "Error message needed"))
         }
     }
 
@@ -535,7 +535,7 @@ impl TaskManager {
 
     /// Update waitable states and wake waiting tasks
     pub fn update_waitables(&mut self) -> WrtResult<()> {
-        let mut tasks_to_wake = Vec::new();
+        let mut tasks_to_wake = Vec::new(;
 
         // Check all waiting tasks
         #[cfg(feature = "std")]
@@ -577,7 +577,7 @@ impl TaskManager {
             // Drop borrowed resources
             for handle in &task.borrowed_handles {
                 // In a real implementation, would properly release borrows
-                let _ = self.resource_manager.drop_resource(*handle);
+                let _ = self.resource_manager.drop_resource(*handle;
             }
         }
         Ok(()
@@ -644,10 +644,10 @@ mod tests {
     #[test]
     fn test_task_manager_creation() {
         let manager = TaskManager::new().unwrap();
-        assert_eq!(manager.task_count(), 0);
-        assert_eq!(manager.ready_task_count(), 0);
+        assert_eq!(manager.task_count(), 0;
+        assert_eq!(manager.ready_task_count(), 0;
         assert!(!manager.has_ready_tasks();
-        assert_eq!(manager.current_task_id(), None);
+        assert_eq!(manager.current_task_id(), None;
     }
 
     #[test]
@@ -656,9 +656,9 @@ mod tests {
 
         let task_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
 
-        assert_eq!(task_id, TaskId(0);
-        assert_eq!(manager.task_count(), 1);
-        assert_eq!(manager.ready_task_count(), 1);
+        assert_eq!(task_id, TaskId(0;
+        assert_eq!(manager.task_count(), 1;
+        assert_eq!(manager.ready_task_count(), 1;
         assert!(manager.has_ready_tasks();
     }
 
@@ -671,15 +671,15 @@ mod tests {
 
         // Get next ready task
         let next_task = manager.next_ready_task().unwrap();
-        assert_eq!(next_task, task_id);
-        assert_eq!(manager.ready_task_count(), 0);
+        assert_eq!(next_task, task_id;
+        assert_eq!(manager.ready_task_count(), 0;
 
         // Switch to task
         manager.switch_to_task(task_id).unwrap();
-        assert_eq!(manager.current_task_id(), Some(task_id);
+        assert_eq!(manager.current_task_id(), Some(task_id;
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Running);
+        assert_eq!(task.state, TaskState::Running;
     }
 
     #[test]
@@ -695,7 +695,7 @@ mod tests {
         manager.task_return(return_values).unwrap();
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Completed);
+        assert_eq!(task.state, TaskState::Completed;
         assert!(task.return_values.is_some();
     }
 
@@ -709,8 +709,8 @@ mod tests {
         manager.task_yield().unwrap();
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Ready);
-        assert_eq!(manager.ready_task_count(), 1);
+        assert_eq!(task.state, TaskState::Ready;
+        assert_eq!(manager.ready_task_count(), 1;
     }
 
     #[test]
@@ -722,7 +722,7 @@ mod tests {
         manager.task_cancel(task_id).unwrap();
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Cancelled);
+        assert_eq!(task.state, TaskState::Cancelled;
     }
 
     #[test]
@@ -741,20 +741,20 @@ mod tests {
         assert!(parent.subtasks.contains(&child_id);
 
         let child = manager.get_task(child_id).unwrap();
-        assert_eq!(child.parent, Some(parent_id);
+        assert_eq!(child.parent, Some(parent_id;
     }
 
     #[test]
     fn test_task_state_display() {
-        assert_eq!(TaskState::Starting.to_string(), "startingMissing message");
-        assert_eq!(TaskState::Running.to_string(), "runningMissing message");
-        assert_eq!(TaskState::Completed.to_string(), "completedMissing message");
+        assert_eq!(TaskState::Starting.to_string(), "starting";
+        assert_eq!(TaskState::Running.to_string(), "running";
+        assert_eq!(TaskState::Completed.to_string(), "completed";
     }
 
     #[test]
     fn test_task_type_display() {
-        assert_eq!(TaskType::ComponentFunction.to_string(), "component-functionMissing message");
-        assert_eq!(TaskType::AsyncOperation.to_string(), "async-operationMissing message");
-        assert_eq!(TaskType::Background.to_string(), "backgroundMissing message");
+        assert_eq!(TaskType::ComponentFunction.to_string(), "component-function";
+        assert_eq!(TaskType::AsyncOperation.to_string(), "async-operation";
+        assert_eq!(TaskType::Background.to_string(), "background";
     }
 }

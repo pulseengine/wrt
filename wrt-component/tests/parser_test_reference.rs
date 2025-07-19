@@ -18,10 +18,8 @@ mod tests {
         println!(
             "Parser tests for wrt-component are now in wrt-tests/integration/parser/Missing \
              message"
-        );
-        println!("Run: cargo test -p wrt-tests parserMissing message");
-        println!(
-            "Consolidated tests provide better coverage and eliminate duplicationMissing message"
-        );
+        ;
+        println!("Run: cargo test -p wrt-tests parser";
+        println!("Consolidated tests provide better coverage and eliminate duplication";
     }
 }

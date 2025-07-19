@@ -26,7 +26,7 @@
 //! use wrt_component::component_instantiation::{ComponentLinker, InstanceConfig};
 //!
 //! // Create a linker for component composition
-//! let mut linker = ComponentLinker::new();
+//! let mut linker = ComponentLinker::new(;
 //!
 //! // Add a component with exports
 //! linker.add_component("math", &math_component_binary)?;
@@ -315,15 +315,15 @@ impl ComponentInstance {
     ) -> Result<Self> {
         // Validate inputs
         if name.is_empty() {
-            return Err(Error::validation_error("Instance name cannot be empty"));
+            return Err(Error::validation_error("Instance name cannot be empty";
         }
 
         if exports.len() > MAX_EXPORTS_PER_COMPONENT {
-            return Err(Error::validation_error("Too many exports for component"));
+            return Err(Error::validation_error("Too many exports for component";
         }
 
         if imports.len() > MAX_IMPORTS_PER_COMPONENT {
-            return Err(Error::validation_error("Too many imports for component"));
+            return Err(Error::validation_error("Too many imports for component";
         }
 
         // Initialize memory if needed
@@ -378,7 +378,7 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Instance not in ready state"));
+                "Instance not in ready state";
         }
 
         // Find the function
@@ -412,7 +412,7 @@ impl ComponentInstance {
     /// Add a resolved import
     pub fn add_resolved_import(&mut self, resolved: ResolvedImport) -> Result<()> {
         if self.imports.len() >= MAX_IMPORTS_PER_COMPONENT {
-            return Err(Error::validation_error("Too many resolved imports"));
+            return Err(Error::validation_error("Too many resolved imports";
         }
 
         self.imports.push(resolved);
@@ -433,13 +433,13 @@ impl ComponentInstance {
     pub fn terminate(&mut self) {
         self.state = InstanceState::Terminated;
         // Cleanup resources
-        self.functions.clear();
+        self.functions.clear(;
         if let Some(memory) = &mut self.memory {
-            memory.clear();
+            memory.clear(;
         }
         // Clean up resource manager
         if let Some(resource_manager) = &mut self.resource_manager {
-            let _ = resource_manager.remove_instance_table(self.id);
+            let _ = resource_manager.remove_instance_table(self.id;
         }
     }
 
@@ -491,12 +491,12 @@ impl ComponentInstance {
             match &export.export_type {
                 ExportType::Function(sig) => {
                     if sig.name.is_empty() {
-                        return Err(Error::validation_error("Function signature name cannot be empty"));
+                        return Err(Error::validation_error("Function signature name cannot be empty";
                     }
                 }
                 ExportType::Memory(config) => {
                     if config.initial_pages == 0 {
-                        return Err(Error::validation_error("Memory must have at least 1 initial page"));
+                        return Err(Error::validation_error("Memory must have at least 1 initial page";
                     }
                 }
                 _ => {} // Other export types are valid by construction
@@ -539,7 +539,7 @@ impl ComponentInstance {
         args: &[ComponentValue],
     ) -> Result<()> {
         if args.len() != signature.params.len() {
-            return Err(Error::runtime_type_mismatch("Function argument count mismatch"));
+            return Err(Error::runtime_type_mismatch("Function argument count mismatch";
         }
 
         // Type checking would go here in a full implementation
@@ -573,7 +573,7 @@ impl ComponentMemory {
 
         if let Some(max_pages) = config.max_pages {
             if config.initial_pages > max_pages {
-                return Err(Error::validation_error("Initial pages cannot exceed maximum pages"));
+                return Err(Error::validation_error("Initial pages cannot exceed maximum pages";
             }
         }
 
@@ -592,12 +592,12 @@ impl ComponentMemory {
 
         if let Some(max_pages) = self.config.max_pages {
             if new_pages > max_pages {
-                return Err(Error::runtime_out_of_bounds("Memory growth would exceed maximum pages"));
+                return Err(Error::runtime_out_of_bounds("Memory growth would exceed maximum pages";
             }
         }
 
         let new_size = new_pages * 65536;
-        self.data.resize(new_size as usize, 0);
+        self.data.resize(new_size as usize, 0;
         self.current_size = new_size;
 
         Ok(old_pages)
@@ -610,7 +610,7 @@ impl ComponentMemory {
 
     /// Clear memory (for cleanup)
     pub fn clear(&mut self) {
-        self.data.clear();
+        self.data.clear(;
         self.current_size = 0;
     }
 }
@@ -621,7 +621,7 @@ impl CanonicalMemory for ComponentMemory {
         let end = start + len as usize;
 
         if end > self.data.len() {
-            return Err(Error::memory_out_of_bounds("Memory read out of bounds"));
+            return Err(Error::memory_out_of_bounds("Memory read out of bounds";
         }
 
         Ok(self.data[start..end].to_vec())
@@ -629,13 +629,13 @@ impl CanonicalMemory for ComponentMemory {
 
     fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len();
+        let end = start + data.len(;
 
         if end > self.data.len() {
-            return Err(Error::memory_out_of_bounds("Memory write out of bounds"));
+            return Err(Error::memory_out_of_bounds("Memory write out of bounds";
         }
 
-        self.data[start..end].copy_from_slice(data);
+        self.data[start..end].copy_from_slice(data;
         Ok(())
     }
 
@@ -707,7 +707,7 @@ mod tests {
 
     #[test]
     fn test_instance_creation() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let exports = vec![create_component_export(
             "add".to_string(),
             ExportType::Function(create_function_signature(
@@ -719,18 +719,18 @@ mod tests {
         let imports = vec![];
 
         let instance =
-            ComponentInstance::new(1, "test_component".to_string(), config, exports, imports);
+            ComponentInstance::new(1, "test_component".to_string(), config, exports, imports;
 
-        assert!(instance.is_ok());
+        assert!(instance.is_ok();
         let instance = instance.unwrap();
-        assert_eq!(instance.id, 1);
-        assert_eq!(instance.name, "test_component");
-        assert_eq!(instance.state, InstanceState::Initializing);
+        assert_eq!(instance.id, 1;
+        assert_eq!(instance.name, "test_component";
+        assert_eq!(instance.state, InstanceState::Initializing;
     }
 
     #[test]
     fn test_instance_initialization() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let exports = vec![create_component_export(
             "add".to_string(),
             ExportType::Function(create_function_signature(
@@ -744,20 +744,20 @@ mod tests {
             ComponentInstance::new(1, "test_component".to_string(), config, exports, vec![])
                 .unwrap();
 
-        assert!(instance.initialize().is_ok());
-        assert_eq!(instance.state, InstanceState::Ready);
+        assert!(instance.initialize().is_ok();
+        assert_eq!(instance.state, InstanceState::Ready;
     }
 
     #[test]
     fn test_memory_creation() {
         let config = MemoryConfig { initial_pages: 2, max_pages: Some(10), protected: true };
 
-        let memory = ComponentMemory::new(0, config);
-        assert!(memory.is_ok());
+        let memory = ComponentMemory::new(0, config;
+        assert!(memory.is_ok();
 
         let memory = memory.unwrap();
-        assert_eq!(memory.size_pages(), 2);
-        assert_eq!(memory.current_size, 2 * 65536);
+        assert_eq!(memory.size_pages(), 2;
+        assert_eq!(memory.current_size, 2 * 65536;
     }
 
     #[test]
@@ -767,18 +767,18 @@ mod tests {
         let mut memory = ComponentMemory::new(0, config).unwrap();
         let old_pages = memory.grow(2).unwrap();
 
-        assert_eq!(old_pages, 1);
-        assert_eq!(memory.size_pages(), 3);
+        assert_eq!(old_pages, 1;
+        assert_eq!(memory.size_pages(), 3;
     }
 
     #[test]
     fn test_memory_bounds_checking() {
-        let config = MemoryConfig::default();
+        let config = MemoryConfig::default(;
         let memory = ComponentMemory::new(0, config).unwrap();
 
         // Try to read beyond bounds
-        let result = memory.read_bytes(65536, 1);
-        assert!(result.is_err());
+        let result = memory.read_bytes(65536, 1;
+        assert!(result.is_err();
     }
 
     #[test]
@@ -787,11 +787,11 @@ mod tests {
             "test_func".to_string(),
             vec![ComponentType::S32, ComponentType::String],
             vec![ComponentType::Bool],
-        );
+        ;
 
-        assert_eq!(sig.name, "test_func");
-        assert_eq!(sig.params.len(), 2);
-        assert_eq!(sig.returns.len(), 1);
+        assert_eq!(sig.name, "test_func";
+        assert_eq!(sig.params.len(), 2;
+        assert_eq!(sig.returns.len(), 1;
     }
 
     #[test]
@@ -803,14 +803,14 @@ mod tests {
                 vec![],
                 vec![ComponentType::S32],
             )),
-        );
+        ;
 
-        assert_eq!(export.name, "my_func");
+        assert_eq!(export.name, "my_func";
         match export.export_type {
             ExportType::Function(sig) => {
-                assert_eq!(sig.name, "my_func");
-                assert_eq!(sig.params.len(), 0);
-                assert_eq!(sig.returns.len(), 1);
+                assert_eq!(sig.name, "my_func";
+                assert_eq!(sig.params.len(), 0;
+                assert_eq!(sig.returns.len(), 1;
             }
             _ => panic!("Expected function export"),
         }
@@ -826,15 +826,15 @@ mod tests {
                 vec![ComponentType::String],
                 vec![ComponentType::S32],
             )),
-        );
+        ;
 
-        assert_eq!(import.name, "external_func");
-        assert_eq!(import.module, "external_module");
+        assert_eq!(import.name, "external_func";
+        assert_eq!(import.module, "external_module";
         match import.import_type {
             ImportType::Function(sig) => {
-                assert_eq!(sig.name, "external_func");
-                assert_eq!(sig.params.len(), 1);
-                assert_eq!(sig.returns.len(), 1);
+                assert_eq!(sig.name, "external_func";
+                assert_eq!(sig.params.len(), 1;
+                assert_eq!(sig.returns.len(), 1;
             }
             _ => panic!("Expected function import"),
         }
@@ -849,7 +849,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -947,10 +947,10 @@ impl Default for ResolvedImport {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(ComponentFunction, ComponentFunction::default());
-impl_basic_traits!(ComponentExport, ComponentExport::default());
-impl_basic_traits!(ComponentImport, ComponentImport::default());
-impl_basic_traits!(ResolvedImport, ResolvedImport::default());
+impl_basic_traits!(ComponentFunction, ComponentFunction::default(;
+impl_basic_traits!(ComponentExport, ComponentExport::default(;
+impl_basic_traits!(ComponentImport, ComponentImport::default(;
+impl_basic_traits!(ResolvedImport, ResolvedImport::default(;
 
 // Tests moved from component_instantiation_tests.rs
 #[cfg(test)]
@@ -964,7 +964,7 @@ mod tests {
 
     #[test]
     fn test_instance_creation_with_exports() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let exports = vec![
             create_component_export(
                 "add".to_string(),
@@ -985,19 +985,19 @@ mod tests {
         ];
 
         let instance =
-            ComponentInstance::new(1, "math_component".to_string(), config, exports, vec![]);
+            ComponentInstance::new(1, "math_component".to_string(), config, exports, vec![];
 
-        assert!(instance.is_ok());
+        assert!(instance.is_ok();
         let instance = instance.unwrap();
-        assert_eq!(instance.id, 1);
-        assert_eq!(instance.name, "math_component");
-        assert_eq!(instance.state, InstanceState::Initializing);
-        assert_eq!(instance.exports.len(), 2);
+        assert_eq!(instance.id, 1;
+        assert_eq!(instance.name, "math_component";
+        assert_eq!(instance.state, InstanceState::Initializing;
+        assert_eq!(instance.exports.len(), 2;
     }
 
     #[test]
     fn test_instance_creation_with_imports() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let imports = vec![
             create_component_import(
                 "log".to_string(),
@@ -1019,18 +1019,18 @@ mod tests {
             ),
         ];
 
-        let instance = ComponentInstance::new(2, "calculator".to_string(), config, vec![], imports);
+        let instance = ComponentInstance::new(2, "calculator".to_string(), config, vec![], imports;
 
-        assert!(instance.is_ok());
+        assert!(instance.is_ok();
         let instance = instance.unwrap();
-        assert_eq!(instance.id, 2);
-        assert_eq!(instance.name, "calculator");
+        assert_eq!(instance.id, 2;
+        assert_eq!(instance.name, "calculator";
         assert_eq!(instance.imports.len(), 0); // Imports start unresolved
     }
 
     #[test]
     fn test_instance_initialization() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1044,16 +1044,16 @@ mod tests {
             ComponentInstance::new(3, "test_component".to_string(), config, exports, vec![])
                 .unwrap();
 
-        assert_eq!(instance.state, InstanceState::Initializing);
+        assert_eq!(instance.state, InstanceState::Initializing;
 
-        let result = instance.initialize();
-        assert!(result.is_ok());
-        assert_eq!(instance.state, InstanceState::Ready);
+        let result = instance.initialize(;
+        assert!(result.is_ok();
+        assert_eq!(instance.state, InstanceState::Ready;
     }
 
     #[test]
     fn test_instance_function_call() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1070,16 +1070,16 @@ mod tests {
         instance.initialize().unwrap();
 
         let args = vec![ComponentValue::S32(42)];
-        let result = instance.call_function("test_func", &args);
+        let result = instance.call_function("test_func", &args;
 
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         let return_values = result.unwrap();
-        assert_eq!(return_values.len(), 1);
+        assert_eq!(return_values.len(), 1;
     }
 
     #[test]
     fn test_instance_function_call_invalid_state() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1094,23 +1094,23 @@ mod tests {
                 .unwrap();
 
         // Don't initialize - should fail
-        let result = instance.call_function("test_func", &[]);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime);
+        let result = instance.call_function("test_func", &[];
+        assert!(result.is_err();
+        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime;
     }
 
     #[test]
     fn test_instance_function_call_not_found() {
-        let config = InstanceConfig::default();
+        let config = InstanceConfig::default(;
         let mut instance =
             ComponentInstance::new(6, "test_component".to_string(), config, vec![], vec![])
                 .unwrap();
 
         instance.initialize().unwrap();
 
-        let result = instance.call_function("nonexistent", &[]);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime);
+        let result = instance.call_function("nonexistent", &[];
+        assert!(result.is_err();
+        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime;
     }
 
     // Note: Due to the large size of the original test file (740 lines),

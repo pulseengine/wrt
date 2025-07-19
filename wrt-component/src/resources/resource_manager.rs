@@ -13,7 +13,7 @@ use crate::prelude::*;
 
 /// Unique identifier for a resource
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ResourceId(pub u32);
+pub struct ResourceId(pub u32;
 
 /// Trait representing a host resource
 pub trait HostResource {}
@@ -44,12 +44,12 @@ pub struct ResourceManager {
 impl ResourceManager {
     /// Create a new resource manager with default settings
     pub fn new() -> Self {
-        Self::new_with_id("default-instanceMissing message")
+        Self::new_with_id("default-instance")
     }
 
     /// Create a new resource manager with optimized memory management
     pub fn new_optimized() -> Self {
-        Self::new_with_id_and_optimized_memory("default-instanceMissing message")
+        Self::new_with_id_and_optimized_memory("default-instance")
     }
 
     /// Create a new resource manager with a specific instance ID
@@ -122,7 +122,7 @@ impl ResourceManager {
     /// Add a resource interceptor
     pub fn add_interceptor(&self, interceptor: Arc<dyn ResourceInterceptor>) -> Result<()> {
         let mut table = self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
-        table.add_interceptor(interceptor);
+        table.add_interceptor(interceptor;
         Ok(())
     }
 
@@ -153,7 +153,7 @@ impl ResourceManager {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string());
+                res_guard.name = Some(name.to_string();
             }
         }
 
@@ -180,7 +180,7 @@ impl ResourceManager {
         // Check if we can access the data as the requested type
         if let Some(typed_data) = resource_guard.data.downcast_ref::<T>() {
             // Create a cloned Arc<Mutex<T>> to return
-            let cloned_data = Arc::new(Mutex::new(typed_data.clone()));
+            let cloned_data = Arc::new(Mutex::new(typed_data.clone();
             Ok(cloned_data)
         } else {
             Err(Error::component_not_found("Resource type mismatch"))
@@ -269,7 +269,7 @@ impl ResourceManager {
     /// Clear all resources (legacy API)
     pub fn clear(&self) -> Result<()> {
         let mut table = self.table.lock().map_err(|_| Error::runtime_poisoned_lock("Failed to acquire resource table lock"))?;
-        let _ = table.cleanup_unused_resources();
+        let _ = table.cleanup_unused_resources(;
         Ok(())
     }
 
@@ -302,9 +302,9 @@ impl ResourceManager {
 impl fmt::Debug for ResourceManager {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Get the resource count, or show an error if we can't access it
-        let count = self.resource_count().unwrap_or(0);
+        let count = self.resource_count().unwrap_or(0;
 
-        f.debug_struct("ResourceManagerMissing message")
+        f.debug_struct("ResourceManager")
             .field("instance_id", &self.instance_id)
             .field("resource_count", &count)
             .field("default_memory_strategy", &self.default_memory_strategy)
@@ -321,10 +321,10 @@ mod tests {
 
     #[test]
     fn test_resource_creation() {
-        let manager = ResourceManager::new();
+        let manager = ResourceManager::new(;
 
         // Create a string resource
-        let data = Arc::new(String::from("testMissing messageMissing messageMissing message");
+        let data = Arc::new(String::from("test";
         let handle = manager.create_resource(1, data).unwrap();
 
         // Verify it exists
@@ -336,46 +336,46 @@ mod tests {
         let guard = resource.lock().unwrap();
 
         // Verify type index
-        assert_eq!(guard.type_idx, 1);
+        assert_eq!(guard.type_idx, 1;
     }
 
     #[test]
     fn test_add_and_get_host_resource() {
-        let manager = ResourceManager::new();
+        let manager = ResourceManager::new(;
 
         // Add a string resource using the legacy API
-        let id = manager.add_host_resource(String::from("testMissing messageMissing messageMissing message")).unwrap();
+        let id = manager.add_host_resource(String::from("test")).unwrap();
 
         // Check we can retrieve it
         let resource = manager.get_host_resource::<String>(id).unwrap();
-        assert_eq!(*resource.lock().unwrap(), "testMissing message");
+        assert_eq!(*resource.lock().unwrap(), "test";
 
         // Check type mismatch
-        let result = manager.get_host_resource::<i32>(id);
+        let result = manager.get_host_resource::<i32>(id;
         assert!(result.is_err();
     }
 
     #[test]
     fn test_named_resource() {
-        let manager = ResourceManager::new();
+        let manager = ResourceManager::new(;
 
         // Create a named resource
-        let data = Arc::new(42i32);
-        let handle = manager.create_named_resource(1, data, "answerMissing message").unwrap();
+        let data = Arc::new(42i32;
+        let handle = manager.create_named_resource(1, data, "answer").unwrap();
 
         // Get the resource and check the name
         let resource = manager.get_resource(handle).unwrap();
         let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string());
+        assert_eq!(guard.name, Some("answer".to_string();
     }
 
     #[test]
     fn test_resource_lifecycle() {
-        let manager = ResourceManager::new();
+        let manager = ResourceManager::new(;
 
         // Add a resource
-        let data = Arc::new(42i32);
+        let data = Arc::new(42i32;
         let handle = manager.create_resource(1, data).unwrap();
 
         // Verify it exists
@@ -392,10 +392,10 @@ mod tests {
 
     #[test]
     fn test_borrow_resource() {
-        let manager = ResourceManager::new();
+        let manager = ResourceManager::new(;
 
         // Create a resource
-        let data = Arc::new(42i32);
+        let data = Arc::new(42i32;
         let handle = manager.create_resource(1, data).unwrap();
 
         // Borrow it
@@ -406,7 +406,7 @@ mod tests {
         assert!(manager.has_resource(ResourceId(borrow_handle)).unwrap();
 
         // Verify they're different handles
-        assert_ne!(handle, borrow_handle);
+        assert_ne!(handle, borrow_handle;
 
         // But point to the same data
         let resource1 = manager.get_resource(handle).unwrap();
@@ -415,6 +415,6 @@ mod tests {
         let data1 = resource1.lock().unwrap().data.downcast_ref::<i32>().unwrap();
         let data2 = resource2.lock().unwrap().data.downcast_ref::<i32>().unwrap();
 
-        assert_eq!(*data1, *data2);
+        assert_eq!(*data1, *data2;
     }
 }

@@ -26,13 +26,13 @@
 //! use wrt_component::canonical_abi::{CanonicalABI, ComponentValue, ComponentType};
 //!
 //! // Create a canonical ABI instance
-//! let abi = CanonicalABI::new();
+//! let abi = CanonicalABI::new(;
 //!
 //! // Lift an i32 from memory
 //! let value = abi.lift_i32(&memory, 0)?;
 //!
 //! // Lower a string to memory  
-//! abi.lower_string(&mut memory, 100, "helloMissing message")?;
+//! abi.lower_string(&mut memory, 100, "hello")?;
 //! ```
 
 
@@ -251,7 +251,7 @@ impl CanonicalMemory for SimpleMemory {
         let end = start + len as usize;
 
         if end > self.data.len() {
-            return Err(Error::memory_out_of_bounds("Memory read out of bounds"));
+            return Err(Error::memory_out_of_bounds("Memory read out of bounds";
         }
 
         Ok(self.data[start..end].to_vec())
@@ -259,13 +259,13 @@ impl CanonicalMemory for SimpleMemory {
 
     fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len();
+        let end = start + data.len(;
 
         if end > self.data.len() {
-            return Err(Error::memory_out_of_bounds("Memory write out of bounds"));
+            return Err(Error::memory_out_of_bounds("Memory write out of bounds";
         }
 
-        self.data[start..end].copy_from_slice(data);
+        self.data[start..end].copy_from_slice(data;
         Ok(())
     }
 
@@ -361,7 +361,7 @@ impl CanonicalABI {
                 let mut max_payload_size = 0;
                 for (_, payload_ty) in cases {
                     if let Some(ty) = payload_ty {
-                        max_payload_size = max_payload_size.max(self.size_of(ty)?);
+                        max_payload_size = max_payload_size.max(self.size_of(ty)?;
                     }
                 }
                 Ok(4 + max_payload_size) // discriminant + max payload
@@ -369,7 +369,7 @@ impl CanonicalABI {
             ComponentType::Enum(_) => Ok(4), // discriminant only
             ComponentType::Flags(flags) => {
                 // Each flag is 1 bit, round up to byte boundary
-                let bit_count = flags.len();
+                let bit_count = flags.len(;
                 let byte_count = (bit_count + 7) / 8;
                 Ok(byte_count as u32)
             }
@@ -395,14 +395,14 @@ impl CanonicalABI {
             ComponentType::Record(fields) => {
                 let mut max_align = 1;
                 for (_, field_ty) in fields {
-                    max_align = max_align.max(self.align_of(field_ty)?);
+                    max_align = max_align.max(self.align_of(field_ty)?;
                 }
                 Ok(max_align)
             }
             ComponentType::Tuple(types) => {
                 let mut max_align = 1;
                 for ty in types {
-                    max_align = max_align.max(self.align_of(ty)?);
+                    max_align = max_align.max(self.align_of(ty)?;
                 }
                 Ok(max_align)
             }
@@ -502,14 +502,14 @@ impl CanonicalABI {
     /// Lift an f32 value
     pub fn lift_f32<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let bits = memory.read_u32_le(offset)?;
-        let value = f32::from_bits(bits);
+        let value = f32::from_bits(bits;
         Ok(ComponentValue::F32(value))
     }
 
     /// Lift an f64 value
     pub fn lift_f64<M: CanonicalMemory>(&self, memory: &M, offset: u32) -> Result<ComponentValue> {
         let bits = memory.read_u64_le(offset)?;
-        let value = f64::from_bits(bits);
+        let value = f64::from_bits(bits;
         Ok(ComponentValue::F64(value))
     }
 
@@ -534,7 +534,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_STRING_LENGTH as u32 {
-            return Err(Error::validation_error("Error occurred: String too long"));
+            return Err(Error::validation_error("Error occurred: String too long";
         }
 
         // Read string data
@@ -547,12 +547,12 @@ impl CanonicalABI {
             })?,
             StringEncoding::Utf16Le => {
                 if bytes.len() % 2 != 0 {
-                    return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length"));
+                    return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new();
+                let mut code_units = Vec::new(;
                 for chunk in bytes.chunks_exact(2) {
-                    let code_unit = u16::from_le_bytes([chunk[0], chunk[1]]);
+                    let code_unit = u16::from_le_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
                 }
                 
@@ -562,12 +562,12 @@ impl CanonicalABI {
             }
             StringEncoding::Utf16Be => {
                 if bytes.len() % 2 != 0 {
-                    return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length"));
+                    return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new();
+                let mut code_units = Vec::new(;
                 for chunk in bytes.chunks_exact(2) {
-                    let code_unit = u16::from_be_bytes([chunk[0], chunk[1]]);
+                    let code_unit = u16::from_be_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
                 }
                 
@@ -597,11 +597,11 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_LIST_LENGTH as u32 {
-            return Err(Error::validation_error("Error occurred: List too long"));
+            return Err(Error::validation_error("Error occurred: List too long";
         }
 
         let element_size = self.size_of(element_ty)?;
-        let mut values = Vec::new();
+        let mut values = Vec::new(;
 
         for i in 0..len {
             let element_offset = ptr + i * element_size;
@@ -619,12 +619,12 @@ impl CanonicalABI {
         fields: &[(String, ComponentType)],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut field_values = Vec::new();
+        let mut field_values = Vec::new(;
         let mut current_offset = offset;
 
         for (field_name, field_ty) in fields {
             let value = self.lift(memory, field_ty, current_offset)?;
-            field_values.push((field_name.clone(), value));
+            field_values.push((field_name.clone(), value;
             current_offset += self.size_of(field_ty)?;
         }
 
@@ -638,7 +638,7 @@ impl CanonicalABI {
         types: &[ComponentType],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut values = Vec::new();
+        let mut values = Vec::new(;
         let mut current_offset = offset;
 
         for ty in types {
@@ -660,7 +660,7 @@ impl CanonicalABI {
         let discriminant = memory.read_u32_le(offset)?;
 
         if discriminant as usize >= cases.len() {
-            return Err(Error::validation_error("Error occurred: Invalid variant discriminant"));
+            return Err(Error::validation_error("Error occurred: Invalid variant discriminant";
         }
 
         let (case_name, payload_ty) = &cases[discriminant as usize];
@@ -683,7 +683,7 @@ impl CanonicalABI {
         let discriminant = memory.read_u32_le(offset)?;
 
         if discriminant as usize >= cases.len() {
-            return Err(Error::validation_error("Error occurred: Invalid enum discriminant"));
+            return Err(Error::validation_error("Error occurred: Invalid enum discriminant";
         }
 
         Ok(ComponentValue::Enum(cases[discriminant as usize].clone()))
@@ -749,14 +749,14 @@ impl CanonicalABI {
         let byte_count = (flags.len() + 7) / 8;
         let bytes = memory.read_bytes(offset, byte_count as u32)?;
 
-        let mut active_flags = Vec::new();
+        let mut active_flags = Vec::new(;
 
         for (i, flag_name) in flags.iter().enumerate() {
             let byte_index = i / 8;
             let bit_index = i % 8;
 
             if byte_index < bytes.len() && (bytes[byte_index] & (1 << bit_index)) != 0 {
-                active_flags.push(flag_name.clone());
+                active_flags.push(flag_name.clone();
             }
         }
 
@@ -930,12 +930,12 @@ impl CanonicalABI {
         // Binary std/no_std choice
         // Binary std/no_std choice
 
-        let bytes = value.as_bytes();
+        let bytes = value.as_bytes(;
         let len = bytes.len() as u32;
 
         // Safety check
         if len > MAX_STRING_LENGTH as u32 {
-            return Err(Error::validation_error("Error occurred: String too long"));
+            return Err(Error::validation_error("Error occurred: String too long";
         }
 
         // For this simplified implementation, we'll assume the string data
@@ -964,7 +964,7 @@ impl CanonicalABI {
 
         // Safety check
         if len > MAX_LIST_LENGTH as u32 {
-            return Err(Error::validation_error("Error occurred: List too long"));
+            return Err(Error::validation_error("Error occurred: List too long";
         }
 
         // For this simplified implementation, we'll write a basic representation
@@ -988,10 +988,10 @@ impl CanonicalABI {
         
         for (field_name, field_value) in fields {
             // Calculate field layout based on value type
-            let field_layout = self.calculate_value_layout(field_value);
+            let field_layout = self.calculate_value_layout(field_value;
             
             // Align current offset to field's alignment requirement
-            current_offset = align_to(current_offset, field_layout.alignment);
+            current_offset = align_to(current_offset, field_layout.alignment;
             
             // Lower the field value at the aligned offset
             self.lower(memory, field_value, offset + current_offset as u32)?;
@@ -1015,10 +1015,10 @@ impl CanonicalABI {
         
         for value in values {
             // Calculate element layout based on value type
-            let element_layout = self.calculate_value_layout(value);
+            let element_layout = self.calculate_value_layout(value;
             
             // Align current offset to element's alignment requirement
-            current_offset = align_to(current_offset, element_layout.alignment);
+            current_offset = align_to(current_offset, element_layout.alignment;
             
             // Lower the element value at the aligned offset
             self.lower(memory, value, offset + current_offset as u32)?;
@@ -1057,10 +1057,10 @@ impl CanonicalABI {
         
         // If there's a payload, lower it after the discriminant with proper alignment
         if let Some(payload_value) = payload {
-            let payload_layout = self.calculate_value_layout(payload_value);
+            let payload_layout = self.calculate_value_layout(payload_value;
             
             // Calculate payload offset with proper alignment
-            let payload_offset = align_to(discriminant_size, payload_layout.alignment);
+            let payload_offset = align_to(discriminant_size, payload_layout.alignment;
             
             // Lower the payload
             self.lower(memory, payload_value, offset + payload_offset as u32)?;
@@ -1107,10 +1107,10 @@ impl CanonicalABI {
                 memory.write_u8(offset, 1)?;
                 
                 // Calculate layout for the inner value
-                let inner_layout = self.calculate_value_layout(inner_value);
+                let inner_layout = self.calculate_value_layout(inner_value;
                 
                 // Calculate payload offset with proper alignment
-                let payload_offset = align_to(1, inner_layout.alignment);
+                let payload_offset = align_to(1, inner_layout.alignment;
                 
                 // Lower the inner value
                 self.lower(memory, inner_value, offset + payload_offset as u32)?;
@@ -1137,8 +1137,8 @@ impl CanonicalABI {
                 
                 // If there's an Ok value, lower it
                 if let Some(inner_value) = ok_value {
-                    let inner_layout = self.calculate_value_layout(inner_value);
-                    let payload_offset = align_to(1, inner_layout.alignment);
+                    let inner_layout = self.calculate_value_layout(inner_value;
+                    let payload_offset = align_to(1, inner_layout.alignment;
                     self.lower(memory, inner_value, offset + payload_offset as u32)?;
                 }
             }
@@ -1148,8 +1148,8 @@ impl CanonicalABI {
                 
                 // If there's an Err value, lower it
                 if let Some(inner_value) = err_value {
-                    let inner_layout = self.calculate_value_layout(inner_value);
-                    let payload_offset = align_to(1, inner_layout.alignment);
+                    let inner_layout = self.calculate_value_layout(inner_value;
+                    let payload_offset = align_to(1, inner_layout.alignment;
                     self.lower(memory, inner_value, offset + payload_offset as u32)?;
                 }
             }
@@ -1205,13 +1205,13 @@ impl CanonicalABI {
                 let mut max_alignment = 1;
                 
                 for (_, field_value) in fields {
-                    let field_layout = self.calculate_value_layout(field_value);
-                    offset = align_to(offset, field_layout.alignment);
+                    let field_layout = self.calculate_value_layout(field_value;
+                    offset = align_to(offset, field_layout.alignment;
                     offset += field_layout.size;
-                    max_alignment = max_alignment.max(field_layout.alignment);
+                    max_alignment = max_alignment.max(field_layout.alignment;
                 }
                 
-                let final_size = align_to(offset, max_alignment);
+                let final_size = align_to(offset, max_alignment;
                 MemoryLayout::new(final_size, max_alignment)
             }
             ComponentValue::Tuple(values) => {
@@ -1220,22 +1220,22 @@ impl CanonicalABI {
                 let mut max_alignment = 1;
                 
                 for value in values {
-                    let value_layout = self.calculate_value_layout(value);
-                    offset = align_to(offset, value_layout.alignment);
+                    let value_layout = self.calculate_value_layout(value;
+                    offset = align_to(offset, value_layout.alignment;
                     offset += value_layout.size;
-                    max_alignment = max_alignment.max(value_layout.alignment);
+                    max_alignment = max_alignment.max(value_layout.alignment;
                 }
                 
-                let final_size = align_to(offset, max_alignment);
+                let final_size = align_to(offset, max_alignment;
                 MemoryLayout::new(final_size, max_alignment)
             }
             ComponentValue::Option(inner) => {
                 if let Some(inner_value) = inner {
-                    let inner_layout = self.calculate_value_layout(inner_value);
-                    let payload_offset = align_to(1, inner_layout.alignment);
+                    let inner_layout = self.calculate_value_layout(inner_value;
+                    let payload_offset = align_to(1, inner_layout.alignment;
                     let total_size = payload_offset + inner_layout.size;
-                    let alignment = inner_layout.alignment.max(1);
-                    let final_size = align_to(total_size, alignment);
+                    let alignment = inner_layout.alignment.max(1;
+                    let final_size = align_to(total_size, alignment;
                     MemoryLayout::new(final_size, alignment)
                 } else {
                     MemoryLayout::new(1, 1) // Just discriminant
@@ -1247,31 +1247,31 @@ impl CanonicalABI {
                 
                 match result {
                     Ok(Some(ok_value)) => {
-                        let layout = self.calculate_value_layout(ok_value);
+                        let layout = self.calculate_value_layout(ok_value;
                         max_payload_size = layout.size;
                         max_payload_alignment = layout.alignment;
                     }
                     Err(Some(err_value)) => {
-                        let layout = self.calculate_value_layout(err_value);
+                        let layout = self.calculate_value_layout(err_value;
                         max_payload_size = layout.size;
                         max_payload_alignment = layout.alignment;
                     }
                     _ => {} // No payload
                 }
                 
-                let payload_offset = align_to(1, max_payload_alignment);
+                let payload_offset = align_to(1, max_payload_alignment;
                 let total_size = payload_offset + max_payload_size;
-                let alignment = max_payload_alignment.max(1);
-                let final_size = align_to(total_size, alignment);
+                let alignment = max_payload_alignment.max(1;
+                let final_size = align_to(total_size, alignment;
                 MemoryLayout::new(final_size, alignment)
             }
             ComponentValue::Variant(_, payload) => {
                 if let Some(payload_value) = payload {
-                    let payload_layout = self.calculate_value_layout(payload_value);
+                    let payload_layout = self.calculate_value_layout(payload_value;
                     let payload_offset = align_to(4, payload_layout.alignment); // 4-byte discriminant
                     let total_size = payload_offset + payload_layout.size;
-                    let alignment = payload_layout.alignment.max(4);
-                    let final_size = align_to(total_size, alignment);
+                    let alignment = payload_layout.alignment.max(4;
+                    let final_size = align_to(total_size, alignment;
                     MemoryLayout::new(final_size, alignment)
                 } else {
                     MemoryLayout::new(4, 4) // Just discriminant
@@ -1281,7 +1281,7 @@ impl CanonicalABI {
             ComponentValue::Flags(flags) => {
                 let num_bytes = (flags.len() + 7) / 8;
                 let alignment = if num_bytes <= 1 { 1 } else if num_bytes <= 2 { 2 } else if num_bytes <= 4 { 4 } else { 8 };
-                let size = align_to(num_bytes, alignment);
+                let size = align_to(num_bytes, alignment;
                 MemoryLayout::new(size, alignment)
             }
             _ => MemoryLayout::new(0, 1), // Unknown types
@@ -1300,87 +1300,87 @@ mod tests {
 
     #[test]
     fn test_simple_memory() {
-        let mut memory = SimpleMemory::new(1024);
+        let mut memory = SimpleMemory::new(1024;
 
         // Test write and read
         memory.write_u32_le(0, 0x12345678).unwrap();
-        assert_eq!(memory.read_u32_le(0).unwrap(), 0x12345678);
+        assert_eq!(memory.read_u32_le(0).unwrap(), 0x12345678;
 
         // Test bytes
         memory.write_bytes(10, &[1, 2, 3, 4]).unwrap();
-        assert_eq!(memory.read_bytes(10, 4).unwrap(), vec![1, 2, 3, 4]);
+        assert_eq!(memory.read_bytes(10, 4).unwrap(), vec![1, 2, 3, 4];
     }
 
     #[test]
     fn test_canonical_abi_primitives() {
-        let abi = CanonicalABI::new();
-        let mut memory = SimpleMemory::new(1024);
+        let abi = CanonicalABI::new(;
+        let mut memory = SimpleMemory::new(1024;
 
         // Test bool
         abi.lower_bool(&mut memory, true, 0).unwrap();
         let value = abi.lift_bool(&memory, 0).unwrap();
-        assert_eq!(value, ComponentValue::Bool(true));
+        assert_eq!(value, ComponentValue::Bool(true;
 
         // Test i32
         abi.lower_s32(&mut memory, -42, 10).unwrap();
         let value = abi.lift_s32(&memory, 10).unwrap();
-        assert_eq!(value, ComponentValue::S32(-42));
+        assert_eq!(value, ComponentValue::S32(-42;
 
         // Test f32
         abi.lower_f32(&mut memory, 3.14, 20).unwrap();
         let value = abi.lift_f32(&memory, 20).unwrap();
-        assert_eq!(value, ComponentValue::F32(3.14));
+        assert_eq!(value, ComponentValue::F32(3.14;
 
         // Test char
         abi.lower_char(&mut memory, 'A', 30).unwrap();
         let value = abi.lift_char(&memory, 30).unwrap();
-        assert_eq!(value, ComponentValue::Char('A'));
+        assert_eq!(value, ComponentValue::Char('A';
     }
 
     #[test]
     fn test_canonical_abi_string() {
-        let abi = CanonicalABI::new();
-        let mut memory = SimpleMemory::new(1024);
+        let abi = CanonicalABI::new(;
+        let mut memory = SimpleMemory::new(1024;
 
         // Lower a string
         abi.lower_string(&mut memory, "hello", 0).unwrap();
 
         // Lift it back
         let value = abi.lift_string(&memory, 0).unwrap();
-        assert_eq!(value, ComponentValue::String("hello".to_string()));
+        assert_eq!(value, ComponentValue::String("hello".to_string();
     }
 
     #[test]
     fn test_size_calculation() {
-        let abi = CanonicalABI::new();
+        let abi = CanonicalABI::new(;
 
-        assert_eq!(abi.size_of(&ComponentType::Bool).unwrap(), 1);
-        assert_eq!(abi.size_of(&ComponentType::S32).unwrap(), 4);
-        assert_eq!(abi.size_of(&ComponentType::F64).unwrap(), 8);
+        assert_eq!(abi.size_of(&ComponentType::Bool).unwrap(), 1;
+        assert_eq!(abi.size_of(&ComponentType::S32).unwrap(), 4;
+        assert_eq!(abi.size_of(&ComponentType::F64).unwrap(), 8;
         assert_eq!(abi.size_of(&ComponentType::String).unwrap(), 8); // ptr + len
     }
 
     #[test]
     fn test_alignment_calculation() {
-        let abi = CanonicalABI::new();
+        let abi = CanonicalABI::new(;
 
-        assert_eq!(abi.align_of(&ComponentType::Bool).unwrap(), 1);
-        assert_eq!(abi.align_of(&ComponentType::S32).unwrap(), 4);
-        assert_eq!(abi.align_of(&ComponentType::F64).unwrap(), 8);
+        assert_eq!(abi.align_of(&ComponentType::Bool).unwrap(), 1;
+        assert_eq!(abi.align_of(&ComponentType::S32).unwrap(), 4;
+        assert_eq!(abi.align_of(&ComponentType::F64).unwrap(), 8;
     }
 
     #[test]
     fn test_option_value() {
-        let abi = CanonicalABI::new();
-        let mut memory = SimpleMemory::new(1024);
+        let abi = CanonicalABI::new(;
+        let mut memory = SimpleMemory::new(1024;
 
         // Test None option
         abi.lower_option(&mut memory, &None, 0).unwrap();
         let value = abi.lift_option(&memory, &ComponentType::S32, 0).unwrap();
-        assert_eq!(value, ComponentValue::Option(None));
+        assert_eq!(value, ComponentValue::Option(None;
 
         // Test Some option
-        let some_value = Some(Box::new(ComponentValue::S32(42)));
+        let some_value = Some(Box::new(ComponentValue::S32(42);
         abi.lower_option(&mut memory, &some_value, 10).unwrap();
         // Note: This test is simplified and doesn't actually verify the full lifting
         // because the lowering implementation is also simplified
@@ -1389,20 +1389,20 @@ mod tests {
     #[test]
     fn test_cross_environment_compatibility() {
         // This test verifies the code compiles and runs in different environments
-        let abi = CanonicalABI::new();
+        let abi = CanonicalABI::new(;
 
         #[cfg(feature = "std")]
         {
-            let _memory = SimpleMemory::new(1024);
+            let _memory = SimpleMemory::new(1024;
         }
 
         #[cfg(all(not(feature = "std")))]
         {
-            let _memory = SimpleMemory::new(1024);
+            let _memory = SimpleMemory::new(1024;
         }
 
         // Test basic operations work
-        assert_eq!(abi.size_of(&ComponentType::S32).unwrap(), 4);
+        assert_eq!(abi.size_of(&ComponentType::S32).unwrap(), 4;
     }
 }
 
@@ -1427,41 +1427,41 @@ impl Checksummable for ComponentType {
             ComponentType::Char => 11u8.update_checksum(checksum),
             ComponentType::String => 12u8.update_checksum(checksum),
             ComponentType::List(inner) => {
-                13u8.update_checksum(checksum);
-                inner.update_checksum(checksum);
+                13u8.update_checksum(checksum;
+                inner.update_checksum(checksum;
             }
             ComponentType::Record(fields) => {
-                14u8.update_checksum(checksum);
-                fields.len().update_checksum(checksum);
+                14u8.update_checksum(checksum;
+                fields.len().update_checksum(checksum;
             }
             ComponentType::Tuple(types) => {
-                15u8.update_checksum(checksum);
-                types.len().update_checksum(checksum);
+                15u8.update_checksum(checksum;
+                types.len().update_checksum(checksum;
             }
             ComponentType::Variant(cases) => {
-                16u8.update_checksum(checksum);
-                cases.len().update_checksum(checksum);
+                16u8.update_checksum(checksum;
+                cases.len().update_checksum(checksum;
             }
             ComponentType::Enum(cases) => {
-                17u8.update_checksum(checksum);
-                cases.len().update_checksum(checksum);
+                17u8.update_checksum(checksum;
+                cases.len().update_checksum(checksum;
             }
             ComponentType::Option(inner) => {
-                18u8.update_checksum(checksum);
-                inner.update_checksum(checksum);
+                18u8.update_checksum(checksum;
+                inner.update_checksum(checksum;
             }
             ComponentType::Result(ok, err) => {
-                19u8.update_checksum(checksum);
+                19u8.update_checksum(checksum;
                 if let Some(ok) = ok {
-                    ok.update_checksum(checksum);
+                    ok.update_checksum(checksum;
                 }
                 if let Some(err) = err {
-                    err.update_checksum(checksum);
+                    err.update_checksum(checksum;
                 }
             }
             ComponentType::Flags(flags) => {
-                20u8.update_checksum(checksum);
-                flags.len().update_checksum(checksum);
+                20u8.update_checksum(checksum;
+                flags.len().update_checksum(checksum;
             }
         }
     }

@@ -66,8 +66,8 @@ impl<T> HandleEntry<T> {
         self.last_accessed.store(
             wrt_foundation::operations::global_fuel_consumed(),
             Ordering::Release
-        );
-        self.access_count.fetch_add(1, Ordering::AcqRel);
+        ;
+        self.access_count.fetch_add(1, Ordering::AcqRel;
     }
 }
 
@@ -177,7 +177,7 @@ impl<T> FuelHandleTable<T> {
     pub fn allocate(&mut self, data: T) -> Result<GenerationalHandle> {
         // Check fuel budget
         if !self.check_fuel(HANDLE_ALLOCATE_FUEL)? {
-            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded";
         }
         
         // Get index from free list or extend table
@@ -186,7 +186,7 @@ impl<T> FuelHandleTable<T> {
         } else {
             // Need to extend the table
             if self.entries.len() >= MAX_HANDLES_PER_TABLE {
-                return Err(Error::resource_limit_exceeded("Handle table capacity exceeded"));
+                return Err(Error::resource_limit_exceeded("Handle table capacity exceeded";
             }
             
             let new_index = self.entries.len() as u32;
@@ -195,20 +195,20 @@ impl<T> FuelHandleTable<T> {
         };
         
         // Get generation
-        let generation = self.next_generation.fetch_add(1, Ordering::AcqRel);
+        let generation = self.next_generation.fetch_add(1, Ordering::AcqRel;
         
         // Update entry
         if let Some(entry) = self.entries.get_mut(index as usize) {
-            entry.data = Some(data);
+            entry.data = Some(data;
             entry.generation = generation;
             entry.state = ResourceState::Available;
-            entry.touch();
+            entry.touch(;
         } else {
-            return Err(Error::resource_error("Failed to update handle entry"));
+            return Err(Error::resource_error("Failed to update handle entry";
         }
         
         // Update stats
-        self.stats.total_allocations.fetch_add(1, Ordering::Relaxed);
+        self.stats.total_allocations.fetch_add(1, Ordering::Relaxed;
         self.consume_fuel(HANDLE_ALLOCATE_FUEL)?;
         
         Ok(GenerationalHandle::new(index, generation))
@@ -218,19 +218,19 @@ impl<T> FuelHandleTable<T> {
     pub fn lookup(&self, handle: GenerationalHandle) -> Result<&T> {
         // Check fuel
         if !self.check_fuel(HANDLE_LOOKUP_FUEL)? {
-            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded";
         }
         
         // Validate index
         let entry = self.entries.get(handle.index as usize).ok_or_else(|| {
-            self.stats.cache_misses.fetch_add(1, Ordering::Relaxed);
+            self.stats.cache_misses.fetch_add(1, Ordering::Relaxed;
             Error::resource_not_found("Invalid handle index")
         })?;
         
         // Validate generation
         if entry.generation != handle.generation {
-            self.stats.cache_misses.fetch_add(1, Ordering::Relaxed);
-            return Err(Error::runtime_execution_error("Generation mismatch"));
+            self.stats.cache_misses.fetch_add(1, Ordering::Relaxed;
+            return Err(Error::runtime_execution_error("Generation mismatch";
         }
         
         // Check state
@@ -238,7 +238,7 @@ impl<T> FuelHandleTable<T> {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ACCESS_ERROR,
-                "Handle not found"));
+                "Handle not found";
         }
         
         // Get data
@@ -247,9 +247,9 @@ impl<T> FuelHandleTable<T> {
         })?;
         
         // Update access tracking
-        entry.touch();
-        self.stats.total_lookups.fetch_add(1, Ordering::Relaxed);
-        self.stats.cache_hits.fetch_add(1, Ordering::Relaxed);
+        entry.touch(;
+        self.stats.total_lookups.fetch_add(1, Ordering::Relaxed;
+        self.stats.cache_hits.fetch_add(1, Ordering::Relaxed;
         self.consume_fuel(HANDLE_LOOKUP_FUEL)?;
         
         Ok(data)
@@ -259,7 +259,7 @@ impl<T> FuelHandleTable<T> {
     pub fn lookup_mut(&mut self, handle: GenerationalHandle) -> Result<&mut T> {
         // Check fuel
         if !self.check_fuel(HANDLE_UPDATE_FUEL)? {
-            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded";
         }
         
         // Validate index
@@ -269,12 +269,12 @@ impl<T> FuelHandleTable<T> {
         
         // Validate generation
         if entry.generation != handle.generation {
-            return Err(Error::runtime_execution_error("Generation mismatch"));
+            return Err(Error::runtime_execution_error("Generation mismatch";
         }
         
         // Update state
         entry.state = ResourceState::InUse;
-        entry.touch();
+        entry.touch(;
         
         // Get data
         let data = entry.data.as_mut().ok_or_else(|| {
@@ -289,7 +289,7 @@ impl<T> FuelHandleTable<T> {
     pub fn deallocate(&mut self, handle: GenerationalHandle) -> Result<T> {
         // Check fuel
         if !self.check_fuel(HANDLE_DEALLOCATE_FUEL)? {
-            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded("Handle table fuel budget exceeded";
         }
         
         // Validate and remove
@@ -299,7 +299,7 @@ impl<T> FuelHandleTable<T> {
         
         // Validate generation
         if entry.generation != handle.generation {
-            return Err(Error::runtime_execution_error("Generation mismatch"));
+            return Err(Error::runtime_execution_error("Generation mismatch";
         }
         
         // Take data
@@ -309,13 +309,13 @@ impl<T> FuelHandleTable<T> {
         
         // Update state
         entry.state = ResourceState::Dropped;
-        entry.generation = entry.generation.wrapping_add(1);
+        entry.generation = entry.generation.wrapping_add(1;
         
         // Add to free list
         self.free_list.push(handle.index)?;
         
         // Update stats
-        self.stats.total_deallocations.fetch_add(1, Ordering::Relaxed);
+        self.stats.total_deallocations.fetch_add(1, Ordering::Relaxed;
         self.consume_fuel(HANDLE_DEALLOCATE_FUEL)?;
         
         Ok(data)
@@ -323,7 +323,7 @@ impl<T> FuelHandleTable<T> {
     
     /// Check if we have enough fuel
     fn check_fuel(&self, required: u64) -> Result<bool> {
-        let current = self.fuel_consumed.load(Ordering::Acquire);
+        let current = self.fuel_consumed.load(Ordering::Acquire;
         Ok(current.saturating_add(required) <= self.fuel_budget)
     }
     
@@ -334,8 +334,8 @@ impl<T> FuelHandleTable<T> {
             self.verification_level,
         )?;
         
-        let total = amount.saturating_add(adjusted);
-        self.fuel_consumed.fetch_add(total, Ordering::AcqRel);
+        let total = amount.saturating_add(adjusted;
+        self.fuel_consumed.fetch_add(total, Ordering::AcqRel;
         record_global_operation(OperationType::Other)?;
         
         Ok(())
@@ -389,11 +389,11 @@ impl HandleTableManager {
         initial_capacity: usize,
         verification_level: VerificationLevel,
     ) -> Result<u64> {
-        let table_id = self.next_table_id.fetch_add(1, Ordering::AcqRel);
+        let table_id = self.next_table_id.fetch_add(1, Ordering::AcqRel;
         
         // Allocate fuel budget for table (10% of remaining budget)
         let remaining_budget = self.global_fuel_budget
-            .saturating_sub(self.total_fuel_consumed.load(Ordering::Acquire));
+            .saturating_sub(self.total_fuel_consumed.load(Ordering::Acquire;
         let table_budget = remaining_budget / 10;
         
         let table = FuelHandleTable::<T>::new(
@@ -404,7 +404,7 @@ impl HandleTableManager {
         )?;
         
         self.tables.insert(table_id, Box::new(table))?;
-        self.total_fuel_consumed.fetch_add(TABLE_CREATE_FUEL, Ordering::AcqRel);
+        self.total_fuel_consumed.fetch_add(TABLE_CREATE_FUEL, Ordering::AcqRel;
         
         Ok(table_id)
     }
@@ -458,11 +458,11 @@ mod tests {
         let mut table = FuelHandleTable::new(1, 10, 1000, VerificationLevel::Basic).unwrap();
         
         let handle = table.allocate("test_data").unwrap();
-        assert_eq!(handle.index, 0);
-        assert_eq!(handle.generation, 1);
+        assert_eq!(handle.index, 0;
+        assert_eq!(handle.generation, 1;
         
         let data = table.lookup(handle).unwrap();
-        assert_eq!(*data, "test_data");
+        assert_eq!(*data, "test_data";
     }
     
     #[test]
@@ -471,10 +471,10 @@ mod tests {
         
         let handle = table.allocate(42).unwrap();
         let data = table.deallocate(handle).unwrap();
-        assert_eq!(data, 42);
+        assert_eq!(data, 42;
         
         // Should fail to look up deallocated handle
-        assert!(table.lookup(handle).is_err());
+        assert!(table.lookup(handle).is_err();
     }
     
     #[test]
@@ -489,10 +489,10 @@ mod tests {
         assert_ne!(handle2.generation, handle1.generation); // Different generation
         
         // Old handle should fail
-        assert!(table.lookup(handle1).is_err());
+        assert!(table.lookup(handle1).is_err();
         
         // New handle should work
-        assert_eq!(*table.lookup(handle2).unwrap(), 2);
+        assert_eq!(*table.lookup(handle2).unwrap(), 2;
     }
     
     #[test]
@@ -504,10 +504,10 @@ mod tests {
         {
             let table = manager.get_table_mut::<String>(table_id).unwrap();
             let handle = table.allocate("test".to_string()).unwrap();
-            assert_eq!(table.lookup(handle).unwrap(), "test");
+            assert_eq!(table.lookup(handle).unwrap(), "test";
         }
         
-        assert!(manager.drop_table(table_id).is_ok());
-        assert!(manager.get_table::<String>(table_id).is_err());
+        assert!(manager.drop_table(table_id).is_ok();
+        assert!(manager.get_table::<String>(table_id).is_err();
     }
 }

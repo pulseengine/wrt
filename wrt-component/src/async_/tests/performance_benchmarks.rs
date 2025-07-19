@@ -67,11 +67,11 @@ mod tests {
         fn record_operation(&self, operation_start: u64) {
             let latency = Self::get_time() - operation_start;
             
-            self.operations_count.fetch_add(1, Ordering::AcqRel);
-            self.total_latency.fetch_add(latency, Ordering::AcqRel);
+            self.operations_count.fetch_add(1, Ordering::AcqRel;
+            self.total_latency.fetch_add(latency, Ordering::AcqRel;
             
             // Update min latency
-            let mut current_min = self.min_latency.load(Ordering::Acquire);
+            let mut current_min = self.min_latency.load(Ordering::Acquire;
             while latency < current_min {
                 match self.min_latency.compare_exchange_weak(
                     current_min, latency, Ordering::AcqRel, Ordering::Acquire
@@ -82,7 +82,7 @@ mod tests {
             }
             
             // Update max latency
-            let mut current_max = self.max_latency.load(Ordering::Acquire);
+            let mut current_max = self.max_latency.load(Ordering::Acquire;
             while latency > current_max {
                 match self.max_latency.compare_exchange_weak(
                     current_max, latency, Ordering::AcqRel, Ordering::Acquire
@@ -94,10 +94,10 @@ mod tests {
         }
 
         fn get_results(&self) -> BenchmarkResults {
-            let end_time = Self::get_time();
+            let end_time = Self::get_time(;
             let total_time = end_time - self.start_time;
-            let ops_count = self.operations_count.load(Ordering::Acquire);
-            let total_lat = self.total_latency.load(Ordering::Acquire);
+            let ops_count = self.operations_count.load(Ordering::Acquire;
+            let total_lat = self.total_latency.load(Ordering::Acquire;
             
             BenchmarkResults {
                 total_operations: ops_count,
@@ -113,7 +113,7 @@ mod tests {
 
         fn get_time() -> u64 {
             // Simplified time measurement - in real implementation would use high-precision timer
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            static COUNTER: AtomicU64 = AtomicU64::new(0;
             COUNTER.fetch_add(1, Ordering::AcqRel)
         }
     }
@@ -140,24 +140,24 @@ mod tests {
         type Output = Result<Vec<ComponentValue>, Error>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            let current = self.current_iteration.fetch_add(1, Ordering::AcqRel);
+            let current = self.current_iteration.fetch_add(1, Ordering::AcqRel;
             
             if current >= self.iterations {
                 Poll::Ready(Ok(vec![ComponentValue::U32(self.id as u32)])
             } else {
                 // Record operation timing
-                self.measurement.record_operation(PerformanceMeasurement::get_time();
+                self.measurement.record_operation(PerformanceMeasurement::get_time(;
                 
                 // Yield to allow other tasks to run
-                cx.waker().wake_by_ref();
+                cx.waker().wake_by_ref(;
                 Poll::Pending
             }
         }
     }
 
     fn create_test_bridge() -> TaskManagerAsyncBridge {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new());
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new());
+        let task_manager = Arc::new(Mutex::new(TaskManager::new(;
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new(;
         let config = BridgeConfiguration {
             enable_preemption: true,
             enable_dynamic_fuel: true,
@@ -169,17 +169,17 @@ mod tests {
 
     #[test]
     fn benchmark_async_task_throughput() {
-        let mut bridge = create_test_bridge();
-        let component_id = ComponentInstanceId::new(1);
+        let mut bridge = create_test_bridge(;
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
 
-        let measurement = Arc::new(PerformanceMeasurement::new();
+        let measurement = Arc::new(PerformanceMeasurement::new(;
         
         // Spawn multiple high-throughput tasks
         const NUM_TASKS: usize = 50;
         const ITERATIONS_PER_TASK: u64 = 1000;
         
-        let mut task_ids = Vec::new();
+        let mut task_ids = Vec::new(;
         
         for i in 0..NUM_TASKS {
             let task_id = bridge.spawn_async_task(
@@ -199,7 +199,7 @@ mod tests {
         }
 
         // Poll tasks to completion
-        let start_time = PerformanceMeasurement::get_time();
+        let start_time = PerformanceMeasurement::get_time(;
         let mut completed_tasks = 0;
         
         for round in 0..10000 {
@@ -212,32 +212,32 @@ mod tests {
             
             // Prevent infinite loop
             if round > 5000 {
-                eprintln!("Warning: Benchmark may not have completed all tasksMissing message");
+                eprintln!("Warning: Benchmark may not have completed all tasks";
                 break;
             }
         }
 
-        let results = measurement.get_results();
+        let results = measurement.get_results(;
         
         // Verify performance expectations
-        assert!(results.total_operations > 0, "No operations recordedMissing message");
+        assert!(results.total_operations > 0, "No operations recorded");
         assert!(results.throughput_ops_per_sec > 1000, 
-            "Throughput too low: {} ops/sec", results.throughput_ops_per_sec);
+            "Throughput too low: {} ops/sec", results.throughput_ops_per_sec;
         
-        println!("Async Task Throughput Benchmark:Missing message");
-        println!("  Total Operations: {}", results.total_operations);
-        println!("  Throughput: {} ops/sec", results.throughput_ops_per_sec);
-        println!("  Average Latency: {} μs", results.average_latency_us);
-        println!("  Min Latency: {} μs", results.min_latency_us);
-        println!("  Max Latency: {} μs", results.max_latency_us);
+        println!("Async Task Throughput Benchmark:";
+        println!("  Total Operations: {}", results.total_operations;
+        println!("  Throughput: {} ops/sec", results.throughput_ops_per_sec;
+        println!("  Average Latency: {} μs", results.average_latency_us;
+        println!("  Min Latency: {} μs", results.min_latency_us;
+        println!("  Max Latency: {} μs", results.max_latency_us;
     }
 
     #[test]
     fn benchmark_channel_throughput() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge());
-        let mut channels = OptimizedAsyncChannels::new(bridge.clone(), None);
+        let bridge = Arc::new(Mutex::new(create_test_bridge(;
+        let mut channels = OptimizedAsyncChannels::new(bridge.clone(), None;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         channels.initialize_component_channels(component_id, None).unwrap();
 
         let (sender, receiver) = channels.create_channel(
@@ -245,14 +245,14 @@ mod tests {
             ChannelType::Bounded(1024),
         ).unwrap();
 
-        let measurement = Arc::new(PerformanceMeasurement::new();
+        let measurement = Arc::new(PerformanceMeasurement::new(;
         const NUM_MESSAGES: u32 = 10000;
 
         // Benchmark sending
-        let send_start = PerformanceMeasurement::get_time();
+        let send_start = PerformanceMeasurement::get_time(;
         
         for i in 0..NUM_MESSAGES {
-            let op_start = PerformanceMeasurement::get_time();
+            let op_start = PerformanceMeasurement::get_time(;
             
             let result = channels.send_message(
                 sender.channel_id,
@@ -261,13 +261,13 @@ mod tests {
                 None,
             ).unwrap();
             
-            measurement.record_operation(op_start);
+            measurement.record_operation(op_start;
             
             // Handle backpressure
             if matches!(result, crate::async_::optimized_async_channels::SendResult::WouldBlock) {
                 // Drain some messages
                 for _ in 0..10 {
-                    let _ = channels.receive_message(receiver.channel_id, component_id);
+                    let _ = channels.receive_message(receiver.channel_id, component_id;
                 }
             }
         }
@@ -275,11 +275,11 @@ mod tests {
         // Benchmark receiving remaining messages
         let mut received_count = 0;
         while received_count < NUM_MESSAGES {
-            let op_start = PerformanceMeasurement::get_time();
+            let op_start = PerformanceMeasurement::get_time(;
             
             match channels.receive_message(receiver.channel_id, component_id) {
                 Ok(crate::async_::optimized_async_channels::ReceiveResult::Received(_)) => {
-                    measurement.record_operation(op_start);
+                    measurement.record_operation(op_start;
                     received_count += 1;
                 },
                 Ok(crate::async_::optimized_async_channels::ReceiveResult::WouldBlock) => {
@@ -289,38 +289,38 @@ mod tests {
             }
         }
 
-        let results = measurement.get_results();
+        let results = measurement.get_results(;
         
         // Verify performance
         assert!(results.total_operations > NUM_MESSAGES as u64 / 2, 
-            "Too few operations recordedMissing message");
+            "Too few operations recorded";
         assert!(results.throughput_ops_per_sec > 5000, 
-            "Channel throughput too low: {} ops/sec", results.throughput_ops_per_sec);
+            "Channel throughput too low: {} ops/sec", results.throughput_ops_per_sec;
 
-        println!("Channel Throughput Benchmark:Missing message");
-        println!("  Messages Processed: {}", received_count);
-        println!("  Throughput: {} ops/sec", results.throughput_ops_per_sec);
-        println!("  Average Latency: {} μs", results.average_latency_us);
+        println!("Channel Throughput Benchmark:";
+        println!("  Messages Processed: {}", received_count;
+        println!("  Throughput: {} ops/sec", results.throughput_ops_per_sec;
+        println!("  Average Latency: {} μs", results.average_latency_us;
     }
 
     #[test]
     fn benchmark_sync_primitive_contention() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge());
-        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None);
+        let bridge = Arc::new(Mutex::new(create_test_bridge(;
+        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         sync_primitives.initialize_component_sync(component_id, None).unwrap();
 
         // Create mutex for contention testing
         let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap();
         
-        let measurement = Arc::new(PerformanceMeasurement::new();
+        let measurement = Arc::new(PerformanceMeasurement::new(;
         const NUM_CONTENTIONS: u32 = 1000;
 
         // Simulate high contention
         for i in 0..NUM_CONTENTIONS {
-            let task_id = crate::threading::task_manager::TaskId::new(i as u64 + 1);
-            let op_start = PerformanceMeasurement::get_time();
+            let task_id = crate::threading::task_manager::TaskId::new(i as u64 + 1;
+            let op_start = PerformanceMeasurement::get_time(;
             
             // Try to acquire mutex
             let result = sync_primitives.lock_async_mutex(
@@ -330,40 +330,40 @@ mod tests {
             ).unwrap();
             
             if result == MutexLockResult::Acquired {
-                measurement.record_operation(op_start);
+                measurement.record_operation(op_start;
                 
                 // Hold lock briefly, then release
-                let _ = sync_primitives.unlock_async_mutex(mutex_id, task_id);
+                let _ = sync_primitives.unlock_async_mutex(mutex_id, task_id;
             }
         }
 
-        let results = measurement.get_results();
+        let results = measurement.get_results(;
         
         // Verify contention handling
-        assert!(results.total_operations > 0, "No successful lock acquisitionsMissing message");
+        assert!(results.total_operations > 0, "No successful lock acquisitions");
         assert!(results.max_latency_us > results.min_latency_us, 
-            "No latency variation under contentionMissing message");
+            "No latency variation under contention";
 
-        println!("Sync Primitive Contention Benchmark:Missing message");
-        println!("  Successful Acquisitions: {}", results.total_operations);
-        println!("  Average Latency: {} μs", results.average_latency_us);
-        println!("  Max Latency: {} μs", results.max_latency_us);
+        println!("Sync Primitive Contention Benchmark:";
+        println!("  Successful Acquisitions: {}", results.total_operations;
+        println!("  Average Latency: {} μs", results.average_latency_us;
+        println!("  Max Latency: {} μs", results.max_latency_us;
     }
 
     #[test]
     fn benchmark_timer_precision() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge());
-        let mut timers = TimerIntegration::new(bridge.clone(), None);
+        let bridge = Arc::new(Mutex::new(create_test_bridge(;
+        let mut timers = TimerIntegration::new(bridge.clone(), None;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         timers.initialize_component_timers(component_id, None).unwrap();
 
-        let measurement = Arc::new(PerformanceMeasurement::new();
+        let measurement = Arc::new(PerformanceMeasurement::new(;
         const NUM_TIMERS: u32 = 100;
         const TIMER_DURATION: u64 = 100; // 100ms
 
         // Create multiple timers
-        let mut timer_ids = Vec::new();
+        let mut timer_ids = Vec::new(;
         for _ in 0..NUM_TIMERS {
             let timer_id = timers.create_timer(
                 component_id,
@@ -377,14 +377,14 @@ mod tests {
         let mut fired_count = 0;
         
         for time_step in 0..200 {
-            let step_start = PerformanceMeasurement::get_time();
+            let step_start = PerformanceMeasurement::get_time(;
             
             timers.advance_time(10); // 10ms steps
             let result = timers.process_timers().unwrap();
             
             if result.fired_timers.len() > 0 {
-                measurement.record_operation(step_start);
-                fired_count += result.fired_timers.len();
+                measurement.record_operation(step_start;
+                fired_count += result.fired_timers.len(;
             }
             
             if fired_count >= NUM_TIMERS as usize {
@@ -392,23 +392,23 @@ mod tests {
             }
         }
 
-        let results = measurement.get_results();
-        let timer_stats = timers.get_timer_statistics();
+        let results = measurement.get_results(;
+        let timer_stats = timers.get_timer_statistics(;
         
         // Verify timer performance
-        assert_eq!(timer_stats.total_timers_created, NUM_TIMERS as u64);
+        assert_eq!(timer_stats.total_timers_created, NUM_TIMERS as u64;
         assert!(timer_stats.total_timers_fired > 0);
-        assert!(results.total_operations > 0, "No timer processing operations recordedMissing message");
+        assert!(results.total_operations > 0, "No timer processing operations recorded");
 
-        println!("Timer Precision Benchmark:Missing message");
-        println!("  Timers Created: {}", timer_stats.total_timers_created);
-        println!("  Timers Fired: {}", timer_stats.total_timers_fired);
-        println!("  Processing Latency: {} μs", results.average_latency_us);
+        println!("Timer Precision Benchmark:";
+        println!("  Timers Created: {}", timer_stats.total_timers_created;
+        println!("  Timers Fired: {}", timer_stats.total_timers_fired;
+        println!("  Processing Latency: {} μs", results.average_latency_us;
     }
 
     #[test]
     fn stress_test_high_concurrency() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge());
+        let bridge = Arc::new(Mutex::new(create_test_bridge(;
         
         // Initialize multiple components for stress testing
         const NUM_COMPONENTS: u32 = 10;
@@ -425,7 +425,7 @@ mod tests {
             bridge_guard.initialize_component_async(component_id, None).unwrap();
         }
 
-        let measurement = Arc::new(PerformanceMeasurement::new();
+        let measurement = Arc::new(PerformanceMeasurement::new(;
         let mut total_tasks = 0;
 
         // Spawn tasks across all components
@@ -450,7 +450,7 @@ mod tests {
         }
 
         // Execute stress test
-        let start_time = PerformanceMeasurement::get_time();
+        let start_time = PerformanceMeasurement::get_time(;
         let mut completed_tasks = 0;
         let mut max_rounds = 50000; // Prevent infinite loops
 
@@ -461,12 +461,12 @@ mod tests {
             max_rounds -= 1;
         }
 
-        let end_time = PerformanceMeasurement::get_time();
-        let results = measurement.get_results();
+        let end_time = PerformanceMeasurement::get_time(;
+        let results = measurement.get_results(;
         
         // Verify stress test results
-        assert!(completed_tasks > 0, "No tasks completed during stress testMissing message");
-        assert!(results.total_operations > 0, "No operations recorded during stress testMissing message");
+        assert!(completed_tasks > 0, "No tasks completed during stress test");
+        assert!(results.total_operations > 0, "No operations recorded during stress test");
 
         // Check final system state
         let final_stats = {
@@ -474,26 +474,26 @@ mod tests {
             bridge_guard.get_bridge_statistics()
         };
 
-        assert_eq!(final_stats.active_components, NUM_COMPONENTS as u64);
+        assert_eq!(final_stats.active_components, NUM_COMPONENTS as u64;
         assert!(final_stats.total_async_tasks >= total_tasks as u64);
 
-        println!("High Concurrency Stress Test:Missing message");
-        println!("  Components: {}", NUM_COMPONENTS);
-        println!("  Total Tasks: {}", total_tasks);
-        println!("  Completed Tasks: {}", completed_tasks);
-        println!("  Total Operations: {}", results.total_operations);
-        println!("  System Throughput: {} ops/sec", results.throughput_ops_per_sec);
-        println!("  Test Duration: {} time units", end_time - start_time);
+        println!("High Concurrency Stress Test:";
+        println!("  Components: {}", NUM_COMPONENTS;
+        println!("  Total Tasks: {}", total_tasks;
+        println!("  Completed Tasks: {}", completed_tasks;
+        println!("  Total Operations: {}", results.total_operations;
+        println!("  System Throughput: {} ops/sec", results.throughput_ops_per_sec;
+        println!("  Test Duration: {} time units", end_time - start_time;
     }
 
     #[test]
     fn benchmark_memory_usage() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge());
-        let mut channels = OptimizedAsyncChannels::new(bridge.clone(), None);
-        let mut timers = TimerIntegration::new(bridge.clone(), None);
-        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None);
+        let bridge = Arc::new(Mutex::new(create_test_bridge(;
+        let mut channels = OptimizedAsyncChannels::new(bridge.clone(), None;
+        let mut timers = TimerIntegration::new(bridge.clone(), None;
+        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None;
 
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         
         // Initialize all subsystems
         {
@@ -508,7 +508,7 @@ mod tests {
         const NUM_PRIMITIVES: u32 = 100;
 
         // Create channels
-        let mut channel_pairs = Vec::new();
+        let mut channel_pairs = Vec::new(;
         for _ in 0..NUM_PRIMITIVES {
             if let Ok(pair) = channels.create_channel(component_id, ChannelType::Bounded(16)) {
                 channel_pairs.push(pair);
@@ -516,7 +516,7 @@ mod tests {
         }
 
         // Create timers
-        let mut timer_ids = Vec::new();
+        let mut timer_ids = Vec::new(;
         for i in 0..NUM_PRIMITIVES {
             if let Ok(timer_id) = timers.create_timer(
                 component_id,
@@ -528,8 +528,8 @@ mod tests {
         }
 
         // Create sync primitives
-        let mut mutex_ids = Vec::new();
-        let mut semaphore_ids = Vec::new();
+        let mut mutex_ids = Vec::new(;
+        let mut semaphore_ids = Vec::new(;
         
         for _ in 0..NUM_PRIMITIVES / 2 {
             if let Ok(mutex_id) = sync_primitives.create_async_mutex(component_id, false) {
@@ -541,18 +541,18 @@ mod tests {
         }
 
         // Verify creation counts
-        let channel_stats = channels.get_channel_statistics();
-        let timer_stats = timers.get_timer_statistics();
-        let sync_stats = sync_primitives.get_sync_statistics();
+        let channel_stats = channels.get_channel_statistics(;
+        let timer_stats = timers.get_timer_statistics(;
+        let sync_stats = sync_primitives.get_sync_statistics(;
 
-        println!("Memory Usage Benchmark:Missing message");
-        println!("  Channels Created: {}", channel_stats.total_channels_created);
-        println!("  Active Channels: {}", channel_stats.active_channels);
-        println!("  Timers Created: {}", timer_stats.total_timers_created);
-        println!("  Active Timers: {}", timer_stats.active_timers);
-        println!("  Mutexes Created: {}", sync_stats.total_mutexes_created);
-        println!("  Semaphores Created: {}", sync_stats.total_semaphores_created);
-        println!("  Active Sync Primitives: {}", sync_stats.active_primitives);
+        println!("Memory Usage Benchmark:";
+        println!("  Channels Created: {}", channel_stats.total_channels_created;
+        println!("  Active Channels: {}", channel_stats.active_channels;
+        println!("  Timers Created: {}", timer_stats.total_timers_created;
+        println!("  Active Timers: {}", timer_stats.active_timers;
+        println!("  Mutexes Created: {}", sync_stats.total_mutexes_created;
+        println!("  Semaphores Created: {}", sync_stats.total_semaphores_created;
+        println!("  Active Sync Primitives: {}", sync_stats.active_primitives;
 
         // Verify we created a reasonable number of primitives
         assert!(channel_stats.total_channels_created > NUM_PRIMITIVES as u64 / 2);
@@ -562,9 +562,9 @@ mod tests {
 
     #[test]
     fn benchmark_fuel_consumption_efficiency() {
-        let bridge = Arc::new(Mutex::new(create_test_bridge());
+        let bridge = Arc::new(Mutex::new(create_test_bridge(;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         {
             let mut bridge_guard = bridge.lock().unwrap();
             bridge_guard.initialize_component_async(component_id, None).unwrap();
@@ -576,12 +576,12 @@ mod tests {
             bridge_guard.get_bridge_statistics()
         };
 
-        let measurement = Arc::new(PerformanceMeasurement::new();
+        let measurement = Arc::new(PerformanceMeasurement::new(;
         const NUM_OPERATIONS: u32 = 1000;
 
         // Spawn fuel-consuming tasks
         for i in 0..NUM_OPERATIONS {
-            let op_start = PerformanceMeasurement::get_time();
+            let op_start = PerformanceMeasurement::get_time(;
             
             let mut bridge_guard = bridge.lock().unwrap();
             let _ = bridge_guard.spawn_async_task(
@@ -595,15 +595,15 @@ mod tests {
                 },
                 ComponentAsyncTaskType::AsyncFunction,
                 Priority::Normal,
-            );
+            ;
             
-            measurement.record_operation(op_start);
+            measurement.record_operation(op_start;
         }
 
         // Poll to execute tasks
         for _ in 0..5000 {
             let mut bridge_guard = bridge.lock().unwrap();
-            let _ = bridge_guard.poll_async_tasks();
+            let _ = bridge_guard.poll_async_tasks(;
         }
 
         let final_stats = {
@@ -612,7 +612,7 @@ mod tests {
         };
 
         let fuel_consumed = final_stats.total_fuel_consumed - initial_stats.total_fuel_consumed;
-        let results = measurement.get_results();
+        let results = measurement.get_results(;
 
         // Calculate fuel efficiency
         let fuel_per_operation = if results.total_operations > 0 {
@@ -621,15 +621,15 @@ mod tests {
             0
         };
 
-        println!("Fuel Consumption Efficiency Benchmark:Missing message");
-        println!("  Total Operations: {}", results.total_operations);
-        println!("  Total Fuel Consumed: {}", fuel_consumed);
-        println!("  Fuel per Operation: {}", fuel_per_operation);
-        println!("  Operations per Second: {}", results.throughput_ops_per_sec);
+        println!("Fuel Consumption Efficiency Benchmark:";
+        println!("  Total Operations: {}", results.total_operations;
+        println!("  Total Fuel Consumed: {}", fuel_consumed;
+        println!("  Fuel per Operation: {}", fuel_per_operation;
+        println!("  Operations per Second: {}", results.throughput_ops_per_sec;
 
         // Verify fuel efficiency
-        assert!(fuel_consumed > 0, "No fuel consumedMissing message");
-        assert!(fuel_per_operation > 0, "No fuel per operationMissing message");
+        assert!(fuel_consumed > 0, "No fuel consumed");
+        assert!(fuel_per_operation > 0, "No fuel per operation");
         assert!(fuel_per_operation < 1000, "Too much fuel per operation: {}", fuel_per_operation);
     }
 }

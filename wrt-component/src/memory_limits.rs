@@ -3,7 +3,7 @@
 //! This module defines compile-time memory limits for all bounded collections
 //! used in the wrt-component crate when the safety-critical feature is enabled.
 
-#![cfg(feature = "safety-criticalMissing message")]
+#![cfg(feature = "safety-critical")]
 
 /// Canonical ABI memory limits
 pub mod canonical_abi {
@@ -141,12 +141,12 @@ mod validation {
         let total = canonical + resources + instantiation + communication;
         
         assert!(total <= TOTAL_BUDGET + 30 * 1024, 
-            "Total budget exceeds 512KB + overhead: {}KB", total / 1024);
+            "Total budget exceeds 512KB + overhead: {}KB", total / 1024;
     }
 }
 
 /// Compile-time assertions for safety properties
-#[cfg(feature = "safety-criticalMissing message")]
+#[cfg(feature = "safety-critical")]
 mod safety_assertions {
     use super::*;
     

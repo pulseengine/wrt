@@ -16,7 +16,7 @@ use super::{MemoryStrategy, Resource, ResourceArena, ResourceTable, Verification
 
 /// Unique identifier for a resource
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ResourceId(pub u32);
+pub struct ResourceId(pub u32;
 
 /// Trait representing a host resource
 pub trait HostResource {}
@@ -43,7 +43,7 @@ pub struct ResourceManager {
 impl ResourceManager {
     /// Create a new resource manager with default settings
     pub fn new() -> Self {
-        Self::new_with_id("default-instanceMissing message")
+        Self::new_with_id("default-instance")
     }
 
     /// Create a new resource manager with a specific instance ID
@@ -98,7 +98,7 @@ impl ResourceManager {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string());
+                res_guard.name = Some(name.to_string();
             }
         }
 
@@ -197,7 +197,7 @@ impl ResourceManager {
 impl<'a> Debug for ResourceManager<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Get the resource count, or show an error if we can't access it
-        let count = self.resource_count().unwrap_or(0);
+        let count = self.resource_count().unwrap_or(0;
 
         f.debug_struct("ResourceManager")
             .field("instance_id", &self.instance_id)
@@ -215,11 +215,11 @@ mod tests {
 
     #[test]
     fn test_resource_creation() {
-        let table = Mutex::new(ResourceTable::new());
-        let manager = ResourceManager::new(&table);
+        let table = Mutex::new(ResourceTable::new(;
+        let manager = ResourceManager::new(&table;
 
         // Create a string resource
-        let data = Box::new("test".to_string());
+        let data = Box::new("test".to_string();
         let handle = manager.create_resource(1, data).unwrap();
 
         // Verify it exists
@@ -231,32 +231,32 @@ mod tests {
         let guard = resource.lock().unwrap();
 
         // Verify type index
-        assert_eq!(guard.type_idx, 1);
+        assert_eq!(guard.type_idx, 1;
     }
 
     #[test]
     fn test_named_resource() {
-        let table = Mutex::new(ResourceTable::new());
-        let manager = ResourceManager::new(&table);
+        let table = Mutex::new(ResourceTable::new(;
+        let manager = ResourceManager::new(&table;
 
         // Create a named resource
-        let data = Box::new(42i32);
-        let handle = manager.create_named_resource(1, data, "answerMissing message").unwrap();
+        let data = Box::new(42i32;
+        let handle = manager.create_named_resource(1, data, "answer").unwrap();
 
         // Get the resource and check the name
         let resource = manager.get_resource(handle).unwrap();
         let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string()));
+        assert_eq!(guard.name, Some("answer".to_string();
     }
 
     #[test]
     fn test_resource_lifecycle() {
-        let table = Mutex::new(ResourceTable::new());
-        let manager = ResourceManager::new(&table);
+        let table = Mutex::new(ResourceTable::new(;
+        let manager = ResourceManager::new(&table;
 
         // Add a resource
-        let data = Box::new(42i32);
+        let data = Box::new(42i32;
         let handle = manager.create_resource(1, data).unwrap();
 
         // Verify it exists
@@ -273,8 +273,8 @@ mod tests {
 
     #[test]
     fn test_with_arena() {
-        let table = Mutex::new(ResourceTable::new());
-        let manager = ResourceManager::new(&table);
+        let table = Mutex::new(ResourceTable::new(;
+        let manager = ResourceManager::new(&table;
 
         // Create an arena
         let mut arena = manager.create_arena().unwrap();
@@ -283,12 +283,12 @@ mod tests {
         let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap();
 
         // Verify it exists
-        assert!(manager.has_resource(ResourceId(handle)).unwrap());
+        assert!(manager.has_resource(ResourceId(handle)).unwrap();
 
         // Release arena
         arena.release_all().unwrap();
 
         // Verify resource is gone
-        assert!(!manager.has_resource(ResourceId(handle)).unwrap());
+        assert!(!manager.has_resource(ResourceId(handle)).unwrap();
     }
 }

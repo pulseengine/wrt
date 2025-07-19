@@ -44,7 +44,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -145,7 +145,7 @@ impl MemoryValue {
         let memory = BoundedVec::new(provider)?;
         let debug_name = Some(BoundedString::from_str(name).map_err(|_| {
             Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Memory name too long")
-        })?);
+        })?;
 
         Ok(Self { ty, memory, access_count: 0, debug_name })
     }
@@ -161,11 +161,11 @@ impl MemoryValue {
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
                 "Memory read out of bounds",
-            ));
+            ;
         }
 
         // Create a vec to hold the result
-        let mut result = Vec::with_capacity(size_usize);
+        let mut result = Vec::with_capacity(size_usize;
         for i in 0..size_usize {
             if let Some(&byte) = self.memory.get(offset_usize + i) {
                 result.push(byte);
@@ -174,7 +174,7 @@ impl MemoryValue {
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_ERROR,
                     "Memory read failed",
-                ));
+                ;
             }
         }
 
@@ -191,12 +191,12 @@ impl MemoryValue {
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
                 "Memory write out of bounds",
-            ));
+            ;
         }
 
         // Resize memory if needed
         if offset_usize + bytes.len() > self.memory.len() {
-            let new_size = offset_usize + bytes.len();
+            let new_size = offset_usize + bytes.len(;
             for _ in self.memory.len()..new_size {
                 // Grow memory with zeros
                 self.memory.push(0).map_err(|_| {
@@ -218,7 +218,7 @@ impl MemoryValue {
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_ERROR,
                     "Memory write failed",
-                ));
+                ;
             }
         }
 
@@ -231,7 +231,7 @@ impl MemoryValue {
     /// Grows the memory by the given number of pages
     pub fn grow(&mut self, pages: u32) -> Result<u32> {
         let page_size = 64 * 1024; // 64KB pages per WebAssembly spec
-        let prev_pages = self.size();
+        let prev_pages = self.size(;
         let additional_bytes = (pages as usize) * page_size;
 
         // Check if growing would exceed max memory size
@@ -240,7 +240,7 @@ impl MemoryValue {
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
                 "Memory cannot be grown past maximum size",
-            ));
+            ;
         }
 
         // Add zero bytes to grow memory
@@ -287,7 +287,7 @@ impl MemoryValue {
     /// Sets a debug name for this memory
     pub fn set_debug_name(&mut self, name: &str) {
         if let Ok(bounded_name) = BoundedString::from_str(name) {
-            self.debug_name = Some(bounded_name);
+            self.debug_name = Some(bounded_name;
         }
     }
 
@@ -472,7 +472,7 @@ impl WrtComponentTypeBuilder {
 
     /// Add an import to the component type
     pub fn with_import(mut self, namespace: &str, name: &str, ty: ExternType) -> Self {
-        self.imports.push((namespace.to_string(), name.to_string(), ty));
+        self.imports.push((namespace.to_string(), name.to_string(), ty;
         self
     }
 
@@ -484,7 +484,7 @@ impl WrtComponentTypeBuilder {
 
     /// Add an export to the component type
     pub fn with_export(mut self, name: &str, ty: ExternType) -> Self {
-        self.exports.push((name.to_string(), ty));
+        self.exports.push((name.to_string(), ty;
         self
     }
 
@@ -670,7 +670,7 @@ impl RuntimeInstance {
 impl Default for RuntimeInstance {
     fn default() -> Self {
         Self::new().unwrap_or_else(|_| {
-            panic!("Failed to allocate memory for RuntimeInstance::defaultMissing message")
+            panic!("Failed to allocate memory for RuntimeInstance::default")
         })
     }
 }
@@ -834,7 +834,7 @@ impl Component {
 
     /// Set the runtime instance
     pub fn set_runtime(&mut self, runtime: RuntimeInstance) {
-        self.runtime = Some(runtime);
+        self.runtime = Some(runtime;
     }
 
     /// Set the verification level
@@ -914,7 +914,7 @@ impl ComponentBuilder {
 
     /// Set the component type
     pub fn with_component_type(mut self, component_type: WrtComponentType) -> Self {
-        self.component_type = Some(component_type);
+        self.component_type = Some(component_type;
         self
     }
 
@@ -956,31 +956,31 @@ impl ComponentBuilder {
 
     /// Link a component with a namespace
     pub fn with_linked_component(mut self, name: &str, component_id: usize) -> Self {
-        self.linked_components.push((name.to_string(), component_id));
+        self.linked_components.push((name.to_string(), component_id;
         self
     }
 
     /// Set the runtime instance
     pub fn with_runtime(mut self, runtime: RuntimeInstance) -> Self {
-        self.runtime = Some(runtime);
+        self.runtime = Some(runtime;
         self
     }
 
     /// Set the resource table
     pub fn with_resource_table(mut self, resource_table: ResourceTable) -> Self {
-        self.resource_table = Some(resource_table);
+        self.resource_table = Some(resource_table;
         self
     }
 
     /// Set the built-in requirements
     pub fn with_built_in_requirements(mut self, requirements: BuiltinRequirements) -> Self {
-        self.built_in_requirements = Some(requirements);
+        self.built_in_requirements = Some(requirements;
         self
     }
 
     /// Set the original binary
     pub fn with_original_binary(mut self, binary: Vec<u8>) -> Self {
-        self.original_binary = Some(binary);
+        self.original_binary = Some(binary;
         self
     }
 
@@ -992,8 +992,8 @@ impl ComponentBuilder {
 
     /// Build the component
     pub fn build(self) -> Result<Component> {
-        let component_type = self.component_type.unwrap_or_default();
-        let resource_table = self.resource_table.unwrap_or_else(ResourceTable::new);
+        let component_type = self.component_type.unwrap_or_default(;
+        let resource_table = self.resource_table.unwrap_or_else(ResourceTable::new;
 
         let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -1046,7 +1046,7 @@ impl ComponentBuilder {
                     )
                 })?;
             }
-            component.original_binary = Some(bounded_binary);
+            component.original_binary = Some(bounded_binary;
         }
 
         Ok(component)
@@ -1078,9 +1078,9 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(component_type.imports.len(), 1);
-        assert_eq!(component_type.exports.len(), 1);
-        assert_eq!(component_type.verification_level(), VerificationLevel::Full);
+        assert_eq!(component_type.imports.len(), 1;
+        assert_eq!(component_type.exports.len(), 1;
+        assert_eq!(component_type.verification_level(), VerificationLevel::Full;
     }
 
     #[test]
@@ -1104,9 +1104,9 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(component.exports.len(), 1);
-        assert_eq!(component.imports.len(), 1);
-        assert_eq!(component.verification_level, VerificationLevel::Full);
+        assert_eq!(component.exports.len(), 1;
+        assert_eq!(component.imports.len(), 1;
+        assert_eq!(component.verification_level, VerificationLevel::Full;
     }
 
     #[test]
@@ -1130,13 +1130,13 @@ mod tests {
         component.add_import(import).unwrap();
 
         // Test getters
-        let found_export = component.get_export("export");
-        assert!(found_export.is_some());
-        assert_eq!(found_export.unwrap().name, "export");
+        let found_export = component.get_export("export";
+        assert!(found_export.is_some();
+        assert_eq!(found_export.unwrap().name, "export";
 
-        let found_import = component.get_import("ns", "name");
-        assert!(found_import.is_some());
-        assert_eq!(found_import.unwrap().name, "name");
+        let found_import = component.get_import("ns", "name";
+        assert!(found_import.is_some();
+        assert_eq!(found_import.unwrap().name, "name";
     }
 
     #[test]
@@ -1148,10 +1148,10 @@ mod tests {
         let mut memory_value = MemoryValue::new(memory_type).unwrap();
 
         // Set a debug name
-        memory_value.set_debug_name("test_memory");
+        memory_value.set_debug_name("test_memory";
 
         // Check the debug name
-        assert_eq!(memory_value.debug_name().unwrap(), "test_memory");
+        assert_eq!(memory_value.debug_name().unwrap(), "test_memory";
 
         // Write some data
         let data = b"Hello, world!";
@@ -1161,14 +1161,14 @@ mod tests {
         let read_data = memory_value.read(0, data.len() as u32).unwrap();
 
         // Verify the data
-        assert_eq!(read_data, data);
+        assert_eq!(read_data, data;
 
         // Grow the memory
         let old_size = memory_value.grow(1).unwrap();
-        assert_eq!(old_size, 1);
+        assert_eq!(old_size, 1;
 
         // Check the new size
-        assert_eq!(memory_value.size(), 2);
+        assert_eq!(memory_value.size(), 2;
     }
 }
 
@@ -1177,7 +1177,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -1302,11 +1302,11 @@ impl Default for ValType {
 
 // Apply macro to all types that need traits
 // Note: These types don't need basic traits for now, commenting out to fix compilation
-// impl_basic_traits!(ComponentTypeDefinition, ComponentTypeDefinition::default();
-// impl_basic_traits!(ExternValue, ExternValue::default();
-// impl_basic_traits!(MemoryValue, MemoryValue::default();
-// impl_basic_traits!(TableValue, TableValue::default();
-// impl_basic_traits!(GlobalValue, GlobalValue::default();
+// impl_basic_traits!(ComponentTypeDefinition, ComponentTypeDefinition::default(;
+// impl_basic_traits!(ExternValue, ExternValue::default(;
+// impl_basic_traits!(MemoryValue, MemoryValue::default(;
+// impl_basic_traits!(TableValue, TableValue::default(;
+// impl_basic_traits!(GlobalValue, GlobalValue::default(;
 
 // Try to implement traits for external types directly
 // This works only if the external types have the required traits
@@ -1317,7 +1317,7 @@ use wrt_decoder::component::ExternType as ExtExternType;
 impl Checksummable for ExtComponentTypeDefinition {
     fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
         // Simple checksum based on type content
-        0u32.update_checksum(checksum);
+        0u32.update_checksum(checksum;
     }
 }
 
@@ -1344,7 +1344,7 @@ impl FromBytes for ExtComponentTypeDefinition {
 // Try to implement traits for external decoder ExternType
 impl Checksummable for ExtExternType {
     fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-        0u32.update_checksum(checksum);
+        0u32.update_checksum(checksum;
     }
 }
 

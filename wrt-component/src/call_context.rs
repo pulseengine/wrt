@@ -991,7 +991,7 @@ impl CallContextManager {
 
         // Store the context
         #[cfg(feature = "std")]
-        self.contexts.insert(call_id, managed_context);
+        self.contexts.insert(call_id, managed_context;
         #[cfg(not(feature = "std"))]
         self.contexts.push((call_id, managed_context)).map_err(|_| Error::runtime_execution_error("Error occurred"))?;
 
@@ -1001,18 +1001,18 @@ impl CallContextManager {
     /// Get a call context by ID
     pub fn get_call_context(&self, call_id: u64) -> Option<&ManagedCallContext> {
         #[cfg(feature = "std")]
-        return self.contexts.get(&call_id);
+        return self.contexts.get(&call_id;
         #[cfg(not(feature = "std"))]
-        return self.contexts.iter().find(|(id, _)| *id == call_id).map(|(_, ctx)| ctx);
+        return self.contexts.iter().find(|(id, _)| *id == call_id).map(|(_, ctx)| ctx;
     }
 
     /// Complete a call context and cleanup resources
     pub fn complete_call_context(&mut self, call_id: u64) -> Result<()> {
         #[cfg(feature = "std")]
-        let context = self.contexts.remove(&call_id);
+        let context = self.contexts.remove(&call_id;
         #[cfg(not(feature = "std"))]
         let context = {
-            let pos = self.contexts.iter().position(|(id, _)| *id == call_id);
+            let pos = self.contexts.iter().position(|(id, _)| *id == call_id;
             pos.and_then(|i| self.contexts.swap_remove(i).ok()).map(|(_, ctx)| ctx)
         };
         if let Some(context) = context {
@@ -1021,7 +1021,7 @@ impl CallContextManager {
 
             // Update performance metrics
             if self.config.enable_performance_monitoring {
-                self.monitor.record_call_completion(&context.metrics);
+                self.monitor.record_call_completion(&context.metrics;
             }
 
             Ok(())
@@ -1061,17 +1061,17 @@ impl ParameterMarshaler {
 
         // Validate parameter count and size
         if parameters.len() > MAX_CALL_PARAMETERS {
-            return Err(Error::validation_error("Too many parameters"));
+            return Err(Error::validation_error("Too many parameters";
         }
 
         let total_size = self.calculate_parameter_size(parameters)?;
         if total_size > self.config.max_parameter_size {
-            return Err(Error::validation_error("Parameter data too large"));
+            return Err(Error::validation_error("Parameter data too large";
         }
 
         // For now, just clone the parameters (no actual marshaling)
         #[cfg(feature = "std")]
-        let marshaled_parameters = parameters.to_vec();
+        let marshaled_parameters = parameters.to_vec(;
         #[cfg(not(feature = "std"))]
         let marshaled_parameters = {
             let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
@@ -1123,21 +1123,21 @@ impl ParameterMarshaler {
                 #[cfg(feature = "std")]
                 ComponentValue::String(s) => {
                     if s.len() > MAX_STRING_LENGTH {
-                        return Err(Error::validation_error("String parameter too long"));
+                        return Err(Error::validation_error("String parameter too long";
                     }
                     s.len() as u32 + 4 // String length + size prefix
                 }
                 #[cfg(not(feature = "std"))]
                 ComponentValue::String(s) => {
-                    let len = s.as_bytes().len();
+                    let len = s.as_bytes().len(;
                     if len > MAX_STRING_LENGTH {
-                        return Err(Error::validation_error("String parameter too long"));
+                        return Err(Error::validation_error("String parameter too long";
                     }
                     len as u32 + 4 // String length + size prefix
                 }
                 ComponentValue::List(items) => {
                     if items.len() > MAX_ARRAY_LENGTH {
-                        return Err(Error::validation_error("Array parameter too long"));
+                        return Err(Error::validation_error("Array parameter too long";
                     }
                     self.calculate_parameter_size(items)? + 4 // Array contents + size prefix
                 }
@@ -1200,7 +1200,7 @@ impl ResourceCoordinator {
     /// Coordinate resources for a call
     pub fn coordinate_resources(&mut self, resource_handles: &[ResourceHandle]) -> Result<ResourceState> {
         #[cfg(feature = "std")]
-        let mut acquired_locks = std::vec::Vec::new();
+        let mut acquired_locks = std::vec::Vec::new(;
         #[cfg(not(feature = "std"))]
         let mut acquired_locks = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
 
@@ -1215,7 +1215,7 @@ impl ResourceCoordinator {
             };
 
             #[cfg(feature = "std")]
-            self.resource_locks.insert(handle, lock);
+            self.resource_locks.insert(handle, lock;
             #[cfg(not(feature = "std"))]
             self.resource_locks.push((handle, lock)).map_err(|_| Error::runtime_execution_error("Too many resource locks"))?;
             
@@ -1248,7 +1248,7 @@ impl ResourceCoordinator {
     pub fn release_locks(&mut self, locks: &[ResourceHandle]) -> Result<()> {
         for &handle in locks {
             #[cfg(feature = "std")]
-            self.resource_locks.remove(&handle);
+            self.resource_locks.remove(&handle;
             #[cfg(not(feature = "std"))]
             {
                 if let Some(pos) = self.resource_locks.iter().position(|(h, _)| *h == handle) {
@@ -1421,19 +1421,19 @@ mod tests {
 
     #[test]
     fn test_call_context_manager_creation() {
-        let manager = CallContextManager::new();
-        assert_eq!(manager.contexts.len(), 0);
+        let manager = CallContextManager::new(;
+        assert_eq!(manager.contexts.len(), 0;
     }
 
     #[test]
     fn test_parameter_marshaler_creation() {
-        let marshaler = ParameterMarshaler::new(MarshalingConfig::default());
-        assert_eq!(marshaler.config.string_encoding, StringEncoding::Utf8);
+        let marshaler = ParameterMarshaler::new(MarshalingConfig::default(;
+        assert_eq!(marshaler.config.string_encoding, StringEncoding::Utf8;
     }
 
     #[test]
     fn test_parameter_size_calculation() {
-        let marshaler = ParameterMarshaler::new(MarshalingConfig::default());
+        let marshaler = ParameterMarshaler::new(MarshalingConfig::default(;
         let parameters = vec![
             ComponentValue::S32(42),
             #[cfg(feature = "std")]
@@ -1453,12 +1453,12 @@ mod tests {
 
     #[test]
     fn test_resource_coordinator() {
-        let mut coordinator = ResourceCoordinator::new();
+        let mut coordinator = ResourceCoordinator::new(;
         let handles = vec![ResourceHandle::new(1), ResourceHandle::new(2)];
 
         let state = coordinator.coordinate_resources(&handles).unwrap();
-        assert_eq!(state.acquired_locks.len(), 2);
-        assert_eq!(state.transferring_resources.len(), 2);
+        assert_eq!(state.acquired_locks.len(), 2;
+        assert_eq!(state.transferring_resources.len(), 2;
     }
 
     #[test]
@@ -1516,7 +1516,7 @@ mod tests {
             messages: BoundedVec::new(crate::MemoryProvider::default()).unwrap(),
         };
 
-        assert_eq!(results.status, ValidationStatus::Passed);
+        assert_eq!(results.status, ValidationStatus::Passed;
         assert!(results.parameter_validation.valid);
         assert!(results.security_validation.secure);
         assert!(results.resource_validation.valid);
@@ -1531,7 +1531,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -1963,20 +1963,20 @@ impl PartialEq for SizeValidationResult {
 impl Eq for SizeValidationResult {}
 
 // Apply macro to all types that need traits
-impl_basic_traits!(ManagedCallContext, ManagedCallContext::default());
-impl_basic_traits!(TypeCompatibility, TypeCompatibility::default());
-impl_basic_traits!(ResourceLock, ResourceLock::default());
-impl_basic_traits!(PendingResourceTransfer, PendingResourceTransfer::default());
-impl_basic_traits!(TransferPolicy, TransferPolicy::default());
-impl_basic_traits!(SecurityPolicy, SecurityPolicy::default());
-impl_basic_traits!(ValidationRule, ValidationRule::default());
-impl_basic_traits!(TimingMetrics, TimingMetrics::default());
-impl_basic_traits!(OptimizationSuggestion, OptimizationSuggestion::default());
-impl_basic_traits!(PermissionCheckResult, PermissionCheckResult::default());
-impl_basic_traits!(AccessControlResult, AccessControlResult::default());
-impl_basic_traits!(ResourceAvailabilityResult, ResourceAvailabilityResult::default());
-impl_basic_traits!(TransferPermissionResult, TransferPermissionResult::default());
-impl_basic_traits!(SizeValidationResult, SizeValidationResult::default());
+impl_basic_traits!(ManagedCallContext, ManagedCallContext::default(;
+impl_basic_traits!(TypeCompatibility, TypeCompatibility::default(;
+impl_basic_traits!(ResourceLock, ResourceLock::default(;
+impl_basic_traits!(PendingResourceTransfer, PendingResourceTransfer::default(;
+impl_basic_traits!(TransferPolicy, TransferPolicy::default(;
+impl_basic_traits!(SecurityPolicy, SecurityPolicy::default(;
+impl_basic_traits!(ValidationRule, ValidationRule::default(;
+impl_basic_traits!(TimingMetrics, TimingMetrics::default(;
+impl_basic_traits!(OptimizationSuggestion, OptimizationSuggestion::default(;
+impl_basic_traits!(PermissionCheckResult, PermissionCheckResult::default(;
+impl_basic_traits!(AccessControlResult, AccessControlResult::default(;
+impl_basic_traits!(ResourceAvailabilityResult, ResourceAvailabilityResult::default(;
+impl_basic_traits!(TransferPermissionResult, TransferPermissionResult::default(;
+impl_basic_traits!(SizeValidationResult, SizeValidationResult::default(;
 
 // Additional Default implementations for remaining types
 impl Default for TransferResult {
@@ -2019,5 +2019,5 @@ impl PartialEq for TypeCheckResult {
 impl Eq for TypeCheckResult {}
 
 // Apply macro to additional types
-impl_basic_traits!(TransferResult, TransferResult::default());
-impl_basic_traits!(TypeCheckResult, TypeCheckResult::default());
+impl_basic_traits!(TransferResult, TransferResult::default(;
+impl_basic_traits!(TypeCheckResult, TypeCheckResult::default(;

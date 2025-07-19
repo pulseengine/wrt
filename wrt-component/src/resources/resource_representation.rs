@@ -285,9 +285,9 @@ impl ResourceRepresentationManager {
         let mut manager = Self::new()?;
         
         // Register built-in representations
-        let _ = manager.register_representation::<FileHandle>(Box::new(FileHandleRepresentation::new()?);
-        let _ = manager.register_representation::<MemoryBuffer>(Box::new(MemoryBufferRepresentation::new()?);
-        let _ = manager.register_representation::<NetworkHandle>(Box::new(NetworkConnectionRepresentation::new()?);
+        let _ = manager.register_representation::<FileHandle>(Box::new(FileHandleRepresentation::new()?;
+        let _ = manager.register_representation::<MemoryBuffer>(Box::new(MemoryBufferRepresentation::new()?;
+        let _ = manager.register_representation::<NetworkHandle>(Box::new(NetworkConnectionRepresentation::new()?;
         
         Ok(manager)
     }
@@ -297,11 +297,11 @@ impl ResourceRepresentationManager {
         &mut self,
         representation: Box<dyn ResourceRepresentation>,
     ) -> Result<()> {
-        let type_id = TypeId::of::<T>();
+        let type_id = TypeId::of::<T>(;
         
         #[cfg(feature = "std")]
         {
-            self.representations.insert(type_id, representation);
+            self.representations.insert(type_id, representation;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -345,13 +345,13 @@ impl ResourceRepresentationManager {
                 })?;
                 })?;
             
-            let result = representation.get_representation(handle);
+            let result = representation.get_representation(handle;
             self.stats.get_operations += 1;
             
             if result.is_ok() {
                 // Update access metadata
                 if let Ok(entry) = self.find_resource_entry_mut(handle) {
-                    entry.metadata.last_accessed = self.get_current_time();
+                    entry.metadata.last_accessed = self.get_current_time(;
                     entry.metadata.access_count += 1;
                 }
             } else {
@@ -380,7 +380,7 @@ impl ResourceRepresentationManager {
                     Error::new(
                         ErrorCategory::Runtime,
                         wrt_error::codes::EXECUTION_ERROR,
-                        Missing message")
+                        ")
                 })?;
             
             self.stats.get_operations += 1;
@@ -401,7 +401,7 @@ impl ResourceRepresentationManager {
         // Check if representation is mutable
         if !resource_entry.metadata.mutable {
             return Err(Error::runtime_execution_error("Resource validation failed"
-            );
+            ;
         }
         
         // Find the representation
@@ -420,7 +420,7 @@ impl ResourceRepresentationManager {
                 // Update the cached representation
                 if let Ok(entry) = self.find_resource_entry_mut(handle) {
                     entry.representation = value;
-                    entry.metadata.last_accessed = self.get_current_time();
+                    entry.metadata.last_accessed = self.get_current_time(;
                 }
             } else {
                 self.stats.failed_operations += 1;
@@ -449,14 +449,14 @@ impl ResourceRepresentationManager {
                     Error::new(
                         ErrorCategory::Resource,
                         wrt_error::codes::RESOURCE_EXHAUSTED,
-                        Missing message")
+                        ")
                 })?;
             }
             
             // Update resource entry
             if let Ok(entry) = self.find_resource_entry_mut(handle) {
                 entry.representation = value;
-                entry.metadata.last_accessed = self.get_current_time();
+                entry.metadata.last_accessed = self.get_current_time(;
             }
             
             self.stats.set_operations += 1;
@@ -476,7 +476,7 @@ impl ResourceRepresentationManager {
         mutable: bool,
     ) -> Result<()> {
         let metadata = ResourceMetadata {
-            type_name: BoundedString::from_str(&"Component not foundMissing message").unwrap_or_default(),
+            type_name: BoundedString::from_str(&"Component not found").unwrap_or_default(),
             created_at: self.get_current_time(),
             last_accessed: self.get_current_time(),
             access_count: 0,
@@ -495,7 +495,7 @@ impl ResourceRepresentationManager {
         
         #[cfg(feature = "std")]
         {
-            self.handle_to_resource.insert(handle, entry);
+            self.handle_to_resource.insert(handle, entry;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -644,12 +644,12 @@ impl ResourceRepresentation for FileHandleRepresentation {
             _ => return Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::EXECUTION_ERROR,
-                "Error message neededMissing messageMissing messageMissing message")),
+                "Error message needed")),
         };
         
         #[cfg(feature = "std")]
         {
-            self.file_descriptors.insert(handle, fd);
+            self.file_descriptors.insert(handle, fd;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -667,7 +667,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
     }
     
     fn type_name(&self) -> &str {
-        Missing message") -> usize {
+        ") -> usize {
         4 // i32 file descriptor
     }
     
@@ -714,7 +714,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
                 })?;
             
             Ok(RepresentationValue::Structured(vec![
-                (Missing message"), RepresentationValue::U64(*ptr as u64)),
+                ("), RepresentationValue::U64(*ptr as u64)),
                 ("size".to_string(), RepresentationValue::U64(*size as u64)),
             ])
         }
@@ -732,7 +732,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
             use wrt_foundation::budget_aware_provider::CrateId;
             use crate::bounded_component_infra::ComponentProvider;
             let mut fields = BoundedVec::new(ComponentProvider::new(CrateId::Component)?)?;
-            fields.push((Missing message"), RepresentationValue::U64(ptr as u64))).unwrap();
+            fields.push(("), RepresentationValue::U64(ptr as u64))).unwrap();
             fields.push(("size".to_string(), RepresentationValue::U64(size as u64))).unwrap();
             
             Ok(RepresentationValue::Structured(fields.into_vec())
@@ -761,12 +761,12 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
         
         #[cfg(feature = "std")]
         {
-            self.buffers.insert(handle, (ptr, size);
+            self.buffers.insert(handle, (ptr, size;
         }
         #[cfg(not(any(feature = "std", )))]
         {
             if let Some((_, existing_buf)) = self.buffers.iter_mut().find(|(h, _)| *h == handle) {
-                *existing_buf = (ptr, size);
+                *existing_buf = (ptr, size;
             } else {
                 self.buffers.push((handle, (ptr, size))).map_err(|_| {
                     Error::runtime_execution_error("Resource lookup failed"
@@ -779,7 +779,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
     }
     
     fn type_name(&self) -> &str {
-        Missing message") -> usize {
+        ") -> usize {
         16 // pointer + size (8 bytes each on 64-bit systems)
     }
     
@@ -826,7 +826,7 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
                 })?;
             
             Ok(RepresentationValue::Structured(vec![
-                (Missing message"), RepresentationValue::U32(conn.socket_fd as u32)),
+                ("), RepresentationValue::U32(conn.socket_fd as u32)),
                 ("local_addr".to_string(), RepresentationValue::String(conn.local_addr.to_string())),
                 ("remote_addr".to_string(), RepresentationValue::String(conn.remote_addr.to_string())),
                 ("state".to_string(), RepresentationValue::U32(conn.state as u32)),
@@ -846,7 +846,7 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
             use wrt_foundation::budget_aware_provider::CrateId;
             use crate::bounded_component_infra::ComponentProvider;
             let mut fields = BoundedVec::new(ComponentProvider::new(CrateId::Component)?)?;
-            fields.push((Missing message"), RepresentationValue::U32(conn.socket_fd as u32))).unwrap();
+            fields.push(("), RepresentationValue::U32(conn.socket_fd as u32))).unwrap();
             fields.push(("local_addr".to_string(), RepresentationValue::String(conn.local_addr.to_string()))).unwrap();
             fields.push(("remote_addr".to_string(), RepresentationValue::String(conn.remote_addr.to_string()))).unwrap();
             fields.push(("state".to_string(), RepresentationValue::U32(conn.state as u32))).unwrap();
@@ -862,7 +862,7 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
     }
     
     fn type_name(&self) -> &str {
-        Missing message") -> usize {
+        ") -> usize {
         256 // Estimated size for connection details
     }
     
@@ -935,7 +935,7 @@ pub fn canon_resource_new<T: 'static>(
     let handle = manager.next_representation_id;
     manager.next_representation_id += 1;
     
-    let type_id = TypeId::of::<T>();
+    let type_id = TypeId::of::<T>(;
     let resource_type = ResourceType::Custom(type_id.into()); // Simplified
     
     manager.register_resource_handle(
@@ -964,20 +964,20 @@ pub fn canon_resource_drop(
     
     if !manager.validate_handle(handle)? {
         return Err(Error::runtime_execution_error("Error occurred"
-        );
+        ;
     }
     
     // Remove from handle mapping
     #[cfg(feature = "std")]
     {
-        manager.handle_to_resource.remove(&handle);
+        manager.handle_to_resource.remove(&handle;
     }
     #[cfg(not(any(feature = "std", )))]
     {
         let mut i = 0;
         while i < manager.handle_to_resource.len() {
             if manager.handle_to_resource[i].0 == handle {
-                manager.handle_to_resource.remove(i);
+                manager.handle_to_resource.remove(i;
                 break;
             } else {
                 i += 1;
@@ -994,27 +994,27 @@ mod tests {
     
     #[test]
     fn test_resource_representation_manager() {
-        let mut manager = ResourceRepresentationManager::new();
+        let mut manager = ResourceRepresentationManager::new(;
         
         // Register file handle representation
         manager.register_representation::<FileHandle>(
             Box::new(FileHandleRepresentation::new()
         ).unwrap();
         
-        assert_eq!(manager.stats.representations_registered, 1);
+        assert_eq!(manager.stats.representations_registered, 1;
     }
     
     #[test]
     fn test_file_handle_representation() {
-        let mut manager = ResourceRepresentationManager::new();
+        let mut manager = ResourceRepresentationManager::new(;
         manager.register_representation::<FileHandle>(
             Box::new(FileHandleRepresentation::new()
         ).unwrap();
         
         let handle = 123;
-        let resource_id = ResourceId(1);
-        let owner = ComponentId(1);
-        let type_id = TypeId::of::<FileHandle>();
+        let resource_id = ResourceId(1;
+        let owner = ComponentId(1;
+        let type_id = TypeId::of::<FileHandle>(;
         
         manager.register_resource_handle(
             handle,
@@ -1027,25 +1027,25 @@ mod tests {
         ).unwrap();
         
         let repr = manager.get_resource_representation(handle).unwrap();
-        assert!(matches!(repr, RepresentationValue::U32(42));
+        assert!(matches!(repr, RepresentationValue::U32(42);
     }
     
     #[test]
     fn test_memory_buffer_representation() {
-        let mut manager = ResourceRepresentationManager::new();
+        let mut manager = ResourceRepresentationManager::new(;
         manager.register_representation::<MemoryBuffer>(
             Box::new(MemoryBufferRepresentation::new()
         ).unwrap();
         
         let handle = 456;
-        let resource_id = ResourceId(2);
-        let owner = ComponentId(1);
-        let type_id = TypeId::of::<MemoryBuffer>();
+        let resource_id = ResourceId(2;
+        let owner = ComponentId(1;
+        let type_id = TypeId::of::<MemoryBuffer>(;
         
         let buffer_repr = RepresentationValue::Structured(vec![
             ("pointer".to_string(), RepresentationValue::U64(0x12345678)),
             ("size".to_string(), RepresentationValue::U64(1024)),
-        ]);
+        ];
         
         manager.register_resource_handle(
             handle,
@@ -1058,12 +1058,12 @@ mod tests {
         ).unwrap();
         
         let repr = manager.get_resource_representation(handle).unwrap();
-        assert!(matches!(repr, RepresentationValue::Structured(_));
+        assert!(matches!(repr, RepresentationValue::Structured(_);
     }
     
     #[test]
     fn test_canon_resource_rep() {
-        let mut manager = ResourceRepresentationManager::with_builtin_representations();
+        let mut manager = ResourceRepresentationManager::with_builtin_representations(;
         
         let handle = canon_resource_new::<FileHandle>(
             &mut manager,
@@ -1073,18 +1073,18 @@ mod tests {
         ).unwrap();
         
         let repr = canon_resource_rep(&mut manager, handle).unwrap();
-        assert!(matches!(repr, RepresentationValue::U32(123));
+        assert!(matches!(repr, RepresentationValue::U32(123);
         
         canon_resource_drop(&mut manager, handle).unwrap();
     }
     
     #[test]
     fn test_representation_validation() {
-        let mut manager = ResourceRepresentationManager::new();
+        let mut manager = ResourceRepresentationManager::new(;
         
         let is_valid = manager.validate_handle(999).unwrap();
         assert!(!is_valid);
         
-        assert_eq!(manager.stats.validation_checks, 1);
+        assert_eq!(manager.stats.validation_checks, 1;
     }
 }

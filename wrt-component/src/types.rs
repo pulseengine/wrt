@@ -4,7 +4,7 @@
 
 use crate::prelude::*;
 
-#[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
+#[cfg(all(feature = "std", feature = "safety-critical"))]
 use wrt_foundation::allocator::{WrtVec, CrateId};
 
 use wrt_foundation::{bounded::{BoundedVec, BoundedString}, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
@@ -20,16 +20,16 @@ use crate::async_::async_types::{StreamHandle, FutureHandle};
 // Fallback types when async features are not enabled
 #[cfg(not(feature = "component-model-async"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StreamHandle(pub u32);
+pub struct StreamHandle(pub u32;
 
 #[cfg(not(feature = "component-model-async"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FutureHandle(pub u32);
+pub struct FutureHandle(pub u32;
 
 // Fallback TaskId when threading features are not enabled
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TaskId(pub u32);
+pub struct TaskId(pub u32;
 
 /// Canonical ComponentInstance definition for ASIL-D type safety
 /// 
@@ -45,30 +45,30 @@ pub struct ComponentInstance {
     /// Reference to the component definition
     pub component: Component,
     /// Resolved imports for this instance
-    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub imports: WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>,
-    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub imports: Vec<ResolvedImport>,
     #[cfg(not(any(feature = "std", )))]
     pub imports: BoundedVec<ResolvedImport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resolved exports from this instance
-    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub exports: WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>,
-    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub exports: Vec<ResolvedExport>,
     #[cfg(not(any(feature = "std", )))]
     pub exports: BoundedVec<ResolvedExport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resource tables for this instance
-    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub resource_tables: WrtVec<ResourceTable, {CrateId::Component as u8}, 16>,
-    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub resource_tables: Vec<ResourceTable>,
     #[cfg(not(any(feature = "std", )))]
     pub resource_tables: BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>,
     /// Module instances embedded in this component
-    #[cfg(all(feature = "std", feature = "safety-criticalMissing messageMissing messageMissing message"))]
+    #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub module_instances: WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>,
-    #[cfg(all(feature = "std", not(feature = "safety-criticalMissing messageMissing messageMissing message")))]
+    #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub module_instances: Vec<ModuleInstance>,
     #[cfg(not(any(feature = "std", )))]
     pub module_instances: BoundedVec<ModuleInstance, 64, crate::bounded_component_infra::ComponentProvider>,
@@ -457,7 +457,7 @@ impl wrt_foundation::traits::Checksummable for Value {
             Value::String(_) => 12u8,
             _ => 255u8,
         };
-        checksum.update(discriminant);
+        checksum.update(discriminant;
         
         // For simplicity, just update with basic data
         match self {
@@ -481,15 +481,15 @@ impl wrt_foundation::traits::Checksummable for Value {
 
 /// Component instance identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ComponentInstanceId(pub u32);
+pub struct ComponentInstanceId(pub u32;
 
 /// Type identifier for generative types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TypeId(pub u32);
+pub struct TypeId(pub u32;
 
 /// Resource identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ResourceId(pub u32);
+pub struct ResourceId(pub u32;
 
 /// Component error types
 #[derive(Debug, Clone, PartialEq)]
@@ -610,7 +610,7 @@ macro_rules! impl_basic_traits {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
                 // Simple stub implementation
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -701,10 +701,10 @@ impl Default for Case {
 }
 
 // Apply macro to all complex types
-impl_basic_traits!(ValType, ValType::default());
-impl_basic_traits!(Record, Record::default());
-impl_basic_traits!(Field, Field::default());
-impl_basic_traits!(Tuple, Tuple::default());
-impl_basic_traits!(Variant, Variant::default());
-impl_basic_traits!(Case, Case::default());
+impl_basic_traits!(ValType, ValType::default(;
+impl_basic_traits!(Record, Record::default(;
+impl_basic_traits!(Field, Field::default(;
+impl_basic_traits!(Tuple, Tuple::default(;
+impl_basic_traits!(Variant, Variant::default(;
+impl_basic_traits!(Case, Case::default(;
 

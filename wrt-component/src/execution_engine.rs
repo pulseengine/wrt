@@ -274,7 +274,7 @@ impl ComponentExecutionEngine {
         args: &[Value],
     ) -> WrtResult<Value> {
         self.state = ExecutionState::Running;
-        self.current_instance = Some(instance_id);
+        self.current_instance = Some(instance_id;
 
         // Create new call frame
         let mut frame = CallFrame::new(instance_id, function_index)?;
@@ -297,16 +297,16 @@ impl ComponentExecutionEngine {
         }
 
         // Execute the function
-        let result = self.execute_function_internal(function_index, args);
+        let result = self.execute_function_internal(function_index, args;
 
         // Pop the frame
         #[cfg(feature = "std")]
         {
-            self.call_stack.pop();
+            self.call_stack.pop(;
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let _ = self.call_stack.pop();
+            let _ = self.call_stack.pop(;
         }
 
         // Update state based on result
@@ -341,8 +341,8 @@ impl ComponentExecutionEngine {
             }
             #[cfg(not(any(feature = "std", )))]
             {
-                let mut name = wrt_foundation::bounded::BoundedString::new();
-                let _ = name.push_str("func_");
+                let mut name = wrt_foundation::bounded::BoundedString::new(;
+                let _ = name.push_str("func_";
                 name
             }
         };
@@ -417,16 +417,16 @@ impl ComponentExecutionEngine {
     pub fn reset(&mut self) {
         #[cfg(feature = "std")]
         {
-            self.call_stack.clear();
+            self.call_stack.clear(;
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            self.call_stack.clear();
+            self.call_stack.clear(;
         }
 
         self.current_instance = None;
         self.state = ExecutionState::Ready;
-        self.resource_manager = ResourceLifecycleManager::new();
+        self.resource_manager = ResourceLifecycleManager::new(;
     }
 
     /// Get canonical ABI processor
@@ -462,7 +462,7 @@ impl ComponentExecutionEngine {
     /// Convert engine values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<crate::canonical_abi::ComponentValue>> {
-        let mut component_values = Vec::new();
+        let mut component_values = Vec::new(;
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
             component_values.push(component_value);
@@ -566,7 +566,7 @@ impl ComponentExecutionEngine {
     {
         use crate::canonical_abi::ComponentType;
         
-        let name_string = alloc::string::String::from(name);
+        let name_string = alloc::string::String::from(name;
         let signature = crate::component_instantiation::FunctionSignature {
             name: name_string.clone(),
             params: alloc::vec![ComponentType::S32], // Simplified for now
@@ -686,18 +686,18 @@ mod tests {
     #[test]
     fn test_execution_engine_creation() {
         let engine = ComponentExecutionEngine::new().unwrap();
-        assert_eq!(engine.state(), &ExecutionState::Ready);
-        assert_eq!(engine.call_stack_depth(), 0);
-        assert_eq!(engine.current_instance(), None);
+        assert_eq!(engine.state(), &ExecutionState::Ready;
+        assert_eq!(engine.call_stack_depth(), 0;
+        assert_eq!(engine.current_instance(), None;
     }
 
     #[test]
     fn test_call_frame_creation() {
         let frame = CallFrame::new(1, 2).unwrap();
-        assert_eq!(frame.instance_id, 1);
-        assert_eq!(frame.function_index, 2);
-        assert_eq!(frame.locals.len(), 0);
-        assert_eq!(frame.return_address, None);
+        assert_eq!(frame.instance_id, 1;
+        assert_eq!(frame.function_index, 2;
+        assert_eq!(frame.locals.len(), 0;
+        assert_eq!(frame.return_address, None;
     }
 
     #[test]
@@ -705,18 +705,18 @@ mod tests {
         let mut frame = CallFrame::new(1, 2).unwrap();
 
         // Test pushing locals
-        assert!(frame.push_local(Value::U32(42)).is_ok());
-        assert!(frame.push_local(Value::Bool(true)).is_ok());
+        assert!(frame.push_local(Value::U32(42)).is_ok();
+        assert!(frame.push_local(Value::Bool(true)).is_ok();
 
         // Test getting locals
-        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(42));
-        assert_eq!(frame.get_local(1).unwrap(), &Value::Bool(true));
-        assert!(frame.get_local(2).is_err());
+        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(42;
+        assert_eq!(frame.get_local(1).unwrap(), &Value::Bool(true;
+        assert!(frame.get_local(2).is_err();
 
         // Test setting locals
-        assert!(frame.set_local(0, Value::U32(100)).is_ok());
-        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(100));
-        assert!(frame.set_local(10, Value::U32(200)).is_err());
+        assert!(frame.set_local(0, Value::U32(100)).is_ok();
+        assert_eq!(frame.get_local(0).unwrap(), &Value::U32(100;
+        assert!(frame.set_local(10, Value::U32(200)).is_err();
     }
 
     #[test]
@@ -724,20 +724,20 @@ mod tests {
         let context = ExecutionContext::new()
             .with_max_call_depth(512)
             .with_max_memory(2048)
-            .with_string_encoding(StringEncoding::Utf16Le);
+            .with_string_encoding(StringEncoding::Utf16Le;
 
-        assert_eq!(context.max_call_depth, 512);
-        assert_eq!(context.max_memory, 2048);
-        assert_eq!(context.string_encoding, StringEncoding::Utf16Le);
+        assert_eq!(context.max_call_depth, 512;
+        assert_eq!(context.max_memory, 2048;
+        assert_eq!(context.string_encoding, StringEncoding::Utf16Le;
     }
 
     #[test]
     fn test_execution_state_display() {
-        assert_eq!(ExecutionState::Ready.to_string(), "Ready");
-        assert_eq!(ExecutionState::Running.to_string(), "Running");
-        assert_eq!(ExecutionState::Completed.to_string(), "Completed");
-        assert_eq!(ExecutionState::Failed.to_string(), "Failed");
-        assert_eq!(ExecutionState::Suspended.to_string(), "Suspended");
+        assert_eq!(ExecutionState::Ready.to_string(), "Ready";
+        assert_eq!(ExecutionState::Running.to_string(), "Running";
+        assert_eq!(ExecutionState::Completed.to_string(), "Completed";
+        assert_eq!(ExecutionState::Failed.to_string(), "Failed";
+        assert_eq!(ExecutionState::Suspended.to_string(), "Suspended";
     }
 
     #[cfg(not(any(feature = "std", )))]
@@ -750,9 +750,9 @@ mod tests {
         }
 
         let index = engine.register_host_function(test_func).unwrap();
-        assert_eq!(index, 0);
+        assert_eq!(index, 0;
 
         let result = engine.call_host_function(0, &[]).unwrap();
-        assert_eq!(result, Value::U32(42));
+        assert_eq!(result, Value::U32(42;
     }
 }

@@ -53,25 +53,25 @@ mod tests {
                 Poll::Ready(Ok(vec![self.result_value.clone()])
             } else {
                 self.polls_remaining -= 1;
-                cx.waker().wake_by_ref();
+                cx.waker().wake_by_ref(;
                 Poll::Pending
             }
         }
     }
 
     fn create_test_bridge() -> TaskManagerAsyncBridge {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new());
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new());
-        let config = BridgeConfiguration::default();
+        let task_manager = Arc::new(Mutex::new(TaskManager::new(;
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new(;
+        let config = BridgeConfiguration::default(;
         TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
     }
 
     #[test]
     fn test_full_component_async_lifecycle() {
-        let mut bridge = create_test_bridge();
+        let mut bridge = create_test_bridge(;
         
         // Initialize component for async operations
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Spawn async task from Component Model
@@ -99,23 +99,23 @@ mod tests {
         }
 
         // Verify task completed
-        let stats = bridge.get_bridge_statistics();
+        let stats = bridge.get_bridge_statistics(;
         assert!(stats.total_async_tasks > 0);
     }
 
     #[test]
     fn test_async_canonical_abi_operations() {
-        let bridge = create_test_bridge();
-        let mut abi_support = AsyncCanonicalAbiSupport::new(bridge);
+        let bridge = create_test_bridge(;
+        let mut abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         abi_support.initialize_component_abi(component_id, CanonicalOptions::default()).unwrap();
 
         // Test async function call
         let func_type = FuncType::new(
             vec![ValType::I32, ValType::I32],
             vec![ValType::I32],
-        );
+        ;
         
         let operation_id = abi_support.async_call(
             component_id,
@@ -127,14 +127,14 @@ mod tests {
 
         // Check operation status
         let status = abi_support.check_operation_status(operation_id).unwrap();
-        assert_eq!(status.component_id, component_id);
+        assert_eq!(status.component_id, component_id;
         
         match status.operation_type {
             AsyncAbiOperationType::AsyncCall { function_name, args } => {
-                assert_eq!(function_name, "test_functionMissing message");
-                assert_eq!(args.len(), 2);
+                assert_eq!(function_name, "test_function";
+                assert_eq!(args.len(), 2;
             },
-            _ => panic!("Expected AsyncCall operationMissing message"),
+            _ => panic!("Expected AsyncCall operation"),
         }
 
         // Test async lifting
@@ -157,23 +157,23 @@ mod tests {
         let result = abi_support.poll_async_operations().unwrap();
         assert!(result.ready_operations >= 0);
 
-        let stats = abi_support.get_abi_statistics();
-        assert_eq!(stats.total_async_calls, 1);
-        assert_eq!(stats.async_lifts, 1);
-        assert_eq!(stats.async_lowers, 1);
+        let stats = abi_support.get_abi_statistics(;
+        assert_eq!(stats.total_async_calls, 1;
+        assert_eq!(stats.async_lifts, 1;
+        assert_eq!(stats.async_lowers, 1;
     }
 
     #[test]
     fn test_resource_async_operations() {
-        let bridge = create_test_bridge();
-        let abi_support = AsyncCanonicalAbiSupport::new(bridge);
-        let mut resource_ops = ResourceAsyncOperations::new(abi_support);
+        let bridge = create_test_bridge(;
+        let abi_support = AsyncCanonicalAbiSupport::new(bridge;
+        let mut resource_ops = ResourceAsyncOperations::new(abi_support;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         resource_ops.initialize_component_resources(component_id, None, None).unwrap();
 
         // Test async resource creation
-        let resource_type = ResourceType::new("TestResource".to_string());
+        let resource_type = ResourceType::new("TestResource".to_string();
         let create_op = resource_ops.async_create_resource(
             component_id,
             resource_type.clone(),
@@ -182,7 +182,7 @@ mod tests {
         ).unwrap();
 
         // Test async resource method call
-        let resource_handle = ResourceHandle::new(1);
+        let resource_handle = ResourceHandle::new(1;
         let method_op = resource_ops.async_call_resource_method(
             component_id,
             resource_handle,
@@ -201,22 +201,22 @@ mod tests {
         // Poll operations
         let result = resource_ops.poll_resource_operations().unwrap();
         
-        let stats = resource_ops.get_resource_statistics();
-        assert_eq!(stats.total_creates, 1);
-        assert_eq!(stats.total_method_calls, 1);
-        assert_eq!(stats.total_borrows, 1);
+        let stats = resource_ops.get_resource_statistics(;
+        assert_eq!(stats.total_creates, 1;
+        assert_eq!(stats.total_method_calls, 1;
+        assert_eq!(stats.total_borrows, 1;
     }
 
     #[test]
     fn test_future_and_stream_operations() {
-        let bridge = create_test_bridge();
-        let mut abi_support = AsyncCanonicalAbiSupport::new(bridge);
+        let bridge = create_test_bridge(;
+        let mut abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         abi_support.initialize_component_abi(component_id, CanonicalOptions::default()).unwrap();
 
         // Test future operations
-        let future_handle = crate::async_::async_types::FutureHandle::new(1);
+        let future_handle = crate::async_::async_types::FutureHandle::new(1;
         
         let future_read = abi_support.handle_future_operation(
             component_id,
@@ -237,7 +237,7 @@ mod tests {
         ).unwrap();
 
         // Test stream operations
-        let stream_handle = crate::async_::async_types::StreamHandle::new(2);
+        let stream_handle = crate::async_::async_types::StreamHandle::new(2;
         
         let stream_read = abi_support.handle_stream_operation(
             component_id,
@@ -260,20 +260,20 @@ mod tests {
         // Poll all operations
         let result = abi_support.poll_async_operations().unwrap();
         
-        let stats = abi_support.get_abi_statistics();
-        assert_eq!(stats.future_operations, 3);
-        assert_eq!(stats.stream_operations, 3);
+        let stats = abi_support.get_abi_statistics(;
+        assert_eq!(stats.future_operations, 3;
+        assert_eq!(stats.stream_operations, 3;
     }
 
     #[test]
     fn test_task_manager_integration() {
-        let mut bridge = create_test_bridge();
+        let mut bridge = create_test_bridge(;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Test task.wait implementation
-        let waitables = crate::async_::async_types::WaitableSet::new();
+        let waitables = crate::async_::async_types::WaitableSet::new(;
         
         // In real implementation, would set up actual waitables
         // let result = bridge.task_wait(waitables).unwrap();
@@ -284,17 +284,17 @@ mod tests {
         // Test task.poll implementation
         // let poll_result = bridge.task_poll(&waitables).unwrap();
 
-        let stats = bridge.get_bridge_statistics();
-        assert_eq!(stats.active_components, 1);
+        let stats = bridge.get_bridge_statistics(;
+        assert_eq!(stats.active_components, 1;
     }
 
     #[test]
     fn test_component_isolation() {
-        let mut bridge = create_test_bridge();
+        let mut bridge = create_test_bridge(;
         
         // Initialize multiple components
-        let component1 = ComponentInstanceId::new(1);
-        let component2 = ComponentInstanceId::new(2);
+        let component1 = ComponentInstanceId::new(1;
+        let component2 = ComponentInstanceId::new(2;
         
         bridge.initialize_component_async(component1, None).unwrap();
         bridge.initialize_component_async(component2, None).unwrap();
@@ -329,16 +329,16 @@ mod tests {
             bridge.poll_async_tasks().unwrap();
         }
 
-        let stats = bridge.get_bridge_statistics();
-        assert_eq!(stats.active_components, 2);
+        let stats = bridge.get_bridge_statistics(;
+        assert_eq!(stats.active_components, 2;
         assert!(stats.total_async_tasks >= 2);
     }
 
     #[test]
     fn test_component_suspension() {
-        let mut bridge = create_test_bridge();
+        let mut bridge = create_test_bridge(;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Spawn a task
@@ -360,19 +360,19 @@ mod tests {
         // Poll - should not make progress on suspended component
         let result = bridge.poll_async_tasks().unwrap();
         
-        let stats = bridge.get_bridge_statistics();
-        assert_eq!(stats.active_components, 1);
+        let stats = bridge.get_bridge_statistics(;
+        assert_eq!(stats.active_components, 1;
     }
 
     #[test]
     fn test_error_handling_and_recovery() {
-        let mut bridge = create_test_bridge();
+        let mut bridge = create_test_bridge(;
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Try to spawn task in uninitialized component
-        let bad_component = ComponentInstanceId::new(999);
+        let bad_component = ComponentInstanceId::new(999;
         let result = bridge.spawn_async_task(
             bad_component,
             Some(0),
@@ -383,13 +383,13 @@ mod tests {
             },
             ComponentAsyncTaskType::AsyncFunction,
             Priority::Normal,
-        );
+        ;
 
         assert!(result.is_err();
 
         // Test ABI error handling
-        let abi_support = AsyncCanonicalAbiSupport::new(bridge);
-        let mut resource_ops = ResourceAsyncOperations::new(abi_support);
+        let abi_support = AsyncCanonicalAbiSupport::new(bridge;
+        let mut resource_ops = ResourceAsyncOperations::new(abi_support;
 
         // Try to call method on non-existent resource
         let result = resource_ops.async_call_resource_method(
@@ -398,7 +398,7 @@ mod tests {
             "nonexistent".to_string(),
             vec![],
             None,
-        );
+        ;
 
         assert!(result.is_err();
     }

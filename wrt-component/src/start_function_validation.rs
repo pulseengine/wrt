@@ -208,16 +208,16 @@ impl StartFunctionValidator {
             })?;
 
         if validation.validation_state != ValidationState::Pending {
-            return Ok(validation.validation_state);
+            return Ok(validation.validation_state;
         }
 
         validation.validation_state = ValidationState::InProgress;
-        let start_time = self.get_current_time();
+        let start_time = self.get_current_time(;
 
-        let result = self.perform_validation(component_id, &validation.descriptor);
+        let result = self.perform_validation(component_id, &validation.descriptor;
 
-        let end_time = self.get_current_time();
-        let duration = end_time.saturating_sub(start_time);
+        let end_time = self.get_current_time(;
+        let duration = end_time.saturating_sub(start_time;
 
         match result {
             Ok(execution_result) => {
@@ -226,7 +226,7 @@ impl StartFunctionValidator {
                 } else {
                     ValidationState::Failed
                 };
-                validation.execution_result = Some(execution_result);
+                validation.execution_result = Some(execution_result;
             }
             Err(_) => {
                 validation.validation_state = ValidationState::Failed;
@@ -278,7 +278,7 @@ impl StartFunctionValidator {
     }
 
     pub fn get_validation_summary(&self) -> ValidationSummary {
-        let mut summary = ValidationSummary::default();
+        let mut summary = ValidationSummary::default(;
 
         for validation in self.validations.values() {
             summary.total += 1;
@@ -322,7 +322,7 @@ impl StartFunctionValidator {
         &mut self,
         component_id: ComponentInstanceId,
     ) -> StartFunctionResult<()> {
-        self.validations.remove(&component_id);
+        self.validations.remove(&component_id;
         Ok(()
     }
 
@@ -332,7 +332,7 @@ impl StartFunctionValidator {
                 kind: StartFunctionErrorKind::InvalidSignature,
                 message: "Start function name cannot be empty".to_string(),
                 component_id: None,
-            });
+            };
         }
 
         if descriptor.timeout_ms == 0 {
@@ -340,7 +340,7 @@ impl StartFunctionValidator {
                 kind: StartFunctionErrorKind::InvalidSignature,
                 message: "Timeout must be greater than zero".to_string(),
                 component_id: None,
-            });
+            };
         }
 
         // Validate parameter types
@@ -350,7 +350,7 @@ impl StartFunctionValidator {
                     kind: StartFunctionErrorKind::InvalidSignature,
                     message: "Parameter name cannot be empty".to_string(),
                     component_id: None,
-                });
+                };
             }
 
             if param.required && param.default_value.is_some() {
@@ -358,7 +358,7 @@ impl StartFunctionValidator {
                     kind: StartFunctionErrorKind::InvalidSignature,
                     message: "Required parameters cannot have default values".to_string(),
                     component_id: None,
-                });
+                };
             }
         }
 
@@ -370,13 +370,13 @@ impl StartFunctionValidator {
         component_id: ComponentInstanceId,
         descriptor: &StartFunctionDescriptor,
     ) -> StartFunctionResult<StartFunctionExecutionResult> {
-        let start_time = self.get_current_time();
+        let start_time = self.get_current_time(;
 
         // Check dependencies first
         self.validate_dependencies(component_id, descriptor)?;
 
         // Prepare execution context
-        let mut execution_context = ExecutionContext::new(component_id);
+        let mut execution_context = ExecutionContext::new(component_id;
 
         // Prepare arguments
         let arguments = self.prepare_arguments(descriptor)?;
@@ -389,8 +389,8 @@ impl StartFunctionValidator {
             descriptor.timeout_ms,
         )?;
 
-        let end_time = self.get_current_time();
-        let execution_time = end_time.saturating_sub(start_time);
+        let end_time = self.get_current_time(;
+        let execution_time = end_time.saturating_sub(start_time;
 
         // Analyze side effects
         let side_effects = self.analyze_side_effects(&execution_context)?;
@@ -423,7 +423,7 @@ impl StartFunctionValidator {
                     kind: StartFunctionErrorKind::DependencyNotMet,
                     message: format!("Dependency '{}' not available for component", dependency),
                     component_id: Some(component_id),
-                });
+                };
             }
         }
         Ok(()
@@ -448,7 +448,7 @@ impl StartFunctionValidator {
                     kind: StartFunctionErrorKind::ValidationFailed,
                     message: format!("Required parameter '{}' has no value", param.name),
                     component_id: None,
-                });
+                };
             } else {
                 self.get_default_value_for_type(&param.param_type)
             };
@@ -471,8 +471,8 @@ impl StartFunctionValidator {
         timeout_ms: u64,
     ) -> StartFunctionResult<Option<ComponentValue>> {
         // Create execution state
-        let mut execution_state = ExecutionState::new();
-        execution_state.set_timeout(Duration::from_millis(timeout_ms);
+        let mut execution_state = ExecutionState::new(;
+        execution_state.set_timeout(Duration::from_millis(timeout_ms;
 
         // Execute through the execution engine
         match self.execution_engine.call_function(
@@ -552,20 +552,20 @@ impl StartFunctionValidator {
                 // Check for critical side effects
                 let has_critical = side_effects
                     .iter()
-                    .any(|effect| effect.severity == SideEffectSeverity::Critical);
+                    .any(|effect| effect.severity == SideEffectSeverity::Critical;
                 Ok(!has_critical)
             }
             ValidationLevel::Strict => {
                 // Check for any error-level side effects
                 let has_errors =
-                    side_effects.iter().any(|effect| effect.severity >= SideEffectSeverity::Error);
+                    side_effects.iter().any(|effect| effect.severity >= SideEffectSeverity::Error;
                 Ok(!has_errors)
             }
             ValidationLevel::Complete => {
                 // Check for any warnings or above
                 let has_warnings = side_effects
                     .iter()
-                    .any(|effect| effect.severity >= SideEffectSeverity::Warning);
+                    .any(|effect| effect.severity >= SideEffectSeverity::Warning;
                 Ok(!has_warnings && result.is_some()
             }
         }
@@ -660,31 +660,31 @@ mod tests {
 
     #[test]
     fn test_start_function_validator_creation() {
-        let validator = StartFunctionValidator::new();
-        assert_eq!(validator.default_timeout_ms, DEFAULT_START_TIMEOUT_MS);
-        assert_eq!(validator.default_validation_level, ValidationLevel::Standard);
+        let validator = StartFunctionValidator::new(;
+        assert_eq!(validator.default_timeout_ms, DEFAULT_START_TIMEOUT_MS;
+        assert_eq!(validator.default_validation_level, ValidationLevel::Standard;
     }
 
     #[test]
     fn test_start_function_descriptor_creation() {
         let descriptor = create_start_function_descriptor("_start").unwrap();
-        assert_eq!(descriptor.name, "_start");
+        assert_eq!(descriptor.name, "_start";
         assert!(descriptor.required);
-        assert_eq!(descriptor.timeout_ms, DEFAULT_START_TIMEOUT_MS);
+        assert_eq!(descriptor.timeout_ms, DEFAULT_START_TIMEOUT_MS;
     }
 
     #[test]
     fn test_start_function_param_creation() {
-        let param = create_start_function_param("argc", ValType::I32);
-        assert_eq!(param.name, "argc");
-        assert_eq!(param.param_type, ValType::I32);
+        let param = create_start_function_param("argc", ValType::I32;
+        assert_eq!(param.name, "argc";
+        assert_eq!(param.param_type, ValType::I32;
         assert!(!param.required);
         assert!(param.default_value.is_none();
     }
 
     #[test]
     fn test_descriptor_validation() {
-        let validator = StartFunctionValidator::new();
+        let validator = StartFunctionValidator::new(;
 
         // Valid descriptor
         let valid_descriptor = create_start_function_descriptor("_start").unwrap();
@@ -710,9 +710,9 @@ mod tests {
 
     #[test]
     fn test_validation_summary() {
-        let summary = ValidationSummary::default();
-        assert_eq!(summary.total, 0);
-        assert_eq!(summary.passed, 0);
-        assert_eq!(summary.failed, 0);
+        let summary = ValidationSummary::default(;
+        assert_eq!(summary.total, 0;
+        assert_eq!(summary.passed, 0;
+        assert_eq!(summary.failed, 0;
     }
 }

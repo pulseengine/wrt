@@ -40,11 +40,11 @@ mod tests {
 
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if self.polls_remaining == 0 {
-                self.completed.store(true, Ordering::Release);
+                self.completed.store(true, Ordering::Release;
                 Poll::Ready(Ok(self.id))
             } else {
                 self.polls_remaining -= 1;
-                cx.waker().wake_by_ref();
+                cx.waker().wake_by_ref(;
                 Poll::Pending
             }
         }
@@ -53,15 +53,15 @@ mod tests {
     #[test]
     fn test_full_async_lifecycle() {
         // Create the full async stack
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
         let mut bridge = ComponentAsyncBridge::new(
             task_manager.clone(),
             thread_manager.clone(),
         ).unwrap();
 
         // Register a component
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         bridge.register_component(
             component_id,
             10,     // max concurrent tasks
@@ -70,12 +70,12 @@ mod tests {
         ).unwrap();
 
         // Spawn multiple async tasks
-        let mut task_ids = Vec::new();
-        let mut completion_flags = Vec::new();
+        let mut task_ids = Vec::new(;
+        let mut completion_flags = Vec::new(;
 
         for i in 0..3 {
-            let completed = Arc::new(AtomicBool::new(false));
-            completion_flags.push(completed.clone());
+            let completed = Arc::new(AtomicBool::new(false;
+            completion_flags.push(completed.clone();
 
             let future = FuelAwareIoFuture {
                 id: i,
@@ -105,34 +105,34 @@ mod tests {
             }
 
             // Small delay to simulate real async work
-            std::thread::sleep(Duration::from_millis(10));
+            std::thread::sleep(Duration::from_millis(10;
         }
 
         // Verify all tasks completed
         for flag in completion_flags {
-            assert!(flag.load(Ordering::Acquire));
+            assert!(flag.load(Ordering::Acquire);
         }
 
         // Check statistics
         let stats = bridge.get_component_stats(component_id).unwrap();
-        assert_eq!(stats.active_tasks, 0);
+        assert_eq!(stats.active_tasks, 0;
         assert!(stats.fuel_consumed > 0);
         assert!(stats.fuel_consumed < stats.fuel_budget);
 
         let polling_stats = bridge.get_polling_stats().unwrap();
-        assert_eq!(polling_stats.tasks_completed, 3);
-        assert!(polling_stats.total_polls >= 6); // At least 2 polls per task
+        assert_eq!(polling_stats.tasks_completed, 3;
+        assert!(polling_stats.total_polls >= 6)); // At least 2 polls per task
     }
 
     #[test]
     fn test_fuel_exhaustion_handling() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(100);
+        executor.set_global_fuel_limit(100;
         
         // Create executor with self-reference
-        let executor_arc = Arc::new(Mutex::new(executor));
+        let executor_arc = Arc::new(Mutex::new(executor;
         if let Ok(mut exec) = executor_arc.lock() {
-            exec.set_self_ref(Arc::downgrade(&executor_arc));
+            exec.set_self_ref(Arc::downgrade(&executor_arc;
         }
 
         // Spawn a task with more fuel than available
@@ -146,7 +146,7 @@ mod tests {
             )
         };
 
-        assert!(result.is_err());
+        assert!(result.is_err();
         
         // Spawn a task within limits
         let task_id = {
@@ -163,7 +163,7 @@ mod tests {
         {
             let mut exec = executor_arc.lock().unwrap();
             let polled = exec.poll_tasks().unwrap();
-            assert_eq!(polled, 1);
+            assert_eq!(polled, 1;
         }
 
         // Verify fuel was consumed
@@ -179,25 +179,25 @@ mod tests {
         let coalescer = WakeCoalescer::new().unwrap();
         
         // Add multiple wakes for the same task
-        let task_id = crate::threading::task_manager::TaskId::new(42);
+        let task_id = crate::threading::task_manager::TaskId::new(42;
         for _ in 0..5 {
             coalescer.add_wake(task_id).unwrap();
         }
         
         // Should only have one pending wake
-        assert_eq!(coalescer.pending_count(), 1);
+        assert_eq!(coalescer.pending_count(), 1;
         
         // Add wakes for different tasks
         coalescer.add_wake(crate::threading::task_manager::TaskId::new(43)).unwrap();
         coalescer.add_wake(crate::threading::task_manager::TaskId::new(44)).unwrap();
         
-        assert_eq!(coalescer.pending_count(), 3);
+        assert_eq!(coalescer.pending_count(), 3;
     }
 
     #[test]
     fn test_concurrent_task_execution() {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let task_manager = Arc::new(Mutex::new(TaskManager::new();
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
         let mut bridge = ComponentAsyncBridge::new(
             task_manager.clone(),
             thread_manager.clone(),
@@ -208,7 +208,7 @@ mod tests {
 
         // Register multiple components
         for i in 1..=3 {
-            let component_id = ComponentInstanceId::new(i);
+            let component_id = ComponentInstanceId::new(i;
             bridge.register_component(
                 component_id,
                 5,      // max concurrent tasks per component
@@ -218,18 +218,18 @@ mod tests {
         }
 
         // Spawn tasks across components
-        let mut all_tasks = Vec::new();
-        let mut completion_counters = Vec::new();
+        let mut all_tasks = Vec::new(;
+        let mut completion_counters = Vec::new(;
 
         for comp_id in 1..=3 {
-            let counter = Arc::new(AtomicU64::new(0));
-            completion_counters.push(counter.clone());
+            let counter = Arc::new(AtomicU64::new(0;
+            completion_counters.push(counter.clone();
 
             for task_num in 0..3 {
                 let counter_clone = counter.clone();
                 let future = async move {
                     // Simulate some async work
-                    counter_clone.fetch_add(1, Ordering::AcqRel);
+                    counter_clone.fetch_add(1, Ordering::AcqRel;
                     Ok(())
                 };
 
@@ -255,13 +255,13 @@ mod tests {
 
         // Verify all tasks completed
         for counter in completion_counters {
-            assert_eq!(counter.load(Ordering::Acquire), 3);
+            assert_eq!(counter.load(Ordering::Acquire), 3;
         }
 
         // Check component statistics
         for i in 1..=3 {
             let stats = bridge.get_component_stats(ComponentInstanceId::new(i)).unwrap();
-            assert_eq!(stats.active_tasks, 0);
+            assert_eq!(stats.active_tasks, 0;
             assert!(stats.fuel_consumed > 0);
         }
     }
@@ -269,13 +269,13 @@ mod tests {
     #[test]
     fn test_priority_based_scheduling() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        let scheduler = FuelAsyncScheduler::new(SchedulingPolicy::Priority);
+        let scheduler = FuelAsyncScheduler::new(SchedulingPolicy::Priority;
         
-        executor.set_global_fuel_limit(10000);
+        executor.set_global_fuel_limit(10000;
 
         // Spawn tasks with different priorities
-        let high_priority_completed = Arc::new(AtomicBool::new(false));
-        let low_priority_completed = Arc::new(AtomicBool::new(false));
+        let high_priority_completed = Arc::new(AtomicBool::new(false;
+        let low_priority_completed = Arc::new(AtomicBool::new(false;
 
         let high_clone = high_priority_completed.clone();
         let low_task = executor.spawn_task(
@@ -283,7 +283,7 @@ mod tests {
             1000,
             Priority::Low,
             async move {
-                low_priority_completed.store(true, Ordering::Release);
+                low_priority_completed.store(true, Ordering::Release;
                 Ok(())
             },
         ).unwrap();
@@ -293,7 +293,7 @@ mod tests {
             1000,
             Priority::High,
             async move {
-                high_clone.store(true, Ordering::Release);
+                high_clone.store(true, Ordering::Release;
                 Ok(())
             },
         ).unwrap();
@@ -305,17 +305,17 @@ mod tests {
         // Both should eventually complete
         executor.poll_tasks().unwrap();
         
-        assert!(high_priority_completed.load(Ordering::Acquire));
-        assert!(low_priority_completed.load(Ordering::Acquire));
+        assert!(high_priority_completed.load(Ordering::Acquire);
+        assert!(low_priority_completed.load(Ordering::Acquire);
     }
 
     #[test]
     fn test_yield_threshold() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(100000);
+        executor.set_global_fuel_limit(100000;
         
         // Spawn many lightweight tasks
-        let mut task_ids = Vec::new();
+        let mut task_ids = Vec::new(;
         for i in 0..20 {
             let task_id = executor.spawn_task(
                 ComponentInstanceId::new(1),
@@ -337,6 +337,6 @@ mod tests {
             total_polled += additional;
         }
 
-        assert_eq!(total_polled, 20);
+        assert_eq!(total_polled, 20;
     }
 }

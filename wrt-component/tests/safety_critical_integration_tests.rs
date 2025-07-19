@@ -62,20 +62,20 @@ mod integration_tests {
         assert!(components.try_push(component).is_ok();
 
         // Verify component management
-        assert_eq!(components.len(), 1);
+        assert_eq!(components.len(), 1;
         let comp = &components[0];
-        assert_eq!(comp.id, 1);
-        assert_eq!(comp.name, "test_componentMissing message");
+        assert_eq!(comp.id, 1;
+        assert_eq!(comp.name, "test_component";
     }
 
     /// Test canonical ABI with resource limits
     #[test]
     fn test_canonical_abi_resource_integration() {
-        let abi = CanonicalABI::new();
-        let mut resource_table = ResourceTable::new();
+        let abi = CanonicalABI::new(;
+        let mut resource_table = ResourceTable::new(;
 
         // Allocate resources up to limit
-        let mut handles = Vec::new();
+        let mut handles = Vec::new(;
         for i in 0..100 {
             match resource_table.allocate() {
                 Ok(handle) => handles.push(handle),
@@ -87,7 +87,7 @@ mod integration_tests {
         assert!(!handles.is_empty();
 
         // Verify canonical operations work with resources
-        let options = CanonicalOptions::default();
+        let options = CanonicalOptions::default(;
 
         // Test resource handle encoding/decoding would happen here
         // In real implementation, would use canonical ABI methods
@@ -116,7 +116,7 @@ mod integration_tests {
         };
 
         // Create call manager
-        let call_manager = CrossComponentCallManager::new();
+        let call_manager = CrossComponentCallManager::new(;
 
         // Register components
         assert!(call_manager.register_component(component1).is_ok();
@@ -126,7 +126,7 @@ mod integration_tests {
         let mut successful_calls = 0;
         for i in 0..100 {
             // Test with reasonable number
-            let result = call_manager.initiate_call(1, 2, "test_func", &[]);
+            let result = call_manager.initiate_call(1, 2, "test_func", &[];
             match result {
                 Ok(_) => successful_calls += 1,
                 Err(WrtError::CapacityExceeded) => break,
@@ -140,12 +140,12 @@ mod integration_tests {
     /// Test resource sharing between components
     #[test]
     fn test_resource_sharing_integration() {
-        let mut lifecycle_manager = ResourceLifecycleManager::new();
+        let mut lifecycle_manager = ResourceLifecycleManager::new(;
 
         // Create resource type
         let resource_type = ResourceType {
             type_idx: 1,
-            name: bounded_component_name_from_str("SharedResourceMissing message").unwrap(),
+            name: bounded_component_name_from_str("SharedResource").unwrap(),
             destructor: Some(100),
         };
 
@@ -160,22 +160,22 @@ mod integration_tests {
 
         let handle = lifecycle_manager
             .create_resource(resource_type.clone(), metadata1)
-            .expect("Failed to create resourceMissing message");
+            .expect("Failed to create resource");
 
         // Component 2 borrows resource
         assert!(lifecycle_manager.borrow_resource(handle).is_ok();
 
         // Verify resource state
         let resource = lifecycle_manager.get_resource(handle).unwrap();
-        assert_eq!(resource.state, ResourceState::Borrowed);
-        assert_eq!(resource.borrow_count, 1);
+        assert_eq!(resource.state, ResourceState::Borrowed;
+        assert_eq!(resource.borrow_count, 1;
 
         // Multiple borrows should be allowed
         assert!(lifecycle_manager.borrow_resource(handle).is_ok();
         assert_eq!(
             lifecycle_manager.get_resource(handle).unwrap().borrow_count,
             2
-        );
+        ;
 
         // Release borrows
         assert!(lifecycle_manager.release_borrow(handle).is_ok();
@@ -184,7 +184,7 @@ mod integration_tests {
         // Transfer ownership
         assert!(lifecycle_manager.transfer_ownership(handle, 2).is_ok();
         let resource = lifecycle_manager.get_resource(handle).unwrap();
-        assert_eq!(resource.metadata.owner, 2);
+        assert_eq!(resource.metadata.owner, 2;
     }
 
     /// Test memory allocation across components
@@ -195,7 +195,7 @@ mod integration_tests {
             resources: BoundedResourceVec<u32>,
         }
 
-        let mut components = Vec::new();
+        let mut components = Vec::new(;
 
         // Create multiple components with memory allocations
         for i in 0..5 {
@@ -224,15 +224,15 @@ mod integration_tests {
 
         // Verify all components have their data
         for (idx, comp) in components.iter().enumerate() {
-            assert_eq!(comp.types.len(), 20);
-            assert_eq!(comp.resources.len(), 30);
+            assert_eq!(comp.types.len(), 20;
+            assert_eq!(comp.resources.len(), 30;
         }
     }
 
     /// Test component linking with bounded collections
     #[test]
     fn test_component_linking_integration() {
-        let mut linker = ComponentLinker::new();
+        let mut linker = ComponentLinker::new(;
 
         // Create provider component
         let provider = MockComponent {
@@ -294,7 +294,7 @@ mod integration_tests {
 
         // Test with excessive depth
         match create_component_stack(MAX_COMPONENT_INSTANCES + 1) {
-            Ok(_) => panic!("Should have failed with capacity errorMissing message"),
+            Ok(_) => panic!("Should have failed with capacity error"),
             Err(WrtError::CapacityExceeded) => {
                 // Expected
             },
@@ -307,11 +307,11 @@ mod integration_tests {
     fn test_canonical_abi_metrics() {
         // CanonicalABI metrics are tested through usage
         // In a real implementation, we would track lift/lower operations
-        let abi = CanonicalABI::new();
+        let abi = CanonicalABI::new(;
 
         // Verify ABI was created successfully
         // Actual metrics tracking would happen during component operations
-        assert!(true); // Placeholder for actual metrics tests
+        assert!(true)); // Placeholder for actual metrics tests
     }
 
     /// Test resource strategy patterns
@@ -353,7 +353,7 @@ mod integration_tests {
         };
 
         // Test allocation up to limits
-        let mut handles = Vec::new();
+        let mut handles = Vec::new(;
         for size in (0..MAX_RESOURCE_HANDLES).step_by(100) {
             match strategy.allocate(size) {
                 Ok(handle) => handles.push(handle),
@@ -401,8 +401,8 @@ struct ComponentLinker {
 impl ComponentLinker {
     fn new() -> Self {
         Self {
-            components: new_component_vec().expect("Failed to create component vecMissing message"),
-            links: new_type_map().expect("Failed to create links mapMissing message"),
+            components: new_component_vec().expect("Failed to create component vec"),
+            links: new_type_map().expect("Failed to create links map"),
         }
     }
 
@@ -440,10 +440,10 @@ impl CrossComponentCallManager {
     fn new() -> Self {
         Self {
             components: Arc::new(Mutex::new(
-                new_component_vec().expect("Failed to create component vecMissing message"),
+                new_component_vec().expect("Failed to create component vec"),
             )),
             call_stack: Arc::new(Mutex::new(
-                new_call_stack().expect("Failed to create call stackMissing message"),
+                new_call_stack().expect("Failed to create call stack"),
             )),
         }
     }
@@ -473,7 +473,7 @@ impl CrossComponentCallManager {
         // Simulate call execution
 
         // Pop frame on completion
-        stack.pop();
+        stack.pop(;
 
         Ok(()
     }
@@ -482,7 +482,7 @@ impl CrossComponentCallManager {
 // Note: In a real implementation, CanonicalABI would have methods for
 // resource handle encoding/decoding and metrics tracking
 
-#[cfg(all(test, feature = "safety-criticalMissing messageMissing messageMissing message"))]
+#[cfg(all(test, feature = "safety-critical"))]
 mod safety_critical_integration {
     use super::*;
 
@@ -493,15 +493,15 @@ mod safety_critical_integration {
 
         // 1. Memory budget enforcement
         let components = new_component_vec::<MockComponent>().unwrap();
-        assert_eq!(components.capacity(), MAX_COMPONENT_INSTANCES);
+        assert_eq!(components.capacity(), MAX_COMPONENT_INSTANCES;
 
         // 2. Resource limits
         let resources = new_resource_vec::<u32>().unwrap();
-        assert_eq!(resources.capacity(), MAX_RESOURCE_HANDLES);
+        assert_eq!(resources.capacity(), MAX_RESOURCE_HANDLES;
 
         // 3. Call stack limits
         let call_stack = new_call_stack::<u32>().unwrap();
-        assert_eq!(call_stack.capacity(), MAX_CALL_STACK_DEPTH);
+        assert_eq!(call_stack.capacity(), MAX_CALL_STACK_DEPTH;
 
         // 4. No panic guarantees - all operations return Result
         let mut test_components = new_component_vec::<MockComponent>().unwrap();
@@ -510,7 +510,7 @@ mod safety_critical_integration {
             name: "test".to_string(),
             resource_count: 0,
             state: ComponentState::Initialized,
-        });
+        };
 
         // Even at capacity, operations don't panic
         match overflow_test {

@@ -246,7 +246,7 @@ pub use crate::{
 
 // Global ComponentValue type alias with proper memory provider
 use crate::bounded_component_infra::ComponentProvider;
-use wrt_foundation::component_value::ComponentValue;
+// ComponentValue already imported above
 
 /// Unified ComponentValue type with proper memory provider for the entire wrt-component crate
 pub type WrtComponentValue = ComponentValue<ComponentProvider>;

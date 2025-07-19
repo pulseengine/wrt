@@ -24,76 +24,76 @@ mod no_alloc_tests {
     #[test]
     fn test_section_id_conversion() {
         // Test conversion from u8 to ComponentSectionId
-        assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom);
+        assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom;
         assert_eq!(
             ComponentSectionId::from(1),
             ComponentSectionId::ComponentType
-        );
-        assert_eq!(ComponentSectionId::from(2), ComponentSectionId::CoreModule);
-        assert_eq!(ComponentSectionId::from(3), ComponentSectionId::Instance);
-        assert_eq!(ComponentSectionId::from(4), ComponentSectionId::Component);
-        assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown);
+        ;
+        assert_eq!(ComponentSectionId::from(2), ComponentSectionId::CoreModule;
+        assert_eq!(ComponentSectionId::from(3), ComponentSectionId::Instance;
+        assert_eq!(ComponentSectionId::from(4), ComponentSectionId::Component;
+        assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown;
     }
 
     #[test]
     fn test_validation_levels() {
         // Test basic validation of a minimal component
         let basic_result =
-            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Basic);
+            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Basic;
         assert!(basic_result.is_ok();
 
         // Test standard validation of a minimal component
         let standard_result =
-            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard);
+            validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard;
         assert!(standard_result.is_ok();
 
         // Test full validation of a minimal component
-        let full_result = validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Full);
+        let full_result = validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Full;
         assert!(full_result.is_ok();
     }
 
     #[test]
     fn test_minimal_component() {
         // Create a minimal component with standard verification level
-        let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard);
+        let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard;
         assert!(component.is_ok();
 
         // Check properties of the minimal component
         let component = component.unwrap();
-        assert_eq!(component.size(), 8);
-        assert_eq!(component.export_count(), 0);
-        assert_eq!(component.import_count(), 0);
-        assert_eq!(component.module_count(), 0);
+        assert_eq!(component.size(), 8;
+        assert_eq!(component.export_count(), 0;
+        assert_eq!(component.import_count(), 0;
+        assert_eq!(component.module_count(), 0;
         assert!(!component.has_start();
     }
 
     #[test]
     fn test_component_validation() {
         // Test validation of a minimal component
-        let result = validate_component_no_alloc(&MINIMAL_COMPONENT);
+        let result = validate_component_no_alloc(&MINIMAL_COMPONENT;
         assert!(result.is_ok();
 
         // Invalid component with incorrect magic number
         let invalid_component = [0x01, 0x61, 0x73, 0x6D, 0x0A, 0x00, 0x01, 0x00];
-        let result = validate_component_no_alloc(&invalid_component);
+        let result = validate_component_no_alloc(&invalid_component;
         assert!(result.is_err();
 
         // Component that's too small
         let too_small = [0x00, 0x61];
-        let result = validate_component_no_alloc(&too_small);
+        let result = validate_component_no_alloc(&too_small;
         assert!(result.is_err();
     }
 
     #[test]
     fn test_component_header_defaults() {
         // Create a default ComponentHeader
-        let header = ComponentHeader::default();
+        let header = ComponentHeader::default(;
 
         // Check properties
-        assert_eq!(header.size, 0);
-        assert_eq!(header.module_count, 0);
-        assert_eq!(header.export_count, 0);
-        assert_eq!(header.import_count, 0);
+        assert_eq!(header.size, 0;
+        assert_eq!(header.module_count, 0;
+        assert_eq!(header.export_count, 0;
+        assert_eq!(header.import_count, 0;
         assert!(!header.has_start);
 
         // All sections should be None
@@ -112,8 +112,8 @@ mod no_alloc_tests {
         };
 
         // Check properties
-        assert_eq!(section_info.id, ComponentSectionId::Export);
-        assert_eq!(section_info.size, 100);
-        assert_eq!(section_info.offset, 200);
+        assert_eq!(section_info.id, ComponentSectionId::Export;
+        assert_eq!(section_info.size, 100;
+        assert_eq!(section_info.offset, 200;
     }
 }

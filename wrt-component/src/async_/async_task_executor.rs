@@ -90,9 +90,9 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
         self.execution_counter += 1;
 
         // Check fuel budget strictly
-        let fuel_consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+        let fuel_consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire;
         if fuel_consumed >= self.max_execution_time {
-            return Err(Error::runtime_execution_error("Error occurred"));
+            return Err(Error::runtime_execution_error("Error occurred";
         }
 
         // Execute with strict determinism
@@ -102,7 +102,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 ExecutionStepResult::Completed(result) => {
                     // Verify deterministic completion
                     if self.execution_counter != context.get_deterministic_timestamp() {
-                        return Err(Error::runtime_execution_error("Invalid ASIL mode"));
+                        return Err(Error::runtime_execution_error("Invalid ASIL mode";
                     }
                     Ok(ExecutionStepResult::Completed(result))
                 },
@@ -122,7 +122,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
             }
         } else {
             // Simulation mode for ASIL-D
-            Ok(ExecutionStepResult::Completed(vec![0u8; 8]))
+            Ok(ExecutionStepResult::Completed(vec![0u8); 8]))
         }
     }
 
@@ -139,7 +139,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 max_fuel_per_slice,
             } => {
                 if !deterministic_execution {
-                    return Err(Error::runtime_execution_error("Error occurred"));
+                    return Err(Error::runtime_execution_error("Error occurred";
                 }
 
                 if !bounded_execution_time {
@@ -147,13 +147,13 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
                          "Bounded execution time required for ASIL-D"),
-                    );
+                    ;
                 }
 
                 if context.stack_depth > self.max_stack_depth {
                     return Err(Error::runtime_execution_error(
                             &format!("Stack depth {} exceeds max {}", context.stack_depth, self.max_stack_depth))
-                    );
+                    ;
                 }
 
                 Ok(())
@@ -214,14 +214,14 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
             context.validate_memory_isolation()?;
 
             // Execute with temporal bounds
-            let start_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+            let start_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire;
             
             match context.execute_isolated_step()? {
                 ExecutionStepResult::Completed(result) => {
                     // Verify temporal isolation
-                    let end_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+                    let end_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire;
                     if end_fuel - start_fuel > self.max_slice_duration {
-                        return Err(Error::runtime_execution_error("Error occurred"));
+                        return Err(Error::runtime_execution_error("Error occurred";
                     }
                     Ok(ExecutionStepResult::Completed(result))
                 },
@@ -236,7 +236,7 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
             }
         } else {
             // Simulation mode
-            Ok(ExecutionStepResult::Completed(vec![1u8; 8]))
+            Ok(ExecutionStepResult::Completed(vec![1u8); 8]))
         }
     }
 
@@ -256,11 +256,11 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
                         "Task execution failed",
-                    ));
+                    ;
                 }
 
                 if temporal_isolation && !self.temporal_isolation {
-                    return Err(Error::runtime_execution_error("Error occurred"));
+                    return Err(Error::runtime_execution_error("Error occurred";
                 }
 
                 if resource_isolation && !self.resource_isolation {
@@ -268,7 +268,7 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
                          "Resource isolation required for ASIL-C"),
-                    );
+                    ;
                 }
 
                 Ok(())
@@ -324,10 +324,10 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
         // Execute with resource bounds
         if let Some(component_instance) = &context.component_instance {
             // Check resource quota
-            let consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+            let consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire;
             if consumed >= self.resource_quota {
                 // Must yield to respect quota
-                return Ok(ExecutionStepResult::Yielded);
+                return Ok(ExecutionStepResult::Yielded;
             }
 
             // Execute with monitoring
@@ -336,7 +336,7 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
             }
         } else {
             // Simulation mode
-            Ok(ExecutionStepResult::Completed(vec![2u8; 8]))
+            Ok(ExecutionStepResult::Completed(vec![2u8); 8]))
         }
     }
 
@@ -351,7 +351,7 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
                 max_execution_slice_ms,
             } => {
                 if strict_resource_limits && !self.strict_resource_limits {
-                    return Err(Error::runtime_execution_error("Resource limits required for strict mode"));
+                    return Err(Error::runtime_execution_error("Resource limits required for strict mode";
                 }
 
                 if max_execution_slice_ms < self.max_execution_slice_ms {
@@ -359,7 +359,7 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
                         format!("Execution slice {} exceeds max {}", max_execution_slice_ms, self.max_execution_slice_ms)
-                    ));
+                    ;
                 }
 
                 Ok(())
@@ -433,7 +433,7 @@ impl AsyncTaskExecutor for ASILATaskExecutor {
             }
         } else {
             // Simulation mode
-            Ok(ExecutionStepResult::Completed(vec![3u8; 8]))
+            Ok(ExecutionStepResult::Completed(vec![3u8); 8]))
         }
     }
 
@@ -445,7 +445,7 @@ impl AsyncTaskExecutor for ASILATaskExecutor {
         match asil_mode {
             ASILExecutionMode::A { error_detection } => {
                 if error_detection && !self.error_detection {
-                    return Err(Error::runtime_execution_error("Error occurred"));
+                    return Err(Error::runtime_execution_error("Error occurred";
                 }
                 Ok(())
             },
@@ -487,28 +487,28 @@ impl ASILExecutorFactory {
     ) -> Box<dyn AsyncTaskExecutor> {
         match asil_mode {
             ASILExecutionMode::D { .. } => {
-                let mut executor = ASILDTaskExecutor::new();
+                let mut executor = ASILDTaskExecutor::new(;
                 if let Some(max_stack) = config.max_stack_depth {
                     executor.max_stack_depth = max_stack;
                 }
                 Box::new(executor)
             },
             ASILExecutionMode::C { .. } => {
-                let mut executor = ASILCTaskExecutor::new();
+                let mut executor = ASILCTaskExecutor::new(;
                 if let Some(max_slice) = config.max_slice_duration {
                     executor.max_slice_duration = max_slice;
                 }
                 Box::new(executor)
             },
             ASILExecutionMode::B { .. } => {
-                let mut executor = ASILBTaskExecutor::new();
+                let mut executor = ASILBTaskExecutor::new(;
                 if let Some(quota) = config.resource_quota {
                     executor.resource_quota = quota;
                 }
                 Box::new(executor)
             },
             ASILExecutionMode::A { .. } => {
-                let mut executor = ASILATaskExecutor::new();
+                let mut executor = ASILATaskExecutor::new(;
                 if let Some(max_errors) = config.max_error_count {
                     executor.max_error_count = max_errors;
                 }
@@ -548,14 +548,14 @@ mod tests {
 
     #[test]
     fn test_asil_d_executor() {
-        let mut executor = ASILDTaskExecutor::new();
+        let mut executor = ASILDTaskExecutor::new(;
         assert_eq!(executor.max_fuel_per_step(ASILExecutionMode::D {
             deterministic_execution: true,
             bounded_execution_time: true,
             formal_verification: true,
             max_fuel_per_slice: 1000,
-        }), 100);
-        assert!(!executor.can_preempt(&ExecutionContext::new()));
+        }), 100;
+        assert!(!executor.can_preempt(&ExecutionContext::new());
     }
 
     #[test]
@@ -567,8 +567,8 @@ mod tests {
             max_fuel_per_slice: 1000,
         };
         
-        let executor = ASILExecutorFactory::create_executor(asil_d);
-        assert_eq!(executor.get_priority(asil_d), 0);
+        let executor = ASILExecutorFactory::create_executor(asil_d;
+        assert_eq!(executor.get_priority(asil_d), 0;
     }
 
     #[test]
@@ -585,7 +585,7 @@ mod tests {
             max_fuel_per_slice: 1000,
         };
         
-        let executor = ASILExecutorFactory::create_executor_with_config(asil_d, config);
-        assert_eq!(executor.get_priority(asil_d), 0);
+        let executor = ASILExecutorFactory::create_executor_with_config(asil_d, config;
+        assert_eq!(executor.get_priority(asil_d), 0;
     }
 }

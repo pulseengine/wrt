@@ -269,19 +269,19 @@ impl ComponentLoader {
         // Validate size
         if binary_data.len() > self.max_component_size {
             return Err(wrt_error::Error::validation_invalid_input("Component binary data exceeds maximum allowed size")
-            );
+            ;
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
             return Err(wrt_error::Error::validation_invalid_input("Component binary data too small, minimum 8 bytes required")
-            );
+            ;
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
             return Err(wrt_error::Error::validation_invalid_input("Invalid WebAssembly magic bytes, expected '\\x00asm'")
-            );
+            ;
         }
 
         // Parse sections (simplified implementation)
@@ -308,7 +308,7 @@ impl ComponentLoader {
 
         // Add a default import
         #[cfg(feature = "std")]
-        let import_name = "default".to_string());
+        let import_name = "default".to_string();
         #[cfg(not(any(feature = "std", )))]
         let import_name = BoundedString::from_str("default")
             .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string")
@@ -321,7 +321,7 @@ impl ComponentLoader {
 
         // Add a default export
         #[cfg(feature = "std")]
-        let export_name = "main".to_string());
+        let export_name = "main".to_string();
         #[cfg(not(any(feature = "std", )))]
         let export_name = BoundedString::from_str("main")
             .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string")
@@ -341,7 +341,7 @@ impl ComponentLoader {
             // Basic validation - check we have at least some content
             if parsed.types.len() == 0 {
                 return Err(wrt_error::Error::runtime_execution_error("Component validation failed: no types found"
-                );
+                ;
             }
         } else if self.validation_level == ValidationLevel::Full {
             // Full validation - check type consistency
@@ -372,7 +372,7 @@ impl ComponentLoader {
 
     /// Convert parsed component to runtime component
     pub fn to_runtime_component(&self, parsed: &ParsedComponent) -> WrtResult<Component> {
-        let mut component = Component::new(WrtComponentType::default();
+        let mut component = Component::new(WrtComponentType::default(;
 
         // Convert types
         for component_type in &parsed.types {
@@ -445,7 +445,7 @@ impl ComponentLoader {
             .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create module adapter name as bounded string")
             ))?;
 
-        let adapter = CoreModuleAdapter::new(name);
+        let adapter = CoreModuleAdapter::new(name;
 
         // In a real implementation, would parse the module binary
         // and create appropriate function/memory/table/global adapters
@@ -616,76 +616,76 @@ mod tests {
 
     #[test]
     fn test_component_loader_creation() {
-        let loader = ComponentLoader::new();
-        assert_eq!(loader.validation_level, ValidationLevel::Full);
-        assert_eq!(loader.max_component_size, 16 * 1024 * 1024);
+        let loader = ComponentLoader::new(;
+        assert_eq!(loader.validation_level, ValidationLevel::Full;
+        assert_eq!(loader.max_component_size, 16 * 1024 * 1024;
     }
 
     #[test]
     fn test_component_loader_configuration() {
         let loader = ComponentLoader::new()
             .with_max_size(1024)
-            .with_validation_level(ValidationLevel::Basic);
+            .with_validation_level(ValidationLevel::Basic;
 
-        assert_eq!(loader.max_component_size, 1024);
-        assert_eq!(loader.validation_level, ValidationLevel::Basic);
+        assert_eq!(loader.max_component_size, 1024;
+        assert_eq!(loader.validation_level, ValidationLevel::Basic;
     }
 
     #[test]
     fn test_parsed_component_creation() {
         let mut component = ParsedComponent::new().expect("Failed to create ParsedComponent");
-        assert_eq!(component.types.len(), 0);
-        assert_eq!(component.imports.len(), 0);
-        assert_eq!(component.exports.len(), 0);
+        assert_eq!(component.types.len(), 0;
+        assert_eq!(component.imports.len(), 0;
+        assert_eq!(component.exports.len(), 0;
 
         // Test adding components
         assert!(component.add_type(ComponentType::Unit).is_ok();
-        assert_eq!(component.types.len(), 1);
+        assert_eq!(component.types.len(), 1;
     }
 
     #[test]
     fn test_validation_level_display() {
-        assert_eq!(ValidationLevel::None.to_string(), "none");
-        assert_eq!(ValidationLevel::Basic.to_string(), "basic");
-        assert_eq!(ValidationLevel::Full.to_string(), "full");
+        assert_eq!(ValidationLevel::None.to_string(), "none";
+        assert_eq!(ValidationLevel::Basic.to_string(), "basic";
+        assert_eq!(ValidationLevel::Full.to_string(), "full";
     }
 
     #[test]
     fn test_string_encoding_display() {
-        assert_eq!(StringEncoding::Utf8.to_string(), "utf8");
-        assert_eq!(StringEncoding::Utf16Le.to_string(), "utf16le");
-        assert_eq!(StringEncoding::Latin1.to_string(), "latin1");
+        assert_eq!(StringEncoding::Utf8.to_string(), "utf8";
+        assert_eq!(StringEncoding::Utf16Le.to_string(), "utf16le";
+        assert_eq!(StringEncoding::Latin1.to_string(), "latin1";
     }
 
     #[test]
     fn test_canonical_options_default() {
-        let options = CanonicalOptions::default();
-        assert_eq!(options.string_encoding, Some(StringEncoding::Utf8);
-        assert_eq!(options.memory, None);
-        assert_eq!(options.realloc, None);
-        assert_eq!(options.post_return, None);
+        let options = CanonicalOptions::default(;
+        assert_eq!(options.string_encoding, Some(StringEncoding::Utf8;
+        assert_eq!(options.memory, None;
+        assert_eq!(options.realloc, None;
+        assert_eq!(options.post_return, None;
     }
 
     #[test]
     fn test_parse_invalid_component() {
-        let loader = ComponentLoader::new();
+        let loader = ComponentLoader::new(;
 
         // Test empty binary
-        let result = loader.parse_component(&[]);
+        let result = loader.parse_component(&[];
         assert!(result.is_err();
 
         // Test invalid magic
-        let result = loader.parse_component(b"invalid_magic_bytes");
+        let result = loader.parse_component(b"invalid_magic_bytes";
         assert!(result.is_err();
     }
 
     #[test]
     fn test_parse_minimal_component() {
-        let loader = ComponentLoader::new();
+        let loader = ComponentLoader::new(;
 
         // Create minimal valid component binary (simplified)
         let binary = b"\x00asm\x0d\x00\x01\x00"; // Magic + version
-        let result = loader.parse_component(binary);
+        let result = loader.parse_component(binary;
         assert!(result.is_ok();
 
         let parsed = result.unwrap();

@@ -61,8 +61,8 @@ mod tests {
 
     impl ASILComplianceHarness {
         fn new_for_asil_level(asil_level: ASILLevel) -> Self {
-            let task_manager = Arc::new(Mutex::new(TaskManager::new());
-            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new());
+            let task_manager = Arc::new(Mutex::new(TaskManager::new(;
+            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new(;
             
             let config = BridgeConfiguration {
                 enable_preemption: true,
@@ -83,14 +83,14 @@ mod tests {
             
             let bridge = Arc::new(Mutex::new(
                 TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap()
-            );
+            ;
 
             let abi_support = AsyncCanonicalAbiSupport::new(bridge.clone();
             let resource_ops = ResourceAsyncOperations::new(abi_support.clone();
             let combinators = AsyncCombinators::new(bridge.clone();
-            let channels = OptimizedAsyncChannels::new(bridge.clone(), None);
-            let timers = TimerIntegration::new(bridge.clone(), None);
-            let sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None);
+            let channels = OptimizedAsyncChannels::new(bridge.clone(), None;
+            let timers = TimerIntegration::new(bridge.clone(), None;
+            let sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None;
 
             Self {
                 bridge,
@@ -105,8 +105,8 @@ mod tests {
         }
 
         fn report_safety_violation(&self, violation: &str) {
-            self.safety_violations.fetch_add(1, Ordering::AcqRel);
-            eprintln!("SAFETY VIOLATION: {}", violation);
+            self.safety_violations.fetch_add(1, Ordering::AcqRel;
+            eprintln!("SAFETY VIOLATION: {}", violation;
         }
 
         fn verify_no_safety_violations(&self) -> bool {
@@ -137,15 +137,15 @@ mod tests {
         type Output = Result<Vec<ComponentValue>, Error>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            let current_executions = self.execution_count.fetch_add(1, Ordering::AcqRel);
-            let fuel_consumed = self.fuel_consumed.fetch_add(50, Ordering::AcqRel);
+            let current_executions = self.execution_count.fetch_add(1, Ordering::AcqRel;
+            let fuel_consumed = self.fuel_consumed.fetch_add(50, Ordering::AcqRel;
             
             // ASIL Compliance Check: Fuel budget adherence
             if fuel_consumed > self.fuel_budget {
                 self.safety_harness.report_safety_violation(
                     &format!("Task {} exceeded fuel budget: {} > {}", 
                         self.id, fuel_consumed, self.fuel_budget)
-                );
+                ;
             }
             
             // ASIL Compliance Check: Bounded execution
@@ -157,7 +157,7 @@ mod tests {
                 ])
             } else {
                 // ASIL Compliance Check: Deterministic wakeup
-                cx.waker().wake_by_ref();
+                cx.waker().wake_by_ref(;
                 Poll::Pending
             }
         }
@@ -165,12 +165,12 @@ mod tests {
 
     #[test]
     fn test_asil_d_deterministic_execution() {
-        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::D);
+        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::D;
         
         // ASIL-D: Highest safety integrity level
         // Requirements: Deterministic execution, no dynamic allocation, strict timing
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         
         // Initialize with strict limits for ASIL-D
         {
@@ -186,7 +186,7 @@ mod tests {
         const FUEL_BUDGET: u64 = 1000; // Strict budget
         const MAX_EXECUTIONS: u32 = 10; // Bounded execution
         
-        let mut task_ids = Vec::new();
+        let mut task_ids = Vec::new(;
         
         for i in 0..NUM_TASKS {
             let task_id = {
@@ -233,7 +233,7 @@ mod tests {
                 if completed_tasks == 0 {
                     harness.report_safety_violation(
                         &format!("No progress after {} rounds", round)
-                    );
+                    ;
                 }
             }
         }
@@ -242,7 +242,7 @@ mod tests {
         if completed_tasks < NUM_TASKS {
             harness.report_safety_violation(
                 &format!("Only {} of {} tasks completed", completed_tasks, NUM_TASKS)
-            );
+            ;
         }
 
         // ASIL-D Verification: Fuel consumption must be within bounds
@@ -256,29 +256,29 @@ mod tests {
             harness.report_safety_violation(
                 &format!("Excessive fuel consumption: {} > {}", 
                     final_stats.total_fuel_consumed, total_fuel_budget * 2)
-            );
+            ;
         }
 
         // Final ASIL-D compliance check
-        assert!(harness.verify_no_safety_violations(), "ASIL-D compliance violations detectedMissing message");
-        assert_eq!(completed_tasks, NUM_TASKS, "Not all ASIL-D tasks completedMissing message");
+        assert!(harness.verify_no_safety_violations(), "ASIL-D compliance violations detected");
+        assert_eq!(completed_tasks, NUM_TASKS, "Not all ASIL-D tasks completed";
         
-        println!("ASIL-D Deterministic Execution Test: PASSEDMissing message");
-        println!("  Tasks Completed: {}/{}", completed_tasks, NUM_TASKS);
-        println!("  Fuel Consumed: {}", final_stats.total_fuel_consumed);
-        println!("  Fuel Budget: {}", total_fuel_budget);
+        println!("ASIL-D Deterministic Execution Test: PASSED";
+        println!("  Tasks Completed: {}/{}", completed_tasks, NUM_TASKS;
+        println!("  Fuel Consumed: {}", final_stats.total_fuel_consumed;
+        println!("  Fuel Budget: {}", total_fuel_budget;
     }
 
     #[test]
     fn test_asil_c_freedom_from_interference() {
-        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::C);
+        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::C;
         
         // ASIL-C: Freedom from interference testing
         // Requirements: Spatial, temporal, resource, and communication isolation
         
         // Create multiple isolated components
-        let critical_component = ComponentInstanceId::new(1);
-        let non_critical_component = ComponentInstanceId::new(2);
+        let critical_component = ComponentInstanceId::new(1;
+        let non_critical_component = ComponentInstanceId::new(2;
         
         // Initialize both components
         {
@@ -300,7 +300,7 @@ mod tests {
         let non_critical_mutex = harness.sync_primitives.create_async_mutex(non_critical_component, false).unwrap();
         
         // Verify mutexes are separate
-        assert_ne!(critical_mutex, non_critical_mutex, "Spatial isolation violated: shared mutexMissing message");
+        assert_ne!(critical_mutex, non_critical_mutex, "Spatial isolation violated: shared mutex";
 
         // 2. Resource Isolation: Separate channels
         let (critical_sender, critical_receiver) = harness.channels.create_channel(
@@ -358,7 +358,7 @@ mod tests {
             non_critical_component, // Wrong component trying to send
             ComponentValue::U32(42),
             None,
-        );
+        ;
         
         // This should either fail or be properly isolated
         // (Implementation may allow but should maintain isolation)
@@ -398,31 +398,31 @@ mod tests {
             harness.report_safety_violation(
                 &format!("Component isolation failed: {} active components", 
                     final_stats.active_components)
-            );
+            ;
         }
 
         // Verify no cross-component interference
-        let channel_stats = harness.channels.get_channel_statistics();
+        let channel_stats = harness.channels.get_channel_statistics(;
         if channel_stats.total_channels_created < 2 {
-            harness.report_safety_violation("Channel isolation failedMissing message");
+            harness.report_safety_violation("Channel isolation failed";
         }
 
-        assert!(harness.verify_no_safety_violations(), "ASIL-C interference violations detectedMissing message");
+        assert!(harness.verify_no_safety_violations(), "ASIL-C interference violations detected");
         
-        println!("ASIL-C Freedom from Interference Test: PASSEDMissing message");
-        println!("  Active Components: {}", final_stats.active_components);
-        println!("  Tasks Completed: {}", completed_tasks);
-        println!("  Channels Created: {}", channel_stats.total_channels_created);
+        println!("ASIL-C Freedom from Interference Test: PASSED";
+        println!("  Active Components: {}", final_stats.active_components;
+        println!("  Tasks Completed: {}", completed_tasks;
+        println!("  Channels Created: {}", channel_stats.total_channels_created;
     }
 
     #[test]
     fn test_asil_b_bounded_resource_usage() {
-        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::B);
+        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::B;
         
         // ASIL-B: Bounded resource usage verification
         // Requirements: All resources must have known, enforced limits
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         
         // Initialize with specific resource limits
         {
@@ -445,7 +445,7 @@ mod tests {
         }
         
         if channels_created >= 100 {
-            harness.report_safety_violation("Channel creation not boundedMissing message");
+            harness.report_safety_violation("Channel creation not bounded";
         }
 
         // Test bounded timer creation
@@ -460,7 +460,7 @@ mod tests {
         }
         
         if timers_created >= 200 {
-            harness.report_safety_violation("Timer creation not boundedMissing message");
+            harness.report_safety_violation("Timer creation not bounded";
         }
 
         // Test bounded sync primitive creation
@@ -474,7 +474,7 @@ mod tests {
         }
         
         if mutexes_created >= 100 {
-            harness.report_safety_violation("Mutex creation not boundedMissing message");
+            harness.report_safety_violation("Mutex creation not bounded";
         }
 
         // Test bounded task creation
@@ -507,13 +507,13 @@ mod tests {
         }
         
         if tasks_created >= 200 {
-            harness.report_safety_violation("Task creation not boundedMissing message");
+            harness.report_safety_violation("Task creation not bounded";
         }
 
         // Verify resource limits were enforced
-        let channel_stats = harness.channels.get_channel_statistics();
-        let timer_stats = harness.timers.get_timer_statistics();
-        let sync_stats = harness.sync_primitives.get_sync_statistics();
+        let channel_stats = harness.channels.get_channel_statistics(;
+        let timer_stats = harness.timers.get_timer_statistics(;
+        let sync_stats = harness.sync_primitives.get_sync_statistics(;
         let bridge_stats = {
             let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
@@ -525,23 +525,23 @@ mod tests {
         assert!(mutexes_created < 100, "Mutexes not properly bounded: {}", mutexes_created);
         assert!(tasks_created < 200, "Tasks not properly bounded: {}", tasks_created);
 
-        assert!(harness.verify_no_safety_violations(), "ASIL-B resource violations detectedMissing message");
+        assert!(harness.verify_no_safety_violations(), "ASIL-B resource violations detected");
         
-        println!("ASIL-B Bounded Resource Usage Test: PASSEDMissing message");
-        println!("  Channels Created: {} (bounded)", channels_created);
-        println!("  Timers Created: {} (bounded)", timers_created);
-        println!("  Mutexes Created: {} (bounded)", mutexes_created);
-        println!("  Tasks Created: {} (bounded)", tasks_created);
+        println!("ASIL-B Bounded Resource Usage Test: PASSED";
+        println!("  Channels Created: {} (bounded)", channels_created;
+        println!("  Timers Created: {} (bounded)", timers_created;
+        println!("  Mutexes Created: {} (bounded)", mutexes_created;
+        println!("  Tasks Created: {} (bounded)", tasks_created;
     }
 
     #[test]
     fn test_asil_a_basic_safety_requirements() {
-        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::A);
+        let harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::A;
         
         // ASIL-A: Basic safety requirements
         // Requirements: Error detection, basic fault tolerance
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         
         // Initialize system
         {
@@ -554,12 +554,12 @@ mod tests {
         // Test error detection and handling
         
         // 1. Invalid operations should be detected
-        let invalid_component = ComponentInstanceId::new(999);
+        let invalid_component = ComponentInstanceId::new(999;
         
         // Should fail gracefully
-        let result = harness.channels.create_channel(invalid_component, ChannelType::Bounded(8);
+        let result = harness.channels.create_channel(invalid_component, ChannelType::Bounded(8;
         if result.is_ok() {
-            harness.report_safety_violation("Invalid component operation not detectedMissing message");
+            harness.report_safety_violation("Invalid component operation not detected";
         }
 
         // 2. Resource exhaustion should be handled
@@ -581,7 +581,7 @@ mod tests {
                 // Should indicate backpressure or full
                 match send_result {
                     crate::async_::optimized_async_channels::SendResult::Sent => {
-                        harness.report_safety_violation("Channel overflow not detectedMissing message");
+                        harness.report_safety_violation("Channel overflow not detected";
                     },
                     _ => {}, // Expected - backpressure or full
                 }
@@ -597,11 +597,11 @@ mod tests {
 
         // Cancel timer and verify
         let cancel_result = harness.timers.cancel_timer(timer_id).unwrap();
-        assert!(cancel_result, "Timer cancellation failedMissing message");
+        assert!(cancel_result, "Timer cancellation failed");
 
         // Try to cancel again - should handle gracefully
         let second_cancel = harness.timers.cancel_timer(timer_id).unwrap();
-        assert!(!second_cancel, "Double cancellation not handled correctlyMissing message");
+        assert!(!second_cancel, "Double cancellation not handled correctly");
 
         // 4. Basic task execution
         let task_id = {
@@ -638,7 +638,7 @@ mod tests {
         }
 
         if !completed {
-            harness.report_safety_violation("Basic task execution failedMissing message");
+            harness.report_safety_violation("Basic task execution failed";
         }
 
         // Verify system state
@@ -647,24 +647,24 @@ mod tests {
             bridge.get_bridge_statistics()
         };
         
-        assert!(harness.verify_no_safety_violations(), "ASIL-A safety violations detectedMissing message");
-        assert_eq!(final_stats.active_components, 1);
+        assert!(harness.verify_no_safety_violations(), "ASIL-A safety violations detected");
+        assert_eq!(final_stats.active_components, 1;
         
-        println!("ASIL-A Basic Safety Requirements Test: PASSEDMissing message");
-        println!("  Task Completed: {}", completed);
-        println!("  Error Detection: FunctionalMissing message");
-        println!("  Resource Management: FunctionalMissing message");
+        println!("ASIL-A Basic Safety Requirements Test: PASSED";
+        println!("  Task Completed: {}", completed;
+        println!("  Error Detection: Functional";
+        println!("  Resource Management: Functional";
     }
 
     #[test]
     fn test_cross_asil_level_compatibility() {
         // Test that different ASIL levels can coexist
         
-        let asil_d_harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::D);
-        let asil_a_harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::A);
+        let asil_d_harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::D;
+        let asil_a_harness = ASILComplianceHarness::new_for_asil_level(ASILLevel::A;
         
-        let critical_component = ComponentInstanceId::new(1);
-        let basic_component = ComponentInstanceId::new(2);
+        let critical_component = ComponentInstanceId::new(1;
+        let basic_component = ComponentInstanceId::new(2;
         
         // Initialize both systems
         {
@@ -749,13 +749,13 @@ mod tests {
         }
 
         // Verify both systems completed successfully
-        assert!(asil_d_harness.verify_no_safety_violations(), "ASIL-D violations in compatibility testMissing message");
-        assert!(asil_a_harness.verify_no_safety_violations(), "ASIL-A violations in compatibility testMissing message");
-        assert!(d_completed, "ASIL-D task did not completeMissing message");
-        assert!(a_completed, "ASIL-A task did not completeMissing message");
+        assert!(asil_d_harness.verify_no_safety_violations(), "ASIL-D violations in compatibility test");
+        assert!(asil_a_harness.verify_no_safety_violations(), "ASIL-A violations in compatibility test");
+        assert!(d_completed, "ASIL-D task did not complete");
+        assert!(a_completed, "ASIL-A task did not complete");
         
-        println!("Cross-ASIL Level Compatibility Test: PASSEDMissing message");
-        println!("  ASIL-D Task Completed: {}", d_completed);
-        println!("  ASIL-A Task Completed: {}", a_completed);
+        println!("Cross-ASIL Level Compatibility Test: PASSED";
+        println!("  ASIL-D Task Completed: {}", d_completed;
+        println!("  ASIL-A Task Completed: {}", a_completed;
     }
 }

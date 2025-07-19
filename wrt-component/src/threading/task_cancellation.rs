@@ -102,7 +102,7 @@ pub enum CancellationHandlerFn {
 
 /// Handler ID type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HandlerId(pub u32);
+pub struct HandlerId(pub u32;
 
 /// Subtask manager for managing child task lifecycles
 #[derive(Debug)]
@@ -264,7 +264,7 @@ pub struct CancellationScope {
 
 /// Scope ID type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ScopeId(pub u32);
+pub struct ScopeId(pub u32;
 
 impl CancellationToken {
     /// Create a new cancellation token
@@ -313,7 +313,7 @@ impl CancellationToken {
         // Check parent
         if let Some(ref parent_weak) = self.inner.parent {
             if let Some(parent) = parent_weak.upgrade() {
-                return parent.is_cancelled.load(Ordering::Acquire);
+                return parent.is_cancelled.load(Ordering::Acquire;
             }
         }
         
@@ -323,10 +323,10 @@ impl CancellationToken {
     /// Request cancellation
     pub fn cancel(&self) -> Result<()> {
         // Set cancelled flag
-        self.inner.is_cancelled.store(true, Ordering::Release);
+        self.inner.is_cancelled.store(true, Ordering::Release;
         
         // Increment generation to invalidate any cached state
-        self.inner.generation.fetch_add(1, Ordering::AcqRel);
+        self.inner.generation.fetch_add(1, Ordering::AcqRel;
         
         // Call cancellation handlers
         self.call_handlers()?;
@@ -336,8 +336,8 @@ impl CancellationToken {
     
     /// Register a cancellation handler
     pub fn register_handler(&self, handler: CancellationHandlerFn, once: bool) -> Result<HandlerId> {
-        static NEXT_HANDLER_ID: AtomicU32 = AtomicU32::new(1);
-        let handler_id = HandlerId(NEXT_HANDLER_ID.fetch_add(1, Ordering::Relaxed);
+        static NEXT_HANDLER_ID: AtomicU32 = AtomicU32::new(1;
+        let handler_id = HandlerId(NEXT_HANDLER_ID.fetch_add(1, Ordering::Relaxed;
         
         let handler_entry = CancellationHandler {
             id: handler_id,
@@ -356,7 +356,7 @@ impl CancellationToken {
             // For no_std, we need to implement atomic operations differently
             // This is a simplified implementation that isn't thread-safe
             return Err(Error::runtime_execution_error("Error occurred"
-            );
+            ;
         }
         
         Ok(handler_id)
@@ -367,12 +367,12 @@ impl CancellationToken {
         #[cfg(feature = "std")]
         {
             let mut handlers = self.inner.handlers.write().unwrap();
-            handlers.retain(|h| h.id != handler_id);
+            handlers.retain(|h| h.id != handler_id;
         }
         #[cfg(not(any(feature = "std", )))]
         {
             return Err(Error::runtime_execution_error("Error occurred"
-            );
+            ;
         }
         
         Ok(()
@@ -415,7 +415,7 @@ impl CancellationToken {
             }
             
             // Remove once handlers that have been called
-            handlers.retain(|h| !(h.called && h.once);
+            handlers.retain(|h| !(h.called && h.once;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -461,7 +461,7 @@ impl SubtaskManager {
         // Check depth limit
         if self.subtasks.len() >= MAX_SUBTASK_DEPTH {
             return Err(Error::runtime_execution_error("Error occurred"
-            );
+            ;
         }
         
         // Create cancellation token for subtask
@@ -481,7 +481,7 @@ impl SubtaskManager {
             Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                Missing message")
+                ")
         })?;
         
         self.stats.created += 1;
@@ -506,17 +506,17 @@ impl SubtaskManager {
         // Update statistics based on state transition
         match (old_state, new_state) {
             (_, SubtaskState::Completed) => {
-                subtask.completed_at = Some(self.get_current_time();
+                subtask.completed_at = Some(self.get_current_time(;
                 self.stats.completed += 1;
                 self.stats.active -= 1;
             }
             (_, SubtaskState::Failed) => {
-                subtask.completed_at = Some(self.get_current_time();
+                subtask.completed_at = Some(self.get_current_time(;
                 self.stats.failed += 1;
                 self.stats.active -= 1;
             }
             (_, SubtaskState::Cancelled) => {
-                subtask.completed_at = Some(self.get_current_time();
+                subtask.completed_at = Some(self.get_current_time(;
                 self.stats.cancelled += 1;
                 self.stats.active -= 1;
             }
@@ -538,7 +538,7 @@ impl SubtaskManager {
         result: SubtaskResult,
     ) -> Result<()> {
         let subtask = self.find_subtask_mut(execution_id)?;
-        subtask.result = Some(result);
+        subtask.result = Some(result;
         Ok(()
     }
     
@@ -558,7 +558,7 @@ impl SubtaskManager {
     /// Cancel all subtasks
     pub fn cancel_all_subtasks(&mut self) -> Result<()> {
         for subtask in &self.subtasks {
-            let _ = subtask.cancellation_token.cancel();
+            let _ = subtask.cancellation_token.cancel(;
         }
         
         for subtask in &mut self.subtasks {
@@ -576,7 +576,7 @@ impl SubtaskManager {
         subtask_id: Option<ExecutionId>,
         handler: CompletionHandlerFn,
     ) -> Result<HandlerId> {
-        let handler_id = HandlerId(self.next_handler_id);
+        let handler_id = HandlerId(self.next_handler_id;
         self.next_handler_id += 1;
         
         let handler_entry = CompletionHandler {
@@ -602,7 +602,7 @@ impl SubtaskManager {
     pub fn wait_all(&self) -> Result<Vec<SubtaskResult>> {
         // In a real implementation, this would block until all subtasks complete
         // For now, we return current results
-        let mut results = Vec::new();
+        let mut results = Vec::new(;
         
         for subtask in &self.subtasks {
             if let Some(ref result) = subtask.result {
@@ -620,7 +620,7 @@ impl SubtaskManager {
         for subtask in &self.subtasks {
             if matches!(subtask.state, SubtaskState::Completed | SubtaskState::Failed | SubtaskState::Cancelled) {
                 if let Some(ref result) = subtask.result {
-                    return Ok(Some((subtask.execution_id, result.clone()));
+                    return Ok(Some((subtask.execution_id, result.clone();
                 }
             }
         }
@@ -638,7 +638,7 @@ impl SubtaskManager {
                 Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    Missing message")
+                    ")
             })
     }
     
@@ -695,7 +695,7 @@ impl Default for SubtaskStats {
 
 impl fmt::Debug for CancellationHandler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CancellationHandlerMissing message")
+        f.debug_struct("CancellationHandler")
             .field("id", &self.id)
             .field("once", &self.once)
             .field("called", &self.called)
@@ -705,7 +705,7 @@ impl fmt::Debug for CancellationHandler {
 
 impl fmt::Debug for CompletionHandler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CompletionHandlerMissing message")
+        f.debug_struct("CompletionHandler")
             .field("id", &self.id)
             .field("subtask_id", &self.subtask_id)
             .finish()
@@ -720,11 +720,11 @@ where
     let token = CancellationToken::new()?;
     
     // Execute the function with the cancellation token
-    let result = f(&token);
+    let result = f(&token;
     
     // Auto-cancel if requested
     if auto_cancel {
-        let _ = token.cancel();
+        let _ = token.cancel(;
     }
     
     result
@@ -781,8 +781,8 @@ mod tests {
             &parent_token,
         ).unwrap();
         
-        assert_eq!(manager.stats.created, 1);
-        assert_eq!(manager.stats.active, 1);
+        assert_eq!(manager.stats.created, 1;
+        assert_eq!(manager.stats.active, 1;
         
         manager.update_subtask_state(ExecutionId(1), SubtaskState::Running).unwrap();
         manager.set_subtask_result(
@@ -791,8 +791,8 @@ mod tests {
         ).unwrap();
         manager.update_subtask_state(ExecutionId(1), SubtaskState::Completed).unwrap();
         
-        assert_eq!(manager.stats.completed, 1);
-        assert_eq!(manager.stats.active, 0);
+        assert_eq!(manager.stats.completed, 1;
+        assert_eq!(manager.stats.active, 0;
     }
     
     #[test]
@@ -810,7 +810,7 @@ mod tests {
         assert!(subtask_token.is_cancelled();
         
         manager.update_subtask_state(ExecutionId(1), SubtaskState::Cancelled).unwrap();
-        assert_eq!(manager.stats.cancelled, 1);
+        assert_eq!(manager.stats.cancelled, 1;
     }
     
     #[test]
@@ -820,6 +820,6 @@ mod tests {
             Ok(42)
         }).unwrap();
         
-        assert_eq!(result, 42);
+        assert_eq!(result, 42;
     }
 }

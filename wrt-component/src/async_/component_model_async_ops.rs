@@ -123,17 +123,17 @@ impl ComponentModelAsyncOps {
         waitables: WaitableSet,
         timeout_ms: Option<u64>,
     ) -> Result<TaskWaitResult, Error> {
-        self.stats.total_waits.fetch_add(1, Ordering::Relaxed);
+        self.stats.total_waits.fetch_add(1, Ordering::Relaxed;
 
         // Validate waitables
         if waitables.waitables.is_empty() {
-            return Err(Error::validation_invalid_input("Empty waitable set"));
+            return Err(Error::validation_invalid_input("Empty waitable set";
         }
 
         if waitables.waitables.len() > MAX_WAITABLES {
             return Err(Error::runtime_execution_error(
                 &format!("Too many waitables: {} exceeds limit {}", waitables.waitables.len(), MAX_WAITABLES)
-            ));
+            ;
         }
 
         // Consume fuel for the operation
@@ -141,8 +141,8 @@ impl ComponentModelAsyncOps {
 
         // Check if any waitable is immediately ready
         if let Some(ready_index) = self.check_waitables_ready(&waitables)? {
-            self.stats.wait_successes.fetch_add(1, Ordering::Relaxed);
-            return Ok(TaskWaitResult::Ready { index: ready_index });
+            self.stats.wait_successes.fetch_add(1, Ordering::Relaxed;
+            return Ok(TaskWaitResult::Ready { index: ready_index };
         }
 
         // Create wait operation
@@ -167,7 +167,7 @@ impl ComponentModelAsyncOps {
 
     /// Implement task.yield - yield execution to other tasks
     pub fn task_yield(&mut self, current_task: TaskId) -> Result<(), Error> {
-        self.stats.total_yields.fetch_add(1, Ordering::Relaxed);
+        self.stats.total_yields.fetch_add(1, Ordering::Relaxed;
 
         // Consume fuel for yielding
         self.consume_fuel_for_task(current_task, TASK_YIELD_FUEL)?;
@@ -195,11 +195,11 @@ impl ComponentModelAsyncOps {
                 },
                 _ => {
                     // Task not in ready state, can't yield
-                    return Err(Error::invalid_state_error("Task not in ready state"));
+                    return Err(Error::invalid_state_error("Task not in ready state";
                 }
             }
         } else {
-            return Err(Error::validation_invalid_input("Task not found"));
+            return Err(Error::validation_invalid_input("Task not found";
         }
 
         Ok(())
@@ -211,7 +211,7 @@ impl ComponentModelAsyncOps {
         current_task: TaskId,
         waitables: &WaitableSet,
     ) -> Result<TaskPollResult, Error> {
-        self.stats.total_polls.fetch_add(1, Ordering::Relaxed);
+        self.stats.total_polls.fetch_add(1, Ordering::Relaxed;
 
         // Consume fuel for polling
         self.consume_fuel_for_task(current_task, TASK_POLL_FUEL)?;
@@ -227,34 +227,34 @@ impl ComponentModelAsyncOps {
     /// Process wait operations and wake tasks when waitables are ready
     pub fn process_wait_operations(&mut self) -> Result<usize, Error> {
         let mut woken_count = 0;
-        let current_time = self.get_current_time();
+        let current_time = self.get_current_time(;
         
         // Check all active wait operations
-        let mut completed_waits = Vec::new();
+        let mut completed_waits = Vec::new(;
         
         for (task_id, wait_op) in self.active_waits.iter_mut() {
             // Check for timeout
             if wait_op.timeout_ms > 0 {
-                let elapsed = current_time.saturating_sub(wait_op.start_time);
+                let elapsed = current_time.saturating_sub(wait_op.start_time;
                 if elapsed >= wait_op.timeout_ms {
                     // Timeout occurred
-                    self.stats.wait_timeouts.fetch_add(1, Ordering::Relaxed);
-                    completed_waits.push((*task_id, None));
+                    self.stats.wait_timeouts.fetch_add(1, Ordering::Relaxed;
+                    completed_waits.push((*task_id, None);
                     continue;
                 }
             }
             
             // Check if any waitable is ready
             if let Some(ready_index) = self.check_waitables_ready(&wait_op.waitables)? {
-                wait_op.ready_index = Some(ready_index);
-                self.stats.wait_successes.fetch_add(1, Ordering::Relaxed);
-                completed_waits.push((*task_id, Some(ready_index)));
+                wait_op.ready_index = Some(ready_index;
+                self.stats.wait_successes.fetch_add(1, Ordering::Relaxed;
+                completed_waits.push((*task_id, Some(ready_index);
             }
         }
         
         // Wake completed tasks
         for (task_id, ready_index) in completed_waits {
-            self.active_waits.remove(&task_id);
+            self.active_waits.remove(&task_id;
             
             // Store the result for the task
             if let Some(index) = ready_index {
@@ -299,24 +299,24 @@ impl ComponentModelAsyncOps {
             match waitable {
                 Waitable::FutureReadable(handle) => {
                     if self.waitable_registry.is_future_ready(*handle)? {
-                        return Ok(Some(index as u32));
+                        return Ok(Some(index as u32;
                     }
                 },
                 Waitable::StreamReadable(handle) => {
                     if self.waitable_registry.is_stream_ready(*handle)? {
-                        return Ok(Some(index as u32));
+                        return Ok(Some(index as u32;
                     }
                 },
                 Waitable::FutureWritable(handle) => {
                     // For writable futures, check if they can accept a value
                     if self.waitable_registry.is_future_writable(*handle)? {
-                        return Ok(Some(index as u32));
+                        return Ok(Some(index as u32;
                     }
                 },
                 Waitable::StreamWritable(handle) => {
                     // For writable streams, check if they have space
                     if self.waitable_registry.is_stream_writable(*handle)? {
-                        return Ok(Some(index as u32));
+                        return Ok(Some(index as u32;
                     }
                 },
             }
@@ -483,22 +483,22 @@ mod tests {
             waitables: WaitableSet::new(),
             timeout_ms: Some(1000),
         };
-        assert_eq!(wait_op.fuel_cost(), TASK_WAIT_FUEL);
-        assert!(wait_op.is_blocking());
+        assert_eq!(wait_op.fuel_cost(), TASK_WAIT_FUEL;
+        assert!(wait_op.is_blocking();
 
         let yield_op = ComponentModelAsyncOp::TaskYield;
-        assert_eq!(yield_op.fuel_cost(), TASK_YIELD_FUEL);
-        assert!(!yield_op.is_blocking());
+        assert_eq!(yield_op.fuel_cost(), TASK_YIELD_FUEL;
+        assert!(!yield_op.is_blocking();
     }
 
     #[test]
     fn test_waitable_registry() {
         let mut registry = WaitableRegistry::new().unwrap();
-        let future_handle = FutureHandle(42);
+        let future_handle = FutureHandle(42;
         
-        assert!(!registry.is_future_ready(future_handle).unwrap());
+        assert!(!registry.is_future_ready(future_handle).unwrap();
         
         registry.mark_future_ready(future_handle).unwrap();
-        assert!(registry.is_future_ready(future_handle).unwrap());
+        assert!(registry.is_future_ready(future_handle).unwrap();
     }
 }

@@ -26,10 +26,10 @@
 //!     exports: vec![],
 //!     instances: vec![],
 //! };
-//! let wrapper = RuntimeComponentType::new(rt_type);
+//! let wrapper = RuntimeComponentType::new(rt_type;
 //!
 //! // Get the underlying type
-//! let inner_type = wrapper.into_inner();
+//! let inner_type = wrapper.into_inner(;
 //! ```
 
 // Additional imports
@@ -183,7 +183,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
     type Error = Error;
 
     fn try_from(runtime_type: RuntimeComponentType) -> Result<Self> {
-        let runtime_type = runtime_type.into_inner();
+        let runtime_type = runtime_type.into_inner(;
 
         // Convert imports
         let imports_result: core::result::Result<Vec<(String, String, FormatExternType)>> = runtime_type
@@ -232,7 +232,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
             .collect();
 
         // Create empty instances for now - can be enhanced in future
-        let instances = Vec::new();
+        let instances = Vec::new(;
 
         Ok(Self::new(ComponentType {
             imports: imports_result?,
@@ -246,7 +246,7 @@ impl TryFrom<RuntimeInstanceType> for FormatInstanceType {
     type Error = Error;
 
     fn try_from(runtime_type: RuntimeInstanceType) -> Result<Self> {
-        let runtime_type = runtime_type.into_inner();
+        let runtime_type = runtime_type.into_inner(;
 
         // Convert exports
         let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = runtime_type
@@ -335,7 +335,7 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeComponentType {
     fn try_from(type_def: ComponentTypeDefinition) -> Result<Self> {
         match type_def {
             ComponentTypeDefinition::Component { imports, exports } => {
-                let format_type = FormatComponentType::new(imports, exports);
+                let format_type = FormatComponentType::new(imports, exports;
                 format_type.try_into()
             }
             _ => Err(Error::validation_error("Error occurred")),
@@ -349,7 +349,7 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeInstanceType {
     fn try_from(type_def: ComponentTypeDefinition) -> Result<Self> {
         match type_def {
             ComponentTypeDefinition::Instance { exports } => {
-                let format_type = FormatInstanceType::new(exports);
+                let format_type = FormatInstanceType::new(exports;
                 format_type.try_into()
             }
             _ => Err(Error::validation_error("Error occurred")),
@@ -426,8 +426,8 @@ mod tests {
             To: TestConvertible,
             F: TestConversion<From, To> + 'static,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>());
-            self.conversions.insert(key, Arc::new(converter));
+            let key = (TypeId::of::<From>(), TypeId::of::<To>(;
+            self.conversions.insert(key, Arc::new(converter;
         }
 
         fn can_convert<From, To>(&self) -> bool
@@ -435,7 +435,7 @@ mod tests {
             From: TestConvertible,
             To: TestConvertible,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>());
+            let key = (TypeId::of::<From>(), TypeId::of::<To>(;
             self.conversions.contains_key(&key)
         }
 
@@ -444,7 +444,7 @@ mod tests {
             From: TestConvertible,
             To: TestConvertible,
         {
-            let key = (TypeId::of::<From>(), TypeId::of::<To>());
+            let key = (TypeId::of::<From>(), TypeId::of::<To>(;
             if let Some(conversion) = self.conversions.get(&key) {
                 if let Some(typed_conversion) = conversion.downcast_ref::<dyn TestConversion<From, To>>() {
                     typed_conversion.convert(from)
@@ -463,31 +463,31 @@ mod tests {
 
     // Test types
     #[derive(Debug, PartialEq)]
-    struct TestSource(i32);
+    struct TestSource(i32;
 
     #[derive(Debug, PartialEq)]
-    struct TestTarget(i32);
+    struct TestTarget(i32;
 
     #[test]
     fn test_minimal_conversion_registry() {
-        let mut registry = TestConversionRegistry::new();
+        let mut registry = TestConversionRegistry::new(;
 
         // Initially, no conversions should be available
-        assert!(!registry.can_convert::<TestSource, TestTarget>());
-        assert!(!registry.can_convert::<TestTarget, TestSource>());
+        assert!(!registry.can_convert::<TestSource, TestTarget>();
+        assert!(!registry.can_convert::<TestTarget, TestSource>();
 
         // Register one conversion
         registry.register(|src: &TestSource| -> core::result::Result<TestTarget, TestConversionError> {
             Ok(TestTarget(src.0))
-        });
+        };
 
         // Now one direction should work but not the other
-        assert!(registry.can_convert::<TestSource, TestTarget>());
-        assert!(!registry.can_convert::<TestTarget, TestSource>());
+        assert!(registry.can_convert::<TestSource, TestTarget>();
+        assert!(!registry.can_convert::<TestTarget, TestSource>();
 
         // Test the actual conversion
-        let source = TestSource(42);
+        let source = TestSource(42;
         let result = registry.convert::<TestSource, TestTarget>(&source).unwrap();
-        assert_eq!(result, TestTarget(42));
+        assert_eq!(result, TestTarget(42;
     }
 }

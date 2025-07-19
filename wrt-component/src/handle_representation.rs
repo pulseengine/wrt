@@ -218,12 +218,12 @@ impl HandleRepresentationManager {
     }
 
     pub fn with_virtualization(mut self, virt_manager: VirtualizationManager) -> Self {
-        self.virt_manager = Some(virt_manager);
+        self.virt_manager = Some(virt_manager;
         self
     }
 
     pub fn set_strict_type_checking(&self, strict: bool) {
-        self.strict_type_checking.store(strict, Ordering::SeqCst);
+        self.strict_type_checking.store(strict, Ordering::SeqCst;
     }
 
     pub fn create_handle(
@@ -232,8 +232,8 @@ impl HandleRepresentationManager {
         resource_type: GenerativeResourceType,
         access_rights: AccessRights,
     ) -> HandleRepresentationResult<ResourceHandle> {
-        let handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst);
-        let handle = ResourceHandle::new(handle_id);
+        let handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst;
+        let handle = ResourceHandle::new(handle_id;
 
         let representation = HandleRepresentation {
             handle,
@@ -308,8 +308,8 @@ impl HandleRepresentationManager {
 
         // Update metadata
         if let Some(metadata) = self.metadata.get_mut(&handle) {
-            metadata.last_accessed = self.get_current_time();
-            metadata.access_count = metadata.access_count.saturating_add(1);
+            metadata.last_accessed = self.get_current_time(;
+            metadata.access_count = metadata.access_count.saturating_add(1;
         }
 
         // Perform the operation
@@ -358,8 +358,8 @@ impl HandleRepresentationManager {
         let original = self.get_representation(handle)?.clone();
 
         // Create new handle for target component
-        let new_handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst);
-        let new_handle = ResourceHandle::new(new_handle_id);
+        let new_handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst;
+        let new_handle = ResourceHandle::new(new_handle_id;
 
         // Create shared representation
         let shared_representation = HandleRepresentation {
@@ -395,7 +395,7 @@ impl HandleRepresentationManager {
 
         // Increment reference count on original
         if let Some(original_repr) = self.representations.get_mut(&handle) {
-            original_repr.reference_count = original_repr.reference_count.saturating_add(1);
+            original_repr.reference_count = original_repr.reference_count.saturating_add(1;
         }
 
         Ok(new_handle)
@@ -419,18 +419,18 @@ impl HandleRepresentationManager {
             })?;
 
         // Decrement reference count
-        representation.reference_count = representation.reference_count.saturating_sub(1);
+        representation.reference_count = representation.reference_count.saturating_sub(1;
 
         // If reference count reaches zero, actually drop
         if representation.reference_count == 0 {
-            self.representations.remove(&handle);
-            self.metadata.remove(&handle);
+            self.representations.remove(&handle;
+            self.metadata.remove(&handle;
 
             // Unmap from type registry
             if let Err(e) = self.type_registry.unmap_resource_handle(handle) {
                 // Log error but don't fail the drop
                 #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to unmap handle from type registry: {}", e);
+                eprintln!("Warning: Failed to unmap handle from type registry: {}", e;
                 #[cfg(not(feature = "std"))]
                 {
                     // In no_std, we can't print to stderr, so we silently ignore the error
@@ -460,7 +460,7 @@ impl HandleRepresentationManager {
             handle: Some(handle),
         })?;
 
-        updater(metadata);
+        updater(metadata;
         Ok(()
     }
 
@@ -483,7 +483,7 @@ impl HandleRepresentationManager {
                             representation.type_id.0, expected_type.0
                         ),
                         handle: Some(handle),
-                    });
+                    };
                 }
             }
         }
@@ -507,7 +507,7 @@ impl HandleRepresentationManager {
                 kind: HandleRepresentationErrorKind::AccessDenied,
                 message: "Component operation error".to_string(),
                 handle: Some(handle),
-            });
+            };
         }
 
         // Check specific operation permissions
@@ -518,7 +518,7 @@ impl HandleRepresentationManager {
                         kind: HandleRepresentationErrorKind::AccessDenied,
                         message: "Read access denied".to_string(),
                         handle: Some(handle),
-                    });
+                    };
                 }
             }
             HandleOperation::Write { .. } => {
@@ -527,7 +527,7 @@ impl HandleRepresentationManager {
                         kind: HandleRepresentationErrorKind::AccessDenied,
                         message: "Write access denied".to_string(),
                         handle: Some(handle),
-                    });
+                    };
                 }
             }
             HandleOperation::Drop => {
@@ -536,7 +536,7 @@ impl HandleRepresentationManager {
                         kind: HandleRepresentationErrorKind::AccessDenied,
                         message: "Drop access denied".to_string(),
                         handle: Some(handle),
-                    });
+                    };
                 }
             }
             HandleOperation::Share { .. } => {
@@ -545,7 +545,7 @@ impl HandleRepresentationManager {
                         kind: HandleRepresentationErrorKind::AccessDenied,
                         message: "Share access denied".to_string(),
                         handle: Some(handle),
-                    });
+                    };
                 }
             }
             HandleOperation::Borrow { .. } => {
@@ -554,7 +554,7 @@ impl HandleRepresentationManager {
                         kind: HandleRepresentationErrorKind::AccessDenied,
                         message: "Borrow access denied".to_string(),
                         handle: Some(handle),
-                    });
+                    };
                 }
             }
             _ => {}
@@ -587,7 +587,7 @@ impl HandleRepresentationManager {
         operation: &HandleOperation,
     ) -> HandleRepresentationResult<()> {
         let representation = self.get_representation(handle)?;
-        let current_time = self.get_current_time();
+        let current_time = self.get_current_time(;
 
         for policy in self.access_policies.iter() {
             if policy.component_id == component_id && policy.resource_type == representation.type_id
@@ -609,14 +609,14 @@ impl HandleRepresentationManager {
                             | (HandleOperation::Share { .. }, HandleOperation::Share { .. })
                             | (HandleOperation::Borrow { .. }, HandleOperation::Borrow { .. })
                 })?;
-                });
+                };
 
                 if !operation_allowed {
                     return Err(HandleRepresentationError {
                         kind: HandleRepresentationErrorKind::OperationNotSupported,
                         message: "Operation not allowed by policy".to_string(),
                         handle: Some(handle),
-                    });
+                    };
                 }
             }
         }
@@ -785,18 +785,18 @@ mod tests {
 
     #[test]
     fn test_access_rights_presets() {
-        let read_only = AccessRights::read_only();
+        let read_only = AccessRights::read_only(;
         assert!(read_only.can_read);
         assert!(!read_only.can_write);
         assert!(!read_only.can_drop);
 
-        let full_access = AccessRights::full_access();
+        let full_access = AccessRights::full_access(;
         assert!(full_access.can_read);
         assert!(full_access.can_write);
         assert!(full_access.can_drop);
         assert!(full_access.can_share);
 
-        let no_access = AccessRights::no_access();
+        let no_access = AccessRights::no_access(;
         assert!(!no_access.can_read);
         assert!(!no_access.can_write);
         assert!(!no_access.can_drop);
@@ -805,7 +805,7 @@ mod tests {
     #[test]
     fn test_handle_creation() {
         let mut manager = HandleRepresentationManager::new().unwrap();
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
 
         let resource_type =
             manager.type_registry.create_resource_type(component_id, "test-resource").unwrap();
@@ -818,21 +818,21 @@ mod tests {
 
         // Verify representation was created
         let repr = manager.get_representation(handle).unwrap();
-        assert_eq!(repr.component_id, component_id);
-        assert_eq!(repr.type_id, resource_type.type_id);
+        assert_eq!(repr.component_id, component_id;
+        assert_eq!(repr.type_id, resource_type.type_id;
         assert!(repr.is_owned);
-        assert_eq!(repr.reference_count, 1);
+        assert_eq!(repr.reference_count, 1;
     }
 
     #[test]
     fn test_typed_handle() {
         struct MyResource;
 
-        let handle = ResourceHandle::new(42);
-        let type_id = TypeId(100);
+        let handle = ResourceHandle::new(42;
+        let type_id = TypeId(100;
 
-        let typed_handle = TypedHandle::<MyResource>::new(handle, type_id);
-        assert_eq!(typed_handle.handle().id(), 42);
-        assert_eq!(typed_handle.type_id().0, 100);
+        let typed_handle = TypedHandle::<MyResource>::new(handle, type_id;
+        assert_eq!(typed_handle.handle().id(), 42;
+        assert_eq!(typed_handle.type_id().0, 100;
     }
 }

@@ -41,15 +41,15 @@ const MAX_WAITABLES: usize = 64;
 
 /// Handle to a stream
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StreamHandle(pub u32);
+pub struct StreamHandle(pub u32;
 
 /// Handle to a future
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FutureHandle(pub u32);
+pub struct FutureHandle(pub u32;
 
 /// Handle to an error context
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ErrorContextHandle(pub u32);
+pub struct ErrorContextHandle(pub u32;
 
 /// Stream type for incremental value passing
 #[derive(Debug, Clone)]
@@ -271,9 +271,9 @@ impl<T> Future<T> {
     /// Set the future value
     pub fn set_value(&mut self, value: T) -> WrtResult<()> {
         if self.state != FutureState::Pending {
-            return Err(wrt_error::Error::runtime_execution_error("Future already completed"));
+            return Err(wrt_error::Error::runtime_execution_error("Future already completed";
         }
-        self.value = Some(value);
+        self.value = Some(value;
         self.state = FutureState::Ready;
         Ok(())
     }
@@ -305,9 +305,9 @@ impl ErrorContext {
         {
             let mut result = self.message.clone();
             if let Some(trace) = &self.stack_trace {
-                result.push_str("\nStack trace:\n");
+                result.push_str("\nStack trace:\n";
                 for frame in trace {
-                    result.push_str(&format!("  {}\n", frame));
+                    result.push_str(&format!("  {}\n", frame;
                 }
             }
             BoundedString::from_str(&result).unwrap_or_default()
@@ -339,7 +339,7 @@ impl DebugInfo {
     /// Add a property
     #[cfg(feature = "std")]
     pub fn add_property(&mut self, key: String, value: ComponentValue) {
-        self.properties.push((key, value));
+        self.properties.push((key, value);
     }
 
     /// Add a property (no_std)
@@ -368,9 +368,9 @@ impl WaitableSet {
 
     /// Add a waitable to the set
     pub fn add(&mut self, waitable: Waitable) -> WrtResult<u32> {
-        let index = self.waitables.len();
+        let index = self.waitables.len(;
         if index >= 64 {
-            return Err(wrt_error::Error::runtime_execution_error("Too many waitables"));
+            return Err(wrt_error::Error::runtime_execution_error("Too many waitables";
         }
 
         #[cfg(feature = "std")]
@@ -411,7 +411,7 @@ impl WaitableSet {
     /// Clear ready state for a waitable
     pub fn clear_ready(&mut self, index: u32) {
         if index < 64 {
-            self.ready_mask &= !(1u64 << index);
+            self.ready_mask &= !(1u64 << index;
         }
     }
 }
@@ -498,53 +498,53 @@ mod tests {
     fn test_stream_lifecycle() {
         let mut stream: Stream<Value> = Stream::new(StreamHandle(1), ValType::U32).unwrap();
 
-        assert!(stream.is_writable());
-        assert!(!stream.is_readable()); // Empty buffer
+        assert!(stream.is_writable();
+        assert!(!stream.is_readable())); // Empty buffer
 
-        stream.buffer.push(Value::U32(42));
-        assert!(stream.is_readable());
+        stream.buffer.push(Value::U32(42);
+        assert!(stream.is_readable();
 
-        stream.close_writable();
-        assert!(!stream.is_writable());
+        stream.close_writable(;
+        assert!(!stream.is_writable();
 
-        stream.close_readable();
-        assert_eq!(stream.state, StreamState::Closed);
+        stream.close_readable(;
+        assert_eq!(stream.state, StreamState::Closed;
     }
 
     #[test]
     fn test_future_lifecycle() {
-        let mut future: Future<Value> = Future::new(FutureHandle(1), ValType::String);
+        let mut future: Future<Value> = Future::new(FutureHandle(1), ValType::String;
 
-        assert!(future.is_writable());
-        assert!(!future.is_readable());
+        assert!(future.is_writable();
+        assert!(!future.is_readable();
 
         future.set_value(Value::String(BoundedString::from_str("hello").unwrap())).unwrap();
-        assert!(future.is_readable());
-        assert!(!future.is_writable());
-        assert_eq!(future.state, FutureState::Ready);
+        assert!(future.is_readable();
+        assert!(!future.is_writable();
+        assert_eq!(future.state, FutureState::Ready;
     }
 
     #[test]
     fn test_future_cancel() {
-        let mut future: Future<Value> = Future::new(FutureHandle(2), ValType::Bool);
+        let mut future: Future<Value> = Future::new(FutureHandle(2), ValType::Bool;
 
-        future.cancel();
-        assert_eq!(future.state, FutureState::Cancelled);
-        assert!(future.set_value(Value::Bool(true)).is_err());
+        future.cancel(;
+        assert_eq!(future.state, FutureState::Cancelled;
+        assert!(future.set_value(Value::Bool(true)).is_err();
     }
 
     #[test]
     fn test_error_context() {
         #[cfg(feature = "std")]
-        let error = ErrorContext::new(ErrorContextHandle(1), "Test error".to_string());
+        let error = ErrorContext::new(ErrorContextHandle(1), "Test error".to_string();
         #[cfg(not(any(feature = "std", )))]
         let error = ErrorContext::new(
             ErrorContextHandle(1),
             BoundedString::from_str("Test error").unwrap(),
         ).unwrap();
 
-        let debug_str = error.debug_string();
-        assert!(debug_str.as_str().contains("Test error"));
+        let debug_str = error.debug_string(;
+        assert!(debug_str.as_str().contains("Test error");
     }
 
     #[test]
@@ -554,23 +554,23 @@ mod tests {
         let idx1 = set.add(Waitable::StreamReadable(StreamHandle(1))).unwrap();
         let idx2 = set.add(Waitable::FutureReadable(FutureHandle(1))).unwrap();
 
-        assert!(!set.has_ready());
+        assert!(!set.has_ready();
 
-        set.mark_ready(idx1);
-        assert!(set.has_ready());
-        assert_eq!(set.first_ready(), Some(idx1));
+        set.mark_ready(idx1;
+        assert!(set.has_ready();
+        assert_eq!(set.first_ready(), Some(idx1;
 
-        set.mark_ready(idx2);
+        set.mark_ready(idx2;
         assert_eq!(set.first_ready(), Some(idx1)); // First ready
 
-        set.clear_ready(idx1);
-        assert_eq!(set.first_ready(), Some(idx2));
+        set.clear_ready(idx1;
+        assert_eq!(set.first_ready(), Some(idx2;
     }
 
     #[test]
     fn test_state_display() {
-        assert_eq!(StreamState::Open.to_string(), "open");
-        assert_eq!(FutureState::Pending.to_string(), "pending");
-        assert_eq!(Waitable::StreamReadable(StreamHandle(42)).to_string(), "stream-readable(42)");
+        assert_eq!(StreamState::Open.to_string(), "open";
+        assert_eq!(FutureState::Pending.to_string(), "pending";
+        assert_eq!(Waitable::StreamReadable(StreamHandle(42)).to_string(), "stream-readable(42)";
     }
 }

@@ -31,9 +31,9 @@ pub struct ThreadBuiltins {
 impl ThreadBuiltins {
     /// Create new thread built-ins with default configuration
     pub fn new() -> Result<Self> {
-        let thread_config = ThreadConfig::default();
+        let thread_config = ThreadConfig::default(;
         let thread_manager = ThreadManager::new(thread_config)?;
-        let parallelism_info = ParallelismInfo::detect();
+        let parallelism_info = ParallelismInfo::detect(;
         
         Ok(Self {
             thread_manager,
@@ -59,11 +59,11 @@ impl ThreadBuiltins {
         args: &[Value],
         config: Option<ThreadSpawnConfig>,
     ) -> Result<ThreadId> {
-        let spawn_config = config.unwrap_or_default();
+        let spawn_config = config.unwrap_or_default(;
         
         // Validate function exists
         if !self.is_function_valid(function_index) {
-            return Err(Error::validation_invalid_argument("Invalid function index"));
+            return Err(Error::validation_invalid_argument("Invalid function index";
         }
         
         // Validate argument count and types
@@ -129,7 +129,7 @@ impl ThreadBuiltins {
         let context = self.thread_manager.get_thread_context_mut(thread_id)?;
         
         // Update thread state to indicate it's detached
-        context.update_state(wrt_runtime::ThreadState::Running);
+        context.update_state(wrt_runtime::ThreadState::Running;
         
         Ok(())
     }
@@ -147,7 +147,7 @@ impl ThreadBuiltins {
     pub fn thread_yield(&self) {
         #[cfg(feature = "std")]
         {
-            thread::yield_now();
+            thread::yield_now(;
         }
         #[cfg(not(feature = "std"))]
         {
@@ -165,7 +165,7 @@ impl ThreadBuiltins {
         // For now, we just validate and store the request
         
         if cpu_mask == 0 {
-            return Err(Error::validation_invalid_argument("Error occurred"));
+            return Err(Error::validation_invalid_argument("Error occurred";
         }
         
         // Store affinity for later use when thread is actually created
@@ -174,7 +174,7 @@ impl ThreadBuiltins {
         
         // Store the affinity mask in thread info
         // Platform layer will use this when the thread is scheduled
-        context.info.cpu_affinity = Some(cpu_mask);
+        context.info.cpu_affinity = Some(cpu_mask;
         
         Ok(())
     }
@@ -192,7 +192,7 @@ impl ThreadBuiltins {
         let context = self.thread_manager.get_thread_context_mut(thread_id)?;
         
         if priority > 100 {
-            return Err(Error::validation_invalid_argument("Error occurred"));
+            return Err(Error::validation_invalid_argument("Error occurred";
         }
         
         context.info.priority = priority;
@@ -226,7 +226,7 @@ impl ThreadBuiltins {
         const MAX_THREAD_ARGS: usize = 16;
         
         if args.len() > MAX_THREAD_ARGS {
-            return Err(Error::validation_invalid_argument("Error occurred"));
+            return Err(Error::validation_invalid_argument("Error occurred";
         }
         
         // Validate each argument is a valid component model value
@@ -257,12 +257,12 @@ impl ThreadBuiltins {
         // This prevents data races and ensures memory safety
         #[cfg(feature = "std")]
         {
-            context.stored_arguments = args.to_vec();
+            context.stored_arguments = args.to_vec(;
         }
         #[cfg(not(feature = "std"))]
         {
             // For no_std, use bounded storage
-            context.stored_arguments.clear();
+            context.stored_arguments.clear(;
             for arg in args {
                 context.stored_arguments.push(arg.clone())
                     .map_err(|_| Error::resource_exhausted("Error occurred"))?;
@@ -277,12 +277,12 @@ impl ThreadBuiltins {
         #[cfg(feature = "std")]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::validation_invalid_argument("Error occurred");
+                return Err(Error::validation_invalid_argument("Error occurred";
             }
             
             let component_func = &self.function_table[table_index as usize];
             if function_index >= component_func.function_count {
-                return Err(Error::validation_invalid_argument("Error occurred");
+                return Err(Error::validation_invalid_argument("Error occurred";
             }
             
             Ok(component_func.base_index + function_index)
@@ -290,12 +290,12 @@ impl ThreadBuiltins {
         #[cfg(not(feature = "std"))]
         {
             if table_index as usize >= self.function_table.len() {
-                return Err(Error::validation_invalid_argument("Error occurred");
+                return Err(Error::validation_invalid_argument("Error occurred";
             }
             
             if let Some(component_func) = &self.function_table[table_index as usize] {
                 if function_index >= component_func.function_count {
-                    return Err(Error::validation_invalid_argument("Error occurred");
+                    return Err(Error::validation_invalid_argument("Error occurred";
                 }
                 
                 Ok(component_func.base_index + function_index)
@@ -311,7 +311,7 @@ impl ThreadBuiltins {
         
         // Check if thread has completed
         if context.info.state != wrt_runtime::thread_manager::ThreadState::Terminated {
-            return Err(Error::invalid_state_error("Error occurred");
+            return Err(Error::invalid_state_error("Error occurred";
         }
         
         // Return the stored results
@@ -324,7 +324,7 @@ impl ThreadBuiltins {
         #[cfg(not(feature = "std"))]
         {
             // For no_std, create a bounded vec with results
-            let mut results = Vec::new();
+            let mut results = Vec::new(;
             for result in &context.execution_results {
                 results.push(result.clone();
             }
@@ -344,8 +344,8 @@ impl ThreadBuiltins {
         {
             for (index, slot) in self.function_table.iter_mut().enumerate() {
                 if slot.is_none() {
-                    *slot = Some(table);
-                    return Ok(index as u32);
+                    *slot = Some(table;
+                    return Ok(index as u32;
                 }
             }
             
@@ -380,7 +380,7 @@ impl ParallelismInfo {
         {
             let available_parallelism = thread::available_parallelism()
                 .map(|n| n.get() as u32)
-                .unwrap_or(1);
+                .unwrap_or(1;
             
             Self {
                 available_parallelism,
@@ -507,7 +507,7 @@ mod tests {
     
     #[test]
     fn test_parallelism_detection() {
-        let info = ParallelismInfo::detect();
+        let info = ParallelismInfo::detect(;
         assert!(info.available_parallelism > 0);
         assert!(info.physical_cores > 0);
         assert!(info.logical_cores > 0);
@@ -521,9 +521,9 @@ mod tests {
     
     #[test]
     fn test_thread_spawn_config() {
-        let config = ThreadSpawnConfig::default();
+        let config = ThreadSpawnConfig::default(;
         assert!(config.auto_start);
-        assert_eq!(config.priority, 50);
+        assert_eq!(config.priority, 50;
         assert!(config.stack_size.is_none();
     }
     
@@ -542,7 +542,7 @@ mod tests {
         };
         
         let table_id = builtins.register_function_table(func).unwrap();
-        assert_eq!(table_id, 0);
+        assert_eq!(table_id, 0;
     }
     
     #[test]
@@ -550,17 +550,17 @@ mod tests {
         let mut builtins = ThreadBuiltins::new().unwrap();
         
         // Test valid priority
-        let result = builtins.thread_set_priority(0, 75);
+        let result = builtins.thread_set_priority(0, 75;
         // This will fail because thread 0 doesn't exist, but priority validation should pass
         // The error should be about invalid thread, not invalid priority
         if let Err(e) = result {
-            assert!(e.to_string().contains("Thread not found"));
+            assert!(e.to_string().contains("Thread not found");
         }
         
         // Test invalid priority
-        let result = builtins.thread_set_priority(0, 150);
+        let result = builtins.thread_set_priority(0, 150;
         if let Err(e) = result {
-            assert!(e.to_string().contains("priority must be between 0 and 100"));
+            assert!(e.to_string().contains("priority must be between 0 and 100");
         }
     }
 }

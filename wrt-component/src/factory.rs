@@ -42,12 +42,12 @@ impl ComponentFactory {
 
     /// Set the memory strategy for the factory
     pub fn set_memory_strategy(&mut self, strategy: MemoryStrategy) {
-        self.config.memory_strategy = Some(strategy);
+        self.config.memory_strategy = Some(strategy;
     }
 
     /// Set the verification level for the factory
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
-        self.config.verification_level = Some(level);
+        self.config.verification_level = Some(level;
     }
 
     /// Enable or disable interception of resource operations

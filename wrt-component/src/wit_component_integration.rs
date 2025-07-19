@@ -274,8 +274,8 @@ impl WitComponentContext {
     
     /// Process an interface declaration
     fn process_interface(&mut self, interface: &InterfaceDecl) -> Result<()> {
-        let mut functions = Vec::new();
-        let mut types = Vec::new();
+        let mut functions = Vec::new(;
+        let mut types = Vec::new(;
         
         // Process interface items
         for item in &interface.items {
@@ -297,7 +297,7 @@ impl WitComponentContext {
         // Create interface mapping
         let interface_name = interface.name.name.as_str()
             .map_err(|_| Error::parse_error("Error occurred"))?
-            .to_string());
+            .to_string();
         
         let mapping = InterfaceMapping {
             wit_name: interface.name.name.clone(),
@@ -307,7 +307,7 @@ impl WitComponentContext {
             source_span: interface.span,
         };
         
-        self.interface_mappings.insert(interface_name, mapping);
+        self.interface_mappings.insert(interface_name, mapping;
         
         Ok(()
     }
@@ -321,8 +321,8 @@ impl WitComponentContext {
     
     /// Process a function declaration
     fn process_function(&mut self, func: &FunctionDecl) -> Result<FunctionMapping> {
-        let mut param_types = Vec::new();
-        let mut return_types = Vec::new();
+        let mut param_types = Vec::new(;
+        let mut return_types = Vec::new(;
         
         // Process parameters
         for param in &func.func.params {
@@ -368,7 +368,7 @@ impl WitComponentContext {
         
         let type_name = type_decl.name.name.as_str()
             .map_err(|_| Error::parse_error("Error occurred"))?
-            .to_string());
+            .to_string();
         
         self.type_mappings.insert(type_name, mapping.clone();
         
@@ -457,7 +457,7 @@ impl WitComponentContext {
                 let mut max_alignment = 1u32;
                 for field in &record.fields {
                     if let Some(field_align) = self.calculate_type_alignment(&field.field_type) {
-                        max_alignment = max_alignment.max(field_align);
+                        max_alignment = max_alignment.max(field_align;
                     }
                 }
                 Some(max_alignment)
@@ -509,7 +509,7 @@ impl ComponentLowering {
     /// Lower WIT document to component representation
     #[cfg(feature = "std")]
     pub fn lower_document(document: WitDocument) -> Result<WitComponentContext> {
-        let mut context = WitComponentContext::new(document);
+        let mut context = WitComponentContext::new(document;
         context.build_mappings()?;
         Ok(context)
     }
@@ -517,7 +517,7 @@ impl ComponentLowering {
     /// Lower WIT document with custom configuration
     #[cfg(feature = "std")]
     pub fn lower_document_with_config(document: WitDocument, config: ComponentConfig) -> Result<WitComponentContext> {
-        let mut context = WitComponentContext::with_config(document, config);
+        let mut context = WitComponentContext::with_config(document, config;
         context.build_mappings()?;
         Ok(context)
     }
@@ -548,7 +548,7 @@ impl ComponentLowering {
                 return Err(Error::validation_error(&format!(
                     "Type {} has inconsistent size {} and alignment {}", 
                     name, size, alignment
-                ));
+                ;
             }
         }
         
@@ -616,10 +616,10 @@ mod tests {
             span: SourceSpan::empty(),
         };
         
-        let context = WitComponentContext::new(doc);
-        assert_eq!(context.interfaces().len(), 0);
-        assert_eq!(context.types().len(), 0);
-        assert_eq!(context.functions().len(), 0);
+        let context = WitComponentContext::new(doc;
+        assert_eq!(context.interfaces().len(), 0;
+        assert_eq!(context.types().len(), 0;
+        assert_eq!(context.functions().len(), 0;
     }
     
     #[test]
@@ -629,11 +629,11 @@ mod tests {
             use_items: Vec::new(),
             items: Vec::new(),
             span: SourceSpan::empty(),
-        });
+        };
         
-        assert_eq!(context.calculate_type_size(&ComponentType::U32), Some(4);
-        assert_eq!(context.calculate_type_size(&ComponentType::U64), Some(8);
-        assert_eq!(context.calculate_type_size(&ComponentType::Bool), Some(1);
+        assert_eq!(context.calculate_type_size(&ComponentType::U32), Some(4;
+        assert_eq!(context.calculate_type_size(&ComponentType::U64), Some(8;
+        assert_eq!(context.calculate_type_size(&ComponentType::Bool), Some(1;
         assert_eq!(context.calculate_type_size(&ComponentType::String), None); // Variable size
     }
     
@@ -644,20 +644,20 @@ mod tests {
             use_items: Vec::new(),
             items: Vec::new(),
             span: SourceSpan::empty(),
-        });
+        };
         
-        assert_eq!(context.calculate_type_alignment(&ComponentType::U32), Some(4);
-        assert_eq!(context.calculate_type_alignment(&ComponentType::U64), Some(8);
-        assert_eq!(context.calculate_type_alignment(&ComponentType::Bool), Some(1);
+        assert_eq!(context.calculate_type_alignment(&ComponentType::U32), Some(4;
+        assert_eq!(context.calculate_type_alignment(&ComponentType::U64), Some(8;
+        assert_eq!(context.calculate_type_alignment(&ComponentType::Bool), Some(1;
     }
     
     #[test]
     fn test_component_config() {
-        let config = ComponentConfig::default();
+        let config = ComponentConfig::default(;
         assert!(config.debug_info);
         assert!(!config.optimize);
-        assert_eq!(config.memory_limit, Some(1024 * 1024);
-        assert_eq!(config.stack_limit, Some(64 * 1024);
+        assert_eq!(config.memory_limit, Some(1024 * 1024;
+        assert_eq!(config.stack_limit, Some(64 * 1024;
         assert!(!config.async_support);
     }
 }

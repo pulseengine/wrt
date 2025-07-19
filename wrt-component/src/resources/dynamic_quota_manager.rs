@@ -189,13 +189,13 @@ pub struct QuotaResponse {
 /// Quota watcher for notifications
 pub trait QuotaWatcher {
     /// Called when quota status changes
-    fn on_quota_status_change(&self, node_id: u32, old_status: QuotaStatus, new_status: QuotaStatus);
+    fn on_quota_status_change(&self, node_id: u32, old_status: QuotaStatus, new_status: QuotaStatus;
     
     /// Called when allocation fails
-    fn on_allocation_failure(&self, node_id: u32, request: &QuotaRequest);
+    fn on_allocation_failure(&self, node_id: u32, request: &QuotaRequest;
     
     /// Called when quota is adjusted
-    fn on_quota_adjustment(&self, node_id: u32, old_quota: u64, new_quota: u64);
+    fn on_quota_adjustment(&self, node_id: u32, old_quota: u64, new_quota: u64;
 }
 
 /// Dynamic quota manager that integrates with existing resource management
@@ -319,7 +319,7 @@ impl QuotaNode {
 
     /// Deallocate from this quota
     pub fn deallocate(&mut self, amount: u64, timestamp: u64) {
-        self.current_usage = self.current_usage.saturating_sub(amount);
+        self.current_usage = self.current_usage.saturating_sub(amount;
         self.last_updated = timestamp;
 
         // Update status based on new usage
@@ -365,7 +365,7 @@ impl QuotaNode {
                 let total_capacity = available_resources;
                 let fair_share = total_capacity / 10; // Assume 10 components max
                 if self.max_quota < fair_share {
-                    self.max_quota = core::cmp::min(self.max_quota * 2, fair_share);
+                    self.max_quota = core::cmp::min(self.max_quota * 2, fair_share;
                 }
             }
             QuotaStrategy::Predictive => {
@@ -430,20 +430,20 @@ impl DynamicQuotaManager {
     /// Create a new quota manager with resource manager integration
     pub fn with_resource_manager(resource_manager: ResourceManager) -> WrtResult<Self> {
         let mut manager = Self::new()?;
-        manager.resource_manager = Some(resource_manager);
+        manager.resource_manager = Some(resource_manager;
         Ok(manager)
     }
 
     /// Create a new quota manager with blast zone integration
     pub fn with_blast_zone_manager(blast_zone_manager: BlastZoneManager) -> WrtResult<Self> {
         let mut manager = Self::new()?;
-        manager.blast_zone_manager = Some(blast_zone_manager);
+        manager.blast_zone_manager = Some(blast_zone_manager;
         Ok(manager)
     }
 
     /// Set memory provider for quota enforcement
     pub fn set_memory_provider(&mut self, provider: CapabilityAwareProvider<NoStdProvider<65536>>) {
-        self.memory_provider = Some(provider);
+        self.memory_provider = Some(provider;
     }
 
     /// Create a quota node in the hierarchy
@@ -458,11 +458,11 @@ impl DynamicQuotaManager {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
 
-        let node = QuotaNode::new(node_id, node_type, entity_id, parent_id, resource_type, max_quota);
+        let node = QuotaNode::new(node_id, node_type, entity_id, parent_id, resource_type, max_quota;
 
         #[cfg(feature = "std")]
         {
-            self.nodes.insert(node_id, node);
+            self.nodes.insert(node_id, node;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -487,18 +487,18 @@ impl DynamicQuotaManager {
                 reservation_id: None,
                 reason: Some("Hierarchical quota exceeded".to_string()),
                 retry_after_ms: Some(1000),
-            });
+            };
         }
 
         // Apply allocation to the node and ancestors
-        let timestamp = self.get_current_time();
+        let timestamp = self.get_current_time(;
         if self.allocate_hierarchical(node_id, request.amount, timestamp)? {
             let reservation_id = self.next_reservation_id;
             self.next_reservation_id += 1;
 
             #[cfg(feature = "std")]
             {
-                self.reservations.insert(reservation_id, (node_id, request.amount));
+                self.reservations.insert(reservation_id, (node_id, request.amount;
             }
             #[cfg(not(any(feature = "std", )))]
             {
@@ -519,7 +519,7 @@ impl DynamicQuotaManager {
                         reservation_id: None,
                         reason: Some("Memory provider capacity exceeded".to_string()),
                         retry_after_ms: Some(5000),
-                    });
+                    };
                 }
             }
 
@@ -546,7 +546,7 @@ impl DynamicQuotaManager {
         #[cfg(feature = "std")]
         {
             if let Some((node_id, amount)) = self.reservations.remove(&reservation_id) {
-                let timestamp = self.get_current_time();
+                let timestamp = self.get_current_time(;
                 self.deallocate_hierarchical(node_id, amount, timestamp)?;
             }
         }
@@ -560,14 +560,14 @@ impl DynamicQuotaManager {
                 if *rid == reservation_id {
                     node_id = *nid;
                     amount = *amt;
-                    let _ = self.reservations.remove(i);
+                    let _ = self.reservations.remove(i;
                     found = true;
                     break;
                 }
             }
             
             if found {
-                let timestamp = self.get_current_time();
+                let timestamp = self.get_current_time(;
                 self.deallocate_hierarchical(node_id, amount, timestamp)?;
             }
         }
@@ -580,13 +580,13 @@ impl DynamicQuotaManager {
         #[cfg(feature = "std")]
         {
             for node in self.nodes.values_mut() {
-                node.adjust_quota(system_load, available_resources);
+                node.adjust_quota(system_load, available_resources;
             }
         }
         #[cfg(not(any(feature = "std", )))]
         {
             for (_, node) in &mut self.nodes {
-                node.adjust_quota(system_load, available_resources);
+                node.adjust_quota(system_load, available_resources;
             }
         }
 
@@ -603,7 +603,7 @@ impl DynamicQuotaManager {
         {
             for (nid, node) in &self.nodes {
                 if *nid == node_id {
-                    return Some(node);
+                    return Some(node;
                 }
             }
             None
@@ -623,7 +623,7 @@ impl DynamicQuotaManager {
                 if node.entity_id == entity_id 
                     && node.node_type == entity_type 
                     && node.resource_type == resource_type {
-                    return Ok(*node_id);
+                    return Ok(*node_id;
                 }
             }
         }
@@ -633,7 +633,7 @@ impl DynamicQuotaManager {
                 if node.entity_id == entity_id 
                     && node.node_type == entity_type 
                     && node.resource_type == resource_type {
-                    return Ok(*node_id);
+                    return Ok(*node_id;
                 }
             }
         }
@@ -643,7 +643,7 @@ impl DynamicQuotaManager {
 
     /// Check hierarchical quota constraints
     fn check_hierarchical_quota(&self, node_id: u32, amount: u64) -> WrtResult<bool> {
-        let mut current_id = Some(node_id);
+        let mut current_id = Some(node_id;
         
         while let Some(id) = current_id {
             let node = self.get_quota_status(id).ok_or_else(|| {
@@ -651,7 +651,7 @@ impl DynamicQuotaManager {
             })?;
 
             if !node.can_allocate(amount) {
-                return Ok(false);
+                return Ok(false;
             }
 
             current_id = node.parent_id;
@@ -662,9 +662,9 @@ impl DynamicQuotaManager {
 
     /// Allocate quota hierarchically up the tree
     fn allocate_hierarchical(&mut self, node_id: u32, amount: u64, timestamp: u64) -> WrtResult<bool> {
-        let mut current_id = Some(node_id);
+        let mut current_id = Some(node_id;
         #[cfg(feature = "std")]
-        let mut allocated_nodes = Vec::new();
+        let mut allocated_nodes = Vec::new(;
         #[cfg(not(feature = "std"))]
         let mut allocated_nodes = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -677,7 +677,7 @@ impl DynamicQuotaManager {
             {
                 if let Some(node) = self.nodes.get(&id) {
                     if !node.can_allocate(amount) {
-                        return Ok(false);
+                        return Ok(false;
                     }
                     allocated_nodes.push(id);
                     current_id = node.parent_id;
@@ -691,7 +691,7 @@ impl DynamicQuotaManager {
                 for (nid, node) in &self.nodes {
                     if *nid == id {
                         if !node.can_allocate(amount) {
-                            return Ok(false);
+                            return Ok(false;
                         }
                         allocated_nodes.push(id);
                         current_id = node.parent_id;
@@ -710,14 +710,14 @@ impl DynamicQuotaManager {
             #[cfg(feature = "std")]
             {
                 if let Some(node) = self.nodes.get_mut(&id) {
-                    node.allocate(amount, timestamp);
+                    node.allocate(amount, timestamp;
                 }
             }
             #[cfg(not(any(feature = "std", )))]
             {
                 for (nid, node) in &mut self.nodes {
                     if *nid == id {
-                        node.allocate(amount, timestamp);
+                        node.allocate(amount, timestamp;
                         break;
                     }
                 }
@@ -729,13 +729,13 @@ impl DynamicQuotaManager {
 
     /// Deallocate quota hierarchically down the tree
     fn deallocate_hierarchical(&mut self, node_id: u32, amount: u64, timestamp: u64) -> WrtResult<()> {
-        let mut current_id = Some(node_id);
+        let mut current_id = Some(node_id;
         
         while let Some(id) = current_id {
             #[cfg(feature = "std")]
             {
                 if let Some(node) = self.nodes.get_mut(&id) {
-                    node.deallocate(amount, timestamp);
+                    node.deallocate(amount, timestamp;
                     current_id = node.parent_id;
                 } else {
                     break;
@@ -746,7 +746,7 @@ impl DynamicQuotaManager {
                 let mut found = false;
                 for (nid, node) in &mut self.nodes {
                     if *nid == id {
-                        node.deallocate(amount, timestamp);
+                        node.deallocate(amount, timestamp;
                         current_id = node.parent_id;
                         found = true;
                         break;
@@ -805,49 +805,49 @@ mod tests {
 
     #[test]
     fn test_quota_node_creation() {
-        let node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024);
-        assert_eq!(node.node_id, 1);
-        assert_eq!(node.entity_id, 100);
-        assert_eq!(node.max_quota, 1024);
-        assert_eq!(node.current_usage, 0);
-        assert_eq!(node.status, QuotaStatus::Normal);
+        let node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024;
+        assert_eq!(node.node_id, 1;
+        assert_eq!(node.entity_id, 100;
+        assert_eq!(node.max_quota, 1024;
+        assert_eq!(node.current_usage, 0;
+        assert_eq!(node.status, QuotaStatus::Normal;
     }
 
     #[test]
     fn test_quota_allocation() {
-        let mut node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024);
+        let mut node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024;
         
         // Normal allocation
-        assert!(node.allocate(512, 1000));
-        assert_eq!(node.current_usage, 512);
-        assert_eq!(node.status, QuotaStatus::Normal);
+        assert!(node.allocate(512, 1000);
+        assert_eq!(node.current_usage, 512;
+        assert_eq!(node.status, QuotaStatus::Normal;
         
         // Warning threshold
-        assert!(node.allocate(300, 1001));
-        assert_eq!(node.current_usage, 812);
+        assert!(node.allocate(300, 1001);
+        assert_eq!(node.current_usage, 812;
         assert_eq!(node.status, QuotaStatus::Normal); // 79% < 80%
         
         // Critical threshold
-        assert!(node.allocate(200, 1002));
-        assert_eq!(node.current_usage, 1012);
+        assert!(node.allocate(200, 1002);
+        assert_eq!(node.current_usage, 1012;
         assert_eq!(node.status, QuotaStatus::Critical); // 98% >= 95%
         
         // Over limit
-        assert!(!node.allocate(100, 1003));
-        assert_eq!(node.failure_count, 1);
+        assert!(!node.allocate(100, 1003);
+        assert_eq!(node.failure_count, 1;
     }
 
     #[test]
     fn test_quota_deallocation() {
-        let mut node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024);
+        let mut node = QuotaNode::new(1, QuotaNodeType::Component, 100, None, ResourceType::Memory, 1024;
         
         // Allocate and then deallocate
-        assert!(node.allocate(1000, 1000));
-        assert_eq!(node.status, QuotaStatus::Critical);
+        assert!(node.allocate(1000, 1000);
+        assert_eq!(node.status, QuotaStatus::Critical;
         
-        node.deallocate(500, 1001);
-        assert_eq!(node.current_usage, 500);
-        assert_eq!(node.status, QuotaStatus::Normal);
+        node.deallocate(500, 1001;
+        assert_eq!(node.current_usage, 500;
+        assert_eq!(node.status, QuotaStatus::Normal;
     }
 
     #[test]
@@ -872,8 +872,8 @@ mod tests {
             4 * 1024 * 1024, // 4MB
         ).unwrap();
         
-        assert_eq!(global_id, 1);
-        assert_eq!(comp_id, 2);
+        assert_eq!(global_id, 1;
+        assert_eq!(comp_id, 2;
     }
 
     #[test]
@@ -909,12 +909,12 @@ mod tests {
         
         let response = manager.request_quota(&request).unwrap();
         assert!(response.granted);
-        assert_eq!(response.amount_granted, 2 * 1024 * 1024);
-        assert!(response.reservation_id.is_some());
+        assert_eq!(response.amount_granted, 2 * 1024 * 1024;
+        assert!(response.reservation_id.is_some();
         
         // Check quota status
         let node = manager.get_quota_status(comp_id).unwrap();
-        assert_eq!(node.current_usage, 2 * 1024 * 1024);
+        assert_eq!(node.current_usage, 2 * 1024 * 1024;
     }
 
     #[test]
@@ -949,7 +949,7 @@ mod tests {
         };
         
         let response = manager.request_quota(&request).unwrap();
-        assert!(!response.granted); // Should be denied due to global quota
+        assert!(!response.granted)); // Should be denied due to global quota
     }
 
     #[test]
@@ -979,13 +979,13 @@ mod tests {
         
         // Check allocation
         let node = manager.get_quota_status(comp_id).unwrap();
-        assert_eq!(node.current_usage, 2 * 1024 * 1024);
+        assert_eq!(node.current_usage, 2 * 1024 * 1024;
         
         // Release
         manager.release_quota(reservation_id).unwrap();
         
         // Check deallocation
         let node = manager.get_quota_status(comp_id).unwrap();
-        assert_eq!(node.current_usage, 0);
+        assert_eq!(node.current_usage, 0;
     }
 }

@@ -115,7 +115,7 @@ impl WitComponentBuilder {
         let name =
             BoundedString::from_str(wit_type_name).map_err(|_| ComponentError::TypeMismatch)?;
 
-        self.wit_type_mappings.insert(name, component_type_id);
+        self.wit_type_mappings.insert(name, component_type_id;
         Ok(())
     }
 
@@ -128,7 +128,7 @@ impl WitComponentBuilder {
 
         let base_resource_type = wrt_foundation::resource::ResourceType::Handle(
             wrt_foundation::resource::ResourceHandle::new(0),
-        );
+        ;
 
         self.type_registry.create_generative_type(base_resource_type, instance_id)
     }
@@ -313,8 +313,8 @@ impl WitComponentBuilder {
 
         for result in wit_func.results.iter() {
             let val_type = self.parser.convert_to_valtype(&result.ty)?;
-            let is_stream = matches!(result.ty, WitType::Stream(_));
-            let is_future = matches!(result.ty, WitType::Future(_));
+            let is_stream = matches!(result.ty, WitType::Stream(_;
+            let is_future = matches!(result.ty, WitType::Future(_;
 
             let async_result = AsyncTypedResult {
                 name: result.name.clone(),
@@ -363,25 +363,25 @@ mod tests {
 
     #[test]
     fn test_wit_component_builder_creation() {
-        let builder = WitComponentBuilder::new();
-        assert_eq!(builder.wit_type_mappings.len(), 0);
+        let builder = WitComponentBuilder::new(;
+        assert_eq!(builder.wit_type_mappings.len(), 0;
     }
 
     #[test]
     fn test_register_wit_type() {
-        let mut builder = WitComponentBuilder::new();
-        let type_id = TypeId(1);
+        let mut builder = WitComponentBuilder::new(;
+        let type_id = TypeId(1;
 
-        assert!(builder.register_wit_type("my-type", type_id).is_ok());
+        assert!(builder.register_wit_type("my-type", type_id).is_ok();
         assert!(builder
             .wit_type_mappings
-            .contains_key(&BoundedString::from_str("my-type").unwrap()));
+            .contains_key(&BoundedString::from_str("my-type").unwrap();
     }
 
     #[test]
     fn test_parse_simple_world() {
-        let mut builder = WitComponentBuilder::new();
-        let instance_id = ComponentInstanceId(1);
+        let mut builder = WitComponentBuilder::new(;
+        let instance_id = ComponentInstanceId(1;
 
         let source = r#"
             world test-world {
@@ -390,19 +390,19 @@ mod tests {
             }
         "#;
 
-        let result = builder.parse_world_from_source(source, instance_id);
-        assert!(result.is_ok());
+        let result = builder.parse_world_from_source(source, instance_id;
+        assert!(result.is_ok();
 
         let interface = result.unwrap();
-        assert_eq!(interface.name.as_str(), "test-world");
-        assert_eq!(interface.imports.len(), 1);
-        assert_eq!(interface.exports.len(), 1);
+        assert_eq!(interface.name.as_str(), "test-world";
+        assert_eq!(interface.imports.len(), 1;
+        assert_eq!(interface.exports.len(), 1;
     }
 
     #[test]
     fn test_parse_async_interface() {
-        let mut builder = WitComponentBuilder::new();
-        let instance_id = ComponentInstanceId(1);
+        let mut builder = WitComponentBuilder::new(;
+        let instance_id = ComponentInstanceId(1;
 
         let source = r#"
             interface async-test {
@@ -411,12 +411,12 @@ mod tests {
             }
         "#;
 
-        let result = builder.parse_interface_from_source(source, instance_id);
-        assert!(result.is_ok());
+        let result = builder.parse_interface_from_source(source, instance_id;
+        assert!(result.is_ok();
 
         let interface = result.unwrap();
-        assert_eq!(interface.name.as_str(), "async-test");
-        assert_eq!(interface.async_exports.len(), 2);
+        assert_eq!(interface.name.as_str(), "async-test";
+        assert_eq!(interface.async_exports.len(), 2;
 
         let stream_func = &interface.async_exports[0];
         assert!(stream_func.results[0].is_stream);
@@ -427,13 +427,13 @@ mod tests {
 
     #[test]
     fn test_type_constraint_integration() {
-        let mut builder = WitComponentBuilder::new();
-        let type1 = TypeId(1);
-        let type2 = TypeId(2);
+        let mut builder = WitComponentBuilder::new(;
+        let type1 = TypeId(1;
+        let type2 = TypeId(2;
 
         assert!(builder.add_type_constraint(type1, type2, BoundKind::Sub).is_ok();
 
-        let result = builder.type_registry.check_type_bound_simple(type1, type2, BoundKind::Sub);
+        let result = builder.type_registry.check_type_bound_simple(type1, type2, BoundKind::Sub;
         assert!(result);
     }
 }

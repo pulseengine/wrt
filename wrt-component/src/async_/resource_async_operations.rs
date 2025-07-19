@@ -53,7 +53,7 @@ pub struct ResourceAsyncOperations {
 
 /// Resource operation identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceOperationId(u64);
+pub struct ResourceOperationId(u64;
 
 /// Async resource operation
 #[derive(Debug)]
@@ -223,7 +223,7 @@ impl ResourceAsyncOperations {
             max_borrowed_resources: 32,
             max_concurrent_operations: 16,
             resource_memory_limit: 1024 * 1024, // 1MB
-        });
+        };
 
         let config = config.unwrap_or_else(|| AsyncResourceConfig {
             enable_async_creation: true,
@@ -231,7 +231,7 @@ impl ResourceAsyncOperations {
             enable_async_drop: true,
             default_timeout_ms: 5000,
             max_operation_fuel: 10_000,
-        });
+        };
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentResourceContext {
@@ -263,15 +263,15 @@ impl ResourceAsyncOperations {
         })?;
 
         if !context.async_config.enable_async_creation {
-            return Err(Error::runtime_execution_error("Async resource creation not enabled"));
+            return Err(Error::runtime_execution_error("Async resource creation not enabled";
         }
 
         // Check limits
         if context.owned_resources.len() >= context.resource_limits.max_owned_resources {
-            return Err(Error::resource_limit_exceeded("Too many owned resources"));
+            return Err(Error::resource_limit_exceeded("Too many owned resources";
         }
 
-        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel;
 
         // Create async operation
         let operation = ResourceAsyncOperation {
@@ -297,7 +297,7 @@ impl ResourceAsyncOperations {
         )?;
 
         let mut stored_operation = operation;
-        stored_operation.abi_operation_id = Some(abi_op_id);
+        stored_operation.abi_operation_id = Some(abi_op_id;
 
         // Store operation
         self.active_operations.insert(operation_id, stored_operation).map_err(|_| {
@@ -310,7 +310,7 @@ impl ResourceAsyncOperations {
         })?;
 
         // Update statistics
-        self.resource_stats.total_creates.fetch_add(1, Ordering::Relaxed);
+        self.resource_stats.total_creates.fetch_add(1, Ordering::Relaxed;
 
         Ok(operation_id)
     }
@@ -329,7 +329,7 @@ impl ResourceAsyncOperations {
         })?;
 
         if !context.async_config.enable_async_methods {
-            return Err(Error::runtime_execution_error("Async resource methods not enabled"));
+            return Err(Error::runtime_execution_error("Async resource methods not enabled";
         }
 
         // Verify resource ownership or borrow
@@ -351,10 +351,10 @@ impl ResourceAsyncOperations {
             })?;
 
         if resource_info.state != ResourceState::Active && resource_info.state != ResourceState::Borrowed {
-            return Err(Error::validation_invalid_state("Resource not in valid state for method calls"));
+            return Err(Error::validation_invalid_state("Resource not in valid state for method calls";
         }
 
-        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel;
 
         let operation = ResourceAsyncOperation {
             id: operation_id,
@@ -380,7 +380,7 @@ impl ResourceAsyncOperations {
         )?;
 
         let mut stored_operation = operation;
-        stored_operation.abi_operation_id = Some(abi_op_id);
+        stored_operation.abi_operation_id = Some(abi_op_id;
 
         self.active_operations.insert(operation_id, stored_operation).map_err(|_| {
             Error::resource_limit_exceeded("Too many active operations")
@@ -391,10 +391,10 @@ impl ResourceAsyncOperations {
         })?;
 
         // Update resource activity
-        resource_info.last_accessed.store(self.get_timestamp(), Ordering::Release);
-        resource_info.async_operations.fetch_add(1, Ordering::AcqRel);
+        resource_info.last_accessed.store(self.get_timestamp(), Ordering::Release;
+        resource_info.async_operations.fetch_add(1, Ordering::AcqRel;
 
-        self.resource_stats.total_method_calls.fetch_add(1, Ordering::Relaxed);
+        self.resource_stats.total_method_calls.fetch_add(1, Ordering::Relaxed;
 
         Ok(operation_id)
     }
@@ -412,10 +412,10 @@ impl ResourceAsyncOperations {
 
         // Check borrow limits
         if context.borrowed_resources.len() >= context.resource_limits.max_borrowed_resources {
-            return Err(Error::resource_limit_exceeded("Component borrow limit exceeded"));
+            return Err(Error::resource_limit_exceeded("Component borrow limit exceeded";
         }
 
-        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel;
 
         let operation = ResourceAsyncOperation {
             id: operation_id,
@@ -448,7 +448,7 @@ impl ResourceAsyncOperations {
             Error::resource_limit_exceeded("Too many operations")
         })?;
 
-        self.resource_stats.total_borrows.fetch_add(1, Ordering::Relaxed);
+        self.resource_stats.total_borrows.fetch_add(1, Ordering::Relaxed;
 
         Ok(operation_id)
     }
@@ -465,7 +465,7 @@ impl ResourceAsyncOperations {
         })?;
 
         if !context.async_config.enable_async_drop {
-            return Err(Error::runtime_execution_error("Async resource drop not enabled"));
+            return Err(Error::runtime_execution_error("Async resource drop not enabled";
         }
 
         // Verify ownership
@@ -474,10 +474,10 @@ impl ResourceAsyncOperations {
         })?;
 
         if resource_info.state == ResourceState::Dropped {
-            return Err(Error::validation_invalid_state("Resource already dropped"));
+            return Err(Error::validation_invalid_state("Resource already dropped";
         }
 
-        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel));
+        let operation_id = ResourceOperationId(self.next_operation_id.fetch_add(1, Ordering::AcqRel;
 
         let operation = ResourceAsyncOperation {
             id: operation_id,
@@ -498,7 +498,7 @@ impl ResourceAsyncOperations {
             Error::resource_limit_exceeded("Too many operations")
         })?;
 
-        self.resource_stats.total_drops.fetch_add(1, Ordering::Relaxed);
+        self.resource_stats.total_drops.fetch_add(1, Ordering::Relaxed;
 
         Ok(operation_id)
     }
@@ -508,8 +508,8 @@ impl ResourceAsyncOperations {
         // Poll underlying ABI operations
         let abi_result = self.abi_support.poll_async_operations()?;
 
-        let mut completed_operations = Vec::new();
-        let mut failed_operations = Vec::new();
+        let mut completed_operations = Vec::new(;
+        let mut failed_operations = Vec::new(;
 
         // Check operation statuses
         for (op_id, operation) in self.active_operations.iter() {
@@ -523,16 +523,16 @@ impl ResourceAsyncOperations {
                     // Update statistics based on operation type
                     match &operation.operation_type {
                         ResourceAsyncOperationType::Create { .. } => {
-                            self.resource_stats.completed_creates.fetch_add(1, Ordering::Relaxed);
+                            self.resource_stats.completed_creates.fetch_add(1, Ordering::Relaxed;
                         },
                         ResourceAsyncOperationType::MethodCall { .. } => {
-                            self.resource_stats.completed_method_calls.fetch_add(1, Ordering::Relaxed);
+                            self.resource_stats.completed_method_calls.fetch_add(1, Ordering::Relaxed;
                         },
                         ResourceAsyncOperationType::Borrow { .. } => {
-                            self.resource_stats.completed_borrows.fetch_add(1, Ordering::Relaxed);
+                            self.resource_stats.completed_borrows.fetch_add(1, Ordering::Relaxed;
                         },
                         ResourceAsyncOperationType::Drop => {
-                            self.resource_stats.completed_drops.fetch_add(1, Ordering::Relaxed);
+                            self.resource_stats.completed_drops.fetch_add(1, Ordering::Relaxed;
                         },
                         _ => {},
                     }
@@ -581,7 +581,7 @@ impl ResourceAsyncOperations {
         if let Some(operation) = self.active_operations.remove(&operation_id) {
             // Remove from component context
             if let Some(context) = self.resource_contexts.get_mut(&operation.component_id) {
-                context.active_operations.retain(|&id| id != operation_id);
+                context.active_operations.retain(|&id| id != operation_id;
             }
 
             // Handle operation completion
@@ -593,7 +593,7 @@ impl ResourceAsyncOperations {
                     // Resource drop completed - remove from owned_resources
                     if let Some(handle) = operation.resource_handle {
                         if let Some(context) = self.resource_contexts.get_mut(&operation.component_id) {
-                            context.owned_resources.remove(&handle);
+                            context.owned_resources.remove(&handle;
                         }
                     }
                 },
@@ -641,9 +641,9 @@ mod tests {
     #[test]
     fn test_resource_operations_creation() {
         // Would need proper ABI support for full test
-        // let abi_support = AsyncCanonicalAbiSupport::new(bridge);
-        // let resource_ops = ResourceAsyncOperations::new(abi_support);
-        // assert_eq!(resource_ops.active_operations.len(), 0);
+        // let abi_support = AsyncCanonicalAbiSupport::new(bridge;
+        // let resource_ops = ResourceAsyncOperations::new(abi_support;
+        // assert_eq!(resource_ops.active_operations.len(), 0;
     }
 
     #[test]
@@ -655,13 +655,13 @@ mod tests {
             resource_memory_limit: 512 * 1024,
         };
 
-        assert_eq!(limits.max_owned_resources, 32);
-        assert_eq!(limits.max_borrowed_resources, 16);
+        assert_eq!(limits.max_owned_resources, 32;
+        assert_eq!(limits.max_borrowed_resources, 16;
     }
 
     #[test]
     fn test_resource_state_transitions() {
-        assert_eq!(ResourceState::Creating as u8, 0);
-        assert_ne!(ResourceState::Active, ResourceState::Dropped);
+        assert_eq!(ResourceState::Creating as u8, 0;
+        assert_ne!(ResourceState::Active, ResourceState::Dropped;
     }
 }

@@ -198,12 +198,12 @@ impl FuelDynamicManager {
         if let Some(history) = self.task_history.get_mut(&task_id) {
             // Add sample to history
             if history.fuel_samples.len() >= 32 {
-                history.fuel_samples.remove(0);
+                history.fuel_samples.remove(0;
             }
             history.fuel_samples.push(sample).ok();
 
             // Update statistics
-            self.update_task_statistics(history);
+            self.update_task_statistics(history;
         } else {
             // Create new history entry
             let provider = safe_managed_alloc!(512, CrateId::Component)?;
@@ -225,7 +225,7 @@ impl FuelDynamicManager {
         }
 
         // Update system load metrics
-        self.update_system_load_metrics(fuel_consumed);
+        self.update_system_load_metrics(fuel_consumed;
 
         Ok(())
     }
@@ -236,12 +236,12 @@ impl FuelDynamicManager {
             history.exhaustion_count += 1;
             
             // Calculate emergency fuel allocation
-            let emergency_fuel = self.calculate_emergency_fuel(history);
+            let emergency_fuel = self.calculate_emergency_fuel(history;
             
             // Check reserve availability
-            let current_reserve = self.fuel_reserve.load(Ordering::Acquire);
+            let current_reserve = self.fuel_reserve.load(Ordering::Acquire;
             if current_reserve >= emergency_fuel && current_reserve - emergency_fuel >= self.min_reserve_threshold {
-                self.fuel_reserve.fetch_sub(emergency_fuel, Ordering::AcqRel);
+                self.fuel_reserve.fetch_sub(emergency_fuel, Ordering::AcqRel;
                 Ok(emergency_fuel)
             } else {
                 Err(Error::resource_exhausted("Insufficient fuel reserve"))
@@ -253,14 +253,14 @@ impl FuelDynamicManager {
 
     /// Rebalance fuel allocations across components
     pub fn rebalance_allocations(&mut self) -> Result<(), Error> {
-        let total_active_tasks = self.system_load.total_active_tasks.load(Ordering::Acquire);
+        let total_active_tasks = self.system_load.total_active_tasks.load(Ordering::Acquire;
         if total_active_tasks == 0 {
-            return Ok(());
+            return Ok((;
         }
 
         // Calculate total available fuel
-        let reserve = self.fuel_reserve.load(Ordering::Acquire);
-        let total_available = reserve.saturating_sub(self.min_reserve_threshold);
+        let reserve = self.fuel_reserve.load(Ordering::Acquire;
+        let total_available = reserve.saturating_sub(self.min_reserve_threshold;
 
         // Rebalance based on policy
         match self.allocation_policy {
@@ -336,7 +336,7 @@ impl FuelDynamicManager {
         base_fuel: u64,
     ) -> Result<u64, Error> {
         if let Some(quota) = self.component_quotas.get(&component_id) {
-            let active_tasks = quota.active_tasks.load(Ordering::Acquire);
+            let active_tasks = quota.active_tasks.load(Ordering::Acquire;
             if active_tasks > 0 {
                 let fair_share = quota.current_quota.load(Ordering::Acquire) / active_tasks as u64;
                 Ok(fair_share.max(MIN_FUEL_ALLOCATION))
@@ -370,9 +370,9 @@ impl FuelDynamicManager {
     }
 
     fn update_task_statistics(&self, history: &mut TaskExecutionHistory) {
-        let total_fuel: u64 = history.fuel_samples.iter().map(|s| s.fuel_consumed).sum();
-        let total_polls: u32 = history.fuel_samples.iter().map(|s| s.poll_count).sum();
-        let completed_count = history.fuel_samples.iter().filter(|s| s.completed).count();
+        let total_fuel: u64 = history.fuel_samples.iter().map(|s| s.fuel_consumed).sum(;
+        let total_polls: u32 = history.fuel_samples.iter().map(|s| s.poll_count).sum(;
+        let completed_count = history.fuel_samples.iter().filter(|s| s.completed).count(;
 
         if total_polls > 0 {
             history.avg_fuel_per_poll = total_fuel as f64 / total_polls as f64;
@@ -385,38 +385,38 @@ impl FuelDynamicManager {
 
     fn update_system_load_metrics(&self, fuel_consumed: u64) {
         // Update average fuel rate (simple moving average)
-        let current_rate = self.system_load.avg_fuel_rate.load(Ordering::Acquire);
+        let current_rate = self.system_load.avg_fuel_rate.load(Ordering::Acquire;
         let new_rate = (current_rate * 9 + fuel_consumed) / 10;
-        self.system_load.avg_fuel_rate.store(new_rate, Ordering::Release);
+        self.system_load.avg_fuel_rate.store(new_rate, Ordering::Release;
 
         // Update peak usage
-        let peak = self.system_load.peak_fuel_usage.load(Ordering::Acquire);
+        let peak = self.system_load.peak_fuel_usage.load(Ordering::Acquire;
         if fuel_consumed > peak {
-            self.system_load.peak_fuel_usage.store(fuel_consumed, Ordering::Release);
+            self.system_load.peak_fuel_usage.store(fuel_consumed, Ordering::Release;
         }
 
         // Calculate fuel pressure (0-100)
-        let reserve = self.fuel_reserve.load(Ordering::Acquire);
+        let reserve = self.fuel_reserve.load(Ordering::Acquire;
         let pressure = if reserve > 0 {
             ((1.0 - (reserve as f64 / self.min_reserve_threshold as f64 / 10.0)) * 100.0) as u32
         } else {
             100
         };
-        self.system_load.fuel_pressure.store(pressure.min(100), Ordering::Release);
+        self.system_load.fuel_pressure.store(pressure.min(100), Ordering::Release;
     }
 
     fn rebalance_fair_share(&mut self, total_available: u64, total_tasks: u32) -> Result<(), Error> {
         if total_tasks == 0 {
-            return Ok(());
+            return Ok((;
         }
 
         let per_task_allocation = total_available / total_tasks as u64;
         
         for (_, quota) in self.component_quotas.iter() {
-            let active = quota.active_tasks.load(Ordering::Acquire);
+            let active = quota.active_tasks.load(Ordering::Acquire;
             if active > 0 {
                 let new_quota = per_task_allocation * active as u64;
-                quota.current_quota.store(new_quota, Ordering::Release);
+                quota.current_quota.store(new_quota, Ordering::Release;
             }
         }
 
@@ -426,7 +426,7 @@ impl FuelDynamicManager {
     fn rebalance_priority_adaptive(&mut self, total_available: u64) -> Result<(), Error> {
         // Calculate priority weights
         let mut total_weight = 0.0;
-        let mut weights = Vec::new();
+        let mut weights = Vec::new(;
 
         for (id, quota) in self.component_quotas.iter() {
             let active = quota.active_tasks.load(Ordering::Acquire) as f64;
@@ -437,7 +437,7 @@ impl FuelDynamicManager {
                 Priority::Critical => 4.0,
             };
             let weight = active * priority_weight;
-            weights.push((*id, weight));
+            weights.push((*id, weight);
             total_weight += weight;
         }
 
@@ -446,7 +446,7 @@ impl FuelDynamicManager {
             for (id, weight) in weights {
                 if let Some(quota) = self.component_quotas.get(&id) {
                     let allocation = (total_available as f64 * weight / total_weight) as u64;
-                    quota.current_quota.store(allocation, Ordering::Release);
+                    quota.current_quota.store(allocation, Ordering::Release;
                 }
             }
         }
@@ -483,16 +483,16 @@ mod tests {
     #[test]
     fn test_dynamic_manager_creation() {
         let manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap();
-        let stats = manager.get_allocation_stats();
-        assert_eq!(stats.reserve_fuel, 10000);
-        assert_eq!(stats.policy, FuelAllocationPolicy::Adaptive);
+        let stats = manager.get_allocation_stats(;
+        assert_eq!(stats.reserve_fuel, 10000;
+        assert_eq!(stats.policy, FuelAllocationPolicy::Adaptive;
     }
 
     #[test]
     fn test_component_registration() {
         let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::FairShare, 10000).unwrap();
         
-        let component_id = ComponentInstanceId::new(1);
+        let component_id = ComponentInstanceId::new(1;
         manager.register_component(component_id, 5000, Priority::Normal).unwrap();
         
         // Should be able to calculate allocation
@@ -508,8 +508,8 @@ mod tests {
     #[test]
     fn test_adaptive_allocation() {
         let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap();
-        let task_id = TaskId::new(1);
-        let component_id = ComponentInstanceId::new(1);
+        let task_id = TaskId::new(1;
+        let component_id = ComponentInstanceId::new(1;
         
         // Update history with exhaustion
         manager.update_task_history(task_id, 1000, 10, false).unwrap();
@@ -522,14 +522,14 @@ mod tests {
             1000,
             Priority::Normal,
         ).unwrap();
-        assert!(allocation > 1000); // Should be increased due to exhaustion
+        assert!(allocation > 1000)); // Should be increased due to exhaustion
     }
 
     #[test]
     fn test_priority_allocation() {
         let manager = FuelDynamicManager::new(FuelAllocationPolicy::PriorityAdaptive, 10000).unwrap();
-        let task_id = TaskId::new(1);
-        let component_id = ComponentInstanceId::new(1);
+        let task_id = TaskId::new(1;
+        let component_id = ComponentInstanceId::new(1;
         
         let low_priority = manager.calculate_fuel_allocation(
             task_id,
@@ -551,7 +551,7 @@ mod tests {
     #[test]
     fn test_emergency_fuel_allocation() {
         let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap();
-        let task_id = TaskId::new(1);
+        let task_id = TaskId::new(1;
         
         // Create history
         manager.update_task_history(task_id, 500, 5, false).unwrap();
@@ -561,7 +561,7 @@ mod tests {
         assert!(emergency >= MIN_FUEL_ALLOCATION);
         
         // Check reserve was reduced
-        let stats = manager.get_allocation_stats();
+        let stats = manager.get_allocation_stats(;
         assert!(stats.reserve_fuel < 10000);
     }
 }

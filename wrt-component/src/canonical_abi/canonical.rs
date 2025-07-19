@@ -126,7 +126,7 @@ impl CanonicalABI {
 
     /// Set the interceptor for canonical operations
     pub fn with_interceptor(mut self, interceptor: Arc<LinkInterceptor>) -> Self {
-        self.interceptor = Some(interceptor);
+        self.interceptor = Some(interceptor;
         self
     }
 
@@ -145,7 +145,7 @@ impl CanonicalABI {
         memory_bytes: &[u8],
     ) -> Result<Value> {
         // Get memory strategy from interceptor or use default
-        let memory_strategy = self.get_strategy_from_interceptor();
+        let memory_strategy = self.get_strategy_from_interceptor(;
 
         // Update metrics
         self.metrics.lift_count += 1;
@@ -177,7 +177,7 @@ impl CanonicalABI {
         memory_bytes: &mut [u8],
     ) -> Result<()> {
         // Get memory strategy from interceptor or use default
-        let memory_strategy = self.get_strategy_from_interceptor();
+        let memory_strategy = self.get_strategy_from_interceptor(;
 
         // Update metrics
         self.metrics.lower_count += 1;
@@ -253,9 +253,9 @@ impl CanonicalABI {
         // Tuple is a sequence of values with their specific types
         let mut current_addr = addr;
         #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 32> = WrtVec::new();
+        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 32> = WrtVec::new(;
         #[cfg(not(feature = "safety-critical"))]
-        let mut values = Vec::new();
+        let mut values = Vec::new(;
 
         for ty in types {
             let value = self.lift_value(ty, current_addr, resource_table, memory_bytes)?;
@@ -264,10 +264,10 @@ impl CanonicalABI {
                 Error::capacity_exceeded("Tuple value count exceeds safety limit of 32")
             })?;
             #[cfg(not(feature = "safety-critical"))]
-            values.push(Box::new(value));
+            values.push(Box::new(value);
 
             // Advance address based on the size of the current type
-            let layout = calculate_layout(ty);
+            let layout = calculate_layout(ty;
             current_addr += layout.size as u32;
         }
 
@@ -280,9 +280,9 @@ impl CanonicalABI {
         self.check_bounds(addr, num_bytes as u32, memory_bytes)?;
 
         #[cfg(feature = "safety-critical")]
-        let mut flags: WrtVec<u32, {CrateId::Component as u8}, 64> = WrtVec::new();
+        let mut flags: WrtVec<u32, {CrateId::Component as u8}, 64> = WrtVec::new(;
         #[cfg(not(feature = "safety-critical"))]
-        let mut flags = Vec::new();
+        let mut flags = Vec::new(;
         
         for (i, _) in names.iter().enumerate() {
             let byte_idx = i / 8;
@@ -314,9 +314,9 @@ impl CanonicalABI {
         // Similar to list but with fixed size
         let mut current_addr = addr;
         #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 256> = WrtVec::new();
+        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 256> = WrtVec::new(;
         #[cfg(not(feature = "safety-critical"))]
-        let mut values = Vec::new();
+        let mut values = Vec::new(;
 
         for _ in 0..size {
             let value = self.lift_value(inner_ty, current_addr, resource_table, memory_bytes)?;
@@ -325,10 +325,10 @@ impl CanonicalABI {
                 Error::capacity_exceeded("Fixed list size exceeds safety limit of 256")
             })?;
             #[cfg(not(feature = "safety-critical"))]
-            values.push(Box::new(value));
+            values.push(Box::new(value);
 
             // Advance address based on the size of inner type
-            let layout = calculate_layout(inner_ty);
+            let layout = calculate_layout(inner_ty;
             current_addr += layout.size as u32;
         }
 
@@ -348,7 +348,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 1],
             memory_bytes[addr as usize + 2],
             memory_bytes[addr as usize + 3],
-        ]);
+        ];
 
         Ok(Value::Own(handle))
     }
@@ -366,7 +366,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 1],
             memory_bytes[addr as usize + 2],
             memory_bytes[addr as usize + 3],
-        ]);
+        ];
 
         Ok(Value::Borrow(handle))
     }
@@ -401,24 +401,24 @@ impl CanonicalABI {
 
     fn lift_s16(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 2, memory_bytes)?;
-        let v = i16::from_le_bytes([memory_bytes[addr as usize], memory_bytes[addr as usize + 1]]);
+        let v = i16::from_le_bytes([memory_bytes[addr as usize], memory_bytes[addr as usize + 1]];
         Ok(Value::S16(v))
     }
 
     fn lift_u16(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 2, memory_bytes)?;
-        let v = u16::from_le_bytes([memory_bytes[addr as usize], memory_bytes[addr as usize + 1]]);
+        let v = u16::from_le_bytes([memory_bytes[addr as usize], memory_bytes[addr as usize + 1]];
         Ok(Value::U16(v))
     }
 
     fn lift_s32(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let bytes = &memory_bytes[addr as usize..addr as usize + 4];
-        let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]];
 
         // Update metrics if needed
         self.metrics.lift_bytes += 4;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(4);
+        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(4;
 
         Ok(wrt_foundation::values::Value::I32(value))
     }
@@ -430,7 +430,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 1],
             memory_bytes[addr as usize + 2],
             memory_bytes[addr as usize + 3],
-        ]);
+        ];
         Ok(Value::U32(v))
     }
 
@@ -439,11 +439,11 @@ impl CanonicalABI {
         let bytes = &memory_bytes[addr as usize..addr as usize + 8];
         let value = i64::from_le_bytes([
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-        ]);
+        ];
 
         // Update metrics if needed
         self.metrics.lift_bytes += 8;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8);
+        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8;
 
         Ok(wrt_foundation::values::Value::I64(value))
     }
@@ -459,18 +459,18 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 5],
             memory_bytes[addr as usize + 6],
             memory_bytes[addr as usize + 7],
-        ]);
+        ];
         Ok(Value::U64(v))
     }
 
     fn lift_f32(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let bytes = &memory_bytes[addr as usize..addr as usize + 4];
-        let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]];
 
         // Update metrics if needed
         self.metrics.lift_bytes += 4;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(4);
+        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(4;
 
         Ok(wrt_foundation::values::Value::F32(value))
     }
@@ -480,11 +480,11 @@ impl CanonicalABI {
         let bytes = &memory_bytes[addr as usize..addr as usize + 8];
         let value = f64::from_le_bytes([
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-        ]);
+        ];
 
         // Update metrics if needed
         self.metrics.lift_bytes += 8;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8);
+        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8;
 
         Ok(wrt_foundation::values::Value::F64(value))
     }
@@ -497,7 +497,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 1],
             memory_bytes[addr as usize + 2],
             memory_bytes[addr as usize + 3],
-        ]);
+        ];
 
         match char::from_u32(code_point) {
             Some(c) => Ok(Value::Char(c)),
@@ -529,7 +529,7 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 1],
             memory_bytes[addr as usize + 2],
             memory_bytes[addr as usize + 3],
-        ]);
+        ];
 
         let length = u32::from_le_bytes([
             memory_bytes[addr as usize + 4],
@@ -540,7 +540,7 @@ impl CanonicalABI {
 
         // Validate the length
         if length > MAX_BUFFER_SIZE {
-            return Err(Error::runtime_out_of_bounds("Component not found"));
+            return Err(Error::runtime_out_of_bounds("Component not found";
         }
 
         // Calculate element size
@@ -554,9 +554,9 @@ impl CanonicalABI {
 
         // Lift each element
         #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 1024> = WrtVec::new();
+        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 1024> = WrtVec::new(;
         #[cfg(not(feature = "safety-critical"))]
-        let mut values = Vec::new();
+        let mut values = Vec::new(;
         let mut current_addr = data_ptr;
 
         for _ in 0..length {
@@ -566,13 +566,13 @@ impl CanonicalABI {
                 Error::capacity_exceeded("List length exceeds safety limit of 1024")
             })?;
             #[cfg(not(feature = "safety-critical"))]
-            values.push(Box::new(value));
+            values.push(Box::new(value);
             current_addr += element_size;
         }
 
         // Update metrics
         self.metrics.lift_bytes += 8 + total_size as u64;
-        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8 + total_size as u64);
+        self.metrics.max_lift_bytes = self.metrics.max_lift_bytes.max(8 + total_size as u64;
 
         Ok(Value::List(values))
     }
@@ -587,9 +587,9 @@ impl CanonicalABI {
         // Records are stored as a sequence of field values
         let mut current_addr = addr;
         #[cfg(feature = "safety-critical")]
-        let mut record_map: WrtHashMap<String, Box<ComponentValue>, {CrateId::Component as u8}, 32> = WrtHashMap::new();
+        let mut record_map: WrtHashMap<String, Box<ComponentValue>, {CrateId::Component as u8}, 32> = WrtHashMap::new(;
         #[cfg(not(feature = "safety-critical"))]
-        let mut record_map = HashMap::new();
+        let mut record_map = HashMap::new(;
 
         for (field_name, field_type) in fields {
             // Lift the field value
@@ -600,10 +600,10 @@ impl CanonicalABI {
                 Error::capacity_exceeded("Record field count exceeds safety limit of 32")
             })?;
             #[cfg(not(feature = "safety-critical"))]
-            record_map.insert(field_name.clone(), Box::new(field_value));
+            record_map.insert(field_name.clone(), Box::new(field_value;
 
             // Advance address by the size of the field
-            let layout = calculate_layout(field_type);
+            let layout = calculate_layout(field_type;
             current_addr += layout.size as u32;
         }
 
@@ -625,7 +625,7 @@ impl CanonicalABI {
 
         // Check if the discriminant is valid
         if discriminant as usize >= cases.len() {
-            return Err(Error::invalid_type_error("Component not found"));
+            return Err(Error::invalid_type_error("Component not found";
         }
 
         let case_info = &cases[discriminant as usize];
@@ -669,7 +669,7 @@ impl CanonicalABI {
 
         // Validate discriminant
         if discriminant as usize >= cases.len() {
-            return Err(Error::invalid_type_error("Component not found"));
+            return Err(Error::invalid_type_error("Component not found";
         }
 
         Ok(Value::Enum(discriminant))
@@ -772,7 +772,7 @@ impl CanonicalABI {
 
     fn lower_s16(&self, value: i16, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 2, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         memory_bytes[addr as usize] = bytes[0];
         memory_bytes[addr as usize + 1] = bytes[1];
         Ok(())
@@ -780,7 +780,7 @@ impl CanonicalABI {
 
     fn lower_u16(&self, value: u16, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 2, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         memory_bytes[addr as usize] = bytes[0];
         memory_bytes[addr as usize + 1] = bytes[1];
         Ok(())
@@ -788,7 +788,7 @@ impl CanonicalABI {
 
     fn lower_s32(&self, value: i32, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 4, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         memory_bytes[addr as usize] = bytes[0];
         memory_bytes[addr as usize + 1] = bytes[1];
         memory_bytes[addr as usize + 2] = bytes[2];
@@ -798,7 +798,7 @@ impl CanonicalABI {
 
     fn lower_u32(&self, value: u32, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 4, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         memory_bytes[addr as usize] = bytes[0];
         memory_bytes[addr as usize + 1] = bytes[1];
         memory_bytes[addr as usize + 2] = bytes[2];
@@ -808,7 +808,7 @@ impl CanonicalABI {
 
     fn lower_s64(&self, value: i64, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 8, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         for i in 0..8 {
             memory_bytes[addr as usize + i] = bytes[i];
         }
@@ -817,7 +817,7 @@ impl CanonicalABI {
 
     fn lower_u64(&self, value: u64, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 8, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         for i in 0..8 {
             memory_bytes[addr as usize + i] = bytes[i];
         }
@@ -826,7 +826,7 @@ impl CanonicalABI {
 
     fn lower_f32(&self, value: f32, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 4, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         for i in 0..4 {
             memory_bytes[addr as usize + i] = bytes[i];
         }
@@ -835,7 +835,7 @@ impl CanonicalABI {
 
     fn lower_f64(&self, value: f64, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 8, memory_bytes)?;
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         for i in 0..8 {
             memory_bytes[addr as usize + i] = bytes[i];
         }
@@ -844,7 +844,7 @@ impl CanonicalABI {
 
     fn lower_char(&self, value: char, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
         self.check_bounds(addr, 4, memory_bytes)?;
-        let bytes = (value as u32).to_le_bytes();
+        let bytes = (value as u32).to_le_bytes(;
         for i in 0..4 {
             memory_bytes[addr as usize + i] = bytes[i];
         }
@@ -873,13 +873,13 @@ impl CanonicalABI {
         let data_ptr = addr + 8; // Data follows the list header
 
         // Write pointer
-        let ptr_bytes = data_ptr.to_le_bytes();
+        let ptr_bytes = data_ptr.to_le_bytes(;
         for i in 0..4 {
             memory_bytes[addr as usize + i] = ptr_bytes[i];
         }
 
         // Write length
-        let len_bytes = length.to_le_bytes();
+        let len_bytes = length.to_le_bytes(;
         for i in 0..4 {
             memory_bytes[addr as usize + 4 + i] = len_bytes[i];
         }
@@ -900,7 +900,7 @@ impl CanonicalABI {
 
         // Update metrics
         self.metrics.lower_bytes += 8 + total_size as u64;
-        self.metrics.max_lower_bytes = self.metrics.max_lower_bytes.max(8 + total_size as u64);
+        self.metrics.max_lower_bytes = self.metrics.max_lower_bytes.max(8 + total_size as u64;
 
         Ok(())
     }
@@ -1037,10 +1037,10 @@ impl CanonicalABI {
                     resource_table,
                     memory_bytes,
                 )?;
-                let layout = calculate_layout(field_type);
+                let layout = calculate_layout(field_type;
                 current_addr += layout.size as u32;
             } else {
-                return Err(Error::runtime_type_mismatch("Component not found"));
+                return Err(Error::runtime_type_mismatch("Component not found";
             }
         }
 
@@ -1056,21 +1056,21 @@ impl CanonicalABI {
         _memory_bytes: &mut [u8],
     ) -> Result<()> {
         // Implementation details
-        Err(Error::unimplemented("test"));
+        Err(Error::unimplemented("test";
         let abi = CanonicalABI::default()
             .with_memory_strategy(MemoryStrategy::ZeroCopy)
-            .with_interceptor(interceptor);
-        assert_eq!(abi.get_strategy_from_interceptor(), MemoryStrategy::ZeroCopy);
+            .with_interceptor(interceptor;
+        assert_eq!(abi.get_strategy_from_interceptor(), MemoryStrategy::ZeroCopy;
 
         // Test with interceptor that returns Some strategy
-        let strategy = Arc::new(TestStrategy { memory_strategy: Some(1) });
-        let mut interceptor = wrt_intercept::LinkInterceptor::new("test");
-        interceptor.add_strategy(strategy);
+        let strategy = Arc::new(TestStrategy { memory_strategy: Some(1) };
+        let mut interceptor = wrt_intercept::LinkInterceptor::new("test";
+        interceptor.add_strategy(strategy;
 
         let abi = CanonicalABI::default()
             .with_memory_strategy(MemoryStrategy::ZeroCopy)
-            .with_interceptor(Arc::new(interceptor));
-        assert_eq!(abi.get_strategy_from_interceptor(), MemoryStrategy::BoundedCopy);
+            .with_interceptor(Arc::new(interceptor;
+        assert_eq!(abi.get_strategy_from_interceptor(), MemoryStrategy::BoundedCopy;
     }
 }
 
@@ -1092,7 +1092,7 @@ pub fn convert_value_for_canonical_abi(
     target_type: &FormatValType<ComponentProvider>,
 ) -> Result<wrt_foundation::values::Value> {
     // First convert the format ValType to a component-friendly ValType
-    let component_type = crate::values::convert_format_to_common_valtype(target_type);
+    let component_type = crate::values::convert_format_to_common_valtype(target_type;
 
     // Now convert the value based on the component type
     match &component_type {
@@ -1268,9 +1268,9 @@ pub fn convert_value_for_canonical_abi(
         FoundationValType::<ComponentProvider>::List(inner_type) => {
             if let Some(list) = value.as_list() {
                 #[cfg(feature = "safety-critical")]
-                let mut converted_list: WrtVec<Value, {CrateId::Component as u8}, 1024> = WrtVec::new();
+                let mut converted_list: WrtVec<Value, {CrateId::Component as u8}, 1024> = WrtVec::new(;
                 #[cfg(not(feature = "safety-critical"))]
-                let mut converted_list = Vec::new();
+                let mut converted_list = Vec::new(;
                 for item in list {
                     let converted_item = convert_value_for_canonical_abi(item, &inner_type)?;
                     #[cfg(feature = "safety-critical")]
@@ -1288,9 +1288,9 @@ pub fn convert_value_for_canonical_abi(
         FoundationValType::<ComponentProvider>::Record(fields) => {
             if let Some(record) = value.as_record() {
                 #[cfg(feature = "safety-critical")]
-                let mut converted_record: WrtHashMap<String, Value, {CrateId::Component as u8}, 64> = WrtHashMap::new();
+                let mut converted_record: WrtHashMap<String, Value, {CrateId::Component as u8}, 64> = WrtHashMap::new(;
                 #[cfg(not(feature = "safety-critical"))]
-                let mut converted_record = HashMap::new();
+                let mut converted_record = HashMap::new(;
                 for (field_name, field_type) in fields {
                     if let Some(field_value) = record.get(field_name) {
                         let converted_field =
@@ -1300,9 +1300,9 @@ pub fn convert_value_for_canonical_abi(
                             Error::capacity_exceeded("Record conversion exceeds safety limit of 64 fields")
                         })?;
                         #[cfg(not(feature = "safety-critical"))]
-                        converted_record.insert(field_name.clone(), converted_field);
+                        converted_record.insert(field_name.clone(), converted_field;
                     } else {
-                        return Err(Error::component_not_found("Component not found"));
+                        return Err(Error::component_not_found("Component not found";
                     }
                 }
                 Ok(wrt_foundation::values::Value::Record(converted_record))
@@ -1321,12 +1321,12 @@ pub fn convert_value_for_canonical_abi(
                             types.len(),
                             tuple.len()
                         )).to_string(),
-                    ));
+                    ;
                 }
                 #[cfg(feature = "safety-critical")]
-                let mut converted_tuple: WrtVec<Value, {CrateId::Component as u8}, 32> = WrtVec::new();
+                let mut converted_tuple: WrtVec<Value, {CrateId::Component as u8}, 32> = WrtVec::new(;
                 #[cfg(not(feature = "safety-critical"))]
-                let mut converted_tuple = Vec::new();
+                let mut converted_tuple = Vec::new(;
                 for (item, item_type) in tuple.iter().zip(types.iter()) {
                     let converted_item = convert_value_for_canonical_abi(item, item_type)?;
                     #[cfg(feature = "safety-critical")]
@@ -1346,20 +1346,20 @@ pub fn convert_value_for_canonical_abi(
                 // Verify all required flags are present
                 for name in names {
                     if !flags.contains_key(name) {
-                        return Err(Error::component_not_found("Value out of range"));
+                        return Err(Error::component_not_found("Value out of range";
                     }
                 }
                 // Verify no extra flags are present
                 for name in flags.keys() {
                     if !names.contains(name) {
-                        return Err(Error::component_not_found("Component not found"));
+                        return Err(Error::component_not_found("Component not found";
                     }
                 }
                 // Convert all flag values to booleans
                 #[cfg(feature = "safety-critical")]
-                let mut converted_flags: WrtHashMap<String, bool, {CrateId::Component as u8}, 64> = WrtHashMap::new();
+                let mut converted_flags: WrtHashMap<String, bool, {CrateId::Component as u8}, 64> = WrtHashMap::new(;
                 #[cfg(not(feature = "safety-critical"))]
-                let mut converted_flags = HashMap::new();
+                let mut converted_flags = HashMap::new(;
                 for (name, value) in flags {
                     if let Some(b) = value.as_bool() {
                         #[cfg(feature = "safety-critical")]
@@ -1367,9 +1367,9 @@ pub fn convert_value_for_canonical_abi(
                             Error::capacity_exceeded("Flags conversion exceeds safety limit of 64 flags")
                         })?;
                         #[cfg(not(feature = "safety-critical"))]
-                        converted_flags.insert(name.clone(), b);
+                        converted_flags.insert(name.clone(), b;
                     } else {
-                        return Err(Error::runtime_execution_error("Type conversion failed"));
+                        return Err(Error::runtime_execution_error("Type conversion failed";
                     }
                 }
                 Ok(wrt_foundation::values::Value::Flags(converted_flags))
@@ -1542,7 +1542,7 @@ pub fn convert_value_for_type(
         
         // Bounds check
         if start_addr + required_size > memory_bytes.len() {
-            return Err(Error::memory_error("Bulk array write exceeds memory bounds"));
+            return Err(Error::memory_error("Bulk array write exceeds memory bounds";
         }
         
         #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
@@ -1565,12 +1565,12 @@ pub fn convert_value_for_type(
         
         // Process values safely without unsafe operations
         for &value in values {
-            let bytes = value.to_le_bytes();
+            let bytes = value.to_le_bytes(;
             if offset + 4 <= memory_bytes.len() {
-                memory_bytes[offset..offset + 4].copy_from_slice(&bytes);
+                memory_bytes[offset..offset + 4].copy_from_slice(&bytes;
                 offset += 4;
             } else {
-                return Err(Error::memory_error("Array lowering exceeded memory bounds"));
+                return Err(Error::memory_error("Array lowering exceeded memory bounds";
             }
         }
         
@@ -1582,8 +1582,8 @@ pub fn convert_value_for_type(
     fn standard_lower_i32_array(&self, values: &[i32], start_addr: usize, memory_bytes: &mut [u8]) -> Result<()> {
         for (i, &value) in values.iter().enumerate() {
             let offset = start_addr + i * 4;
-            let bytes = value.to_le_bytes();
-            memory_bytes[offset..offset + 4].copy_from_slice(&bytes);
+            let bytes = value.to_le_bytes(;
+            memory_bytes[offset..offset + 4].copy_from_slice(&bytes;
         }
         Ok(())
     }
@@ -1596,7 +1596,7 @@ pub fn convert_value_for_type(
         
         // Bounds check
         if start_addr + required_size > memory_bytes.len() {
-            return Err(Error::memory_error("Bulk array read exceeds memory bounds"));
+            return Err(Error::memory_error("Bulk array read exceeds memory bounds";
         }
         
         #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
@@ -1613,18 +1613,18 @@ pub fn convert_value_for_type(
     #[cfg(all(feature = "std", target_arch = "x86_64", target_feature = "sse2"))]
     fn simd_lift_i32_array(&self, start_addr: usize, count: usize, memory_bytes: &[u8]) -> Result<Vec<i32>> {
         // ASIL-D safe: Use safe array operations instead of unsafe SIMD
-        let mut result = Vec::with_capacity(count);
+        let mut result = Vec::with_capacity(count;
         let mut offset = start_addr;
         
         // Process values safely without unsafe operations
         for _ in 0..count {
             if offset + 4 <= memory_bytes.len() {
                 let mut bytes = [0u8; 4];
-                bytes.copy_from_slice(&memory_bytes[offset..offset + 4]);
-                result.push(i32::from_le_bytes(bytes));
+                bytes.copy_from_slice(&memory_bytes[offset..offset + 4];
+                result.push(i32::from_le_bytes(bytes);
                 offset += 4;
             } else {
-                return Err(Error::memory_error("Array lifting exceeded memory bounds"));
+                return Err(Error::memory_error("Array lifting exceeded memory bounds";
             }
         }
         
@@ -1634,7 +1634,7 @@ pub fn convert_value_for_type(
     /// Standard i32 array lifting fallback
     #[cfg(feature = "std")]
     fn standard_lift_i32_array(&self, start_addr: usize, count: usize, memory_bytes: &[u8]) -> Result<Vec<i32>> {
-        let mut result = Vec::with_capacity(count);
+        let mut result = Vec::with_capacity(count;
         
         for i in 0..count {
             let offset = start_addr + i * 4;
@@ -1644,7 +1644,7 @@ pub fn convert_value_for_type(
                 memory_bytes[offset + 2],
                 memory_bytes[offset + 3],
             ];
-            result.push(i32::from_le_bytes(bytes));
+            result.push(i32::from_le_bytes(bytes);
         }
         
         Ok(result)
@@ -1654,13 +1654,13 @@ pub fn convert_value_for_type(
     #[cfg(feature = "std")]
     pub fn bulk_copy_string_data(&self, src: &[u8], dst: &mut [u8]) -> Result<usize> {
         if src.len() > dst.len() {
-            return Err(Error::memory_error("Source string too large for destination buffer"));
+            return Err(Error::memory_error("Source string too large for destination buffer";
         }
         
         // Use optimized memory copy for large strings
         if src.len() >= 64 {
             // For large copies, use the most efficient copy available
-            dst[..src.len()].copy_from_slice(src);
+            dst[..src.len()].copy_from_slice(src;
         } else {
             // For small copies, use simple loop to avoid overhead
             for (i, &byte) in src.iter().enumerate() {

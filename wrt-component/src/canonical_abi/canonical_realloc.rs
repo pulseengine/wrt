@@ -122,7 +122,7 @@ impl ReallocManager {
         let mut found = false;
         for (id, instance_allocs) in &mut self.allocations {
             if *id == instance_id {
-                instance_allocs.realloc_fn = Some(ReallocFunction { func_index, func_available: true });
+                instance_allocs.realloc_fn = Some(ReallocFunction { func_index, func_available: true };
                 found = true;
                 break;
             }
@@ -163,7 +163,7 @@ impl ReallocManager {
         // Binary std/no_std choice
         if instance_allocs.allocations.len() >= self.max_instance_allocations {
             self.metrics.failed_allocations += 1;
-            return Err(Error::capacity_exceeded("too_many_types"));
+            return Err(Error::capacity_exceeded("too_many_types";
         }
 
         // Binary std/no_std choice
@@ -182,7 +182,7 @@ impl ReallocManager {
         // Update metrics
         self.metrics.total_allocations += 1;
         self.metrics.total_bytes_allocated += size as u64;
-        self.update_peak_memory();
+        self.update_peak_memory(;
 
         Ok(ptr)
     }
@@ -228,11 +228,11 @@ impl ReallocManager {
             instance_allocs.allocations[alloc_index].ptr = new_ptr;
             instance_allocs.allocations[alloc_index].size = new_size;
             instance_allocs.total_bytes =
-                instance_allocs.total_bytes - (old_size as usize) + (new_size as usize);
+                instance_allocs.total_bytes - (old_size as usize) + (new_size as usize;
             self.metrics.total_bytes_allocated += (new_size - old_size).max(0) as u64;
         }
 
-        self.update_peak_memory();
+        self.update_peak_memory(;
         Ok(new_ptr)
     }
 
@@ -276,16 +276,16 @@ impl ReallocManager {
     /// Binary std/no_std choice
     fn validate_allocation(&self, size: i32, align: i32) -> Result<()> {
         if size < 0 {
-            return Err(Error::validation_error("type_mismatch"));
+            return Err(Error::validation_error("type_mismatch";
         }
 
         if size as usize > self.max_allocation_size {
-            return Err(Error::resource_not_found("resource_not_found"));
+            return Err(Error::resource_not_found("resource_not_found";
         }
 
         // Check alignment is power of 2
         if align <= 0 || (align & (align - 1)) != 0 {
-            return Err(Error::validation_error("type_mismatch"));
+            return Err(Error::validation_error("type_mismatch";
         }
 
         Ok(())
@@ -293,7 +293,7 @@ impl ReallocManager {
 
     /// Update peak memory usage
     fn update_peak_memory(&mut self) {
-        let current_usage: u64 = self.allocations.iter().map(|(_, a)| a.total_bytes as u64).sum();
+        let current_usage: u64 = self.allocations.iter().map(|(_, a)| a.total_bytes as u64).sum(;
 
         if current_usage > self.metrics.peak_memory_usage {
             self.metrics.peak_memory_usage = current_usage;
@@ -307,7 +307,7 @@ impl ReallocManager {
     ) -> Result<()> {
         // Find and remove the instance
         if let Some(pos) = self.allocations.iter().position(|(id, _)| *id == instance_id) {
-            let (_, instance_allocs) = self.allocations.remove(pos);
+            let (_, instance_allocs) = self.allocations.remove(pos;
             // Update metrics for cleanup
             for alloc in instance_allocs.allocations.iter() {
                 if alloc.active {
@@ -326,7 +326,7 @@ impl ReallocManager {
 
     /// Reset metrics
     pub fn reset_metrics(&mut self) {
-        self.metrics = AllocationMetrics::default();
+        self.metrics = AllocationMetrics::default(;
     }
 }
 
@@ -363,7 +363,7 @@ pub mod helpers {
         let total_size = item_size.checked_mul(count).ok_or(Error::validation_error("type_mismatch"))?;
 
         // Add alignment padding
-        let aligned_size = align_size(total_size, align);
+        let aligned_size = align_size(total_size, align;
 
         Ok(aligned_size)
     }
@@ -385,40 +385,40 @@ mod tests {
     #[test]
     fn test_realloc_manager_creation() {
         let manager = ReallocManager::new(1024, 10).unwrap();
-        assert_eq!(manager.max_allocation_size, 1024);
-        assert_eq!(manager.max_instance_allocations, 10);
+        assert_eq!(manager.max_allocation_size, 1024;
+        assert_eq!(manager.max_instance_allocations, 10;
     }
 
     #[test]
     fn test_register_realloc() {
         let mut manager = ReallocManager::new(1024, 10).unwrap();
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
-        assert!(manager.register_realloc(instance_id, 42).is_ok());
+        assert!(manager.register_realloc(instance_id, 42).is_ok();
     }
 
     #[test]
     fn test_allocation() {
         let mut manager = ReallocManager::new(1024, 10).unwrap();
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         // Binary std/no_std choice
         manager.register_realloc(instance_id, 42).unwrap();
 
         // Allocate memory
-        let ptr = manager.allocate(instance_id, 64, 8);
-        assert!(ptr.is_ok());
-        assert_ne!(ptr.unwrap(), 0);
+        let ptr = manager.allocate(instance_id, 64, 8;
+        assert!(ptr.is_ok();
+        assert_ne!(ptr.unwrap(), 0;
 
         // Check metrics
-        assert_eq!(manager.metrics.total_allocations, 1);
-        assert_eq!(manager.metrics.total_bytes_allocated, 64);
+        assert_eq!(manager.metrics.total_allocations, 1;
+        assert_eq!(manager.metrics.total_bytes_allocated, 64;
     }
 
     #[test]
     fn test_reallocation() {
         let mut manager = ReallocManager::new(1024, 10).unwrap();
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         manager.register_realloc(instance_id, 42).unwrap();
 
@@ -426,40 +426,40 @@ mod tests {
         let ptr = manager.allocate(instance_id, 64, 8).unwrap();
 
         // Binary std/no_std choice
-        let new_ptr = manager.reallocate(instance_id, ptr, 64, 8, 128);
-        assert!(new_ptr.is_ok());
+        let new_ptr = manager.reallocate(instance_id, ptr, 64, 8, 128;
+        assert!(new_ptr.is_ok();
     }
 
     #[test]
     fn test_deallocation() {
         let mut manager = ReallocManager::new(1024, 10).unwrap();
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         manager.register_realloc(instance_id, 42).unwrap();
 
         // Binary std/no_std choice
         let ptr = manager.allocate(instance_id, 64, 8).unwrap();
-        assert!(manager.deallocate(instance_id, ptr, 64, 8).is_ok());
+        assert!(manager.deallocate(instance_id, ptr, 64, 8).is_ok();
 
         // Check metrics
-        assert_eq!(manager.metrics.total_deallocations, 1);
-        assert_eq!(manager.metrics.total_bytes_deallocated, 64);
+        assert_eq!(manager.metrics.total_deallocations, 1;
+        assert_eq!(manager.metrics.total_bytes_deallocated, 64;
     }
 
     #[test]
     fn test_allocation_limits() {
         let mut manager = ReallocManager::new(100, 2).unwrap();
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         manager.register_realloc(instance_id, 42).unwrap();
 
         // Test size limit
-        assert!(manager.allocate(instance_id, 200, 8).is_err());
+        assert!(manager.allocate(instance_id, 200, 8).is_err();
 
         // Test count limit
-        assert!(manager.allocate(instance_id, 10, 8).is_ok());
-        assert!(manager.allocate(instance_id, 10, 8).is_ok());
-        assert!(manager.allocate(instance_id, 10, 8).is_err()); // Binary std/no_std choice
+        assert!(manager.allocate(instance_id, 10, 8).is_ok();
+        assert!(manager.allocate(instance_id, 10, 8).is_ok();
+        assert!(manager.allocate(instance_id, 10, 8).is_err())); // Binary std/no_std choice
     }
 
     #[test]
@@ -467,14 +467,14 @@ mod tests {
         use helpers::*;
 
         // Test align_size
-        assert_eq!(align_size(10, 8), 16);
-        assert_eq!(align_size(16, 8), 16);
-        assert_eq!(align_size(17, 8), 24);
+        assert_eq!(align_size(10, 8), 16;
+        assert_eq!(align_size(16, 8), 16;
+        assert_eq!(align_size(17, 8), 24;
 
         // Test is_aligned
-        assert!(is_aligned(16, 8));
-        assert!(!is_aligned(17, 8));
-        assert!(is_aligned(0, 1));
+        assert!(is_aligned(16, 8);
+        assert!(!is_aligned(17, 8);
+        assert!(is_aligned(0, 1);
 
         // Binary std/no_std choice
         let layout = MemoryLayout { size: 10, align: 8 };
@@ -490,7 +490,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -548,6 +548,6 @@ impl Default for ReallocFunction {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(Allocation, Allocation::default());
-impl_basic_traits!(InstanceAllocations, InstanceAllocations::default());
-impl_basic_traits!(ReallocFunction, ReallocFunction::default());
+impl_basic_traits!(Allocation, Allocation::default(;
+impl_basic_traits!(InstanceAllocations, InstanceAllocations::default(;
+impl_basic_traits!(ReallocFunction, ReallocFunction::default(;

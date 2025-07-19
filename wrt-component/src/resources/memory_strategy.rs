@@ -142,12 +142,12 @@ mod tests {
         let data = vec![1, 2, 3, 4, 5];
 
         let result = strategy.process_memory(&data, ResourceOperation::Read).unwrap();
-        assert_eq!(result, data);
+        assert_eq!(result, data;
 
         // Modifying the copy shouldn't affect the original
         let mut result_copy = result.clone();
         result_copy[0] = 99;
-        assert_ne!(result_copy[0], data[0]);
+        assert_ne!(result_copy[0], data[0];
     }
 
     #[test]
@@ -157,7 +157,7 @@ mod tests {
         let data = vec![1, 2, 3, 4, 5];
 
         let result = strategy.process_memory(&data, ResourceOperation::Read).unwrap();
-        assert_eq!(result, data);
+        assert_eq!(result, data;
     }
 
     #[test]
@@ -166,7 +166,7 @@ mod tests {
         let data = &[1, 2, 3, 4, 5];
 
         let result = strategy.process_memory(data, ResourceOperation::Read).unwrap();
-        assert_eq!(result.as_slice(), data);
+        assert_eq!(result.as_slice(), data;
     }
 
     #[test]
@@ -175,6 +175,6 @@ mod tests {
         let data = &[1, 2, 3, 4, 5];
 
         let result = strategy.process_memory(data, ResourceOperation::Read).unwrap();
-        assert_eq!(result.as_slice(), data);
+        assert_eq!(result.as_slice(), data;
     }
 }

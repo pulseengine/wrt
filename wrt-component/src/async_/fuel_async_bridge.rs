@@ -134,9 +134,9 @@ impl FuelAsyncBridge {
         F: Future<Output = Result<T, Error>> + Send + 'static,
         T: Send + 'static,
     {
-        let bridge_config = config.unwrap_or_else(|| self.default_config.clone());
+        let bridge_config = config.unwrap_or_else(|| self.default_config.clone();
 
-        record_global_operation(OperationType::FunctionCall, self.verification_level);
+        record_global_operation(OperationType::FunctionCall, self.verification_level;
 
         // Create time-bounded configuration
         let time_config = TimeBoundedConfig {
@@ -187,7 +187,7 @@ impl FuelAsyncBridge {
 
             // Run the async execution loop
             self.run_async_execution_loop(task_id, time_context)
-        });
+        };
 
         match outcome {
             TimeBoundedOutcome::Completed => result,
@@ -211,8 +211,8 @@ impl FuelAsyncBridge {
         F: Future<Output = Result<T, Error>> + Send + 'static,
         T: Send + 'static,
     {
-        let bridge_config = config.unwrap_or_else(|| self.default_config.clone());
-        let mut task_ids = Vec::new();
+        let bridge_config = config.unwrap_or_else(|| self.default_config.clone();
+        let mut task_ids = Vec::new(;
 
         // Spawn all futures as tasks
         for future in futures {
@@ -241,20 +241,20 @@ impl FuelAsyncBridge {
         }
 
         // Execute all tasks concurrently
-        let mut results = Vec::new();
+        let mut results = Vec::new(;
         for task_id in task_ids {
             // This is a simplified version - real implementation would use proper concurrent execution
             match self.executor.get_task_status(task_id) {
                 Some(status) => {
                     match status.state {
                         AsyncTaskState::Completed => {
-                            results.push(Ok(self.get_task_result(task_id)?));
+                            results.push(Ok(self.get_task_result(task_id)?;
                         }
                         AsyncTaskState::Failed => {
-                            results.push(Err(Error::runtime_execution_error("Async task failed")));
+                            results.push(Err(Error::runtime_execution_error("Async task failed");
                         }
                         _ => {
-                            results.push(Err(Error::runtime_execution_error("Task execution error")));
+                            results.push(Err(Error::runtime_execution_error("Task execution error");
                         }
                     }
                 }
@@ -263,7 +263,7 @@ impl FuelAsyncBridge {
                         ErrorCategory::Runtime,
                         codes::TASK_NOT_FOUND,
                         "Operation failed"),
-                    ));
+                    ;
                 }
             }
         }
@@ -279,7 +279,7 @@ impl FuelAsyncBridge {
         let mut failed_bridges = 0;
 
         for context in self.active_bridges.values() {
-            total_fuel_consumed += context.fuel_consumed.load(Ordering::Acquire);
+            total_fuel_consumed += context.fuel_consumed.load(Ordering::Acquire;
             match context.bridge_state {
                 AsyncBridgeState::Executing | AsyncBridgeState::Waiting => active_bridges += 1,
                 AsyncBridgeState::Completed => completed_bridges += 1,
@@ -288,8 +288,8 @@ impl FuelAsyncBridge {
             }
         }
 
-        let executor_stats = self.executor.get_global_fuel_status();
-        let scheduler_stats = self.scheduler.get_statistics();
+        let executor_stats = self.executor.get_global_fuel_status(;
+        let scheduler_stats = self.scheduler.get_statistics(;
 
         AsyncBridgeStatistics {
             total_bridges: self.active_bridges.len(),
@@ -313,7 +313,7 @@ impl FuelAsyncBridge {
 
         // Shutdown executor and scheduler
         self.executor.shutdown()?;
-        self.active_bridges.clear();
+        self.active_bridges.clear(;
 
         Ok(())
     }
@@ -332,20 +332,20 @@ impl FuelAsyncBridge {
     {
         // Consume fuel for bridge setup
         #[cfg(not(feature = "std"))]
-        time_context.consume_fuel(ASYNC_BRIDGE_SETUP_FUEL);
+        time_context.consume_fuel(ASYNC_BRIDGE_SETUP_FUEL;
 
-        record_global_operation(OperationType::FunctionCall, self.verification_level);
+        record_global_operation(OperationType::FunctionCall, self.verification_level;
 
         // Create a wrapper future that integrates with the bridge
         let bridged_future = async move {
             // Execute the original future
             match future.await {
                 Ok(_) => {
-                    record_global_operation(OperationType::FunctionCall, VerificationLevel::Standard);
+                    record_global_operation(OperationType::FunctionCall, VerificationLevel::Standard;
                     Ok(())
                 }
                 Err(e) => {
-                    record_global_operation(OperationType::Other, VerificationLevel::Standard);
+                    record_global_operation(OperationType::Other, VerificationLevel::Standard;
                     Err(e)
                 }
             }
@@ -371,7 +371,7 @@ impl FuelAsyncBridge {
 
             // Consume fuel for polling
             #[cfg(not(feature = "std"))]
-            time_context.consume_fuel(ASYNC_BRIDGE_POLL_FUEL);
+            time_context.consume_fuel(ASYNC_BRIDGE_POLL_FUEL;
 
             // Poll tasks
             let polled = self.executor.poll_tasks()?;
@@ -386,11 +386,11 @@ impl FuelAsyncBridge {
                     }
                     AsyncTaskState::Failed => {
                         self.cleanup_bridge(task_id)?;
-                        return Err(Error::runtime_execution_error("Async task failed during execution"));
+                        return Err(Error::runtime_execution_error("Async task failed during execution";
                     }
                     AsyncTaskState::FuelExhausted => {
                         self.cleanup_bridge(task_id)?;
-                        return Err(Error::runtime_execution_error("Fuel exhausted"));
+                        return Err(Error::runtime_execution_error("Fuel exhausted";
                     }
                     _ => {
                         // Continue execution
@@ -405,26 +405,26 @@ impl FuelAsyncBridge {
                     ErrorCategory::Runtime,
                     codes::EXECUTION_LIMIT_EXCEEDED,
                     "Operation failed"),
-                );
+                ;
             }
 
             // If no tasks were polled, yield briefly
             if polled == 0 {
                 #[cfg(not(feature = "std"))]
-                time_context.consume_fuel(ASYNC_BRIDGE_POLL_FUEL);
+                time_context.consume_fuel(ASYNC_BRIDGE_POLL_FUEL;
             }
         }
     }
 
     fn cleanup_bridge(&mut self, task_id: TaskId) -> Result<(), Error> {
-        record_global_operation(OperationType::CollectionRemove, self.verification_level);
+        record_global_operation(OperationType::CollectionRemove, self.verification_level;
 
         // Remove from scheduler
         self.scheduler.remove_task(task_id)?;
 
         // Remove bridge context
         if let Some(mut context) = self.active_bridges.remove(&task_id) {
-            context.fuel_consumed.fetch_add(ASYNC_BRIDGE_CLEANUP_FUEL, Ordering::AcqRel);
+            context.fuel_consumed.fetch_add(ASYNC_BRIDGE_CLEANUP_FUEL, Ordering::AcqRel;
             context.bridge_state = AsyncBridgeState::Completed;
         }
 
@@ -481,9 +481,9 @@ mod tests {
             VerificationLevel::Standard,
         ).unwrap();
 
-        let stats = bridge.get_bridge_statistics();
-        assert_eq!(stats.total_bridges, 0);
-        assert_eq!(stats.active_bridges, 0);
+        let stats = bridge.get_bridge_statistics(;
+        assert_eq!(stats.total_bridges, 0;
+        assert_eq!(stats.active_bridges, 0;
     }
 
     #[test]
@@ -497,9 +497,9 @@ mod tests {
             fuel_check_interval: 500,
         };
 
-        assert_eq!(config.default_fuel_budget, 5000);
-        assert_eq!(config.default_time_limit_ms, Some(1000));
-        assert_eq!(config.default_priority, Priority::High);
+        assert_eq!(config.default_fuel_budget, 5000;
+        assert_eq!(config.default_time_limit_ms, Some(1000;
+        assert_eq!(config.default_priority, Priority::High;
     }
 
     async fn simple_async_function() -> Result<u32, Error> {
@@ -518,10 +518,10 @@ mod tests {
         //     ComponentInstanceId::new(1),
         //     simple_async_function(),
         //     None,
-        // );
+        // ;
         
         // For now, just test that the bridge was created successfully
-        let stats = bridge.get_bridge_statistics();
-        assert_eq!(stats.total_bridges, 0);
+        let stats = bridge.get_bridge_statistics(;
+        assert_eq!(stats.total_bridges, 0;
     }
 }

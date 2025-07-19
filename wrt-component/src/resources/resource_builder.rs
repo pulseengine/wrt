@@ -40,7 +40,7 @@ where
 
     /// Set a debug name for the resource
     pub fn with_name(mut self, name: &str) -> Self {
-        self.name = Some(name.to_string());
+        self.name = Some(name.to_string();
         self
     }
 
@@ -260,12 +260,12 @@ mod tests {
             .with_name("test-resource")
             .with_memory_strategy(MemoryStrategy::ZeroCopy)
             .with_verification_level(VerificationLevel::Full)
-            .build();
+            .build(;
 
-        assert_eq!(resource.type_idx, 1);
-        assert_eq!(resource.name, Some("test-resource".to_string()));
-        assert_eq!(strategy, MemoryStrategy::ZeroCopy);
-        assert_eq!(level, VerificationLevel::Full);
+        assert_eq!(resource.type_idx, 1;
+        assert_eq!(resource.name, Some("test-resource".to_string();
+        assert_eq!(strategy, MemoryStrategy::ZeroCopy;
+        assert_eq!(level, VerificationLevel::Full;
     }
 
     #[test]
@@ -276,12 +276,12 @@ mod tests {
             .with_default_memory_strategy(MemoryStrategy::ZeroCopy)
             .with_default_verification_level(VerificationLevel::None)
             .with_optimized_memory()
-            .build();
+            .build(;
 
         // Create a resource to test the table was built correctly
-        let data = Arc::new("test".to_string());
+        let data = Arc::new("test".to_string();
         let handle = table.create_resource(1, data).unwrap();
-        assert_eq!(handle, 1);
+        assert_eq!(handle, 1;
     }
 
     #[test]
@@ -291,26 +291,26 @@ mod tests {
             .with_instance_id("test-instance")
             .with_default_memory_strategy(MemoryStrategy::Copy)
             .with_default_verification_level(VerificationLevel::Critical)
-            .build();
+            .build(;
 
-        assert_eq!(manager.instance_id(), "test-instance");
-        assert_eq!(manager.default_memory_strategy(), MemoryStrategy::Copy);
-        assert_eq!(manager.default_verification_level(), VerificationLevel::Critical);
+        assert_eq!(manager.instance_id(), "test-instance";
+        assert_eq!(manager.default_memory_strategy(), MemoryStrategy::Copy;
+        assert_eq!(manager.default_verification_level(), VerificationLevel::Critical;
     }
 
     #[test]
     #[cfg(not(feature = "std"))]
     fn test_resource_manager_builder_no_std() {
-        let table = Mutex::new(ResourceTable::new());
+        let table = Mutex::new(ResourceTable::new(;
 
         let manager = ResourceManagerBuilder::new()
             .with_instance_id("test-instance")
             .with_default_memory_strategy(MemoryStrategy::Copy)
             .with_default_verification_level(VerificationLevel::Critical)
-            .build(&table);
+            .build(&table;
 
-        assert_eq!(manager.instance_id(), "test-instance");
-        assert_eq!(manager.default_memory_strategy(), MemoryStrategy::Copy);
-        assert_eq!(manager.default_verification_level(), VerificationLevel::Critical);
+        assert_eq!(manager.instance_id(), "test-instance";
+        assert_eq!(manager.default_memory_strategy(), MemoryStrategy::Copy;
+        assert_eq!(manager.default_verification_level(), VerificationLevel::Critical;
     }
 }

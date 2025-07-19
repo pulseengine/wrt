@@ -30,7 +30,7 @@ pub struct CanonicalOptions;
 
 /// Resource handle stub
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ResourceHandle(pub u32);
+pub struct ResourceHandle(pub u32;
 
 /// Resource lifecycle manager stub  
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl ResourceLifecycleManager {
     }
     
     pub fn create_resource(&mut self, _type_id: u32, _data: WrtComponentValue) -> WrtResult<ResourceHandle> {
-        let handle = ResourceHandle(self.next_handle);
+        let handle = ResourceHandle(self.next_handle;
         self.next_handle += 1;
         Ok(handle)
     }
@@ -55,7 +55,7 @@ impl ResourceLifecycleManager {
     
     pub fn borrow_resource(&mut self, _handle: ResourceHandle) -> WrtResult<&WrtComponentValue> {
         // Return a dummy value - in real implementation this would be tracked
-        static DUMMY: WrtComponentValue = WrtComponentValue::Bool(false);
+        static DUMMY: WrtComponentValue = WrtComponentValue::Bool(false;
         Ok(&DUMMY)
     }
     
@@ -182,7 +182,7 @@ pub mod async_stubs {
     
     /// Future handle stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct FutureHandle(pub u32);
+    pub struct FutureHandle(pub u32;
     
     /// Future state stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -194,7 +194,7 @@ pub mod async_stubs {
     
     /// Stream handle stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct StreamHandle(pub u32);
+    pub struct StreamHandle(pub u32;
     
     /// Stream state stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -216,7 +216,7 @@ pub mod async_stubs {
 #[cfg(feature = "async")]
 pub use async_stubs::*;
 
-#[cfg(feature = "cfiMissing message")]
+#[cfg(feature = "cfi")]
 pub mod cfi_stubs {
     use super::*;
     
@@ -345,5 +345,5 @@ pub mod cfi_stubs {
     }
 }
 
-#[cfg(feature = "cfiMissing message")]
+#[cfg(feature = "cfi")]
 pub use cfi_stubs::*;

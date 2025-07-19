@@ -16,7 +16,7 @@ pub const INVALID_HANDLE: u32 = u32::MAX;
 
 /// Resource handle for Component Model resources
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceHandle(pub u32);
+pub struct ResourceHandle(pub u32;
 
 impl ResourceHandle {
     /// Create a new resource handle
@@ -37,7 +37,7 @@ impl ResourceHandle {
 
 /// Resource type identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceTypeId(pub u32);
+pub struct ResourceTypeId(pub u32;
 
 impl ResourceTypeId {
     /// Create a new resource type ID
@@ -271,10 +271,10 @@ impl ResourceManager {
         data: ResourceData,
     ) -> core::result::Result<ResourceHandle, ResourceError> {
         if self.stats.active_resources >= self.config.max_resources as u32 {
-            return Err(ResourceError::LimitExceeded);
+            return Err(ResourceError::LimitExceeded;
         }
 
-        let handle = ResourceHandle::new(self.next_handle_id);
+        let handle = ResourceHandle::new(self.next_handle_id;
         self.next_handle_id += 1;
         self.stats.resources_created += 1;
         self.stats.active_resources += 1;
@@ -289,7 +289,7 @@ impl ResourceManager {
     /// Destroy a resource
     pub fn destroy_resource(&mut self, handle: ResourceHandle) -> core::result::Result<(), ResourceError> {
         if !handle.is_valid() {
-            return Err(ResourceError::InvalidHandle);
+            return Err(ResourceError::InvalidHandle;
         }
 
         self.stats.resources_destroyed += 1;
@@ -342,7 +342,7 @@ impl ResourceTable {
         self.stats.total_lookups += 1;
         
         if !handle.is_valid() {
-            return Err(ResourceError::InvalidHandle);
+            return Err(ResourceError::InvalidHandle;
         }
 
         // Stub implementation - would normally look up the resource
@@ -353,7 +353,7 @@ impl ResourceTable {
     /// Insert a resource into the table
     pub fn insert(&mut self, resource: Resource) -> core::result::Result<(), ResourceError> {
         if self.stats.active_entries >= self.max_size as u32 {
-            return Err(ResourceError::LimitExceeded);
+            return Err(ResourceError::LimitExceeded;
         }
 
         self.stats.total_entries += 1;
@@ -365,7 +365,7 @@ impl ResourceTable {
     /// Remove a resource from the table
     pub fn remove(&mut self, handle: ResourceHandle) -> core::result::Result<Option<Resource>, ResourceError> {
         if !handle.is_valid() {
-            return Err(ResourceError::InvalidHandle);
+            return Err(ResourceError::InvalidHandle;
         }
 
         if self.stats.active_entries > 0 {
@@ -420,7 +420,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                self.0.update_checksum(checksum);
+                self.0.update_checksum(checksum;
             }
         }
 
@@ -467,9 +467,9 @@ impl Default for ResourceData {
 }
 
 // Apply macro to types that need traits
-impl_basic_traits!(ResourceHandle, ResourceHandle::default());
-impl_basic_traits!(ResourceTypeId, ResourceTypeId::default());
-impl_basic_traits!(ResourceData, ResourceData::default());
+impl_basic_traits!(ResourceHandle, ResourceHandle::default(;
+impl_basic_traits!(ResourceTypeId, ResourceTypeId::default(;
+impl_basic_traits!(ResourceData, ResourceData::default(;
 
 // Tests moved from resource_management_tests.rs
 #[cfg(test)]
@@ -482,34 +482,34 @@ mod tests {
 
     #[test]
     fn test_resource_handle_creation() {
-        let handle = ResourceHandle::new(42);
-        assert_eq!(handle.id(), 42);
-        assert!(handle.is_valid());
+        let handle = ResourceHandle::new(42;
+        assert_eq!(handle.id(), 42;
+        assert!(handle.is_valid();
 
-        let invalid_handle = ResourceHandle(INVALID_HANDLE);
-        assert!(!invalid_handle.is_valid());
-        assert_eq!(invalid_handle.id(), u32::MAX);
+        let invalid_handle = ResourceHandle(INVALID_HANDLE;
+        assert!(!invalid_handle.is_valid();
+        assert_eq!(invalid_handle.id(), u32::MAX;
     }
 
     #[test]
     fn test_resource_handle_comparison() {
-        let handle1 = ResourceHandle::new(100);
-        let handle2 = ResourceHandle::new(100);
-        let handle3 = ResourceHandle::new(200);
+        let handle1 = ResourceHandle::new(100;
+        let handle2 = ResourceHandle::new(100;
+        let handle3 = ResourceHandle::new(200;
 
-        assert_eq!(handle1, handle2);
-        assert_ne!(handle1, handle3);
-        assert_ne!(handle2, handle3);
+        assert_eq!(handle1, handle2;
+        assert_ne!(handle1, handle3;
+        assert_ne!(handle2, handle3;
     }
 
     #[test]
     fn test_resource_type_id_creation() {
-        let type_id = ResourceTypeId::new(123);
-        assert_eq!(type_id.id(), 123);
+        let type_id = ResourceTypeId::new(123;
+        assert_eq!(type_id.id(), 123;
 
-        let type_id2 = ResourceTypeId::new(456);
-        assert_eq!(type_id2.id(), 456);
-        assert_ne!(type_id, type_id2);
+        let type_id2 = ResourceTypeId::new(456;
+        assert_eq!(type_id2.id(), 456;
+        assert_ne!(type_id, type_id2;
     }
 
     // Note: Due to the large size of the original test file (1084 lines),

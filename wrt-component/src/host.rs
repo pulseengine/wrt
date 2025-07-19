@@ -40,7 +40,7 @@ impl Host {
 
     /// Adds a host function
     pub fn add_function(&mut self, name: String, function: HostFunction) {
-        self.functions.insert(name, function);
+        self.functions.insert(name, function;
     }
 
     /// Gets a host function by name
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_host_function_management() {
-        let mut host = Host::new();
+        let mut host = Host::new(;
 
         let func_type = ExternType::Function {
             params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],
@@ -92,12 +92,12 @@ mod tests {
             implementation: HostFunctionImpl::Callback("add".to_string()),
         };
 
-        host.add_function("add".to_string(), function);
+        host.add_function("add".to_string(), function;
 
-        let retrieved = host.get_function("addMissing message");
+        let retrieved = host.get_function("add";
         assert!(retrieved.is_some();
 
-        let not_found = host.get_function("non_existentMissing message");
+        let not_found = host.get_function("non_existent";
         assert!(not_found.is_none();
     }
 }

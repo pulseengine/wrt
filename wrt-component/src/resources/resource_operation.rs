@@ -36,7 +36,7 @@ pub fn from_format_resource_operation(
 }
 
 /// Convert a Core ResourceOperation to a Format ResourceOperation
-#[cfg(not(feature = "safe-memoryMissing messageMissing messageMissing message"))]
+#[cfg(not(feature = "safe-memory"))]
 pub fn core_to_format_resource_operation(
     op: &wrt_foundation::ResourceOperation,
 ) -> ResourceOperation {
@@ -48,7 +48,7 @@ pub fn core_to_format_resource_operation(
 }
 
 /// Convert a Format ResourceOperation to a Core ResourceOperation
-#[cfg(not(feature = "safe-memoryMissing messageMissing messageMissing message"))]
+#[cfg(not(feature = "safe-memory"))]
 pub fn format_to_core_resource_operation(
     op: &ResourceOperation,
 ) -> wrt_foundation::ResourceOperation {
@@ -59,7 +59,7 @@ pub fn format_to_core_resource_operation(
     }
 }
 
-#[cfg(feature = "safe-memoryMissing message")]
+#[cfg(feature = "safe-memory")]
 mod safe_memory {
     use wrt_foundation::ResourceOperation as FormatOp;
 
@@ -120,34 +120,34 @@ mod tests {
         // Test conversion to format types
         let type_idx = 42;
 
-        let read_op = to_format_resource_operation(ResourceOperation::Read, type_idx);
+        let read_op = to_format_resource_operation(ResourceOperation::Read, type_idx;
         if let FormatOp::Rep(rep) = read_op {
-            assert_eq!(rep.type_idx, type_idx);
+            assert_eq!(rep.type_idx, type_idx;
         } else {
-            panic!("Unexpected operation typeMissing message");
+            panic!("Unexpected operation type";
         }
 
-        let create_op = to_format_resource_operation(ResourceOperation::Create, type_idx);
+        let create_op = to_format_resource_operation(ResourceOperation::Create, type_idx;
         if let FormatOp::New(new) = create_op {
-            assert_eq!(new.type_idx, type_idx);
+            assert_eq!(new.type_idx, type_idx;
         } else {
-            panic!("Unexpected operation typeMissing message");
+            panic!("Unexpected operation type";
         }
 
         // Test conversion from format types
         assert_eq!(
             from_format_resource_operation(&FormatOp::Rep(ResourceRep { type_idx })),
             ResourceOperation::Read
-        );
+        ;
 
         assert_eq!(
             from_format_resource_operation(&FormatOp::New(ResourceNew { type_idx })),
             ResourceOperation::Create
-        );
+        ;
 
         assert_eq!(
             from_format_resource_operation(&FormatOp::Drop(ResourceDrop { type_idx })),
             ResourceOperation::Delete
-        );
+        ;
     }
 }

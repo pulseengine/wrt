@@ -56,7 +56,7 @@ pub struct AgentRegistry {
 
 /// Unique identifier for agents
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AgentId(pub u32);
+pub struct AgentId(pub u32;
 
 /// Registry statistics
 #[derive(Debug, Clone, Default)]
@@ -196,14 +196,14 @@ impl AgentRegistry {
 
     /// Create a new unified execution agent (recommended)
     pub fn create_unified_agent(&mut self, config: AgentConfiguration) -> WrtResult<AgentId> {
-        let agent_id = AgentId(self.next_agent_id);
+        let agent_id = AgentId(self.next_agent_id;
         self.next_agent_id += 1;
 
-        let agent = UnifiedExecutionAgent::new(config);
+        let agent = UnifiedExecutionAgent::new(config;
 
         #[cfg(feature = "std")]
         {
-            self.unified_agents.insert(agent_id, Box::new(agent));
+            self.unified_agents.insert(agent_id, Box::new(agent;
         }
         #[cfg(not(feature = "std"))]
         {
@@ -248,14 +248,14 @@ impl AgentRegistry {
 
     /// Create a legacy component agent (deprecated)
     pub fn create_legacy_component_agent(&mut self) -> WrtResult<AgentId> {
-        let agent_id = AgentId(self.next_agent_id);
+        let agent_id = AgentId(self.next_agent_id;
         self.next_agent_id += 1;
 
-        let agent = ComponentExecutionEngine::new();
+        let agent = ComponentExecutionEngine::new(;
 
         #[cfg(feature = "std")]
         {
-            self.legacy_agents.insert(agent_id, Box::new(agent));
+            self.legacy_agents.insert(agent_id, Box::new(agent;
         }
         #[cfg(not(feature = "std"))]
         {
@@ -268,7 +268,7 @@ impl AgentRegistry {
         self.stats.active_agents += 1;
 
         // Add to pending migrations
-        self.add_pending_migration(agent_id);
+        self.add_pending_migration(agent_id;
 
         Ok(agent_id)
     }
@@ -276,14 +276,14 @@ impl AgentRegistry {
     /// Create a legacy async agent (deprecated)
     #[cfg(feature = "async")]
     pub fn create_legacy_async_agent(&mut self) -> WrtResult<AgentId> {
-        let agent_id = AgentId(self.next_agent_id);
+        let agent_id = AgentId(self.next_agent_id;
         self.next_agent_id += 1;
 
-        let agent = AsyncExecutionEngine::new();
+        let agent = AsyncExecutionEngine::new(;
 
         #[cfg(feature = "std")]
         {
-            self.legacy_agents.insert(agent_id, Box::new(agent));
+            self.legacy_agents.insert(agent_id, Box::new(agent;
         }
         #[cfg(not(feature = "std"))]
         {
@@ -296,7 +296,7 @@ impl AgentRegistry {
         self.stats.active_agents += 1;
 
         // Add to pending migrations
-        self.add_pending_migration(agent_id);
+        self.add_pending_migration(agent_id;
 
         Ok(agent_id)
     }
@@ -313,14 +313,14 @@ impl AgentRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(agent) = self.unified_agents.get_mut(&agent_id) {
-                return agent.call_function(instance_id, function_index, args);
+                return agent.call_function(instance_id, function_index, args;
             }
         }
         #[cfg(not(feature = "std"))]
         {
             for (id, agent) in &mut self.unified_agents {
                 if *id == agent_id {
-                    return agent.call_function(instance_id, function_index, args);
+                    return agent.call_function(instance_id, function_index, args;
                 }
             }
         }
@@ -329,7 +329,7 @@ impl AgentRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(agent) = self.legacy_agents.get_mut(&agent_id) {
-                return agent.call_function(instance_id, function_index, args);
+                return agent.call_function(instance_id, function_index, args;
             }
         }
         #[cfg(not(feature = "std"))]
@@ -360,18 +360,18 @@ impl AgentRegistry {
         let migration_config = {
             if let Some(agent) = self.legacy_agents.get(&agent_id) {
                 if !agent.can_migrate() {
-                    return Err(wrt_error::Error::runtime_error("Agent cannot be migrated"));
+                    return Err(wrt_error::Error::runtime_error("Agent cannot be migrated";
                 }
                 agent.migration_config()
             } else {
-                return Err(wrt_error::Error::validation_invalid_input("Agent not found for migration"));
+                return Err(wrt_error::Error::validation_invalid_input("Agent not found for migration";
             }
         };
 
         #[cfg(not(feature = "std"))]
         let migration_config = {
             let mut found = false;
-            let mut config = AgentConfiguration::default();
+            let mut config = AgentConfiguration::default(;
             
             for (id, agent) in &self.legacy_agents {
                 if *id == agent_id {
@@ -392,24 +392,24 @@ impl AgentRegistry {
             }
             
             if !found {
-                return Err(wrt_error::Error::validation_invalid_input("Agent not found in legacy agents"));
+                return Err(wrt_error::Error::validation_invalid_input("Agent not found in legacy agents";
             }
             config
         };
 
         // Create new unified agent
-        let unified_agent = UnifiedExecutionAgent::new(migration_config);
+        let unified_agent = UnifiedExecutionAgent::new(migration_config;
 
         // Replace legacy agent with unified agent
         #[cfg(feature = "std")]
         {
-            self.legacy_agents.remove(&agent_id);
-            self.unified_agents.insert(agent_id, Box::new(unified_agent));
+            self.legacy_agents.remove(&agent_id;
+            self.unified_agents.insert(agent_id, Box::new(unified_agent;
         }
         #[cfg(not(feature = "std"))]
         {
             // Remove from legacy agents
-            self.legacy_agents.retain(|(id, _)| *id != agent_id);
+            self.legacy_agents.retain(|(id, _)| *id != agent_id;
             // Add to unified agents
             self.unified_agents.push((agent_id, unified_agent)).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many unified agents")
@@ -417,7 +417,7 @@ impl AgentRegistry {
         }
 
         // Update migration tracking
-        self.remove_pending_migration(agent_id);
+        self.remove_pending_migration(agent_id;
         self.migration_status.completed_migrations += 1;
 
         Ok(())
@@ -433,7 +433,7 @@ impl AgentRegistry {
                     agent_id,
                     agent_type: AgentType::Unified,
                     migration_status: AgentMigrationStatus::NotRequired,
-                });
+                };
             }
         }
         #[cfg(not(feature = "std"))]
@@ -444,7 +444,7 @@ impl AgentRegistry {
                         agent_id,
                         agent_type: AgentType::Unified,
                         migration_status: AgentMigrationStatus::NotRequired,
-                    });
+                    };
                 }
             }
         }
@@ -461,7 +461,7 @@ impl AgentRegistry {
                     } else {
                         AgentMigrationStatus::Available
                     },
-                });
+                };
             }
         }
         #[cfg(not(feature = "std"))]
@@ -476,7 +476,7 @@ impl AgentRegistry {
                         } else {
                             AgentMigrationStatus::Available
                         },
-                    });
+                    };
                 }
             }
         }
@@ -497,8 +497,8 @@ impl AgentRegistry {
         }
         #[cfg(not(feature = "std"))]
         {
-            let original_len = self.unified_agents.len();
-            self.unified_agents.retain(|(id, _)| *id != agent_id);
+            let original_len = self.unified_agents.len(;
+            self.unified_agents.retain(|(id, _)| *id != agent_id;
             if self.unified_agents.len() < original_len {
                 removed = true;
             }
@@ -509,21 +509,21 @@ impl AgentRegistry {
         {
             if self.legacy_agents.remove(&agent_id).is_some() {
                 removed = true;
-                self.remove_pending_migration(agent_id);
+                self.remove_pending_migration(agent_id;
             }
         }
         #[cfg(not(feature = "std"))]
         {
-            let original_len = self.legacy_agents.len();
-            self.legacy_agents.retain(|(id, _)| *id != agent_id);
+            let original_len = self.legacy_agents.len(;
+            self.legacy_agents.retain(|(id, _)| *id != agent_id;
             if self.legacy_agents.len() < original_len {
                 removed = true;
-                self.remove_pending_migration(agent_id);
+                self.remove_pending_migration(agent_id;
             }
         }
 
         if removed {
-            self.stats.active_agents = self.stats.active_agents.saturating_sub(1);
+            self.stats.active_agents = self.stats.active_agents.saturating_sub(1;
             Ok(())
         } else {
             Err(wrt_error::Error::validation_invalid_input("Agent not found"))
@@ -573,7 +573,7 @@ impl AgentRegistry {
     }
 
     fn remove_pending_migration(&mut self, agent_id: AgentId) {
-        self.migration_status.pending_migrations.retain(|id| *id != agent_id);
+        self.migration_status.pending_migrations.retain(|id| *id != agent_id;
     }
 
     fn is_pending_migration(&self, agent_id: AgentId) -> bool {
@@ -613,7 +613,7 @@ pub enum AgentMigrationStatus {
 
 impl Default for AgentRegistry {
     fn default() -> Self {
-        Self::new().expect("Failed to create default AgentRegistryMissing message")
+        Self::new().expect("Failed to create default AgentRegistry")
     }
 }
 
@@ -681,20 +681,20 @@ mod tests {
     #[test]
     fn test_registry_creation() {
         let registry = AgentRegistry::new().unwrap();
-        assert_eq!(registry.stats.active_agents, 0);
-        assert_eq!(registry.stats.unified_agents_created, 0);
-        assert_eq!(registry.stats.legacy_agents_created, 0);
+        assert_eq!(registry.stats.active_agents, 0;
+        assert_eq!(registry.stats.unified_agents_created, 0;
+        assert_eq!(registry.stats.legacy_agents_created, 0;
     }
 
     #[test]
     fn test_unified_agent_creation() {
         let mut registry = AgentRegistry::new().unwrap();
-        let config = AgentConfiguration::default();
+        let config = AgentConfiguration::default(;
         
         let agent_id = registry.create_unified_agent(config).unwrap();
-        assert_eq!(agent_id.0, 1);
-        assert_eq!(registry.stats.unified_agents_created, 1);
-        assert_eq!(registry.stats.active_agents, 1);
+        assert_eq!(agent_id.0, 1;
+        assert_eq!(registry.stats.unified_agents_created, 1;
+        assert_eq!(registry.stats.active_agents, 1;
     }
 
     #[test]
@@ -702,12 +702,12 @@ mod tests {
         let mut registry = AgentRegistry::new().unwrap();
         
         let agent_id = registry.create_legacy_component_agent().unwrap();
-        assert_eq!(agent_id.0, 1);
-        assert_eq!(registry.stats.legacy_agents_created, 1);
-        assert_eq!(registry.stats.active_agents, 1);
+        assert_eq!(agent_id.0, 1;
+        assert_eq!(registry.stats.legacy_agents_created, 1;
+        assert_eq!(registry.stats.active_agents, 1;
         
         // Should be added to pending migrations
-        assert!(registry.is_pending_migration(agent_id));
+        assert!(registry.is_pending_migration(agent_id);
     }
 
     #[test]
@@ -716,17 +716,17 @@ mod tests {
         
         // Create legacy agent
         let agent_id = registry.create_legacy_component_agent().unwrap();
-        assert!(registry.is_pending_migration(agent_id));
+        assert!(registry.is_pending_migration(agent_id);
         
         // Migrate to unified
         registry.migrate_agent(agent_id).unwrap();
-        assert!(!registry.is_pending_migration(agent_id));
-        assert_eq!(registry.migration_status.completed_migrations, 1);
+        assert!(!registry.is_pending_migration(agent_id);
+        assert_eq!(registry.migration_status.completed_migrations, 1;
         
         // Should now be a unified agent
         let info = registry.get_agent_info(agent_id).unwrap();
-        assert_eq!(info.agent_type, AgentType::Unified);
-        assert_eq!(info.migration_status, AgentMigrationStatus::NotRequired);
+        assert_eq!(info.agent_type, AgentType::Unified;
+        assert_eq!(info.migration_status, AgentMigrationStatus::NotRequired;
     }
 
     #[test]
@@ -741,34 +741,34 @@ mod tests {
         
         let agent_id = registry.create_agent(options).unwrap();
         let info = registry.get_agent_info(agent_id).unwrap();
-        assert_eq!(info.agent_type, AgentType::Unified);
+        assert_eq!(info.agent_type, AgentType::Unified;
     }
 
     #[test]
     fn test_function_execution() {
         let mut registry = AgentRegistry::new().unwrap();
-        let config = AgentConfiguration::default();
+        let config = AgentConfiguration::default(;
         
         let agent_id = registry.create_unified_agent(config).unwrap();
         let args = [Value::U32(42), Value::Bool(true)];
         
-        let result = registry.call_function(agent_id, 1, 2, &args);
-        assert!(result.is_ok());
+        let result = registry.call_function(agent_id, 1, 2, &args;
+        assert!(result.is_ok();
     }
 
     #[test]
     fn test_agent_removal() {
         let mut registry = AgentRegistry::new().unwrap();
-        let config = AgentConfiguration::default();
+        let config = AgentConfiguration::default(;
         
         let agent_id = registry.create_unified_agent(config).unwrap();
-        assert_eq!(registry.stats.active_agents, 1);
+        assert_eq!(registry.stats.active_agents, 1;
         
         registry.remove_agent(agent_id).unwrap();
-        assert_eq!(registry.stats.active_agents, 0);
+        assert_eq!(registry.stats.active_agents, 0;
         
-        let info = registry.get_agent_info(agent_id);
-        assert!(info.is_none());
+        let info = registry.get_agent_info(agent_id;
+        assert!(info.is_none();
     }
 }
 
@@ -780,7 +780,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -867,7 +867,7 @@ impl PartialEq for MigrationWarning {
 impl Eq for MigrationWarning {}
 
 // Apply macro to types that need traits
-impl_basic_traits!(AgentId, AgentId::default());
+impl_basic_traits!(AgentId, AgentId::default(;
 #[cfg(not(feature = "std"))]
-impl_basic_traits!(LegacyAgentType, LegacyAgentType::default());
-impl_basic_traits!(MigrationWarning, MigrationWarning::new().unwrap());
+impl_basic_traits!(LegacyAgentType, LegacyAgentType::default(;
+impl_basic_traits!(MigrationWarning, MigrationWarning::new().unwrap();

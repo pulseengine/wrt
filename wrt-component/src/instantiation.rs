@@ -140,7 +140,7 @@ impl ImportValues {
     /// Add an import value
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
-        self.imports.insert(name, value);
+        self.imports.insert(name, value;
         Ok(())
     }
 
@@ -183,7 +183,7 @@ impl Default for ImportValues {
                 #[cfg(not(feature = "std"))]
                 imports: {
                     // Use fallback provider only in default construction
-                    let provider = InstantiationProvider::default();
+                    let provider = InstantiationProvider::default(;
                     BoundedVec::new(provider).unwrap()
                 },
             }
@@ -237,7 +237,7 @@ impl Component {
         context: &mut InstantiationContext,
     ) -> WrtResult<ComponentInstance> {
         // Generate unique instance ID
-        let instance_id = context.next_instance_id();
+        let instance_id = context.next_instance_id(;
 
         // Step 1: Validate imports match component requirements
         self.validate_imports(imports)?;
@@ -310,7 +310,7 @@ impl Component {
                         self.validate_import_type(import, value)?;
                     }
                     None => {
-                        return Err(wrt_error::Error::validation_invalid_input("Missing required import"));
+                        return Err(wrt_error::Error::validation_invalid_input("Missing required import";
                     }
                 }
             }
@@ -320,7 +320,7 @@ impl Component {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
-                return Err(wrt_error::Error::validation_invalid_input("Missing required imports"));
+                return Err(wrt_error::Error::validation_invalid_input("Missing required imports";
             }
         }
 
@@ -333,13 +333,13 @@ impl Component {
             (crate::import::ImportType::Function(expected), ImportValue::Function(actual)) => {
                 // Check function signature compatibility
                 if !self.is_function_compatible(expected, &actual.signature) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Function import type mismatch"));
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Function import type mismatch";
                 }
             }
             (crate::import::ImportType::Value(expected), ImportValue::Value(actual)) => {
                 // Check value type compatibility
                 if !self.is_value_compatible(expected, actual) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Value import type mismatch"));
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Value import type mismatch";
                 }
             }
             (crate::import::ImportType::Instance(_), ImportValue::Instance(_)) => {
@@ -351,7 +351,7 @@ impl Component {
                 // TODO: Implement type equality checking
             }
             _ => {
-                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Import kind mismatch"));
+                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Import kind mismatch";
             }
         }
         Ok(())
@@ -381,7 +381,7 @@ impl Component {
     /// Create resource tables for the instance with budget enforcement
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     fn create_resource_tables(&self) -> WrtResult<WrtVec<ResourceTable, {CrateId::Component as u8}, 16>> {
-        let mut tables = WrtVec::new();
+        let mut tables = WrtVec::new(;
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
@@ -399,7 +399,7 @@ impl Component {
     /// Create resource tables for the instance
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
-        let mut tables = Vec::new();
+        let mut tables = Vec::new(;
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
@@ -438,7 +438,7 @@ impl Component {
         imports: &ImportValues,
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>> {
-        let mut resolved = WrtVec::new();
+        let mut resolved = WrtVec::new(;
 
         for import in &self.imports {
             if let Some(value) = imports.get(&import.name) {
@@ -459,7 +459,7 @@ impl Component {
         imports: &ImportValues,
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ResolvedImport>> {
-        let mut resolved = Vec::new();
+        let mut resolved = Vec::new(;
 
         for import in &self.imports {
             if let Some(value) = imports.get(&import.name) {
@@ -533,7 +533,7 @@ impl Component {
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>> {
-        let mut instances = WrtVec::new();
+        let mut instances = WrtVec::new(;
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -554,7 +554,7 @@ impl Component {
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ModuleInstance>> {
-        let mut instances = Vec::new();
+        let mut instances = Vec::new(;
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -593,7 +593,7 @@ impl Component {
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>> {
-        let mut exports = WrtVec::new();
+        let mut exports = WrtVec::new(;
 
         for export in &self.exports {
             // Resolve export to actual value based on export kind
@@ -646,7 +646,7 @@ impl Component {
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ResolvedExport>> {
-        let mut exports = Vec::new();
+        let mut exports = Vec::new(;
 
         for export in &self.exports {
             // Resolve export to actual value based on export kind
@@ -788,7 +788,7 @@ mod tests {
 
     #[test]
     fn test_import_values() {
-        let mut imports = ImportValues::new();
+        let mut imports = ImportValues::new(;
 
         #[cfg(feature = "std")]
         {
@@ -797,8 +797,8 @@ mod tests {
                 implementation: Box::new(|_args| Ok(Value::U32(42))),
             };
             imports.add("test_func".to_string(), ImportValue::Function(func)).unwrap();
-            assert!(imports.get("test_func").is_some());
-            assert!(imports.get("unknown").is_none());
+            assert!(imports.get("test_func").is_some();
+            assert!(imports.get("unknown").is_none();
         }
 
         #[cfg(not(any(feature = "std", )))]
@@ -809,38 +809,38 @@ mod tests {
             };
             let name = BoundedString::from_str("test_func").unwrap();
             imports.add(name, ImportValue::Function(func)).unwrap();
-            assert!(imports.get("test_func").is_some());
-            assert!(imports.get("unknown").is_none());
+            assert!(imports.get("test_func").is_some();
+            assert!(imports.get("unknown").is_none();
         }
     }
 
     #[test]
     fn test_instantiation_context() {
-        let mut context = InstantiationContext::new();
-        assert_eq!(context.next_instance_id(), 0);
-        assert_eq!(context.next_instance_id(), 1);
-        assert_eq!(context.next_instance_id(), 2);
+        let mut context = InstantiationContext::new(;
+        assert_eq!(context.next_instance_id(), 0;
+        assert_eq!(context.next_instance_id(), 1;
+        assert_eq!(context.next_instance_id(), 2;
     }
 
     // Tests migrated from simple_instantiation_test.rs
 
     #[test]
     fn test_value_imports() {
-        let mut imports = ImportValues::new();
+        let mut imports = ImportValues::new(;
         
-        let value_import = ImportValue::Value(WrtComponentValue::U32(100));
+        let value_import = ImportValue::Value(WrtComponentValue::U32(100;
         
         #[cfg(feature = "std")]
         {
-            let result = imports.add("test_value".to_string(), value_import);
-            assert!(result.is_ok());
+            let result = imports.add("test_value".to_string(), value_import;
+            assert!(result.is_ok();
             
-            let retrieved = imports.get("test_value");
-            assert!(retrieved.is_some());
+            let retrieved = imports.get("test_value";
+            assert!(retrieved.is_some();
             
             match retrieved.unwrap() {
                 ImportValue::Value(WrtComponentValue::U32(val)) => {
-                    assert_eq!(*val, 100);
+                    assert_eq!(*val, 100;
                 }
                 _ => panic!("Expected value import"),
             }
@@ -849,15 +849,15 @@ mod tests {
         #[cfg(not(feature = "std"))]
         {
             let name = BoundedString::from_str("test_value").unwrap();
-            let result = imports.add(name, value_import);
-            assert!(result.is_ok());
+            let result = imports.add(name, value_import;
+            assert!(result.is_ok();
             
-            let retrieved = imports.get("test_value");
-            assert!(retrieved.is_some());
+            let retrieved = imports.get("test_value";
+            assert!(retrieved.is_some();
             
             match retrieved.unwrap() {
                 ImportValue::Value(WrtComponentValue::U32(val)) => {
-                    assert_eq!(*val, 100);
+                    assert_eq!(*val, 100;
                 }
                 _ => panic!("Expected value import"),
             }
@@ -871,11 +871,11 @@ mod tests {
     /*
     #[test]
     fn test_full_instantiation_context() {
-        let mut context = InstantiationContext::new();
+        let mut context = InstantiationContext::new(;
         
         // Verify all subsystems are initialized
-        assert_eq!(context.canonical_abi.string_encoding(), crate::string_encoding::StringEncoding::Utf8);
-        assert_eq!(context.execution_engine.state(), &crate::execution_engine::ExecutionState::Ready);
+        assert_eq!(context.canonical_abi.string_encoding(), crate::string_encoding::StringEncoding::Utf8;
+        assert_eq!(context.execution_engine.state(), &crate::execution_engine::ExecutionState::Ready;
         
         // Test registering a host function
         #[cfg(not(feature = "std"))]
@@ -884,9 +884,9 @@ mod tests {
                 Ok(Value::Bool(true)
             }
             
-            let func_index = context.execution_engine.register_host_function(test_host_func);
-            assert!(func_index.is_ok());
-            assert_eq!(func_index.unwrap(), 0);
+            let func_index = context.execution_engine.register_host_function(test_host_func;
+            assert!(func_index.is_ok();
+            assert_eq!(func_index.unwrap(), 0;
         }
         
         #[cfg(feature = "std")]
@@ -904,81 +904,81 @@ mod tests {
                 }
             }
             
-            let func_index = context.execution_engine.register_host_function(Box::new(TestHostFunc);
-            assert!(func_index.is_ok());
-            assert_eq!(func_index.unwrap(), 0);
+            let func_index = context.execution_engine.register_host_function(Box::new(TestHostFunc;
+            assert!(func_index.is_ok();
+            assert_eq!(func_index.unwrap(), 0;
         }
     }
 
     #[test]
     fn test_resource_management() {
-        let mut context = InstantiationContext::new();
+        let mut context = InstantiationContext::new(;
         
         // Create a resource
-        let resource_data = WrtComponentValue::String("test_resource".into());
-        let handle = context.resource_manager.create_resource(1, resource_data);
-        assert!(handle.is_ok());
+        let resource_data = WrtComponentValue::String("test_resource".into();
+        let handle = context.resource_manager.create_resource(1, resource_data;
+        assert!(handle.is_ok();
         
         let handle = handle.unwrap();
         
         // Borrow the resource
-        let borrowed = context.resource_manager.borrow_resource(handle);
-        assert!(borrowed.is_ok());
+        let borrowed = context.resource_manager.borrow_resource(handle;
+        assert!(borrowed.is_ok();
         
         match borrowed.unwrap() {
             WrtComponentValue::String(s) => {
-                assert_eq!(s.as_str(), "test_resource");
+                assert_eq!(s.as_str(), "test_resource";
             }
             _ => panic!("Expected string resource"),
         }
         
         // Drop the resource
-        let drop_result = context.resource_manager.drop_resource(handle);
-        assert!(drop_result.is_ok());
+        let drop_result = context.resource_manager.drop_resource(handle;
+        assert!(drop_result.is_ok();
     }
 
     #[test]
     fn test_memory_layout_integration() {
-        let _context = InstantiationContext::new();
+        let _context = InstantiationContext::new(;
         
         // Test basic type layouts
         use crate::types::ValType;
         use crate::memory_layout;
         
-        let bool_layout = memory_layout::calculate_layout(&ValType::Bool);
-        assert_eq!(bool_layout.size, 1);
-        assert_eq!(bool_layout.align, 1);
+        let bool_layout = memory_layout::calculate_layout(&ValType::Bool;
+        assert_eq!(bool_layout.size, 1;
+        assert_eq!(bool_layout.align, 1;
         
-        let u32_layout = memory_layout::calculate_layout(&ValType::U32);
-        assert_eq!(u32_layout.size, 4);
-        assert_eq!(u32_layout.align, 4);
+        let u32_layout = memory_layout::calculate_layout(&ValType::U32;
+        assert_eq!(u32_layout.size, 4;
+        assert_eq!(u32_layout.align, 4;
         
-        let u64_layout = memory_layout::calculate_layout(&ValType::U64);
-        assert_eq!(u64_layout.size, 8);
-        assert_eq!(u64_layout.align, 8);
+        let u64_layout = memory_layout::calculate_layout(&ValType::U64;
+        assert_eq!(u64_layout.size, 8;
+        assert_eq!(u64_layout.align, 8;
     }
 
     #[test]
     fn test_string_encoding_integration() {
-        let _context = InstantiationContext::new();
+        let _context = InstantiationContext::new(;
         
         use crate::string_encoding::{StringEncoding, encode_string};
         
         // Test UTF-8 encoding (default)
         let test_string = "Hello, 世界!";
-        let encoded = encode_string(test_string, StringEncoding::Utf8);
-        assert!(encoded.is_ok());
+        let encoded = encode_string(test_string, StringEncoding::Utf8;
+        assert!(encoded.is_ok();
         
         let encoded_bytes = encoded.unwrap();
-        assert_eq!(encoded_bytes, test_string.as_bytes());
+        assert_eq!(encoded_bytes, test_string.as_bytes(;
         
         // Test UTF-16LE encoding  
-        let encoded_utf16 = encode_string("Hello", StringEncoding::Utf16Le);
-        assert!(encoded_utf16.is_ok());
+        let encoded_utf16 = encode_string("Hello", StringEncoding::Utf16Le;
+        assert!(encoded_utf16.is_ok();
         
         // UTF-16LE encoding of "Hello" should be: H(0x48,0x00) e(0x65,0x00) l(0x6C,0x00) l(0x6C,0x00) o(0x6F,0x00)
         let expected_utf16 = vec![0x48, 0x00, 0x65, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x6F, 0x00];
-        assert_eq!(encoded_utf16.unwrap(), expected_utf16);
+        assert_eq!(encoded_utf16.unwrap(), expected_utf16;
     }
     */
 }

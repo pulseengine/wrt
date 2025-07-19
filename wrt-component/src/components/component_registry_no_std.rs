@@ -57,7 +57,7 @@ impl ComponentRegistry {
     pub fn register(&mut self, name: &str, component: Component) -> Result<()> {
         // Check if we've reached the maximum number of components
         if self.names.len() >= MAX_COMPONENTS {
-            return Err(Error::runtime_execution_error("Maximum number of components exceeded"));
+            return Err(Error::runtime_execution_error("Maximum number of components exceeded";
         }
 
         // Check if component already exists
@@ -67,7 +67,7 @@ impl ComponentRegistry {
         }
 
         // Add the component to the store and get its index
-        let component_idx = self.component_store.len();
+        let component_idx = self.component_store.len(;
         self.component_store.push(component).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
@@ -78,7 +78,7 @@ impl ComponentRegistry {
         // Register the component
         self.names.push(name.to_string()).map_err(|_| {
             // Roll back the component addition if name addition fails
-            self.component_store.remove(component_idx);
+            self.component_store.remove(component_idx;
 
             Error::runtime_execution_error("Failed to add component name")
         })?;
@@ -86,8 +86,8 @@ impl ComponentRegistry {
         self.components.push(component_idx).map_err(|_| {
             // Roll back the name and component addition if mapping addition fails
             let last_idx = self.names.len() - 1;
-            self.names.remove(last_idx);
-            self.component_store.remove(component_idx);
+            self.names.remove(last_idx;
+            self.component_store.remove(component_idx;
 
             Error::new(
                 ErrorCategory::Resource,
@@ -122,8 +122,8 @@ impl ComponentRegistry {
         let component_idx = self.components[idx];
 
         // Remove the entry from the name and component index vectors
-        self.names.remove(idx);
-        self.components.remove(idx);
+        self.names.remove(idx;
+        self.components.remove(idx;
 
         // Remove the component from the store and return it
         // Note: This changes the indices of components after this one,
@@ -185,19 +185,19 @@ mod tests {
     #[test]
     fn test_registry_creation() {
         let registry = ComponentRegistry::new().unwrap();
-        assert_eq!(registry.len(), 0);
-        assert!(registry.is_empty());
+        assert_eq!(registry.len(), 0;
+        assert!(registry.is_empty();
     }
 
     #[test]
     fn test_registry_registration() {
-        let component = create_test_component();
+        let component = create_test_component(;
         let mut registry = ComponentRegistry::new().unwrap();
 
         // Register a component
         registry.register("test", component).unwrap();
-        assert_eq!(registry.len(), 1);
-        assert!(registry.contains("test"));
+        assert_eq!(registry.len(), 1;
+        assert!(registry.contains("test");
 
         // Get the component - in no_std we can't compare pointers since we're
         // storing by value rather than references
@@ -206,14 +206,14 @@ mod tests {
 
     #[test]
     fn test_registry_removal() {
-        let component = create_test_component();
+        let component = create_test_component(;
         let mut registry = ComponentRegistry::new().unwrap();
 
         // Register and then remove
         registry.register("test", component).unwrap();
         let _removed = registry.remove("test").unwrap();
-        assert_eq!(registry.len(), 0);
-        assert!(!registry.contains("test"));
+        assert_eq!(registry.len(), 0;
+        assert!(!registry.contains("test");
     }
 
     #[test]
@@ -222,13 +222,13 @@ mod tests {
 
         // Fill the registry to capacity
         for i in 0..MAX_COMPONENTS {
-            let component = create_test_component();
+            let component = create_test_component(;
             registry.register(&format!("component_{}", i), component).unwrap();
         }
 
         // Try to add one more - should fail
-        let component = create_test_component();
-        assert!(registry.register("overflow", component).is_err());
+        let component = create_test_component(;
+        assert!(registry.register("overflow", component).is_err();
     }
 
     #[test]
@@ -242,16 +242,16 @@ mod tests {
 
         // Get the names
         let names = registry.names().unwrap();
-        assert_eq!(names.len(), 3);
-        assert!(names.contains(&"test1".to_string()));
-        assert!(names.contains(&"test2".to_string()));
-        assert!(names.contains(&"test3".to_string()));
+        assert_eq!(names.len(), 3;
+        assert!(names.contains(&"test1".to_string());
+        assert!(names.contains(&"test2".to_string());
+        assert!(names.contains(&"test3".to_string());
     }
 
     #[test]
     fn test_registry_replace() {
-        let component1 = create_test_component();
-        let component2 = create_test_component();
+        let component1 = create_test_component(;
+        let component2 = create_test_component(;
         let mut registry = ComponentRegistry::new().unwrap();
 
         // Register a component
@@ -262,8 +262,8 @@ mod tests {
 
         // Verify the replacement worked - we can only verify that the
         // component still exists since we can't compare by value
-        assert!(registry.contains("test"));
-        assert_eq!(registry.len(), 1);
+        assert!(registry.contains("test");
+        assert_eq!(registry.len(), 1;
     }
 }
 
@@ -274,7 +274,7 @@ use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, Rea
 impl Checksummable for super::component::Component {
     fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
         // Use a simple checksum based on component type
-        0u32.update_checksum(checksum);
+        0u32.update_checksum(checksum;
     }
 }
 

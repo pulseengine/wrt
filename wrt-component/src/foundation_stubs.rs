@@ -81,7 +81,7 @@ impl<const SIZE: usize> Default for NoStdProvider<SIZE> {
 impl<const SIZE: usize> UnifiedMemoryProvider for NoStdProvider<SIZE> {
     fn allocate(&mut self, size: usize) -> core::result::Result<&mut [u8], wrt_error::Error> {
         if self.allocated + size > SIZE {
-            return Err(wrt_error::Error::OUT_OF_MEMORY);
+            return Err(wrt_error::Error::OUT_OF_MEMORY;
         }
         let start = self.allocated;
         self.allocated += size;
@@ -143,7 +143,7 @@ impl ThreadManager {
 
     pub fn spawn_thread(&mut self) -> core::result::Result<ThreadId, Error> {
         if self.thread_count >= self.max_threads {
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
         
         let thread_id = self.thread_count;

@@ -51,13 +51,13 @@ const MAX_TASK_RESULT_SIZE: usize = 512;
 
 /// Task identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TaskId(pub u64);
+pub struct TaskId(pub u64;
 
 impl TaskId {
     pub fn new() -> Self {
         static TASK_COUNTER: core::sync::atomic::AtomicU64 = 
-            core::sync::atomic::AtomicU64::new(1);
-        Self(TASK_COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst)
+            core::sync::atomic::AtomicU64::new(1;
+        Self(TASK_COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst))
     }
 
     pub fn as_u64(&self) -> u64 {
@@ -125,7 +125,7 @@ impl TaskReturn {
         let bounded_data = BoundedVec::new_from_slice(data)
             .map_err(|_| Error::runtime_execution_error("Error occurred"
             ))?;
-        Ok(Self::Binary(bounded_data)
+        Ok(Self::Binary(bounded_data))
     }
 
     pub fn void() -> Self {
@@ -203,14 +203,14 @@ impl Task {
     pub fn complete(&mut self, return_value: TaskReturn) {
         if self.status == TaskStatus::Running {
             self.status = TaskStatus::Completed;
-            self.return_value = Some(return_value);
+            self.return_value = Some(return_value;
         }
     }
 
     pub fn cancel(&mut self) {
         if self.status.is_active() {
             self.status = TaskStatus::Cancelled;
-            self.cancellation_token.cancel();
+            self.cancellation_token.cancel(;
         }
     }
 
@@ -222,7 +222,7 @@ impl Task {
 
     #[cfg(feature = "std")]
     pub fn set_metadata(&mut self, key: String, value: ComponentValue) {
-        self.metadata.insert(key, value);
+        self.metadata.insert(key, value;
     }
 
     #[cfg(not(any(feature = "std", )))]
@@ -234,8 +234,8 @@ impl Task {
             .map_err(|_| Error::new(
                 ErrorCategory::Memory,
                 wrt_error::codes::MEMORY_ALLOCATION_FAILED,
-                "Error message neededMissing messageMissing messageMissing message"))?;
-        Ok(()
+                "Error message needed"))?;
+        Ok(())
     }
 
     #[cfg(feature = "std")]
@@ -265,7 +265,7 @@ impl Default for Task {
 
 /// Global task registry
 static TASK_REGISTRY: AtomicRefCell<Option<TaskRegistry>> = 
-    AtomicRefCell::new(None);
+    AtomicRefCell::new(None;
 
 /// Task registry that manages all active tasks
 #[derive(Debug)]
@@ -290,7 +290,7 @@ impl TaskRegistry {
         let id = task.id;
         #[cfg(feature = "std")]
         {
-            self.tasks.insert(id, task);
+            self.tasks.insert(id, task;
             Ok(id)
         }
         #[cfg(not(any(feature = "std", )))]
@@ -321,19 +321,19 @@ impl TaskRegistry {
     pub fn cleanup_finished_tasks(&mut self) {
         #[cfg(feature = "std")]
         {
-            self.tasks.retain(|_, task| !task.status.is_finished();
+            self.tasks.retain(|_, task| !task.status.is_finished(;
         }
         #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, we need to collect keys first
-            let mut finished_keys = BoundedVec::<TaskId, MAX_TASKS>::new();
+            let mut finished_keys = BoundedVec::<TaskId, MAX_TASKS>::new(;
             for (id, task) in self.tasks.iter() {
                 if task.status.is_finished() {
                     let _ = finished_keys.push(*id);
                 }
             }
             for id in finished_keys.iter() {
-                self.tasks.remove(id);
+                self.tasks.remove(id;
             }
         }
     }
@@ -354,8 +354,8 @@ impl TaskBuiltins {
         let mut registry_ref = TASK_REGISTRY.try_borrow_mut()
             .map_err(|_| Error::runtime_execution_error("Error occurred"
             ))?;
-        *registry_ref = Some(TaskRegistry::new();
-        Ok(()
+        *registry_ref = Some(TaskRegistry::new(;
+        Ok(())
     }
 
     /// Get the global task registry
@@ -367,11 +367,11 @@ impl TaskBuiltins {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message neededMissing messageMissing messageMissing message"))?;
+                "Error message needed"))?;
         let registry = registry_ref.as_ref()
             .ok_or_else(|| Error::runtime_execution_error("Error occurred"
             ))?;
-        Ok(f(registry)
+        Ok(f(registry))
     }
 
     /// Get the global task registry mutably
@@ -383,7 +383,7 @@ impl TaskBuiltins {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message neededMissing messageMissing messageMissing message"))?;
+                "Error message needed"))?;
         let registry = registry_ref.as_mut()
             .ok_or_else(|| Error::runtime_execution_error("Error occurred"
             ))?;
@@ -393,12 +393,12 @@ impl TaskBuiltins {
     /// `task.start` canonical built-in
     /// Creates and starts a new task
     pub fn task_start() -> Result<TaskId> {
-        let task = Task::new();
+        let task = Task::new(;
         Self::with_registry_mut(|registry| {
             let id = registry.register_task(task)?;
             // Start the task immediately
             if let Some(task) = registry.get_task_mut(id) {
-                task.start();
+                task.start(;
             }
             Ok(id)
         })?
@@ -409,15 +409,15 @@ impl TaskBuiltins {
     pub fn task_return(task_id: TaskId, return_value: TaskReturn) -> Result<()> {
         Self::with_registry_mut(|registry| {
             if let Some(task) = registry.get_task_mut(task_id) {
-                task.complete(return_value);
-                Ok(()
+                task.complete(return_value;
+                Ok(())
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::RESOURCE_INVALID_HANDLE,
-                    "Error message neededMissing messageMissing messageMissing message")
+                    "Error message needed"))
             }
-        })?
+        })
     }
 
     /// `task.status` canonical built-in
@@ -437,13 +437,12 @@ impl TaskBuiltins {
     pub fn task_cancel(task_id: TaskId) -> Result<()> {
         Self::with_registry_mut(|registry| {
             if let Some(task) = registry.get_task_mut(task_id) {
-                task.cancel();
-                Ok(()
+                task.cancel(;
+                Ok(())
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 
     /// `task.wait` canonical built-in
@@ -481,31 +480,30 @@ impl TaskBuiltins {
             if let Some(task) = registry.get_task_mut(task_id) {
                 #[cfg(feature = "std")]
                 {
-                    task.set_metadata(key.to_string(), value);
-                    Ok(()
+                    task.set_metadata(key.to_string(), value;
+                    Ok(())
                 }
                 #[cfg(not(any(feature = "std", )))]
                 {
                     task.set_metadata(key, value)
                 }
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 
     /// Cleanup finished tasks
     pub fn cleanup_finished_tasks() -> Result<()> {
         Self::with_registry_mut(|registry| {
-            registry.cleanup_finished_tasks();
-            Ok(()
+            registry.cleanup_finished_tasks(;
+            Ok(())
         })?
     }
 
     /// Get task count
     pub fn task_count() -> Result<usize> {
-        Self::with_registry(|registry| registry.task_count()
+        Self::with_registry(|registry| registry.task_count())
     }
 }
 
@@ -539,11 +537,11 @@ pub mod task_helpers {
         F: FnOnce(CancellationToken) -> Result<R>,
         R: Into<TaskReturn>,
     {
-        let token = CancellationToken::new();
+        let token = CancellationToken::new(;
         let task_id = TaskBuiltins::task_start()?;
         
         // Execute within cancellation scope
-        let result = with_cancellation_scope(token.clone(), || f(token.clone());
+        let result = with_cancellation_scope(token.clone(), || f(token.clone();
         
         match result {
             Ok(Ok(value)) => {
@@ -560,7 +558,7 @@ pub mod task_helpers {
     /// Wait for multiple tasks to complete
     #[cfg(feature = "std")]
     pub fn wait_for_tasks(task_ids: Vec<TaskId>) -> Result<Vec<Option<TaskReturn>>> {
-        let mut results = Vec::new();
+        let mut results = Vec::new(;
         for task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results.push(result);
@@ -598,31 +596,31 @@ impl From<()> for TaskReturn {
 
 impl From<bool> for TaskReturn {
     fn from(value: bool) -> Self {
-        Self::Value(ComponentValue::Bool(value)
+        Self::Value(ComponentValue::Bool(value))
     }
 }
 
 impl From<i32> for TaskReturn {
     fn from(value: i32) -> Self {
-        Self::Value(ComponentValue::I32(value)
+        Self::Value(ComponentValue::I32(value))
     }
 }
 
 impl From<i64> for TaskReturn {
     fn from(value: i64) -> Self {
-        Self::Value(ComponentValue::I64(value)
+        Self::Value(ComponentValue::I64(value))
     }
 }
 
 impl From<f32> for TaskReturn {
     fn from(value: f32) -> Self {
-        Self::Value(ComponentValue::F32(value)
+        Self::Value(ComponentValue::F32(value))
     }
 }
 
 impl From<f64> for TaskReturn {
     fn from(value: f64) -> Self {
-        Self::Value(ComponentValue::F64(value)
+        Self::Value(ComponentValue::F64(value))
     }
 }
 
@@ -632,9 +630,9 @@ mod tests {
 
     #[test]
     fn test_task_id_generation() {
-        let id1 = TaskId::new();
-        let id2 = TaskId::new();
-        assert_ne!(id1, id2);
+        let id1 = TaskId::new(;
+        let id2 = TaskId::new(;
+        assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
     }
@@ -656,58 +654,58 @@ mod tests {
 
     #[test]
     fn test_task_return_creation() {
-        let value_return = TaskReturn::from_component_value(ComponentValue::I32(42);
+        let value_return = TaskReturn::from_component_value(ComponentValue::I32(42;
         assert!(value_return.as_component_value().is_some();
-        assert_eq!(value_return.as_component_value().unwrap(), &ComponentValue::I32(42);
+        assert_eq!(value_return.as_component_value().unwrap(), &ComponentValue::I32(42;
 
-        let void_return = TaskReturn::void();
+        let void_return = TaskReturn::void(;
         assert!(void_return.is_void();
         assert!(void_return.as_component_value().is_none();
     }
 
     #[test]
     fn test_task_lifecycle() {
-        let mut task = Task::new();
-        assert_eq!(task.status, TaskStatus::Pending);
+        let mut task = Task::new(;
+        assert_eq!(task.status, TaskStatus::Pending;
         assert!(task.return_value.is_none();
 
-        task.start();
-        assert_eq!(task.status, TaskStatus::Running);
+        task.start(;
+        assert_eq!(task.status, TaskStatus::Running;
 
-        let return_value = TaskReturn::from_component_value(ComponentValue::Bool(true);
-        task.complete(return_value);
-        assert_eq!(task.status, TaskStatus::Completed);
+        let return_value = TaskReturn::from_component_value(ComponentValue::Bool(true;
+        task.complete(return_value;
+        assert_eq!(task.status, TaskStatus::Completed;
         assert!(task.return_value.is_some();
     }
 
     #[test]
     fn test_task_cancellation() {
-        let mut task = Task::new();
+        let mut task = Task::new(;
         assert!(!task.is_cancelled();
 
-        task.start();
-        task.cancel();
-        assert_eq!(task.status, TaskStatus::Cancelled);
+        task.start(;
+        task.cancel(;
+        assert_eq!(task.status, TaskStatus::Cancelled;
         assert!(task.is_cancelled();
     }
 
     #[test]
     fn test_task_registry_operations() {
-        let mut registry = TaskRegistry::new();
-        assert_eq!(registry.task_count(), 0);
+        let mut registry = TaskRegistry::new(;
+        assert_eq!(registry.task_count(), 0;
 
-        let task = Task::new();
+        let task = Task::new(;
         let task_id = task.id;
         registry.register_task(task).unwrap();
-        assert_eq!(registry.task_count(), 1);
+        assert_eq!(registry.task_count(), 1;
 
-        let retrieved_task = registry.get_task(task_id);
+        let retrieved_task = registry.get_task(task_id;
         assert!(retrieved_task.is_some();
-        assert_eq!(retrieved_task.unwrap().id, task_id);
+        assert_eq!(retrieved_task.unwrap().id, task_id;
 
-        let removed_task = registry.remove_task(task_id);
+        let removed_task = registry.remove_task(task_id;
         assert!(removed_task.is_some();
-        assert_eq!(registry.task_count(), 0);
+        assert_eq!(registry.task_count(), 0;
     }
 
     #[test] 
@@ -718,14 +716,14 @@ mod tests {
         // Test task creation and status
         let task_id = TaskBuiltins::task_start().unwrap();
         let status = TaskBuiltins::task_status(task_id).unwrap();
-        assert_eq!(status, TaskStatus::Running);
+        assert_eq!(status, TaskStatus::Running;
 
         // Test task completion
-        let return_value = TaskReturn::from_component_value(ComponentValue::I32(42);
+        let return_value = TaskReturn::from_component_value(ComponentValue::I32(42;
         TaskBuiltins::task_return(task_id, return_value).unwrap();
         
         let final_status = TaskBuiltins::task_status(task_id).unwrap();
-        assert_eq!(final_status, TaskStatus::Completed);
+        assert_eq!(final_status, TaskStatus::Completed;
 
         // Test task wait
         let result = TaskBuiltins::task_wait(task_id).unwrap();
@@ -738,25 +736,25 @@ mod tests {
         let task_id = TaskBuiltins::task_start().unwrap();
 
         // Set metadata
-        TaskBuiltins::set_task_metadata(task_id, Missing messageMissing messageMissing message")).unwrap();
+        TaskBuiltins::set_task_metadata(task_id, "test_key", ComponentValue::Bool(true)).unwrap();
 
         // Get metadata
-        let value = TaskBuiltins::get_task_metadata(task_id, "test_keyMissing message").unwrap();
+        let value = TaskBuiltins::get_task_metadata(task_id, "test_key").unwrap();
         assert!(value.is_some();
-        assert_eq!(value.unwrap(), ComponentValue::Bool(true);
+        assert_eq!(value.unwrap(), ComponentValue::Bool(true;
 
         // Get non-existent metadata
-        let missing = TaskBuiltins::get_task_metadata(task_id, "missing_keyMissing message").unwrap();
+        let missing = TaskBuiltins::get_task_metadata(task_id, "missing_key").unwrap();
         assert!(missing.is_none();
     }
 
     #[test]
     fn test_conversion_traits() {
         let bool_return: TaskReturn = true.into();
-        assert_eq!(bool_return.as_component_value().unwrap(), &ComponentValue::Bool(true);
+        assert_eq!(bool_return.as_component_value().unwrap(), &ComponentValue::Bool(true;
 
         let i32_return: TaskReturn = 42i32.into();
-        assert_eq!(i32_return.as_component_value().unwrap(), &ComponentValue::I32(42);
+        assert_eq!(i32_return.as_component_value().unwrap(), &ComponentValue::I32(42;
 
         let void_return: TaskReturn = ().into();
         assert!(void_return.is_void();

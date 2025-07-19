@@ -28,7 +28,7 @@
 //! use wrt_component::component_communication::{CallRouter, CallContext};
 //! 
 //! // Create a call router
-//! let mut router = CallRouter::new();
+//! let mut router = CallRouter::new(;
 //! 
 //! // Route a call between components
 //! let context = CallContext::new(source_instance, target_instance, "add", &args)?;
@@ -441,13 +441,13 @@ impl CallRouter {
 
         // Check call stack depth
         if self.call_stack.current_depth >= self.config.max_call_stack_depth {
-            return Err(Error::runtime_stack_overflow("Call stack depth exceeded"));
+            return Err(Error::runtime_stack_overflow("Call stack depth exceeded";
         }
 
         // Check concurrent call limits
-        let active_calls_for_target = self.count_active_calls_for_instance(context.target_instance);
+        let active_calls_for_target = self.count_active_calls_for_instance(context.target_instance;
         if active_calls_for_target >= self.config.max_concurrent_calls_per_instance {
-            return Err(Error::runtime_execution_error("Too many concurrent calls to instance"));
+            return Err(Error::runtime_execution_error("Too many concurrent calls to instance";
         }
 
         // Assign call ID and update state
@@ -467,7 +467,7 @@ impl CallRouter {
         self.call_stack.push_frame(frame)?;
 
         // Store active call context
-        self.active_calls.insert(context.call_id, context.clone());
+        self.active_calls.insert(context.call_id, context.clone();
 
         // Update statistics
         self.stats.total_calls += 1;
@@ -485,7 +485,7 @@ impl CallRouter {
             &context.target_function,
             &marshaled_parameters,
             target_instance,
-        );
+        ;
 
         // Update call state and statistics based on result
         let context = self.active_calls.get_mut(&context.call_id).unwrap();
@@ -495,7 +495,7 @@ impl CallRouter {
                 self.stats.successful_calls += 1;
             }
             Err(e) => {
-                context.state = CallState::Failed("Call execution failed".to_string());
+                context.state = CallState::Failed("Call execution failed".to_string();
                 self.stats.failed_calls += 1;
             }
         }
@@ -504,7 +504,7 @@ impl CallRouter {
         self.call_stack.pop_frame()?;
 
         // Remove from active calls
-        self.active_calls.remove(&context.call_id);
+        self.active_calls.remove(&context.call_id;
 
         // Update completion metadata
         context.metadata.completed_at = 0; // Would use actual timestamp
@@ -523,11 +523,11 @@ impl CallRouter {
         return_types: Vec<ComponentType>,
     ) -> Result<CallContext> {
         if parameters.len() > MAX_CALL_PARAMETERS {
-            return Err(Error::validation_error("Too many parameters for function call"));
+            return Err(Error::validation_error("Too many parameters for function call";
         }
 
         if return_types.len() > MAX_CALL_RETURN_VALUES {
-            return Err(Error::validation_error("Too many return values for function call"));
+            return Err(Error::validation_error("Too many return values for function call";
         }
 
         Ok(CallContext {
@@ -564,11 +564,11 @@ impl CallRouter {
 
     fn validate_call_context(&self, context: &CallContext) -> Result<()> {
         if context.target_function.is_empty() {
-            return Err(Error::validation_error("Target function name cannot be empty"));
+            return Err(Error::validation_error("Target function name cannot be empty";
         }
 
         if context.source_instance == context.target_instance {
-            return Err(Error::validation_error("Source and target instances cannot be the same"));
+            return Err(Error::validation_error("Source and target instances cannot be the same";
         }
 
         Ok(())
@@ -619,7 +619,7 @@ impl CallStack {
     /// Push a call frame onto the stack
     pub fn push_frame(&mut self, frame: CallFrame) -> Result<()> {
         if self.current_depth >= self.max_depth {
-            return Err(Error::runtime_stack_overflow("Call stack overflow"));
+            return Err(Error::runtime_stack_overflow("Call stack overflow";
         }
 
         self.frames.push(frame);
@@ -630,7 +630,7 @@ impl CallStack {
     /// Pop a call frame from the stack
     pub fn pop_frame(&mut self) -> Result<CallFrame> {
         if self.frames.is_empty() {
-            return Err(Error::runtime_execution_error("Call stack is empty"));
+            return Err(Error::runtime_execution_error("Call stack is empty";
         }
 
         let frame = self.frames.pop().unwrap();
@@ -691,7 +691,7 @@ impl ParameterBridge {
 
     fn validate_parameters(&self, parameters: &[ComponentValue]) -> Result<()> {
         if parameters.len() > MAX_CALL_PARAMETERS {
-            return Err(Error::validation_error("Too many parameters"));
+            return Err(Error::validation_error("Too many parameters";
         }
 
         // Additional parameter validation would go here
@@ -804,34 +804,34 @@ mod tests {
 
     #[test]
     fn test_call_router_creation() {
-        let router = CallRouter::new();
-        assert_eq!(router.stats.total_calls, 0);
-        assert_eq!(router.get_call_stack_depth(), 0);
+        let router = CallRouter::new(;
+        assert_eq!(router.stats.total_calls, 0;
+        assert_eq!(router.get_call_stack_depth(), 0;
     }
 
     #[test]
     fn test_call_context_creation() {
-        let router = CallRouter::new();
+        let router = CallRouter::new(;
         let context = router.create_call_context(
             1, 
             2, 
             "test_function".to_string(),
             vec![ComponentValue::S32(42)],
             vec![ComponentType::S32],
-        );
+        ;
         
-        assert!(context.is_ok());
+        assert!(context.is_ok();
         let context = context.unwrap();
-        assert_eq!(context.source_instance, 1);
-        assert_eq!(context.target_instance, 2);
-        assert_eq!(context.target_function, "test_function");
-        assert_eq!(context.parameters.len(), 1);
+        assert_eq!(context.source_instance, 1;
+        assert_eq!(context.target_instance, 2;
+        assert_eq!(context.target_function, "test_function";
+        assert_eq!(context.parameters.len(), 1;
     }
 
     #[test]
     fn test_call_stack_operations() {
-        let mut stack = CallStack::new(5);
-        assert_eq!(stack.depth(), 0);
+        let mut stack = CallStack::new(5;
+        assert_eq!(stack.depth(), 0;
 
         let frame = CallFrame {
             call_id: 1,
@@ -842,21 +842,21 @@ mod tests {
         };
 
         stack.push_frame(frame).unwrap();
-        assert_eq!(stack.depth(), 1);
+        assert_eq!(stack.depth(), 1;
 
         let popped = stack.pop_frame().unwrap();
-        assert_eq!(popped.call_id, 1);
-        assert_eq!(stack.depth(), 0);
+        assert_eq!(popped.call_id, 1;
+        assert_eq!(stack.depth(), 0;
     }
 
     #[test]
     fn test_parameter_bridge_creation() {
-        let source_context = create_memory_context(1, 1024, MemoryProtectionFlags::default());
-        let target_context = create_memory_context(2, 2048, MemoryProtectionFlags::default());
-        let bridge = create_parameter_bridge(source_context, target_context);
+        let source_context = create_memory_context(1, 1024, MemoryProtectionFlags::default(;
+        let target_context = create_memory_context(2, 2048, MemoryProtectionFlags::default(;
+        let bridge = create_parameter_bridge(source_context, target_context;
         
-        assert_eq!(bridge.source_memory_context.instance_id, 1);
-        assert_eq!(bridge.target_memory_context.instance_id, 2);
+        assert_eq!(bridge.source_memory_context.instance_id, 1;
+        assert_eq!(bridge.target_memory_context.instance_id, 2;
     }
 
     #[test]
@@ -871,19 +871,19 @@ mod tests {
         assert!(flags.readable);
         assert!(flags.writeable);
         assert!(!flags.executable);
-        assert_eq!(flags.isolation_level, MemoryIsolationLevel::Strong);
+        assert_eq!(flags.isolation_level, MemoryIsolationLevel::Strong;
     }
 
     #[test]
     fn test_call_statistics() {
-        let mut stats = CallStatistics::default();
+        let mut stats = CallStatistics::default(;
         stats.total_calls = 10;
         stats.successful_calls = 8;
         stats.failed_calls = 2;
         
-        assert_eq!(stats.total_calls, 10);
-        assert_eq!(stats.successful_calls, 8);
-        assert_eq!(stats.failed_calls, 2);
+        assert_eq!(stats.total_calls, 10;
+        assert_eq!(stats.successful_calls, 8;
+        assert_eq!(stats.failed_calls, 2;
     }
 }
 
@@ -895,7 +895,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum);
+                0u32.update_checksum(checksum;
             }
         }
 
@@ -1021,12 +1021,12 @@ impl Default for ResourceTransferType {
 }
 
 // Apply macro to all types that need traits
-impl_basic_traits!(CallContext, CallContext::default());
-impl_basic_traits!(CallFrame, CallFrame::default());
-impl_basic_traits!(CallMetadata, CallMetadata::default());
-impl_basic_traits!(MemoryContext, MemoryContext::default());
-impl_basic_traits!(MemoryProtectionFlags, MemoryProtectionFlags::default());
-impl_basic_traits!(ResourceTransfer, ResourceTransfer::default());
+impl_basic_traits!(CallContext, CallContext::default(;
+impl_basic_traits!(CallFrame, CallFrame::default(;
+impl_basic_traits!(CallMetadata, CallMetadata::default(;
+impl_basic_traits!(MemoryContext, MemoryContext::default(;
+impl_basic_traits!(MemoryProtectionFlags, MemoryProtectionFlags::default(;
+impl_basic_traits!(ResourceTransfer, ResourceTransfer::default(;
 
 // Additional Default implementations
 impl Default for CallRouterConfig {
@@ -1070,6 +1070,6 @@ impl Default for StringEncoding {
 }
 
 // Apply traits to additional types
-impl_basic_traits!(CallRouterConfig, CallRouterConfig::default());
-impl_basic_traits!(MarshalingConfig, MarshalingConfig::default());
-impl_basic_traits!(ResourceTransferPolicy, ResourceTransferPolicy::default());
+impl_basic_traits!(CallRouterConfig, CallRouterConfig::default(;
+impl_basic_traits!(MarshalingConfig, MarshalingConfig::default(;
+impl_basic_traits!(ResourceTransferPolicy, ResourceTransferPolicy::default(;

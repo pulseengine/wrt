@@ -43,7 +43,7 @@ use crate::{
 use wrt_error::{Error, ErrorCategory, Result};
 
 /// Post-return function signature: () -> ()
-pub type PostReturnFn = fn();
+pub type PostReturnFn = fn(;
 
 /// Maximum number of cleanup tasks per instance in no_std
 const MAX_CLEANUP_TASKS_NO_STD: usize = 256;
@@ -315,8 +315,8 @@ impl PostReturnRegistry {
 
         #[cfg(feature = "std")]
         {
-            self.functions.insert(instance_id, post_return_fn);
-            self.pending_cleanups.insert(instance_id, Vec::new();
+            self.functions.insert(instance_id, post_return_fn;
+            self.pending_cleanups.insert(instance_id, Vec::new(;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -349,14 +349,14 @@ impl PostReturnRegistry {
                 })?;
 
             if cleanup_tasks.len() >= self.max_cleanup_tasks {
-                return Err(Error::resource_exhausted("Error occurred")
-                );
+                return Err(Error::resource_exhausted("Maximum cleanup tasks limit reached for component instance")
+                ;
             }
 
             cleanup_tasks.push(task);
 
             // Update peak tasks metric
-            let total_pending: usize = self.pending_cleanups.values().map(|tasks| tasks.len()).sum();
+            let total_pending: usize = self.pending_cleanups.values().map(|tasks| tasks.len()).sum(;
             if total_pending > self.metrics.peak_pending_tasks {
                 self.metrics.peak_pending_tasks = total_pending;
             }
@@ -366,22 +366,21 @@ impl PostReturnRegistry {
             for (id, cleanup_tasks) in &mut self.pending_cleanups {
                 if *id == instance_id {
                     cleanup_tasks.push(task).map_err(|_| {
-                        Error::resource_exhausted("Error occurred")
-                    })?;
+                        Error::resource_exhausted("Failed to add cleanup task, capacity exceeded")
                     })?;
                     
                     // Update peak tasks metric
-                    let total_pending: usize = self.pending_cleanups.iter().map(|(_, tasks)| tasks.len()).sum();
+                    let total_pending: usize = self.pending_cleanups.iter().map(|(_, tasks)| tasks.len()).sum(;
                     if total_pending > self.metrics.peak_pending_tasks {
                         self.metrics.peak_pending_tasks = total_pending;
                     }
                     
-                    return Ok(();
+                    return Ok((;
                 }
             }
             
-            return Err(Error::runtime_execution_error("Error occurred")
-            );
+            return Err(Error::runtime_execution_error("Component instance not found for cleanup task scheduling")
+            ;
         }
 
         Ok(()
@@ -399,8 +398,7 @@ impl PostReturnRegistry {
             .functions
             .get_mut(&instance_id)
             .ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred")
-            })?;
+                Error::runtime_execution_error("Post-return function not found for component instance")
             })?;
         
         #[cfg(not(any(feature = "std", )))]
@@ -408,25 +406,24 @@ impl PostReturnRegistry {
             let mut found = None;
             for (id, func) in &mut self.functions {
                 if *id == instance_id {
-                    found = Some(func);
+                    found = Some(func;
                     break;
                 }
             }
             found.ok_or_else(|| {
-                Error::runtime_execution_error("Error occurred")
-            })?;
+                Error::runtime_execution_error("Post-return function not found for component instance")
             })?
         };
 
         if post_return_fn.executing {
-            return Err(Error::runtime_execution_error("Error occurred")
-            );
+            return Err(Error::runtime_execution_error("Post-return function is already executing")
+            ;
         }
 
         post_return_fn.executing = true;
 
         // Simple timing implementation for no_std
-        let result = self.execute_cleanup_tasks(instance_id, context);
+        let result = self.execute_cleanup_tasks(instance_id, context;
 
         // Update metrics
         self.metrics.total_executions += 1;
@@ -440,14 +437,14 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(cleanup_tasks) = self.pending_cleanups.get_mut(&instance_id) {
-                cleanup_tasks.clear();
+                cleanup_tasks.clear(;
             }
         }
         #[cfg(not(any(feature = "std", )))]
         {
             for (id, cleanup_tasks) in &mut self.pending_cleanups {
                 if *id == instance_id {
-                    cleanup_tasks.clear();
+                    cleanup_tasks.clear(;
                     break;
                 }
             }
@@ -471,9 +468,9 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(pending) = self.pending_cleanups.get(&instance_id) {
-                all_tasks.extend(pending.iter().cloned();
+                all_tasks.extend(pending.iter().cloned(;
             }
-            all_tasks.sort_by(|a, b| b.priority.cmp(&a.priority);
+            all_tasks.sort_by(|a, b| b.priority.cmp(&a.priority;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -618,14 +615,14 @@ impl PostReturnRegistry {
             
             // Cancel operations if cancellation token is available
             if let Some(token) = cancellation_token {
-                let _ = token.cancel();
+                let _ = token.cancel(;
             }
             
             // Clean up async ABI resources
             if let Some(async_abi) = &context.async_abi {
                 if let Some(stream) = stream_handle {
-                    let _ = async_abi.stream_close_readable(*stream);
-                    let _ = async_abi.stream_close_writable(*stream);
+                    let _ = async_abi.stream_close_readable(*stream;
+                    let _ = async_abi.stream_close_writable(*stream;
                 }
                 
                 if let Some(future) = future_handle {
@@ -633,7 +630,7 @@ impl PostReturnRegistry {
                 }
                 
                 if let Some(error_ctx) = error_context_handle {
-                    let _ = async_abi.error_context_drop(*error_ctx);
+                    let _ = async_abi.error_context_drop(*error_ctx;
                 }
             }
         }
@@ -712,7 +709,7 @@ impl PostReturnRegistry {
             
             if let Some(repr_manager) = &self.representation_manager {
                 // In a real implementation, this would drop the resource representation
-                // let _ = canon_resource_drop(repr_manager, *handle);
+                // let _ = canon_resource_drop(repr_manager, *handle;
             }
         }
         Ok(()
@@ -748,8 +745,8 @@ impl PostReturnRegistry {
     ) -> Result<()> {
         #[cfg(feature = "std")]
         {
-            self.functions.remove(&instance_id);
-            self.pending_cleanups.remove(&instance_id);
+            self.functions.remove(&instance_id;
+            self.pending_cleanups.remove(&instance_id;
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -757,7 +754,7 @@ impl PostReturnRegistry {
             let mut i = 0;
             while i < self.functions.len() {
                 if self.functions[i].0 == instance_id {
-                    self.functions.remove(i);
+                    self.functions.remove(i;
                     break;
                 } else {
                     i += 1;
@@ -768,7 +765,7 @@ impl PostReturnRegistry {
             let mut i = 0;
             while i < self.pending_cleanups.len() {
                 if self.pending_cleanups[i].0 == instance_id {
-                    self.pending_cleanups.remove(i);
+                    self.pending_cleanups.remove(i;
                     break;
                 } else {
                     i += 1;
@@ -785,7 +782,7 @@ impl PostReturnRegistry {
 
     /// Reset metrics
     pub fn reset_metrics(&mut self) {
-        self.metrics = PostReturnMetrics::default();
+        self.metrics = PostReturnMetrics::default(;
     }
 }
 
@@ -962,8 +959,7 @@ pub mod helpers {
         priority: u8,
     ) -> Result<CleanupTask> {
         let cleanup_id = BoundedString::from_str(cleanup_id).map_err(|_| {
-            Error::runtime_execution_error("Error occurred")
-            )
+            Error::runtime_execution_error("Failed to create cleanup task ID as bounded string")
         })?;
 
         let param_vec = parameters;
@@ -982,7 +978,7 @@ impl Default for PostReturnRegistry {
         Self::new(1024).unwrap_or_else(|_| {
             // Fallback on allocation failure - this should not happen in practice
             // but satisfies the Default trait requirement
-            panic!("Failed to allocate memory for PostReturnRegistryMissing message")
+            panic!("Failed to allocate memory for PostReturnRegistry")
         })
     }
 }
@@ -995,14 +991,14 @@ mod tests {
     #[test]
     fn test_post_return_registry_creation() {
         let registry = PostReturnRegistry::new(100).unwrap();
-        assert_eq!(registry.max_cleanup_tasks, 100);
-        assert_eq!(registry.functions.len(), 0);
+        assert_eq!(registry.max_cleanup_tasks, 100;
+        assert_eq!(registry.functions.len(), 0;
     }
 
     #[test]
     fn test_register_post_return() {
         let mut registry = PostReturnRegistry::new(100).unwrap();
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         assert!(registry.register_post_return(instance_id, 42, None).is_ok();
         assert!(registry.functions.contains_key(&instance_id);
@@ -1011,34 +1007,34 @@ mod tests {
     #[test]
     fn test_schedule_cleanup() {
         let mut registry = PostReturnRegistry::new(100).unwrap();
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         registry.register_post_return(instance_id, 42, None).unwrap();
 
-        let task = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10);
+        let task = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10;
         assert!(registry.schedule_cleanup(instance_id, task).is_ok();
 
-        assert_eq!(registry.pending_cleanups[&instance_id].len(), 1);
+        assert_eq!(registry.pending_cleanups[&instance_id].len(), 1;
     }
 
     #[test]
     fn test_cleanup_task_helpers() {
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         // Test memory cleanup task
-        let mem_task = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10);
-        assert_eq!(mem_task.task_type, CleanupTaskType::DeallocateMemory);
-        assert_eq!(mem_task.priority, 10);
+        let mem_task = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10;
+        assert_eq!(mem_task.task_type, CleanupTaskType::DeallocateMemory;
+        assert_eq!(mem_task.priority, 10;
 
         // Test resource cleanup task
-        let res_task = helpers::resource_cleanup_task(instance_id, 42, TypeId(1), 5);
-        assert_eq!(res_task.task_type, CleanupTaskType::CloseResource);
-        assert_eq!(res_task.priority, 5);
+        let res_task = helpers::resource_cleanup_task(instance_id, 42, TypeId(1), 5;
+        assert_eq!(res_task.task_type, CleanupTaskType::CloseResource;
+        assert_eq!(res_task.priority, 5;
 
         // Test async cleanup task
-        let async_task = helpers::async_cleanup_task(instance_id, Some(1), Some(2), Some(3), 8);
-        assert_eq!(async_task.task_type, CleanupTaskType::AsyncCleanup);
-        assert_eq!(async_task.priority, 8);
+        let async_task = helpers::async_cleanup_task(instance_id, Some(1), Some(2), Some(3), 8;
+        assert_eq!(async_task.task_type, CleanupTaskType::AsyncCleanup;
+        assert_eq!(async_task.priority, 8;
 
         // Test custom cleanup task
         let custom_task = helpers::custom_cleanup_task(
@@ -1046,37 +1042,37 @@ mod tests {
             "custom_cleanup",
             vec![ComponentValue::U32(42)],
             7,
-        );
+        ;
         assert!(custom_task.is_ok();
         let custom_task = custom_task.unwrap();
-        assert_eq!(custom_task.task_type, CleanupTaskType::Custom);
-        assert_eq!(custom_task.priority, 7);
+        assert_eq!(custom_task.task_type, CleanupTaskType::Custom;
+        assert_eq!(custom_task.priority, 7;
     }
 
     #[test]
     fn test_cleanup_task_limits() {
         let mut registry = PostReturnRegistry::new(2).unwrap(); // Small limit for testing
-        let instance_id = ComponentInstanceId(1);
+        let instance_id = ComponentInstanceId(1;
 
         registry.register_post_return(instance_id, 42, None).unwrap();
 
         // Add tasks up to limit
-        let task1 = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10);
-        let task2 = helpers::memory_cleanup_task(instance_id, 0x2000, 64, 8, 10);
-        let task3 = helpers::memory_cleanup_task(instance_id, 0x3000, 64, 8, 10);
+        let task1 = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10;
+        let task2 = helpers::memory_cleanup_task(instance_id, 0x2000, 64, 8, 10;
+        let task3 = helpers::memory_cleanup_task(instance_id, 0x3000, 64, 8, 10;
 
         assert!(registry.schedule_cleanup(instance_id, task1).is_ok();
         assert!(registry.schedule_cleanup(instance_id, task2).is_ok();
-        assert!(registry.schedule_cleanup(instance_id, task3).is_err()); // Should fail
+        assert!(registry.schedule_cleanup(instance_id, task3).is_err())); // Should fail
     }
 
     #[test]
     fn test_metrics() {
         let registry = PostReturnRegistry::new(100).unwrap();
-        let metrics = registry.metrics();
+        let metrics = registry.metrics(;
 
-        assert_eq!(metrics.total_executions, 0);
-        assert_eq!(metrics.total_cleanup_tasks, 0);
-        assert_eq!(metrics.failed_cleanups, 0);
+        assert_eq!(metrics.total_executions, 0;
+        assert_eq!(metrics.total_cleanup_tasks, 0;
+        assert_eq!(metrics.failed_cleanups, 0;
     }
 }

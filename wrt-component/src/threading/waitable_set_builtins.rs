@@ -43,12 +43,12 @@ const MAX_WAIT_RESULTS: usize = 64;
 
 /// Waitable set identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WaitableSetId(pub u64);
+pub struct WaitableSetId(pub u64;
 
 impl WaitableSetId {
     pub fn new() -> Self {
         static COUNTER: core::sync::atomic::AtomicU64 = 
-            core::sync::atomic::AtomicU64::new(1);
+            core::sync::atomic::AtomicU64::new(1;
         Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst)
     }
 
@@ -158,12 +158,12 @@ impl WaitableEntry {
 
 /// Waitable identifier within a set
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WaitableId(pub u64);
+pub struct WaitableId(pub u64;
 
 impl WaitableId {
     pub fn new() -> Self {
         static COUNTER: core::sync::atomic::AtomicU64 = 
-            core::sync::atomic::AtomicU64::new(1);
+            core::sync::atomic::AtomicU64::new(1;
         Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst)
     }
 
@@ -204,15 +204,15 @@ impl WaitableSetImpl {
     pub fn add_waitable(&mut self, waitable: Waitable) -> Result<WaitableId> {
         if self.closed {
             return Err(Error::runtime_execution_error("Error occurred"
-            );
+            ;
         }
 
-        let id = WaitableId::new();
-        let entry = WaitableEntry::new(id, waitable);
+        let id = WaitableId::new(;
+        let entry = WaitableEntry::new(id, waitable;
 
         #[cfg(feature = "std")]
         {
-            self.waitables.insert(id, entry);
+            self.waitables.insert(id, entry;
             Ok(id)
         }
         #[cfg(not(any(feature = "std", )))]
@@ -251,7 +251,7 @@ impl WaitableSetImpl {
     /// Check all waitables and return those that are ready
     #[cfg(feature = "std")]
     pub fn check_ready(&mut self) -> Vec<WaitableEntry> {
-        let mut ready = Vec::new();
+        let mut ready = Vec::new(;
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
                 ready.push(entry.clone();
@@ -303,7 +303,7 @@ impl Default for WaitableSetImpl {
 
 /// Global registry for waitable sets
 static WAITABLE_SET_REGISTRY: AtomicRefCell<Option<WaitableSetRegistry>> = 
-    AtomicRefCell::new(None);
+    AtomicRefCell::new(None;
 
 /// Registry that manages all waitable sets
 #[derive(Debug)]
@@ -328,7 +328,7 @@ impl WaitableSetRegistry {
         let id = set.id;
         #[cfg(feature = "std")]
         {
-            self.sets.insert(id, set);
+            self.sets.insert(id, set;
             Ok(id)
         }
         #[cfg(not(any(feature = "std", )))]
@@ -373,8 +373,8 @@ impl WaitableSetBuiltins {
             .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message neededMissing messageMissing messageMissing message"))?;
-        *registry_ref = Some(WaitableSetRegistry::new();
+                "Error message needed"))?;
+        *registry_ref = Some(WaitableSetRegistry::new(;
         Ok(()
     }
 
@@ -390,7 +390,7 @@ impl WaitableSetBuiltins {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message neededMissing messageMissing messageMissing message"))?;
+                "Error message needed"))?;
         Ok(f(registry)
     }
 
@@ -406,14 +406,14 @@ impl WaitableSetBuiltins {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message neededMissing messageMissing messageMissing message"))?;
+                "Error message needed"))?;
         f(registry)
     }
 
     /// `waitable-set.new` canonical built-in
     /// Creates a new waitable set
     pub fn waitable_set_new() -> Result<WaitableSetId> {
-        let set = WaitableSetImpl::new();
+        let set = WaitableSetImpl::new(;
         Self::with_registry_mut(|registry| {
             registry.register_set(set)
         })?
@@ -442,7 +442,7 @@ impl WaitableSetBuiltins {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::RESOURCE_INVALID_HANDLE,
-                    "Error message neededMissing messageMissing messageMissing message")
+                    "Error message needed")
             }
         })?
     }
@@ -486,13 +486,13 @@ impl WaitableSetBuiltins {
     pub fn waitable_set_close(set_id: WaitableSetId) -> Result<()> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
-                set.close();
+                set.close(;
                 Ok(()
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::RESOURCE_INVALID_HANDLE,
-                    "Error message neededMissing messageMissing messageMissing message")
+                    "Error message needed")
             }
         })?
     }
@@ -500,7 +500,7 @@ impl WaitableSetBuiltins {
     /// Remove a waitable set from the registry
     pub fn waitable_set_drop(set_id: WaitableSetId) -> Result<()> {
         Self::with_registry_mut(|registry| {
-            registry.remove_set(set_id);
+            registry.remove_set(set_id;
             Ok(()
         })?
     }
@@ -518,7 +518,7 @@ impl WaitableSetBuiltins {
         })?
     }
 
-    #[cfg(not(any(feature = Missing messageMissing messageMissing message")))]
+    #[cfg(not(any(feature = ")))]
     pub fn waitable_set_poll_all(set_id: WaitableSetId) -> core::result::Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>, NoStdProvider<65536>> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
@@ -566,7 +566,7 @@ pub mod waitable_set_helpers {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_any_future(futures: &[Future]) -> Result<WaitResult> {
-        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new();
+        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new(;
         for future in futures {
             waitables.push(Waitable::Future(future.clone())
                 .map_err(|_| Error::runtime_execution_error("Error occurred"
@@ -588,7 +588,7 @@ pub mod waitable_set_helpers {
 
     #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_any_stream(streams: &[Stream]) -> Result<WaitResult> {
-        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new();
+        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new(;
         for stream in streams {
             waitables.push(Waitable::Stream(stream.clone())
                 .map_err(|_| Error::runtime_execution_error("Error occurred"
@@ -622,18 +622,18 @@ mod tests {
 
     #[test]
     fn test_waitable_set_id_generation() {
-        let id1 = WaitableSetId::new();
-        let id2 = WaitableSetId::new();
-        assert_ne!(id1, id2);
+        let id1 = WaitableSetId::new(;
+        let id2 = WaitableSetId::new(;
+        assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
     }
 
     #[test]
     fn test_waitable_id_generation() {
-        let id1 = WaitableId::new();
-        let id2 = WaitableId::new();
-        assert_ne!(id1, id2);
+        let id1 = WaitableId::new(;
+        let id2 = WaitableId::new(;
+        assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
     }
@@ -646,7 +646,7 @@ mod tests {
                 handle: FutureHandle::new(),
                 state: FutureState::Pending,
             })
-        );
+        ;
 
         let ready_result = WaitResult::Ready(entry.clone();
         assert!(ready_result.is_ready();
@@ -669,13 +669,13 @@ mod tests {
                 handle: FutureHandle::new(),
                 state: FutureState::Pending,
             })
-        );
+        ;
         assert!(!future_entry.check_ready();
 
         future_entry.waitable = Waitable::Future(Future {
             handle: FutureHandle::new(),
             state: FutureState::Resolved(ComponentValue::Bool(true)),
-        });
+        };
         assert!(future_entry.check_ready();
 
         // Test stream waitable
@@ -685,19 +685,19 @@ mod tests {
                 handle: StreamHandle::new(),
                 state: StreamState::Pending,
             })
-        );
+        ;
         assert!(!stream_entry.check_ready();
 
         stream_entry.waitable = Waitable::Stream(Stream {
             handle: StreamHandle::new(),
             state: StreamState::Open,
-        });
+        };
         assert!(stream_entry.check_ready();
     }
 
     #[test]
     fn test_waitable_set_operations() {
-        let mut set = WaitableSetImpl::new();
+        let mut set = WaitableSetImpl::new(;
         assert!(set.is_empty();
         assert!(!set.is_closed();
 
@@ -709,17 +709,17 @@ mod tests {
         let waitable_id = set.add_waitable(Waitable::Future(future)).unwrap();
 
         assert!(!set.is_empty();
-        assert_eq!(set.waitable_count(), 1);
+        assert_eq!(set.waitable_count(), 1;
         assert!(set.contains_waitable(waitable_id);
 
         // Remove the waitable
-        let removed = set.remove_waitable(waitable_id);
+        let removed = set.remove_waitable(waitable_id;
         assert!(removed.is_some();
         assert!(set.is_empty();
         assert!(!set.contains_waitable(waitable_id);
 
         // Close the set
-        set.close();
+        set.close(;
         assert!(set.is_closed();
 
         // Try to add to closed set
@@ -727,13 +727,13 @@ mod tests {
             handle: FutureHandle::new(),
             state: FutureState::Pending,
         };
-        let result = set.add_waitable(Waitable::Future(future2);
+        let result = set.add_waitable(Waitable::Future(future2;
         assert!(result.is_err();
     }
 
     #[test]
     fn test_waitable_set_ready_checking() {
-        let mut set = WaitableSetImpl::new();
+        let mut set = WaitableSetImpl::new(;
 
         // Add pending future
         let pending_future = Future {
@@ -752,38 +752,38 @@ mod tests {
         // Check for ready waitables
         #[cfg(feature = "std")]
         {
-            let ready = set.check_ready();
-            assert_eq!(ready.len(), 1);
+            let ready = set.check_ready(;
+            assert_eq!(ready.len(), 1;
         }
         #[cfg(not(any(feature = "std", )))]
         {
             let ready = set.check_ready().unwrap();
-            assert_eq!(ready.len(), 1);
+            assert_eq!(ready.len(), 1;
         }
 
         // Poll for first ready
-        let first_ready = set.get_first_ready();
+        let first_ready = set.get_first_ready(;
         assert!(first_ready.is_some();
         assert!(first_ready.unwrap().is_ready();
     }
 
     #[test]
     fn test_waitable_set_registry() {
-        let mut registry = WaitableSetRegistry::new();
-        assert_eq!(registry.set_count(), 0);
+        let mut registry = WaitableSetRegistry::new(;
+        assert_eq!(registry.set_count(), 0;
 
-        let set = WaitableSetImpl::new();
+        let set = WaitableSetImpl::new(;
         let set_id = set.id;
         registry.register_set(set).unwrap();
-        assert_eq!(registry.set_count(), 1);
+        assert_eq!(registry.set_count(), 1;
 
-        let retrieved_set = registry.get_set(set_id);
+        let retrieved_set = registry.get_set(set_id;
         assert!(retrieved_set.is_some();
-        assert_eq!(retrieved_set.unwrap().id, set_id);
+        assert_eq!(retrieved_set.unwrap().id, set_id;
 
-        let removed_set = registry.remove_set(set_id);
+        let removed_set = registry.remove_set(set_id;
         assert!(removed_set.is_some();
-        assert_eq!(registry.set_count(), 0);
+        assert_eq!(registry.set_count(), 0;
     }
 
     #[test]
@@ -803,7 +803,7 @@ mod tests {
 
         // Check operations
         assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap();
-        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 1);
+        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 1;
 
         // Wait operation (should timeout since nothing is ready)
         let wait_result = WaitableSetBuiltins::waitable_set_wait(set_id).unwrap();
@@ -811,7 +811,7 @@ mod tests {
 
         // Remove waitable
         assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap();
-        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 0);
+        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 0;
 
         // Close set
         WaitableSetBuiltins::waitable_set_close(set_id).unwrap();
@@ -825,12 +825,12 @@ mod tests {
         WaitableSetBuiltins::initialize().unwrap();
 
         // Test waitable creation helpers
-        let future_handle = FutureHandle::new();
-        let waitable = waitable_set_helpers::waitable_from_future_handle(future_handle);
-        assert!(matches!(waitable, Waitable::Future(_));
+        let future_handle = FutureHandle::new(;
+        let waitable = waitable_set_helpers::waitable_from_future_handle(future_handle;
+        assert!(matches!(waitable, Waitable::Future(_);
 
-        let stream_handle = StreamHandle::new();
-        let waitable = waitable_set_helpers::waitable_from_stream_handle(stream_handle);
-        assert!(matches!(waitable, Waitable::Stream(_));
+        let stream_handle = StreamHandle::new(;
+        let waitable = waitable_set_helpers::waitable_from_stream_handle(stream_handle;
+        assert!(matches!(waitable, Waitable::Stream(_);
     }
 }

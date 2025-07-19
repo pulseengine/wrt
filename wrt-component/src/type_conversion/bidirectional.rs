@@ -233,7 +233,7 @@ pub fn types_valtype_to_valuetype(types_val_type: &WrtTypesValType) -> Result<Va
 /// use wrt_foundation::types::ValueType;
 ///
 /// let i32_type = ValueType::I32;
-/// let runtime_type = value_type_to_types_valtype(&i32_type);
+/// let runtime_type = value_type_to_types_valtype(&i32_type;
 /// assert!(matches!(runtime_type, wrt_foundation::component_value::ValType::S32);
 /// ```
 pub fn value_type_to_types_valtype(value_type: &ValueType) -> WrtTypesValType {
@@ -267,7 +267,7 @@ pub fn value_type_to_types_valtype(value_type: &ValueType) -> WrtTypesValType {
 /// use wrt_format::component::ValType;
 ///
 /// let string_type = ValType::String;
-/// let runtime_type = format_valtype_to_types_valtype(&string_type);
+/// let runtime_type = format_valtype_to_types_valtype(&string_type;
 /// assert!(matches!(runtime_type, wrt_foundation::component_value::ValType::String);
 /// ```
 pub fn format_valtype_to_types_valtype(format_val_type: &FormatValType<ComponentProvider>) -> WrtTypesValType {
@@ -310,7 +310,7 @@ pub fn format_to_types_valtype(val_type: &WrtTypesValType) -> WrtTypesValType {
 /// use wrt_foundation::component_value::ValType;
 ///
 /// let string_type = ValType::String;
-/// let format_type = types_valtype_to_format_valtype(&string_type);
+/// let format_type = types_valtype_to_format_valtype(&string_type;
 /// assert!(matches!(format_type, wrt_format::component::ValType::String);
 /// ```
 pub fn types_valtype_to_format_valtype(types_val_type: &WrtTypesValType) -> FormatValType<ComponentProvider> {
@@ -430,7 +430,7 @@ pub fn format_to_runtime_extern_type(
         FormatExternType::Value(val_type) => {
             // Convert to most appropriate TypesWrtExternType - likely Function with no
             // params/results Could be mapped as constant global in the future
-            let value_type = format_val_type_to_value_type(val_type).unwrap_or(ValueType::I32);
+            let value_type = format_val_type_to_value_type(val_type).unwrap_or(ValueType::I32;
             Ok(TypesWrtExternType::Global(wrt_foundation::component::GlobalType {
                 value_type,
                 mutable: false,
@@ -502,7 +502,7 @@ pub fn format_to_runtime_extern_type(
 ///     results: vec![ValueType::I32],
 /// };
 ///
-/// let runtime_func = WrtExternType::Function(func_type);
+/// let runtime_func = WrtExternType::Function(func_type;
 /// let format_func = runtime_to_format_extern_type(&runtime_func).unwrap();
 /// ```
 pub fn runtime_to_format_extern_type(
@@ -515,7 +515,7 @@ pub fn runtime_to_format_extern_type(
                 (0..func_type.params.len()).map(|i| format!("param{}", i)).collect();
 
             // Create param_types manually to handle errors gracefully
-            let mut param_types = Vec::new();
+            let mut param_types = Vec::new(;
             for (i, value_type) in func_type.params.iter().enumerate() {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => {
@@ -526,7 +526,7 @@ pub fn runtime_to_format_extern_type(
             }
 
             // Create result_types manually to handle errors gracefully
-            let mut result_types = Vec::new();
+            let mut result_types = Vec::new(;
             for value_type in &func_type.results {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => result_types.push(format_val_type),
@@ -697,9 +697,9 @@ impl IntoFormatType<FormatValType<ComponentProvider>> for WrtTypesValType {
 /// use wrt_component::type_conversion::bidirectional::format_constvalue_to_types_componentvalue;
 /// use wrt_format::component::ConstValue;
 ///
-/// let s32_val = ConstValue::S32(42);
+/// let s32_val = ConstValue::S32(42;
 /// let runtime_val = format_constvalue_to_types_componentvalue(&s32_val).unwrap();
-/// assert!(matches!(runtime_val, wrt_foundation::component_value::WrtComponentValue::S32(42));
+/// assert!(matches!(runtime_val, wrt_foundation::component_value::WrtComponentValue::S32(42);
 /// ```
 pub fn format_constvalue_to_types_componentvalue(
     format_const_value: &FormatConstValue,
@@ -742,9 +742,9 @@ pub fn format_constvalue_to_types_componentvalue(
 /// use wrt_component::type_conversion::bidirectional::types_componentvalue_to_format_constvalue;
 /// use wrt_foundation::component_value::WrtComponentValue;
 ///
-/// let s32_val = WrtComponentValue::S32(42);
+/// let s32_val = WrtComponentValue::S32(42;
 /// let format_val = types_componentvalue_to_format_constvalue(&s32_val).unwrap();
-/// assert!(matches!(format_val, wrt_format::component::ConstValue::S32(42));
+/// assert!(matches!(format_val, wrt_format::component::ConstValue::S32(42);
 /// ```
 pub fn types_componentvalue_to_format_constvalue(
     types_component_value: &WrtComponentValue,
@@ -877,7 +877,7 @@ pub fn complete_types_to_format_extern_type(
                 (0..func_type.params.len()).map(|i| format!("param{}", i)).collect();
 
             // Create param_types manually to handle errors gracefully
-            let mut param_types = Vec::new();
+            let mut param_types = Vec::new(;
             for (i, value_type) in func_type.params.iter().enumerate() {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => {
@@ -888,7 +888,7 @@ pub fn complete_types_to_format_extern_type(
             }
 
             // Create result_types manually to handle errors gracefully
-            let mut result_types = Vec::new();
+            let mut result_types = Vec::new(;
             for value_type in &func_type.results {
                 match value_type_to_format_val_type(value_type) {
                     Ok(format_val_type) => result_types.push(format_val_type),
@@ -965,10 +965,10 @@ pub fn complete_format_to_types_extern_type(
         FormatExternType::Function { params, results } => {
             // Convert parameter types - create an empty vector and then convert and add
             // each parameter
-            let mut param_types = Vec::new();
+            let mut param_types = Vec::new(;
             for (_, format_val_type) in params {
                 // First convert to WrtTypesValType, then to ValueType if needed
-                let types_val_type = convert_format_to_types_valtype(format_val_type);
+                let types_val_type = convert_format_to_types_valtype(format_val_type;
                 match convert_format_valtype_to_valuetype(format_val_type) {
                     Ok(value_type) => param_types.push(value_type),
                     Err(_) => {
@@ -976,21 +976,21 @@ pub fn complete_format_to_types_extern_type(
                             ErrorCategory::Type,
                             codes::CONVERSION_ERROR,
                             "ValType conversion not implemented",
-                        ));
+                        ;
                     }
                 }
             }
 
             // Convert result types - create an empty vector and then convert and add each
             // result
-            let mut result_types = Vec::new();
+            let mut result_types = Vec::new(;
             for format_val_type in results {
                 // First convert to WrtTypesValType, then to ValueType if needed
-                let types_val_type = convert_format_to_types_valtype(format_val_type);
+                let types_val_type = convert_format_to_types_valtype(format_val_type;
                 match convert_format_valtype_to_valuetype(format_val_type) {
                     Ok(value_type) => result_types.push(value_type),
                     Err(_) => {
-                        return Err(Error::runtime_execution_error("Failed to convert result type"));
+                        return Err(Error::runtime_execution_error("Failed to convert result type";
                     }
                 }
             }
@@ -1004,7 +1004,7 @@ pub fn complete_format_to_types_extern_type(
         FormatExternType::Value(format_val_type) => {
             // Value types typically map to globals in the runtime
             // First convert to WrtTypesValType, then to ValueType if needed
-            let types_val_type = convert_format_to_types_valtype(format_val_type);
+            let types_val_type = convert_format_to_types_valtype(format_val_type;
             let value_type = match convert_format_valtype_to_valuetype(format_val_type) {
                 Ok(vt) => vt,
                 Err(_) => {
@@ -1012,7 +1012,7 @@ pub fn complete_format_to_types_extern_type(
                         ErrorCategory::Type,
                         codes::CONVERSION_ERROR,
                         "ValType conversion not implemented",
-                    ));
+                    ;
                 }
             };
             Ok(wrt_foundation::WrtExternType::Global(wrt_foundation::GlobalType {

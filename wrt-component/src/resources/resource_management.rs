@@ -28,10 +28,10 @@
 //! use wrt_component::resource_management::{ResourceManager, ResourceType, ResourceHandle};
 //!
 //! // Create a resource manager
-//! let mut manager = ResourceManager::new();
+//! let mut manager = ResourceManager::new(;
 //!
 //! // Register a resource type
-//! let file_type = manager.register_resource_type("fileMissing message")?;
+//! let file_type = manager.register_resource_type("file")?;
 //!
 //! // Create a resource instance
 //! let file_handle = manager.create_resource(file_type, file_data)?;
@@ -64,15 +64,15 @@ const MAX_RESOURCES_PER_INSTANCE: usize = 65536;
 const MAX_GLOBAL_RESOURCES: usize = 1024 * 1024;
 
 /// Invalid resource handle constant
-pub const INVALID_HANDLE: ResourceHandle = ResourceHandle(u32::MAX);
+pub const INVALID_HANDLE: ResourceHandle = ResourceHandle(u32::MAX;
 
 /// Resource handle - unique identifier for a resource instance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceHandle(pub u32);
+pub struct ResourceHandle(pub u32;
 
 /// Resource type identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceTypeId(pub u32);
+pub struct ResourceTypeId(pub u32;
 
 /// Resource instance state
 #[derive(Debug, Clone, PartialEq)]
@@ -364,10 +364,10 @@ impl ResourceTable {
         ownership: ResourceOwnership,
     ) -> Result<ResourceHandle> {
         if self.resources.len() >= MAX_RESOURCES_PER_INSTANCE {
-            return Err(Error::resource_exhausted("Maximum resources per instance exceeded");
+            return Err(Error::resource_exhausted("Maximum resources per instance exceeded";
         }
 
-        let handle = ResourceHandle::new(self.next_handle);
+        let handle = ResourceHandle::new(self.next_handle;
         self.next_handle += 1;
 
         let resource = Resource {
@@ -382,7 +382,7 @@ impl ResourceTable {
             data,
         };
 
-        self.resources.insert(handle, resource);
+        self.resources.insert(handle, resource;
 
         // Update type mappings
         self.type_mappings.entry(resource_type).or_insert_with(Vec::new).push(handle);
@@ -420,7 +420,7 @@ impl ResourceTable {
 
         // Update type mappings
         if let Some(handles) = self.type_mappings.get_mut(&resource.resource_type) {
-            handles.retain(|&h| h != handle);
+            handles.retain(|&h| h != handle;
         }
 
         // Update statistics
@@ -516,8 +516,8 @@ impl ResourceTable {
     /// Clear all resources (for instance termination)
     pub fn clear_all(&mut self) {
         let handle_count = self.resources.len() as u64;
-        self.resources.clear();
-        self.type_mappings.clear();
+        self.resources.clear(;
+        self.type_mappings.clear(;
         self.stats.resources_dropped += handle_count;
         self.stats.active_resources = 0;
         self.stats.borrowed_resources = 0;
@@ -552,10 +552,10 @@ impl ResourceManager {
         needs_finalization: bool,
     ) -> Result<ResourceTypeId> {
         if self.resource_types.len() >= MAX_RESOURCE_TYPES {
-            return Err(Error::resource_exhausted("Maximum resource types exceeded");
+            return Err(Error::resource_exhausted("Maximum resource types exceeded";
         }
 
-        let type_id = ResourceTypeId::new(self.next_type_id);
+        let type_id = ResourceTypeId::new(self.next_type_id;
         self.next_type_id += 1;
 
         let resource_type = ResourceType {
@@ -568,7 +568,7 @@ impl ResourceManager {
             metadata: ResourceTypeMetadata::default(),
         };
 
-        self.resource_types.insert(type_id, resource_type);
+        self.resource_types.insert(type_id, resource_type;
         self.stats.types_registered += 1;
 
         Ok(type_id)
@@ -583,11 +583,11 @@ impl ResourceManager {
     pub fn create_instance_table(&mut self, instance_id: InstanceId) -> Result<()> {
         if self.instance_tables.contains_key(&instance_id) {
             return Err(Error::runtime_execution_error("Error occurred",
-            );
+            ;
         }
 
-        let table = ResourceTable::new(instance_id);
-        self.instance_tables.insert(instance_id, table);
+        let table = ResourceTable::new(instance_id;
+        self.instance_tables.insert(instance_id, table;
         self.stats.instances_managed += 1;
 
         Ok(()
@@ -597,13 +597,13 @@ impl ResourceManager {
     pub fn remove_instance_table(&mut self, instance_id: InstanceId) -> Result<()> {
         if let Some(mut table) = self.instance_tables.remove(&instance_id) {
             // Clean up all resources
-            table.clear_all();
+            table.clear_all(;
             if self.stats.instances_managed > 0 {
                 self.stats.instances_managed -= 1;
             }
             Ok(()
         } else {
-            Err(Error::instance_not_found("Missing error messageMissing messageMissing messageMissing message")
+            Err(Error::instance_not_found("Missing error message")
         }
     }
 
@@ -630,19 +630,19 @@ impl ResourceManager {
         // Validate resource type exists
         if !self.resource_types.contains_key(&resource_type) {
             return Err(Error::runtime_execution_error("Error occurred",
-            );
+            ;
         }
 
         // Get instance table
         let table = self.instance_tables.get_mut(&instance_id).ok_or_else(|| {
-            Error::instance_not_found("Missing error messageMissing message")
+            Error::instance_not_found("Missing error message")
         })?;
 
         // Create resource
         let handle = table.create_resource(resource_type, data, ResourceOwnership::Owned)?;
 
         // Register globally
-        self.global_resources.insert(handle, instance_id);
+        self.global_resources.insert(handle, instance_id;
         self.stats.global_resources += 1;
 
         Ok(handle)
@@ -657,12 +657,12 @@ impl ResourceManager {
     ) -> Result<ResourceHandle> {
         if !self.config.allow_cross_instance_sharing {
             return Err(Error::runtime_execution_error("Error occurred",
-            );
+            ;
         }
 
         // Remove from source table
         let source_table = self.instance_tables.get_mut(&from_instance).ok_or_else(|| {
-            Error::instance_not_found("Missing error messageMissing message")
+            Error::instance_not_found("Missing error message")
         })?;
 
         let resource = source_table.resources.remove(&handle).ok_or_else(|| {
@@ -681,8 +681,8 @@ impl ResourceManager {
         )?;
 
         // Update global registry
-        self.global_resources.insert(new_handle, to_instance);
-        self.global_resources.remove(&handle);
+        self.global_resources.insert(new_handle, to_instance;
+        self.global_resources.remove(&handle;
 
         // Update statistics
         self.stats.cross_instance_transfers += 1;
@@ -699,12 +699,12 @@ impl ResourceManager {
     ) -> Result<ResourceHandle> {
         if !self.config.allow_borrowing {
             return Err(Error::runtime_execution_error("Error occurred",
-            );
+            ;
         }
 
         // Check if resource type supports borrowing
         let owner_table = self.instance_tables.get(&owner_instance).ok_or_else(|| {
-            Error::instance_not_found("Missing error messageMissing message")
+            Error::instance_not_found("Missing error message")
         })?;
 
         let resource = owner_table.get_resource(handle).ok_or_else(|| {
@@ -717,7 +717,7 @@ impl ResourceManager {
 
         if !resource_type.borrowable {
             return Err(Error::runtime_execution_error("Error occurred",
-            );
+            ;
         }
 
         // Mark as borrowed in owner table
@@ -726,7 +726,7 @@ impl ResourceManager {
 
         // Create borrowed reference in borrower table
         let borrower_table = self.instance_tables.get_mut(&borrower_instance).ok_or_else(|| {
-            Error::instance_not_found("Missing error messageMissing message")
+            Error::instance_not_found("Missing error message")
         })?;
 
         let borrowed_handle = borrower_table.create_resource(
@@ -797,7 +797,7 @@ impl ResourceManager {
     /// Validate all resources
     pub fn validate_all_resources(&self) -> Result<()> {
         if self.config.validation_level == ResourceValidationLevel::None {
-            return Ok(();
+            return Ok((;
         }
 
         for table in self.instance_tables.values() {
@@ -811,19 +811,19 @@ impl ResourceManager {
         for resource in table.resources.values() {
             // Check resource type exists
             if !self.resource_types.contains_key(&resource.resource_type) {
-                return Err(Error::validation_error("Resource references unknown type");
+                return Err(Error::validation_error("Resource references unknown type";
             }
 
             // Check ownership consistency
             match resource.ownership {
                 ResourceOwnership::Owned => {
                     if resource.owner_instance != table.instance_id {
-                        return Err(Error::validation_error("Owned resource has incorrect owner");
+                        return Err(Error::validation_error("Owned resource has incorrect owner";
                     }
                 }
                 ResourceOwnership::Borrowed { owner, .. } => {
                     if !self.instance_tables.contains_key(&owner) {
-                        return Err(Error::validation_error("Borrowed resource references unknown owner");
+                        return Err(Error::validation_error("Borrowed resource references unknown owner";
                     }
                 }
             }
@@ -893,8 +893,8 @@ mod tests {
 
     #[test]
     fn test_resource_handle_creation() {
-        let handle = ResourceHandle::new(42);
-        assert_eq!(handle.value(), 42);
+        let handle = ResourceHandle::new(42;
+        assert_eq!(handle.value(), 42;
         assert!(handle.is_valid();
 
         let invalid = INVALID_HANDLE;
@@ -903,61 +903,61 @@ mod tests {
 
     #[test]
     fn test_resource_type_id_creation() {
-        let type_id = ResourceTypeId::new(123);
-        assert_eq!(type_id.value(), 123);
+        let type_id = ResourceTypeId::new(123;
+        assert_eq!(type_id.value(), 123;
     }
 
     #[test]
     fn test_resource_table_creation() {
-        let table = ResourceTable::new(1);
-        assert_eq!(table.instance_id, 1);
-        assert_eq!(table.resources.len(), 0);
-        assert_eq!(table.stats.active_resources, 0);
+        let table = ResourceTable::new(1;
+        assert_eq!(table.instance_id, 1;
+        assert_eq!(table.resources.len(), 0;
+        assert_eq!(table.stats.active_resources, 0;
     }
 
     #[test]
     fn test_resource_manager_creation() {
-        let manager = ResourceManager::new();
-        assert_eq!(manager.resource_types.len(), 0);
-        assert_eq!(manager.stats.types_registered, 0);
+        let manager = ResourceManager::new(;
+        assert_eq!(manager.resource_types.len(), 0;
+        assert_eq!(manager.stats.types_registered, 0;
     }
 
     #[test]
     fn test_resource_type_registration() {
-        let mut manager = ResourceManager::new();
+        let mut manager = ResourceManager::new(;
 
         let type_id = manager
             .register_resource_type("file".to_string(), "File handle".to_string(), true, true)
             .unwrap();
 
         assert!(type_id.is_valid();
-        assert_eq!(manager.stats.types_registered, 1);
+        assert_eq!(manager.stats.types_registered, 1;
 
         let resource_type = manager.get_resource_type(type_id).unwrap();
-        assert_eq!(resource_type.name, "fileMissing message");
+        assert_eq!(resource_type.name, "file";
         assert!(resource_type.borrowable);
         assert!(resource_type.needs_finalization);
     }
 
     #[test]
     fn test_instance_table_management() {
-        let mut manager = ResourceManager::new();
+        let mut manager = ResourceManager::new(;
 
-        let result = manager.create_instance_table(1);
+        let result = manager.create_instance_table(1;
         assert!(result.is_ok();
-        assert_eq!(manager.stats.instances_managed, 1);
+        assert_eq!(manager.stats.instances_managed, 1;
 
-        let table = manager.get_instance_table(1);
+        let table = manager.get_instance_table(1;
         assert!(table.is_some();
 
-        let result = manager.remove_instance_table(1);
+        let result = manager.remove_instance_table(1;
         assert!(result.is_ok();
-        assert_eq!(manager.stats.instances_managed, 0);
+        assert_eq!(manager.stats.instances_managed, 0;
     }
 
     #[test]
     fn test_resource_creation_and_cleanup() {
-        let mut manager = ResourceManager::new();
+        let mut manager = ResourceManager::new(;
 
         // Register resource type
         let file_type = manager
@@ -968,25 +968,25 @@ mod tests {
         manager.create_instance_table(1).unwrap();
 
         // Create resource
-        let data = ResourceData::Bytes(vec![1, 2, 3, 4]);
+        let data = ResourceData::Bytes(vec![1, 2, 3, 4];
         let handle = manager.create_resource(1, file_type, data).unwrap();
 
         assert!(handle.is_valid();
-        assert_eq!(manager.stats.global_resources, 1);
+        assert_eq!(manager.stats.global_resources, 1;
 
         // Verify resource exists
         let table = manager.get_instance_table(1).unwrap();
-        let resource = table.get_resource(handle);
+        let resource = table.get_resource(handle;
         assert!(resource.is_some();
 
         // Clean up
         manager.remove_instance_table(1).unwrap();
-        assert_eq!(manager.stats.instances_managed, 0);
+        assert_eq!(manager.stats.instances_managed, 0;
     }
 
     #[test]
     fn test_resource_borrowing() {
-        let mut manager = ResourceManager::new();
+        let mut manager = ResourceManager::new(;
 
         // Register borrowable resource type
         let file_type = manager
@@ -1003,7 +1003,7 @@ mod tests {
         manager.create_instance_table(2).unwrap(); // borrower
 
         // Create resource in owner instance
-        let data = ResourceData::Bytes(vec![1, 2, 3, 4]);
+        let data = ResourceData::Bytes(vec![1, 2, 3, 4];
         let owner_handle = manager.create_resource(1, file_type, data).unwrap();
 
         // Borrow resource
@@ -1012,17 +1012,17 @@ mod tests {
 
         // Verify borrowed resource exists in borrower table
         let borrower_table = manager.get_instance_table(2).unwrap();
-        let borrowed_resource = borrower_table.get_resource(borrowed_handle);
+        let borrowed_resource = borrower_table.get_resource(borrowed_handle;
         assert!(borrowed_resource.is_some();
 
         // Return borrowed resource
-        let result = manager.return_borrowed_resource(borrowed_handle, 2);
+        let result = manager.return_borrowed_resource(borrowed_handle, 2;
         assert!(result.is_ok();
     }
 
     #[test]
     fn test_resource_ownership_transfer() {
-        let mut manager = ResourceManager::new();
+        let mut manager = ResourceManager::new(;
 
         // Register resource type
         let file_type = manager
@@ -1034,13 +1034,13 @@ mod tests {
         manager.create_instance_table(2).unwrap(); // target
 
         // Create resource in source instance
-        let data = ResourceData::Bytes(vec![1, 2, 3, 4]);
+        let data = ResourceData::Bytes(vec![1, 2, 3, 4];
         let source_handle = manager.create_resource(1, file_type, data).unwrap();
 
         // Transfer ownership
         let target_handle = manager.transfer_ownership(source_handle, 1, 2).unwrap();
         assert!(target_handle.is_valid();
-        assert_ne!(source_handle, target_handle);
+        assert_ne!(source_handle, target_handle;
 
         // Verify resource moved
         let source_table = manager.get_instance_table(1).unwrap();
@@ -1049,7 +1049,7 @@ mod tests {
         let target_table = manager.get_instance_table(2).unwrap();
         assert!(target_table.get_resource(target_handle).is_some();
 
-        assert_eq!(manager.stats.cross_instance_transfers, 1);
+        assert_eq!(manager.stats.cross_instance_transfers, 1;
     }
 
     #[test]
@@ -1057,19 +1057,19 @@ mod tests {
         let empty = ResourceData::Empty;
         assert!(matches!(empty, ResourceData::Empty);
 
-        let bytes = create_resource_data_bytes(vec![1, 2, 3]);
-        assert!(matches!(bytes, ResourceData::Bytes(_));
+        let bytes = create_resource_data_bytes(vec![1, 2, 3];
+        assert!(matches!(bytes, ResourceData::Bytes(_);
 
-        let external = create_resource_data_external(12345);
-        assert!(matches!(external, ResourceData::ExternalHandle(12345));
+        let external = create_resource_data_external(12345;
+        assert!(matches!(external, ResourceData::ExternalHandle(12345);
 
-        let custom = create_resource_data_custom("MyType".to_string(), vec![4, 5, 6]);
+        let custom = create_resource_data_custom("MyType".to_string(), vec![4, 5, 6];
         assert!(matches!(custom, ResourceData::Custom { .. });
     }
 
     #[test]
     fn test_resource_validation() {
-        let mut manager = ResourceManager::new();
+        let mut manager = ResourceManager::new(;
 
         // Register resource type
         let file_type = manager
@@ -1080,17 +1080,17 @@ mod tests {
         manager.create_instance_table(1).unwrap();
 
         // Create resource
-        let data = ResourceData::Bytes(vec![1, 2, 3, 4]);
+        let data = ResourceData::Bytes(vec![1, 2, 3, 4];
         manager.create_resource(1, file_type, data).unwrap();
 
         // Validate all resources
-        let result = manager.validate_all_resources();
+        let result = manager.validate_all_resources(;
         assert!(result.is_ok();
     }
 
     #[test]
     fn test_garbage_collection() {
-        let mut manager = ResourceManager::new();
+        let mut manager = ResourceManager::new(;
 
         // Register resource type
         let file_type = manager
@@ -1102,14 +1102,14 @@ mod tests {
 
         // Create and immediately drop some resources
         for _ in 0..5 {
-            let data = ResourceData::Bytes(vec![1, 2, 3, 4]);
+            let data = ResourceData::Bytes(vec![1, 2, 3, 4];
             manager.create_resource(1, file_type, data).unwrap();
         }
 
         // Run garbage collection
         let cleaned = manager.garbage_collect().unwrap();
         // In this simple test, no resources should be cleaned since they're not expired
-        assert_eq!(cleaned, 0);
-        assert_eq!(manager.stats.garbage_collections, 1);
+        assert_eq!(cleaned, 0;
+        assert_eq!(manager.stats.garbage_collections, 1;
     }
 }

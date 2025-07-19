@@ -269,15 +269,15 @@ pub struct GcResult {
 
 /// Resource ID type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceId(pub u32);
+pub struct ResourceId(pub u32;
 
 /// Drop handler ID type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DropHandlerId(pub u32);
+pub struct DropHandlerId(pub u32;
 
 /// Component ID type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(pub u32);
+pub struct ComponentId(pub u32;
 
 impl ResourceLifecycleManager {
     /// Create new resource lifecycle manager
@@ -288,7 +288,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for resourcesMissing message");
+                    .expect("Failed to allocate memory for resources");
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
@@ -296,7 +296,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             drop_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for drop handlersMissing message");
+                    .expect("Failed to allocate memory for drop handlers");
                 BoundedVec::new(provider).unwrap()
             },
             policies: LifecyclePolicies::default(),
@@ -308,19 +308,19 @@ impl ResourceLifecycleManager {
 
     /// Create new resource lifecycle manager with custom policies
     pub fn with_policies(policies: LifecyclePolicies) -> Self {
-        let mut manager = Self::new();
+        let mut manager = Self::new(;
         manager.policies = policies;
         manager
     }
 
     /// Create a new resource
     pub fn create_resource(&mut self, request: ResourceCreateRequest) -> Result<ResourceId> {
-        let resource_id = ResourceId(self.next_resource_id);
+        let resource_id = ResourceId(self.next_resource_id;
         self.next_resource_id += 1;
 
         // Register drop handlers for this resource
         #[cfg(feature = "std")]
-        let mut handler_ids = Vec::new();
+        let mut handler_ids = Vec::new(;
         #[cfg(not(any(feature = "std", )))]
         let mut handler_ids = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -358,7 +358,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Too many resourcesMissing message")
+                "Too many resources")
         })?;
 
         // Update statistics
@@ -381,7 +381,7 @@ impl ResourceLifecycleManager {
         }
 
         resource.ref_count += 1;
-        resource.last_access = self.get_current_time();
+        resource.last_access = self.get_current_time(;
         Ok(resource.ref_count)
     }
 
@@ -394,11 +394,11 @@ impl ResourceLifecycleManager {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    "Reference count already zeroMissing messageMissing messageMissing message");
+                    "Reference count already zero";
             }
 
             resource.ref_count -= 1;
-            resource.last_access = self.get_current_time();
+            resource.last_access = self.get_current_time(;
             
             resource.ref_count == 0
         };
@@ -415,7 +415,7 @@ impl ResourceLifecycleManager {
         let resource = self.get_resource_mut(resource_id)?;
         
         if resource.state == ResourceState::Destroyed {
-            return Ok(DropResult::Skipped);
+            return Ok(DropResult::Skipped;
         }
 
         // Mark as destroying
@@ -433,7 +433,7 @@ impl ResourceLifecycleManager {
                 // If a required handler fails, mark resource as error state
                 if self.is_handler_required(handler_id)? {
                     self.update_resource_state(resource_id, ResourceState::Error)?;
-                    return Ok(DropResult::Failed(error);
+                    return Ok(DropResult::Failed(error;
                 }
             }
         }
@@ -457,7 +457,7 @@ impl ResourceLifecycleManager {
         priority: u8,
         required: bool,
     ) -> Result<DropHandlerId> {
-        let handler_id = DropHandlerId(self.drop_handlers.len() as u32);
+        let handler_id = DropHandlerId(self.drop_handlers.len() as u32;
         
         let handler = DropHandler {
             id: handler_id,
@@ -480,10 +480,10 @@ impl ResourceLifecycleManager {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::EXECUTION_ERROR,
-                "Garbage collection already runningMissing messageMissing messageMissing message");
+                "Garbage collection already running";
         }
 
-        let start_time = self.get_current_time();
+        let start_time = self.get_current_time(;
         self.gc_state.gc_running = true;
         
         let mut collected_count = 0;
@@ -491,7 +491,7 @@ impl ResourceLifecycleManager {
 
         // Find resources to collect
         #[cfg(feature = "std")]
-        let mut resources_to_drop = Vec::new();
+        let mut resources_to_drop = Vec::new(;
         #[cfg(not(any(feature = "std", )))]
         let mut resources_to_drop = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -524,14 +524,14 @@ impl ResourceLifecycleManager {
         // Remove destroyed resources from list
         #[cfg(feature = "std")]
         {
-            self.resources.retain(|r| r.state != ResourceState::Destroyed);
+            self.resources.retain(|r| r.state != ResourceState::Destroyed;
         }
         #[cfg(not(any(feature = "std", )))]
         {
             let mut i = 0;
             while i < self.resources.len() {
                 if self.resources[i].state == ResourceState::Destroyed {
-                    self.resources.remove(i);
+                    self.resources.remove(i;
                 } else {
                     i += 1;
                 }
@@ -541,7 +541,7 @@ impl ResourceLifecycleManager {
         // Update GC state
         let gc_time = self.get_current_time() - start_time;
         self.gc_state.gc_running = false;
-        self.gc_state.last_gc_time = self.get_current_time();
+        self.gc_state.last_gc_time = self.get_current_time(;
         self.gc_state.gc_cycles += 1;
         self.gc_state.last_collected = collected_count;
 
@@ -572,7 +572,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    "Resource not foundMissing message")
+                    "Resource not found")
             })
     }
 
@@ -595,11 +595,11 @@ impl ResourceLifecycleManager {
     #[cfg(feature = "std")]
     pub fn check_for_leaks(&mut self) -> Result<Vec<ResourceId>> {
         if !self.policies.leak_detection {
-            return Ok(Vec::new();
+            return Ok(Vec::new(;
         }
 
-        let mut leaked_resources = Vec::new();
-        let current_time = self.get_current_time();
+        let mut leaked_resources = Vec::new(;
+        let current_time = self.get_current_time(;
 
         for resource in &self.resources {
             if let Some(max_lifetime) = self.policies.max_lifetime_ms {
@@ -624,7 +624,7 @@ impl ResourceLifecycleManager {
 
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let mut leaked_resources = BoundedVec::new(provider).unwrap();
-        let current_time = self.get_current_time();
+        let current_time = self.get_current_time(;
 
         for resource in &self.resources {
             if let Some(max_lifetime) = self.policies.max_lifetime_ms {
@@ -689,7 +689,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::EXECUTION_ERROR,
-                    "Drop handler not foundMissing message")
+                    "Drop handler not found")
             })?;
         
         Ok(handler.required)
@@ -752,7 +752,7 @@ impl ResourceMetadata {
             Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Too many tagsMissing message")
+                "Too many tags")
         })
     }
 
@@ -766,7 +766,7 @@ impl ResourceMetadata {
             Error::new(
                 ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_EXHAUSTED,
-                "Too many propertiesMissing message")
+                "Too many properties")
         })
     }
 }
@@ -847,19 +847,19 @@ mod tests {
 
     #[test]
     fn test_resource_lifecycle_manager_creation() {
-        let manager = ResourceLifecycleManager::new();
-        assert_eq!(manager.resources.len(), 0);
-        assert_eq!(manager.stats.active_resources, 0);
-        assert_eq!(manager.next_resource_id, 1);
+        let manager = ResourceLifecycleManager::new(;
+        assert_eq!(manager.resources.len(), 0;
+        assert_eq!(manager.stats.active_resources, 0;
+        assert_eq!(manager.next_resource_id, 1;
     }
 
     #[test]
     fn test_create_resource() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Stream,
-            metadata: ResourceMetadata::new("test-streamMissing message").unwrap(),
+            metadata: ResourceMetadata::new("test-stream").unwrap(),
             owner: ComponentId(1),
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
@@ -871,18 +871,18 @@ mod tests {
         };
         
         let resource_id = manager.create_resource(request).unwrap();
-        assert_eq!(resource_id.0, 1);
-        assert_eq!(manager.stats.resources_created, 1);
-        assert_eq!(manager.stats.active_resources, 1);
+        assert_eq!(resource_id.0, 1;
+        assert_eq!(manager.stats.resources_created, 1;
+        assert_eq!(manager.stats.active_resources, 1;
     }
 
     #[test]
     fn test_reference_counting() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Future,
-            metadata: ResourceMetadata::new("test-futureMissing message").unwrap(),
+            metadata: ResourceMetadata::new("test-future").unwrap(),
             owner: ComponentId(1),
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
@@ -897,23 +897,23 @@ mod tests {
         
         // Add reference
         let ref_count = manager.add_reference(resource_id).unwrap();
-        assert_eq!(ref_count, 2);
+        assert_eq!(ref_count, 2;
         
         // Remove reference
         let ref_count = manager.remove_reference(resource_id).unwrap();
-        assert_eq!(ref_count, 1);
+        assert_eq!(ref_count, 1;
         
         // Remove last reference should drop resource
         let ref_count = manager.remove_reference(resource_id).unwrap();
-        assert_eq!(ref_count, 0);
+        assert_eq!(ref_count, 0;
         
         let resource = manager.get_resource(resource_id).unwrap();
-        assert_eq!(resource.state, ResourceState::Destroyed);
+        assert_eq!(resource.state, ResourceState::Destroyed;
     }
 
     #[test]
     fn test_drop_handler_registration() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
         
         let handler_id = manager.register_drop_handler(
             ResourceType::Stream,
@@ -922,18 +922,18 @@ mod tests {
             true,
         ).unwrap();
         
-        assert_eq!(handler_id.0, 0);
-        assert_eq!(manager.drop_handlers.len(), 1);
+        assert_eq!(handler_id.0, 0;
+        assert_eq!(manager.drop_handlers.len(), 1;
     }
 
     #[test]
     fn test_garbage_collection() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
         
         // Create a resource with zero references
         let request = ResourceCreateRequest {
             resource_type: ResourceType::MemoryBuffer,
-            metadata: ResourceMetadata::new("gc-testMissing message").unwrap(),
+            metadata: ResourceMetadata::new("gc-test").unwrap(),
             owner: ComponentId(1),
             #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
@@ -948,36 +948,36 @@ mod tests {
         manager.remove_reference(resource_id).unwrap(); // Drop to 0 references
         
         let gc_result = manager.run_garbage_collection(true).unwrap();
-        assert_eq!(gc_result.collected_count, 1);
+        assert_eq!(gc_result.collected_count, 1;
         assert!(gc_result.full_gc);
     }
 
     #[test]
     fn test_resource_metadata() {
-        let mut metadata = ResourceMetadata::new("test-resourceMissing message").unwrap();
+        let mut metadata = ResourceMetadata::new("test-resource").unwrap();
         
-        metadata.add_tag("importantMissing message").unwrap();
+        metadata.add_tag("important").unwrap();
         metadata.add_property("version", Value::U32(1)).unwrap();
         
-        assert_eq!(metadata.tags.len(), 1);
-        assert_eq!(metadata.properties.len(), 1);
+        assert_eq!(metadata.tags.len(), 1;
+        assert_eq!(metadata.properties.len(), 1;
     }
 
     #[test]
     fn test_lifecycle_policies() {
-        let policies = LifecyclePolicies::default();
+        let policies = LifecyclePolicies::default(;
         assert!(policies.enable_gc);
         assert!(policies.strict_ref_counting);
         assert!(policies.leak_detection);
         
-        let manager = ResourceLifecycleManager::with_policies(policies);
+        let manager = ResourceLifecycleManager::with_policies(policies;
         assert!(manager.policies.enable_gc);
     }
 
     #[test]
     fn test_resource_type_display() {
-        assert_eq!(ResourceType::Stream.to_string(), "streamMissing message");
-        assert_eq!(ResourceType::Custom(42).to_string(), "custom-42Missing message");
-        assert_eq!(ResourceState::Active.to_string(), "activeMissing message");
+        assert_eq!(ResourceType::Stream.to_string(), "stream";
+        assert_eq!(ResourceType::Custom(42).to_string(), "custom-42";
+        assert_eq!(ResourceState::Active.to_string(), "active";
     }
 }

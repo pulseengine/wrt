@@ -84,13 +84,13 @@ impl InstanceValueBuilder {
 
     /// Sets the instance name
     pub fn with_name(mut self, name: &str) -> Self {
-        self.name = Some(name.to_string());
+        self.name = Some(name.to_string();
         self
     }
 
     /// Sets the instance type
     pub fn with_type(mut self, ty: ComponentTypeDefinition) -> Self {
-        self.ty = Some(ty);
+        self.ty = Some(ty;
         self
     }
 
@@ -219,10 +219,10 @@ mod tests {
             .unwrap();
 
         // Check the instance
-        assert_eq!(instance.name.as_str(), "math");
-        assert_eq!(instance.exports.len(), 1);
-        assert_eq!(instance.get_export("add").unwrap().name, "add");
-        assert!(instance.get_export("non_existent").is_none());
+        assert_eq!(instance.name.as_str(), "math";
+        assert_eq!(instance.exports.len(), 1;
+        assert_eq!(instance.get_export("add").unwrap().name, "add";
+        assert!(instance.get_export("non_existent").is_none();
     }
 
     #[test]
@@ -244,20 +244,20 @@ mod tests {
 
         // Create a collection and add the instances
         let mut collection = InstanceCollection::new().unwrap();
-        assert!(collection.is_empty());
+        assert!(collection.is_empty();
 
         collection.add_instance(instance1).unwrap();
         collection.add_instance(instance2).unwrap();
 
         // Check the collection
-        assert_eq!(collection.len(), 2);
-        assert!(!collection.is_empty());
-        assert!(collection.get_instance("instance1").is_some());
-        assert!(collection.get_instance("instance2").is_some());
-        assert!(collection.get_instance("non_existent").is_none());
+        assert_eq!(collection.len(), 2;
+        assert!(!collection.is_empty();
+        assert!(collection.get_instance("instance1").is_some();
+        assert!(collection.get_instance("instance2").is_some();
+        assert!(collection.get_instance("non_existent").is_none();
 
         // Test iteration
         let names: Vec<&str> = collection.iter().map(|i| i.name.as_str()).collect();
-        assert_eq!(names, vec!["instance1", "instance2"]);
+        assert_eq!(names, vec!["instance1", "instance2"];
     }
 }

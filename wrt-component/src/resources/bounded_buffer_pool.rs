@@ -66,7 +66,7 @@ impl BufferSizeClass {
         } else {
             // BoundedVec doesn't have pop, so we need to remove the last element
             let idx = self.buffers.len() - 1;
-            let buffer = self.buffers.remove(idx);
+            let buffer = self.buffers.remove(idx;
             Some(buffer)
         }
     }
@@ -75,7 +75,7 @@ impl BufferSizeClass {
     pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>) -> core::result::Result<(), BufferProvider> {
         if self.buffers.len() >= MAX_BUFFERS_PER_CLASS {
             // Size class is full
-            return Ok(());
+            return Ok((;
         }
 
         self.buffers.push(buffer).map_err(|e| {
@@ -116,13 +116,13 @@ impl BoundedBufferPool {
     /// Allocate a buffer of at least the specified size
     pub fn allocate(&mut self, size: usize) -> core::result::Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>, BufferProvider> {
         // Find a size class that can fit this buffer
-        let matching_class = self.find_size_class(size);
+        let matching_class = self.find_size_class(size;
 
         if let Some(class_idx) = matching_class {
             // Try to get a buffer from this size class
             if let Some(ref mut class) = self.size_classes[class_idx] {
                 if let Some(buffer) = class.get_buffer() {
-                    return Ok(buffer);
+                    return Ok(buffer;
                 }
             }
         }
@@ -142,14 +142,14 @@ impl BoundedBufferPool {
 
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS, BufferProvider>) -> core::result::Result<(), BufferProvider> {
-        let size = buffer.capacity();
+        let size = buffer.capacity(;
 
         // Find the appropriate size class
-        let class_idx = self.find_size_class(size).or_else(|| self.add_size_class(size));
+        let class_idx = self.find_size_class(size).or_else(|| self.add_size_class(size;
 
         if let Some(idx) = class_idx {
             if let Some(ref mut class) = self.size_classes[idx] {
-                return class.return_buffer(buffer);
+                return class.return_buffer(buffer;
             }
         }
 
@@ -163,7 +163,7 @@ impl BoundedBufferPool {
             if let Some(ref mut size_class) = class {
                 for _ in 0..size_class.buffers.len() {
                     let idx = size_class.buffers.len() - 1;
-                    size_class.buffers.remove(idx);
+                    size_class.buffers.remove(idx;
                 }
             }
         }
@@ -177,8 +177,8 @@ impl BoundedBufferPool {
 
         for class in &self.size_classes {
             if let Some(ref size_class) = class {
-                total_buffers += size_class.buffer_count();
-                total_capacity += size_class.total_capacity();
+                total_buffers += size_class.buffer_count(;
+                total_capacity += size_class.total_capacity(;
                 size_count += 1;
             }
         }
@@ -191,7 +191,7 @@ impl BoundedBufferPool {
         for (i, class) in self.size_classes.iter().enumerate() {
             if let Some(ref size_class) = class {
                 if size_class.size >= size {
-                    return Some(i);
+                    return Some(i;
                 }
             }
         }
@@ -208,9 +208,9 @@ impl BoundedBufferPool {
         for i in 0..MAX_BUFFER_SIZE_CLASSES {
             if self.size_classes[i].is_none() {
                 if let Ok(size_class) = BufferSizeClass::new(size) {
-                    self.size_classes[i] = Some(size_class);
+                    self.size_classes[i] = Some(size_class;
                     self.active_classes += 1;
-                    return Some(i);
+                    return Some(i;
                 }
             }
         }
@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn test_bounded_buffer_pool() {
-        let mut pool = BoundedBufferPool::new();
+        let mut pool = BoundedBufferPool::new(;
 
         // Allocate some buffers
         let buffer1 = pool.allocate(10).unwrap();
@@ -242,28 +242,28 @@ mod tests {
         pool.return_buffer(buffer2).unwrap();
 
         // Stats should show 2 buffers
-        let stats = pool.stats();
-        assert_eq!(stats.total_buffers, 2);
-        assert_eq!(stats.size_count, 2);
+        let stats = pool.stats(;
+        assert_eq!(stats.total_buffers, 2;
+        assert_eq!(stats.size_count, 2;
 
         // Allocate again - should reuse
         let buffer3 = pool.allocate(10).unwrap();
 
         // Stats should show 1 buffer now
-        let stats = pool.stats();
-        assert_eq!(stats.total_buffers, 1);
+        let stats = pool.stats(;
+        assert_eq!(stats.total_buffers, 1;
 
         // Reset the pool
-        pool.reset();
+        pool.reset(;
 
         // Stats should be empty
-        let stats = pool.stats();
-        assert_eq!(stats.total_buffers, 0);
+        let stats = pool.stats(;
+        assert_eq!(stats.total_buffers, 0;
     }
 
     #[test]
     fn test_size_class_capacity() {
-        let mut pool = BoundedBufferPool::new();
+        let mut pool = BoundedBufferPool::new(;
 
         // Fill up a size class
         for _ in 0..MAX_BUFFERS_PER_CLASS {
@@ -272,39 +272,39 @@ mod tests {
         }
 
         // Stats should show MAX_BUFFERS_PER_CLASS buffers
-        let stats = pool.stats();
-        assert_eq!(stats.total_buffers, MAX_BUFFERS_PER_CLASS);
+        let stats = pool.stats(;
+        assert_eq!(stats.total_buffers, MAX_BUFFERS_PER_CLASS;
 
         // Try to add one more
         let buffer = pool.allocate(10).unwrap();
         pool.return_buffer(buffer).unwrap();
 
         // Size should still be MAX_BUFFERS_PER_CLASS (not increased)
-        let stats = pool.stats();
-        assert_eq!(stats.total_buffers, MAX_BUFFERS_PER_CLASS);
+        let stats = pool.stats(;
+        assert_eq!(stats.total_buffers, MAX_BUFFERS_PER_CLASS;
     }
 
     #[test]
     fn test_max_size_classes() {
-        let mut pool = BoundedBufferPool::new();
+        let mut pool = BoundedBufferPool::new(;
 
         // Create MAX_BUFFER_SIZE_CLASSES different size classes
         for i in 0..MAX_BUFFER_SIZE_CLASSES {
-            let size = 10 * (i + 1);
+            let size = 10 * (i + 1;
             let buffer = pool.allocate(size).unwrap();
             pool.return_buffer(buffer).unwrap();
         }
 
         // Stats should show MAX_BUFFER_SIZE_CLASSES size classes
-        let stats = pool.stats();
-        assert_eq!(stats.size_count, MAX_BUFFER_SIZE_CLASSES);
+        let stats = pool.stats(;
+        assert_eq!(stats.size_count, MAX_BUFFER_SIZE_CLASSES;
 
         // Try to add one more size class
         let buffer = pool.allocate(1000).unwrap();
         pool.return_buffer(buffer).unwrap();
 
         // Size count should still be MAX_BUFFER_SIZE_CLASSES (not increased)
-        let stats = pool.stats();
-        assert_eq!(stats.size_count, MAX_BUFFER_SIZE_CLASSES);
+        let stats = pool.stats(;
+        assert_eq!(stats.size_count, MAX_BUFFER_SIZE_CLASSES;
     }
 }

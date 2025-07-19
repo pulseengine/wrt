@@ -44,10 +44,10 @@ mod concurrency_tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_resource_table_concurrent_access() {
-        let table = Arc::new(Mutex::new(ResourceTable::new());
+        let table = Arc::new(Mutex::new(ResourceTable::new(;
         let num_threads = 10;
         let resources_per_thread = 100;
-        let barrier = Arc::new(Barrier::new(num_threads);
+        let barrier = Arc::new(Barrier::new(num_threads;
 
         let mut handles = vec![];
 
@@ -57,9 +57,9 @@ mod concurrency_tests {
 
             let handle = thread::spawn(move || {
                 // Wait for all threads to be ready
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
-                let mut local_handles = Vec::new();
+                let mut local_handles = Vec::new(;
 
                 // Allocate resources
                 for i in 0..resources_per_thread {
@@ -71,7 +71,7 @@ mod concurrency_tests {
                             eprintln!(
                                 "Thread {} failed to allocate resource {}: {:?}",
                                 thread_id, i, e
-                            );
+                            ;
                         },
                     }
                 }
@@ -85,19 +85,19 @@ mod concurrency_tests {
                             eprintln!(
                                 "Thread {} failed to deallocate resource {}: {:?}",
                                 thread_id, i, e
-                            );
+                            ;
                         },
                     }
                 }
 
                 local_handles.len()
-            });
+            };
 
             handles.push(handle);
         }
 
         // Wait for all threads to complete
-        let total_allocated: usize = handles.into_iter().map(|h| h.join().unwrap()).sum();
+        let total_allocated: usize = handles.into_iter().map(|h| h.join().unwrap()).sum(;
 
         // Verify final state
         let table = table.lock().unwrap();
@@ -113,10 +113,10 @@ mod concurrency_tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_bounded_vec_concurrent_push_pop() {
-        let vec_result = new_component_vec::<u32>();
+        let vec_result = new_component_vec::<u32>(;
         assert!(vec_result.is_ok();
 
-        let vec = Arc::new(Mutex::new(vec_result.unwrap());
+        let vec = Arc::new(Mutex::new(vec_result.unwrap();
         let num_threads = 5;
         let ops_per_thread = 20;
         let barrier = Arc::new(Barrier::new(num_threads * 2)); // Push + pop threads
@@ -129,7 +129,7 @@ mod concurrency_tests {
             let barrier_clone = Arc::clone(&barrier);
 
             let handle = thread::spawn(move || {
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
                 let mut successful_pushes = 0;
                 for i in 0..ops_per_thread {
@@ -145,7 +145,7 @@ mod concurrency_tests {
                     }
                 }
                 successful_pushes
-            });
+            };
 
             handles.push(handle);
         }
@@ -156,7 +156,7 @@ mod concurrency_tests {
             let barrier_clone = Arc::clone(&barrier);
 
             let handle = thread::spawn(move || {
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
                 let mut successful_pops = 0;
                 for _ in 0..ops_per_thread {
@@ -167,7 +167,7 @@ mod concurrency_tests {
                     }
                 }
                 successful_pops
-            });
+            };
 
             handles.push(handle);
         }
@@ -175,26 +175,26 @@ mod concurrency_tests {
         // Collect results
         let results: Vec<usize> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
-        let total_pushes: usize = results[..num_threads].iter().sum();
-        let total_pops: usize = results[num_threads..].iter().sum();
+        let total_pushes: usize = results[..num_threads].iter().sum(;
+        let total_pops: usize = results[num_threads..].iter().sum(;
 
         // Verify consistency
         let vec = vec.lock().unwrap();
-        let final_size = vec.len();
+        let final_size = vec.len(;
 
-        assert_eq!(final_size + total_pops, total_pushes);
+        assert_eq!(final_size + total_pops, total_pushes;
     }
 
     /// Test concurrent map operations
     #[cfg(feature = "std")]
     #[test]
     fn test_export_map_concurrent_operations() {
-        let map_result = new_type_map::<u32>();
+        let map_result = new_type_map::<u32>(;
         assert!(map_result.is_ok();
 
-        let map = Arc::new(RwLock::new(map_result.unwrap());
+        let map = Arc::new(RwLock::new(map_result.unwrap();
         let num_threads = 8;
-        let barrier = Arc::new(Barrier::new(num_threads);
+        let barrier = Arc::new(Barrier::new(num_threads;
 
         let mut handles = vec![];
 
@@ -203,7 +203,7 @@ mod concurrency_tests {
             let barrier_clone = Arc::clone(&barrier);
 
             let handle = thread::spawn(move || {
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
                 let mut successful_ops = 0;
 
@@ -233,12 +233,12 @@ mod concurrency_tests {
                 }
 
                 successful_ops
-            });
+            };
 
             handles.push(handle);
         }
 
-        let total_ops: usize = handles.into_iter().map(|h| h.join().unwrap()).sum();
+        let total_ops: usize = handles.into_iter().map(|h| h.join().unwrap()).sum(;
 
         // Verify final state
         let map = map.read().unwrap();
@@ -257,13 +257,13 @@ mod concurrency_tests {
         // Create mock resource type
         let resource_type = ResourceType {
             type_idx: 1,
-            name: bounded_component_name_from_str("TestResourceMissing message").unwrap(),
+            name: bounded_component_name_from_str("TestResource").unwrap(),
             destructor: Some(100),
         };
 
-        let manager = Arc::new(Mutex::new(ResourceLifecycleManager::new());
+        let manager = Arc::new(Mutex::new(ResourceLifecycleManager::new(;
         let num_threads = 6;
-        let barrier = Arc::new(Barrier::new(num_threads);
+        let barrier = Arc::new(Barrier::new(num_threads;
 
         let mut handles = vec![];
 
@@ -273,7 +273,7 @@ mod concurrency_tests {
             let resource_type_clone = resource_type.clone();
 
             let handle = thread::spawn(move || {
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
                 let mut created = 0;
                 let mut borrowed = 0;
@@ -311,7 +311,7 @@ mod concurrency_tests {
                 }
 
                 (created, borrowed, released)
-            });
+            };
 
             handles.push(handle);
         }
@@ -319,12 +319,12 @@ mod concurrency_tests {
         let results: Vec<(usize, usize, usize)> =
             handles.into_iter().map(|h| h.join().unwrap()).collect();
 
-        let total_created: usize = results.iter().map(|r| r.0).sum();
-        let total_borrowed: usize = results.iter().map(|r| r.1).sum();
-        let total_released: usize = results.iter().map(|r| r.2).sum();
+        let total_created: usize = results.iter().map(|r| r.0).sum(;
+        let total_borrowed: usize = results.iter().map(|r| r.1).sum(;
+        let total_released: usize = results.iter().map(|r| r.2).sum(;
 
         // Verify consistency
-        assert_eq!(total_borrowed, total_released);
+        assert_eq!(total_borrowed, total_released;
         assert!(total_created > 0);
     }
 
@@ -333,14 +333,14 @@ mod concurrency_tests {
     #[test]
     fn test_concurrent_memory_pressure() {
         let num_threads = 4;
-        let barrier = Arc::new(Barrier::new(num_threads);
+        let barrier = Arc::new(Barrier::new(num_threads;
         let mut handles = vec![];
 
         for thread_id in 0..num_threads {
             let barrier_clone = Arc::clone(&barrier);
 
             let handle = thread::spawn(move || {
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
                 let mut allocations = 0;
                 let mut failures = 0;
@@ -370,15 +370,15 @@ mod concurrency_tests {
                 }
 
                 (allocations, failures)
-            });
+            };
 
             handles.push(handle);
         }
 
         let results: Vec<(usize, usize)> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
-        let total_allocations: usize = results.iter().map(|r| r.0).sum();
-        let total_failures: usize = results.iter().map(|r| r.1).sum();
+        let total_allocations: usize = results.iter().map(|r| r.0).sum(;
+        let total_failures: usize = results.iter().map(|r| r.1).sum(;
 
         // Some allocations should succeed
         assert!(total_allocations > 0);
@@ -387,18 +387,18 @@ mod concurrency_tests {
         println!(
             "Allocations: {}, Failures: {}",
             total_allocations, total_failures
-        );
+        ;
     }
 
     /// Test deadlock prevention with multiple locks
     #[cfg(feature = "std")]
     #[test]
     fn test_deadlock_prevention() {
-        let resource1 = Arc::new(Mutex::new(new_component_vec::<u32>().unwrap());
-        let resource2 = Arc::new(Mutex::new(new_export_map::<u32>().unwrap());
+        let resource1 = Arc::new(Mutex::new(new_component_vec::<u32>().unwrap();
+        let resource2 = Arc::new(Mutex::new(new_export_map::<u32>().unwrap();
 
         let num_threads = 2;
-        let barrier = Arc::new(Barrier::new(num_threads);
+        let barrier = Arc::new(Barrier::new(num_threads;
         let mut handles = vec![];
 
         // Thread 1: Lock order resource1 -> resource2
@@ -408,7 +408,7 @@ mod concurrency_tests {
             let barrier_clone = Arc::clone(&barrier);
 
             let handle = thread::spawn(move || {
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
                 for i in 0..100 {
                     let _lock1 = r1.lock().unwrap();
@@ -416,9 +416,9 @@ mod concurrency_tests {
                     let _lock2 = r2.lock().unwrap();
 
                     // Simulate work
-                    thread::sleep(std::time::Duration::from_micros(10);
+                    thread::sleep(std::time::Duration::from_micros(10;
                 }
-            });
+            };
 
             handles.push(handle);
         }
@@ -430,17 +430,17 @@ mod concurrency_tests {
             let barrier_clone = Arc::clone(&barrier);
 
             let handle = thread::spawn(move || {
-                barrier_clone.wait();
+                barrier_clone.wait(;
 
                 for i in 0..100 {
                     let _lock1 = r1.lock().unwrap();
-                    thread::yield_now();
+                    thread::yield_now(;
                     let _lock2 = r2.lock().unwrap();
 
                     // Simulate work
-                    thread::sleep(std::time::Duration::from_micros(10);
+                    thread::sleep(std::time::Duration::from_micros(10;
                 }
-            });
+            };
 
             handles.push(handle);
         }
@@ -459,20 +459,20 @@ mod no_std_concurrency_tests {
     /// Test basic synchronization in no_std environment
     #[test]
     fn test_no_std_mutex_operations() {
-        let vec_result = new_component_vec::<u32>();
+        let vec_result = new_component_vec::<u32>(;
         assert!(vec_result.is_ok();
 
-        let vec = Arc::new(Mutex::new(vec_result.unwrap());
+        let vec = Arc::new(Mutex::new(vec_result.unwrap();
 
         // In no_std, we can't spawn threads, but we can test mutex behavior
         {
-            let mut vec = vec.lock();
+            let mut vec = vec.lock(;
             assert!(vec.try_push(42).is_ok();
         }
 
         {
-            let vec = vec.lock();
-            assert_eq!(vec.len(), 1);
+            let vec = vec.lock(;
+            assert_eq!(vec.len(), 1;
         }
     }
 }

@@ -241,7 +241,7 @@ impl ResourceLifecycleManager {
 
         // Allocate handle
         let handle = self.next_handle;
-        self.next_handle = self.next_handle.wrapping_add(1);
+        self.next_handle = self.next_handle.wrapping_add(1;
         if self.next_handle == INVALID_HANDLE {
             self.next_handle = 1; // Skip invalid handle
         }
@@ -305,12 +305,12 @@ impl ResourceLifecycleManager {
 
         // Check state
         if resource.state == ResourceState::Dropped {
-            return Err(Error::resource_error("Resource already dropped"));
+            return Err(Error::resource_error("Resource already dropped";
         }
 
         // Check borrows
         if resource.borrow_count > 0 {
-            return Err(Error::resource_error("Cannot drop resource with active borrows"));
+            return Err(Error::resource_error("Cannot drop resource with active borrows";
         }
 
         // Update state
@@ -323,14 +323,14 @@ impl ResourceLifecycleManager {
 
         // Remove any borrow info
         #[cfg(feature = "std")]
-        self.borrows.remove(&handle);
+        self.borrows.remove(&handle;
 
         #[cfg(not(feature = "std"))]
-        let _ = self.borrows.remove(&handle);
+        let _ = self.borrows.remove(&handle;
 
         // Update metrics
         self.metrics.total_destroyed += 1;
-        self.metrics.active_count = self.metrics.active_count.saturating_sub(1);
+        self.metrics.active_count = self.metrics.active_count.saturating_sub(1;
 
         Ok(())
     }
@@ -361,12 +361,12 @@ impl ResourceLifecycleManager {
 
         // Check state
         if resource.state != ResourceState::Active && resource.state != ResourceState::Borrowed {
-            return Err(Error::resource_error("Resource not available for borrowing"));
+            return Err(Error::resource_error("Resource not available for borrowing";
         }
 
         // Check mutable borrow rules
         if is_mutable && resource.borrow_count > 0 {
-            return Err(Error::resource_error("Cannot create mutable borrow with existing borrows"));
+            return Err(Error::resource_error("Cannot create mutable borrow with existing borrows";
         }
 
         // Create borrow info
@@ -384,7 +384,7 @@ impl ResourceLifecycleManager {
         // Update resource state
         resource.state = ResourceState::Borrowed;
         resource.borrow_count += 1;
-        resource.metadata.last_accessed = Some(self.get_timestamp());
+        resource.metadata.last_accessed = Some(self.get_timestamp(;
 
         // Store borrow info
         #[cfg(feature = "std")]
@@ -468,13 +468,13 @@ impl ResourceLifecycleManager {
         }
 
         // Update resource state
-        resource.borrow_count = resource.borrow_count.saturating_sub(1);
+        resource.borrow_count = resource.borrow_count.saturating_sub(1;
         if resource.borrow_count == 0 {
             resource.state = ResourceState::Active;
         }
 
         // Update metrics
-        self.metrics.active_borrows = self.metrics.active_borrows.saturating_sub(1);
+        self.metrics.active_borrows = self.metrics.active_borrows.saturating_sub(1;
 
         Ok(())
     }
@@ -500,17 +500,17 @@ impl ResourceLifecycleManager {
 
         // Check ownership
         if resource.metadata.owner != from {
-            return Err(Error::resource_error("Not the owner of the resource"));
+            return Err(Error::resource_error("Not the owner of the resource";
         }
 
         // Check state
         if resource.state != ResourceState::Active {
-            return Err(Error::resource_error("Resource not in transferable state"));
+            return Err(Error::resource_error("Resource not in transferable state";
         }
 
         // Check borrows
         if resource.borrow_count > 0 {
-            return Err(Error::resource_error("Cannot transfer resource with active borrows"));
+            return Err(Error::resource_error("Cannot transfer resource with active borrows";
         }
 
         // Call transfer hook
@@ -521,7 +521,7 @@ impl ResourceLifecycleManager {
         // Update ownership
         resource.state = ResourceState::Transferring;
         resource.metadata.owner = to;
-        resource.metadata.last_accessed = Some(self.get_timestamp());
+        resource.metadata.last_accessed = Some(self.get_timestamp(;
         resource.state = ResourceState::Active;
 
         Ok(())
@@ -633,10 +633,10 @@ impl<'a> Drop for ResourceGuard<'a> {
     fn drop(&mut self) {
         if self.is_borrow {
             if let Some(borrower) = self.borrower {
-                let _ = self.manager.release_borrow(self.handle, borrower);
+                let _ = self.manager.release_borrow(self.handle, borrower;
             }
         } else {
-            let _ = self.manager.drop_resource(self.handle);
+            let _ = self.manager.drop_resource(self.handle;
         }
     }
 }
@@ -647,41 +647,41 @@ mod tests {
 
     #[test]
     fn test_resource_lifecycle() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
 
         // Register a type
         manager.register_type(1, "TestResource", None).unwrap();
 
         // Create a resource
         let handle = manager.create_resource(1, 100, None).unwrap();
-        assert_ne!(handle, INVALID_HANDLE);
+        assert_ne!(handle, INVALID_HANDLE;
 
         // Verify resource exists
         let resource = manager.get_resource(handle).unwrap();
-        assert_eq!(resource.resource_type.type_idx, 1);
-        assert_eq!(resource.metadata.owner, 100);
+        assert_eq!(resource.resource_type.type_idx, 1;
+        assert_eq!(resource.metadata.owner, 100;
 
         // Borrow the resource
         manager.borrow_resource(handle, 200, false).unwrap();
-        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 1);
+        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 1;
 
         // Try to drop with active borrow (should fail)
-        assert!(manager.drop_resource(handle).is_err());
+        assert!(manager.drop_resource(handle).is_err();
 
         // Release borrow
         manager.release_borrow(handle, 200).unwrap();
-        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 0);
+        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 0;
 
         // Drop resource
         manager.drop_resource(handle).unwrap();
 
         // Verify resource is gone
-        assert!(manager.get_resource(handle).is_err());
+        assert!(manager.get_resource(handle).is_err();
     }
 
     #[test]
     fn test_ownership_transfer() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
 
         // Register and create
         manager.register_type(1, "TestResource", None).unwrap();
@@ -689,15 +689,15 @@ mod tests {
 
         // Transfer ownership
         manager.transfer_ownership(handle, 100, 200).unwrap();
-        assert_eq!(manager.get_resource(handle).unwrap().metadata.owner, 200);
+        assert_eq!(manager.get_resource(handle).unwrap().metadata.owner, 200;
 
         // Try to transfer from wrong owner (should fail)
-        assert!(manager.transfer_ownership(handle, 100, 300).is_err());
+        assert!(manager.transfer_ownership(handle, 100, 300).is_err();
     }
 
     #[test]
     fn test_borrow_rules() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
 
         // Register and create
         manager.register_type(1, "TestResource", None).unwrap();
@@ -706,10 +706,10 @@ mod tests {
         // Multiple immutable borrows should work
         manager.borrow_resource(handle, 200, false).unwrap();
         manager.borrow_resource(handle, 300, false).unwrap();
-        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 2);
+        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 2;
 
         // Mutable borrow with existing borrows should fail
-        assert!(manager.borrow_resource(handle, 400, true).is_err());
+        assert!(manager.borrow_resource(handle, 400, true).is_err();
 
         // Release all borrows
         manager.release_borrow(handle, 200).unwrap();
@@ -719,23 +719,23 @@ mod tests {
         manager.borrow_resource(handle, 400, true).unwrap();
 
         // Another borrow should fail
-        assert!(manager.borrow_resource(handle, 500, false).is_err());
+        assert!(manager.borrow_resource(handle, 500, false).is_err();
     }
 
     #[test]
     fn test_resource_guard() {
-        let mut manager = ResourceLifecycleManager::new();
+        let mut manager = ResourceLifecycleManager::new(;
         manager.register_type(1, "TestResource", None).unwrap();
 
         {
             let handle = manager.create_resource(1, 100, None).unwrap();
-            let _guard = ResourceGuard::new_own(&mut manager, handle);
+            let _guard = ResourceGuard::new_own(&mut manager, handle;
             // Resource will be dropped when guard goes out of scope
         }
 
         // Verify metrics
-        assert_eq!(manager.get_metrics().total_created, 1);
-        assert_eq!(manager.get_metrics().total_destroyed, 1);
-        assert_eq!(manager.get_metrics().active_count, 0);
+        assert_eq!(manager.get_metrics().total_created, 1;
+        assert_eq!(manager.get_metrics().total_destroyed, 1;
+        assert_eq!(manager.get_metrics().active_count, 0;
     }
 }

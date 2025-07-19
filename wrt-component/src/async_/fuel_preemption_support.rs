@@ -206,7 +206,7 @@ impl FuelPreemptionManager {
         executor: &FuelAsyncExecutor,
     ) -> Result<PreemptionDecision, Error> {
         if !self.preemption_enabled.load(Ordering::Acquire) {
-            return Ok(PreemptionDecision::Continue);
+            return Ok(PreemptionDecision::Continue;
         }
 
         let state = self.task_states.get(&current_task).ok_or_else(|| {
@@ -214,16 +214,16 @@ impl FuelPreemptionManager {
         })?;
 
         // Update fuel tracking
-        state.fuel_since_check.fetch_add(fuel_consumed, Ordering::AcqRel);
-        let fuel_since = state.fuel_since_check.load(Ordering::Acquire);
+        state.fuel_since_check.fetch_add(fuel_consumed, Ordering::AcqRel;
+        let fuel_since = state.fuel_since_check.load(Ordering::Acquire;
 
         // Check if we should evaluate preemption
         if fuel_since < PREEMPTION_CHECK_FUEL {
-            return Ok(PreemptionDecision::Continue);
+            return Ok(PreemptionDecision::Continue;
         }
 
         // Reset fuel counter
-        state.fuel_since_check.store(0, Ordering::Release);
+        state.fuel_since_check.store(0, Ordering::Release;
 
         // Evaluate preemption based on policy
         match self.preemption_policy {
@@ -264,8 +264,8 @@ impl FuelPreemptionManager {
     /// Handle voluntary yield
     pub fn voluntary_yield(&mut self, task_id: TaskId) -> Result<(), Error> {
         if let Some(state) = self.task_states.get(&task_id) {
-            state.is_preempted.store(true, Ordering::Release);
-            self.stats.voluntary_yields.fetch_add(1, Ordering::Relaxed);
+            state.is_preempted.store(true, Ordering::Release;
+            self.stats.voluntary_yields.fetch_add(1, Ordering::Relaxed;
         }
         Ok(())
     }
@@ -276,13 +276,13 @@ impl FuelPreemptionManager {
             Error::validation_invalid_input("Task not registered")
         })?;
 
-        state.is_preempted.store(false, Ordering::Release);
+        state.is_preempted.store(false, Ordering::Release;
 
         // Find nearest safe preemption point with checkpoint
         if let Some(points) = self.preemption_points.get(&task_id) {
             for point in points.iter().rev() {
                 if let Some(ref checkpoint) = point.checkpoint_data {
-                    return Ok(Some(checkpoint.clone()));
+                    return Ok(Some(checkpoint.clone();
                 }
             }
         }
@@ -311,15 +311,15 @@ impl FuelPreemptionManager {
         state: &PreemptionState,
     ) -> Result<PreemptionDecision, Error> {
         // Check quantum
-        let quantum = state.quantum_remaining.load(Ordering::Acquire);
+        let quantum = state.quantum_remaining.load(Ordering::Acquire;
         if quantum == 0 {
-            self.stats.fuel_preemptions.fetch_add(1, Ordering::Relaxed);
-            return Ok(PreemptionDecision::Preempt(PreemptionReason::FuelQuantum));
+            self.stats.fuel_preemptions.fetch_add(1, Ordering::Relaxed;
+            return Ok(PreemptionDecision::Preempt(PreemptionReason::FuelQuantum;
         }
 
         // Check if there are pending higher priority tasks
         if !self.preemption_queue.is_empty() {
-            return Ok(PreemptionDecision::YieldPoint);
+            return Ok(PreemptionDecision::YieldPoint;
         }
 
         Ok(PreemptionDecision::Continue)
@@ -331,13 +331,13 @@ impl FuelPreemptionManager {
         state: &PreemptionState,
         executor: &FuelAsyncExecutor,
     ) -> Result<PreemptionDecision, Error> {
-        let current_priority = state.preemption_priority.load(Ordering::Acquire);
+        let current_priority = state.preemption_priority.load(Ordering::Acquire;
 
         // Check if higher priority task is waiting
         if let Some(request) = self.preemption_queue.peek() {
             if request.priority as u32 > current_priority && state.preemptible {
-                self.stats.priority_preemptions.fetch_add(1, Ordering::Relaxed);
-                return Ok(PreemptionDecision::Preempt(PreemptionReason::Priority));
+                self.stats.priority_preemptions.fetch_add(1, Ordering::Relaxed;
+                return Ok(PreemptionDecision::Preempt(PreemptionReason::Priority;
             }
         }
 
@@ -352,10 +352,10 @@ impl FuelPreemptionManager {
     ) -> Result<PreemptionDecision, Error> {
         // In real implementation, would check task deadlines
         // For now, just check quantum
-        let quantum = state.quantum_remaining.load(Ordering::Acquire);
+        let quantum = state.quantum_remaining.load(Ordering::Acquire;
         if quantum < PREEMPTION_CHECK_FUEL {
-            self.stats.deadline_preemptions.fetch_add(1, Ordering::Relaxed);
-            return Ok(PreemptionDecision::Preempt(PreemptionReason::Deadline));
+            self.stats.deadline_preemptions.fetch_add(1, Ordering::Relaxed;
+            return Ok(PreemptionDecision::Preempt(PreemptionReason::Deadline;
         }
 
         Ok(PreemptionDecision::Continue)
@@ -370,7 +370,7 @@ impl FuelPreemptionManager {
         // First check deadline
         if let Ok(PreemptionDecision::Preempt(reason)) = 
             self.check_deadline_preemption(current_task, state, executor) {
-            return Ok(PreemptionDecision::Preempt(reason));
+            return Ok(PreemptionDecision::Preempt(reason;
         }
 
         // Then check priority
@@ -380,11 +380,11 @@ impl FuelPreemptionManager {
     /// Update quantum for a task
     pub fn update_quantum(&self, task_id: TaskId, fuel_consumed: u64) -> Result<(), Error> {
         if let Some(state) = self.task_states.get(&task_id) {
-            let current = state.quantum_remaining.load(Ordering::Acquire);
+            let current = state.quantum_remaining.load(Ordering::Acquire;
             if current > fuel_consumed {
-                state.quantum_remaining.fetch_sub(fuel_consumed, Ordering::AcqRel);
+                state.quantum_remaining.fetch_sub(fuel_consumed, Ordering::AcqRel;
             } else {
-                state.quantum_remaining.store(0, Ordering::Release);
+                state.quantum_remaining.store(0, Ordering::Release;
             }
         }
         Ok(())
@@ -393,7 +393,7 @@ impl FuelPreemptionManager {
     /// Refill quantum for all tasks
     pub fn refill_quantums(&self, default_quantum: u64) {
         for (_, state) in self.task_states.iter() {
-            state.quantum_remaining.store(default_quantum, Ordering::Release);
+            state.quantum_remaining.store(default_quantum, Ordering::Release;
         }
     }
 }
@@ -441,21 +441,21 @@ mod tests {
     #[test]
     fn test_preemption_manager_creation() {
         let manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
-        assert!(manager.preemption_enabled.load(Ordering::Acquire));
+        assert!(manager.preemption_enabled.load(Ordering::Acquire);
         
         let disabled = FuelPreemptionManager::new(PreemptionPolicy::Disabled).unwrap();
-        assert!(!disabled.preemption_enabled.load(Ordering::Acquire));
+        assert!(!disabled.preemption_enabled.load(Ordering::Acquire);
     }
 
     #[test]
     fn test_task_registration() {
         let mut manager = FuelPreemptionManager::new(PreemptionPolicy::PriorityBased).unwrap();
         
-        let task_id = TaskId::new(1);
+        let task_id = TaskId::new(1;
         manager.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         
         // Should have task state
-        assert!(manager.task_states.contains_key(&task_id));
+        assert!(manager.task_states.contains_key(&task_id);
     }
 
     #[test]
@@ -463,23 +463,23 @@ mod tests {
         let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         let executor = FuelAsyncExecutor::new().unwrap();
         
-        let task_id = TaskId::new(1);
+        let task_id = TaskId::new(1;
         manager.register_task(task_id, Priority::Normal, true, 200).unwrap();
         
         // First check should continue (not enough fuel)
         let decision = manager.check_preemption(task_id, 50, &executor).unwrap();
-        assert_eq!(decision, PreemptionDecision::Continue);
+        assert_eq!(decision, PreemptionDecision::Continue;
         
         // After consuming more fuel, should check
         let decision = manager.check_preemption(task_id, 100, &executor).unwrap();
-        assert!(matches!(decision, PreemptionDecision::Continue | PreemptionDecision::YieldPoint));
+        assert!(matches!(decision, PreemptionDecision::Continue | PreemptionDecision::YieldPoint);
     }
 
     #[test]
     fn test_quantum_management() {
         let manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
-        let task_id = TaskId::new(1);
+        let task_id = TaskId::new(1;
         let mut mgr = manager;
         mgr.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         
@@ -487,13 +487,13 @@ mod tests {
         mgr.update_quantum(task_id, 100).unwrap();
         
         if let Some(state) = mgr.task_states.get(&task_id) {
-            assert_eq!(state.quantum_remaining.load(Ordering::Acquire), 900);
+            assert_eq!(state.quantum_remaining.load(Ordering::Acquire), 900;
         }
         
         // Refill quantums
-        mgr.refill_quantums(2000);
+        mgr.refill_quantums(2000;
         if let Some(state) = mgr.task_states.get(&task_id) {
-            assert_eq!(state.quantum_remaining.load(Ordering::Acquire), 2000);
+            assert_eq!(state.quantum_remaining.load(Ordering::Acquire), 2000;
         }
     }
 
@@ -501,19 +501,19 @@ mod tests {
     fn test_voluntary_yield() {
         let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
-        let task_id = TaskId::new(1);
+        let task_id = TaskId::new(1;
         manager.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         manager.voluntary_yield(task_id).unwrap();
         
-        let stats = manager.get_statistics();
-        assert_eq!(stats.voluntary_yields, 1);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.voluntary_yields, 1;
     }
 
     #[test]
     fn test_preemption_points() {
         let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
-        let task_id = TaskId::new(1);
+        let task_id = TaskId::new(1;
         manager.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         
         // Add preemption points
@@ -521,6 +521,6 @@ mod tests {
         manager.add_preemption_point(task_id, 2, 200, false).unwrap();
         manager.add_preemption_point(task_id, 3, 300, true).unwrap();
         
-        assert_eq!(manager.preemption_points.get(&task_id).unwrap().len(), 3);
+        assert_eq!(manager.preemption_points.get(&task_id).unwrap().len(), 3;
     }
 }

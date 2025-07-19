@@ -25,7 +25,7 @@ impl ComponentRegistry {
 
     /// Register a component by name
     pub fn register(&mut self, name: &str, component: Arc<Component>) -> Result<()> {
-        self.components.insert(name.to_string(), component);
+        self.components.insert(name.to_string(), component;
         Ok(())
     }
 
