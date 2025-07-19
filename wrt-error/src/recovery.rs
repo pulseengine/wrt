@@ -73,13 +73,13 @@ impl ErrorContext {
 
     /// Add context information
     pub fn with_context(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.context.insert(key.into(), value.into();
+        self.context.insert(key.into(), value.into());
         self
     }
 
     /// Add stack frame
     pub fn with_stack_frame(mut self, frame: impl Into<String>) -> Self {
-        self.stack_trace.push(frame.into();
+        self.stack_trace.push(frame.into());
         self
     }
 
@@ -110,14 +110,14 @@ impl Default for ErrorRecoveryManager {
 impl ErrorRecoveryManager {
     /// Create a new error recovery manager
     pub fn new() -> Self {
-        let mut strategies = HashMap::new);
+        let mut strategies = HashMap::new();
 
         // Set default recovery strategies
-        strategies.insert(ErrorCategory::Parse, RecoveryStrategy::Skip;
-        strategies.insert(ErrorCategory::Type, RecoveryStrategy::LogAndContinue;
-        strategies.insert(ErrorCategory::Runtime, RecoveryStrategy::Abort;
-        strategies.insert(ErrorCategory::Memory, RecoveryStrategy::Abort;
-        strategies.insert(ErrorCategory::Validation, RecoveryStrategy::UseDefault;
+        strategies.insert(ErrorCategory::Parse, RecoveryStrategy::Skip);
+        strategies.insert(ErrorCategory::Type, RecoveryStrategy::LogAndContinue);
+        strategies.insert(ErrorCategory::Runtime, RecoveryStrategy::Abort);
+        strategies.insert(ErrorCategory::Memory, RecoveryStrategy::Abort);
+        strategies.insert(ErrorCategory::Validation, RecoveryStrategy::UseDefault);
 
         Self {
             strategies,
@@ -128,7 +128,7 @@ impl ErrorRecoveryManager {
 
     /// Set recovery strategy for an error category
     pub fn set_strategy(&mut self, category: ErrorCategory, strategy: RecoveryStrategy) {
-        self.strategies.insert(category, strategy;
+        self.strategies.insert(category, strategy);
     }
 
     /// Get recovery strategy for an error category
@@ -138,19 +138,19 @@ impl ErrorRecoveryManager {
 
     /// Record an error with context
     pub fn record_error(&mut self, error: Error, context: ErrorContext) {
-        self.error_history.push((error, context);
+        self.error_history.push((error, context));
 
         // Limit history size
         if self.error_history.len() > self.max_history {
-            self.error_history.remove(0;
+            self.error_history.remove(0);
         }
     }
 
     /// Analyze error patterns
     pub fn analyze_patterns(&self) -> ErrorPatternAnalysis {
-        let mut category_counts = HashMap::new);
-        let mut location_counts = HashMap::new);
-        let mut recent_errors = Vec::new);
+        let mut category_counts = HashMap::new();
+        let mut location_counts = HashMap::new();
+        let mut recent_errors = Vec::new();
 
         for (error, context) in &self.error_history {
             // Count by category
@@ -161,7 +161,7 @@ impl ErrorRecoveryManager {
 
             // Collect recent errors (last 10)
             if recent_errors.len() < 10 {
-                recent_errors.push((error.clone(), context.clone();
+                recent_errors.push((error.clone(), context.clone()));
             }
         }
 
@@ -191,7 +191,7 @@ impl ErrorRecoveryManager {
                 #[cfg(feature = "std")]
                 {
                     use std::println;
-                    println!("Warning: {} at {}", error.message, context.location;
+                    println!("Warning: {} at {}", error.message, context.location;)
                 }
                 RecoveryResult::Continue
             },
@@ -267,7 +267,7 @@ pub struct RecoverableError {
 impl RecoverableError {
     /// Create a new recoverable error
     pub fn new(error: Error, context: ErrorContext) -> Self {
-        let manager = ErrorRecoveryManager::new);
+        let manager = ErrorRecoveryManager::new();
         let recovery_suggestion = manager.recover(&error, &context;
 
         Self {
@@ -294,7 +294,7 @@ pub struct DebugUtils;
 impl DebugUtils {
     /// Format error with full debugging information
     pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
-        let mut output = String::new);
+        let mut output = String::new();
 
         output.push_str(&format!(
             "Error: {} (Code: {})\n",
@@ -388,7 +388,7 @@ macro_rules! recoverable {
                     | $crate::recovery::RecoveryResult::Skip => {
                         // Log and continue
                         #[cfg(feature = "std")]
-                        eprintln!("Recovered from error: {}", recoverable.error.message;
+                        eprintln!("Recovered from error: {}", recoverable.error.message;))
                         return recoverable.into_result);
                     },
                     _ => Err(recoverable.error),
@@ -408,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_error_recovery_manager() {
-        let mut manager = ErrorRecoveryManager::new);
+        let mut manager = ErrorRecoveryManager::new();
 
         // Test setting and getting strategies
         manager.set_strategy(ErrorCategory::Parse, RecoveryStrategy::Skip;
@@ -440,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_pattern_analysis() {
-        let mut manager = ErrorRecoveryManager::new);
+        let mut manager = ErrorRecoveryManager::new();
 
         // Add multiple errors
         for i in 0..5 {
