@@ -191,7 +191,7 @@ impl ErrorRecoveryManager {
                 #[cfg(feature = "std")]
                 {
                     use std::println;
-                    println!("Warning: {} at {}", error.message, context.location;)
+                    println!("Warning: {} at {}", error.message, context.location);
                 }
                 RecoveryResult::Continue
             },
