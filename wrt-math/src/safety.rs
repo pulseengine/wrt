@@ -156,7 +156,7 @@ impl SafeArithmetic for i32 {
         {
             // ASIL-D: Use saturating arithmetic with formal verification hooks
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i32_add(self, rhs);
+            kani_hook_i32_add(self, rhs;
             
             Ok(self.saturating_add(rhs))
         }
@@ -177,7 +177,7 @@ impl SafeArithmetic for i32 {
         #[cfg(all(feature = "asil-a", not(feature = "asil-b")))]
         {
             // ASIL-A: Runtime bounds checking
-            let (result, overflow) = self.overflowing_add(rhs);
+            let (result, overflow) = self.overflowing_add(rhs;
             if overflow {
                 Err(TrapCode::IntegerOverflow.into())
             } else {
@@ -197,7 +197,7 @@ impl SafeArithmetic for i32 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i32_sub(self, rhs);
+            kani_hook_i32_sub(self, rhs;
             
             Ok(self.saturating_sub(rhs))
         }
@@ -215,7 +215,7 @@ impl SafeArithmetic for i32 {
         
         #[cfg(all(feature = "asil-a", not(feature = "asil-b")))]
         {
-            let (result, overflow) = self.overflowing_sub(rhs);
+            let (result, overflow) = self.overflowing_sub(rhs;
             if overflow {
                 Err(TrapCode::IntegerOverflow.into())
             } else {
@@ -234,7 +234,7 @@ impl SafeArithmetic for i32 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i32_mul(self, rhs);
+            kani_hook_i32_mul(self, rhs;
             
             Ok(self.saturating_mul(rhs))
         }
@@ -252,7 +252,7 @@ impl SafeArithmetic for i32 {
         
         #[cfg(all(feature = "asil-a", not(feature = "asil-b")))]
         {
-            let (result, overflow) = self.overflowing_mul(rhs);
+            let (result, overflow) = self.overflowing_mul(rhs;
             if overflow {
                 Err(TrapCode::IntegerOverflow.into())
             } else {
@@ -269,7 +269,7 @@ impl SafeArithmetic for i32 {
     #[inline]
     fn safe_div(self, rhs: Self) -> Result<Self> {
         if rhs == 0 {
-            return Err(TrapCode::IntegerDivideByZero.into());
+            return Err(TrapCode::IntegerDivideByZero.into();
         }
         
         // Check for i32::MIN / -1 overflow
@@ -281,7 +281,7 @@ impl SafeArithmetic for i32 {
             
             #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
             {
-                return Err(TrapCode::IntegerOverflow.into());
+                return Err(TrapCode::IntegerOverflow.into();
             }
         }
         
@@ -291,7 +291,7 @@ impl SafeArithmetic for i32 {
     #[inline]
     fn safe_rem(self, rhs: Self) -> Result<Self> {
         if rhs == 0 {
-            return Err(TrapCode::IntegerDivideByZero.into());
+            return Err(TrapCode::IntegerDivideByZero.into();
         }
         
         // i32::MIN % -1 is well-defined (0) in Rust
@@ -306,7 +306,7 @@ impl SafeArithmetic for i64 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i64_add(self, rhs);
+            kani_hook_i64_add(self, rhs;
             
             Ok(self.saturating_add(rhs))
         }
@@ -324,7 +324,7 @@ impl SafeArithmetic for i64 {
         
         #[cfg(all(feature = "asil-a", not(feature = "asil-b")))]
         {
-            let (result, overflow) = self.overflowing_add(rhs);
+            let (result, overflow) = self.overflowing_add(rhs;
             if overflow {
                 Err(TrapCode::IntegerOverflow.into())
             } else {
@@ -343,7 +343,7 @@ impl SafeArithmetic for i64 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i64_sub(self, rhs);
+            kani_hook_i64_sub(self, rhs;
             
             Ok(self.saturating_sub(rhs))
         }
@@ -361,7 +361,7 @@ impl SafeArithmetic for i64 {
         
         #[cfg(all(feature = "asil-a", not(feature = "asil-b")))]
         {
-            let (result, overflow) = self.overflowing_sub(rhs);
+            let (result, overflow) = self.overflowing_sub(rhs;
             if overflow {
                 Err(TrapCode::IntegerOverflow.into())
             } else {
@@ -380,7 +380,7 @@ impl SafeArithmetic for i64 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i64_mul(self, rhs);
+            kani_hook_i64_mul(self, rhs;
             
             Ok(self.saturating_mul(rhs))
         }
@@ -398,7 +398,7 @@ impl SafeArithmetic for i64 {
         
         #[cfg(all(feature = "asil-a", not(feature = "asil-b")))]
         {
-            let (result, overflow) = self.overflowing_mul(rhs);
+            let (result, overflow) = self.overflowing_mul(rhs;
             if overflow {
                 Err(TrapCode::IntegerOverflow.into())
             } else {
@@ -415,7 +415,7 @@ impl SafeArithmetic for i64 {
     #[inline]
     fn safe_div(self, rhs: Self) -> Result<Self> {
         if rhs == 0 {
-            return Err(TrapCode::IntegerDivideByZero.into());
+            return Err(TrapCode::IntegerDivideByZero.into();
         }
         
         // Check for i64::MIN / -1 overflow
@@ -427,7 +427,7 @@ impl SafeArithmetic for i64 {
             
             #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
             {
-                return Err(TrapCode::IntegerOverflow.into());
+                return Err(TrapCode::IntegerOverflow.into();
             }
         }
         
@@ -437,7 +437,7 @@ impl SafeArithmetic for i64 {
     #[inline]
     fn safe_rem(self, rhs: Self) -> Result<Self> {
         if rhs == 0 {
-            return Err(TrapCode::IntegerDivideByZero.into());
+            return Err(TrapCode::IntegerDivideByZero.into();
         }
         
         // i64::MIN % -1 is well-defined (0) in Rust
@@ -452,7 +452,7 @@ impl SafeFloat for f32 {
         #[cfg(feature = "nan-propagation-checking")]
         {
             if self.is_nan() {
-                return Err(TrapCode::InvalidConversionToInteger.into());
+                return Err(TrapCode::InvalidConversionToInteger.into();
             }
         }
         Ok(())
@@ -469,7 +469,7 @@ impl SafeFloat for f32 {
             rhs.check_nan()?;
         }
         
-        let result = op(self, rhs);
+        let result = op(self, rhs;
         
         #[cfg(feature = "nan-propagation-checking")]
         {
@@ -487,7 +487,7 @@ impl SafeFloat for f64 {
         #[cfg(feature = "nan-propagation-checking")]
         {
             if self.is_nan() {
-                return Err(TrapCode::InvalidConversionToInteger.into());
+                return Err(TrapCode::InvalidConversionToInteger.into();
             }
         }
         Ok(())
@@ -504,7 +504,7 @@ impl SafeFloat for f64 {
             rhs.check_nan()?;
         }
         
-        let result = op(self, rhs);
+        let result = op(self, rhs;
         
         #[cfg(feature = "nan-propagation-checking")]
         {
@@ -590,7 +590,7 @@ pub fn check_simd_bounds(offset: usize, len: usize, memory_size: usize) -> Resul
     #[cfg(feature = "runtime-bounds-checking")]
     {
         if offset.saturating_add(len) > memory_size {
-            return Err(TrapCode::MemoryOutOfBounds.into());
+            return Err(TrapCode::MemoryOutOfBounds.into();
         }
     }
     Ok(())
@@ -599,7 +599,7 @@ pub fn check_simd_bounds(offset: usize, len: usize, memory_size: usize) -> Resul
 /// Safe memory access for SIMD operations
 #[inline]
 pub fn safe_simd_load<T: Copy>(memory: &[u8], offset: usize, len: usize) -> Result<&[T]> {
-    let byte_len = len * core::mem::size_of::<T>();
+    let byte_len = len * core::mem::size_of::<T>(;
     check_simd_bounds(offset, byte_len, memory.len())?;
     
     // Use safe slice operations instead of unsafe pointer manipulation
@@ -608,7 +608,7 @@ pub fn safe_simd_load<T: Copy>(memory: &[u8], offset: usize, len: usize) -> Resu
     // For ASIL compliance, we'll return an error if alignment is not guaranteed
     // rather than using unsafe pointer casting
     if offset % core::mem::align_of::<T>() != 0 {
-        return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access"));
+        return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access";
     }
     
     // Since we can't safely cast without platform-specific code, we'll provide a different API
@@ -619,12 +619,12 @@ pub fn safe_simd_load<T: Copy>(memory: &[u8], offset: usize, len: usize) -> Resu
 /// Safe memory store for SIMD operations
 #[inline]
 pub fn safe_simd_store<T: Copy>(memory: &mut [u8], offset: usize, data: &[T]) -> Result<()> {
-    let byte_len = data.len() * core::mem::size_of::<T>();
+    let byte_len = data.len() * core::mem::size_of::<T>(;
     check_simd_bounds(offset, byte_len, memory.len())?;
     
     // For ASIL compliance, we'll return an error if alignment is not guaranteed
     if offset % core::mem::align_of::<T>() != 0 {
-        return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access"));
+        return Err(WrtError::runtime_execution_error("Misaligned SIMD memory access";
     }
     
     // Since we can't safely store without platform-specific code, we'll provide a different API
@@ -664,25 +664,25 @@ mod proofs {
     
     #[kani::proof]
     fn verify_i32_safe_add() {
-        let a: i32 = kani::any();
-        let b: i32 = kani::any();
+        let a: i32 = kani::any(;
+        let b: i32 = kani::any(;
         
         match a.safe_add(b) {
             Ok(result) => {
                 // Verify no overflow occurred
-                assert!(result == a.saturating_add(b));
+                assert!(result == a.saturating_add(b);
             }
             Err(_) => {
                 // This should not happen with saturating arithmetic
-                unreachable!();
+                unreachable!(;
             }
         }
     }
     
     #[kani::proof]
     fn verify_i32_safe_div() {
-        let a: i32 = kani::any();
-        let b: i32 = kani::any();
+        let a: i32 = kani::any(;
+        let b: i32 = kani::any(;
         
         match a.safe_div(b) {
             Ok(result) => {
@@ -710,16 +710,16 @@ mod tests {
     #[test]
     fn test_safe_arithmetic_i32() {
         // Test overflow handling
-        assert!(i32::MAX.safe_add(1).is_ok() || i32::MAX.safe_add(1).is_err());
-        assert!(i32::MIN.safe_sub(1).is_ok() || i32::MIN.safe_sub(1).is_err());
+        assert!(i32::MAX.safe_add(1).is_ok() || i32::MAX.safe_add(1).is_err();
+        assert!(i32::MIN.safe_sub(1).is_ok() || i32::MIN.safe_sub(1).is_err();
         
         // Test division by zero
-        assert!(5i32.safe_div(0).is_err());
+        assert!(5i32.safe_div(0).is_err();
         
         // Test special overflow case
-        let result = i32::MIN.safe_div(-1);
+        let result = i32::MIN.safe_div(-1;
         #[cfg(any(feature = "asil-c", feature = "asil-d"))]
-        assert_eq!(result.unwrap(), i32::MAX);
+        assert_eq!(result.unwrap(), i32::MAX;
     }
     
     #[test]
@@ -727,9 +727,9 @@ mod tests {
         let a = 1.0f32;
         let b = 2.0f32;
         
-        let result = a.safe_float_op(b, |x, y| x + y);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 3.0f32);
+        let result = a.safe_float_op(b, |x, y| x + y;
+        assert!(result.is_ok();
+        assert_eq!(result.unwrap(), 3.0f32;
     }
     
     #[test]
@@ -738,14 +738,14 @@ mod tests {
         
         // Note: libm::roundf rounds ties away from zero, not to even
         // This is different from IEEE 754-2008 roundTiesToEven
-        assert_eq!(val.safe_round(RoundingMode::NearestEven).unwrap(), 3.0);
-        assert_eq!(val.safe_round(RoundingMode::TowardZero).unwrap(), 2.0);
-        assert_eq!(val.safe_round(RoundingMode::TowardPositive).unwrap(), 3.0);
-        assert_eq!(val.safe_round(RoundingMode::TowardNegative).unwrap(), 2.0);
+        assert_eq!(val.safe_round(RoundingMode::NearestEven).unwrap(), 3.0;
+        assert_eq!(val.safe_round(RoundingMode::TowardZero).unwrap(), 2.0;
+        assert_eq!(val.safe_round(RoundingMode::TowardPositive).unwrap(), 3.0;
+        assert_eq!(val.safe_round(RoundingMode::TowardNegative).unwrap(), 2.0;
         
         // Test with 1.5 to show libm behavior
         let val2 = 1.5f32;
-        assert_eq!(val2.safe_round(RoundingMode::NearestEven).unwrap(), 2.0);
+        assert_eq!(val2.safe_round(RoundingMode::NearestEven).unwrap(), 2.0;
     }
     
     #[test]
@@ -756,10 +756,10 @@ mod tests {
         let memory = [0u8; 100];
         
         // Valid access
-        assert!(check_simd_bounds(0, 10, memory.len()).is_ok());
+        assert!(check_simd_bounds(0, 10, memory.len()).is_ok();
         
         // Out of bounds
         #[cfg(feature = "runtime-bounds-checking")]
-        assert!(check_simd_bounds(95, 10, memory.len()).is_err());
+        assert!(check_simd_bounds(95, 10, memory.len()).is_err();
     }
 }

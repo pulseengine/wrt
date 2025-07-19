@@ -100,7 +100,7 @@ impl PlatformDebugLimits {
         };
 
         // Cap the debug overhead at the platform limit
-        let debug_overhead = debug_overhead.min(limits.max_debug_overhead);
+        let debug_overhead = debug_overhead.min(limits.max_debug_overhead;
 
         Self {
             max_debug_sections: if debug_overhead > 0 { 64 } else { 0 },
@@ -212,7 +212,7 @@ impl PlatformDebugManager {
     /// Allocate debug memory if possible
     pub fn allocate_debug_memory(&mut self, size: usize) -> Result<(), Error> {
         if !self.can_allocate_debug_memory(size) {
-            return Err(Error::resource_exhausted("Debug memory limit exceeded"));
+            return Err(Error::resource_exhausted("Debug memory limit exceeded";
         }
 
         self.current_debug_memory += size;
@@ -221,7 +221,7 @@ impl PlatformDebugManager {
 
     /// Free debug memory
     pub fn free_debug_memory(&mut self, size: usize) {
-        self.current_debug_memory = self.current_debug_memory.saturating_sub(size);
+        self.current_debug_memory = self.current_debug_memory.saturating_sub(size;
     }
 
     /// Check if we can add more debug sections
@@ -235,7 +235,7 @@ impl PlatformDebugManager {
     /// Add a debug section
     pub fn add_debug_section(&mut self) -> Result<(), Error> {
         if !self.can_add_debug_section() {
-            return Err(Error::resource_exhausted("Debug section limit exceeded"));
+            return Err(Error::resource_exhausted("Debug section limit exceeded";
         }
 
         self.active_sections += 1;
@@ -244,7 +244,7 @@ impl PlatformDebugManager {
 
     /// Remove a debug section
     pub fn remove_debug_section(&mut self) {
-        self.active_sections = self.active_sections.saturating_sub(1);
+        self.active_sections = self.active_sections.saturating_sub(1;
     }
 
     /// Check if we can add more breakpoints
@@ -255,7 +255,7 @@ impl PlatformDebugManager {
     /// Add a breakpoint
     pub fn add_breakpoint(&mut self) -> Result<(), Error> {
         if !self.can_add_breakpoint() {
-            return Err(Error::resource_exhausted("Breakpoint limit exceeded"));
+            return Err(Error::resource_exhausted("Breakpoint limit exceeded";
         }
 
         self.active_breakpoints += 1;
@@ -264,7 +264,7 @@ impl PlatformDebugManager {
 
     /// Remove a breakpoint
     pub fn remove_breakpoint(&mut self) {
-        self.active_breakpoints = self.active_breakpoints.saturating_sub(1);
+        self.active_breakpoints = self.active_breakpoints.saturating_sub(1;
     }
 
     /// Check if we can add more stack traces
@@ -275,7 +275,7 @@ impl PlatformDebugManager {
     /// Add a stack trace
     pub fn add_stack_trace(&mut self) -> Result<(), Error> {
         if !self.can_add_stack_trace() {
-            return Err(Error::resource_exhausted("Stack trace limit exceeded"));
+            return Err(Error::resource_exhausted("Stack trace limit exceeded";
         }
 
         self.active_stack_traces += 1;
@@ -284,7 +284,7 @@ impl PlatformDebugManager {
 
     /// Remove a stack trace
     pub fn remove_stack_trace(&mut self) {
-        self.active_stack_traces = self.active_stack_traces.saturating_sub(1);
+        self.active_stack_traces = self.active_stack_traces.saturating_sub(1;
     }
 
     /// Get current debug memory usage
@@ -343,26 +343,26 @@ impl PlatformDebugConfigBuilder {
 
     /// Override maximum debug memory
     pub fn with_max_debug_memory(mut self, size: usize) -> Self {
-        self.memory_override = Some(size);
+        self.memory_override = Some(size;
         self
     }
 
     /// Override maximum breakpoints
     pub fn with_max_breakpoints(mut self, count: usize) -> Self {
-        self.breakpoint_override = Some(count);
+        self.breakpoint_override = Some(count;
         self
     }
 
     /// Override maximum stack traces
     pub fn with_max_stack_traces(mut self, count: usize) -> Self {
-        self.stack_trace_override = Some(count);
+        self.stack_trace_override = Some(count;
         self
     }
 
     /// Build debug limits from platform limits
     pub fn build(self, platform_limits: &ComprehensivePlatformLimits) -> PlatformDebugLimits {
         let mut limits =
-            PlatformDebugLimits::from_platform_limits(platform_limits, self.debug_level);
+            PlatformDebugLimits::from_platform_limits(platform_limits, self.debug_level;
 
         if let Some(memory) = self.memory_override {
             limits.max_dwarf_section_size = memory;
@@ -399,9 +399,9 @@ mod tests {
         };
 
         let debug_limits =
-            PlatformDebugLimits::from_platform_limits(&platform_limits, DebugLevel::FullDebug);
+            PlatformDebugLimits::from_platform_limits(&platform_limits, DebugLevel::FullDebug;
 
-        assert_eq!(debug_limits.debug_level, DebugLevel::FullDebug);
+        assert_eq!(debug_limits.debug_level, DebugLevel::FullDebug;
         assert!(debug_limits.max_breakpoints > 0);
         assert!(debug_limits.max_stack_traces > 0);
         assert!(debug_limits.max_dwarf_section_size > 0);
@@ -409,64 +409,64 @@ mod tests {
 
     #[test]
     fn test_minimal_embedded_limits() {
-        let limits = PlatformDebugLimits::minimal_embedded();
+        let limits = PlatformDebugLimits::minimal_embedded(;
 
-        assert_eq!(limits.debug_level, DebugLevel::BasicProfile);
-        assert_eq!(limits.max_debug_sections, 8);
-        assert_eq!(limits.max_breakpoints, 4);
-        assert_eq!(limits.max_stack_traces, 4);
-        assert_eq!(limits.max_dwarf_section_size, 32 * 1024);
+        assert_eq!(limits.debug_level, DebugLevel::BasicProfile;
+        assert_eq!(limits.max_debug_sections, 8;
+        assert_eq!(limits.max_breakpoints, 4;
+        assert_eq!(limits.max_stack_traces, 4;
+        assert_eq!(limits.max_dwarf_section_size, 32 * 1024;
     }
 
     #[test]
     fn test_production_limits() {
-        let limits = PlatformDebugLimits::production();
+        let limits = PlatformDebugLimits::production(;
 
-        assert_eq!(limits.debug_level, DebugLevel::None);
-        assert_eq!(limits.max_debug_sections, 0);
-        assert_eq!(limits.max_breakpoints, 0);
+        assert_eq!(limits.debug_level, DebugLevel::None;
+        assert_eq!(limits.max_debug_sections, 0;
+        assert_eq!(limits.max_breakpoints, 0;
         assert_eq!(limits.max_stack_traces, 1); // Minimal crash reporting
     }
 
     #[test]
     fn test_debug_manager() {
-        let limits = PlatformDebugLimits::development(64 * 1024 * 1024);
-        let mut manager = PlatformDebugManager::new(limits);
+        let limits = PlatformDebugLimits::development(64 * 1024 * 1024;
+        let mut manager = PlatformDebugManager::new(limits;
 
         // Test memory allocation
-        assert!(manager.can_allocate_debug_memory(1024));
-        assert!(manager.allocate_debug_memory(1024).is_ok());
-        assert_eq!(manager.debug_memory_usage(), 1024);
+        assert!(manager.can_allocate_debug_memory(1024);
+        assert!(manager.allocate_debug_memory(1024).is_ok();
+        assert_eq!(manager.debug_memory_usage(), 1024;
 
         // Test breakpoint management
-        assert!(manager.can_add_breakpoint());
-        assert!(manager.add_breakpoint().is_ok());
-        assert_eq!(manager.active_breakpoints, 1);
+        assert!(manager.can_add_breakpoint();
+        assert!(manager.add_breakpoint().is_ok();
+        assert_eq!(manager.active_breakpoints, 1;
 
         // Test section management
-        assert!(manager.can_add_debug_section());
-        assert!(manager.add_debug_section().is_ok());
-        assert_eq!(manager.active_sections, 1);
+        assert!(manager.can_add_debug_section();
+        assert!(manager.add_debug_section().is_ok();
+        assert_eq!(manager.active_sections, 1;
 
         // Test reset
-        manager.reset();
-        assert_eq!(manager.debug_memory_usage(), 0);
-        assert_eq!(manager.active_breakpoints, 0);
-        assert_eq!(manager.active_sections, 0);
+        manager.reset(;
+        assert_eq!(manager.debug_memory_usage(), 0;
+        assert_eq!(manager.active_breakpoints, 0;
+        assert_eq!(manager.active_sections, 0;
     }
 
     #[test]
     fn test_config_builder() {
-        let platform_limits = ComprehensivePlatformLimits::default();
+        let platform_limits = ComprehensivePlatformLimits::default(;
 
         let limits = PlatformDebugConfigBuilder::new()
             .with_debug_level(DebugLevel::FullDebug)
             .with_max_debug_memory(2 * 1024 * 1024)
             .with_max_breakpoints(50)
-            .build(&platform_limits);
+            .build(&platform_limits;
 
-        assert_eq!(limits.debug_level, DebugLevel::FullDebug);
-        assert_eq!(limits.max_dwarf_section_size, 2 * 1024 * 1024);
-        assert_eq!(limits.max_breakpoints, 50);
+        assert_eq!(limits.debug_level, DebugLevel::FullDebug;
+        assert_eq!(limits.max_dwarf_section_size, 2 * 1024 * 1024;
+        assert_eq!(limits.max_breakpoints, 50;
     }
 }

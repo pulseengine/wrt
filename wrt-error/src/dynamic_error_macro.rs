@@ -11,7 +11,7 @@
 /// 
 /// let category = ErrorCategory::Memory;
 /// let code = codes::MEMORY_ERROR;
-/// let error = create_error!(category, code, "Dynamic error");
+/// let error = create_error!(category, code, "Dynamic error";
 /// ```
 #[macro_export]
 macro_rules! create_error {
@@ -125,7 +125,7 @@ impl IntoWrtError for std::io::Error {
 }
 
 // Helper for threading errors seen in the codebase
-pub struct ThreadingError(pub String);
+pub struct ThreadingError(pub String;
 
 impl IntoWrtError for ThreadingError {
     fn into_wrt_error(self) -> Error {
@@ -134,7 +134,7 @@ impl IntoWrtError for ThreadingError {
 }
 
 // Helper for async errors seen in the codebase  
-pub struct AsyncError(pub String);
+pub struct AsyncError(pub String;
 
 impl IntoWrtError for AsyncError {
     fn into_wrt_error(self) -> Error {

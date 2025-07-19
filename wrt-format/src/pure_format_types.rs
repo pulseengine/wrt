@@ -211,8 +211,8 @@ impl wrt_foundation::traits::Checksummable for PureDataMode {
         match self {
             PureDataMode::Active { memory_index, offset_expr_len } => {
                 checksum.update_slice(&[0u8]); // Discriminant
-                checksum.update_slice(&memory_index.to_le_bytes());
-                checksum.update_slice(&offset_expr_len.to_le_bytes());
+                checksum.update_slice(&memory_index.to_le_bytes(;
+                checksum.update_slice(&offset_expr_len.to_le_bytes(;
             },
             PureDataMode::Passive => {
                 checksum.update_slice(&[1u8]); // Discriminant
@@ -259,11 +259,11 @@ impl wrt_foundation::traits::FromBytes for PureDataMode {
             0 => {
                 let mut memory_index_bytes = [0u8; 4];
                 reader.read_exact(&mut memory_index_bytes)?;
-                let memory_index = u32::from_le_bytes(memory_index_bytes);
+                let memory_index = u32::from_le_bytes(memory_index_bytes;
                 
                 let mut offset_expr_len_bytes = [0u8; 4];
                 reader.read_exact(&mut offset_expr_len_bytes)?;
-                let offset_expr_len = u32::from_le_bytes(offset_expr_len_bytes);
+                let offset_expr_len = u32::from_le_bytes(offset_expr_len_bytes;
                 
                 Ok(PureDataMode::Active { memory_index, offset_expr_len })
             },
@@ -279,8 +279,8 @@ impl wrt_foundation::traits::Checksummable for PureElementMode {
         match self {
             PureElementMode::Active { table_index, offset_expr_len } => {
                 checksum.update_slice(&[0u8]); // Discriminant
-                checksum.update_slice(&table_index.to_le_bytes());
-                checksum.update_slice(&offset_expr_len.to_le_bytes());
+                checksum.update_slice(&table_index.to_le_bytes(;
+                checksum.update_slice(&offset_expr_len.to_le_bytes(;
             },
             PureElementMode::Passive => {
                 checksum.update_slice(&[1u8]); // Discriminant
@@ -333,11 +333,11 @@ impl wrt_foundation::traits::FromBytes for PureElementMode {
             0 => {
                 let mut table_index_bytes = [0u8; 4];
                 reader.read_exact(&mut table_index_bytes)?;
-                let table_index = u32::from_le_bytes(table_index_bytes);
+                let table_index = u32::from_le_bytes(table_index_bytes;
                 
                 let mut offset_expr_len_bytes = [0u8; 4];
                 reader.read_exact(&mut offset_expr_len_bytes)?;
-                let offset_expr_len = u32::from_le_bytes(offset_expr_len_bytes);
+                let offset_expr_len = u32::from_le_bytes(offset_expr_len_bytes;
                 
                 Ok(PureElementMode::Active { table_index, offset_expr_len })
             },
@@ -354,17 +354,17 @@ impl wrt_foundation::traits::Checksummable for PureElementInit {
         match self {
             PureElementInit::FunctionIndices(indices) => {
                 checksum.update_slice(&[0u8]); // Discriminant
-                checksum.update_slice(&(indices.len() as u32).to_le_bytes());
+                checksum.update_slice(&(indices.len() as u32).to_le_bytes(;
                 for index in indices {
-                    checksum.update_slice(&index.to_le_bytes());
+                    checksum.update_slice(&index.to_le_bytes(;
                 }
             },
             PureElementInit::ExpressionBytes(exprs) => {
                 checksum.update_slice(&[1u8]); // Discriminant
-                checksum.update_slice(&(exprs.len() as u32).to_le_bytes());
+                checksum.update_slice(&(exprs.len() as u32).to_le_bytes(;
                 for expr in exprs {
-                    checksum.update_slice(&(expr.len() as u32).to_le_bytes());
-                    checksum.update_slice(expr);
+                    checksum.update_slice(&(expr.len() as u32).to_le_bytes(;
+                    checksum.update_slice(expr;
                 }
             },
         }
@@ -420,11 +420,11 @@ impl wrt_foundation::traits::FromBytes for PureElementInit {
                 reader.read_exact(&mut len_bytes)?;
                 let len = u32::from_le_bytes(len_bytes) as usize;
                 
-                let mut indices = Vec::with_capacity(len);
+                let mut indices = Vec::with_capacity(len;
                 for _ in 0..len {
                     let mut index_bytes = [0u8; 4];
                     reader.read_exact(&mut index_bytes)?;
-                    indices.push(u32::from_le_bytes(index_bytes));
+                    indices.push(u32::from_le_bytes(index_bytes);
                 }
                 Ok(PureElementInit::FunctionIndices(indices))
             },
@@ -433,7 +433,7 @@ impl wrt_foundation::traits::FromBytes for PureElementInit {
                 reader.read_exact(&mut len_bytes)?;
                 let len = u32::from_le_bytes(len_bytes) as usize;
                 
-                let mut exprs = Vec::with_capacity(len);
+                let mut exprs = Vec::with_capacity(len;
                 for _ in 0..len {
                     let mut expr_len_bytes = [0u8; 4];
                     reader.read_exact(&mut expr_len_bytes)?;
@@ -453,11 +453,11 @@ impl wrt_foundation::traits::FromBytes for PureElementInit {
 // Trait implementations for PureDataSegment
 impl wrt_foundation::traits::Checksummable for PureDataSegment {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.mode.update_checksum(checksum);
-        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes());
-        checksum.update_slice(&self.offset_expr_bytes);
-        checksum.update_slice(&(self.data_bytes.len() as u32).to_le_bytes());
-        checksum.update_slice(&self.data_bytes);
+        self.mode.update_checksum(checksum;
+        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes(;
+        checksum.update_slice(&self.offset_expr_bytes;
+        checksum.update_slice(&(self.data_bytes.len() as u32).to_le_bytes(;
+        checksum.update_slice(&self.data_bytes;
     }
 }
 
@@ -512,11 +512,11 @@ impl wrt_foundation::traits::FromBytes for PureDataSegment {
 // Trait implementations for PureElementSegment
 impl wrt_foundation::traits::Checksummable for PureElementSegment {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.element_type.update_checksum(checksum);
-        self.mode.update_checksum(checksum);
-        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes());
-        checksum.update_slice(&self.offset_expr_bytes);
-        self.init_data.update_checksum(checksum);
+        self.element_type.update_checksum(checksum;
+        self.mode.update_checksum(checksum;
+        checksum.update_slice(&(self.offset_expr_bytes.len() as u32).to_le_bytes(;
+        checksum.update_slice(&self.offset_expr_bytes;
+        self.init_data.update_checksum(checksum;
     }
 }
 

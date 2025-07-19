@@ -32,9 +32,9 @@
 //! let panic_context = PanicContextBuilder::new()
 //!     .with_memory_budget(2048)  // 2KB for panic information
 //!     .with_safety_level(AsilLevel::AsilD)
-//!     .build();
+//!     .build(;
 //! 
-//! initialize_panic_handler(panic_context);
+//! initialize_panic_handler(panic_context;
 //! ```
 //!
 //! ## Safety Compliance Features
@@ -145,8 +145,8 @@ pub struct PanicContext<P: MemoryProvider> {
 }
 
 /// Global panic context storage
-static PANIC_ASIL_LEVEL: AtomicU8 = AtomicU8::new(AsilLevel::AsilD as u8);
-static PANIC_MEMORY_BUDGET: AtomicU32 = AtomicU32::new(DEFAULT_PANIC_MEMORY_BUDGET as u32);
+static PANIC_ASIL_LEVEL: AtomicU8 = AtomicU8::new(AsilLevel::AsilD as u8;
+static PANIC_MEMORY_BUDGET: AtomicU32 = AtomicU32::new(DEFAULT_PANIC_MEMORY_BUDGET as u32;
 
 /// Builder for panic context configuration
 pub struct PanicContextBuilder<P: MemoryProvider> {
@@ -179,13 +179,13 @@ impl<P: MemoryProvider> PanicContextBuilder<P> {
 
     /// Set the memory budget for panic information storage
     pub fn with_memory_budget(mut self, budget: usize) -> Self {
-        self.memory_budget = budget.max(MIN_PANIC_INFO_SIZE);
+        self.memory_budget = budget.max(MIN_PANIC_INFO_SIZE;
         self
     }
 
     /// Set the memory provider
     pub fn with_memory_provider(mut self, provider: P) -> Self {
-        self.memory_provider = Some(provider);
+        self.memory_provider = Some(provider;
         self
     }
 
@@ -194,7 +194,7 @@ impl<P: MemoryProvider> PanicContextBuilder<P> {
         let provider = self.memory_provider.ok_or("Memory provider is required")?;
         
         if self.memory_budget < MIN_PANIC_INFO_SIZE {
-            return Err("Memory budget too small for minimum panic information");
+            return Err("Memory budget too small for minimum panic information";
         }
 
         Ok(PanicContext {
@@ -208,12 +208,12 @@ impl<P: MemoryProvider> PanicContextBuilder<P> {
 /// Initialize the global panic handler configuration
 pub fn initialize_panic_handler<P: MemoryProvider>(context: PanicContext<P>) -> Result<(), &'static str> {
     // Store configuration in global atomics
-    PANIC_ASIL_LEVEL.store(context.safety_level as u8, Ordering::SeqCst);
-    PANIC_MEMORY_BUDGET.store(context.memory_budget as u32, Ordering::SeqCst);
+    PANIC_ASIL_LEVEL.store(context.safety_level as u8, Ordering::SeqCst;
+    PANIC_MEMORY_BUDGET.store(context.memory_budget as u32, Ordering::SeqCst;
     
     // Validate memory provider can handle the budget
     if context.memory_provider.capacity() < context.memory_budget {
-        return Err("Memory provider capacity insufficient for panic budget");
+        return Err("Memory provider capacity insufficient for panic budget";
     }
 
     Ok(())
@@ -222,11 +222,11 @@ pub fn initialize_panic_handler<P: MemoryProvider>(context: PanicContext<P>) -> 
 /// Hash a string at compile time for error codes
 #[allow(dead_code)]
 const fn hash_str(s: &str) -> u32 {
-    let bytes = s.as_bytes();
+    let bytes = s.as_bytes(;
     let mut hash = 5381u32;
     let mut i = 0;
     while i < bytes.len() {
-        hash = hash.wrapping_mul(33).wrapping_add(bytes[i] as u32);
+        hash = hash.wrapping_mul(33).wrapping_add(bytes[i] as u32;
         i += 1;
     }
     hash
@@ -235,7 +235,7 @@ const fn hash_str(s: &str) -> u32 {
 /// Store panic information in memory with debugger-visible pattern
 #[allow(dead_code)]
 fn store_panic_info(info: &core::panic::PanicInfo) {
-    let asil_level = PANIC_ASIL_LEVEL.load(Ordering::SeqCst);
+    let asil_level = PANIC_ASIL_LEVEL.load(Ordering::SeqCst;
     let _memory_budget = PANIC_MEMORY_BUDGET.load(Ordering::SeqCst) as usize;
 
     // Create panic info structure
@@ -254,30 +254,30 @@ fn store_panic_info(info: &core::panic::PanicInfo) {
 
     // Extract information from panic info
     if let Some(location) = info.location() {
-        let file_hash = hash_str(location.file());
-        let line = location.line();
-        panic_info.location_hash = file_hash.wrapping_add(line);
+        let file_hash = hash_str(location.file(;
+        let line = location.line(;
+        panic_info.location_hash = file_hash.wrapping_add(line;
     }
 
     // Extract error code from panic message
     #[cfg(feature = "std")]
     {
-        let msg = info.message();
-        let msg_str = std::format!("{}", msg);
-        panic_info.error_code = hash_str(&msg_str);
+        let msg = info.message(;
+        let msg_str = std::format!("{}", msg;
+        panic_info.error_code = hash_str(&msg_str;
     }
     #[cfg(not(feature = "std"))]
     {
         // For no_std, we'll use the location information for error code
         // since message() is not reliable in no_std contexts
-        panic_info.error_code = panic_info.location_hash.wrapping_mul(0x9e3779b9);
+        panic_info.error_code = panic_info.location_hash.wrapping_mul(0x9e3779b9;
     }
 
     // Add timestamp if available (std feature)
     #[cfg(feature = "std")]
     {
         if let Ok(duration) = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
-            panic_info.timestamp = duration.as_secs();
+            panic_info.timestamp = duration.as_secs(;
         }
     }
 
@@ -286,7 +286,7 @@ fn store_panic_info(info: &core::panic::PanicInfo) {
     checksum ^= panic_info.asil_level as u32;
     checksum ^= panic_info.error_code;
     checksum ^= panic_info.location_hash;
-    checksum ^= (panic_info.timestamp as u32) ^ ((panic_info.timestamp >> 32) as u32);
+    checksum ^= (panic_info.timestamp as u32) ^ ((panic_info.timestamp >> 32) as u32;
     panic_info.checksum = checksum;
 
     // Store in a static location that debuggers can easily find
@@ -339,12 +339,12 @@ fn panic_asil_d(info: &core::panic::PanicInfo) -> ! {
     // ASIL-D compliant panic handling per ISO 26262:
     
     // 1. Store comprehensive error information for fault analysis
-    store_panic_info(info);
+    store_panic_info(info;
     
     // 2. Ensure no recovery attempts - enter permanent safe state
     // 3. Use hardware-efficient infinite loop for safe state maintenance
     loop {
-        core::hint::spin_loop();
+        core::hint::spin_loop(;
     }
 }
 
@@ -374,11 +374,11 @@ fn panic_asil_b(info: &core::panic::PanicInfo) -> ! {
     // ASIL-B compliant panic handling per ISO 26262:
     
     // 1. Store basic error information for fault analysis
-    store_panic_info(info);
+    store_panic_info(info;
     
     // 2. Enter safe state - similar to ASIL-D but with reduced complexity
     loop {
-        core::hint::spin_loop();
+        core::hint::spin_loop(;
     }
 }
 
@@ -398,11 +398,11 @@ fn panic_dev(info: &core::panic::PanicInfo) -> ! {
     // Development panic handling:
     
     // 1. Store enhanced error information for development debugging
-    store_panic_info(info);
+    store_panic_info(info;
     
     // 2. Enter safe state with development-friendly behavior
     loop {
-        core::hint::spin_loop();
+        core::hint::spin_loop(;
     }
 }
 
@@ -428,11 +428,11 @@ fn panic_release(info: &core::panic::PanicInfo) -> ! {
     // Release panic handling:
     
     // 1. Store minimal error information
-    store_panic_info(info);
+    store_panic_info(info;
     
     // 2. Enter safe state immediately
     loop {
-        core::hint::spin_loop();
+        core::hint::spin_loop(;
     }
 }
 
@@ -486,7 +486,7 @@ pub fn meets_safety_level(required_level: &str) -> bool {
 ///
 /// The current ASIL level as stored in global configuration
 pub fn current_asil_level() -> AsilLevel {
-    let level = PANIC_ASIL_LEVEL.load(Ordering::SeqCst);
+    let level = PANIC_ASIL_LEVEL.load(Ordering::SeqCst;
     match level {
         0 => AsilLevel::QM,
         1 => AsilLevel::AsilA,
@@ -531,8 +531,8 @@ mod tests {
 
     #[test]
     fn test_panic_handler_info() {
-        let info = panic_handler_info();
-        assert!(!info.is_empty());
+        let info = panic_handler_info(;
+        assert!(!info.is_empty();
         
         // Verify that we get a sensible response
         assert!(
@@ -540,46 +540,46 @@ mod tests {
             info.contains("ASIL-") ||
             info.contains("Development") ||
             info.contains("Release")
-        );
+        ;
     }
 
     #[test]
     fn test_safety_level_checking() {
         // Standard level should always be met
-        assert!(meets_safety_level("standard"));
+        assert!(meets_safety_level("standard");
         
         // Invalid levels should return false
-        assert!(!meets_safety_level("invalid"));
-        assert!(!meets_safety_level(""));
+        assert!(!meets_safety_level("invalid");
+        assert!(!meets_safety_level("");
         
         // ASIL levels depend on feature flags
         #[cfg(feature = "asil-d")]
         {
-            assert!(meets_safety_level("asil-d"));
-            assert!(meets_safety_level("asil-b"));
+            assert!(meets_safety_level("asil-d");
+            assert!(meets_safety_level("asil-b");
         }
         
         #[cfg(all(feature = "asil-b", not(feature = "asil-d")))]
         {
-            assert!(!meets_safety_level("asil-d"));
-            assert!(meets_safety_level("asil-b"));
+            assert!(!meets_safety_level("asil-d");
+            assert!(meets_safety_level("asil-b");
         }
         
         #[cfg(all(not(feature = "asil-b"), not(feature = "asil-d")))]
         {
-            assert!(!meets_safety_level("asil-d"));
-            assert!(!meets_safety_level("asil-b"));
+            assert!(!meets_safety_level("asil-d");
+            assert!(!meets_safety_level("asil-b");
         }
     }
 
     #[test]
     fn test_memory_budget_configuration() {
         // Test default memory budget
-        assert_eq!(current_memory_budget(), DEFAULT_PANIC_MEMORY_BUDGET);
+        assert_eq!(current_memory_budget(), DEFAULT_PANIC_MEMORY_BUDGET;
         
         // Test ASIL level configuration
-        let level = current_asil_level();
-        assert!(matches!(level, AsilLevel::QM | AsilLevel::AsilA | AsilLevel::AsilB | AsilLevel::AsilC | AsilLevel::AsilD));
+        let level = current_asil_level(;
+        assert!(matches!(level, AsilLevel::QM | AsilLevel::AsilA | AsilLevel::AsilB | AsilLevel::AsilC | AsilLevel::AsilD);
     }
 
     #[test]
@@ -587,7 +587,7 @@ mod tests {
         use core::mem;
         
         // Ensure the panic info structure has expected size constraints
-        let size = mem::size_of::<WrtPanicInfo>();
+        let size = mem::size_of::<WrtPanicInfo>(;
         assert!(size >= MIN_PANIC_INFO_SIZE);
         assert!(size <= DEFAULT_PANIC_MEMORY_BUDGET);
     }
@@ -595,30 +595,30 @@ mod tests {
     #[test]
     fn test_hash_function() {
         // Test the hash function produces consistent results
-        let hash1 = hash_str("test");
-        let hash2 = hash_str("test");
-        assert_eq!(hash1, hash2);
+        let hash1 = hash_str("test";
+        let hash2 = hash_str("test";
+        assert_eq!(hash1, hash2;
         
         // Different strings should produce different hashes (usually)
-        let hash3 = hash_str("different");
-        assert_ne!(hash1, hash3);
+        let hash3 = hash_str("different";
+        assert_ne!(hash1, hash3;
     }
 
     #[test] 
     fn test_panic_context_builder() {
         type TestProvider = NoStdProvider<512>;
-        let provider = TestProvider::default();
+        let provider = TestProvider::default(;
         
         let context = PanicContextBuilder::new()
             .with_safety_level(AsilLevel::AsilB)
             .with_memory_budget(512)
             .with_memory_provider(provider)
-            .build();
+            .build(;
             
-        assert!(context.is_ok());
+        assert!(context.is_ok();
         
         let context = context.unwrap();
-        assert_eq!(context.safety_level, AsilLevel::AsilB);
-        assert_eq!(context.memory_budget, 512);
+        assert_eq!(context.safety_level, AsilLevel::AsilB;
+        assert_eq!(context.memory_budget, 512;
     }
 }

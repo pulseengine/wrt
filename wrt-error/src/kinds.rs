@@ -9,23 +9,23 @@
 
 /// Validation error for integrity or consistency checks
 #[derive(Debug, Clone)]
-pub struct ValidationError(pub &'static str);
+pub struct ValidationError(pub &'static str;
 
 /// Out of bounds error for memory access or index violations
 #[derive(Debug, Clone)]
-pub struct OutOfBoundsError(pub &'static str);
+pub struct OutOfBoundsError(pub &'static str;
 
 /// Parse error for decoding binary formats
 #[derive(Debug, Clone)]
-pub struct ParseError(pub &'static str);
+pub struct ParseError(pub &'static str;
 
 /// Type error for type mismatches or invalid types
 #[derive(Debug, Clone)]
-pub struct InvalidType(pub &'static str);
+pub struct InvalidType(pub &'static str;
 
 /// Conversion error
 #[derive(Debug, Clone)]
-pub struct ConversionError(pub &'static str);
+pub struct ConversionError(pub &'static str;
 
 /// Division by zero error
 #[derive(Debug, Clone, Copy)]
@@ -41,31 +41,31 @@ pub struct StackUnderflow;
 
 /// Type mismatch error
 #[derive(Debug, Clone)]
-pub struct TypeMismatch(pub &'static str);
+pub struct TypeMismatch(pub &'static str;
 
 /// Invalid table index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidTableIndexError(pub u32);
+pub struct InvalidTableIndexError(pub u32;
 
 /// Invalid local index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidLocalIndexError(pub u32);
+pub struct InvalidLocalIndexError(pub u32;
 
 /// Resource error for resource access or creation issues
 #[derive(Debug, Clone)]
-pub struct ResourceError(pub &'static str);
+pub struct ResourceError(pub &'static str;
 
 /// Component error for component instantiation or linking issues
 #[derive(Debug, Clone)]
-pub struct ComponentError(pub &'static str);
+pub struct ComponentError(pub &'static str;
 
 /// Runtime error for generic execution issues
 #[derive(Debug, Clone)]
-pub struct RuntimeError(pub &'static str);
+pub struct RuntimeError(pub &'static str;
 
 /// Poisoned lock error for mutex failures
 #[derive(Debug, Clone)]
-pub struct PoisonedLockError(pub &'static str);
+pub struct PoisonedLockError(pub &'static str;
 
 /// Memory access out of bounds error
 #[derive(Debug, Clone, Copy)]
@@ -78,7 +78,7 @@ pub struct MemoryAccessOutOfBoundsError {
 
 /// Type mismatch error
 #[derive(Debug, Clone)]
-pub struct TypeMismatchError(pub &'static str);
+pub struct TypeMismatchError(pub &'static str;
 
 /// Table access out of bounds error
 #[derive(Debug, Clone, Copy)]
@@ -86,99 +86,99 @@ pub struct TableAccessOutOfBounds;
 
 /// Arithmetic error for math operations
 #[derive(Debug, Clone)]
-pub struct ArithmeticError(pub &'static str);
+pub struct ArithmeticError(pub &'static str;
 
 /// Memory access error
 #[derive(Debug, Clone)]
-pub struct MemoryAccessError(pub &'static str);
+pub struct MemoryAccessError(pub &'static str;
 
 /// Resource exhaustion error
 #[derive(Debug, Clone)]
-pub struct ResourceExhaustionError(pub &'static str);
+pub struct ResourceExhaustionError(pub &'static str;
 
 /// Invalid index error
 #[derive(Debug, Clone)]
-pub struct InvalidIndexError(pub &'static str);
+pub struct InvalidIndexError(pub &'static str;
 
 /// Error during execution
 #[derive(Debug, Clone)]
-pub struct ExecutionError(pub &'static str);
+pub struct ExecutionError(pub &'static str;
 
 /// Stack underflow error (empty stack)
 #[derive(Debug, Clone)]
-pub struct StackUnderflowError(pub &'static str);
+pub struct StackUnderflowError(pub &'static str;
 
 /// Export not found error
 #[derive(Debug, Clone)]
-pub struct ExportNotFoundError(pub &'static str);
+pub struct ExportNotFoundError(pub &'static str;
 
 /// Invalid instance index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidInstanceIndexError(pub u32);
+pub struct InvalidInstanceIndexError(pub u32;
 
 /// Invalid function index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidFunctionIndexError(pub u32);
+pub struct InvalidFunctionIndexError(pub u32;
 
 /// Invalid element index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidElementIndexError(pub usize);
+pub struct InvalidElementIndexError(pub usize;
 
 /// Invalid memory index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidMemoryIndexError(pub u32);
+pub struct InvalidMemoryIndexError(pub u32;
 
 /// Invalid global index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidGlobalIndexError(pub u32);
+pub struct InvalidGlobalIndexError(pub u32;
 
 /// Invalid data segment index error
 #[derive(Debug, Clone, Copy)]
-pub struct InvalidDataSegmentIndexError(pub usize);
+pub struct InvalidDataSegmentIndexError(pub usize;
 
 /// Invalid function type error
 #[derive(Debug, Clone)]
-pub struct InvalidFunctionTypeError(pub &'static str);
+pub struct InvalidFunctionTypeError(pub &'static str;
 
 /// Not implemented error
 #[derive(Debug, Clone)]
-pub struct NotImplementedError(pub &'static str);
+pub struct NotImplementedError(pub &'static str;
 
 /// Out of bounds access error
 #[derive(Debug, Clone)]
-pub struct OutOfBoundsAccess(pub &'static str);
+pub struct OutOfBoundsAccess(pub &'static str;
 
 /// Invalid value error
 #[derive(Debug, Clone)]
-pub struct InvalidValue(pub &'static str);
+pub struct InvalidValue(pub &'static str;
 
 /// Value out of range error
 #[derive(Debug, Clone)]
-pub struct ValueOutOfRangeError(pub &'static str);
+pub struct ValueOutOfRangeError(pub &'static str;
 
 /// Invalid state error
 #[derive(Debug, Clone)]
-pub struct InvalidState(pub &'static str);
+pub struct InvalidState(pub &'static str;
 
 /// Decoding error
 #[derive(Debug, Clone)]
-pub struct DecodingError(pub &'static str);
+pub struct DecodingError(pub &'static str;
 
 /// Execution limit exceeded error
 #[derive(Debug, Clone)]
-pub struct ExecutionLimitExceeded(pub &'static str);
+pub struct ExecutionLimitExceeded(pub &'static str;
 
 /// Execution timeout error
 #[derive(Debug, Clone)]
-pub struct ExecutionTimeoutError(pub &'static str);
+pub struct ExecutionTimeoutError(pub &'static str;
 
 /// Resource limit exceeded error
 #[derive(Debug, Clone)]
-pub struct ResourceLimitExceeded(pub &'static str);
+pub struct ResourceLimitExceeded(pub &'static str;
 
 /// Invalid argument error
 #[derive(Debug, Clone)]
-pub struct InvalidArgumentError(pub &'static str);
+pub struct InvalidArgumentError(pub &'static str;
 
 /// Error when a Wasm 3.0 specific construct is encountered in a Wasm 2.0 module
 /// or context.
@@ -197,7 +197,7 @@ pub struct InvalidWasm30InstructionImmediate {
 
 /// Error for a malformed Wasm 3.0 `TypeInformation` section.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MalformedWasm30TypeInformationSection(pub &'static str);
+pub struct MalformedWasm30TypeInformationSection(pub &'static str;
 
 /// Error for an invalid memory index used with Wasm 3.0 multi-memory features.
 #[derive(Debug, Clone, Copy)]

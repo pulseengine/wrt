@@ -114,7 +114,7 @@ where
 /// A wrapper struct that makes a closure implementing `Fn` cloneable
 /// by boxing it and handling the cloning via the `FnWithVecValue` trait.
 #[cfg(feature = "std")]
-pub struct CloneableFn(Box<dyn FnWithVecValue>);
+pub struct CloneableFn(Box<dyn FnWithVecValue>;
 
 /// Simplified function wrapper for `no_std` environments
 #[cfg(not(feature = "std"))]
@@ -214,7 +214,7 @@ pub type HostFunctionHandler = CloneableFn;
 impl wrt_foundation::traits::Checksummable for CloneableFn {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         // Function pointers can't be meaningfully checksummed, use a placeholder
-        checksum.update_slice(b"cloneable_fn");
+        checksum.update_slice(b"cloneable_fn";
     }
 }
 
@@ -277,7 +277,7 @@ mod tests {
     fn test_cloneable_fn() {
         let f = CloneableFn::new(|_| {
             #[cfg(feature = "std")]
-            return Ok(vec![Value::I32(42)]);
+            return Ok(vec![Value::I32(42)];
 
             #[cfg(not(feature = "std"))]
             {
@@ -287,10 +287,10 @@ mod tests {
                 vec.push(Value::I32(42)).unwrap();
                 Ok(vec)
             }
-        });
+        };
         let f2 = f.clone();
 
-        let mut target = ();
+        let mut target = (;
 
         #[cfg(feature = "std")]
         let empty_args = vec![];
@@ -300,25 +300,25 @@ mod tests {
             ValueVec::new(provider).unwrap()
         };
 
-        let result = f.call(&mut target, empty_args.clone());
-        let result2 = f2.call(&mut target, empty_args);
+        let result = f.call(&mut target, empty_args.clone();
+        let result2 = f2.call(&mut target, empty_args;
 
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         let result_vec = result.unwrap();
-        assert_eq!(result_vec.len(), 1);
-        assert!(matches!(result_vec[0], Value::I32(42)));
+        assert_eq!(result_vec.len(), 1;
+        assert!(matches!(result_vec[0], Value::I32(42));
 
-        assert!(result2.is_ok());
+        assert!(result2.is_ok();
         let result2_vec = result2.unwrap();
-        assert_eq!(result2_vec.len(), 1);
-        assert!(matches!(result2_vec[0], Value::I32(42)));
+        assert_eq!(result2_vec.len(), 1;
+        assert!(matches!(result2_vec[0], Value::I32(42));
     }
 
     #[test]
     fn test_host_function_handler() {
         let handler = HostFunctionHandler::new(|_| {
             #[cfg(feature = "std")]
-            return Ok(vec![Value::I32(42)]);
+            return Ok(vec![Value::I32(42)];
 
             #[cfg(not(feature = "std"))]
             {
@@ -328,9 +328,9 @@ mod tests {
                 vec.push(Value::I32(42)).unwrap();
                 Ok(vec)
             }
-        });
+        };
 
-        let mut target = ();
+        let mut target = (;
 
         #[cfg(feature = "std")]
         let empty_args = vec![];
@@ -340,11 +340,11 @@ mod tests {
             ValueVec::new(provider).unwrap()
         };
 
-        let result = handler.call(&mut target, empty_args);
+        let result = handler.call(&mut target, empty_args;
 
-        assert!(result.is_ok());
+        assert!(result.is_ok();
         let result_vec = result.unwrap();
-        assert_eq!(result_vec.len(), 1);
-        assert!(matches!(result_vec[0], Value::I32(42)));
+        assert_eq!(result_vec.len(), 1;
+        assert!(matches!(result_vec[0], Value::I32(42));
     }
 }

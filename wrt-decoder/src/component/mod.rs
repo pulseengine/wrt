@@ -136,13 +136,13 @@ mod no_std_utils {
     /// - Fails gracefully on invalid input
     pub fn detect_binary_type(binary: &[u8]) -> Result<BinaryType> {
         if binary.len() < 8 {
-            return Err(Error::parse_error("Binary too short for WASM header"));
+            return Err(Error::parse_error("Binary too short for WASM header";
         }
 
         // Check for WASM magic number (fixed 4 bytes)
         if &binary[0..4] == b"\0asm" {
             // Check version to determine module vs component
-            let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
+            let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]];
             if version == 1 {
                 Ok(BinaryType::Module)
             } else {
@@ -167,7 +167,7 @@ mod no_std_utils {
         usize,
     )> {
         if offset >= data.len() {
-            return Err(Error::parse_error("Offset beyond data length"));
+            return Err(Error::parse_error("Offset beyond data length";
         }
 
         // Read length (LEB128 - simplified to single byte for safety)
@@ -175,7 +175,7 @@ mod no_std_utils {
         let name_start = offset + 1;
 
         if name_start + length > data.len() {
-            return Err(Error::parse_error("Name length exceeds data"));
+            return Err(Error::parse_error("Name length exceeds data";
         }
 
         // Validate UTF-8 and create bounded string
@@ -238,22 +238,22 @@ pub fn decode_component(binary: &[u8]) -> Result<Component> {
         BinaryType::Component => {
             // Verify component header
             if binary.len() < 8 {
-                return Err(Error::parse_error("Component binary too short"));
+                return Err(Error::parse_error("Component binary too short";
             }
 
             if binary[0..4] != [0x00, 0x63, 0x6D, 0x70] {
-                return Err(Error::parse_error("Invalid Component Model magic number"));
+                return Err(Error::parse_error("Invalid Component Model magic number";
             }
 
             if binary[4..8] != [0x01, 0x00, 0x00, 0x00] {
-                return Err(Error::parse_error("Unsupported Component version"));
+                return Err(Error::parse_error("Unsupported Component version";
             }
 
             // Parse component (skip magic number and version)
-            let mut component = Component::default();
+            let mut component = Component::default(;
 
             // Store the binary data
-            component.binary = Some(binary.to_vec());
+            component.binary = Some(binary.to_vec(;
 
             // Parse component sections
             parse_component_sections(&binary[8..], &mut component)?;
@@ -282,7 +282,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
         if offset + section_size as usize > data.len() {
             return Err(Error::parse_error(
                 "Section size exceeds remaining data size ",
-            ));
+            ;
         }
 
         let section_data = &data[offset..offset + section_size as usize];
@@ -305,7 +305,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
                         component_name_section::parse_component_name_section(custom_data)
                     {
                         if let Some(component_name) = name_section.component_name {
-                            component.name = Some(component_name);
+                            component.name = Some(component_name;
                         }
                     }
                 }
@@ -353,7 +353,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
             0x09 => {
                 // Start section
                 let (start, _) = parse::parse_start_section(section_data)?;
-                component.start = Some(start);
+                component.start = Some(start;
             },
             0x0A => {
                 // Element section

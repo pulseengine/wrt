@@ -92,7 +92,7 @@ impl<'a> MemoryInspector<'a> {
 
     /// Attach to runtime memory
     pub fn attach(&mut self, memory: &'a dyn DebugMemory) {
-        self.memory = Some(memory);
+        self.memory = Some(memory;
     }
 
     /// Register a memory region
@@ -175,14 +175,14 @@ impl<'a> MemoryInspector<'a> {
             if alloc.allocated {
                 stats.active_allocations += 1;
                 stats.allocated_bytes += alloc.size;
-                stats.largest_allocation = stats.largest_allocation.max(alloc.size);
+                stats.largest_allocation = stats.largest_allocation.max(alloc.size;
             }
         }
 
         // Simple fragmentation calculation
         if stats.total_bytes > 0 {
             let free_bytes = stats.total_bytes - stats.allocated_bytes;
-            stats.fragmentation = (free_bytes as f32) / (stats.total_bytes as f32);
+            stats.fragmentation = (free_bytes as f32) / (stats.total_bytes as f32;
         }
 
         stats
@@ -208,10 +208,10 @@ impl<'a> MemoryInspector<'a> {
 
     /// Analyze stack usage
     pub fn analyze_stack(&self, state: &dyn RuntimeState) -> StackAnalysis {
-        let sp = state.sp();
+        let sp = state.sp(;
 
         // Find stack region
-        let stack_region = self.regions.iter().find(|r| r.region_type == MemoryRegionType::Stack);
+        let stack_region = self.regions.iter().find(|r| r.region_type == MemoryRegionType::Stack;
 
         let (stack_base, stack_size) = if let Some(region) = stack_region {
             (region.start + region.size, region.size)
@@ -220,8 +220,8 @@ impl<'a> MemoryInspector<'a> {
             (0x10000, 0x10000) // 64KB at 64KB offset
         };
 
-        let used = stack_base.saturating_sub(sp);
-        let free = sp.saturating_sub(stack_base - stack_size);
+        let used = stack_base.saturating_sub(sp;
+        let free = sp.saturating_sub(stack_base - stack_size;
 
         StackAnalysis {
             stack_pointer: sp,
@@ -365,7 +365,7 @@ impl<'a> MemoryDump<'a> {
 }
 
 // Formatting helpers
-fn format_hex_u8(n: u8, buf: &mut [u8; 2]) -> &str {
+fn format_hex_u8(n: u8, buf: &mut [u8); 2]) -> &str {
     let high = (n >> 4) & 0xF;
     let low = n & 0xF;
 
@@ -375,7 +375,7 @@ fn format_hex_u8(n: u8, buf: &mut [u8; 2]) -> &str {
     core::str::from_utf8(buf).unwrap_or("??")
 }
 
-fn format_hex_u32(mut n: u32, buf: &mut [u8; 8]) -> &str {
+fn format_hex_u32(mut n: u32, buf: &mut [u8); 8]) -> &str {
     for i in (0..8).rev() {
         let digit = (n & 0xF) as u8;
         buf[i] = if digit < 10 { b'0' + digit } else { b'a' + digit - 10 };
@@ -414,9 +414,9 @@ mod tests {
             .unwrap();
 
         // Test region lookup
-        assert!(inspector.find_region(0x5000).is_some());
-        assert!(inspector.find_region(0x15000).is_some());
-        assert!(inspector.find_region(0x30000).is_none());
+        assert!(inspector.find_region(0x5000).is_some();
+        assert!(inspector.find_region(0x15000).is_some();
+        assert!(inspector.find_region(0x30000).is_none();
 
         Ok(())
     }
@@ -453,11 +453,11 @@ mod tests {
             })
             .unwrap();
 
-        let stats = inspector.heap_stats();
-        assert_eq!(stats.total_allocations, 3);
-        assert_eq!(stats.active_allocations, 2);
-        assert_eq!(stats.allocated_bytes, 768);
-        assert_eq!(stats.largest_allocation, 512);
+        let stats = inspector.heap_stats(;
+        assert_eq!(stats.total_allocations, 3;
+        assert_eq!(stats.active_allocations, 2;
+        assert_eq!(stats.allocated_bytes, 768;
+        assert_eq!(stats.largest_allocation, 512;
 
         Ok(())
     }

@@ -118,56 +118,56 @@ impl Error {
         ErrorCategory::Component,
         codes::COMPONENT_NOT_FOUND,
         "Component not found",
-    );
+    ;
     /// Insufficient memory error
     pub const INSUFFICIENT_MEMORY: Self = Self::new(
         ErrorCategory::Resource,
         codes::INSUFFICIENT_MEMORY,
         "Insufficient memory for operation",
-    );
+    ;
     /// No WIT definitions found error
     pub const NO_WIT_DEFINITIONS_FOUND: Self = Self::new(
         ErrorCategory::Parse,
         codes::NO_WIT_DEFINITIONS_FOUND,
         "No WIT worlds or interfaces found in input",
-    );
+    ;
     /// Out of memory error
     pub const OUT_OF_MEMORY: Self = Self::new(
         ErrorCategory::Resource,
         codes::OUT_OF_MEMORY,
         "Out of memory",
-    );
+    ;
     /// Stack overflow error
     pub const STACK_OVERFLOW: Self = Self::new(
         ErrorCategory::Runtime,
         codes::STACK_OVERFLOW,
         "Stack overflow",
-    );
+    ;
     /// Too many components error
     pub const TOO_MANY_COMPONENTS: Self = Self::new(
         ErrorCategory::Component,
         codes::TOO_MANY_COMPONENTS,
         "Too many components instantiated",
-    );
+    ;
     // Agent C constant error instances
     /// WIT input too large error
     pub const WIT_INPUT_TOO_LARGE: Self = Self::new(
         ErrorCategory::Parse,
         codes::WIT_INPUT_TOO_LARGE,
         "WIT input too large for parser buffer",
-    );
+    ;
     /// WIT interface limit exceeded error
     pub const WIT_INTERFACE_LIMIT_EXCEEDED: Self = Self::new(
         ErrorCategory::Parse,
         codes::WIT_INTERFACE_LIMIT_EXCEEDED,
         "Too many WIT interfaces for parser limits",
-    );
+    ;
     /// WIT world limit exceeded error
     pub const WIT_WORLD_LIMIT_EXCEEDED: Self = Self::new(
         ErrorCategory::Parse,
         codes::WIT_WORLD_LIMIT_EXCEEDED,
         "Too many WIT worlds for parser limits",
-    );
+    ;
 
     /// Create a new error.
     #[must_use]

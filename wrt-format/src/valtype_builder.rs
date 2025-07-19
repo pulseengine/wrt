@@ -51,7 +51,7 @@ pub fn build_record<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
         let wasm_name = WasmName::from_str(&name, provider.clone())?;
         
         // Store the ValType and get a reference
-        let type_ref = type_store.store_type(val_type);
+        let type_ref = type_store.store_type(val_type;
         
         // Push to bounded vec
         bounded_fields.push((wasm_name, type_ref)).map_err(|_| {
@@ -72,7 +72,7 @@ pub fn build_variant<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
     
     for (name, maybe_val_type) in cases {
         let wasm_name = WasmName::from_str(&name, provider.clone())?;
-        let maybe_type_ref = maybe_val_type.map(|vt| type_store.store_type(vt));
+        let maybe_type_ref = maybe_val_type.map(|vt| type_store.store_type(vt);
         
         bounded_cases.push((wasm_name, maybe_type_ref)).map_err(|_| {
             Error::memory_error("Failed to push to bounded cases")
@@ -91,7 +91,7 @@ pub fn build_tuple<P: MemoryProvider + Default + Clone + PartialEq + Eq>(
     let mut bounded_types = BoundedVec::new(provider)?;
     
     for val_type in types {
-        let type_ref = type_store.store_type(val_type);
+        let type_ref = type_store.store_type(val_type;
         bounded_types.push(type_ref).map_err(|_| {
             Error::memory_error("Failed to push to bounded tuple")
         })?;

@@ -19,14 +19,14 @@ mod tests {
         let decoded_component = decode_component(&binary)?;
 
         // Verify the component structure
-        assert_eq!(decoded_component.imports.len(), 1);
-        assert_eq!(decoded_component.exports.len(), 1);
+        assert_eq!(decoded_component.imports.len(), 1;
+        assert_eq!(decoded_component.exports.len(), 1;
 
         Ok(())
     }
 
     fn create_mock_component() -> Result<wrt_format::component::Component> {
-        let mut component = wrt_format::component::Component::new();
+        let mut component = wrt_format::component::Component::new(;
 
         // Add a simple function import
         component.imports.push(wrt_format::component::Import {
@@ -40,7 +40,7 @@ mod tests {
                 params:  vec![("param".to_string(), FormatValType::S32)],
                 results: vec![FormatValType::S32],
             },
-        });
+        };
 
         // Add a simple function export
         component.exports.push(wrt_format::component::Export {
@@ -57,7 +57,7 @@ mod tests {
                 params:  vec![("param".to_string(), FormatValType::S32)],
                 results: vec![FormatValType::S32],
             }),
-        });
+        };
 
         Ok(component)
     }

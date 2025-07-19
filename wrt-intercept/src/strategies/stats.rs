@@ -32,13 +32,13 @@ pub struct FunctionStats {
 impl wrt_foundation::traits::Checksummable for FunctionStats {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for byte in self.call_count.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
         for byte in self.success_count.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
         for byte in self.error_count.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
     }
 }
@@ -106,29 +106,29 @@ impl Eq for FunctionStats {}
 impl wrt_foundation::traits::Checksummable for FunctionStats {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for byte in self.call_count.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
         for byte in self.success_count.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
         for byte in self.error_count.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
         for byte in self.total_time_ms.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
         if let Some(min) = self.min_time_ms {
             for byte in min.to_le_bytes() {
-                checksum.update(byte);
+                checksum.update(byte;
             }
         }
         if let Some(max) = self.max_time_ms {
             for byte in max.to_le_bytes() {
-                checksum.update(byte);
+                checksum.update(byte;
             }
         }
         for byte in self.avg_time_ms.to_le_bytes() {
-            checksum.update(byte);
+            checksum.update(byte;
         }
     }
 }
@@ -267,7 +267,7 @@ impl StatisticsStrategy {
         target: &str,
         function: &str,
     ) -> Option<FunctionStats> {
-        let key = Self::function_key(source, target, function);
+        let key = Self::function_key(source, target, function;
         match self.stats.read() {
             Ok(stats) => stats.get(&key).cloned(),
             _ => None,
@@ -277,10 +277,10 @@ impl StatisticsStrategy {
     /// Reset all statistics
     pub fn reset(&self) {
         if let Ok(mut stats) = self.stats.write() {
-            stats.clear();
+            stats.clear(;
         }
         if let Ok(mut executing) = self.executing.lock() {
-            executing.clear();
+            executing.clear(;
         }
     }
 }
@@ -295,9 +295,9 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
         args: &[Value],
     ) -> Result<Vec<Value>> {
         if self.config.track_timing {
-            let key = Self::function_key(source, target, function);
+            let key = Self::function_key(source, target, function;
             if let Ok(mut executing) = self.executing.lock() {
-                executing.insert(key, Instant::now());
+                executing.insert(key, Instant::now(;
             }
         }
 
@@ -313,8 +313,8 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
         _args: &[Value],
         result: Result<Vec<Value>>,
     ) -> Result<Vec<Value>> {
-        let key = Self::function_key(source, target, function);
-        let is_success = result.is_ok();
+        let key = Self::function_key(source, target, function;
+        let is_success = result.is_ok(;
         let elapsed_ms = if self.config.track_timing {
             match self.executing.lock() {
                 Ok(mut executing) => {
@@ -337,7 +337,7 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
                 return result;
             }
 
-            let stats = stats_map.entry(key).or_insert_with(FunctionStats::default);
+            let stats = stats_map.entry(key).or_insert_with(FunctionStats::default;
 
             // Update call counts
             stats.call_count += 1;
@@ -353,18 +353,18 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
 
                 if let Some(min) = stats.min_time_ms {
                     if elapsed < min {
-                        stats.min_time_ms = Some(elapsed);
+                        stats.min_time_ms = Some(elapsed;
                     }
                 } else {
-                    stats.min_time_ms = Some(elapsed);
+                    stats.min_time_ms = Some(elapsed;
                 }
 
                 if let Some(max) = stats.max_time_ms {
                     if elapsed > max {
-                        stats.max_time_ms = Some(elapsed);
+                        stats.max_time_ms = Some(elapsed;
                     }
                 } else {
-                    stats.max_time_ms = Some(elapsed);
+                    stats.max_time_ms = Some(elapsed;
                 }
 
                 stats.avg_time_ms = stats.total_time_ms / stats.call_count as f64;
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_statistics_strategy() {
-        let strategy = StatisticsStrategy::new();
+        let strategy = StatisticsStrategy::new(;
 
         // Test before_call and after_call
         let source = "source";
@@ -403,24 +403,24 @@ mod tests {
         // First call (success)
         strategy.before_call(source, target, function, &args).unwrap();
         thread::sleep(Duration::from_millis(10)); // Simulate some work
-        let result = Ok(vec![Value::I64(123)]);
+        let result = Ok(vec![Value::I64(123)];
         strategy.after_call(source, target, function, &args, result).unwrap();
 
         // Second call (error)
         strategy.before_call(source, target, function, &args).unwrap();
         thread::sleep(Duration::from_millis(5)); // Simulate some work
-        let result = Err(wrt_error::Error::runtime_error("Test error"));
-        let _ = strategy.after_call(source, target, function, &args, result);
+        let result = Err(wrt_error::Error::runtime_error("Test error";
+        let _ = strategy.after_call(source, target, function, &args, result;
 
         // Check statistics
-        let key = StatisticsStrategy::function_key(source, target, function);
-        let stats = strategy.get_all_stats();
-        assert!(stats.contains_key(&key));
+        let key = StatisticsStrategy::function_key(source, target, function;
+        let stats = strategy.get_all_stats(;
+        assert!(stats.contains_key(&key);
 
         let func_stats = stats.get(&key).unwrap();
-        assert_eq!(func_stats.call_count, 2);
-        assert_eq!(func_stats.success_count, 1);
-        assert_eq!(func_stats.error_count, 1);
+        assert_eq!(func_stats.call_count, 2;
+        assert_eq!(func_stats.success_count, 1;
+        assert_eq!(func_stats.error_count, 1;
         assert!(func_stats.total_time_ms > 0.0);
         assert!(func_stats.min_time_ms.unwrap() > 0.0);
         assert!(func_stats.max_time_ms.unwrap() > 0.0);
@@ -431,7 +431,7 @@ mod tests {
     fn test_statistics_config() {
         let config =
             StatisticsConfig { track_timing: false, track_errors: true, max_functions: 10 };
-        let strategy = StatisticsStrategy::with_config(config);
+        let strategy = StatisticsStrategy::with_config(config;
 
         let source = "source";
         let target = "target";
@@ -440,24 +440,24 @@ mod tests {
 
         // Make a call
         strategy.before_call(source, target, function, &args).unwrap();
-        let result = Ok(vec![Value::I64(123)]);
+        let result = Ok(vec![Value::I64(123)];
         strategy.after_call(source, target, function, &args, result).unwrap();
 
         // Check statistics - timing should not be tracked
-        let key = StatisticsStrategy::function_key(source, target, function);
-        let stats = strategy.get_all_stats();
+        let key = StatisticsStrategy::function_key(source, target, function;
+        let stats = strategy.get_all_stats(;
         let func_stats = stats.get(&key).unwrap();
-        assert_eq!(func_stats.call_count, 1);
-        assert_eq!(func_stats.success_count, 1);
-        assert_eq!(func_stats.total_time_ms, 0.0);
-        assert!(func_stats.min_time_ms.is_none());
-        assert!(func_stats.max_time_ms.is_none());
-        assert_eq!(func_stats.avg_time_ms, 0.0);
+        assert_eq!(func_stats.call_count, 1;
+        assert_eq!(func_stats.success_count, 1;
+        assert_eq!(func_stats.total_time_ms, 0.0;
+        assert!(func_stats.min_time_ms.is_none();
+        assert!(func_stats.max_time_ms.is_none();
+        assert_eq!(func_stats.avg_time_ms, 0.0;
     }
 
     #[test]
     fn test_statistics_reset() {
-        let strategy = StatisticsStrategy::new();
+        let strategy = StatisticsStrategy::new(;
 
         // Make a call
         let source = "source";
@@ -466,14 +466,14 @@ mod tests {
         let args = vec![Value::I32(42)];
 
         strategy.before_call(source, target, function, &args).unwrap();
-        let result = Ok(vec![Value::I64(123)]);
+        let result = Ok(vec![Value::I64(123)];
         strategy.after_call(source, target, function, &args, result).unwrap();
 
         // Verify we have stats
-        assert_eq!(strategy.get_all_stats().len(), 1);
+        assert_eq!(strategy.get_all_stats().len(), 1;
 
         // Reset and verify
-        strategy.reset();
-        assert_eq!(strategy.get_all_stats().len(), 0);
+        strategy.reset(;
+        assert_eq!(strategy.get_all_stats().len(), 0;
     }
 }

@@ -138,7 +138,7 @@ impl CustomSectionHandler {
 
         #[cfg(not(feature = "safety-critical"))]
         {
-            self.sections.insert(name.to_string(), section);
+            self.sections.insert(name.to_string(), section;
         }
 
         Ok(())
@@ -256,10 +256,10 @@ pub fn extract_custom_section(section_data: &[u8]) -> Result<(String, &[u8])> {
     if offset + name_len as usize > section_data.len() {
         return Err(Error::parse_error(
             "Custom section name length exceeds section size",
-        ));
+        ;
     }
 
-    let name_bytes = section_data[offset..offset + name_len as usize].to_vec();
+    let name_bytes = section_data[offset..offset + name_len as usize].to_vec(;
     let name = String::from_utf8(name_bytes)
         .map_err(|_| Error::parse_error("Invalid UTF-8 in custom section name"))?;
 
@@ -280,11 +280,11 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_custom_section_handler() {
-        let mut handler = CustomSectionHandler::new();
+        let mut handler = CustomSectionHandler::new(;
 
         // Create test branch hint data
-        let mut section = BranchHintSection::new();
-        let mut func_hints = FunctionBranchHints::new(0);
+        let mut section = BranchHintSection::new(;
+        let mut func_hints = FunctionBranchHints::new(0;
         func_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
         section.add_function_hints(func_hints).unwrap();
 
@@ -294,45 +294,45 @@ mod tests {
         handler.add_section(BRANCH_HINT_SECTION_NAME, &encoded).unwrap();
 
         // Verify it's accessible
-        assert!(handler.has_branch_hints());
+        assert!(handler.has_branch_hints();
         assert_eq!(
             handler.get_branch_hint(0, 10),
             Some(BranchHintValue::LikelyTrue)
-        );
-        assert_eq!(handler.get_branch_hint(0, 20), None);
-        assert_eq!(handler.get_branch_hint(1, 10), None);
+        ;
+        assert_eq!(handler.get_branch_hint(0, 20), None;
+        assert_eq!(handler.get_branch_hint(1, 10), None;
 
         // Add unknown section
         handler.add_section("unknown", &[1, 2, 3, 4]).unwrap();
 
-        assert_eq!(handler.section_count(), 2);
-        let names = handler.section_names();
-        assert!(names.contains(&BRANCH_HINT_SECTION_NAME.to_string()));
-        assert!(names.contains(&"unknown".to_string()));
+        assert_eq!(handler.section_count(), 2;
+        let names = handler.section_names(;
+        assert!(names.contains(&BRANCH_HINT_SECTION_NAME.to_string());
+        assert!(names.contains(&"unknown".to_string());
     }
 
     #[test]
     fn test_extract_custom_section() {
         // Create test custom section data: name length + name + data
-        let mut section_data = Vec::with_capacity(0);
+        let mut section_data = Vec::with_capacity(0;
         let name = "test";
         section_data.push(name.len() as u8); // LEB128 encoding of length
-        section_data.extend_from_slice(name.as_bytes());
+        section_data.extend_from_slice(name.as_bytes(;
         section_data.extend_from_slice(&[1, 2, 3, 4]); // test data
 
         let (extracted_name, data) = extract_custom_section(&section_data).unwrap();
-        assert_eq!(extracted_name, "test");
-        assert_eq!(data, &[1, 2, 3, 4]);
+        assert_eq!(extracted_name, "test";
+        assert_eq!(data, &[1, 2, 3, 4];
     }
 
     #[test]
     fn test_extract_custom_section_invalid() {
         // Test with truncated data
         let section_data = &[5, b't', b'e', b's']; // name length = 5, but only 4 bytes
-        assert!(extract_custom_section(section_data).is_err());
+        assert!(extract_custom_section(section_data).is_err();
 
         // Test with invalid UTF-8
         let section_data = &[2, 0xFF, 0xFE]; // invalid UTF-8 bytes
-        assert!(extract_custom_section(section_data).is_err());
+        assert!(extract_custom_section(section_data).is_err();
     }
 }

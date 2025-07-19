@@ -244,36 +244,36 @@ impl WitDebugger {
     /// Add component metadata
     pub fn add_component(&mut self, id: ComponentId, metadata: ComponentMetadata) {
         // Add to source map
-        self.source_map.add_component_boundary(id, metadata.source_span);
+        self.source_map.add_component_boundary(id, metadata.source_span;
 
         // Store metadata
-        self.components.insert(id, metadata);
+        self.components.insert(id, metadata;
     }
 
     /// Add function metadata
     pub fn add_function(&mut self, id: FunctionId, metadata: FunctionMetadata) {
         // Add to source map
-        self.source_map.add_function_definition(id, metadata.source_span);
-        self.source_map.add_binary_mapping(metadata.binary_offset, metadata.source_span);
+        self.source_map.add_function_definition(id, metadata.source_span;
+        self.source_map.add_binary_mapping(metadata.binary_offset, metadata.source_span;
 
         // Store metadata
-        self.functions.insert(id, metadata);
+        self.functions.insert(id, metadata;
     }
 
     /// Add type metadata
     pub fn add_type(&mut self, id: TypeId, metadata: TypeMetadata) {
         // Add to source map
-        self.source_map.add_type_definition(id, metadata.source_span);
+        self.source_map.add_type_definition(id, metadata.source_span;
 
         // Store metadata
-        self.types.insert(id, metadata);
+        self.types.insert(id, metadata;
     }
 
     /// Set source file
     pub fn add_source_file(&mut self, file_id: u32, path: &str, content: &str) -> Result<()> {
         use crate::wit_source_map::WitSourceFile;
         let source_file = WitSourceFile::new(path, content)?;
-        self.source_map.add_source_file(file_id, source_file);
+        self.source_map.add_source_file(file_id, source_file;
         Ok(())
     }
 
@@ -287,7 +287,7 @@ impl WitDebugger {
 
         // Generate breakpoint ID
         let bp_id = self.source_breakpoints.len() as u32 + 1;
-        self.source_breakpoints.insert(span, bp_id);
+        self.source_breakpoints.insert(span, bp_id;
 
         Ok(bp_id)
     }
@@ -314,7 +314,7 @@ impl WitDebugger {
     pub fn find_component_for_address(&self, addr: u32) -> Option<ComponentId> {
         for (id, metadata) in &self.components {
             if addr >= metadata.binary_start && addr < metadata.binary_end {
-                return Some(*id);
+                return Some(*id;
             }
         }
         None
@@ -331,7 +331,7 @@ impl WitDebugger {
                 let distance = addr - metadata.binary_offset;
                 if distance < best_distance {
                     best_distance = distance;
-                    best_func = Some(*id);
+                    best_func = Some(*id;
                 }
             }
         }
@@ -365,8 +365,8 @@ impl RuntimeDebugger for WitDebugger {
         state: &(dyn RuntimeState + 'static),
     ) -> DebugAction {
         // Update current context
-        let pc = state.pc();
-        self.current_component = self.find_component_for_address(pc);
+        let pc = state.pc(;
+        self.current_component = self.find_component_for_address(pc;
 
         // Check if this is a source-level breakpoint
         if let Some(span) = self.source_map.source_location_for_offset(pc) {
@@ -382,7 +382,7 @@ impl RuntimeDebugger for WitDebugger {
 
     fn on_instruction(&mut self, pc: u32, state: &(dyn RuntimeState + 'static)) -> DebugAction {
         // Update current context
-        self.current_component = self.find_component_for_address(pc);
+        self.current_component = self.find_component_for_address(pc;
 
         match self.step_mode {
             WitStepMode::Instruction => DebugAction::StepInstruction,
@@ -402,22 +402,22 @@ impl RuntimeDebugger for WitDebugger {
     }
 
     fn on_function_entry(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static)) {
-        let pc = state.pc();
-        self.current_component = self.find_component_for_address(pc);
+        let pc = state.pc(;
+        self.current_component = self.find_component_for_address(pc;
 
         // Could log WIT function entry here
     }
 
     fn on_function_exit(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static)) {
-        let pc = state.pc();
-        self.current_component = self.find_component_for_address(pc);
+        let pc = state.pc(;
+        self.current_component = self.find_component_for_address(pc;
 
         // Could log WIT function exit here
     }
 
     fn on_trap(&mut self, trap_code: u32, state: &(dyn RuntimeState + 'static)) {
-        let pc = state.pc();
-        self.current_component = self.find_component_for_address(pc);
+        let pc = state.pc(;
+        self.current_component = self.find_component_for_address(pc;
 
         // Could generate WIT-level diagnostic here
     }
@@ -463,7 +463,7 @@ impl WitAwareDebugger for WitDebugger {
                     },
                     definition_span: *type_span,
                     usage_spans:     Vec::new(),
-                });
+                };
             }
         }
 
@@ -487,8 +487,8 @@ impl WitAwareDebugger for WitDebugger {
     fn map_to_wit_diagnostic(&self, error: &ComponentError) -> Option<WitDiagnostic> {
         #[cfg(feature = "std")]
         {
-            let error_str = error.message.as_str().unwrap_or("Unknown error");
-            let runtime_error = Error::runtime_error(error_str);
+            let error_str = error.message.as_str().unwrap_or("Unknown error";
+            let runtime_error = Error::runtime_error(error_str;
             self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
         }
         #[cfg(not(feature = "std"))]
@@ -520,17 +520,17 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_wit_debugger_creation() {
-        let debugger = WitDebugger::new();
-        assert_eq!(debugger.step_mode(), WitStepMode::Continue);
-        assert!(debugger.components.is_empty());
-        assert!(debugger.functions.is_empty());
-        assert!(debugger.types.is_empty());
+        let debugger = WitDebugger::new(;
+        assert_eq!(debugger.step_mode(), WitStepMode::Continue;
+        assert!(debugger.components.is_empty();
+        assert!(debugger.functions.is_empty();
+        assert!(debugger.types.is_empty();
     }
 
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_component_metadata() {
-        let mut debugger = WitDebugger::new();
+        let mut debugger = WitDebugger::new(;
         let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
@@ -543,18 +543,18 @@ mod tests {
             imports:      Vec::new(),
         };
 
-        let id = ComponentId(1);
-        debugger.add_component(id, metadata);
+        let id = ComponentId(1;
+        debugger.add_component(id, metadata;
 
-        assert_eq!(debugger.find_component_for_address(1500), Some(id));
-        assert_eq!(debugger.find_component_for_address(500), None);
-        assert_eq!(debugger.find_component_for_address(2500), None);
+        assert_eq!(debugger.find_component_for_address(1500), Some(id;
+        assert_eq!(debugger.find_component_for_address(500), None;
+        assert_eq!(debugger.find_component_for_address(2500), None;
     }
 
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_function_metadata() {
-        let mut debugger = WitDebugger::new();
+        let mut debugger = WitDebugger::new(;
         let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
@@ -567,10 +567,10 @@ mod tests {
             is_async:      false,
         };
 
-        let id = FunctionId(1);
-        debugger.add_function(id, metadata);
+        let id = FunctionId(1;
+        debugger.add_function(id, metadata;
 
-        assert_eq!(debugger.find_function_for_address(1200), Some(id));
+        assert_eq!(debugger.find_function_for_address(1200), Some(id;
         assert_eq!(debugger.find_function_for_address(1250), Some(id)); // Should find closest
         assert_eq!(debugger.find_function_for_address(1100), None); // Before function
     }
@@ -578,14 +578,14 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_step_mode() {
-        let mut debugger = WitDebugger::new();
+        let mut debugger = WitDebugger::new(;
 
-        assert_eq!(debugger.step_mode(), WitStepMode::Continue);
+        assert_eq!(debugger.step_mode(), WitStepMode::Continue;
 
-        debugger.set_step_mode(WitStepMode::SourceLine);
-        assert_eq!(debugger.step_mode(), WitStepMode::SourceLine);
+        debugger.set_step_mode(WitStepMode::SourceLine;
+        assert_eq!(debugger.step_mode(), WitStepMode::SourceLine;
 
-        debugger.set_step_mode(WitStepMode::SourceStepOver);
-        assert_eq!(debugger.step_mode(), WitStepMode::SourceStepOver);
+        debugger.set_step_mode(WitStepMode::SourceStepOver;
+        assert_eq!(debugger.step_mode(), WitStepMode::SourceStepOver;
     }
 }

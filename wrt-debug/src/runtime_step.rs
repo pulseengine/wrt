@@ -94,9 +94,9 @@ impl StepController {
             StepMode::Line | StepMode::Over | StepMode::Into => {
                 // Remember current line
                 if let Some(line) = current_line {
-                    self.target_file = Some(line.file_index);
-                    self.target_line = Some(line.line);
-                    self.previous_line = Some(line.line);
+                    self.target_file = Some(line.file_index;
+                    self.target_line = Some(line.line;
+                    self.previous_line = Some(line.line;
                 }
             },
             StepMode::Out => {
@@ -165,14 +165,14 @@ impl StepController {
     /// Handle function exit
     pub fn on_function_exit(&mut self) {
         // Pop frame
-        self.call_stack.pop();
+        self.call_stack.pop(;
 
         match self.mode {
             StepMode::Over => {
-                self.step_over_depth = self.step_over_depth.saturating_sub(1);
+                self.step_over_depth = self.step_over_depth.saturating_sub(1;
             },
             StepMode::Out => {
-                self.step_over_depth = self.step_over_depth.saturating_sub(1);
+                self.step_over_depth = self.step_over_depth.saturating_sub(1;
                 if self.step_over_depth == 0 {
                     // We've stepped out
                     self.mode = StepMode::None;
@@ -188,7 +188,7 @@ impl StepController {
         self.target_line = None;
         self.target_file = None;
         self.step_over_depth = 0;
-        self.call_stack.clear();
+        self.call_stack.clear(;
     }
 
     /// Get current stepping mode
@@ -204,7 +204,7 @@ impl StepController {
                 if line.line != target_line || line.file_index != self.target_file.unwrap_or(0) {
                     // Different line - stop
                     self.mode = StepMode::None;
-                    self.previous_line = Some(line.line);
+                    self.previous_line = Some(line.line;
                     return DebugAction::Break;
                 }
             }
@@ -226,7 +226,7 @@ impl StepController {
                 if line.line != target_line || line.file_index != self.target_file.unwrap_or(0) {
                     // Different line at original depth - stop
                     self.mode = StepMode::None;
-                    self.previous_line = Some(line.line);
+                    self.previous_line = Some(line.line;
                     return DebugAction::Break;
                 }
             }
@@ -242,13 +242,13 @@ impl StepController {
             if let Some(prev_line) = self.previous_line {
                 if line.line != prev_line {
                     self.mode = StepMode::None;
-                    self.previous_line = Some(line.line);
+                    self.previous_line = Some(line.line;
                     return DebugAction::Break;
                 }
             } else {
                 // First line
                 self.mode = StepMode::None;
-                self.previous_line = Some(line.line);
+                self.previous_line = Some(line.line;
                 return DebugAction::Break;
             }
         }
@@ -320,24 +320,24 @@ impl SteppingDebugger {
 
     /// Start stepping
     pub fn step(&mut self, mode: StepMode, pc: u32) {
-        let current_line = self.find_line(pc).copied();
-        self.controller.start_step(mode, current_line);
+        let current_line = self.find_line(pc).copied(;
+        self.controller.start_step(mode, current_line;
     }
 
     /// Check if we should break
     pub fn should_break(&mut self, pc: u32, state: &(dyn RuntimeState + 'static)) -> DebugAction {
-        let current_line = self.find_line(pc).copied();
+        let current_line = self.find_line(pc).copied(;
         self.controller.should_break(pc, state, current_line)
     }
 
     /// Handle function entry
     pub fn on_function_entry(&mut self, func_idx: u32, return_pc: u32) {
-        self.controller.on_function_entry(func_idx, return_pc);
+        self.controller.on_function_entry(func_idx, return_pc;
     }
 
     /// Handle function exit  
     pub fn on_function_exit(&mut self) {
-        self.controller.on_function_exit();
+        self.controller.on_function_exit(;
     }
 
     /// Get controller for direct access
@@ -382,23 +382,23 @@ mod tests {
 
     #[test]
     fn test_instruction_stepping() {
-        let mut controller = StepController::new();
+        let mut controller = StepController::new(;
         let state = MockState { pc: 0x1000 };
 
         // Start instruction step
-        controller.start_step(StepMode::Instruction, None);
+        controller.start_step(StepMode::Instruction, None;
 
         // Should break on next instruction
-        let action = controller.should_break(0x1001, &state, None);
-        assert_eq!(action, DebugAction::Break);
+        let action = controller.should_break(0x1001, &state, None;
+        assert_eq!(action, DebugAction::Break;
 
         // Mode should be reset
-        assert_eq!(controller.mode(), StepMode::None);
+        assert_eq!(controller.mode(), StepMode::None;
     }
 
     #[test]
     fn test_line_stepping() {
-        let mut controller = StepController::new();
+        let mut controller = StepController::new(;
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {
@@ -418,20 +418,20 @@ mod tests {
         };
 
         // Start line step
-        controller.start_step(StepMode::Line, Some(&line1));
+        controller.start_step(StepMode::Line, Some(&line1;
 
         // Same line - continue
-        let action = controller.should_break(0x1001, &state, Some(&line1));
-        assert_eq!(action, DebugAction::Continue);
+        let action = controller.should_break(0x1001, &state, Some(&line1;
+        assert_eq!(action, DebugAction::Continue;
 
         // Different line - break
-        let action = controller.should_break(0x1002, &state, Some(&line2));
-        assert_eq!(action, DebugAction::Break);
+        let action = controller.should_break(0x1002, &state, Some(&line2;
+        assert_eq!(action, DebugAction::Break;
     }
 
     #[test]
     fn test_step_over() {
-        let mut controller = StepController::new();
+        let mut controller = StepController::new(;
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {
@@ -443,17 +443,17 @@ mod tests {
         };
 
         // Start step over
-        controller.start_step(StepMode::Over, Some(&line1));
+        controller.start_step(StepMode::Over, Some(&line1;
 
         // Enter function - increases depth
-        controller.on_function_entry(1, 0x1100);
+        controller.on_function_entry(1, 0x1100;
 
         // Inside function - continue
-        let action = controller.should_break(0x2000, &state, Some(&line1));
-        assert_eq!(action, DebugAction::Continue);
+        let action = controller.should_break(0x2000, &state, Some(&line1;
+        assert_eq!(action, DebugAction::Continue;
 
         // Exit function
-        controller.on_function_exit();
+        controller.on_function_exit(;
 
         // Back at original depth with new line - break
         let line2 = LineInfo {
@@ -463,7 +463,7 @@ mod tests {
             is_stmt:      true,
             end_sequence: false,
         };
-        let action = controller.should_break(0x1100, &state, Some(&line2));
-        assert_eq!(action, DebugAction::Break);
+        let action = controller.should_break(0x1100, &state, Some(&line2;
+        assert_eq!(action, DebugAction::Break;
     }
 }

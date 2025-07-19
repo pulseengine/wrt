@@ -64,7 +64,7 @@ impl<P: MemoryProvider> MemoryPool<P> {
     /// Return a vector to the instruction pool
     #[cfg(feature = "std")]
     pub fn return_instruction_vector(&mut self, mut vec: std::vec::Vec<u8>) {
-        vec.clear();
+        vec.clear(;
         if vec.capacity() <= 1024 {
             // Don't pool overly large vectors
             self.instruction_pools.push(vec);
@@ -80,7 +80,7 @@ impl<P: MemoryProvider> MemoryPool<P> {
     /// Return a vector to the string pool
     #[cfg(feature = "std")]
     pub fn return_string_buffer(&mut self, mut vec: std::vec::Vec<u8>) {
-        vec.clear();
+        vec.clear(;
         if vec.capacity() <= 256 {
             // Don't pool overly large vectors
             self.string_pools.push(vec);
@@ -112,13 +112,13 @@ pub fn parse_string_inplace<'a>(
     let data = slice.data().map_err(|_| Error::parse_error("Failed to access slice data"))?;
 
     if offset >= data.len() {
-        return Err(Error::parse_error("Offset beyond slice boundary"));
+        return Err(Error::parse_error("Offset beyond slice boundary";
     }
 
     let (length, new_offset) = read_leb128_u32(data, offset)?;
 
     if new_offset + length as usize > data.len() {
-        return Err(Error::parse_error("String length exceeds available data"));
+        return Err(Error::parse_error("String length exceeds available data";
     }
 
     let string_bytes = &data[new_offset..new_offset + length as usize];
@@ -130,12 +130,12 @@ pub fn parse_string_inplace<'a>(
 
 /// Copy string to target buffer only when necessary
 pub fn copy_string_to_buffer(source: &str, buffer: &mut [u8]) -> Result<usize> {
-    let bytes = source.as_bytes();
+    let bytes = source.as_bytes(;
     if bytes.len() > buffer.len() {
-        return Err(Error::parse_error("Buffer too small for string"));
+        return Err(Error::parse_error("Buffer too small for string";
     }
 
-    buffer[..bytes.len()].copy_from_slice(bytes);
+    buffer[..bytes.len()].copy_from_slice(bytes;
     Ok(bytes.len())
 }
 
@@ -210,8 +210,8 @@ impl ModuleArena {
                 #[cfg(not(feature = "std"))]
                 {
                     let provider =
-                        crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
-                    let mut vec = crate::prelude::DecoderVec::new(provider).unwrap_or_default();
+                        crate::prelude::create_decoder_provider::<4096>().unwrap_or_default(;
+                    let mut vec = crate::prelude::DecoderVec::new(provider).unwrap_or_default(;
                     // Pre-allocate by pushing zeros up to capacity
                     for _ in 0..capacity.min(4096) {
                         let _ = vec.push(0);
@@ -231,7 +231,7 @@ impl ModuleArena {
 
         // Ensure buffer has enough actual length
         if self.buffer.len() < self.offset + size {
-            self.buffer.resize(self.offset + size, 0);
+            self.buffer.resize(self.offset + size, 0;
         }
 
         let slice = &mut self.buffer[self.offset..self.offset + size];
@@ -242,7 +242,7 @@ impl ModuleArena {
     /// Reset the arena for reuse
     pub fn reset(&mut self) {
         self.offset = 0;
-        self.buffer.clear();
+        self.buffer.clear(;
     }
 }
 

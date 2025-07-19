@@ -56,7 +56,7 @@
 //! // Load a value
 //! let load = MemoryLoad::i32(0, 4); // offset 0, 4-byte aligned
 //! let result = load.execute(&memory, &Value::I32(0)).unwrap();
-//! assert_eq!(result, Value::I32(42));
+//! assert_eq!(result, Value::I32(42;
 //! ```
 
 use crate::prelude::{Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType, BoundedCapacity};
@@ -291,7 +291,7 @@ impl MemoryLoad {
             _ => {
                 return Err(Error::type_error(
                     "Memory load expects I32 address, got unexpected value"
-                ));
+                ;
             }
         };
 
@@ -306,7 +306,7 @@ impl MemoryLoad {
         if self.align > 1 && effective_addr % self.align != 0 {
             return Err(Error::memory_error(
                 "Unaligned memory access"
-            ));
+            ;
         }
 
         // Perform the load based on the type and width
@@ -314,10 +314,10 @@ impl MemoryLoad {
             (ValueType::I32, 32) => {
                 let bytes = memory.read_bytes(effective_addr, 4)?;
                 if bytes.len() < 4 {
-                    return Err(Error::memory_error("Insufficient bytes read for i32 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for i32 value";
                 }
                 #[cfg(feature = "std")]
-                let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]];
                 #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 4];
@@ -331,13 +331,13 @@ impl MemoryLoad {
             (ValueType::I64, 64) => {
                 let bytes = memory.read_bytes(effective_addr, 8)?;
                 if bytes.len() < 8 {
-                    return Err(Error::memory_error("Insufficient bytes read for i64 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for i64 value";
                 }
                 #[cfg(feature = "std")]
                 let value = i64::from_le_bytes([
                     bytes[0], bytes[1], bytes[2], bytes[3],
                     bytes[4], bytes[5], bytes[6], bytes[7],
-                ]);
+                ];
                 #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 8];
@@ -351,10 +351,10 @@ impl MemoryLoad {
             (ValueType::F32, 32) => {
                 let bytes = memory.read_bytes(effective_addr, 4)?;
                 if bytes.len() < 4 {
-                    return Err(Error::memory_error("Insufficient bytes read for f32 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for f32 value";
                 }
                 #[cfg(feature = "std")]
-                let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]];
                 #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 4];
@@ -368,13 +368,13 @@ impl MemoryLoad {
             (ValueType::F64, 64) => {
                 let bytes = memory.read_bytes(effective_addr, 8)?;
                 if bytes.len() < 8 {
-                    return Err(Error::memory_error("Insufficient bytes read for f64 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for f64 value";
                 }
                 #[cfg(feature = "std")]
                 let value = f64::from_le_bytes([
                     bytes[0], bytes[1], bytes[2], bytes[3],
                     bytes[4], bytes[5], bytes[6], bytes[7],
-                ]);
+                ];
                 #[cfg(not(any(feature = "std", )))]
                 let value = {
                     let mut arr = [0u8; 8];
@@ -388,7 +388,7 @@ impl MemoryLoad {
             (ValueType::I32, 8) => {
                 let bytes = memory.read_bytes(effective_addr, 1)?;
                 if bytes.is_empty() {
-                    return Err(Error::memory_error("Insufficient bytes read for i8 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for i8 value";
                 }
                 #[cfg(feature = "std")]
                 let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
@@ -400,7 +400,7 @@ impl MemoryLoad {
             (ValueType::I64, 8) => {
                 let bytes = memory.read_bytes(effective_addr, 1)?;
                 if bytes.is_empty() {
-                    return Err(Error::memory_error("Insufficient bytes read for i8 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for i8 value";
                 }
                 #[cfg(feature = "std")]
                 let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
@@ -412,7 +412,7 @@ impl MemoryLoad {
             (ValueType::I32, 16) => {
                 let bytes = memory.read_bytes(effective_addr, 2)?;
                 if bytes.len() < 2 {
-                    return Err(Error::memory_error("Insufficient bytes read for i16 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for i16 value";
                 }
                 #[cfg(feature = "std")]
                 let value = if self.signed {
@@ -439,7 +439,7 @@ impl MemoryLoad {
             (ValueType::I64, 16) => {
                 let bytes = memory.read_bytes(effective_addr, 2)?;
                 if bytes.len() < 2 {
-                    return Err(Error::memory_error("Insufficient bytes read for i16 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for i16 value";
                 }
                 #[cfg(feature = "std")]
                 let value = if self.signed {
@@ -466,7 +466,7 @@ impl MemoryLoad {
             (ValueType::I64, 32) => {
                 let bytes = memory.read_bytes(effective_addr, 4)?;
                 if bytes.len() < 4 {
-                    return Err(Error::memory_error("Insufficient bytes read for i32 value"));
+                    return Err(Error::memory_error("Insufficient bytes read for i32 value";
                 }
                 #[cfg(feature = "std")]
                 let value = if self.signed {
@@ -649,7 +649,7 @@ impl MemoryStore {
             _ => {
                 return Err(Error::type_error(
                     "Memory store expects I32 address, got unexpected value"
-                ));
+                ;
             }
         };
 
@@ -664,25 +664,25 @@ impl MemoryStore {
         if self.align > 1 && effective_addr % self.align != 0 {
             return Err(Error::memory_error(
                 "Unaligned memory access"
-            ));
+            ;
         }
 
         // Perform the store based on the type and width
         match (self.value_type, self.width, value) {
             (ValueType::I32, 32, Value::I32(v)) => {
-                let bytes = v.to_le_bytes();
+                let bytes = v.to_le_bytes(;
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I64, 64, Value::I64(v)) => {
-                let bytes = v.to_le_bytes();
+                let bytes = v.to_le_bytes(;
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::F32, 32, Value::F32(v)) => {
-                let bytes = v.to_bits().to_le_bytes();
+                let bytes = v.to_bits().to_le_bytes(;
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::F64, 64, Value::F64(v)) => {
-                let bytes = v.to_bits().to_le_bytes();
+                let bytes = v.to_bits().to_le_bytes(;
                 memory.write_bytes(effective_addr, &bytes)
             }
 
@@ -695,15 +695,15 @@ impl MemoryStore {
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I32, 16, Value::I32(v)) => {
-                let bytes = (*v as u16).to_le_bytes();
+                let bytes = (*v as u16).to_le_bytes(;
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I64, 16, Value::I64(v)) => {
-                let bytes = (*v as u16).to_le_bytes();
+                let bytes = (*v as u16).to_le_bytes(;
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::I64, 32, Value::I64(v)) => {
-                let bytes = (*v as u32).to_le_bytes();
+                let bytes = (*v as u32).to_le_bytes(;
                 memory.write_bytes(effective_addr, &bytes)
             }
             _ => Err(Error::type_error(
@@ -807,7 +807,7 @@ impl MemoryFill {
         // Check bounds
         let memory_size = memory.size_in_bytes()? as u32;
         if end_addr > memory_size {
-            return Err(Error::memory_error("memory.fill out of bounds"));
+            return Err(Error::memory_error("memory.fill out of bounds";
         }
 
         // Perform fill operation
@@ -868,7 +868,7 @@ impl MemoryCopy {
         // Check bounds
         let memory_size = memory.size_in_bytes()? as u32;
         if dest_end > memory_size || src_end > memory_size {
-            return Err(Error::memory_error("memory.copy out of bounds"));
+            return Err(Error::memory_error("memory.copy out of bounds";
         }
 
         // Perform copy operation (handles overlapping regions correctly)
@@ -930,7 +930,7 @@ impl MemoryInit {
         })?;
 
         if src_end > data_len {
-            return Err(Error::memory_error("memory.init src out of bounds"));
+            return Err(Error::memory_error("memory.init src out of bounds";
         }
 
         // Check bounds in memory
@@ -940,7 +940,7 @@ impl MemoryInit {
 
         let memory_size = memory.size_in_bytes()? as u32;
         if dest_end > memory_size {
-            return Err(Error::memory_error("memory.init dest out of bounds"));
+            return Err(Error::memory_error("memory.init dest out of bounds";
         }
 
         // Copy data from segment to memory
@@ -1066,7 +1066,7 @@ impl MemoryGrow {
 
         // Negative delta is not allowed
         if delta_pages < 0 {
-            return Ok(Value::I32(-1));
+            return Ok(Value::I32(-1;
         }
 
         // Get current size in pages
@@ -1077,7 +1077,7 @@ impl MemoryGrow {
         let delta_bytes = (delta_pages as usize) * 65_536;
         
         // Check if growth would exceed limits
-        let _new_size_bytes = current_size_bytes.saturating_add(delta_bytes);
+        let _new_size_bytes = current_size_bytes.saturating_add(delta_bytes;
         
         // Attempt to grow - this will fail if it exceeds max size
         match memory.grow(delta_bytes) {
@@ -1232,7 +1232,7 @@ mod tests {
     impl MockMemory {
         #[cfg(feature = "std")]
         fn new(size: usize) -> Self {
-            let mut data = Vec::with_capacity(size);
+            let mut data = Vec::with_capacity(size;
             for _ in 0..size { data.push(0); }
             Self { data }
         }
@@ -1259,7 +1259,7 @@ mod tests {
             let end = start + len as usize;
 
             if end > self.data.len() {
-                return Err(Error::memory_error("Memory access out of bounds"));
+                return Err(Error::memory_error("Memory access out of bounds";
             }
 
             Ok(self.data[start..end].to_vec())
@@ -1271,7 +1271,7 @@ mod tests {
             let end = start + len as usize;
 
             if end > self.data.len() {
-                return Err(Error::memory_error("Memory access out of bounds"));
+                return Err(Error::memory_error("Memory access out of bounds";
             }
 
             let provider = safe_managed_alloc!(65536, CrateId::Instructions)?;
@@ -1286,23 +1286,23 @@ mod tests {
         #[cfg(feature = "std")]
         fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
             let start = offset as usize;
-            let end = start + bytes.len();
+            let end = start + bytes.len(;
 
             if end > self.data.len() {
-                return Err(Error::memory_error("Memory access out of bounds"));
+                return Err(Error::memory_error("Memory access out of bounds";
             }
 
-            self.data[start..end].copy_from_slice(bytes);
+            self.data[start..end].copy_from_slice(bytes;
             Ok(())
         }
 
         #[cfg(not(feature = "std"))]
         fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
             let start = offset as usize;
-            let end = start + bytes.len();
+            let end = start + bytes.len(;
 
             if end > self.data.len() {
-                return Err(Error::memory_error("Memory access out of bounds"));
+                return Err(Error::memory_error("Memory access out of bounds";
             }
 
             for (i, &byte) in bytes.iter().enumerate() {
@@ -1325,18 +1325,18 @@ mod tests {
         #[cfg(feature = "std")]
         fn grow(&mut self, bytes: usize) -> Result<()> {
             let new_size = self.data.len() + bytes;
-            self.data.resize(new_size, 0);
+            self.data.resize(new_size, 0;
             Ok(())
         }
 
         #[cfg(not(feature = "std"))]
         fn grow(&mut self, bytes: usize) -> Result<()> {
-            let current_len = self.data.len();
+            let current_len = self.data.len(;
             let new_size = current_len + bytes;
             
             // Check if we can fit the new size in our bounded capacity
             if new_size > 65536 {
-                return Err(Error::memory_error("Cannot grow beyond bounded capacity"));
+                return Err(Error::memory_error("Cannot grow beyond bounded capacity";
             }
             
             for _ in current_len..new_size {
@@ -1351,7 +1351,7 @@ mod tests {
             let end = start + size as usize;
 
             if end > self.data.len() {
-                return Err(Error::memory_error("Memory fill out of bounds"));
+                return Err(Error::memory_error("Memory fill out of bounds";
             }
 
             for i in start..end {
@@ -1366,7 +1366,7 @@ mod tests {
             let end = start + size as usize;
 
             if end > self.data.len() {
-                return Err(Error::memory_error("Memory fill out of bounds"));
+                return Err(Error::memory_error("Memory fill out of bounds";
             }
 
             for i in start..end {
@@ -1383,13 +1383,13 @@ mod tests {
             let src_end = src_start + size as usize;
 
             if dest_end > self.data.len() || src_end > self.data.len() {
-                return Err(Error::memory_error("Memory copy out of bounds"));
+                return Err(Error::memory_error("Memory copy out of bounds";
             }
 
             // Handle overlapping regions correctly by copying to a temporary buffer
             if size > 0 {
-                let temp: Vec<u8> = self.data[src_start..src_end].to_vec();
-                self.data[dest_start..dest_end].copy_from_slice(&temp);
+                let temp: Vec<u8> = self.data[src_start..src_end].to_vec(;
+                self.data[dest_start..dest_end].copy_from_slice(&temp;
             }
             Ok(())
         }
@@ -1402,17 +1402,17 @@ mod tests {
             let src_end = src_start + size as usize;
 
             if dest_end > self.data.len() || src_end > self.data.len() {
-                return Err(Error::memory_error("Memory copy out of bounds"));
+                return Err(Error::memory_error("Memory copy out of bounds";
             }
 
             // Handle overlapping regions correctly by copying byte by byte
             if size > 0 {
                 // Create a temporary buffer on the stack
                 let mut temp_buffer = [0u8; 256]; // Limited buffer for no_std
-                let copy_size = core::cmp::min(size as usize, 256);
+                let copy_size = core::cmp::min(size as usize, 256;
                 
                 for chunk_start in (0..size as usize).step_by(256) {
-                    let chunk_end = core::cmp::min(chunk_start + 256, size as usize);
+                    let chunk_end = core::cmp::min(chunk_start + 256, size as usize;
                     let chunk_size = chunk_end - chunk_start;
                     
                     // Copy source to temp buffer
@@ -1445,49 +1445,49 @@ mod tests {
         memory.write_bytes(25, &[0xFF, 0xFF]).unwrap(); // i16 = -1 (signed)
 
         // Test i32.load
-        let load = MemoryLoad::i32(0, 4);
+        let load = MemoryLoad::i32(0, 4;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(42));
+        assert_eq!(result, Value::I32(42;
 
         // Test i64.load
-        let load = MemoryLoad::i64(4, 8);
+        let load = MemoryLoad::i64(4, 8;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I64(256));
+        assert_eq!(result, Value::I64(256;
 
         // Test f32.load
-        let load = MemoryLoad::f32(12, 4);
+        let load = MemoryLoad::f32(12, 4;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::F32(3.0));
+        assert_eq!(result, Value::F32(3.0;
 
         // Test f64.load
-        let load = MemoryLoad::f64(16, 8);
+        let load = MemoryLoad::f64(16, 8;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::F64(3.0));
+        assert_eq!(result, Value::F64(3.0;
 
         // Test i32.load8_s
-        let load = MemoryLoad::i32_load8(24, 1, true);
+        let load = MemoryLoad::i32_load8(24, 1, true;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(-1));
+        assert_eq!(result, Value::I32(-1;
 
         // Test i32.load8_u
-        let load = MemoryLoad::i32_load8(24, 1, false);
+        let load = MemoryLoad::i32_load8(24, 1, false;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(255));
+        assert_eq!(result, Value::I32(255;
 
         // Test i32.load16_s
-        let load = MemoryLoad::i32_load16(25, 2, true);
+        let load = MemoryLoad::i32_load16(25, 2, true;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(-1));
+        assert_eq!(result, Value::I32(-1;
 
         // Test i32.load16_u
-        let load = MemoryLoad::i32_load16(25, 2, false);
+        let load = MemoryLoad::i32_load16(25, 2, false;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(65_535));
+        assert_eq!(result, Value::I32(65_535;
 
         // Test effective address calculation with offset
-        let load = MemoryLoad::i32(4, 4);
+        let load = MemoryLoad::i32(4, 4;
         let result = load.execute(&memory, &Value::I32(4)).unwrap();
-        assert_eq!(result, Value::I32(256));
+        assert_eq!(result, Value::I32(256;
     }
 
     #[test]
@@ -1495,60 +1495,60 @@ mod tests {
         let mut memory = MockMemory::new(65_536).unwrap();
 
         // Test i32.store
-        let store = MemoryStore::i32(0, 4);
+        let store = MemoryStore::i32(0, 4;
         store.execute(&mut memory, &Value::I32(0), &Value::I32(42)).unwrap();
 
-        let load = MemoryLoad::i32(0, 4);
+        let load = MemoryLoad::i32(0, 4;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(42));
+        assert_eq!(result, Value::I32(42;
 
         // Test i64.store
-        let store = MemoryStore::i64(8, 8);
+        let store = MemoryStore::i64(8, 8;
         store.execute(&mut memory, &Value::I32(0), &Value::I64(0x0102030405060708)).unwrap();
 
-        let load = MemoryLoad::i64(8, 8);
+        let load = MemoryLoad::i64(8, 8;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I64(0x0102030405060708));
+        assert_eq!(result, Value::I64(0x0102030405060708;
 
         // Test f32.store
-        let store = MemoryStore::f32(16, 4);
+        let store = MemoryStore::f32(16, 4;
         store.execute(&mut memory, &Value::I32(0), &Value::F32(3.14159)).unwrap();
 
-        let load = MemoryLoad::f32(16, 4);
+        let load = MemoryLoad::f32(16, 4;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::F32(3.14159));
+        assert_eq!(result, Value::F32(3.14159;
 
         // Test f64.store
-        let store = MemoryStore::f64(24, 8);
+        let store = MemoryStore::f64(24, 8;
         store.execute(&mut memory, &Value::I32(0), &Value::F64(2.71828)).unwrap();
 
-        let load = MemoryLoad::f64(24, 8);
+        let load = MemoryLoad::f64(24, 8;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::F64(2.71828));
+        assert_eq!(result, Value::F64(2.71828;
 
         // Test i32.store8
-        let store = MemoryStore::i32_store8(32, 1);
+        let store = MemoryStore::i32_store8(32, 1;
         store.execute(&mut memory, &Value::I32(0), &Value::I32(0xFF)).unwrap();
 
-        let load = MemoryLoad::i32_load8(32, 1, false);
+        let load = MemoryLoad::i32_load8(32, 1, false;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(0xFF));
+        assert_eq!(result, Value::I32(0xFF;
 
         // Test i32.store16
-        let store = MemoryStore::i32_store16(33, 1);
+        let store = MemoryStore::i32_store16(33, 1;
         store.execute(&mut memory, &Value::I32(0), &Value::I32(0xABCD)).unwrap();
 
-        let load = MemoryLoad::i32_load16(33, 1, false);
+        let load = MemoryLoad::i32_load16(33, 1, false;
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(0xABCD));
+        assert_eq!(result, Value::I32(0xABCD;
 
         // Test effective address calculation with offset
-        let store = MemoryStore::i32(4, 4);
+        let store = MemoryStore::i32(4, 4;
         store.execute(&mut memory, &Value::I32(4), &Value::I32(0xDEADBEEF)).unwrap();
 
-        let load = MemoryLoad::i32(4, 4);
+        let load = MemoryLoad::i32(4, 4;
         let result = load.execute(&memory, &Value::I32(4)).unwrap();
-        assert_eq!(result, Value::I32(0xDEADBEEF));
+        assert_eq!(result, Value::I32(0xDEADBEEF;
     }
 
     #[test]
@@ -1556,19 +1556,19 @@ mod tests {
         let mut memory = MockMemory::new(100).unwrap();
 
         // Out of bounds access
-        let load = MemoryLoad::i32(100, 4);
-        let result = load.execute(&memory, &Value::I32(0));
-        assert!(result.is_err());
+        let load = MemoryLoad::i32(100, 4;
+        let result = load.execute(&memory, &Value::I32(0;
+        assert!(result.is_err();
 
         // Offset + address out of bounds
-        let load = MemoryLoad::i32(50, 4);
-        let result = load.execute(&memory, &Value::I32(60));
-        assert!(result.is_err());
+        let load = MemoryLoad::i32(50, 4;
+        let result = load.execute(&memory, &Value::I32(60;
+        assert!(result.is_err();
 
         // Store out of bounds
-        let store = MemoryStore::i32(100, 4);
-        let result = store.execute(&mut memory, &Value::I32(0), &Value::I32(42));
-        assert!(result.is_err());
+        let store = MemoryStore::i32(100, 4;
+        let result = store.execute(&mut memory, &Value::I32(0), &Value::I32(42;
+        assert!(result.is_err();
     }
 
     /// Mock data segment operations for testing
@@ -1583,27 +1583,27 @@ mod tests {
         fn new() -> Self {
             #[cfg(feature = "std")]
             {
-                let mut segments = Vec::new();
-                let mut seg1 = Vec::new();
+                let mut segments = Vec::new(;
+                let mut seg1 = Vec::new(;
                 for val in [1, 2, 3, 4, 5] { seg1.push(val); }
-                let mut seg2 = Vec::new();
+                let mut seg2 = Vec::new(;
                 for val in [0xAA, 0xBB, 0xCC, 0xDD] { seg2.push(val); }
-                segments.push(Some(seg1));
-                segments.push(Some(seg2));
+                segments.push(Some(seg1);
+                segments.push(Some(seg2);
                 segments.push(None); // Dropped segment
                 Self { segments }
             }
             #[cfg(not(any(feature = "std", )))]
             {
-                let mut segments = wrt_foundation::BoundedVec::new();
+                let mut segments = wrt_foundation::BoundedVec::new(;
                 
-                let mut seg1 = wrt_foundation::BoundedVec::new();
+                let mut seg1 = wrt_foundation::BoundedVec::new(;
                 for &b in &[1, 2, 3, 4, 5] {
                     seg1.push(b).unwrap();
                 }
                 segments.push(Some(seg1)).unwrap();
                 
-                let mut seg2 = wrt_foundation::BoundedVec::new();
+                let mut seg2 = wrt_foundation::BoundedVec::new(;
                 for &b in &[0xAA, 0xBB, 0xCC, 0xDD] {
                     seg2.push(b).unwrap();
                 }
@@ -1637,9 +1637,9 @@ mod tests {
 
         fn drop_data_segment(&mut self, data_index: u32) -> Result<()> {
             #[cfg(feature = "std")]
-            let segments_len = self.segments.len();
+            let segments_len = self.segments.len(;
             #[cfg(not(feature = "std"))]
-            let segments_len = self.segments.len();
+            let segments_len = self.segments.len(;
 
             if (data_index as usize) < segments_len {
                 #[cfg(feature = "std")]
@@ -1660,7 +1660,7 @@ mod tests {
     #[test]
     fn test_memory_fill() {
         let mut memory = MockMemory::new(1024).unwrap();
-        let fill_op = MemoryFill::new(0);
+        let fill_op = MemoryFill::new(0;
 
         // Fill 10 bytes with value 0x42 starting at offset 100
         fill_op
@@ -1669,12 +1669,12 @@ mod tests {
 
         // Verify the fill worked
         let data = memory.read_bytes(100, 10).unwrap();
-        assert_eq!(data.len(), 10);
+        assert_eq!(data.len(), 10;
         #[cfg(feature = "std")]
-        assert!(data.iter().all(|&b| b == 0x42));
+        assert!(data.iter().all(|&b| b == 0x42);
         #[cfg(not(feature = "std"))]
         for i in 0..10 {
-            assert_eq!(data.get(i).unwrap(), 0x42);
+            assert_eq!(data.get(i).unwrap(), 0x42;
         }
     }
 
@@ -1685,7 +1685,7 @@ mod tests {
         // Set up source data
         memory.write_bytes(0, &[1, 2, 3, 4, 5]).unwrap();
         
-        let copy_op = MemoryCopy::new(0, 0);
+        let copy_op = MemoryCopy::new(0, 0;
 
         // Copy 5 bytes from offset 0 to offset 100
         copy_op
@@ -1697,13 +1697,13 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let expected = [1, 2, 3, 4, 5];
-            assert_eq!(data, expected);
+            assert_eq!(data, expected;
         }
         #[cfg(not(feature = "std"))]
         {
-            assert_eq!(data.len(), 5);
+            assert_eq!(data.len(), 5;
             for i in 0..5 {
-                assert_eq!(data.get(i).unwrap(), (i + 1) as u8);
+                assert_eq!(data.get(i).unwrap(), (i + 1) as u8;
             }
         }
     }
@@ -1715,7 +1715,7 @@ mod tests {
         // Set up source data
         memory.write_bytes(0, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
         
-        let copy_op = MemoryCopy::new(0, 0);
+        let copy_op = MemoryCopy::new(0, 0;
 
         // Copy overlapping: copy 5 bytes from offset 0 to offset 2
         copy_op
@@ -1727,13 +1727,13 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let expected = [1, 2, 1, 2, 3, 4, 5, 8];
-            assert_eq!(data, expected);
+            assert_eq!(data, expected;
         }
         #[cfg(not(feature = "std"))]
         {
             let expected = [1, 2, 1, 2, 3, 4, 5, 8];
             for i in 0..8 {
-                assert_eq!(data.get(i).unwrap(), expected[i]);
+                assert_eq!(data.get(i).unwrap(), expected[i];
             }
         }
     }
@@ -1741,8 +1741,8 @@ mod tests {
     #[test]
     fn test_memory_init() {
         let mut memory = MockMemory::new(1024).unwrap();
-        let data_segments = MockDataSegments::new();
-        let init_op = MemoryInit::new(0, 0);
+        let data_segments = MockDataSegments::new(;
+        let init_op = MemoryInit::new(0, 0;
 
         // Copy 3 bytes from data segment 0 (starting at offset 1) to memory at offset 100
         init_op
@@ -1760,41 +1760,41 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let expected = [2, 3, 4];
-            assert_eq!(data, expected);
+            assert_eq!(data, expected;
         }
         #[cfg(not(feature = "std"))]
         {
-            assert_eq!(data.len(), 3);
+            assert_eq!(data.len(), 3;
             for i in 0..3 {
-                assert_eq!(data.get(i).unwrap(), (i + 2) as u8);
+                assert_eq!(data.get(i).unwrap(), (i + 2) as u8;
             }
         }
     }
 
     #[test]
     fn test_data_drop() {
-        let mut data_segments = MockDataSegments::new();
-        let drop_op = DataDrop::new(0);
+        let mut data_segments = MockDataSegments::new(;
+        let drop_op = DataDrop::new(0;
 
         // Verify segment 0 exists initially
-        assert!(data_segments.get_data_segment(0).unwrap().is_some());
+        assert!(data_segments.get_data_segment(0).unwrap().is_some();
 
         // Drop segment 0
         drop_op.execute(&mut data_segments).unwrap();
 
         // Verify segment 0 is now dropped
-        assert!(data_segments.get_data_segment(0).unwrap().is_none());
+        assert!(data_segments.get_data_segment(0).unwrap().is_none();
     }
 
     #[test]
     fn test_memory_init_dropped_segment() {
         let mut memory = MockMemory::new(1024).unwrap();
-        let mut data_segments = MockDataSegments::new();
+        let mut data_segments = MockDataSegments::new(;
         
         // Drop segment 0 first
         data_segments.drop_data_segment(0).unwrap();
         
-        let init_op = MemoryInit::new(0, 0);
+        let init_op = MemoryInit::new(0, 0;
 
         // Try to init from dropped segment - should fail
         let result = init_op.execute(
@@ -1803,8 +1803,8 @@ mod tests {
             &Value::I32(100),
             &Value::I32(0),
             &Value::I32(3),
-        );
-        assert!(result.is_err());
+        ;
+        assert!(result.is_err();
     }
 
     #[test]
@@ -1812,24 +1812,24 @@ mod tests {
         let mut memory = MockMemory::new(100).unwrap();
         
         // Test memory.fill out of bounds
-        let fill_op = MemoryFill::new(0);
-        let result = fill_op.execute(&mut memory, &Value::I32(95), &Value::I32(0x42), &Value::I32(10));
-        assert!(result.is_err());
+        let fill_op = MemoryFill::new(0;
+        let result = fill_op.execute(&mut memory, &Value::I32(95), &Value::I32(0x42), &Value::I32(10;
+        assert!(result.is_err();
 
         // Test memory.copy out of bounds
-        let copy_op = MemoryCopy::new(0, 0);
-        let result = copy_op.execute(&mut memory, &Value::I32(95), &Value::I32(0), &Value::I32(10));
-        assert!(result.is_err());
+        let copy_op = MemoryCopy::new(0, 0;
+        let result = copy_op.execute(&mut memory, &Value::I32(95), &Value::I32(0), &Value::I32(10;
+        assert!(result.is_err();
     }
 
     #[test]
     fn test_memory_size() {
         // Create memory with 2 pages (128 KiB)
         let memory = MockMemory::new(2 * 65_536).unwrap();
-        let size_op = MemorySize::new(0);
+        let size_op = MemorySize::new(0;
         
         let result = size_op.execute(&memory).unwrap();
-        assert_eq!(result, Value::I32(2));
+        assert_eq!(result, Value::I32(2;
         
         // Test with partial page
         let memory = MockMemory::new(65_536 + 100).unwrap(); // 1 page + 100 bytes
@@ -1841,14 +1841,14 @@ mod tests {
     fn test_memory_grow() {
         // Create memory with 1 page (64 KiB)
         let mut memory = MockMemory::new(65_536).unwrap();
-        let grow_op = MemoryGrow::new(0);
+        let grow_op = MemoryGrow::new(0;
         
         // Grow by 2 pages
         let result = grow_op.execute(&mut memory, &Value::I32(2)).unwrap();
         assert_eq!(result, Value::I32(1)); // Previous size was 1 page
         
         // Check new size
-        assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65_536);
+        assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65_536;
         
         // Test grow with 0 pages (should succeed)
         let result = grow_op.execute(&mut memory, &Value::I32(0)).unwrap();
@@ -1904,7 +1904,7 @@ mod tests {
             src: i32,
             size: i32,
         ) -> Result<()> {
-            let init_op = MemoryInit::new(memory_index, data_index);
+            let init_op = MemoryInit::new(memory_index, data_index;
             init_op.execute(
                 &mut self.memory,
                 &self.data_segments,
@@ -1920,11 +1920,11 @@ mod tests {
         let mut ctx = MockMemoryContext::new(2 * 65_536); // 2 pages
         
         // Execute memory.size
-        let op = MemoryOp::Size(MemorySize::new(0));
+        let op = MemoryOp::Size(MemorySize::new(0;
         op.execute(&mut ctx).unwrap();
         
         // Should push 2 (pages) onto stack
-        assert_eq!(ctx.pop_value().unwrap(), Value::I32(2));
+        assert_eq!(ctx.pop_value().unwrap(), Value::I32(2;
     }
 
     #[test]
@@ -1935,19 +1935,19 @@ mod tests {
         ctx.push_value(Value::I32(2)).unwrap();
         
         // Execute memory.grow
-        let op = MemoryOp::Grow(MemoryGrow::new(0));
+        let op = MemoryOp::Grow(MemoryGrow::new(0;
         op.execute(&mut ctx).unwrap();
         
         // Should push previous size (1 page) onto stack
-        assert_eq!(ctx.pop_value().unwrap(), Value::I32(1));
+        assert_eq!(ctx.pop_value().unwrap(), Value::I32(1;
         
         // Verify memory actually grew
-        assert_eq!(ctx.memory.size_in_bytes().unwrap(), 3 * 65_536);
+        assert_eq!(ctx.memory.size_in_bytes().unwrap(), 3 * 65_536;
     }
 
     #[test]
     fn test_unified_memory_fill() {
-        let mut ctx = MockMemoryContext::new(1024);
+        let mut ctx = MockMemoryContext::new(1024;
         
         // Push arguments: dest=100, value=0x42, size=10
         ctx.push_value(Value::I32(100)).unwrap(); // dest
@@ -1955,22 +1955,22 @@ mod tests {
         ctx.push_value(Value::I32(10)).unwrap(); // size
         
         // Execute memory.fill
-        let op = MemoryOp::Fill(MemoryFill::new(0));
+        let op = MemoryOp::Fill(MemoryFill::new(0;
         op.execute(&mut ctx).unwrap();
         
         // Verify memory was filled
         let data = ctx.memory.read_bytes(100, 10).unwrap();
         #[cfg(feature = "std")]
-        assert!(data.iter().all(|&b| b == 0x42));
+        assert!(data.iter().all(|&b| b == 0x42);
         #[cfg(not(feature = "std"))]
         for i in 0..10 {
-            assert_eq!(*data.get(i).unwrap(), 0x42);
+            assert_eq!(*data.get(i).unwrap(), 0x42;
         }
     }
 
     #[test]
     fn test_unified_memory_copy() {
-        let mut ctx = MockMemoryContext::new(1024);
+        let mut ctx = MockMemoryContext::new(1024;
         
         // Initialize source data
         ctx.memory.write_bytes(200, &[1, 2, 3, 4, 5]).unwrap();
@@ -1981,16 +1981,16 @@ mod tests {
         ctx.push_value(Value::I32(5)).unwrap(); // size
         
         // Execute memory.copy
-        let op = MemoryOp::Copy(MemoryCopy::new(0, 0));
+        let op = MemoryOp::Copy(MemoryCopy::new(0, 0;
         op.execute(&mut ctx).unwrap();
         
         // Verify memory was copied
         let data = ctx.memory.read_bytes(100, 5).unwrap();
         #[cfg(feature = "std")]
-        assert_eq!(data, vec![1, 2, 3, 4, 5]);
+        assert_eq!(data, vec![1, 2, 3, 4, 5];
         #[cfg(not(feature = "std"))]
         for i in 0..5 {
-            assert_eq!(*data.get(i).unwrap(), (i + 1) as u8);
+            assert_eq!(*data.get(i).unwrap(), (i + 1) as u8;
         }
     }
 }

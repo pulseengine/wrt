@@ -65,13 +65,13 @@ impl<'a> LocationDisplay<'a> {
         writer(":")?;
         // Binary std/no_std choice
         let mut buf = [0u8; 10];
-        let s = format_u32(self.line_info.line, &mut buf);
+        let s = format_u32(self.line_info.line, &mut buf;
         writer(s)?;
 
         // Add column if present
         if self.line_info.column > 0 {
             writer(":")?;
-            let s = format_u32(self.line_info.column as u32, &mut buf);
+            let s = format_u32(self.line_info.column as u32, &mut buf;
             writer(s)?;
         }
 
@@ -85,7 +85,7 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
         return "0";
     }
 
-    let mut i = buf.len();
+    let mut i = buf.len(;
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
@@ -190,18 +190,18 @@ impl LineNumberState {
         // Read unit length (32-bit for now, skip 64-bit DWARF)
         let unit_length = cursor.read_u32()?;
         if unit_length == 0xffffffff {
-            return Err(Error::parse_error("64-bit DWARF not supported"));
+            return Err(Error::parse_error("64-bit DWARF not supported";
         }
 
         // Read version
         let version = cursor.read_u16()?;
         if version < 2 || version > 5 {
-            return Err(Error::parse_error("Unsupported DWARF line version"));
+            return Err(Error::parse_error("Unsupported DWARF line version";
         }
 
         // Read header length
         let header_length = cursor.read_u32()?;
-        let header_start = cursor.position();
+        let header_start = cursor.position(;
 
         // Read header fields
         self.minimum_instruction_length = cursor.read_u8()?;
@@ -301,7 +301,7 @@ impl LineNumberState {
                         .standard_opcode_lengths
                         .get((opcode - 1) as usize)
                         .copied()
-                        .unwrap_or(0);
+                        .unwrap_or(0;
                     for _ in 0..arg_count {
                         cursor.read_uleb128()?;
                     }
@@ -318,13 +318,13 @@ impl LineNumberState {
         debug_line_data: &[u8],
         target_pc: u32,
     ) -> Result<Option<LineInfo>> {
-        let mut cursor = DwarfCursor::new(debug_line_data);
+        let mut cursor = DwarfCursor::new(debug_line_data;
 
         // Parse header
         self.parse_header(&mut cursor)?;
 
         // Reset state machine
-        self.reset();
+        self.reset(;
 
         let mut last_line_info = None;
 
@@ -379,14 +379,14 @@ impl LineNumberState {
                     column:       self.column,
                     is_stmt:      self.is_stmt,
                     end_sequence: self.end_sequence,
-                });
+                };
             } else if self.address > target_pc {
                 // We've passed the target
                 break;
             }
 
             if self.end_sequence {
-                self.reset();
+                self.reset(;
             }
         }
 

@@ -86,7 +86,7 @@ impl Default for CfiControlFlowProtection {
 impl CfiControlFlowProtection {
     /// Create CFI protection with specific level
     pub fn new_with_level(level: CfiProtectionLevel) -> Self {
-        let mut config = Self::default();
+        let mut config = Self::default(;
         config.protection_level = level;
         
         // Adjust software config based on protection level
@@ -271,7 +271,7 @@ impl wrt_foundation::traits::Checksummable for CfiTargetType {
             Self::BlockEntry => 4u8,
             Self::FunctionEntry => 5u8,
         };
-        checksum.update_slice(&[discriminant]);
+        checksum.update_slice(&[discriminant];
     }
 }
 
@@ -415,16 +415,16 @@ impl wrt_foundation::traits::Checksummable for CfiExpectedValue {
         match self {
             Self::None => checksum.update_slice(&[0u8]),
             Self::FunctionSignatureHash(hash) => {
-                checksum.update_slice(&[1u8]);
-                checksum.update_slice(&hash.to_le_bytes());
+                checksum.update_slice(&[1u8];
+                checksum.update_slice(&hash.to_le_bytes(;
             }
             Self::ReturnAddress(addr) => {
-                checksum.update_slice(&[2u8]);
-                checksum.update_slice(&addr.to_le_bytes());
+                checksum.update_slice(&[2u8];
+                checksum.update_slice(&addr.to_le_bytes(;
             }
             Self::CallSiteId(id) => {
-                checksum.update_slice(&[3u8]);
-                checksum.update_slice(&id.to_le_bytes());
+                checksum.update_slice(&[3u8];
+                checksum.update_slice(&id.to_le_bytes(;
             }
         }
     }
@@ -465,19 +465,19 @@ impl wrt_foundation::traits::FromBytes for CfiExpectedValue {
             1 => {
                 let mut hash_bytes = [0u8; 8];
                 reader.read_exact(&mut hash_bytes)?;
-                let hash = u64::from_le_bytes(hash_bytes);
+                let hash = u64::from_le_bytes(hash_bytes;
                 Ok(Self::FunctionSignatureHash(hash))
             }
             2 => {
                 let mut addr_bytes = [0u8; 8];
                 reader.read_exact(&mut addr_bytes)?;
-                let addr = u64::from_le_bytes(addr_bytes);
+                let addr = u64::from_le_bytes(addr_bytes;
                 Ok(Self::ReturnAddress(addr))
             }
             3 => {
                 let mut id_bytes = [0u8; 4];
                 reader.read_exact(&mut id_bytes)?;
-                let id = u32::from_le_bytes(id_bytes);
+                let id = u32::from_le_bytes(id_bytes;
                 Ok(Self::CallSiteId(id))
             }
             _ => Err(Error::validation_error("Invalid discriminant for CfiExpectedValue")),
@@ -541,21 +541,21 @@ impl wrt_foundation::traits::Checksummable for CfiValidationRequirement {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             Self::TypeSignatureCheck { expected_type_index, signature_hash } => {
-                checksum.update_slice(&[0u8]);
-                checksum.update_slice(&expected_type_index.to_le_bytes());
-                checksum.update_slice(&signature_hash.to_le_bytes());
+                checksum.update_slice(&[0u8];
+                checksum.update_slice(&expected_type_index.to_le_bytes(;
+                checksum.update_slice(&signature_hash.to_le_bytes(;
             }
             Self::ShadowStackCheck => checksum.update_slice(&[1u8]),
             Self::ControlFlowTargetCheck { valid_targets } => {
-                checksum.update_slice(&[2u8]);
+                checksum.update_slice(&[2u8];
                 for target in valid_targets.iter() {
-                    checksum.update_slice(&target.to_le_bytes());
+                    checksum.update_slice(&target.to_le_bytes(;
                 }
             }
             Self::CallingConventionCheck => checksum.update_slice(&[3u8]),
             Self::TemporalCheck { max_duration } => {
-                checksum.update_slice(&[4u8]);
-                checksum.update_slice(&max_duration.to_le_bytes());
+                checksum.update_slice(&[4u8];
+                checksum.update_slice(&max_duration.to_le_bytes(;
             }
         }
     }
@@ -613,11 +613,11 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
             0 => {
                 let mut index_bytes = [0u8; 4];
                 reader.read_exact(&mut index_bytes)?;
-                let expected_type_index = u32::from_le_bytes(index_bytes);
+                let expected_type_index = u32::from_le_bytes(index_bytes;
                 
                 let mut hash_bytes = [0u8; 8];
                 reader.read_exact(&mut hash_bytes)?;
-                let signature_hash = u64::from_le_bytes(hash_bytes);
+                let signature_hash = u64::from_le_bytes(hash_bytes;
                 
                 Ok(Self::TypeSignatureCheck { expected_type_index, signature_hash })
             }
@@ -626,7 +626,7 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
                 // Deserialize CfiTargetVec manually  
                 let len = reader.read_u32_le()? as usize;
                 #[cfg(feature = "std")]
-                let mut valid_targets = Vec::with_capacity(len);
+                let mut valid_targets = Vec::with_capacity(len;
                 #[cfg(not(feature = "std"))]
                 let mut valid_targets = {
                     let provider = safe_managed_alloc!(8192, CrateId::Instructions)?;
@@ -635,7 +635,7 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
                 
                 for _ in 0..len {
                     #[cfg(feature = "std")]
-                    valid_targets.push(reader.read_u32_le()?);
+                    valid_targets.push(reader.read_u32_le()?;
                     #[cfg(not(feature = "std"))]
                     valid_targets.push(reader.read_u32_le()?)
                         .map_err(|_| wrt_error::Error::validation_error("Failed to push to bounded vec"))?;
@@ -646,7 +646,7 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
             4 => {
                 let mut duration_bytes = [0u8; 8];
                 reader.read_exact(&mut duration_bytes)?;
-                let max_duration = u64::from_le_bytes(duration_bytes);
+                let max_duration = u64::from_le_bytes(duration_bytes;
                 Ok(Self::TemporalCheck { max_duration })
             }
             _ => Err(Error::validation_error("Invalid discriminant for CfiValidationRequirement")),
@@ -885,11 +885,11 @@ pub struct ShadowStackEntry {
 
 impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.return_address.0.to_le_bytes());
-        checksum.update_slice(&self.return_address.1.to_le_bytes());
-        checksum.update_slice(&self.signature_hash.to_le_bytes());
-        checksum.update_slice(&self.timestamp.to_le_bytes());
-        checksum.update_slice(&self.call_site_id.to_le_bytes());
+        checksum.update_slice(&self.return_address.0.to_le_bytes(;
+        checksum.update_slice(&self.return_address.1.to_le_bytes(;
+        checksum.update_slice(&self.signature_hash.to_le_bytes(;
+        checksum.update_slice(&self.timestamp.to_le_bytes(;
+        checksum.update_slice(&self.call_site_id.to_le_bytes(;
     }
 }
 
@@ -914,23 +914,23 @@ impl wrt_foundation::traits::FromBytes for ShadowStackEntry {
     ) -> wrt_foundation::Result<Self> {
         let mut func_bytes = [0u8; 4];
         reader.read_exact(&mut func_bytes)?;
-        let func_idx = u32::from_le_bytes(func_bytes);
+        let func_idx = u32::from_le_bytes(func_bytes;
         
         let mut offset_bytes = [0u8; 4];
         reader.read_exact(&mut offset_bytes)?;
-        let offset = u32::from_le_bytes(offset_bytes);
+        let offset = u32::from_le_bytes(offset_bytes;
         
         let mut hash_bytes = [0u8; 8];
         reader.read_exact(&mut hash_bytes)?;
-        let signature_hash = u64::from_le_bytes(hash_bytes);
+        let signature_hash = u64::from_le_bytes(hash_bytes;
         
         let mut timestamp_bytes = [0u8; 8];
         reader.read_exact(&mut timestamp_bytes)?;
-        let timestamp = u64::from_le_bytes(timestamp_bytes);
+        let timestamp = u64::from_le_bytes(timestamp_bytes;
         
         let mut id_bytes = [0u8; 4];
         reader.read_exact(&mut id_bytes)?;
-        let call_site_id = u32::from_le_bytes(id_bytes);
+        let call_site_id = u32::from_le_bytes(id_bytes;
         
         Ok(Self {
             return_address: (func_idx, offset),
@@ -970,12 +970,12 @@ impl Default for LandingPadExpectation {
 
 impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes());
-        checksum.update_slice(&self.instruction_offset.to_le_bytes());
-        self.target_type.update_checksum(checksum);
+        checksum.update_slice(&self.function_index.to_le_bytes(;
+        checksum.update_slice(&self.instruction_offset.to_le_bytes(;
+        self.target_type.update_checksum(checksum;
         if let Some(deadline) = self.deadline {
             checksum.update_slice(&[1u8]); // has deadline
-            checksum.update_slice(&deadline.to_le_bytes());
+            checksum.update_slice(&deadline.to_le_bytes(;
         } else {
             checksum.update_slice(&[0u8]); // no deadline
         }
@@ -1010,11 +1010,11 @@ impl wrt_foundation::traits::FromBytes for LandingPadExpectation {
     ) -> wrt_foundation::Result<Self> {
         let mut func_bytes = [0u8; 4];
         reader.read_exact(&mut func_bytes)?;
-        let function_index = u32::from_le_bytes(func_bytes);
+        let function_index = u32::from_le_bytes(func_bytes;
         
         let mut offset_bytes = [0u8; 4];
         reader.read_exact(&mut offset_bytes)?;
-        let instruction_offset = u32::from_le_bytes(offset_bytes);
+        let instruction_offset = u32::from_le_bytes(offset_bytes;
         
         let target_type = CfiTargetType::from_bytes_with_provider(reader, provider)?;
         
@@ -1098,7 +1098,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                             .map_err(|_| Error::memory_error("Failed to create CfiRequirementVec"))?
                     }
                 },
-            });
+            };
         }
 
         // Create CFI-protected branch target
@@ -1193,7 +1193,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
         context: &mut CfiExecutionContext,
     ) -> Result<()> {
         if !cfi_protection.enabled {
-            return Ok(());
+            return Ok((;
         }
 
         // Validate shadow stack for enhanced/maximum protection
@@ -1236,7 +1236,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                             .map_err(|_| Error::memory_error("Failed to create CfiRequirementVec"))?
                     }
                 },
-            });
+            };
         }
 
         // Create branch target validation
@@ -1374,20 +1374,20 @@ impl DefaultCfiControlFlowOps {
 
     fn validate_shadow_stack_return(&self, context: &mut CfiExecutionContext) -> Result<()> {
         #[cfg(feature = "std")]
-        let shadow_entry_opt = context.shadow_stack.pop();
+        let shadow_entry_opt = context.shadow_stack.pop(;
         #[cfg(not(feature = "std"))]
-        let shadow_entry_opt = context.shadow_stack.pop().ok().flatten();
+        let shadow_entry_opt = context.shadow_stack.pop().ok().flatten(;
         
         if let Some(shadow_entry) = shadow_entry_opt {
-            let expected_return = (context.current_function, context.current_instruction);
+            let expected_return = (context.current_function, context.current_instruction;
             if shadow_entry.return_address != expected_return {
                 context.violation_count += 1;
-                return Err(Error::cfi_violation("Shadow stack return address mismatch"));
+                return Err(Error::cfi_violation("Shadow stack return address mismatch";
             }
             context.metrics.shadow_stack_operations += 1;
         } else {
             context.violation_count += 1;
-            return Err(Error::cfi_violation("Shadow stack underflow"));
+            return Err(Error::cfi_violation("Shadow stack underflow";
         }
         Ok(())
     }
@@ -1399,18 +1399,18 @@ impl DefaultCfiControlFlowOps {
     ) -> Result<u32> {
         // ASIL-B: Validate label index bounds
         if label_idx >= context.max_labels {
-            return Err(Error::validation_control_flow_error("Label index out of bounds"));
+            return Err(Error::validation_control_flow_error("Label index out of bounds";
         }
         
         // ASIL-B: Check if label is in valid targets
         if !context.valid_branch_targets.is_empty() {
             #[cfg(feature = "std")]
-            let contains_target = context.valid_branch_targets.contains(&label_idx);
+            let contains_target = context.valid_branch_targets.contains(&label_idx;
             #[cfg(not(feature = "std"))]
-            let contains_target = context.valid_branch_targets.contains(&label_idx).unwrap_or(false);
+            let contains_target = context.valid_branch_targets.contains(&label_idx).unwrap_or(false;
             
             if !contains_target {
-                return Err(Error::validation_control_flow_error("Invalid branch target"));
+                return Err(Error::validation_control_flow_error("Invalid branch target";
             }
         }
         
@@ -1594,7 +1594,7 @@ impl DefaultCfiControlFlowOps {
     ) -> Result<()> {
         // ASIL-B: Validate type index bounds
         if expected_type_index >= context.max_types {
-            return Err(Error::validation_value_type_error("Type index out of bounds"));
+            return Err(Error::validation_value_type_error("Type index out of bounds";
         }
         
         // ASIL-B: Verify signature hash matches expected
@@ -1606,7 +1606,7 @@ impl DefaultCfiControlFlowOps {
         let expected_hash_val = context.type_signatures.get(expected_type_index as usize)?;
             
         if expected_hash_val != signature_hash {
-            return Err(Error::security_runtime_error("Type signature mismatch - potential CFI violation"));
+            return Err(Error::security_runtime_error("Type signature mismatch - potential CFI violation";
         }
         
         Ok(())
@@ -1615,12 +1615,12 @@ impl DefaultCfiControlFlowOps {
     fn validate_shadow_stack(&self, context: &CfiExecutionContext) -> Result<()> {
         // ASIL-B: Check shadow stack depth
         if context.shadow_stack.len() > context.max_shadow_stack_depth {
-            return Err(Error::security_stack_overflow("Shadow stack overflow"));
+            return Err(Error::security_stack_overflow("Shadow stack overflow";
         }
         
         // ASIL-B: Validate shadow stack integrity
         if context.shadow_stack.is_empty() && context.current_function != 0 {
-            return Err(Error::security_runtime_error("Shadow stack underflow - potential CFI violation"));
+            return Err(Error::security_runtime_error("Shadow stack underflow - potential CFI violation";
         }
         
         // ASIL-B: Verify return address matches shadow stack
@@ -1628,7 +1628,7 @@ impl DefaultCfiControlFlowOps {
         {
             if let Some(expected_return) = context.shadow_stack.last() {
                 if expected_return.return_address != (context.current_function, context.current_instruction) {
-                    return Err(Error::runtime_error("Return address mismatch - potential ROP attack"));
+                    return Err(Error::runtime_error("Return address mismatch - potential ROP attack";
                 }
             }
         }
@@ -1636,7 +1636,7 @@ impl DefaultCfiControlFlowOps {
         {
             if let Ok(Some(expected_return)) = context.shadow_stack.last() {
                 if expected_return.return_address != (context.current_function, context.current_instruction) {
-                    return Err(Error::runtime_error("Return address mismatch - potential ROP attack"));
+                    return Err(Error::runtime_error("Return address mismatch - potential ROP attack";
                 }
             }
         }
@@ -1651,7 +1651,7 @@ impl DefaultCfiControlFlowOps {
     ) -> Result<()> {
         // ASIL-B: Ensure valid targets list is not empty
         if valid_targets.is_empty() {
-            return Err(Error::validation_control_flow_error("No valid control flow targets specified"));
+            return Err(Error::validation_control_flow_error("No valid control flow targets specified";
         }
         
         // ASIL-B: Check current instruction is a valid target
@@ -1659,19 +1659,19 @@ impl DefaultCfiControlFlowOps {
         if !valid_targets.iter().any(|&target| target == current_target) {
             // Increment violation count for monitoring
             // Note: In real implementation, would update mutable context
-            return Err(Error::security_runtime_error("Invalid control flow target - potential CFI violation"));
+            return Err(Error::security_runtime_error("Invalid control flow target - potential CFI violation";
         }
         
         // ASIL-B: Additional check for indirect branches
         if context.metrics.indirect_branches_taken > 0 {
             // Verify target is marked as valid indirect branch target
             #[cfg(feature = "std")]
-            let contains_target = context.indirect_branch_targets.contains(&current_target);
+            let contains_target = context.indirect_branch_targets.contains(&current_target;
             #[cfg(not(feature = "std"))]
-            let contains_target = context.indirect_branch_targets.contains(&current_target).unwrap_or(false);
+            let contains_target = context.indirect_branch_targets.contains(&current_target).unwrap_or(false;
             
             if !contains_target {
-                return Err(Error::security_runtime_error("Invalid indirect branch target"));
+                return Err(Error::security_runtime_error("Invalid indirect branch target";
             }
         }
         
@@ -1682,7 +1682,7 @@ impl DefaultCfiControlFlowOps {
         // ASIL-B: Validate stack alignment for calls
         const REQUIRED_ALIGNMENT: u32 = 16; // Common for most ABIs
         if context.current_stack_depth % REQUIRED_ALIGNMENT != 0 {
-            return Err(Error::runtime_unaligned_access("Stack misaligned for function call"));
+            return Err(Error::runtime_unaligned_access("Stack misaligned for function call";
         }
         
         // ASIL-B: Check calling convention constraints
@@ -1692,13 +1692,13 @@ impl DefaultCfiControlFlowOps {
                 CallingConvention::SystemV => {
                     // Check red zone requirements
                     if context.current_stack_depth < 128 {
-                        return Err(Error::runtime_error("Insufficient stack space for SystemV ABI"));
+                        return Err(Error::runtime_error("Insufficient stack space for SystemV ABI";
                     }
                 }
                 CallingConvention::WindowsFastcall => {
                     // Check shadow space requirements
                     if context.current_stack_depth < 32 {
-                        return Err(Error::runtime_error("Insufficient shadow space for Windows ABI"));
+                        return Err(Error::runtime_error("Insufficient shadow space for Windows ABI";
                     }
                 }
                 _ => {} // WebAssembly has no additional requirements
@@ -1721,7 +1721,7 @@ impl DefaultCfiControlFlowOps {
         // ASIL-B: Validate execution time bounds
         let current_time = context.metrics.total_execution_time;
         if current_time > max_duration {
-            return Err(Error::runtime_error("Execution time exceeded maximum allowed duration"));
+            return Err(Error::runtime_error("Execution time exceeded maximum allowed duration";
         }
         
         // ASIL-B: Check for timing anomalies that might indicate attacks
@@ -1730,13 +1730,13 @@ impl DefaultCfiControlFlowOps {
             
             // Flag if current instruction took >10x average time
             if current_instruction_time > avg_instruction_time * 10 {
-                return Err(Error::security_runtime_error("Timing anomaly detected - potential side-channel attack"));
+                return Err(Error::security_runtime_error("Timing anomaly detected - potential side-channel attack";
             }
         }
         
         // ASIL-B: Validate monotonic time progression
         if context.metrics.total_execution_time < context.last_checkpoint_time {
-            return Err(Error::security_runtime_error("Time regression detected - potential clock manipulation"));
+            return Err(Error::security_runtime_error("Time regression detected - potential clock manipulation";
         }
         
         Ok(())
@@ -1749,60 +1749,60 @@ mod tests {
 
     #[test]
     fn test_cfi_control_flow_protection_default() {
-        let protection = CfiControlFlowProtection::default();
+        let protection = CfiControlFlowProtection::default(;
         assert!(protection.enabled);
-        assert_eq!(protection.protection_level, CfiProtectionLevel::Enhanced);
+        assert_eq!(protection.protection_level, CfiProtectionLevel::Enhanced;
         assert!(protection.software_config.shadow_stack_enabled);
     }
 
     #[test]
     fn test_cfi_execution_context_default() {
-        let context = CfiExecutionContext::default();
-        assert_eq!(context.current_function, 0);
-        assert_eq!(context.current_instruction, 0);
-        assert!(context.shadow_stack.is_empty());
-        assert_eq!(context.violation_count, 0);
+        let context = CfiExecutionContext::default(;
+        assert_eq!(context.current_function, 0;
+        assert_eq!(context.current_instruction, 0;
+        assert!(context.shadow_stack.is_empty();
+        assert_eq!(context.violation_count, 0;
     }
 
     #[test]
     fn test_default_cfi_ops_call_indirect() {
         let ops = DefaultCfiControlFlowOps;
-        let protection = CfiControlFlowProtection::default();
-        let mut context = CfiExecutionContext::default();
+        let protection = CfiControlFlowProtection::default(;
+        let mut context = CfiExecutionContext::default(;
 
-        let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context);
-        assert!(result.is_ok());
+        let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
+        assert!(result.is_ok();
 
         let protected_target = result.unwrap();
-        assert_eq!(protected_target.protection.target_type, CfiTargetType::IndirectCall);
-        assert!(protected_target.protection.landing_pad.is_some());
-        assert_eq!(context.metrics.indirect_calls_protected, 1);
+        assert_eq!(protected_target.protection.target_type, CfiTargetType::IndirectCall;
+        assert!(protected_target.protection.landing_pad.is_some();
+        assert_eq!(context.metrics.indirect_calls_protected, 1;
     }
 
     #[test]
     fn test_cfi_disabled() {
         let ops = DefaultCfiControlFlowOps;
-        let mut protection = CfiControlFlowProtection::default();
+        let mut protection = CfiControlFlowProtection::default(;
         protection.enabled = false;
-        let mut context = CfiExecutionContext::default();
+        let mut context = CfiExecutionContext::default(;
 
-        let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context);
-        assert!(result.is_ok());
+        let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
+        assert!(result.is_ok();
 
         let protected_target = result.unwrap();
-        assert!(protected_target.protection.landing_pad.is_none());
+        assert!(protected_target.protection.landing_pad.is_none();
         assert!(matches!(
             protected_target.protection.shadow_stack_requirement,
             ShadowStackRequirement::None
-        ));
+        ;
     }
 
     #[test]
     fn test_software_cfi_config_default() {
-        let config = SoftwareCfiConfig::default();
+        let config = SoftwareCfiConfig::default(;
         assert!(config.shadow_stack_enabled);
-        assert_eq!(config.max_shadow_stack_depth, 1024);
+        assert_eq!(config.max_shadow_stack_depth, 1024;
         assert!(config.landing_pad_simulation);
-        assert!(!config.temporal_validation); // Off by default due to cost
+        assert!(!config.temporal_validation)); // Off by default due to cost
     }
 }

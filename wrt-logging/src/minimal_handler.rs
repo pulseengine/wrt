@@ -46,13 +46,13 @@ mod tests {
 
     #[test]
     fn test_minimal_log_message() {
-        let msg = MinimalLogMessage::new(LogLevel::Info, "test message");
-        assert_eq!(msg.level, LogLevel::Info);
-        assert_eq!(msg.message, "test message");
+        let msg = MinimalLogMessage::new(LogLevel::Info, "test message";
+        assert_eq!(msg.level, LogLevel::Info;
+        assert_eq!(msg.message, "test message";
 
         // Test copying
         let msg2 = msg;
-        assert_eq!(msg2.level, LogLevel::Info);
-        assert_eq!(msg2.message, "test message");
+        assert_eq!(msg2.level, LogLevel::Info;
+        assert_eq!(msg2.message, "test message";
     }
 }

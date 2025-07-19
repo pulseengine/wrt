@@ -77,7 +77,7 @@ impl<T: ?Sized> WrtMutex<T> {
             .is_err()
         {
             // Hint to the CPU that we are spinning.
-            core::hint::spin_loop();
+            core::hint::spin_loop(;
         }
         WrtMutexGuard { mutex: self }
     }
@@ -159,7 +159,7 @@ impl<T: ?Sized> Drop for WrtMutexGuard<'_, T> {
         // Release the lock.
         // - Release ordering: Ensures that all writes to the data *before* this point
         //   are visible to other threads *after* they acquire the lock.
-        self.mutex.locked.store(false, Ordering::Release);
+        self.mutex.locked.store(false, Ordering::Release;
     }
 }
 
@@ -175,9 +175,9 @@ mod tests {
 
     #[test]
     fn test_mutex_creation() {
-        let mutex = WrtMutex::new(42);
-        let guard = mutex.lock();
-        assert_eq!(*guard, 42);
+        let mutex = WrtMutex::new(42;
+        let guard = mutex.lock(;
+        assert_eq!(*guard, 42;
     }
 
     #[test]
@@ -185,13 +185,13 @@ mod tests {
     fn test_mutex_modification() {
         use crate::prelude::*;
         
-        let mutex = WrtMutex::new(vec![1, 2, 3]);
+        let mutex = WrtMutex::new(vec![1, 2, 3];
         {
-            let mut guard = mutex.lock();
+            let mut guard = mutex.lock(;
             guard.push(4);
         }
-        let guard = mutex.lock();
-        assert_eq!(*guard, vec![1, 2, 3, 4]);
+        let guard = mutex.lock(;
+        assert_eq!(*guard, vec![1, 2, 3, 4];
     }
 
     #[test]
@@ -199,17 +199,17 @@ mod tests {
     fn test_mutex_multiple_locks() {
         use crate::prelude::*;
         
-        let mutex = WrtMutex::new(String::from("test"));
+        let mutex = WrtMutex::new(String::from("test";
         {
-            let mut guard = mutex.lock();
-            guard.push_str("_1");
+            let mut guard = mutex.lock(;
+            guard.push_str("_1";
         }
         {
-            let mut guard = mutex.lock();
-            guard.push_str("_2");
+            let mut guard = mutex.lock(;
+            guard.push_str("_2";
         }
-        let guard = mutex.lock();
-        assert_eq!(*guard, "test_1_2");
+        let guard = mutex.lock(;
+        assert_eq!(*guard, "test_1_2";
     }
 
     #[test]
@@ -217,35 +217,35 @@ mod tests {
         // This test verifies that WrtMutex implements Send and Sync
         // by checking trait bounds (compile-time check)
         fn assert_send_sync<T: Send + Sync>() {}
-        assert_send_sync::<WrtMutex<i32>>();
+        assert_send_sync::<WrtMutex<i32>>(;
     }
 
     #[test]
     fn test_mutex_guard_drop() {
-        let mutex = WrtMutex::new(42);
+        let mutex = WrtMutex::new(42;
         {
-            let mut guard = mutex.lock();
+            let mut guard = mutex.lock(;
             *guard = 100;
         } // guard is dropped here, releasing the lock
         let guard = mutex.lock(); // Should be able to re-acquire lock
-        assert_eq!(*guard, 100);
+        assert_eq!(*guard, 100;
     }
 
     // Basic concurrency test (requires std for threading)
     #[cfg(feature = "std")]
     #[test]
     fn test_mutex_concurrency() {
-        let mutex = Arc::new(WrtMutex::new(0));
+        let mutex = Arc::new(WrtMutex::new(0;
         let mut handles = vec![];
 
         for _ in 0..10 {
             let mutex_clone = Arc::clone(&mutex);
             let handle = thread::spawn(move || {
                 for _ in 0..1000 {
-                    let mut guard = mutex_clone.lock();
+                    let mut guard = mutex_clone.lock(;
                     *guard += 1;
                 }
-            });
+            };
             handles.push(handle);
         }
 
@@ -253,7 +253,7 @@ mod tests {
             handle.join().unwrap();
         }
 
-        let guard = mutex.lock();
-        assert_eq!(*guard, 10 * 1000);
+        let guard = mutex.lock(;
+        assert_eq!(*guard, 10 * 1000;
     }
 }

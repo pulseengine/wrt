@@ -35,15 +35,15 @@ use crate::bounded_debug_infra;
 
 /// Type identifier for mapping between AST and binary representations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TypeId(pub u32);
+pub struct TypeId(pub u32;
 
 /// Function identifier for mapping between AST and binary representations  
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct FunctionId(pub u32);
+pub struct FunctionId(pub u32;
 
 /// Component identifier for tracking component boundaries
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ComponentId(pub u32);
+pub struct ComponentId(pub u32;
 
 /// WIT source mapping information
 #[cfg(feature = "wit-integration")]
@@ -231,28 +231,28 @@ impl WitSourceMap {
 
     /// Add a mapping between binary offset and source location
     pub fn add_binary_mapping(&mut self, binary_offset: u32, source_span: SourceSpan) {
-        self.binary_to_source.insert(binary_offset, source_span);
-        self.source_to_binary.insert(source_span, binary_offset);
+        self.binary_to_source.insert(binary_offset, source_span;
+        self.source_to_binary.insert(source_span, binary_offset;
     }
 
     /// Add a type definition mapping
     pub fn add_type_definition(&mut self, type_id: TypeId, source_span: SourceSpan) {
-        self.type_definitions.insert(type_id, source_span);
+        self.type_definitions.insert(type_id, source_span;
     }
 
     /// Add a function definition mapping
     pub fn add_function_definition(&mut self, function_id: FunctionId, source_span: SourceSpan) {
-        self.function_definitions.insert(function_id, source_span);
+        self.function_definitions.insert(function_id, source_span;
     }
 
     /// Add a component boundary mapping
     pub fn add_component_boundary(&mut self, component_id: ComponentId, source_span: SourceSpan) {
-        self.component_boundaries.insert(component_id, source_span);
+        self.component_boundaries.insert(component_id, source_span;
     }
 
     /// Add a source file
     pub fn add_source_file(&mut self, file_id: u32, source_file: WitSourceFile) {
-        self.source_files.insert(file_id, source_file);
+        self.source_files.insert(file_id, source_file;
     }
 
     /// Get source location for a binary offset
@@ -310,17 +310,17 @@ impl WitSourceMap {
         }
 
         // Expand context
-        let context_start = start_line.saturating_sub(context_lines);
-        let context_end = (end_line + context_lines).min(file.lines.len() as u32);
+        let context_start = start_line.saturating_sub(context_lines;
+        let context_end = (end_line + context_lines).min(file.lines.len() as u32;
 
-        let mut context_lines_vec = Vec::new();
+        let mut context_lines_vec = Vec::new(;
         for i in context_start..context_end {
             if let Some(line) = file.lines.get(i as usize) {
                 context_lines_vec.push(ContextLine {
                     line_number:    i + 1, // 1-based line numbers
                     content:        line.clone(),
                     is_highlighted: i >= start_line && i <= end_line,
-                });
+                };
             }
         }
 
@@ -350,7 +350,7 @@ impl WitSourceMap {
                 .unwrap_or_else(|_| {
                     BoundedString::from_str("Runtime error (message too long)", provider.clone())
                         .unwrap()
-                });
+                };
 
         Some(WitDiagnostic {
             span,
@@ -405,7 +405,7 @@ impl WitSourceFile {
         let path_bounded = BoundedString::from_str(path, provider.clone())
             .map_err(|_| Error::parse_error("Path too long"))?;
 
-        let mut lines = Vec::new();
+        let mut lines = Vec::new(;
         for line in content.lines() {
             let line_bounded = BoundedString::from_str(line, provider.clone())
                 .map_err(|_| Error::parse_error("Line too long"))?;
@@ -482,13 +482,13 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_source_map_basic() {
-        let mut source_map = WitSourceMap::new();
+        let mut source_map = WitSourceMap::new(;
 
-        let span = SourceSpan::new(10, 20, 0);
-        source_map.add_binary_mapping(100, span);
+        let span = SourceSpan::new(10, 20, 0;
+        source_map.add_binary_mapping(100, span;
 
-        assert_eq!(source_map.source_location_for_offset(100), Some(span));
-        assert_eq!(source_map.binary_offset_for_source(span), Some(100));
+        assert_eq!(source_map.source_location_for_offset(100), Some(span;
+        assert_eq!(source_map.binary_offset_for_source(span), Some(100;
     }
 
     #[cfg(feature = "wit-integration")]
@@ -497,20 +497,20 @@ mod tests {
         let content = "line 1\nline 2\nline 3";
         let file = WitSourceFile::new("test.wit", content).unwrap();
 
-        assert_eq!(file.line_count(), 3);
-        assert_eq!(file.line(1).unwrap().as_str().unwrap(), "line 1");
-        assert_eq!(file.line(2).unwrap().as_str().unwrap(), "line 2");
-        assert_eq!(file.line(3).unwrap().as_str().unwrap(), "line 3");
-        assert!(file.line(4).is_none());
+        assert_eq!(file.line_count(), 3;
+        assert_eq!(file.line(1).unwrap().as_str().unwrap(), "line 1";
+        assert_eq!(file.line(2).unwrap().as_str().unwrap(), "line 2";
+        assert_eq!(file.line(3).unwrap().as_str().unwrap(), "line 3";
+        assert!(file.line(4).is_none();
     }
 
     #[test]
     fn test_memory_region() {
-        let region = MemoryRegion::new(100, 200, MemoryRegionType::Linear);
+        let region = MemoryRegion::new(100, 200, MemoryRegionType::Linear;
 
-        assert_eq!(region.size(), 100);
-        assert!(region.contains(150));
-        assert!(!region.contains(250));
+        assert_eq!(region.size(), 100;
+        assert!(region.contains(150);
+        assert!(!region.contains(250);
     }
 
     #[test]
@@ -527,11 +527,11 @@ mod tests {
             ],
         };
 
-        assert!(boundary.contains_address(150));
-        assert!(boundary.contains_address(350));
-        assert!(!boundary.contains_address(250));
+        assert!(boundary.contains_address(150);
+        assert!(boundary.contains_address(350);
+        assert!(!boundary.contains_address(250);
 
         let region = boundary.memory_region_for_address(150).unwrap();
-        assert_eq!(region.region_type, MemoryRegionType::Linear);
+        assert_eq!(region.region_type, MemoryRegionType::Linear;
     }
 }

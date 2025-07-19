@@ -105,7 +105,7 @@ impl BranchHintValue {
 // Implement required traits for BoundedVec compatibility
 impl Checksummable for BranchHintValue {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&[self.to_byte()]);
+        checksum.update_slice(&[self.to_byte()];
     }
 }
 
@@ -191,7 +191,7 @@ impl FunctionBranchHints {
 
     /// Add a branch hint for an instruction
     pub fn add_hint(&mut self, instruction_offset: u32, hint_value: BranchHintValue) -> Result<()> {
-        self.hints.insert(instruction_offset, hint_value);
+        self.hints.insert(instruction_offset, hint_value;
         Ok(())
     }
 
@@ -239,7 +239,7 @@ impl BranchHintSection {
 
     /// Add function branch hints
     pub fn add_function_hints(&mut self, hints: FunctionBranchHints) -> Result<()> {
-        self.function_hints.insert(hints.function_index, hints);
+        self.function_hints.insert(hints.function_index, hints;
         Ok(())
     }
 
@@ -283,7 +283,7 @@ impl Default for BranchHintSection {
 /// Parse the branch hint custom section from binary data
 pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
     let mut offset = 0;
-    let mut section = BranchHintSection::new();
+    let mut section = BranchHintSection::new(;
 
     // Read function count
     let (func_count, consumed) = read_leb128_u32(data, offset)?;
@@ -295,7 +295,7 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
         let (func_idx, consumed) = read_leb128_u32(data, offset)?;
         offset += consumed;
 
-        let mut function_hints = FunctionBranchHints::new(func_idx);
+        let mut function_hints = FunctionBranchHints::new(func_idx;
 
         // Read hint count for this function
         let (hint_count, consumed) = read_leb128_u32(data, offset)?;
@@ -325,21 +325,21 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
 #[cfg(feature = "std")]
 pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>> {
     use crate::prelude::write_leb128_u32 as format_write_leb128_u32;
-    let mut data = Vec::new();
+    let mut data = Vec::new(;
 
     // Write function count
     data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(
         section.function_count(),
-    )?));
+    )?;
 
     // Write each function's hints
     for (func_idx, hints) in &section.function_hints {
-        data.extend_from_slice(&format_write_leb128_u32(*func_idx));
-        data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(hints.len())?));
+        data.extend_from_slice(&format_write_leb128_u32(*func_idx;
+        data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(hints.len())?;
 
         for (offset, hint) in hints.iter() {
-            data.extend_from_slice(&format_write_leb128_u32(*offset));
-            data.push(hint.to_byte());
+            data.extend_from_slice(&format_write_leb128_u32(*offset;
+            data.push(hint.to_byte();
         }
     }
 
@@ -358,86 +358,86 @@ mod tests {
         assert_eq!(
             BranchHintValue::from_byte(0x00).unwrap(),
             BranchHintValue::LikelyFalse
-        );
+        ;
         assert_eq!(
             BranchHintValue::from_byte(0x01).unwrap(),
             BranchHintValue::LikelyTrue
-        );
-        assert!(BranchHintValue::from_byte(0x02).is_err());
+        ;
+        assert!(BranchHintValue::from_byte(0x02).is_err();
 
-        assert_eq!(BranchHintValue::LikelyFalse.to_byte(), 0x00);
-        assert_eq!(BranchHintValue::LikelyTrue.to_byte(), 0x01);
+        assert_eq!(BranchHintValue::LikelyFalse.to_byte(), 0x00;
+        assert_eq!(BranchHintValue::LikelyTrue.to_byte(), 0x01;
 
-        assert!(!BranchHintValue::LikelyFalse.is_likely_taken());
-        assert!(BranchHintValue::LikelyTrue.is_likely_taken());
+        assert!(!BranchHintValue::LikelyFalse.is_likely_taken();
+        assert!(BranchHintValue::LikelyTrue.is_likely_taken();
     }
 
     #[test]
     fn test_branch_hint() {
-        let hint = BranchHint::new(42, BranchHintValue::LikelyTrue);
-        assert_eq!(hint.instruction_offset, 42);
-        assert_eq!(hint.hint_value, BranchHintValue::LikelyTrue);
-        assert!(hint.optimize_for_taken());
+        let hint = BranchHint::new(42, BranchHintValue::LikelyTrue;
+        assert_eq!(hint.instruction_offset, 42;
+        assert_eq!(hint.hint_value, BranchHintValue::LikelyTrue;
+        assert!(hint.optimize_for_taken();
 
-        let hint = BranchHint::new(100, BranchHintValue::LikelyFalse);
-        assert!(!hint.optimize_for_taken());
+        let hint = BranchHint::new(100, BranchHintValue::LikelyFalse;
+        assert!(!hint.optimize_for_taken();
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_function_branch_hints() {
-        let mut hints = FunctionBranchHints::new(5);
-        assert_eq!(hints.function_index, 5);
-        assert!(hints.is_empty());
+        let mut hints = FunctionBranchHints::new(5;
+        assert_eq!(hints.function_index, 5;
+        assert!(hints.is_empty();
 
         hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
         hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap();
 
-        assert_eq!(hints.len(), 2);
-        assert!(!hints.is_empty());
+        assert_eq!(hints.len(), 2;
+        assert!(!hints.is_empty();
 
-        assert_eq!(hints.get_hint(10), Some(BranchHintValue::LikelyTrue));
-        assert_eq!(hints.get_hint(20), Some(BranchHintValue::LikelyFalse));
-        assert_eq!(hints.get_hint(30), None);
+        assert_eq!(hints.get_hint(10), Some(BranchHintValue::LikelyTrue;
+        assert_eq!(hints.get_hint(20), Some(BranchHintValue::LikelyFalse;
+        assert_eq!(hints.get_hint(30), None;
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_branch_hint_section() {
-        let mut section = BranchHintSection::new();
-        assert!(section.is_empty());
+        let mut section = BranchHintSection::new(;
+        assert!(section.is_empty();
 
-        let mut func_hints = FunctionBranchHints::new(0);
+        let mut func_hints = FunctionBranchHints::new(0;
         func_hints.add_hint(5, BranchHintValue::LikelyTrue).unwrap();
         func_hints.add_hint(15, BranchHintValue::LikelyFalse).unwrap();
         section.add_function_hints(func_hints).unwrap();
 
-        let mut func_hints = FunctionBranchHints::new(2);
+        let mut func_hints = FunctionBranchHints::new(2;
         func_hints.add_hint(25, BranchHintValue::LikelyTrue).unwrap();
         section.add_function_hints(func_hints).unwrap();
 
-        assert_eq!(section.function_count(), 2);
-        assert_eq!(section.total_hint_count(), 3);
+        assert_eq!(section.function_count(), 2;
+        assert_eq!(section.total_hint_count(), 3;
 
-        assert_eq!(section.get_hint(0, 5), Some(BranchHintValue::LikelyTrue));
-        assert_eq!(section.get_hint(0, 15), Some(BranchHintValue::LikelyFalse));
-        assert_eq!(section.get_hint(2, 25), Some(BranchHintValue::LikelyTrue));
-        assert_eq!(section.get_hint(1, 5), None);
-        assert_eq!(section.get_hint(0, 30), None);
+        assert_eq!(section.get_hint(0, 5), Some(BranchHintValue::LikelyTrue;
+        assert_eq!(section.get_hint(0, 15), Some(BranchHintValue::LikelyFalse;
+        assert_eq!(section.get_hint(2, 25), Some(BranchHintValue::LikelyTrue;
+        assert_eq!(section.get_hint(1, 5), None;
+        assert_eq!(section.get_hint(0, 30), None;
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_encode_round_trip() {
         // Create a test section
-        let mut section = BranchHintSection::new();
+        let mut section = BranchHintSection::new(;
 
-        let mut func0_hints = FunctionBranchHints::new(0);
+        let mut func0_hints = FunctionBranchHints::new(0;
         func0_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
         func0_hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap();
         section.add_function_hints(func0_hints).unwrap();
 
-        let mut func2_hints = FunctionBranchHints::new(2);
+        let mut func2_hints = FunctionBranchHints::new(2;
         func2_hints.add_hint(30, BranchHintValue::LikelyTrue).unwrap();
         section.add_function_hints(func2_hints).unwrap();
 
@@ -448,11 +448,11 @@ mod tests {
         let parsed = parse_branch_hint_section(&encoded).unwrap();
 
         // Verify round-trip
-        assert_eq!(parsed.function_count(), 2);
-        assert_eq!(parsed.total_hint_count(), 3);
-        assert_eq!(parsed.get_hint(0, 10), Some(BranchHintValue::LikelyTrue));
-        assert_eq!(parsed.get_hint(0, 20), Some(BranchHintValue::LikelyFalse));
-        assert_eq!(parsed.get_hint(2, 30), Some(BranchHintValue::LikelyTrue));
+        assert_eq!(parsed.function_count(), 2;
+        assert_eq!(parsed.total_hint_count(), 3;
+        assert_eq!(parsed.get_hint(0, 10), Some(BranchHintValue::LikelyTrue;
+        assert_eq!(parsed.get_hint(0, 20), Some(BranchHintValue::LikelyFalse;
+        assert_eq!(parsed.get_hint(2, 30), Some(BranchHintValue::LikelyTrue;
     }
 
     #[test]
@@ -461,9 +461,9 @@ mod tests {
         let data = &[0x00];
         let section = parse_branch_hint_section(data).unwrap();
 
-        assert!(section.is_empty());
-        assert_eq!(section.function_count(), 0);
-        assert_eq!(section.total_hint_count(), 0);
+        assert!(section.is_empty();
+        assert_eq!(section.function_count(), 0;
+        assert_eq!(section.total_hint_count(), 0;
     }
 
     #[cfg(feature = "std")]
@@ -471,7 +471,7 @@ mod tests {
     fn test_parse_malformed_data() {
         // Truncated data
         let data = &[0x01]; // function count = 1, but no function data
-        assert!(parse_branch_hint_section(data).is_err());
+        assert!(parse_branch_hint_section(data).is_err();
 
         // Invalid hint value
         let data = &[
@@ -481,6 +481,6 @@ mod tests {
             0x05, // instruction offset = 5
             0x02, // invalid hint value
         ];
-        assert!(parse_branch_hint_section(data).is_err());
+        assert!(parse_branch_hint_section(data).is_err();
     }
 }

@@ -43,11 +43,11 @@
 //! use wrt_host::bounded_host_integration::*;
 //!
 //! // Create manager with embedded system limits
-//! let limits = HostIntegrationLimits::embedded();
+//! let limits = HostIntegrationLimits::embedded(;
 //! let mut manager = BoundedHostIntegrationManager::new(limits)?;
 //!
 //! // Register safety-critical host function
-//! let safety_function = create_safety_check_function();
+//! let safety_function = create_safety_check_function(;
 //! let function_id = manager.register_function(safety_function)?;
 //!
 //! // Call function with safety verification
@@ -56,7 +56,7 @@
 //!     ComponentInstanceId(1),
 //!     parameters,
 //!     AsilLevel::AsilC as u8
-//! );
+//! ;
 //! let result = manager.call_function(function_id, context)?;
 //! ```
 //!
@@ -148,16 +148,16 @@ impl HostIntegrationLimits {
     /// Validate limits are reasonable
     pub fn validate(&self) -> Result<()> {
         if self.max_host_functions == 0 {
-            return Err(Error::invalid_input("max_host_functions cannot be zero"));
+            return Err(Error::invalid_input("max_host_functions cannot be zero";
         }
         if self.max_callbacks == 0 {
-            return Err(Error::invalid_input("max_callbacks cannot be zero"));
+            return Err(Error::invalid_input("max_callbacks cannot be zero";
         }
         if self.max_call_stack_depth == 0 {
-            return Err(Error::invalid_input("max_call_stack_depth cannot be zero"));
+            return Err(Error::invalid_input("max_call_stack_depth cannot be zero";
         }
         if self.memory_budget == 0 {
-            return Err(Error::invalid_input("memory_budget cannot be zero"));
+            return Err(Error::invalid_input("memory_budget cannot be zero";
         }
         Ok(())
     }
@@ -165,11 +165,11 @@ impl HostIntegrationLimits {
 
 /// Host function identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HostFunctionId(pub u32);
+pub struct HostFunctionId(pub u32;
 
 /// Component instance identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentInstanceId(pub u32);
+pub struct ComponentInstanceId(pub u32;
 
 /// Call context for host function invocations
 ///
@@ -207,7 +207,7 @@ impl BoundedCallContext {
         parameters: Vec<u8>,
         safety_level: u8,
     ) -> Self {
-        let memory_used = parameters.len();
+        let memory_used = parameters.len(;
         Self {
             function_id,
             component_instance,
@@ -229,7 +229,7 @@ impl BoundedCallContext {
     /// Returns `Error::invalid_input` if parameter size exceeds limits
     pub fn validate_parameters(&self, limits: &HostIntegrationLimits) -> Result<()> {
         if self.parameters.len() > limits.max_parameter_size {
-            return Err(Error::invalid_input("Parameter size exceeds limit"));
+            return Err(Error::invalid_input("Parameter size exceeds limit";
         }
         Ok(())
     }
@@ -245,7 +245,7 @@ impl BoundedCallContext {
     /// Returns `Error::OUT_OF_MEMORY` if memory usage exceeds budget
     pub fn validate_memory(&self, limits: &HostIntegrationLimits) -> Result<()> {
         if self.memory_used > limits.memory_budget {
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
         Ok(())
     }
@@ -275,7 +275,7 @@ impl BoundedCallResult {
     /// * `return_data` - Data returned from the host function
     #[must_use]
     pub fn success(return_data: Vec<u8>) -> Self {
-        let memory_used = return_data.len();
+        let memory_used = return_data.len(;
         Self {
             return_data,
             memory_used,
@@ -306,7 +306,7 @@ impl BoundedCallResult {
     /// Returns `Error::invalid_input` if return data exceeds size limits
     pub fn validate_return_size(&self, limits: &HostIntegrationLimits) -> Result<()> {
         if self.return_data.len() > limits.max_return_size {
-            return Err(Error::invalid_input("Return size exceeds limit"));
+            return Err(Error::invalid_input("Return size exceeds limit";
         }
         Ok(())
     }
@@ -426,18 +426,18 @@ impl BoundedHostIntegrationManager {
     {
         // Check function limit
         if self.functions.len() >= self.limits.max_host_functions {
-            return Err(Error::TOO_MANY_COMPONENTS);
+            return Err(Error::TOO_MANY_COMPONENTS;
         }
 
         // Check memory requirement
         if function.memory_requirement() > self.limits.memory_budget {
-            return Err(Error::INSUFFICIENT_MEMORY);
+            return Err(Error::INSUFFICIENT_MEMORY;
         }
 
-        let function_id = HostFunctionId(self.next_function_id);
-        self.next_function_id = self.next_function_id.wrapping_add(1);
+        let function_id = HostFunctionId(self.next_function_id;
+        self.next_function_id = self.next_function_id.wrapping_add(1;
 
-        self.functions.push(Box::new(function));
+        self.functions.push(Box::new(function);
 
         Ok(function_id)
     }
@@ -450,11 +450,11 @@ impl BoundedHostIntegrationManager {
     ) -> Result<BoundedCallResult> {
         // Validate call limits
         if self.active_calls.len() >= self.limits.max_concurrent_calls {
-            return Err(Error::TOO_MANY_COMPONENTS);
+            return Err(Error::TOO_MANY_COMPONENTS;
         }
 
         if context.call_depth >= self.limits.max_call_stack_depth {
-            return Err(Error::STACK_OVERFLOW);
+            return Err(Error::STACK_OVERFLOW;
         }
 
         // Validate context
@@ -471,13 +471,13 @@ impl BoundedHostIntegrationManager {
         if context.safety_level > function.safety_level() {
             return Err(Error::invalid_input(
                 "Call safety level exceeds function safety level",
-            ));
+            ;
         }
 
         // Check memory budget
         let required_memory = function.memory_requirement() + context.memory_used;
         if self.total_memory_used + required_memory > self.limits.memory_budget {
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
 
         // Track active call
@@ -491,13 +491,13 @@ impl BoundedHostIntegrationManager {
         self.total_memory_used += required_memory;
 
         // Execute the function
-        let result = function.call(&context);
+        let result = function.call(&context;
 
         // Cleanup active call tracking
         if let Some(pos) = self.active_calls.iter().position(|call| call.function_id == function_id)
         {
-            let call = self.active_calls.remove(pos);
-            self.total_memory_used = self.total_memory_used.saturating_sub(call.memory_used);
+            let call = self.active_calls.remove(pos;
+            self.total_memory_used = self.total_memory_used.saturating_sub(call.memory_used;
         }
 
         // Validate result
@@ -528,16 +528,16 @@ impl BoundedHostIntegrationManager {
 
     /// Cancel all active calls for a component instance
     pub fn cancel_instance_calls(&mut self, component_instance: ComponentInstanceId) -> usize {
-        let initial_count = self.active_calls.len();
+        let initial_count = self.active_calls.len(;
 
         self.active_calls.retain(|call| {
             if call.component_instance == component_instance {
-                self.total_memory_used = self.total_memory_used.saturating_sub(call.memory_used);
+                self.total_memory_used = self.total_memory_used.saturating_sub(call.memory_used;
                 false
             } else {
                 true
             }
-        });
+        };
 
         initial_count - self.active_calls.len()
     }
@@ -545,11 +545,11 @@ impl BoundedHostIntegrationManager {
     /// Get integration statistics
     #[must_use]
     pub fn get_statistics(&self) -> HostIntegrationStatistics {
-        let active_calls = self.active_calls.len();
+        let active_calls = self.active_calls.len(;
         let max_call_depth = self.active_calls.iter()
             .map(|_| 1) // Simplified depth calculation
             .max()
-            .unwrap_or(0);
+            .unwrap_or(0;
 
         HostIntegrationStatistics {
             registered_functions: self.functions.len(),
@@ -568,15 +568,15 @@ impl BoundedHostIntegrationManager {
     /// Validate all active calls
     pub fn validate(&self) -> Result<()> {
         if self.active_calls.len() > self.limits.max_concurrent_calls {
-            return Err(Error::TOO_MANY_COMPONENTS);
+            return Err(Error::TOO_MANY_COMPONENTS;
         }
 
         if self.total_memory_used > self.limits.memory_budget {
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
 
         if self.functions.len() > self.limits.max_host_functions {
-            return Err(Error::TOO_MANY_COMPONENTS);
+            return Err(Error::TOO_MANY_COMPONENTS;
         }
 
         Ok(())
@@ -631,8 +631,8 @@ pub fn create_memory_info_function() -> SimpleBoundedHostFunction {
     SimpleBoundedHostFunction::new(
         "memory_info".to_string(),
         |context| {
-            let info = alloc::format!("Memory used: {}", context.memory_used);
-            let return_data = info.into_bytes();
+            let info = alloc::format!("Memory used: {}", context.memory_used;
+            let return_data = info.into_bytes(;
             Ok(BoundedCallResult::success(return_data))
         },
         512, // 512B memory requirement
@@ -648,7 +648,7 @@ pub fn create_safety_check_function() -> SimpleBoundedHostFunction {
         |context| {
             let check_result =
                 if context.safety_level <= 2 { "SAFETY_OK" } else { "SAFETY_WARNING" };
-            let return_data = check_result.as_bytes().to_vec();
+            let return_data = check_result.as_bytes().to_vec(;
             Ok(BoundedCallResult::success(return_data))
         },
         256, // 256B memory requirement
@@ -662,46 +662,46 @@ mod tests {
 
     #[test]
     fn test_host_integration_manager_creation() {
-        let limits = HostIntegrationLimits::default();
-        let manager = BoundedHostIntegrationManager::new(limits);
-        assert!(manager.is_ok());
+        let limits = HostIntegrationLimits::default(;
+        let manager = BoundedHostIntegrationManager::new(limits;
+        assert!(manager.is_ok();
 
         let manager = manager.unwrap();
-        let stats = manager.get_statistics();
-        assert_eq!(stats.registered_functions, 0);
-        assert_eq!(stats.active_calls, 0);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.registered_functions, 0;
+        assert_eq!(stats.active_calls, 0;
     }
 
     #[test]
     fn test_function_registration() {
-        let limits = HostIntegrationLimits::default();
+        let limits = HostIntegrationLimits::default(;
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function();
+        let echo_function = create_echo_function(;
         let function_id = manager.register_function(echo_function).unwrap();
 
-        assert_eq!(function_id.0, 1);
+        assert_eq!(function_id.0, 1;
 
-        let stats = manager.get_statistics();
-        assert_eq!(stats.registered_functions, 1);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.registered_functions, 1;
     }
 
     #[test]
     fn test_function_call() {
-        let limits = HostIntegrationLimits::default();
+        let limits = HostIntegrationLimits::default(;
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function();
+        let echo_function = create_echo_function(;
         let function_id = manager.register_function(echo_function).unwrap();
 
-        let test_data = b"hello world".to_vec();
+        let test_data = b"hello world".to_vec(;
         let context =
-            BoundedCallContext::new(function_id, ComponentInstanceId(1), test_data.clone(), 0);
+            BoundedCallContext::new(function_id, ComponentInstanceId(1), test_data.clone(), 0;
 
         let result = manager.call_function(function_id, context).unwrap();
 
         assert!(result.success);
-        assert_eq!(result.return_data, test_data);
+        assert_eq!(result.return_data, test_data;
     }
 
     #[test]
@@ -717,10 +717,10 @@ mod tests {
             |_| Ok(BoundedCallResult::success(alloc::vec::Vec::new())),
             200, // Exceeds budget
             0,
-        );
+        ;
 
-        let result = manager.register_function(large_function);
-        assert!(result.is_err());
+        let result = manager.register_function(large_function;
+        assert!(result.is_err();
     }
 
     #[test]
@@ -739,7 +739,7 @@ mod tests {
             },
             100,
             0,
-        );
+        ;
 
         let function_id = manager.register_function(blocking_function).unwrap();
 
@@ -748,18 +748,18 @@ mod tests {
             ComponentInstanceId(1),
             alloc::vec::Vec::new(),
             0,
-        );
+        ;
 
         let context2 = BoundedCallContext::new(
             function_id,
             ComponentInstanceId(2),
             alloc::vec::Vec::new(),
             0,
-        );
+        ;
 
         // First call should succeed
-        let result1 = manager.call_function(function_id, context1);
-        assert!(result1.is_ok());
+        let result1 = manager.call_function(function_id, context1;
+        assert!(result1.is_ok();
 
         // Second call should fail due to limit (but won't in this simple test)
         // In a real implementation with async/blocking calls, this would fail
@@ -773,22 +773,22 @@ mod tests {
         };
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function();
+        let echo_function = create_echo_function(;
         let function_id = manager.register_function(echo_function).unwrap();
 
         let large_data = vec![0u8; 20]; // Exceeds limit
-        let context = BoundedCallContext::new(function_id, ComponentInstanceId(1), large_data, 0);
+        let context = BoundedCallContext::new(function_id, ComponentInstanceId(1), large_data, 0;
 
-        let result = manager.call_function(function_id, context);
-        assert!(result.is_err());
+        let result = manager.call_function(function_id, context;
+        assert!(result.is_err();
     }
 
     #[test]
     fn test_safety_level_checks() {
-        let limits = HostIntegrationLimits::default();
+        let limits = HostIntegrationLimits::default(;
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let safety_function = create_safety_check_function();
+        let safety_function = create_safety_check_function(;
         let function_id = manager.register_function(safety_function).unwrap();
 
         // Call with higher safety level than function (should fail)
@@ -797,18 +797,18 @@ mod tests {
             ComponentInstanceId(1),
             alloc::vec::Vec::new(),
             5, // Higher than function's safety level (4)
-        );
+        ;
 
-        let result = manager.call_function(function_id, context);
-        assert!(result.is_err());
+        let result = manager.call_function(function_id, context;
+        assert!(result.is_err();
     }
 
     #[test]
     fn test_instance_call_cancellation() {
-        let limits = HostIntegrationLimits::default();
+        let limits = HostIntegrationLimits::default(;
         let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
-        let echo_function = create_echo_function();
+        let echo_function = create_echo_function(;
         let function_id = manager.register_function(echo_function).unwrap();
 
         let context = BoundedCallContext::new(
@@ -816,12 +816,12 @@ mod tests {
             ComponentInstanceId(1),
             alloc::vec::Vec::new(),
             0,
-        );
+        ;
 
         // Simulate active call by adding to active_calls directly
         // (In real implementation, this would be from an actual call)
 
-        let cancelled = manager.cancel_instance_calls(ComponentInstanceId(1));
+        let cancelled = manager.cancel_instance_calls(ComponentInstanceId(1;
         assert_eq!(cancelled, 0); // No active calls to cancel in this simple test
     }
 }

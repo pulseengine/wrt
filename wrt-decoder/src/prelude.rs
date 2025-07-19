@@ -333,7 +333,7 @@ pub mod binary {
     pub fn read_leb_u32(data: &[u8], offset: usize) -> wrt_error::Result<(u32, usize)> {
         // Simple implementation for no_std - just read from beginning
         if offset >= data.len() {
-            return Err(wrt_error::Error::parse_error("Offset out of bounds"));
+            return Err(wrt_error::Error::parse_error("Offset out of bounds";
         }
         // For simplicity, just parse from the offset
         let mut value = 0u32;
@@ -342,14 +342,14 @@ pub mod binary {
 
         for &byte in &data[offset..] {
             if bytes_read >= 5 {
-                return Err(wrt_error::Error::parse_error("LEB128 too long"));
+                return Err(wrt_error::Error::parse_error("LEB128 too long";
             }
 
             value |= ((byte & 0x7F) as u32) << shift;
             bytes_read += 1;
 
             if (byte & 0x80) == 0 {
-                return Ok((value, bytes_read));
+                return Ok((value, bytes_read;
             }
 
             shift += 7;
@@ -361,7 +361,7 @@ pub mod binary {
     /// Read name from binary data in no_std mode
     pub fn read_name(data: &[u8], offset: usize) -> wrt_error::Result<(&[u8], usize)> {
         if offset >= data.len() {
-            return Err(wrt_error::Error::parse_error("Offset out of bounds"));
+            return Err(wrt_error::Error::parse_error("Offset out of bounds";
         }
 
         // Read length as LEB128
@@ -369,7 +369,7 @@ pub mod binary {
         let name_start = offset + new_offset;
 
         if name_start + length as usize > data.len() {
-            return Err(wrt_error::Error::parse_error("Name extends beyond data"));
+            return Err(wrt_error::Error::parse_error("Name extends beyond data";
         }
 
         Ok((
@@ -446,7 +446,7 @@ pub trait DecoderVecExt<T> {
         Self: Sized;
 
     /// Update checksum (compatible with both std and no_std)
-    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum);
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum;
 
     /// Serialized size (compatible with both std and no_std)
     fn serialized_size(&self) -> usize;
@@ -472,13 +472,13 @@ where
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         // For std mode, read all items without provider
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         // Read count first (assuming LEB128 u32 count prefix)
         let mut count_bytes = [0u8; 4];
         reader.read_exact(&mut count_bytes)?;
-        let count = u32::from_le_bytes(count_bytes);
+        let count = u32::from_le_bytes(count_bytes;
 
-        result.reserve(count as usize);
+        result.reserve(count as usize;
         for _ in 0..count {
             let item = T::from_bytes_with_provider(reader, _provider)?;
             result.push(item);
@@ -488,7 +488,7 @@ where
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for item in self {
-            item.update_checksum(checksum);
+            item.update_checksum(checksum;
         }
     }
 
@@ -536,7 +536,7 @@ where
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         use wrt_foundation::traits::Checksummable;
-        Checksummable::update_checksum(self, checksum);
+        Checksummable::update_checksum(self, checksum;
     }
 
     fn serialized_size(&self) -> usize {
@@ -565,7 +565,7 @@ pub trait DecoderStringExt {
         Self: Sized;
 
     /// Update checksum (compatible with both std and no_std)
-    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum);
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum;
 
     /// Serialized size (compatible with both std and no_std)
     fn serialized_size(&self) -> usize;
@@ -590,7 +590,7 @@ impl DecoderStringExt for String {
     }
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.as_bytes());
+        checksum.update_slice(self.as_bytes(;
     }
 
     fn serialized_size(&self) -> usize {
@@ -624,7 +624,7 @@ where
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         use wrt_foundation::traits::Checksummable;
-        Checksummable::update_checksum(self, checksum);
+        Checksummable::update_checksum(self, checksum;
     }
 
     fn serialized_size(&self) -> usize {

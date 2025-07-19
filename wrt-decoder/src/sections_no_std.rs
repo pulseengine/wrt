@@ -123,7 +123,7 @@ impl wrt_foundation::traits::Checksummable for Section {
             Section::Custom { .. } => 12,
             Section::Empty => 13,
         };
-        checksum.update_slice(&[discriminant]);
+        checksum.update_slice(&[discriminant];
     }
 }
 
@@ -212,7 +212,7 @@ fn parse_data(
 
 fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limits, usize)> {
     if offset >= bytes.len() {
-        return Err(Error::parse_error("Unexpected end while parsing limits"));
+        return Err(Error::parse_error("Unexpected end while parsing limits";
     }
 
     let flags = bytes[offset];
@@ -262,11 +262,11 @@ pub mod parsers {
             if offset >= bytes.len() {
                 return Err(Error::parse_error(
                     "Unexpected end while parsing function type",
-                ));
+                ;
             }
 
             if bytes[offset] != 0x60 {
-                return Err(Error::parse_error("Invalid function type tag"));
+                return Err(Error::parse_error("Invalid function type tag";
             }
             offset += 1;
 
@@ -283,7 +283,7 @@ pub mod parsers {
                 if offset >= bytes.len() {
                     return Err(Error::parse_error(
                         "Unexpected end while parsing parameter type",
-                    ));
+                    ;
                 }
 
                 let val_type = parse_value_type(bytes[offset])?;
@@ -307,7 +307,7 @@ pub mod parsers {
                 if offset >= bytes.len() {
                     return Err(Error::parse_error(
                         "Unexpected end while parsing result type",
-                    ));
+                    ;
                 }
 
                 let val_type = parse_value_type(bytes[offset])?;
@@ -407,7 +407,7 @@ pub mod parsers {
             if offset >= bytes.len() {
                 return Err(Error::parse_error(
                     "Unexpected end while parsing import descriptor",
-                ));
+                ;
             }
 
             let desc_type = bytes[offset];
@@ -452,7 +452,7 @@ pub mod parsers {
                     WrtImportDesc::Global(global_type)
                 },
                 _ => {
-                    return Err(Error::parse_error("Invalid import descriptor type"));
+                    return Err(Error::parse_error("Invalid import descriptor type";
                 },
             };
 
@@ -585,7 +585,7 @@ pub mod parsers {
             if offset >= bytes.len() {
                 return Err(Error::parse_error(
                     "Unexpected end while parsing export kind",
-                ));
+                ;
             }
 
             let kind = match bytes[offset] {
@@ -594,7 +594,7 @@ pub mod parsers {
                 0x02 => ExportKind::Memory,
                 0x03 => ExportKind::Global,
                 _ => {
-                    return Err(Error::parse_error("Invalid export kind"));
+                    return Err(Error::parse_error("Invalid export kind";
                 },
             };
             offset += 1;
@@ -671,7 +671,7 @@ pub mod parsers {
             if offset + body_size_usize > bytes.len() {
                 return Err(Error::parse_error(
                     "Function body extends beyond section bounds",
-                ));
+                ;
             }
 
             // Copy body data

@@ -153,15 +153,15 @@ mod component_binary_parser {
         /// Validate the component header
         pub fn validate(&self) -> Result<()> {
             if self.magic != COMPONENT_MAGIC {
-                return Err(Error::parse_error("Invalid component magic number"));
+                return Err(Error::parse_error("Invalid component magic number";
             }
 
             if self.version != COMPONENT_VERSION {
-                return Err(Error::parse_error("Unsupported component version"));
+                return Err(Error::parse_error("Unsupported component version";
             }
 
             if self.layer != COMPONENT_LAYER {
-                return Err(Error::parse_error("Invalid component layer (expected 1)"));
+                return Err(Error::parse_error("Invalid component layer (expected 1)";
             }
 
             Ok(())
@@ -197,13 +197,13 @@ mod component_binary_parser {
         /// * `Err(Error)` - Parse error with detailed information
         pub fn parse(&mut self, bytes: &[u8]) -> Result<Component> {
             self.offset = 0;
-            self.size = bytes.len();
+            self.size = bytes.len(;
 
             // Validate minimum size
             if bytes.len() < 12 {
                 return Err(Error::parse_error(
                     "Component binary too small (minimum 12 bytes required)",
-                ));
+                ;
             }
 
             // Parse and validate header
@@ -211,7 +211,7 @@ mod component_binary_parser {
             header.validate()?;
 
             // Initialize component
-            let mut component = Component::new();
+            let mut component = Component::new(;
 
             // Parse all sections
             while self.offset < self.size {
@@ -231,12 +231,12 @@ mod component_binary_parser {
             if self.offset + 12 > bytes.len() {
                 return Err(Error::parse_error(
                     "Insufficient bytes for component header",
-                ));
+                ;
             }
 
             // Parse magic (4 bytes)
             let mut magic = [0u8; 4];
-            magic.copy_from_slice(&bytes[self.offset..self.offset + 4]);
+            magic.copy_from_slice(&bytes[self.offset..self.offset + 4];
             self.offset += 4;
 
             // Parse version (4 bytes, little-endian)
@@ -245,7 +245,7 @@ mod component_binary_parser {
                 bytes[self.offset + 1],
                 bytes[self.offset + 2],
                 bytes[self.offset + 3],
-            ]);
+            ];
             self.offset += 4;
 
             // Parse layer (4 bytes, little-endian)
@@ -254,7 +254,7 @@ mod component_binary_parser {
                 bytes[self.offset + 1],
                 bytes[self.offset + 2],
                 bytes[self.offset + 3],
-            ]);
+            ];
             self.offset += 4;
 
             Ok(ComponentHeader {
@@ -272,7 +272,7 @@ mod component_binary_parser {
             }
 
             if self.offset + 1 > self.size {
-                return Err(Error::parse_error("Insufficient bytes for section ID"));
+                return Err(Error::parse_error("Insufficient bytes for section ID";
             }
 
             // Read section ID
@@ -289,7 +289,7 @@ mod component_binary_parser {
             if self.offset + section_size as usize > self.size {
                 return Err(Error::parse_error(
                     "Section size exceeds remaining binary size",
-                ));
+                ;
             }
 
             // Extract section data
@@ -357,7 +357,7 @@ mod component_binary_parser {
                 if self.offset >= self.size {
                     return Err(Error::parse_error(
                         "Unexpected end of binary while reading LEB128",
-                    ));
+                    ;
                 }
 
                 let byte = bytes[self.offset];
@@ -372,11 +372,11 @@ mod component_binary_parser {
 
                 shift += 7;
                 if shift >= 32 {
-                    return Err(Error::parse_error("LEB128 value too large for u32"));
+                    return Err(Error::parse_error("LEB128 value too large for u32";
                 }
 
                 if bytes_read > 5 {
-                    return Err(Error::parse_error("LEB128 encoding too long"));
+                    return Err(Error::parse_error("LEB128 encoding too long";
                 }
             }
 
@@ -420,7 +420,7 @@ mod component_binary_parser {
             }
 
             // Update our parsing offset
-            self.offset += core_module_section.bytes_consumed();
+            self.offset += core_module_section.bytes_consumed(;
 
             Ok(())
         }
@@ -525,7 +525,7 @@ mod component_binary_parser {
             comp_type: &wrt_format::component::ComponentType,
         ) -> Result<()> {
             // Store the type in the component's types vector
-            component.types.push(comp_type.clone());
+            component.types.push(comp_type.clone();
             Ok(())
         }
 
@@ -613,28 +613,28 @@ mod component_binary_parser {
             assert_eq!(
                 ComponentSectionId::from_u8(0),
                 Some(ComponentSectionId::Custom)
-            );
+            ;
             assert_eq!(
                 ComponentSectionId::from_u8(1),
                 Some(ComponentSectionId::CoreModule)
-            );
+            ;
             assert_eq!(
                 ComponentSectionId::from_u8(12),
                 Some(ComponentSectionId::Value)
-            );
-            assert_eq!(ComponentSectionId::from_u8(255), None);
+            ;
+            assert_eq!(ComponentSectionId::from_u8(255), None;
         }
 
         #[test]
         fn test_component_section_names() {
-            assert_eq!(ComponentSectionId::Custom.name(), "custom");
-            assert_eq!(ComponentSectionId::CoreModule.name(), "core-module");
-            assert_eq!(ComponentSectionId::Value.name(), "value");
+            assert_eq!(ComponentSectionId::Custom.name(), "custom";
+            assert_eq!(ComponentSectionId::CoreModule.name(), "core-module";
+            assert_eq!(ComponentSectionId::Value.name(), "value";
         }
 
         #[test]
         fn test_validation_level_default() {
-            assert_eq!(ValidationLevel::default(), ValidationLevel::Standard);
+            assert_eq!(ValidationLevel::default(), ValidationLevel::Standard;
         }
 
         #[test]
@@ -644,87 +644,87 @@ mod component_binary_parser {
                 version: COMPONENT_VERSION,
                 layer:   COMPONENT_LAYER,
             };
-            assert!(valid_header.validate().is_ok());
+            assert!(valid_header.validate().is_ok();
 
             let invalid_magic = ComponentHeader {
                 magic:   [0x00, 0x00, 0x00, 0x00],
                 version: COMPONENT_VERSION,
                 layer:   COMPONENT_LAYER,
             };
-            assert!(invalid_magic.validate().is_err());
+            assert!(invalid_magic.validate().is_err();
 
             let invalid_version = ComponentHeader {
                 magic:   COMPONENT_MAGIC,
                 version: 999,
                 layer:   COMPONENT_LAYER,
             };
-            assert!(invalid_version.validate().is_err());
+            assert!(invalid_version.validate().is_err();
 
             let invalid_layer = ComponentHeader {
                 magic:   COMPONENT_MAGIC,
                 version: COMPONENT_VERSION,
                 layer:   0,
             };
-            assert!(invalid_layer.validate().is_err());
+            assert!(invalid_layer.validate().is_err();
         }
 
         #[test]
         fn test_parser_creation() {
-            let parser = ComponentBinaryParser::new();
-            assert_eq!(parser.validation_level, ValidationLevel::Standard);
+            let parser = ComponentBinaryParser::new(;
+            assert_eq!(parser.validation_level, ValidationLevel::Standard;
 
-            let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
-            assert_eq!(strict_parser.validation_level, ValidationLevel::Full);
+            let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full;
+            assert_eq!(strict_parser.validation_level, ValidationLevel::Full;
         }
 
         #[test]
         fn test_parse_empty_binary() {
-            let mut parser = ComponentBinaryParser::new();
-            let result = parser.parse(&[]);
-            assert!(result.is_err());
+            let mut parser = ComponentBinaryParser::new(;
+            let result = parser.parse(&[];
+            assert!(result.is_err();
         }
 
         #[test]
         fn test_parse_too_small_binary() {
-            let mut parser = ComponentBinaryParser::new();
+            let mut parser = ComponentBinaryParser::new(;
             let result = parser.parse(&[0x00, 0x61, 0x73, 0x6D]); // Only magic, no version/layer
-            assert!(result.is_err());
+            assert!(result.is_err();
         }
 
         #[test]
         fn test_parse_minimal_valid_component() {
-            let mut parser = ComponentBinaryParser::new();
+            let mut parser = ComponentBinaryParser::new(;
 
             // Create minimal valid component binary: magic + version + layer
-            let mut binary = Vec::new();
+            let mut binary = Vec::new(;
             binary.extend_from_slice(&COMPONENT_MAGIC); // Magic
             binary.extend_from_slice(&COMPONENT_VERSION.to_le_bytes()); // Version
             binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes()); // Layer
 
-            let result = parser.parse(&binary);
-            assert!(result.is_ok());
+            let result = parser.parse(&binary;
+            assert!(result.is_ok();
             let component = result.unwrap();
-            assert!(component.name.is_none());
+            assert!(component.name.is_none();
         }
 
         #[test]
         fn test_convenience_functions() {
             // Test the convenience parsing functions
-            let mut binary = Vec::new();
-            binary.extend_from_slice(&COMPONENT_MAGIC);
-            binary.extend_from_slice(&COMPONENT_VERSION.to_le_bytes());
-            binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes());
+            let mut binary = Vec::new(;
+            binary.extend_from_slice(&COMPONENT_MAGIC;
+            binary.extend_from_slice(&COMPONENT_VERSION.to_le_bytes(;
+            binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes(;
 
             // Test basic parsing function
-            let result1 = parse_component_binary(&binary);
-            assert!(result1.is_ok());
+            let result1 = parse_component_binary(&binary;
+            assert!(result1.is_ok();
 
             // Test parsing with validation level
-            let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal);
-            assert!(result2.is_ok());
+            let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal;
+            assert!(result2.is_ok();
 
-            let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Full);
-            assert!(result3.is_ok());
+            let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Full;
+            assert!(result3.is_ok();
         }
     }
 } // end of component_binary_parser module

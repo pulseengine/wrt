@@ -155,7 +155,7 @@ pub struct LiveVariable<'a> {
 
 /// Breakpoint identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BreakpointId(pub u32);
+pub struct BreakpointId(pub u32;
 
 /// Breakpoint information
 #[derive(Debug)]
@@ -217,28 +217,28 @@ pub trait RuntimeDebugger {
     fn on_instruction(&mut self, pc: u32, state: &(dyn RuntimeState + 'static)) -> DebugAction;
 
     /// Called on function entry
-    fn on_function_entry(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static));
+    fn on_function_entry(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static;
 
     /// Called on function exit
-    fn on_function_exit(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static));
+    fn on_function_exit(&mut self, func_idx: u32, state: &(dyn RuntimeState + 'static;
 
     /// Called on trap/panic
-    fn on_trap(&mut self, trap_code: u32, state: &(dyn RuntimeState + 'static));
+    fn on_trap(&mut self, trap_code: u32, state: &(dyn RuntimeState + 'static;
 }
 
 /// Debugger attachment point for runtime
 pub trait DebuggableRuntime {
     /// Attach a debugger
-    fn attach_debugger(&mut self, debugger: Box<dyn RuntimeDebugger>);
+    fn attach_debugger(&mut self, debugger: Box<dyn RuntimeDebugger>;
 
     /// Detach current debugger
-    fn detach_debugger(&mut self);
+    fn detach_debugger(&mut self;
 
     /// Check if debugger is attached
     fn has_debugger(&self) -> bool;
 
     /// Set execution mode
-    fn set_debug_mode(&mut self, enabled: bool);
+    fn set_debug_mode(&mut self, enabled: bool;
 
     /// Add breakpoint
     fn add_breakpoint(&mut self, bp: Breakpoint) -> Result<(), DebugError>;

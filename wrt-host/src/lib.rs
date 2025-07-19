@@ -28,7 +28,7 @@
 //!     .with_host_function("my_module", "my_function",
 //!         HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)])))
 //!     .with_component_name("my_component")
-//!     .with_host_id("my_host");
+//!     .with_host_id("my_host";
 //!
 //! // Build the host
 //! let registry = builder.build().expect("Failed to build host");
@@ -96,6 +96,6 @@ pub use bounded_host_integration::{
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     // For safety-critical systems, enter infinite loop to maintain known safe state
 //     loop {
-//         core::hint::spin_loop();
+//         core::hint::spin_loop(;
 //     }
 // }

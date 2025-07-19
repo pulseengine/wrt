@@ -164,7 +164,7 @@ impl Checksummable for Section {
             Section::Code(_) => 10u8,
             Section::Data => 11u8,
         };
-        checksum.update(discriminant);
+        checksum.update(discriminant;
     }
 }
 
@@ -339,7 +339,7 @@ impl StreamingWasmValidator {
     pub fn validate_single_pass(&mut self, wasm_bytes: &[u8]) -> Result<WasmConfiguration, Error> {
         // Reset state
         self.state = ValidationState::Header;
-        self.requirements = WasmRequirements::default();
+        self.requirements = WasmRequirements::default(;
 
         // Validate header first
         self.validate_header(wasm_bytes)?;
@@ -371,17 +371,17 @@ impl StreamingWasmValidator {
     /// Validate WebAssembly header
     fn validate_header(&self, wasm_bytes: &[u8]) -> Result<(), Error> {
         if wasm_bytes.len() < 8 {
-            return Err(Error::parse_error("WASM module too small for header "));
+            return Err(Error::parse_error("WASM module too small for header ";
         }
 
         // Check magic number (0x00 0x61 0x73 0x6D)
         if &wasm_bytes[0..4] != &[0x00, 0x61, 0x73, 0x6D] {
-            return Err(Error::parse_error("Invalid WASM magic number "));
+            return Err(Error::parse_error("Invalid WASM magic number ";
         }
 
         // Check version (0x01 0x00 0x00 0x00)
         if &wasm_bytes[4..8] != &[0x01, 0x00, 0x00, 0x00] {
-            return Err(Error::parse_error("Unsupported WASM version "));
+            return Err(Error::parse_error("Unsupported WASM version ";
         }
 
         Ok(())
@@ -413,7 +413,7 @@ impl StreamingWasmValidator {
             offset += size_bytes;
 
             if offset + section_size as usize > wasm_bytes.len() {
-                return Err(Error::parse_error("Section extends beyond available data "));
+                return Err(Error::parse_error("Section extends beyond available data ";
             }
 
             let section_data = &wasm_bytes[offset..offset + section_size as usize];
@@ -422,7 +422,7 @@ impl StreamingWasmValidator {
             if let Err(_) = sections.push(section) {
                 return Err(Error::resource_exhausted(
                     "Too many sections in WASM module ",
-                ));
+                ;
             }
 
             offset += section_size as usize;
@@ -453,24 +453,24 @@ impl StreamingWasmValidator {
     /// Parse memory section
     fn parse_memory_section(&self, section_data: &[u8]) -> Result<Section, Error> {
         if section_data.is_empty() {
-            return Err(Error::parse_error("Empty memory section "));
+            return Err(Error::parse_error("Empty memory section ";
         }
 
         // Read memory count (should be 1 for MVP)
         let (memory_count, mut offset) = self.read_leb128_u32(section_data)?;
 
         if memory_count == 0 {
-            return Err(Error::parse_error("Memory section with zero memories "));
+            return Err(Error::parse_error("Memory section with zero memories ";
         }
 
         if memory_count > 1 {
             // Multiple memories - future feature
-            return Err(Error::parse_error("Multiple memories not supported "));
+            return Err(Error::parse_error("Multiple memories not supported ";
         }
 
         // Read memory limits
         if offset >= section_data.len() {
-            return Err(Error::parse_error("Truncated memory section "));
+            return Err(Error::parse_error("Truncated memory section ";
         }
 
         let limits_flag = section_data[offset];
@@ -495,7 +495,7 @@ impl StreamingWasmValidator {
             return Ok(Section::Code(CodeSection {
                 function_count:        0,
                 estimated_stack_usage: 0,
-            }));
+            };
         }
 
         let (function_count, _) = self.read_leb128_u32(section_data)?;
@@ -520,7 +520,7 @@ impl StreamingWasmValidator {
                 if required > self.platform_limits.max_wasm_linear_memory {
                     return Err(Error::resource_exhausted(
                         "WASM memory requirement exceeds platform limit ",
-                    ));
+                    ;
                 }
 
                 self.requirements.required_memory = required;
@@ -529,7 +529,7 @@ impl StreamingWasmValidator {
                 if code.estimated_stack_usage as usize > self.platform_limits.max_stack_bytes {
                     return Err(Error::resource_exhausted(
                         "Estimated stack usage exceeds platform limit ",
-                    ));
+                    ;
                 }
 
                 self.requirements.estimated_stack_usage = code.estimated_stack_usage as usize;
@@ -558,7 +558,7 @@ impl StreamingWasmValidator {
         if total_memory_need > self.platform_limits.max_total_memory {
             return Err(Error::resource_exhausted(
                 "Total memory requirement exceeds platform limit ",
-            ));
+            ;
         }
 
         // Check function count limits (platform-specific)
@@ -571,7 +571,7 @@ impl StreamingWasmValidator {
         if self.requirements.function_count > max_functions {
             return Err(Error::resource_exhausted(
                 "Function count exceeds platform limit ",
-            ));
+            ;
         }
 
         Ok(())
@@ -589,12 +589,12 @@ impl StreamingWasmValidator {
             result |= ((byte & 0x7F) as u32) << shift;
 
             if byte & 0x80 == 0 {
-                return Ok((result, bytes_read));
+                return Ok((result, bytes_read;
             }
 
             shift += 7;
             if shift >= 32 {
-                return Err(Error::parse_error("LEB128 value too large "));
+                return Err(Error::parse_error("LEB128 value too large ";
             }
         }
 
@@ -619,7 +619,7 @@ impl PlatformWasmValidatorFactory {
     /// Create validator for current platform
     pub fn create_for_platform() -> Result<StreamingWasmValidator, Error> {
         // In a real implementation, this would detect the current platform
-        let limits = ComprehensivePlatformLimits::default();
+        let limits = ComprehensivePlatformLimits::default(;
         Ok(StreamingWasmValidator::new(limits))
     }
 
@@ -647,84 +647,84 @@ mod tests {
 
     #[test]
     fn test_validator_creation() {
-        let limits = ComprehensivePlatformLimits::default();
-        let validator = StreamingWasmValidator::new(limits);
-        assert_eq!(validator.state(), ValidationState::Header);
+        let limits = ComprehensivePlatformLimits::default(;
+        let validator = StreamingWasmValidator::new(limits;
+        assert_eq!(validator.state(), ValidationState::Header;
     }
 
     #[test]
     fn test_header_validation() {
-        let limits = ComprehensivePlatformLimits::default();
-        let validator = StreamingWasmValidator::new(limits);
+        let limits = ComprehensivePlatformLimits::default(;
+        let validator = StreamingWasmValidator::new(limits;
 
         // Valid WASM header
         let valid_header = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        assert!(validator.validate_header(&valid_header).is_ok());
+        assert!(validator.validate_header(&valid_header).is_ok();
 
         // Invalid magic
         let invalid_magic = [0xFF, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        assert!(validator.validate_header(&invalid_magic).is_err());
+        assert!(validator.validate_header(&invalid_magic).is_err();
 
         // Invalid version
         let invalid_version = [0x00, 0x61, 0x73, 0x6D, 0x02, 0x00, 0x00, 0x00];
-        assert!(validator.validate_header(&invalid_version).is_err());
+        assert!(validator.validate_header(&invalid_version).is_err();
     }
 
     #[test]
     fn test_memory_section_parsing() {
-        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default());
+        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default(;
 
         // Memory section: count=1, limits=0, initial=1
         let memory_data = [0x01, 0x00, 0x01];
         let section = validator.parse_memory_section(&memory_data).unwrap();
 
         if let Section::Memory(mem) = section {
-            assert_eq!(mem.initial, 1);
-            assert_eq!(mem.maximum, None);
+            assert_eq!(mem.initial, 1;
+            assert_eq!(mem.maximum, None;
         } else {
-            panic!("Wrong section type ");
+            panic!("Wrong section type ";
         }
     }
 
     #[test]
     fn test_leb128_reading() {
-        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default());
+        let validator = StreamingWasmValidator::new(ComprehensivePlatformLimits::default(;
 
         // Test reading simple values
         let data = [0x01]; // 1
         let (value, bytes) = validator.read_leb128_u32(&data).unwrap();
-        assert_eq!(value, 1);
-        assert_eq!(bytes, 1);
+        assert_eq!(value, 1;
+        assert_eq!(bytes, 1;
 
         let data = [0x7F]; // 127
         let (value, bytes) = validator.read_leb128_u32(&data).unwrap();
-        assert_eq!(value, 127);
-        assert_eq!(bytes, 1);
+        assert_eq!(value, 127;
+        assert_eq!(bytes, 1;
 
         let data = [0x80, 0x01]; // 128
         let (value, bytes) = validator.read_leb128_u32(&data).unwrap();
-        assert_eq!(value, 128);
-        assert_eq!(bytes, 2);
+        assert_eq!(value, 128;
+        assert_eq!(bytes, 2;
     }
 
     #[test]
     fn test_factory_methods() {
         let validator = PlatformWasmValidatorFactory::create_for_platform().unwrap();
-        assert_eq!(validator.state(), ValidationState::Header);
+        assert_eq!(validator.state(), ValidationState::Header;
 
-        let embedded_validator = PlatformWasmValidatorFactory::create_for_embedded(1024 * 1024);
+        let embedded_validator = PlatformWasmValidatorFactory::create_for_embedded(1024 * 1024;
         assert_eq!(
             embedded_validator.platform_limits.max_total_memory,
             1024 * 1024
-        );
+        ;
     }
 
     #[test]
     fn test_requirements_validation() {
-        let mut limits = ComprehensivePlatformLimits::default();
+        let mut limits = ComprehensivePlatformLimits::default(;
         limits.max_wasm_linear_memory = 64 * 1024; // 64KB limit
 
-        let mut validator = StreamingWasmValidator::new(limits);
+        let mut validator = StreamingWasmValidator::new(limits;
 
         // Create memory section that exceeds limit
         let large_memory = MemorySection {
@@ -732,7 +732,7 @@ mod tests {
             maximum: None,
         };
 
-        let section = Section::Memory(large_memory);
-        assert!(validator.validate_section(&section).is_err());
+        let section = Section::Memory(large_memory;
+        assert!(validator.validate_section(&section).is_err();
     }
 }

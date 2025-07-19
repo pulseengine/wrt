@@ -75,7 +75,7 @@ pub struct HostFunctionsNoStd {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for HostFunctionsNoStd {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[u8::from(self._has_functions)]);
+        checksum.update_slice(&[u8::from(self._has_functions)];
     }
 }
 
@@ -128,7 +128,7 @@ pub enum CallbackType {
 // Implement required traits for BoundedMap compatibility
 impl wrt_foundation::traits::Checksummable for CallbackType {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[*self as u8]);
+        checksum.update_slice(&[*self as u8];
     }
 }
 
@@ -275,7 +275,7 @@ impl CallbackRegistry {
     /// Sets an interceptor for this registry
     #[cfg(feature = "std")]
     pub fn with_interceptor(mut self, interceptor: Arc<LinkInterceptor>) -> Self {
-        self.interceptor = Some(interceptor);
+        self.interceptor = Some(interceptor;
         self
     }
 
@@ -292,7 +292,7 @@ impl CallbackRegistry {
         callback_type: CallbackType,
         callback: T,
     ) {
-        self.callbacks.insert(callback_type, Box::new(callback));
+        self.callbacks.insert(callback_type, Box::new(callback;
     }
 
     /// Register a callback (`no_std` version - placeholder)
@@ -300,7 +300,7 @@ impl CallbackRegistry {
     pub fn register_callback<T>(&mut self, callback_type: CallbackType, _callback: T) {
         // Binary std/no_std choice
         // This is a placeholder implementation
-        let _ = self.callbacks.insert(callback_type, CallbackData::default());
+        let _ = self.callbacks.insert(callback_type, CallbackData::default(;
     }
 
     /// Get a callback
@@ -346,8 +346,8 @@ impl CallbackRegistry {
         let module_name = module_name.to_string();
         let function_name = function_name.to_string();
 
-        let module_functions = self.host_functions.entry(module_name).or_default();
-        module_functions.insert(function_name, handler);
+        let module_functions = self.host_functions.entry(module_name).or_default(;
+        module_functions.insert(function_name, handler;
     }
 
     /// Register a host function (`no_std` version)
@@ -410,7 +410,7 @@ impl CallbackRegistry {
                             modified_args,
                         )
                     },
-                );
+                ;
             }
         }
 
@@ -428,7 +428,7 @@ impl CallbackRegistry {
     ) -> Result<ValueVec> {
         if let Some(module_functions) = self.host_functions.get(module_name) {
             if let Some(handler) = module_functions.get(function_name) {
-                return handler.call(engine, args);
+                return handler.call(engine, args;
             }
         }
 
@@ -498,13 +498,13 @@ impl CallbackRegistry {
     pub fn get_available_builtins(&self) -> crate::prelude::HashSet<BuiltinType> {
         use crate::prelude::HashSet;
 
-        let mut builtins = HashSet::new();
+        let mut builtins = HashSet::new(;
 
         // Check for built-ins in the wasi_builtin module
         if let Some(builtin_funcs) = self.host_functions.get("wasi_builtin") {
             for func_name in builtin_funcs.keys() {
                 if let Ok(builtin_type) = func_name.parse::<BuiltinType>() {
-                    builtins.insert(builtin_type);
+                    builtins.insert(builtin_type;
                 }
             }
         }
@@ -558,9 +558,9 @@ impl CallbackRegistry {
         args: ValueVec,
     ) -> Result<ValueVec> {
         // First check if we have a direct host function registered
-        let builtin_name = builtin_type.name();
+        let builtin_name = builtin_type.name(;
         if self.has_host_function("wasi_builtin", builtin_name) {
-            return self.call_host_function(engine, "wasi_builtin", builtin_name, args);
+            return self.call_host_function(engine, "wasi_builtin", builtin_name, args;
         }
 
         // If not, delegate to the built-in host
@@ -571,13 +571,13 @@ impl CallbackRegistry {
 impl Clone for CallbackRegistry {
     fn clone(&self) -> Self {
         // Create a new registry
-        let mut new_registry = Self::new();
+        let mut new_registry = Self::new(;
 
         // Clone the interceptor if present
         #[cfg(feature = "std")]
         {
             if let Some(interceptor) = &self.interceptor {
-                new_registry.interceptor = Some(interceptor.clone());
+                new_registry.interceptor = Some(interceptor.clone();
             }
         }
 
@@ -590,7 +590,7 @@ impl Clone for CallbackRegistry {
                         module_name,
                         function_name,
                         handler.clone(),
-                    );
+                    ;
                 }
             }
         }
@@ -615,46 +615,46 @@ mod tests {
 
     #[test]
     fn test_callback_registry() {
-        let mut registry = CallbackRegistry::new();
+        let mut registry = CallbackRegistry::new(;
 
         // Register a host function
-        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)]));
-        registry.register_host_function("test_module", "test_function", handler);
+        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
+        registry.register_host_function("test_module", "test_function", handler;
 
         // Verify it can be found
-        assert!(registry.has_host_function("test_module", "test_function"));
-        assert!(!registry.has_host_function("nonexistent", "function"));
+        assert!(registry.has_host_function("test_module", "test_function");
+        assert!(!registry.has_host_function("nonexistent", "function");
 
         // Call the function
-        let mut engine = ();
+        let mut engine = (;
         let result =
-            registry.call_host_function(&mut engine, "test_module", "test_function", vec![]);
+            registry.call_host_function(&mut engine, "test_module", "test_function", vec![];
 
         // Fix the assertion to not rely on PartialEq for Error type
         match result {
             Ok(values) => {
-                assert_eq!(values.len(), 1);
-                assert!(matches!(values[0], Value::I32(42)));
+                assert_eq!(values.len(), 1;
+                assert!(matches!(values[0], Value::I32(42));
             },
             Err(_) => panic!("Expected successful function call"),
         }
 
         // Test calling a nonexistent function
-        let err = registry.call_host_function(&mut engine, "nonexistent", "function", vec![]);
-        assert!(err.is_err());
+        let err = registry.call_host_function(&mut engine, "nonexistent", "function", vec![];
+        assert!(err.is_err();
     }
 
     #[test]
     fn test_callback_registry_callback() {
-        let mut registry = CallbackRegistry::new();
+        let mut registry = CallbackRegistry::new(;
 
         // Register a callback
-        registry.register_callback(CallbackType::Intercept, 42);
+        registry.register_callback(CallbackType::Intercept, 42;
 
         // Get the callback
-        let callback = registry.get_callback::<i32>(&CallbackType::Intercept);
-        assert!(callback.is_some());
-        assert_eq!(*callback.unwrap(), 42);
+        let callback = registry.get_callback::<i32>(&CallbackType::Intercept;
+        assert!(callback.is_some();
+        assert_eq!(*callback.unwrap(), 42;
 
         // Modify the callback
         if let Some(callback) = registry.get_callback_mut::<i32>(&CallbackType::Intercept) {
@@ -662,33 +662,33 @@ mod tests {
         }
 
         // Verify it was modified
-        let callback = registry.get_callback::<i32>(&CallbackType::Intercept);
-        assert!(callback.is_some());
-        assert_eq!(*callback.unwrap(), 24);
+        let callback = registry.get_callback::<i32>(&CallbackType::Intercept;
+        assert!(callback.is_some();
+        assert_eq!(*callback.unwrap(), 24;
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_call_builtin_function() {
         // Create a registry with a host function for resource.create
-        let mut registry = CallbackRegistry::new();
-        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)]));
-        registry.register_host_function("wasi_builtin", "resource.create", handler);
+        let mut registry = CallbackRegistry::new(;
+        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
+        registry.register_host_function("wasi_builtin", "resource.create", handler;
 
         // Create a built-in host with a different implementation
-        let mut builtin_host = BuiltinHost::new("test-component", "test-host");
-        builtin_host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)]));
+        let mut builtin_host = BuiltinHost::new("test-component", "test-host";
+        builtin_host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)];
 
         // Test calling via registry - should use the registry's implementation
-        let mut engine = ();
+        let mut engine = (;
         let result = registry.call_builtin_function(
             &mut engine,
             &builtin_host,
             BuiltinType::ResourceCreate,
             vec![],
-        );
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(42)]);
+        ;
+        assert!(result.is_ok();
+        assert_eq!(result.unwrap(), vec![Value::I32(42)];
 
         // Now test with a built-in that's only in the host
         let result = registry.call_builtin_function(
@@ -696,13 +696,13 @@ mod tests {
             &builtin_host,
             BuiltinType::ResourceDrop,
             vec![],
-        );
+        ;
 
         // Should fail because neither registry nor host implements it
-        assert!(result.is_err());
+        assert!(result.is_err();
 
         // Now add it to the host
-        builtin_host.register_handler(BuiltinType::ResourceDrop, |_, _| Ok(vec![Value::I32(55)]));
+        builtin_host.register_handler(BuiltinType::ResourceDrop, |_, _| Ok(vec![Value::I32(55)];
 
         // Try again
         let result = registry.call_builtin_function(
@@ -710,11 +710,11 @@ mod tests {
             &builtin_host,
             BuiltinType::ResourceDrop,
             vec![],
-        );
+        ;
 
         // Should work now
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(55)]);
+        assert!(result.is_ok();
+        assert_eq!(result.unwrap(), vec![Value::I32(55)];
     }
 }
 
@@ -735,10 +735,10 @@ mod tests {
 #[cfg(feature = "std")]
 pub fn function_key(module_name: &str, function_name: &str) -> String {
     #[cfg(feature = "std")]
-    return format!("{}::{}", module_name, function_name);
+    return format!("{}::{}", module_name, function_name;
 
     #[cfg(all(not(feature = "std")))]
-    return alloc::format!("{}::{}", module_name, function_name);
+    return alloc::format!("{}::{}", module_name, function_name;
 }
 
 /// Generate a unique function key from module and function names (`no_std` version)

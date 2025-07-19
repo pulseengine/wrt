@@ -15,8 +15,8 @@
 mod tests {
     #[test]
     fn parser_tests_moved_to_centralized_location() {
-        println!("Parser tests for wrt-decoder are now in wrt-tests/integration/parser/");
-        println!("Run: cargo test -p wrt-tests parser");
-        println!("Consolidated tests provide better coverage and eliminate duplication");
+        println!("Parser tests for wrt-decoder are now in wrt-tests/integration/parser/";
+        println!("Run: cargo test -p wrt-tests parser";
+        println!("Consolidated tests provide better coverage and eliminate duplication";
     }
 }

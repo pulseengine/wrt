@@ -143,7 +143,7 @@ pub fn create_format_provider<const N: usize>() -> wrt_foundation::WrtResult<wrt
         capability_context, safe_capability_alloc,
         CrateId
     };
-    let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Format, N));
+    let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Format, N;
     let context = context?;
     safe_capability_alloc!(context, CrateId::Format, N)
 }

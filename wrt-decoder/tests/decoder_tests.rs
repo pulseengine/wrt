@@ -46,11 +46,11 @@ fn test_basic_module_decoding() -> Result<()> {
 
     // Verify that the module is properly decoded
     assert_eq!(module.functions.len(), 2); // One imported, one defined
-    assert_eq!(module.imports.len(), 1);
+    assert_eq!(module.imports.len(), 1;
     assert_eq!(module.exports.len(), 4); // memory, global, function, table
-    assert_eq!(module.memories.len(), 1);
-    assert_eq!(module.globals.len(), 1);
-    assert_eq!(module.tables.len(), 1);
+    assert_eq!(module.memories.len(), 1;
+    assert_eq!(module.globals.len(), 1;
+    assert_eq!(module.tables.len(), 1;
 
     // More detailed assertions could be added here
 
@@ -104,13 +104,13 @@ fn test_complex_module_decoding() -> Result<()> {
 
     // Verify module structure
     assert_eq!(module.functions.len(), 3); // 1 imported, 2 defined
-    assert_eq!(module.types.len(), 1);
+    assert_eq!(module.types.len(), 1;
     assert_eq!(module.imports.len(), 3); // memory, global, function
     assert_eq!(module.exports.len(), 2); // add, mul
-    assert_eq!(module.memories.len(), 1);
-    assert_eq!(module.globals.len(), 1);
-    assert_eq!(module.data.len(), 1);
-    assert!(module.start.is_some());
+    assert_eq!(module.memories.len(), 1;
+    assert_eq!(module.globals.len(), 1;
+    assert_eq!(module.data.len(), 1;
+    assert!(module.start.is_some();
 
     Ok(())
 }
@@ -122,8 +122,8 @@ fn test_invalid_module() {
     let invalid_bytes = vec![0x00, 0x61, 0x73];
 
     // Attempt to decode, should return an error
-    let result = wrt_decoder::wasm::decode(&invalid_bytes);
-    assert!(result.is_err());
+    let result = wrt_decoder::wasm::decode(&invalid_bytes;
+    assert!(result.is_err();
 
     // Test with truncated module
     let truncated = vec![
@@ -131,8 +131,8 @@ fn test_invalid_module() {
         0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, // Truncated type section
         0x01, 0x05, 0x01, 0x60,
     ];
-    let result = wrt_decoder::wasm::decode(&truncated);
-    assert!(result.is_err());
+    let result = wrt_decoder::wasm::decode(&truncated;
+    assert!(result.is_err();
 }
 
 #[test]
@@ -182,9 +182,9 @@ fn test_module_with_complex_instructions() -> Result<()> {
     let module = wrt_decoder::wasm::decode(&wasm_bytes)?;
 
     // Basic structure checks
-    assert_eq!(module.functions.len(), 1);
-    assert_eq!(module.exports.len(), 1);
-    assert_eq!(module.memories.len(), 1);
+    assert_eq!(module.functions.len(), 1;
+    assert_eq!(module.exports.len(), 1;
+    assert_eq!(module.memories.len(), 1;
 
     Ok(())
 }

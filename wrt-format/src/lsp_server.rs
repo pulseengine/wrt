@@ -245,25 +245,25 @@ impl WitLanguageServer {
             .to_string();
 
         // Set up parser for this document
-        let file_id = self.uri_to_file_id(&uri);
+        let file_id = self.uri_to_file_id(&uri;
 
         // Combine lines into full text
-        let mut full_text = String::new();
+        let mut full_text = String::new(;
         for line in &document.text {
             if let Ok(line_str) = line.as_str() {
-                full_text.push_str(line_str);
+                full_text.push_str(line_str;
                 full_text.push('\n');
             }
         }
 
         // Parse the document
         if let Ok(mut cache) = self.parser_cache.lock() {
-            let parser = cache.get_parser(file_id);
+            let parser = cache.get_parser(file_id;
             parser.set_source(&full_text)?;
         }
 
         // Store document
-        self.documents.insert(uri.clone(), document);
+        self.documents.insert(uri.clone(), document;
 
         // Run diagnostics
         self.update_diagnostics(&uri)?;
@@ -278,11 +278,11 @@ impl WitLanguageServer {
         changes: Vec<TextDocumentContentChangeEvent>,
         version: i32,
     ) -> Result<()> {
-        let file_id = self.uri_to_file_id(uri);
+        let file_id = self.uri_to_file_id(uri;
 
         // Apply changes to parser
         if let Ok(mut cache) = self.parser_cache.lock() {
-            let parser = cache.get_parser(file_id);
+            let parser = cache.get_parser(file_id;
 
             for change in changes {
                 let provider = wrt_foundation::safe_managed_alloc!(
@@ -327,7 +327,7 @@ impl WitLanguageServer {
 
     /// Get hover information
     pub fn hover(&self, uri: &str, position: Position) -> Result<Option<Hover>> {
-        let file_id = self.uri_to_file_id(uri);
+        let file_id = self.uri_to_file_id(uri;
         let offset = self.position_to_offset(uri, position)?;
 
         // Get AST from parser
@@ -362,7 +362,7 @@ impl WitLanguageServer {
                     return Ok(Some(Hover {
                         contents,
                         range: None,
-                    }));
+                    };
                 }
             }
         }
@@ -372,7 +372,7 @@ impl WitLanguageServer {
 
     /// Get completion items
     pub fn completion(&self, _uri: &str, _position: Position) -> Result<Vec<CompletionItem>> {
-        let mut items = Vec::new();
+        let mut items = Vec::new(;
         let provider = wrt_foundation::safe_managed_alloc!(
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
@@ -404,7 +404,7 @@ impl WitLanguageServer {
                     detail: None,
                     documentation: None,
                     insert_text: None,
-                });
+                };
             }
         }
 
@@ -424,7 +424,7 @@ impl WitLanguageServer {
                     ),
                     documentation: None,
                     insert_text: None,
-                });
+                };
             }
         }
 
@@ -433,8 +433,8 @@ impl WitLanguageServer {
 
     /// Get document symbols
     pub fn document_symbols(&self, uri: &str) -> Result<Vec<DocumentSymbol>> {
-        let file_id = self.uri_to_file_id(uri);
-        let mut symbols = Vec::new();
+        let file_id = self.uri_to_file_id(uri;
+        let mut symbols = Vec::new(;
 
         // Get AST from parser
         let ast = if let Ok(mut cache) = self.parser_cache.lock() {
@@ -452,14 +452,14 @@ impl WitLanguageServer {
 
     /// Update diagnostics for a document
     fn update_diagnostics(&mut self, uri: &str) -> Result<()> {
-        let _file_id = self.uri_to_file_id(uri);
-        let diagnostics = Vec::new();
+        let _file_id = self.uri_to_file_id(uri;
+        let diagnostics = Vec::new(;
 
         // Get parser errors (if any)
         // In a real implementation, the parser would provide error information
 
         // Store diagnostics
-        self.diagnostics.insert(uri.to_string(), diagnostics);
+        self.diagnostics.insert(uri.to_string(), diagnostics;
 
         Ok(())
     }
@@ -469,7 +469,7 @@ impl WitLanguageServer {
         // Simple hash of URI for file ID
         let mut hash = 0u32;
         for byte in uri.bytes() {
-            hash = hash.wrapping_mul(31).wrapping_add(byte as u32);
+            hash = hash.wrapping_mul(31).wrapping_add(byte as u32;
         }
         hash
     }
@@ -481,9 +481,9 @@ impl WitLanguageServer {
 
             for (line_idx, line) in doc.text.iter().enumerate() {
                 if line_idx == position.line as usize {
-                    return Ok(offset + position.character);
+                    return Ok(offset + position.character;
                 }
-                offset += line.as_str().map(|s| s.len() as u32 + 1).unwrap_or(1);
+                offset += line.as_str().map(|s| s.len() as u32 + 1).unwrap_or(1;
             }
         }
 
@@ -518,7 +518,7 @@ impl WitLanguageServer {
                     selection_range: self.span_to_range(package.span),
                     #[cfg(feature = "std")]
                     children: Vec::new(),
-                });
+                };
             }
         }
 
@@ -527,7 +527,7 @@ impl WitLanguageServer {
         for item in &ast.items {
             match item {
                 TopLevelItem::Interface(interface) => {
-                    let mut children = Vec::new();
+                    let mut children = Vec::new(;
 
                     // Extract function symbols
                     for interface_item in &interface.items {
@@ -539,7 +539,7 @@ impl WitLanguageServer {
                                     range:           self.span_to_range(func.span),
                                     selection_range: self.span_to_range(func.name.span),
                                     children:        Vec::new(),
-                                });
+                                };
                             },
                             InterfaceItem::Type(type_decl) => {
                                 children.push(DocumentSymbol {
@@ -548,7 +548,7 @@ impl WitLanguageServer {
                                     range:           self.span_to_range(type_decl.span),
                                     selection_range: self.span_to_range(type_decl.name.span),
                                     children:        Vec::new(),
-                                });
+                                };
                             },
                             InterfaceItem::Use(_use_decl) => {
                                 // Skip use declarations for now
@@ -562,7 +562,7 @@ impl WitLanguageServer {
                         range: self.span_to_range(interface.span),
                         selection_range: self.span_to_range(interface.name.span),
                         children,
-                    });
+                    };
                 },
                 _ => {}, // Handle other top-level items
             }
@@ -659,7 +659,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_server_creation() {
-        let server = WitLanguageServer::new();
+        let server = WitLanguageServer::new(;
         assert!(server.capabilities().text_document_sync);
         assert!(server.capabilities().hover_provider);
         assert!(server.capabilities().completion_provider);
@@ -667,9 +667,9 @@ mod tests {
 
     #[test]
     fn test_diagnostic_severity() {
-        assert_eq!(DiagnosticSeverity::Error as u8, 1);
-        assert_eq!(DiagnosticSeverity::Warning as u8, 2);
-        assert_eq!(DiagnosticSeverity::Information as u8, 3);
-        assert_eq!(DiagnosticSeverity::Hint as u8, 4);
+        assert_eq!(DiagnosticSeverity::Error as u8, 1;
+        assert_eq!(DiagnosticSeverity::Warning as u8, 2;
+        assert_eq!(DiagnosticSeverity::Information as u8, 3;
+        assert_eq!(DiagnosticSeverity::Hint as u8, 4;
     }
 }

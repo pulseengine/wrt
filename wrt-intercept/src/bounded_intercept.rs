@@ -50,14 +50,14 @@ pub type BoundedResultVec<T> = BoundedVec<T, 256, InterceptProvider>;
 /// Create a new bounded stats map
 pub fn new_stats_map() -> Result<BoundedStatsMap, wrt_error::Error> {
     // For safety-critical code that forbids unsafe, use direct provider creation
-    let provider = InterceptProvider::default();
+    let provider = InterceptProvider::default(;
     BoundedMap::new(provider)
 }
 
 /// Create a new bounded executing map
 pub fn new_executing_map() -> Result<BoundedExecutingMap, wrt_error::Error> {
     // For safety-critical code that forbids unsafe, use direct provider creation
-    let provider = InterceptProvider::default();
+    let provider = InterceptProvider::default(;
     BoundedMap::new(provider)
 }
 
@@ -67,6 +67,6 @@ where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
     // For safety-critical code that forbids unsafe, use direct provider creation
-    let provider = InterceptProvider::default();
+    let provider = InterceptProvider::default(;
     BoundedVec::new(provider)
 }

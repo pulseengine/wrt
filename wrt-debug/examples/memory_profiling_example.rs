@@ -18,8 +18,8 @@ fn main() {
     init_profiler().unwrap();
 
     // Enable allocation tracking and profiling
-    MemoryProfiler::enable_allocation_tracking();
-    MemoryProfiler::enable_profiling();
+    MemoryProfiler::enable_allocation_tracking(;
+    MemoryProfiler::enable_profiling(;
 
     // Track some allocations
     let alloc_id1 = with_profiler(|profiler| {
@@ -49,9 +49,9 @@ fn main() {
             sum += i;
         }
         sum
-    });
+    };
 
-    println!("Computation result: {}", result);
+    println!("Computation result: {}", result;
 
     // Track a deallocation
     with_profiler(|profiler| profiler.track_deallocation(alloc_id1)).unwrap();
@@ -59,33 +59,33 @@ fn main() {
     // Generate a profiling report
     let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap();
 
-    println!("Memory Profiling Report:");
-    println!("  Total allocations: {}", report.total_allocations);
-    println!("  Total deallocations: {}", report.total_deallocations);
-    println!("  Active allocations: {}", report.active_allocations);
+    println!("Memory Profiling Report:";
+    println!("  Total allocations: {}", report.total_allocations;
+    println!("  Total deallocations: {}", report.total_deallocations;
+    println!("  Active allocations: {}", report.active_allocations;
 
     // Check for memory leaks
     let leaks = with_profiler(|profiler| profiler.detect_leaks()).unwrap();
 
     if !leaks.is_empty() {
-        println!("\nPotential memory leaks detected:");
+        println!("\nPotential memory leaks detected:";
         for leak in leaks.iter() {
             println!(
                 "  Allocation #{} ({}): {} bytes - confidence: {}%",
                 leak.allocation.id, leak.reason, leak.allocation.size, leak.confidence
-            );
+            ;
         }
     }
 
-    println!("\nPerformance Metrics:");
+    println!("\nPerformance Metrics:";
     println!(
         "  Average operation time: {} µs",
         report.performance_metrics.avg_operation_time
-    );
+    ;
     println!(
         "  Memory churn rate: {} bytes/µs",
         report.performance_metrics.memory_churn_rate
-    );
+    ;
 
     // Complete memory system cleanup
     wrt_foundation::memory_system_initializer::complete_global_memory_initialization()

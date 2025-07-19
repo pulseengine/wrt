@@ -549,20 +549,20 @@ pub const VAL_TYPE_ERROR_CONTEXT_TAG: u8 = 0x64;
 pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     // Verify magic bytes
     if bytes.len() < 8 {
-        return Err(parse_error("WebAssembly binary too short"));
+        return Err(parse_error("WebAssembly binary too short";
     }
 
     if bytes[0..4] != WASM_MAGIC {
-        return Err(parse_error("Invalid WebAssembly magic bytes"));
+        return Err(parse_error("Invalid WebAssembly magic bytes";
     }
 
     if bytes[4..8] != WASM_VERSION {
-        return Err(parse_error("Unsupported WebAssembly version"));
+        return Err(parse_error("Unsupported WebAssembly version";
     }
 
     // Create an empty module with the binary stored
-    let mut module = Module::new();
-    module.binary = Some(bytes.to_vec());
+    let mut module = Module::new(;
+    module.binary = Some(bytes.to_vec(;
 
     // For now, we don't actually parse the module
     // This will be implemented in Phase 1
@@ -579,7 +579,7 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usiz
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(parse_error("LEB128 exceeds buffer bounds"));
+            return Err(parse_error("LEB128 exceeds buffer bounds";
         }
 
         let byte = bytes[pos + offset];
@@ -596,7 +596,7 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usiz
 
         // Prevent overflow
         if shift >= 32 {
-            return Err(parse_error("LEB128 overflow"));
+            return Err(parse_error("LEB128 overflow";
         }
     }
 
@@ -612,7 +612,7 @@ pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> wrt_error::Result<(i32, usiz
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(parse_error("Truncated LEB128 integer"));
+            return Err(parse_error("Truncated LEB128 integer";
         }
 
         byte = bytes[pos + offset];
@@ -629,7 +629,7 @@ pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> wrt_error::Result<(i32, usiz
 
         // Guard against malformed/malicious LEB128
         if shift >= 32 {
-            return Err(parse_error("LEB128 integer too large"));
+            return Err(parse_error("LEB128 integer too large";
         }
     }
 
@@ -650,7 +650,7 @@ pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> wrt_error::Result<(i64, usiz
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(parse_error("Truncated LEB128 integer"));
+            return Err(parse_error("Truncated LEB128 integer";
         }
 
         byte = bytes[pos + offset];
@@ -667,7 +667,7 @@ pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> wrt_error::Result<(i64, usiz
 
         // Guard against malformed/malicious LEB128
         if shift >= 64 {
-            return Err(parse_error("LEB128 integer too large"));
+            return Err(parse_error("LEB128 integer too large";
         }
     }
 
@@ -687,7 +687,7 @@ pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> wrt_error::Result<(u64, usiz
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(parse_error("Truncated LEB128 integer"));
+            return Err(parse_error("Truncated LEB128 integer";
         }
 
         let byte = bytes[pos + offset];
@@ -704,7 +704,7 @@ pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> wrt_error::Result<(u64, usiz
 
         // Guard against malformed/malicious LEB128
         if shift >= 64 {
-            return Err(parse_error("LEB128 integer too large"));
+            return Err(parse_error("LEB128 integer too large";
         }
     }
 
@@ -714,7 +714,7 @@ pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> wrt_error::Result<(u64, usiz
 /// Read a single byte from the byte array
 pub fn read_u8(bytes: &[u8], pos: usize) -> wrt_error::Result<(u8, usize)> {
     if pos >= bytes.len() {
-        return Err(parse_error("Unexpected end of input"));
+        return Err(parse_error("Unexpected end of input";
     }
     Ok((bytes[pos], pos + 1))
 }
@@ -722,7 +722,7 @@ pub fn read_u8(bytes: &[u8], pos: usize) -> wrt_error::Result<(u8, usize)> {
 /// Binary std/no_std choice
 pub fn read_string(bytes: &[u8], pos: usize) -> wrt_error::Result<(&[u8], usize)> {
     if pos >= bytes.len() {
-        return Err(parse_error("String exceeds buffer bounds"));
+        return Err(parse_error("String exceeds buffer bounds";
     }
 
     // Read the string length
@@ -731,7 +731,7 @@ pub fn read_string(bytes: &[u8], pos: usize) -> wrt_error::Result<(&[u8], usize)
     let string_end = string_start + length as usize;
 
     if string_end > bytes.len() {
-        return Err(parse_error("String data exceeds buffer bounds"));
+        return Err(parse_error("String data exceeds buffer bounds";
     }
 
     Ok((
@@ -753,15 +753,15 @@ pub mod with_alloc {
         // If we have the original binary and haven't modified the module,
         // we can just return it
         if let Some(binary) = &module.binary {
-            return Ok(binary.clone());
+            return Ok(binary.clone();
         }
 
         // Create a minimal valid module with bounded allocation
         #[cfg(feature = "safety-critical")]
-        let mut binary: WrtVec<u8, { CrateId::Format as u8 }, { 4 * 1024 * 1024 }> = WrtVec::new();
+        let mut binary: WrtVec<u8, { CrateId::Format as u8 }, { 4 * 1024 * 1024 }> = WrtVec::new(;
 
         #[cfg(not(feature = "safety-critical"))]
-        let mut binary = Vec::with_capacity(8);
+        let mut binary = Vec::with_capacity(8;
 
         // Magic bytes with capacity checking
         #[cfg(feature = "safety-critical")]
@@ -775,7 +775,7 @@ pub mod with_alloc {
             }
         }
         #[cfg(not(feature = "safety-critical"))]
-        binary.extend_from_slice(&WASM_MAGIC);
+        binary.extend_from_slice(&WASM_MAGIC;
 
         // Version with capacity checking
         #[cfg(feature = "safety-critical")]
@@ -787,14 +787,14 @@ pub mod with_alloc {
             }
         }
         #[cfg(not(feature = "safety-critical"))]
-        binary.extend_from_slice(&WASM_VERSION);
+        binary.extend_from_slice(&WASM_VERSION;
 
         // Generate sections (placeholder)
         // This will be implemented in Phase 1
 
         // Convert to Vec<u8> for return
         #[cfg(feature = "safety-critical")]
-        let result = binary.to_vec();
+        let result = binary.to_vec(;
         #[cfg(not(feature = "safety-critical"))]
         let result = binary;
 
@@ -811,7 +811,7 @@ pub mod with_alloc {
 
         loop {
             if pos + offset >= bytes.len() {
-                return Err(parse_error("Truncated LEB128 integer"));
+                return Err(parse_error("Truncated LEB128 integer";
             }
 
             let byte = bytes[pos + offset];
@@ -828,7 +828,7 @@ pub mod with_alloc {
 
             // Guard against malformed/malicious LEB128
             if shift >= 32 {
-                return Err(parse_error("LEB128 integer too large"));
+                return Err(parse_error("LEB128 integer too large";
             }
         }
 
@@ -846,7 +846,7 @@ pub mod with_alloc {
 
         loop {
             if pos + offset >= bytes.len() {
-                return Err(parse_error("Truncated LEB128 integer"));
+                return Err(parse_error("Truncated LEB128 integer";
             }
 
             byte = bytes[pos + offset];
@@ -863,7 +863,7 @@ pub mod with_alloc {
 
             // Guard against malformed/malicious LEB128
             if shift >= 32 {
-                return Err(parse_error("LEB128 integer too large"));
+                return Err(parse_error("LEB128 integer too large";
             }
         }
 
@@ -887,7 +887,7 @@ pub mod with_alloc {
 
         loop {
             if pos + offset >= bytes.len() {
-                return Err(parse_error("Truncated LEB128 integer"));
+                return Err(parse_error("Truncated LEB128 integer";
             }
 
             byte = bytes[pos + offset];
@@ -904,7 +904,7 @@ pub mod with_alloc {
 
             // Guard against malformed/malicious LEB128
             if shift >= 64 {
-                return Err(parse_error("LEB128 integer too large"));
+                return Err(parse_error("LEB128 integer too large";
             }
         }
 
@@ -926,7 +926,7 @@ pub mod with_alloc {
             return vec![0];
         }
 
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         let mut value = value;
 
         while value != 0 {
@@ -948,7 +948,7 @@ pub mod with_alloc {
     /// This function will be used when implementing the full binary generator.
     #[cfg(feature = "std")]
     pub fn write_leb128_i32(value: i32) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         let mut value = value;
         let mut more = true;
 
@@ -983,7 +983,7 @@ pub mod with_alloc {
     /// This function will be used when implementing the full binary formatter.
     #[cfg(feature = "std")]
     pub fn write_leb128_i64(value: i64) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         let mut value = value;
         let mut more = true;
 
@@ -1044,7 +1044,7 @@ pub mod with_alloc {
 
         loop {
             if offset >= bytes.len() {
-                return Err(parse_error("Unexpected end of LEB128 sequence"));
+                return Err(parse_error("Unexpected end of LEB128 sequence";
             }
 
             byte = bytes[offset];
@@ -1064,7 +1064,7 @@ pub mod with_alloc {
             // Ensure we don't exceed 64 bits (10 bytes)
             if shift >= 64 {
                 if byte & 0x7F != 0 {
-                    return Err(parse_error("LEB128 sequence exceeds maximum u64 value"));
+                    return Err(parse_error("LEB128 sequence exceeds maximum u64 value";
                 }
                 break;
             }
@@ -1076,7 +1076,7 @@ pub mod with_alloc {
     /// Write a LEB128 unsigned 64-bit integer to a byte array
     #[cfg(feature = "std")]
     pub fn write_leb128_u64(value: u64) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         let mut value = value;
 
         loop {
@@ -1104,38 +1104,38 @@ pub mod with_alloc {
     /// Read a 32-bit IEEE 754 float from a byte array
     pub fn read_f32(bytes: &[u8], pos: usize) -> Result<(f32, usize)> {
         if pos + 4 > bytes.len() {
-            return Err(parse_error("Not enough bytes to read f32"));
+            return Err(parse_error("Not enough bytes to read f32";
         }
 
         let mut buf = [0; 4];
-        buf.copy_from_slice(&bytes[pos..pos + 4]);
-        let value = f32::from_le_bytes(buf);
+        buf.copy_from_slice(&bytes[pos..pos + 4];
+        let value = f32::from_le_bytes(buf;
         Ok((value, pos + 4))
     }
 
     /// Read a 64-bit IEEE 754 float from a byte array
     pub fn read_f64(bytes: &[u8], pos: usize) -> Result<(f64, usize)> {
         if pos + 8 > bytes.len() {
-            return Err(parse_error("Not enough bytes to read f64"));
+            return Err(parse_error("Not enough bytes to read f64";
         }
 
         let mut buf = [0; 8];
-        buf.copy_from_slice(&bytes[pos..pos + 8]);
-        let value = f64::from_le_bytes(buf);
+        buf.copy_from_slice(&bytes[pos..pos + 8];
+        let value = f64::from_le_bytes(buf;
         Ok((value, pos + 8))
     }
 
     /// Write a 32-bit IEEE 754 float to a byte array
     #[cfg(feature = "std")]
     pub fn write_f32(value: f32) -> Vec<u8> {
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         bytes.to_vec()
     }
 
     /// Write a 64-bit IEEE 754 float to a byte array
     #[cfg(feature = "std")]
     pub fn write_f64(value: f64) -> Vec<u8> {
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         bytes.to_vec()
     }
 
@@ -1152,7 +1152,7 @@ pub mod with_alloc {
     /// Read a single byte from the byte array
     pub fn read_u8(bytes: &[u8], pos: usize) -> Result<(u8, usize)> {
         if pos >= bytes.len() {
-            return Err(parse_error("Unexpected end of input"));
+            return Err(parse_error("Unexpected end of input";
         }
         Ok((bytes[pos], pos + 1))
     }
@@ -1162,7 +1162,7 @@ pub mod with_alloc {
     /// This reads a length-prefixed string (used in WebAssembly names).
     pub fn read_string(bytes: &[u8], pos: usize) -> Result<(String, usize)> {
         if pos >= bytes.len() {
-            return Err(parse_error("String exceeds buffer bounds"));
+            return Err(parse_error("String exceeds buffer bounds";
         }
 
         // Read the string length
@@ -1172,7 +1172,7 @@ pub mod with_alloc {
 
         // Ensure the string fits in the buffer
         if str_end > bytes.len() {
-            return Err(parse_error("String exceeds buffer bounds"));
+            return Err(parse_error("String exceeds buffer bounds";
         }
 
         // Extract the string bytes
@@ -1188,14 +1188,14 @@ pub mod with_alloc {
     /// Write a WebAssembly UTF-8 string (length prefixed)
     #[cfg(feature = "std")]
     pub fn write_string(value: &str) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
 
         // Write the length as LEB128
         let length = value.len() as u32;
-        result.extend_from_slice(&write_leb128_u32(length));
+        result.extend_from_slice(&write_leb128_u32(length;
 
         // Write the string bytes
-        result.extend_from_slice(value.as_bytes());
+        result.extend_from_slice(value.as_bytes(;
 
         result
     }
@@ -1211,7 +1211,7 @@ pub mod with_alloc {
     {
         // Read the vector length
         let (count, mut offset) = read_leb128_u32(bytes, pos)?;
-        let mut result = Vec::with_capacity(count as usize);
+        let mut result = Vec::with_capacity(count as usize;
 
         // Read each element
         for _ in 0..count {
@@ -1232,14 +1232,14 @@ pub mod with_alloc {
     where
         F: Fn(&T) -> Vec<u8>,
     {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
 
         // Write the vector length
-        result.extend_from_slice(&write_leb128_u32(elements.len() as u32));
+        result.extend_from_slice(&write_leb128_u32(elements.len() as u32;
 
         // Write each element
         for elem in elements {
-            result.extend_from_slice(&write_elem(elem));
+            result.extend_from_slice(&write_elem(elem;
         }
 
         result
@@ -1252,7 +1252,7 @@ pub mod with_alloc {
     /// content.
     pub fn read_section_header(bytes: &[u8], pos: usize) -> Result<(u8, u32, usize)> {
         if pos >= bytes.len() {
-            return Err(parse_error("Attempted to read past end of binary"));
+            return Err(parse_error("Attempted to read past end of binary";
         }
 
         let id = bytes[pos];
@@ -1265,13 +1265,13 @@ pub mod with_alloc {
     /// Writes the section ID and content size as a LEB128 unsigned integer.
     #[cfg(feature = "std")]
     pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
 
         // Write section ID
         result.push(id);
 
         // Write section size
-        result.extend_from_slice(&write_leb128_u32(content_size));
+        result.extend_from_slice(&write_leb128_u32(content_size;
 
         result
     }
@@ -1282,7 +1282,7 @@ pub mod with_alloc {
         if pos >= bytes.len() {
             return Err(parse_error(
                 "Unexpected end of input when reading block type",
-            ));
+            ;
         }
 
         let byte = bytes[pos];
@@ -1304,7 +1304,7 @@ pub mod with_alloc {
                 if value >= 0 {
                     return Err(parse_error(
                         "Invalid block type index: expected negative value",
-                    ));
+                    ;
                 }
 
                 // Convert to function type index (positive)
@@ -1327,7 +1327,7 @@ pub mod with_alloc {
         if pos >= bytes.len() {
             return Err(parse_error(
                 "Unexpected end of input when reading component value type",
-            ));
+            ;
         }
 
         let byte = bytes[pos];
@@ -1510,15 +1510,15 @@ pub mod with_alloc {
             ValType::String => vec![COMPONENT_VALTYPE_STRING],
             ValType::Ref(idx) => {
                 let mut result = vec![COMPONENT_VALTYPE_REF];
-                result.extend_from_slice(&write_leb128_u32(*idx));
+                result.extend_from_slice(&write_leb128_u32(*idx;
                 result
             },
             ValType::Record(fields) => {
                 let mut result = vec![COMPONENT_VALTYPE_RECORD];
-                result.extend_from_slice(&write_leb128_u32(fields.len() as u32));
+                result.extend_from_slice(&write_leb128_u32(fields.len() as u32;
                 for (name, _field_type) in fields.iter() {
                     // Convert String to &str
-                    result.extend_from_slice(&write_string(name));
+                    result.extend_from_slice(&write_string(name;
                     // field_type is now ValTypeRef, need type store to resolve
                     result.extend_from_slice(&[0, 0, 0, 0]); // Placeholder
                 }
@@ -1526,10 +1526,10 @@ pub mod with_alloc {
             },
             ValType::Variant(cases) => {
                 let mut result = vec![COMPONENT_VALTYPE_VARIANT];
-                result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
+                result.extend_from_slice(&write_leb128_u32(cases.len() as u32;
                 for (name, case_type) in cases.iter() {
                     // Convert String to &str
-                    result.extend_from_slice(&write_string(name));
+                    result.extend_from_slice(&write_string(name;
                     match case_type {
                         Some(_ty) => {
                             result.push(1); // Has type flag
@@ -1550,31 +1550,31 @@ pub mod with_alloc {
             ValType::FixedList(_element_type, length) => {
                 // FixedList now uses ValTypeRef, need type store to resolve
                 let mut result = vec![COMPONENT_VALTYPE_FIXED_LIST, 0, 0, 0, 0];
-                result.extend_from_slice(&write_leb128_u32(*length));
+                result.extend_from_slice(&write_leb128_u32(*length;
                 result
             },
             ValType::Tuple(types) => {
                 // Tuple now uses BoundedVec<ValTypeRef>, need type store to resolve
                 let mut result = vec![COMPONENT_VALTYPE_TUPLE];
-                result.extend_from_slice(&write_leb128_u32(types.len() as u32));
+                result.extend_from_slice(&write_leb128_u32(types.len() as u32;
                 // Can't write the actual types without resolving ValTypeRef
                 result
             },
             ValType::Flags(names) => {
                 let mut result = vec![COMPONENT_VALTYPE_FLAGS];
-                result.extend_from_slice(&write_leb128_u32(names.len() as u32));
+                result.extend_from_slice(&write_leb128_u32(names.len() as u32;
                 for name in names.iter() {
                     // Convert String to &str
-                    result.extend_from_slice(&write_string(name));
+                    result.extend_from_slice(&write_string(name;
                 }
                 result
             },
             ValType::Enum(names) => {
                 let mut result = vec![COMPONENT_VALTYPE_ENUM];
-                result.extend_from_slice(&write_leb128_u32(names.len() as u32));
+                result.extend_from_slice(&write_leb128_u32(names.len() as u32;
                 for name in names.iter() {
                     // Convert String to &str
-                    result.extend_from_slice(&write_string(name));
+                    result.extend_from_slice(&write_string(name;
                 }
                 result
             },
@@ -1588,12 +1588,12 @@ pub mod with_alloc {
             },
             ValType::Own(type_idx) => {
                 let mut result = vec![COMPONENT_VALTYPE_OWN];
-                result.extend_from_slice(&write_leb128_u32(*type_idx));
+                result.extend_from_slice(&write_leb128_u32(*type_idx;
                 result
             },
             ValType::Borrow(type_idx) => {
                 let mut result = vec![COMPONENT_VALTYPE_BORROW];
-                result.extend_from_slice(&write_leb128_u32(*type_idx));
+                result.extend_from_slice(&write_leb128_u32(*type_idx;
                 result
             },
             ValType::Void => vec![COMPONENT_VALTYPE_ERROR_CONTEXT],
@@ -1604,26 +1604,26 @@ pub mod with_alloc {
     /// Parse a WebAssembly component binary into a Component structure
     pub fn parse_component_binary(bytes: &[u8]) -> Result<crate::component::Component> {
         if bytes.len() < 8 {
-            return Err(parse_error("WebAssembly component binary too short"));
+            return Err(parse_error("WebAssembly component binary too short";
         }
 
         // Check magic bytes
         if bytes[0..4] != COMPONENT_MAGIC {
-            return Err(parse_error("Invalid WebAssembly component magic bytes"));
+            return Err(parse_error("Invalid WebAssembly component magic bytes";
         }
 
         // Check version
         if bytes[4..8] != COMPONENT_VERSION {
-            return Err(parse_error("Unsupported WebAssembly component version"));
+            return Err(parse_error("Unsupported WebAssembly component version";
         }
 
         if bytes.len() < 10 {
-            return Err(parse_error("Invalid WebAssembly component layer"));
+            return Err(parse_error("Invalid WebAssembly component layer";
         }
 
         // Create an empty component with the binary stored
-        let mut component = crate::component::Component::new();
-        component.binary = Some(bytes.to_vec());
+        let mut component = crate::component::Component::new(;
+        component.binary = Some(bytes.to_vec(;
 
         // In a real implementation, we would parse the sections here
         // This will be fully implemented in the future
@@ -1636,17 +1636,17 @@ pub mod with_alloc {
         // If we have the original binary and haven't modified the component,
         // we can just return it
         if let Some(binary) = &component.binary {
-            return Ok(binary.clone());
+            return Ok(binary.clone();
         }
 
         // Create a minimal valid component
-        let mut binary = Vec::with_capacity(8);
+        let mut binary = Vec::with_capacity(8;
 
         // Magic bytes
-        binary.extend_from_slice(&COMPONENT_MAGIC);
+        binary.extend_from_slice(&COMPONENT_MAGIC;
 
         // Version and layer
-        binary.extend_from_slice(&COMPONENT_VERSION);
+        binary.extend_from_slice(&COMPONENT_VERSION;
 
         // Generate sections
         // This is a placeholder - full implementation will be added in the future
@@ -1721,7 +1721,7 @@ pub mod with_alloc {
         if pos >= bytes.len() {
             return Err(parse_error(
                 "Unexpected end of input while reading name length",
-            ));
+            ;
         }
 
         // Read the string length
@@ -1732,7 +1732,7 @@ pub mod with_alloc {
         if name_start + name_len as usize > bytes.len() {
             return Err(parse_error(
                 "Unexpected end of input while reading name content",
-            ));
+            ;
         }
 
         // Return the slice containing the name and the total bytes read
@@ -1748,7 +1748,7 @@ pub mod with_alloc {
     ) -> wrt_error::Result<(crate::types::Limits, usize)> {
         if offset + 1 > bytes.len() {
             // Need at least flags byte
-            return Err(Error::parse_error("Unexpected end of limits"));
+            return Err(Error::parse_error("Unexpected end of limits";
         }
         let flags = bytes[offset];
         let mut current_offset = offset + 1;
@@ -1790,7 +1790,7 @@ pub mod with_alloc {
                 return Err(crate::error::parse_error_dynamic(format!(
                     "(offset {}): Unexpected end of data in init_expr",
                     offset
-                )));
+                );
             }
             let opcode = bytes[offset];
             // We must advance offset *before* parsing immediates for that opcode.
@@ -1806,7 +1806,7 @@ pub mod with_alloc {
                         return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Mismatched END in init_expr",
                             offset - 1
-                        )));
+                        );
                     }
                     depth -= 1;
                 },
@@ -1824,7 +1824,7 @@ pub mod with_alloc {
                         return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): EOF in f32.const immediate",
                             offset
-                        )));
+                        );
                     }
                     offset += 4;
                 },
@@ -1833,7 +1833,7 @@ pub mod with_alloc {
                         return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): EOF in f64.const immediate",
                             offset
-                        )));
+                        );
                     }
                     offset += 8;
                 },
@@ -1843,7 +1843,7 @@ pub mod with_alloc {
                         return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): EOF in ref.null immediate",
                             offset
-                        )));
+                        );
                     }
                     offset += 1; // heap_type
                 },
@@ -1876,7 +1876,7 @@ pub mod with_alloc {
         })?;
         offset = next_offset;
 
-        let (element_type, init, mode): (RefType, ElementInit, crate::module::ElementMode);
+        let (element_type, init, mode): (RefType, ElementInit, crate::module::ElementMode;
 
         match prefix_val {
             0x00 => {
@@ -1903,12 +1903,12 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 0)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
                 element_type = RefType::Funcref;
-                init = ElementInit::FuncIndices(func_indices);
+                init = ElementInit::FuncIndices(func_indices;
                 mode = crate::module::ElementMode::Active {
                     table_index: table_idx,
                     offset_expr,
@@ -1925,7 +1925,7 @@ pub mod with_alloc {
                          only funcref (0x00) supported here.",
                         offset - 1,
                         elemkind_byte
-                    )));
+                    );
                 }
                 element_type = RefType::Funcref; // funcref
 
@@ -1943,11 +1943,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after passive element segment (type 1)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init = ElementInit::Expressions(exprs_vec);
+                init = ElementInit::Expressions(exprs_vec;
                 mode = crate::module::ElementMode::Passive;
             },
             0x02 => {
@@ -1976,7 +1976,7 @@ pub mod with_alloc {
                          only funcref (0x00) supported here.",
                         offset - 1,
                         elemkind_byte
-                    )));
+                    );
                 }
                 element_type = RefType::Funcref; // funcref
 
@@ -1994,11 +1994,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 2)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init = ElementInit::Expressions(exprs_vec);
+                init = ElementInit::Expressions(exprs_vec;
                 mode = crate::module::ElementMode::Active {
                     table_index: table_idx,
                     offset_expr,
@@ -2015,7 +2015,7 @@ pub mod with_alloc {
                          only funcref (0x00) supported here.",
                         offset - 1,
                         elemkind_byte
-                    )));
+                    );
                 }
                 element_type = RefType::Funcref; // funcref
 
@@ -2033,11 +2033,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after declared element segment (type 3)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init = ElementInit::Expressions(exprs_vec);
+                init = ElementInit::Expressions(exprs_vec;
                 mode = crate::module::ElementMode::Declared;
             },
             0x04 => {
@@ -2065,12 +2065,12 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 4)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
                 element_type = RefType::Funcref;
-                init = ElementInit::FuncIndices(func_indices);
+                init = ElementInit::FuncIndices(func_indices;
                 mode = crate::module::ElementMode::Active {
                     table_index: table_idx,
                     offset_expr,
@@ -2106,11 +2106,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after passive element segment (type 5)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init = ElementInit::Expressions(exprs_vec);
+                init = ElementInit::Expressions(exprs_vec;
                 mode = crate::module::ElementMode::Passive;
             },
             0x06 => {
@@ -2158,11 +2158,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 6)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init = ElementInit::Expressions(exprs_vec);
+                init = ElementInit::Expressions(exprs_vec;
                 mode = crate::module::ElementMode::Active {
                     table_index: table_idx,
                     offset_expr,
@@ -2198,11 +2198,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after declared element segment (type 7)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init = ElementInit::Expressions(exprs_vec);
+                init = ElementInit::Expressions(exprs_vec;
                 mode = crate::module::ElementMode::Declared;
             },
             _ => {
@@ -2230,7 +2230,7 @@ pub mod with_alloc {
         if offset >= bytes.len() {
             return Err(Error::parse_error(
                 "Unexpected end of bytes when parsing data segment prefix",
-            ));
+            ;
         }
 
         let prefix = bytes[offset];
@@ -2249,9 +2249,9 @@ pub mod with_alloc {
                 if offset + (init_byte_count as usize) > bytes.len() {
                     return Err(Error::parse_error(
                         "Data segment init bytes extend beyond data",
-                    ));
+                    ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2272,9 +2272,9 @@ pub mod with_alloc {
                 if offset + (init_byte_count as usize) > bytes.len() {
                     return Err(Error::parse_error(
                         "Passive data segment init bytes extend beyond data",
-                    ));
+                    ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2301,9 +2301,9 @@ pub mod with_alloc {
                 if offset + (init_byte_count as usize) > bytes.len() {
                     return Err(Error::parse_error(
                         "Data segment init bytes extend beyond data",
-                    ));
+                    ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2329,7 +2329,7 @@ pub mod with_alloc {
         if offset >= bytes.len() {
             return Err(Error::parse_error(
                 "Unexpected end of bytes when parsing data segment prefix",
-            ));
+            ;
         }
 
         let prefix = bytes[offset];
@@ -2348,9 +2348,9 @@ pub mod with_alloc {
                 if offset + (init_byte_count as usize) > bytes.len() {
                     return Err(Error::parse_error(
                         "Data segment init bytes extend beyond data",
-                    ));
+                    ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2373,9 +2373,9 @@ pub mod with_alloc {
                 if offset + (init_byte_count as usize) > bytes.len() {
                     return Err(Error::parse_error(
                         "Passive data segment init bytes extend beyond data",
-                    ));
+                    ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2401,9 +2401,9 @@ pub mod with_alloc {
                 if offset + (init_byte_count as usize) > bytes.len() {
                     return Err(Error::parse_error(
                         "Data segment init bytes extend beyond data",
-                    ));
+                    ;
                 }
-                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec(;
                 offset += init_byte_count as usize;
 
                 Ok((
@@ -2444,7 +2444,7 @@ pub mod with_alloc {
             PureElementInit,
             PureElementMode,
             Vec<u8>,
-        );
+        ;
 
         match prefix_val {
             0x00 => {
@@ -2473,12 +2473,12 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 0)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
                 element_type = crate::types::RefType::Funcref;
-                init_data = PureElementInit::FunctionIndices(func_indices);
+                init_data = PureElementInit::FunctionIndices(func_indices;
                 mode = PureElementMode::Active {
                     table_index,
                     offset_expr_len: parsed_offset_expr.len() as u32,
@@ -2494,7 +2494,7 @@ pub mod with_alloc {
                         "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 1)",
                         offset - 1,
                         elemkind_byte
-                    )));
+                    );
                 }
                 element_type = crate::types::RefType::Funcref;
 
@@ -2512,13 +2512,13 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after passive element segment (type 1)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Passive;
-                offset_expr = Vec::new();
+                offset_expr = Vec::new(;
             },
             0x02 => {
                 // Active with tableidx: tableidx expr elemkind vec(expr) end
@@ -2546,7 +2546,7 @@ pub mod with_alloc {
                         "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 2)",
                         offset - 1,
                         elemkind_byte
-                    )));
+                    );
                 }
                 element_type = crate::types::RefType::Funcref;
 
@@ -2564,11 +2564,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 2)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Active {
                     table_index,
                     offset_expr_len: parsed_offset_expr.len() as u32,
@@ -2584,7 +2584,7 @@ pub mod with_alloc {
                         "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 3)",
                         offset - 1,
                         elemkind_byte
-                    )));
+                    );
                 }
                 element_type = crate::types::RefType::Funcref;
 
@@ -2602,13 +2602,13 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after declared element segment (type 3)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Declared;
-                offset_expr = Vec::new();
+                offset_expr = Vec::new(;
             },
             0x04 => {
                 // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
@@ -2636,12 +2636,12 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 4)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
                 element_type = crate::types::RefType::Funcref;
-                init_data = PureElementInit::FunctionIndices(func_indices);
+                init_data = PureElementInit::FunctionIndices(func_indices;
                 mode = PureElementMode::Active {
                     table_index,
                     offset_expr_len: parsed_offset_expr.len() as u32,
@@ -2678,13 +2678,13 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after passive element segment (type 5)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Passive;
-                offset_expr = Vec::new();
+                offset_expr = Vec::new(;
             },
             0x06 => {
                 // Active with tableidx: tableidx expr reftype vec(expr) end
@@ -2733,11 +2733,11 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after active element segment (type 6)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Active {
                     table_index,
                     offset_expr_len: parsed_offset_expr.len() as u32,
@@ -2774,13 +2774,13 @@ pub mod with_alloc {
                     return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Expected END opcode after declared element segment (type 7)",
                         offset
-                    )));
+                    );
                 }
                 offset += 1; // Consume END
 
-                init_data = PureElementInit::ExpressionBytes(exprs_vec);
+                init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Declared;
-                offset_expr = Vec::new();
+                offset_expr = Vec::new(;
             },
             _ => {
                 return Err(crate::error::parse_error_dynamic(format!(
@@ -2812,12 +2812,12 @@ pub mod with_alloc {
 #[cfg(not(any(feature = "std")))]
 pub fn write_leb128_u32_to_slice(value: u32, buffer: &mut [u8]) -> wrt_error::Result<usize> {
     if buffer.len() < 5 {
-        return Err(parse_error("Buffer too small for LEB128 encoding"));
+        return Err(parse_error("Buffer too small for LEB128 encoding";
     }
 
     if value == 0 {
         buffer[0] = 0;
-        return Ok(1);
+        return Ok(1;
     }
 
     let mut value = value;
@@ -2844,7 +2844,7 @@ pub fn write_leb128_u32_to_slice(value: u32, buffer: &mut [u8]) -> wrt_error::Re
 /// Returns the number of bytes written.
 #[cfg(not(any(feature = "std")))]
 pub fn write_string_to_slice(value: &str, buffer: &mut [u8]) -> wrt_error::Result<usize> {
-    let str_bytes = value.as_bytes();
+    let str_bytes = value.as_bytes(;
     let length = str_bytes.len() as u32;
 
     // First calculate how many bytes we need for the length
@@ -2852,16 +2852,16 @@ pub fn write_string_to_slice(value: &str, buffer: &mut [u8]) -> wrt_error::Resul
     let length_bytes = write_leb128_u32_to_slice(length, &mut length_buffer)?;
 
     // Check if buffer is large enough
-    let total_size = length_bytes + str_bytes.len();
+    let total_size = length_bytes + str_bytes.len(;
     if buffer.len() < total_size {
-        return Err(parse_error("Buffer too small for string encoding"));
+        return Err(parse_error("Buffer too small for string encoding";
     }
 
     // Write the length
-    buffer[..length_bytes].copy_from_slice(&length_buffer[..length_bytes]);
+    buffer[..length_bytes].copy_from_slice(&length_buffer[..length_bytes];
 
     // Write the string bytes
-    buffer[length_bytes..total_size].copy_from_slice(str_bytes);
+    buffer[length_bytes..total_size].copy_from_slice(str_bytes;
 
     Ok(total_size)
 }
@@ -2912,30 +2912,30 @@ mod tests {
     // Read functions
     fn read_f32_test(bytes: &[u8], pos: usize) -> crate::Result<(f32, usize)> {
         if pos + 4 > bytes.len() {
-            return Err(parse_error("Not enough bytes to read f32"));
+            return Err(parse_error("Not enough bytes to read f32";
         }
 
         let mut buf = [0; 4];
-        buf.copy_from_slice(&bytes[pos..pos + 4]);
-        let value = f32::from_le_bytes(buf);
+        buf.copy_from_slice(&bytes[pos..pos + 4];
+        let value = f32::from_le_bytes(buf;
         Ok((value, pos + 4))
     }
 
     fn read_f64_test(bytes: &[u8], pos: usize) -> crate::Result<(f64, usize)> {
         if pos + 8 > bytes.len() {
-            return Err(parse_error("Not enough bytes to read f64"));
+            return Err(parse_error("Not enough bytes to read f64";
         }
 
         let mut buf = [0; 8];
-        buf.copy_from_slice(&bytes[pos..pos + 8]);
-        let value = f64::from_le_bytes(buf);
+        buf.copy_from_slice(&bytes[pos..pos + 8];
+        let value = f64::from_le_bytes(buf;
         Ok((value, pos + 8))
     }
 
     #[cfg(feature = "std")]
     fn read_string_test(bytes: &[u8], pos: usize) -> crate::Result<(String, usize)> {
         if pos >= bytes.len() {
-            return Err(parse_error("String exceeds buffer bounds"));
+            return Err(parse_error("String exceeds buffer bounds";
         }
 
         // Read the string length using parent module function
@@ -2944,7 +2944,7 @@ mod tests {
         let str_end = str_start + str_len as usize;
 
         if str_end > bytes.len() {
-            return Err(parse_error("String exceeds buffer bounds"));
+            return Err(parse_error("String exceeds buffer bounds";
         }
 
         let string_bytes = &bytes[str_start..str_end];
@@ -2964,7 +2964,7 @@ mod tests {
         F: Fn(&[u8], usize) -> crate::Result<(T, usize)>,
     {
         let (count, mut offset) = read_leb128_u32(bytes, pos)?;
-        let mut result = Vec::with_capacity(count as usize);
+        let mut result = Vec::with_capacity(count as usize;
 
         for _ in 0..count {
             let (elem, elem_size) = read_elem(bytes, pos + offset)?;
@@ -2977,7 +2977,7 @@ mod tests {
 
     fn read_section_header_test(bytes: &[u8], pos: usize) -> crate::Result<(u8, u32, usize)> {
         if pos >= bytes.len() {
-            return Err(parse_error("Attempted to read past end of binary"));
+            return Err(parse_error("Attempted to read past end of binary";
         }
 
         let id = bytes[pos];
@@ -2999,7 +2999,7 @@ mod tests {
             return vec![0];
         }
 
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         let mut value = value;
 
         while value != 0 {
@@ -3018,28 +3018,28 @@ mod tests {
 
     #[cfg(feature = "std")]
     fn write_f32_test(value: f32) -> Vec<u8> {
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         bytes.to_vec()
     }
 
     #[cfg(feature = "std")]
     fn write_f64_test(value: f64) -> Vec<u8> {
-        let bytes = value.to_le_bytes();
+        let bytes = value.to_le_bytes(;
         bytes.to_vec()
     }
 
     #[cfg(feature = "std")]
     fn write_string_test(value: &str) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         let length = value.len() as u32;
-        result.extend_from_slice(&write_leb128_u32_test(length));
-        result.extend_from_slice(value.as_bytes());
+        result.extend_from_slice(&write_leb128_u32_test(length;
+        result.extend_from_slice(value.as_bytes(;
         result
     }
 
     #[cfg(feature = "std")]
     fn write_leb128_u64_test(value: u64) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         let mut value = value;
 
         loop {
@@ -3065,19 +3065,19 @@ mod tests {
     where
         F: Fn(&T) -> Vec<u8>,
     {
-        let mut result = Vec::new();
-        result.extend_from_slice(&write_leb128_u32_test(elements.len() as u32));
+        let mut result = Vec::new(;
+        result.extend_from_slice(&write_leb128_u32_test(elements.len() as u32;
         for elem in elements {
-            result.extend_from_slice(&write_elem(elem));
+            result.extend_from_slice(&write_elem(elem;
         }
         result
     }
 
     #[cfg(feature = "std")]
     fn write_section_header_test(id: u8, content_size: u32) -> Vec<u8> {
-        let mut result = Vec::new();
+        let mut result = Vec::new(;
         result.push(id);
-        result.extend_from_slice(&write_leb128_u32_test(content_size));
+        result.extend_from_slice(&write_leb128_u32_test(content_size;
         result
     }
 
@@ -3096,14 +3096,14 @@ mod tests {
         ];
 
         for &value in &values {
-            let bytes = write_f32_test(value);
+            let bytes = write_f32_test(value;
             let (decoded, size) = read_f32_test(&bytes, 0).unwrap();
 
-            assert_eq!(size, 4);
+            assert_eq!(size, 4;
             if value.is_nan() {
-                assert!(decoded.is_nan());
+                assert!(decoded.is_nan();
             } else {
-                assert_eq!(decoded, value);
+                assert_eq!(decoded, value;
             }
         }
     }
@@ -3123,14 +3123,14 @@ mod tests {
         ];
 
         for &value in &values {
-            let bytes = write_f64_test(value);
+            let bytes = write_f64_test(value;
             let (decoded, size) = read_f64_test(&bytes, 0).unwrap();
 
-            assert_eq!(size, 8);
+            assert_eq!(size, 8;
             if value.is_nan() {
-                assert!(decoded.is_nan());
+                assert!(decoded.is_nan();
             } else {
-                assert_eq!(decoded, value);
+                assert_eq!(decoded, value;
             }
         }
     }
@@ -3146,10 +3146,10 @@ mod tests {
         ];
 
         for &s in &test_strings {
-            let bytes = write_string_test(s);
+            let bytes = write_string_test(s;
             let (decoded, _) = read_string_test(&bytes, 0).unwrap();
 
-            assert_eq!(decoded, s);
+            assert_eq!(decoded, s;
         }
     }
 
@@ -3168,22 +3168,22 @@ mod tests {
         ];
 
         for &value in &test_values {
-            let bytes = write_leb128_u64_test(value);
+            let bytes = write_leb128_u64_test(value;
             let (decoded, _) = read_leb128_u64(&bytes, 0).unwrap();
 
-            assert_eq!(decoded, value);
+            assert_eq!(decoded, value;
         }
     }
 
     #[test]
     fn test_utf8_validation() {
         // Valid UTF-8
-        assert!(validate_utf8_test(b"Hello").is_ok());
-        assert!(validate_utf8_test("🦀 Rust".as_bytes()).is_ok());
+        assert!(validate_utf8_test(b"Hello").is_ok();
+        assert!(validate_utf8_test("🦀 Rust".as_bytes()).is_ok();
 
         // Invalid UTF-8
         let invalid_utf8 = [0xFF, 0xFE, 0xFD];
-        assert!(validate_utf8_test(&invalid_utf8).is_err());
+        assert!(validate_utf8_test(&invalid_utf8).is_err();
     }
 
     #[test]
@@ -3193,12 +3193,12 @@ mod tests {
         let values = vec![1u32, 42, 100, 1000];
 
         // Write the vector
-        let bytes = write_vector_test(&values, |v| write_leb128_u32_test(*v));
+        let bytes = write_vector_test(&values, |v| write_leb128_u32_test(*v;
 
         // Read the vector back
         let (decoded, _) = read_vector_test(&bytes, 0, read_leb128_u32).unwrap();
 
-        assert_eq!(values, decoded);
+        assert_eq!(values, decoded;
     }
 
     #[test]
@@ -3208,13 +3208,13 @@ mod tests {
         let section_id = TYPE_SECTION_ID;
         let content_size = 10;
 
-        let bytes = write_section_header_test(section_id, content_size);
+        let bytes = write_section_header_test(section_id, content_size;
 
         // Read the section header back
         let (decoded_id, decoded_size, _) = read_section_header_test(&bytes, 0).unwrap();
 
-        assert_eq!(section_id, decoded_id);
-        assert_eq!(content_size, decoded_size);
+        assert_eq!(section_id, decoded_id;
+        assert_eq!(content_size, decoded_size;
     }
 
     // Re-export pure parsing functions for std builds
@@ -3231,8 +3231,8 @@ mod tests {
 // Helper function to read a u32 (4 bytes, little-endian) from a byte array
 pub fn read_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usize)> {
     if pos + 4 > bytes.len() {
-        return Err(parse_error("Truncated u32"));
+        return Err(parse_error("Truncated u32";
     }
-    let value = u32::from_le_bytes([bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3]]);
+    let value = u32::from_le_bytes([bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3]];
     Ok((value, 4))
 }

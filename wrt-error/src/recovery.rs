@@ -73,13 +73,13 @@ impl ErrorContext {
 
     /// Add context information
     pub fn with_context(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.context.insert(key.into(), value.into());
+        self.context.insert(key.into(), value.into();
         self
     }
 
     /// Add stack frame
     pub fn with_stack_frame(mut self, frame: impl Into<String>) -> Self {
-        self.stack_trace.push(frame.into());
+        self.stack_trace.push(frame.into();
         self
     }
 
@@ -110,14 +110,14 @@ impl Default for ErrorRecoveryManager {
 impl ErrorRecoveryManager {
     /// Create a new error recovery manager
     pub fn new() -> Self {
-        let mut strategies = HashMap::new();
+        let mut strategies = HashMap::new(;
 
         // Set default recovery strategies
-        strategies.insert(ErrorCategory::Parse, RecoveryStrategy::Skip);
-        strategies.insert(ErrorCategory::Type, RecoveryStrategy::LogAndContinue);
-        strategies.insert(ErrorCategory::Runtime, RecoveryStrategy::Abort);
-        strategies.insert(ErrorCategory::Memory, RecoveryStrategy::Abort);
-        strategies.insert(ErrorCategory::Validation, RecoveryStrategy::UseDefault);
+        strategies.insert(ErrorCategory::Parse, RecoveryStrategy::Skip;
+        strategies.insert(ErrorCategory::Type, RecoveryStrategy::LogAndContinue;
+        strategies.insert(ErrorCategory::Runtime, RecoveryStrategy::Abort;
+        strategies.insert(ErrorCategory::Memory, RecoveryStrategy::Abort;
+        strategies.insert(ErrorCategory::Validation, RecoveryStrategy::UseDefault;
 
         Self {
             strategies,
@@ -128,7 +128,7 @@ impl ErrorRecoveryManager {
 
     /// Set recovery strategy for an error category
     pub fn set_strategy(&mut self, category: ErrorCategory, strategy: RecoveryStrategy) {
-        self.strategies.insert(category, strategy);
+        self.strategies.insert(category, strategy;
     }
 
     /// Get recovery strategy for an error category
@@ -138,19 +138,19 @@ impl ErrorRecoveryManager {
 
     /// Record an error with context
     pub fn record_error(&mut self, error: Error, context: ErrorContext) {
-        self.error_history.push((error, context));
+        self.error_history.push((error, context);
 
         // Limit history size
         if self.error_history.len() > self.max_history {
-            self.error_history.remove(0);
+            self.error_history.remove(0;
         }
     }
 
     /// Analyze error patterns
     pub fn analyze_patterns(&self) -> ErrorPatternAnalysis {
-        let mut category_counts = HashMap::new();
-        let mut location_counts = HashMap::new();
-        let mut recent_errors = Vec::new();
+        let mut category_counts = HashMap::new(;
+        let mut location_counts = HashMap::new(;
+        let mut recent_errors = Vec::new(;
 
         for (error, context) in &self.error_history {
             // Count by category
@@ -161,7 +161,7 @@ impl ErrorRecoveryManager {
 
             // Collect recent errors (last 10)
             if recent_errors.len() < 10 {
-                recent_errors.push((error.clone(), context.clone()));
+                recent_errors.push((error.clone(), context.clone();
             }
         }
 
@@ -191,7 +191,7 @@ impl ErrorRecoveryManager {
                 #[cfg(feature = "std")]
                 {
                     use std::println;
-                    println!("Warning: {} at {}", error.message, context.location);
+                    println!("Warning: {} at {}", error.message, context.location;
                 }
                 RecoveryResult::Continue
             },
@@ -267,8 +267,8 @@ pub struct RecoverableError {
 impl RecoverableError {
     /// Create a new recoverable error
     pub fn new(error: Error, context: ErrorContext) -> Self {
-        let manager = ErrorRecoveryManager::new();
-        let recovery_suggestion = manager.recover(&error, &context);
+        let manager = ErrorRecoveryManager::new(;
+        let recovery_suggestion = manager.recover(&error, &context;
 
         Self {
             error,
@@ -294,33 +294,33 @@ pub struct DebugUtils;
 impl DebugUtils {
     /// Format error with full debugging information
     pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
-        let mut output = String::new();
+        let mut output = String::new(;
 
         output.push_str(&format!(
             "Error: {} (Code: {})\n",
             error.message, error.code
-        ));
-        output.push_str(&format!("Category: {:?}\n", error.category));
-        output.push_str(&format!("Location: {}\n", context.location));
+        ;
+        output.push_str(&format!("Category: {:?}\n", error.category;
+        output.push_str(&format!("Location: {}\n", context.location;
 
         if !context.context.is_empty() {
-            output.push_str("Context:\n");
+            output.push_str("Context:\n";
             for (key, value) in &context.context {
-                output.push_str(&format!("  {}: {}\n", key, value));
+                output.push_str(&format!("  {}: {}\n", key, value;
             }
         }
 
         if !context.stack_trace.is_empty() {
-            output.push_str("Stack trace:\n");
+            output.push_str("Stack trace:\n";
             for (i, frame) in context.stack_trace.iter().enumerate() {
-                output.push_str(&format!("  {}: {}\n", i, frame));
+                output.push_str(&format!("  {}: {}\n", i, frame;
             }
         }
 
         output.push_str(&format!(
             "Recovery strategy: {:?}\n",
             context.recovery_strategy
-        ));
+        ;
 
         output
     }
@@ -344,10 +344,10 @@ impl DebugUtils {
             operation, instruction_offset
         ))
         .with_context("operation", operation)
-        .with_context("offset", format!("{}", instruction_offset));
+        .with_context("offset", format!("{}", instruction_offset;
 
         if let Some(func_idx) = function_index {
-            ctx = ctx.with_context("function_index", format!("{}", func_idx));
+            ctx = ctx.with_context("function_index", format!("{}", func_idx;
         }
 
         ctx
@@ -366,9 +366,9 @@ macro_rules! error_context {
         {
             let mut ctx = $crate::recovery::ErrorContext::new(format!("{}:{} in {}", file!(), line!(), $location))
                 .with_context("file", file!())
-                .with_context("line", format!("{}", line!()));
+                .with_context("line", format!("{}", line!();
             $(
-                ctx = ctx.with_context($key, $value);
+                ctx = ctx.with_context($key, $value;
             )+
             ctx
         }
@@ -382,14 +382,14 @@ macro_rules! recoverable {
         match $expr {
             Ok(value) => Ok(value),
             Err(error) => {
-                let recoverable = $crate::recovery::RecoverableError::new(error, $context);
+                let recoverable = $crate::recovery::RecoverableError::new(error, $context;
                 match recoverable.recovery_suggestion {
                     $crate::recovery::RecoveryResult::Continue
                     | $crate::recovery::RecoveryResult::Skip => {
                         // Log and continue
                         #[cfg(feature = "std")]
-                        eprintln!("Recovered from error: {}", recoverable.error.message);
-                        return recoverable.into_result();
+                        eprintln!("Recovered from error: {}", recoverable.error.message;
+                        return recoverable.into_result(;
                     },
                     _ => Err(recoverable.error),
                 }
@@ -408,21 +408,21 @@ mod tests {
 
     #[test]
     fn test_error_recovery_manager() {
-        let mut manager = ErrorRecoveryManager::new();
+        let mut manager = ErrorRecoveryManager::new(;
 
         // Test setting and getting strategies
-        manager.set_strategy(ErrorCategory::Parse, RecoveryStrategy::Skip);
+        manager.set_strategy(ErrorCategory::Parse, RecoveryStrategy::Skip;
         assert_eq!(
             manager.get_strategy(&ErrorCategory::Parse),
             RecoveryStrategy::Skip
-        );
+        ;
 
         // Test error recording
-        let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error");
-        let context = ErrorContext::new("test_location");
-        manager.record_error(error, context);
+        let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error";
+        let context = ErrorContext::new("test_location";
+        manager.record_error(error, context;
 
-        assert_eq!(manager.error_history.len(), 1);
+        assert_eq!(manager.error_history.len(), 1;
     }
 
     #[test]
@@ -430,30 +430,30 @@ mod tests {
         let context = ErrorContext::new("test_function")
             .with_context("param", "value")
             .with_stack_frame("frame1")
-            .with_recovery(RecoveryStrategy::Skip);
+            .with_recovery(RecoveryStrategy::Skip;
 
-        assert_eq!(context.location, "test_function");
-        assert_eq!(context.context.get("param"), Some(&"value".to_string()));
-        assert_eq!(context.stack_trace.len(), 1);
-        assert_eq!(context.recovery_strategy, RecoveryStrategy::Skip);
+        assert_eq!(context.location, "test_function";
+        assert_eq!(context.context.get("param"), Some(&"value".to_string();
+        assert_eq!(context.stack_trace.len(), 1;
+        assert_eq!(context.recovery_strategy, RecoveryStrategy::Skip;
     }
 
     #[test]
     fn test_pattern_analysis() {
-        let mut manager = ErrorRecoveryManager::new();
+        let mut manager = ErrorRecoveryManager::new(;
 
         // Add multiple errors
         for i in 0..5 {
-            let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error");
-            let context = ErrorContext::new(format!("location_{}", i % 2));
-            manager.record_error(error, context);
+            let error = Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Test error";
+            let context = ErrorContext::new(format!("location_{}", i % 2;
+            manager.record_error(error, context;
         }
 
-        let analysis = manager.analyze_patterns();
-        assert_eq!(analysis.total_errors, 5);
+        let analysis = manager.analyze_patterns(;
+        assert_eq!(analysis.total_errors, 5;
         assert_eq!(
             analysis.category_counts.get(&ErrorCategory::Parse),
             Some(&5)
-        );
+        ;
     }
 }

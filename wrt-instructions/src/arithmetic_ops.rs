@@ -177,7 +177,7 @@ where
         Value::F32(bits) => bits,
         _ => return Err(Error::invalid_type_error("Expected F32 operand")),
     };
-    let math_bits = math::FloatBits32(float_bits.0);
+    let math_bits = math::FloatBits32(float_bits.0;
     let result = f(math_bits)?;
     context.push_arithmetic_value(Value::F32(FloatBits32(result.0)))
 }
@@ -196,8 +196,8 @@ where
         Value::F32(bits) => bits,
         _ => return Err(Error::invalid_type_error("Expected F32 operand")),
     };
-    let math_bits_a = math::FloatBits32(float_bits_a.0);
-    let math_bits_b = math::FloatBits32(float_bits_b.0);
+    let math_bits_a = math::FloatBits32(float_bits_a.0;
+    let math_bits_b = math::FloatBits32(float_bits_b.0;
     let result = f(math_bits_a, math_bits_b)?;
     context.push_arithmetic_value(Value::F32(FloatBits32(result.0)))
 }
@@ -211,7 +211,7 @@ where
         Value::F64(bits) => bits,
         _ => return Err(Error::invalid_type_error("Expected F64 operand")),
     };
-    let math_bits = math::FloatBits64(float_bits.0);
+    let math_bits = math::FloatBits64(float_bits.0;
     let result = f(math_bits)?;
     context.push_arithmetic_value(Value::F64(FloatBits64(result.0)))
 }
@@ -230,8 +230,8 @@ where
         Value::F64(bits) => bits,
         _ => return Err(Error::invalid_type_error("Expected F64 operand")),
     };
-    let math_bits_a = math::FloatBits64(float_bits_a.0);
-    let math_bits_b = math::FloatBits64(float_bits_b.0);
+    let math_bits_a = math::FloatBits64(float_bits_a.0;
+    let math_bits_b = math::FloatBits64(float_bits_b.0;
     let result = f(math_bits_a, math_bits_b)?;
     context.push_arithmetic_value(Value::F64(FloatBits64(result.0)))
 }
@@ -746,122 +746,122 @@ mod tests {
     #[test]
     fn test_i32_arithmetic() {
         // Create a simple test context
-        let mut context = MockArithmeticContext::new();
+        let mut context = MockArithmeticContext::new(;
 
         // Test i32.add
         context.push_arithmetic_value(Value::I32(2)).unwrap();
         context.push_arithmetic_value(Value::I32(3)).unwrap();
         ArithmeticOp::I32Add.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(5));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(5;
 
         // Test i32.sub
         context.push_arithmetic_value(Value::I32(10)).unwrap();
         context.push_arithmetic_value(Value::I32(4)).unwrap();
         ArithmeticOp::I32Sub.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(6));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(6;
 
         // Test i32.mul
         context.push_arithmetic_value(Value::I32(3)).unwrap();
         context.push_arithmetic_value(Value::I32(4)).unwrap();
         ArithmeticOp::I32Mul.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(12));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(12;
 
         // Test i32.div_s
         context.push_arithmetic_value(Value::I32(10)).unwrap();
         context.push_arithmetic_value(Value::I32(3)).unwrap();
         ArithmeticOp::I32DivS.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(3));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(3;
 
         // Test i32.div_u
         context.push_arithmetic_value(Value::I32(10)).unwrap();
         context.push_arithmetic_value(Value::I32(3)).unwrap();
         ArithmeticOp::I32DivU.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(3));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(3;
     }
 
     #[test]
     fn test_i32_bitwise() {
         // Create a simple test context
-        let mut context = MockArithmeticContext::new();
+        let mut context = MockArithmeticContext::new(;
 
         // Test i32.and
         context.push_arithmetic_value(Value::I32(0b1010)).unwrap();
         context.push_arithmetic_value(Value::I32(0b1100)).unwrap();
         ArithmeticOp::I32And.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b1000));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b1000;
 
         // Test i32.or
         context.push_arithmetic_value(Value::I32(0b1010)).unwrap();
         context.push_arithmetic_value(Value::I32(0b1100)).unwrap();
         ArithmeticOp::I32Or.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b1110));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b1110;
 
         // Test i32.xor
         context.push_arithmetic_value(Value::I32(0b1010)).unwrap();
         context.push_arithmetic_value(Value::I32(0b1100)).unwrap();
         ArithmeticOp::I32Xor.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b0110));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b0110;
     }
 
     #[test]
     fn test_i32_shift_rotate() {
         // Create a simple test context
-        let mut context = MockArithmeticContext::new();
+        let mut context = MockArithmeticContext::new(;
 
         // Test i32.shl
         context.push_arithmetic_value(Value::I32(1)).unwrap();
         context.push_arithmetic_value(Value::I32(3)).unwrap();
         ArithmeticOp::I32Shl.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(8));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(8;
 
         // Test i32.shr_s (signed)
         context.push_arithmetic_value(Value::I32(-8)).unwrap();
         context.push_arithmetic_value(Value::I32(2)).unwrap();
         ArithmeticOp::I32ShrS.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(-2));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(-2;
 
         // Test i32.shr_u (unsigned)
         context.push_arithmetic_value(Value::I32(8)).unwrap();
         context.push_arithmetic_value(Value::I32(2)).unwrap();
         ArithmeticOp::I32ShrU.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(2));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(2;
 
         // Test i32.rotl
         context.push_arithmetic_value(Value::I32(0b10110000_00000000_00000000_00000001)).unwrap();
         context.push_arithmetic_value(Value::I32(1)).unwrap();
         ArithmeticOp::I32Rotl.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b01100000_00000000_00000000_00000011));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b01100000_00000000_00000000_00000011;
 
         // Test i32.rotr
         context.push_arithmetic_value(Value::I32(0b10110000_00000000_00000000_00000001)).unwrap();
         context.push_arithmetic_value(Value::I32(1)).unwrap();
         ArithmeticOp::I32Rotr.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b11011000_00000000_00000000_00000000));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(0b11011000_00000000_00000000_00000000;
     }
 
     #[test]
     fn test_i32_count_operations() {
-        let mut context = MockArithmeticContext::new();
+        let mut context = MockArithmeticContext::new(;
 
         // Test i32.clz (count leading zeros)
         context.push_arithmetic_value(Value::I32(0b00000000_00000000_00000000_00001000)).unwrap();
         ArithmeticOp::I32Clz.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(28));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(28;
 
         // Test i32.ctz (count trailing zeros)
         context.push_arithmetic_value(Value::I32(0b00001000_00000000_00000000_00000000)).unwrap();
         ArithmeticOp::I32Ctz.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(27));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(27;
 
         // Test i32.popcnt (population count)
         context.push_arithmetic_value(Value::I32(0b01010101_01010101_01010101_01010101)).unwrap();
         ArithmeticOp::I32Popcnt.execute(&mut context).unwrap();
-        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(16));
+        assert_eq!(context.pop_arithmetic_value().unwrap(), Value::I32(16;
     }
 
     #[test]
     fn test_f32_arithmetic() {
-        let mut context = MockArithmeticContext::new();
+        let mut context = MockArithmeticContext::new(;
 
         // Test f32.add
         context.push_arithmetic_value(Value::F32(FloatBits32::from_float(2.5))).unwrap();
@@ -869,9 +869,9 @@ mod tests {
         ArithmeticOp::F32Add.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 6.25);
+            assert_eq!(bits.value(), 6.25;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.sub
@@ -880,9 +880,9 @@ mod tests {
         ArithmeticOp::F32Sub.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 6.5);
+            assert_eq!(bits.value(), 6.5;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.mul
@@ -891,9 +891,9 @@ mod tests {
         ArithmeticOp::F32Mul.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 10.0);
+            assert_eq!(bits.value(), 10.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.div
@@ -902,24 +902,24 @@ mod tests {
         ArithmeticOp::F32Div.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 4.0);
+            assert_eq!(bits.value(), 4.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
     }
 
     #[test]
     fn test_f32_math_operations() {
-        let mut context = MockArithmeticContext::new();
+        let mut context = MockArithmeticContext::new(;
 
         // Test f32.abs
         context.push_arithmetic_value(Value::F32(FloatBits32::from_float(-5.5))).unwrap();
         ArithmeticOp::F32Abs.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 5.5);
+            assert_eq!(bits.value(), 5.5;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.neg
@@ -927,9 +927,9 @@ mod tests {
         ArithmeticOp::F32Neg.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), -3.14);
+            assert_eq!(bits.value(), -3.14;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.sqrt
@@ -937,9 +937,9 @@ mod tests {
         ArithmeticOp::F32Sqrt.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 4.0);
+            assert_eq!(bits.value(), 4.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.ceil
@@ -947,9 +947,9 @@ mod tests {
         ArithmeticOp::F32Ceil.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 3.0);
+            assert_eq!(bits.value(), 3.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.floor
@@ -957,9 +957,9 @@ mod tests {
         ArithmeticOp::F32Floor.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 2.0);
+            assert_eq!(bits.value(), 2.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.trunc
@@ -967,9 +967,9 @@ mod tests {
         ArithmeticOp::F32Trunc.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), -2.0);
+            assert_eq!(bits.value(), -2.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.nearest
@@ -979,13 +979,13 @@ mod tests {
         if let Value::F32(bits) = result {
             assert_eq!(bits.value(), 2.0); // Even rounding
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
     }
 
     #[test]
     fn test_f32_minmax() {
-        let mut context = MockArithmeticContext::new();
+        let mut context = MockArithmeticContext::new(;
 
         // Test f32.min
         context.push_arithmetic_value(Value::F32(FloatBits32::from_float(2.0))).unwrap();
@@ -993,9 +993,9 @@ mod tests {
         ArithmeticOp::F32Min.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 2.0);
+            assert_eq!(bits.value(), 2.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.max
@@ -1004,9 +1004,9 @@ mod tests {
         ArithmeticOp::F32Max.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), 3.0);
+            assert_eq!(bits.value(), 3.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
 
         // Test f32.copysign
@@ -1015,9 +1015,9 @@ mod tests {
         ArithmeticOp::F32Copysign.execute(&mut context).unwrap();
         let result = context.pop_arithmetic_value().unwrap();
         if let Value::F32(bits) = result {
-            assert_eq!(bits.value(), -3.0);
+            assert_eq!(bits.value(), -3.0;
         } else {
-            panic!("Expected F32 value");
+            panic!("Expected F32 value";
         }
     }
 }

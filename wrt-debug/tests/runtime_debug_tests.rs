@@ -75,7 +75,7 @@ mod runtime_debug_tests {
         };
 
         // Create variable inspector
-        let mut inspector = VariableInspector::new();
+        let mut inspector = VariableInspector::new(;
 
         // Add variable definitions
         let var1 = VariableDefinition {
@@ -113,17 +113,17 @@ mod runtime_debug_tests {
         };
 
         // Get live variables at PC
-        let live_vars = inspector.get_live_variables(0x1000, &state, &memory);
+        let live_vars = inspector.get_live_variables(0x1000, &state, &memory;
 
-        assert_eq!(live_vars.len(), 2);
+        assert_eq!(live_vars.len(), 2;
 
         // Check first variable
         let var1_value = &live_vars[0].value.as_ref().unwrap();
-        assert_eq!(var1_value.as_i32(), Some(42));
+        assert_eq!(var1_value.as_i32(), Some(42;
 
         // Check second variable
         let var2_value = &live_vars[1].value.as_ref().unwrap();
-        assert_eq!(var2_value.as_u32(), Some(0xDEADBEEF));
+        assert_eq!(var2_value.as_u32(), Some(0xDEADBEEF;
     }
 
     #[test]
@@ -133,16 +133,16 @@ mod runtime_debug_tests {
 
         // Write test string at 0x1000
         let test_str = b"Hello, WebAssembly!\0";
-        memory_data[0x1000..0x1000 + test_str.len()].copy_from_slice(test_str);
+        memory_data[0x1000..0x1000 + test_str.len()].copy_from_slice(test_str;
 
         // Write some integers
-        memory_data[0x2000..0x2004].copy_from_slice(&42u32.to_le_bytes());
-        memory_data[0x2004..0x2008].copy_from_slice(&0xDEADBEEFu32.to_le_bytes());
+        memory_data[0x2000..0x2004].copy_from_slice(&42u32.to_le_bytes(;
+        memory_data[0x2004..0x2008].copy_from_slice(&0xDEADBEEFu32.to_le_bytes(;
 
         let memory = MockMemory { data: memory_data };
 
-        let mut inspector = MemoryInspector::new();
-        inspector.attach(&memory);
+        let mut inspector = MemoryInspector::new(;
+        inspector.attach(&memory;
 
         // Add memory regions
         inspector
@@ -157,29 +157,29 @@ mod runtime_debug_tests {
 
         // Test string reading
         let cstring = inspector.read_cstring(0x1000, 100).unwrap();
-        assert_eq!(cstring.as_str(), Some("Hello, WebAssembly!"));
+        assert_eq!(cstring.as_str(), Some("Hello, WebAssembly!";
 
         // Test memory reading
         let mem_view = inspector.read_memory(0x2000, 8).unwrap();
-        assert_eq!(mem_view.data.len(), 8);
+        assert_eq!(mem_view.data.len(), 8;
 
         // Test hex dump
-        let mut output = String::new();
+        let mut output = String::new(;
         inspector
             .dump_hex(0x1000, 32)
             .display(|s| {
-                output.push_str(s);
+                output.push_str(s;
                 Ok(())
             })
             .unwrap();
 
-        assert!(output.contains("Hello"));
-        assert!(output.contains("00001000:"));
+        assert!(output.contains("Hello");
+        assert!(output.contains("00001000:");
     }
 
     #[test]
     fn test_breakpoint_management() {
-        let mut manager = BreakpointManager::new();
+        let mut manager = BreakpointManager::new(;
 
         // Add address breakpoint
         let bp1 = manager.add_breakpoint(0x1000).unwrap();
@@ -200,17 +200,17 @@ mod runtime_debug_tests {
         };
 
         // First two hits - no break
-        assert!(manager.should_break(0x1000, &state).is_none());
-        assert!(manager.should_break(0x1000, &state).is_none());
+        assert!(manager.should_break(0x1000, &state).is_none();
+        assert!(manager.should_break(0x1000, &state).is_none();
 
         // Third hit - break
         let bp = manager.should_break(0x1000, &state).unwrap();
-        assert_eq!(bp.hit_count, 3);
+        assert_eq!(bp.hit_count, 3;
     }
 
     #[test]
     fn test_stepping_logic() {
-        let mut debugger = SteppingDebugger::new();
+        let mut debugger = SteppingDebugger::new(;
 
         // Add line mappings
         debugger
@@ -250,13 +250,13 @@ mod runtime_debug_tests {
         };
 
         // Start line stepping
-        debugger.step(StepMode::Line, 0x1000);
+        debugger.step(StepMode::Line, 0x1000;
 
         // Same line - continue
-        assert_eq!(debugger.should_break(0x1005, &state), DebugAction::Continue);
+        assert_eq!(debugger.should_break(0x1005, &state), DebugAction::Continue;
 
         // Next line - break
-        assert_eq!(debugger.should_break(0x1010, &state), DebugAction::Break);
+        assert_eq!(debugger.should_break(0x1010, &state), DebugAction::Break;
     }
 
     #[test]
@@ -274,11 +274,11 @@ mod runtime_debug_tests {
 
         // 2. Setup memory
         let mut memory_data = vec![0u8; 0x10000];
-        memory_data[0x3000..0x3004].copy_from_slice(&42u32.to_le_bytes());
+        memory_data[0x3000..0x3004].copy_from_slice(&42u32.to_le_bytes(;
         let memory = MockMemory { data: memory_data };
 
         // 3. Setup variable inspector
-        let mut var_inspector = VariableInspector::new();
+        let mut var_inspector = VariableInspector::new(;
         var_inspector
             .add_variable(VariableDefinition {
                 name:       None,
@@ -295,52 +295,52 @@ mod runtime_debug_tests {
             .unwrap();
 
         // 4. Setup memory inspector
-        let mut mem_inspector = MemoryInspector::new();
-        mem_inspector.attach(&memory);
+        let mut mem_inspector = MemoryInspector::new(;
+        mem_inspector.attach(&memory;
 
         // 5. Setup breakpoints
-        let mut bp_manager = BreakpointManager::new();
+        let mut bp_manager = BreakpointManager::new(;
         bp_manager.add_line_breakpoint(1, 42, 0x1000).unwrap();
 
         // 6. Setup stepping
-        let mut stepper = SteppingDebugger::new();
+        let mut stepper = SteppingDebugger::new(;
 
         // 7. Simulate debugging session
 
         // Check if we hit a breakpoint
         if let Some(bp) = bp_manager.should_break(state.pc, &state) {
-            println!("Hit breakpoint {} at 0x{:x}", bp.id.0, bp.address);
+            println!("Hit breakpoint {} at 0x{:x}", bp.id.0, bp.address;
 
             // Inspect variables
-            let live_vars = var_inspector.get_live_variables(state.pc, &state, &memory);
+            let live_vars = var_inspector.get_live_variables(state.pc, &state, &memory;
             for var in live_vars.iter() {
                 if let Some(ref value) = var.value {
-                    let mut output = String::new();
+                    let mut output = String::new(;
                     ValueDisplay { value }
                         .display(|s| {
-                            output.push_str(s);
+                            output.push_str(s;
                             Ok(())
                         })
                         .unwrap();
-                    println!("Variable: {}", output);
+                    println!("Variable: {}", output;
                 }
             }
 
             // Inspect memory
             if let Some(mem_view) = mem_inspector.read_memory(0x3000, 4) {
-                println!("Memory at 0x3000: {:?}", mem_view.data);
+                println!("Memory at 0x3000: {:?}", mem_view.data;
             }
 
             // Start stepping
-            stepper.step(StepMode::Line, state.pc);
+            stepper.step(StepMode::Line, state.pc;
         }
 
         // Continue execution
         state.pc = 0x1010;
 
         // Check if we should stop (stepped to new line)
-        let action = stepper.should_break(state.pc, &state);
-        assert_eq!(action, DebugAction::Break);
+        let action = stepper.should_break(state.pc, &state;
+        assert_eq!(action, DebugAction::Break;
     }
 
     #[test]
@@ -357,8 +357,8 @@ mod runtime_debug_tests {
             data: vec![0; 0x10000],
         };
 
-        let mut inspector = MemoryInspector::new();
-        inspector.attach(&memory);
+        let mut inspector = MemoryInspector::new(;
+        inspector.attach(&memory;
 
         // Add stack region
         inspector
@@ -371,9 +371,9 @@ mod runtime_debug_tests {
             })
             .unwrap();
 
-        let analysis = inspector.analyze_stack(&state);
+        let analysis = inspector.analyze_stack(&state;
 
-        assert_eq!(analysis.stack_pointer, 0x7000);
+        assert_eq!(analysis.stack_pointer, 0x7000;
         assert_eq!(analysis.used_bytes, 0x9000); // 0x10000 - 0x7000
         assert!(analysis.usage_percent > 50.0);
     }

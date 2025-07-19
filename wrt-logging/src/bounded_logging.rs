@@ -76,16 +76,16 @@ impl BoundedLoggingLimits {
     /// Validate limits are reasonable
     pub fn validate(&self) -> Result<()> {
         if self.max_log_buffer_size == 0 {
-            return Err(Error::invalid_input("max_log_buffer_size cannot be zero"));
+            return Err(Error::invalid_input("max_log_buffer_size cannot be zero";
         }
         if self.max_log_message_size == 0 {
-            return Err(Error::invalid_input("max_log_message_size cannot be zero"));
+            return Err(Error::invalid_input("max_log_message_size cannot be zero";
         }
         if self.max_log_message_size > self.max_log_buffer_size {
-            return Err(Error::invalid_input("max_log_message_size cannot exceed max_log_buffer_size"));
+            return Err(Error::invalid_input("max_log_message_size cannot exceed max_log_buffer_size";
         }
         if self.max_concurrent_loggers == 0 {
-            return Err(Error::invalid_input("max_concurrent_loggers cannot be zero"));
+            return Err(Error::invalid_input("max_concurrent_loggers cannot be zero";
         }
         Ok(())
     }
@@ -93,11 +93,11 @@ impl BoundedLoggingLimits {
 
 /// Logger identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct LoggerId(pub u32);
+pub struct LoggerId(pub u32;
 
 /// Component instance identifier for logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct ComponentLoggingId(pub u32);
+pub struct ComponentLoggingId(pub u32;
 
 /// Bounded log entry
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -138,14 +138,14 @@ pub struct LogMetadata {
 impl Checksummable for BoundedLogEntry {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Update checksum with all fields
-        checksum.update_slice(&self.id.to_le_bytes());
-        checksum.update_slice(&self.timestamp.to_le_bytes());
-        checksum.update_slice(&[self.level as u8]);
-        self.logger_id.update_checksum(checksum);
-        self.component_id.update_checksum(checksum);
-        checksum.update_slice(&(self.message.len() as u32).to_le_bytes());
-        checksum.update_slice(self.message.as_bytes());
-        self.metadata.update_checksum(checksum);
+        checksum.update_slice(&self.id.to_le_bytes(;
+        checksum.update_slice(&self.timestamp.to_le_bytes(;
+        checksum.update_slice(&[self.level as u8];
+        self.logger_id.update_checksum(checksum;
+        self.component_id.update_checksum(checksum;
+        checksum.update_slice(&(self.message.len() as u32).to_le_bytes(;
+        checksum.update_slice(self.message.as_bytes(;
+        self.metadata.update_checksum(checksum;
     }
 }
 
@@ -199,8 +199,8 @@ impl FromBytes for BoundedLogEntry {
             5 => LogLevel::Critical,
             _ => return Err(Error::invalid_input("Invalid log level byte")),
         };
-        let logger_id = LoggerId(stream.read_u32_le()?);
-        let component_id = ComponentLoggingId(stream.read_u32_le()?);
+        let logger_id = LoggerId(stream.read_u32_le()?;
+        let component_id = ComponentLoggingId(stream.read_u32_le()?;
         // Read string length then content
         let message_len = stream.read_u32_le()? as usize;
         let mut message_bytes = alloc::vec![0u8; message_len];
@@ -224,7 +224,7 @@ impl FromBytes for BoundedLogEntry {
 
 impl Checksummable for LoggerId {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&self.0.to_le_bytes());
+        checksum.update_slice(&self.0.to_le_bytes(;
     }
 }
 
@@ -256,7 +256,7 @@ impl FromBytes for LoggerId {
 
 impl Checksummable for ComponentLoggingId {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&self.0.to_le_bytes());
+        checksum.update_slice(&self.0.to_le_bytes(;
     }
 }
 
@@ -291,35 +291,35 @@ impl Checksummable for LogMetadata {
         // Update checksum for Option<String> fields
         if let Some(ref module) = self.module {
             checksum.update_slice(&[1u8]); // Present marker
-            checksum.update_slice(&(module.len() as u32).to_le_bytes());
-            checksum.update_slice(module.as_bytes());
+            checksum.update_slice(&(module.len() as u32).to_le_bytes(;
+            checksum.update_slice(module.as_bytes(;
         } else {
             checksum.update_slice(&[0u8]); // Not present marker
         }
         
         if let Some(ref file) = self.file {
-            checksum.update_slice(&[1u8]);
-            checksum.update_slice(&(file.len() as u32).to_le_bytes());
-            checksum.update_slice(file.as_bytes());
+            checksum.update_slice(&[1u8];
+            checksum.update_slice(&(file.len() as u32).to_le_bytes(;
+            checksum.update_slice(file.as_bytes(;
         } else {
-            checksum.update_slice(&[0u8]);
+            checksum.update_slice(&[0u8];
         }
         
         if let Some(line) = self.line {
-            checksum.update_slice(&[1u8]);
-            checksum.update_slice(&line.to_le_bytes());
+            checksum.update_slice(&[1u8];
+            checksum.update_slice(&line.to_le_bytes(;
         } else {
-            checksum.update_slice(&[0u8]);
+            checksum.update_slice(&[0u8];
         }
         
         if let Some(thread_id) = self.thread_id {
-            checksum.update_slice(&[1u8]);
-            checksum.update_slice(&thread_id.to_le_bytes());
+            checksum.update_slice(&[1u8];
+            checksum.update_slice(&thread_id.to_le_bytes(;
         } else {
-            checksum.update_slice(&[0u8]);
+            checksum.update_slice(&[0u8];
         }
         
-        checksum.update_slice(&[self.safety_level]);
+        checksum.update_slice(&[self.safety_level];
     }
 }
 
@@ -388,7 +388,7 @@ impl ToBytes for LogMetadata {
         
         size += 1;
         if let Some(ref s) = self.file {
-            size += 4 + s.len();
+            size += 4 + s.len(;
         }
         
         size += 1;
@@ -504,11 +504,11 @@ impl BoundedLogBuffer {
         
         // Check if we're at max entries
         if self.entries.len() >= self.max_entries {
-            self.remove_oldest_entry();
+            self.remove_oldest_entry(;
         }
         
         entry.id = self.next_entry_id;
-        self.next_entry_id = self.next_entry_id.wrapping_add(1);
+        self.next_entry_id = self.next_entry_id.wrapping_add(1;
         
         self.buffer_size += entry_size;
         self.entries.push(entry)?;
@@ -518,11 +518,11 @@ impl BoundedLogBuffer {
     
     fn make_space(&mut self, required_size: usize) -> Result<()> {
         while self.buffer_size + required_size > self.max_buffer_size && !self.entries.is_empty() {
-            self.remove_oldest_entry();
+            self.remove_oldest_entry(;
         }
         
         if self.buffer_size + required_size > self.max_buffer_size {
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
         
         Ok(())
@@ -534,17 +534,17 @@ impl BoundedLogBuffer {
                 entry.metadata.module.as_ref().map_or(0, |s| s.len()) +
                 entry.metadata.file.as_ref().map_or(0, |s| s.len()) +
                 64;
-            self.buffer_size = self.buffer_size.saturating_sub(entry_size);
+            self.buffer_size = self.buffer_size.saturating_sub(entry_size;
         }
         
         if !self.entries.is_empty() {
-            let _ = self.entries.remove(0);
+            let _ = self.entries.remove(0;
         }
     }
     
     /// Get all log entries
     pub fn get_entries(&self) -> Vec<BoundedLogEntry> {
-        let mut entries = Vec::new();
+        let mut entries = Vec::new(;
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 entries.push(entry);
@@ -555,7 +555,7 @@ impl BoundedLogBuffer {
     
     /// Get log entries filtered by level
     pub fn get_entries_by_level(&self, level: LogLevel) -> Vec<BoundedLogEntry> {
-        let mut filtered = Vec::new();
+        let mut filtered = Vec::new(;
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if entry.level == level {
@@ -568,7 +568,7 @@ impl BoundedLogBuffer {
     
     /// Get log entries filtered by component
     pub fn get_entries_by_component(&self, component_id: ComponentLoggingId) -> Vec<BoundedLogEntry> {
-        let mut filtered = Vec::new();
+        let mut filtered = Vec::new(;
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if entry.component_id == component_id {
@@ -581,7 +581,7 @@ impl BoundedLogBuffer {
     
     /// Clear all log entries
     pub fn clear(&mut self) {
-        let _ = self.entries.clear();
+        let _ = self.entries.clear(;
         self.buffer_size = 0;
     }
     
@@ -649,7 +649,7 @@ impl BoundedLogger {
     
     /// Increment the message count for this logger
     pub fn increment_message_count(&mut self) {
-        self.message_count = self.message_count.wrapping_add(1);
+        self.message_count = self.message_count.wrapping_add(1;
     }
 }
 
@@ -670,13 +670,13 @@ impl Default for BoundedLogger {
 impl wrt_foundation::traits::Checksummable for BoundedLogger {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         // Update checksum with all fields
-        checksum.update_slice(&self.id.0.to_le_bytes());
-        checksum.update_slice(&self.component_id.0.to_le_bytes());
-        checksum.update_slice(&(self.name.len() as u32).to_le_bytes());
-        checksum.update_slice(self.name.as_bytes());
-        checksum.update_slice(&[self.min_level as u8]);
-        checksum.update_slice(&[self.enabled as u8]);
-        checksum.update_slice(&self.message_count.to_le_bytes());
+        checksum.update_slice(&self.id.0.to_le_bytes(;
+        checksum.update_slice(&self.component_id.0.to_le_bytes(;
+        checksum.update_slice(&(self.name.len() as u32).to_le_bytes(;
+        checksum.update_slice(self.name.as_bytes(;
+        checksum.update_slice(&[self.min_level as u8];
+        checksum.update_slice(&[self.enabled as u8];
+        checksum.update_slice(&self.message_count.to_le_bytes(;
     }
 }
 
@@ -789,13 +789,13 @@ impl BoundedLoggingManager {
     ) -> Result<LoggerId> {
         // Check logger limit
         if self.loggers.len() >= self.limits.max_concurrent_loggers {
-            return Err(Error::TOO_MANY_COMPONENTS);
+            return Err(Error::TOO_MANY_COMPONENTS;
         }
         
-        let logger_id = LoggerId(self.next_logger_id);
-        self.next_logger_id = self.next_logger_id.wrapping_add(1);
+        let logger_id = LoggerId(self.next_logger_id;
+        self.next_logger_id = self.next_logger_id.wrapping_add(1;
         
-        let logger = BoundedLogger::new(logger_id, component_id, name, min_level);
+        let logger = BoundedLogger::new(logger_id, component_id, name, min_level;
         self.loggers.push(logger)?;
         
         Ok(logger_id)
@@ -812,7 +812,7 @@ impl BoundedLoggingManager {
         // Check message size limit
         if message.len() > self.limits.max_log_message_size {
             self.dropped_messages += 1;
-            return Err(Error::invalid_input("Log message too large"));
+            return Err(Error::invalid_input("Log message too large";
         }
         
         // Find the logger and get its component_id
@@ -846,10 +846,10 @@ impl BoundedLoggingManager {
             for i in 0..self.loggers.len() {
                 if let Ok(mut logger) = self.loggers.get(i) {
                     if logger.id == logger_id {
-                        logger.increment_message_count();
+                        logger.increment_message_count(;
                         // Need to update the logger in the vec
-                        let _ = self.loggers.remove(i);
-                        let _ = self.loggers.insert(i, logger);
+                        let _ = self.loggers.remove(i;
+                        let _ = self.loggers.insert(i, logger;
                         break;
                     }
                 }
@@ -862,7 +862,7 @@ impl BoundedLoggingManager {
             }
         } else {
             self.dropped_messages += 1;
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
         
         Ok(())
@@ -883,7 +883,7 @@ impl BoundedLoggingManager {
         for i in 0..self.loggers.len() {
             if let Ok(logger) = self.loggers.get(i) {
                 if logger.id == logger_id {
-                    return Some(logger);
+                    return Some(logger;
                 }
             }
         }
@@ -898,7 +898,7 @@ impl BoundedLoggingManager {
         for i in 0..self.loggers.len() {
             if let Ok(logger) = self.loggers.get(i) {
                 if logger.id == logger_id {
-                    return Some((i, logger));
+                    return Some((i, logger;
                 }
             }
         }
@@ -910,8 +910,8 @@ impl BoundedLoggingManager {
         if let Some((index, mut logger)) = self.get_logger_mut(logger_id) {
             logger.enabled = enabled;
             // Update the logger in the vector
-            let _ = self.loggers.remove(index);
-            let _ = self.loggers.insert(index, logger);
+            let _ = self.loggers.remove(index;
+            let _ = self.loggers.insert(index, logger;
             Ok(())
         } else {
             Err(Error::COMPONENT_NOT_FOUND)
@@ -923,8 +923,8 @@ impl BoundedLoggingManager {
         if let Some((index, mut logger)) = self.get_logger_mut(logger_id) {
             logger.min_level = min_level;
             // Update the logger in the vector
-            let _ = self.loggers.remove(index);
-            let _ = self.loggers.insert(index, logger);
+            let _ = self.loggers.remove(index;
+            let _ = self.loggers.insert(index, logger;
             Ok(())
         } else {
             Err(Error::COMPONENT_NOT_FOUND)
@@ -948,13 +948,13 @@ impl BoundedLoggingManager {
     
     /// Clear all log entries
     pub fn clear_logs(&mut self) {
-        self.buffer.clear();
+        self.buffer.clear(;
         self.flush_pending = false;
     }
     
     /// Remove all loggers for a component
     pub fn remove_component_loggers(&mut self, component_id: ComponentLoggingId) -> usize {
-        let _initial_count = self.loggers.len();
+        let _initial_count = self.loggers.len(;
         
         // Manual implementation of retain
         let mut i = 0;
@@ -962,7 +962,7 @@ impl BoundedLoggingManager {
         while i < self.loggers.len() {
             if let Ok(logger) = self.loggers.get(i) {
                 if logger.component_id == component_id {
-                    let _ = self.loggers.remove(i);
+                    let _ = self.loggers.remove(i;
                     removed += 1;
                 } else {
                     i += 1;
@@ -987,7 +987,7 @@ impl BoundedLoggingManager {
     
     /// Get logging statistics
     #[must_use] pub fn get_statistics(&self) -> BoundedLoggingStatistics {
-        let memory_used = self.buffer.buffer_size();
+        let memory_used = self.buffer.buffer_size(;
         let memory_utilization = if self.limits.max_log_buffer_size > 0 {
             (memory_used as f64 / self.limits.max_log_buffer_size as f64) * 100.0
         } else {
@@ -1009,15 +1009,15 @@ impl BoundedLoggingManager {
     /// Validate all logging state
     pub fn validate(&self) -> Result<()> {
         if self.loggers.len() > self.limits.max_concurrent_loggers {
-            return Err(Error::TOO_MANY_COMPONENTS);
+            return Err(Error::TOO_MANY_COMPONENTS;
         }
         
         if self.buffer.buffer_size() > self.limits.max_log_buffer_size {
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
         
         if self.buffer.len() > self.limits.max_log_entries {
-            return Err(Error::OUT_OF_MEMORY);
+            return Err(Error::OUT_OF_MEMORY;
         }
         
         Ok(())
@@ -1092,19 +1092,19 @@ mod tests {
     
     #[test]
     fn test_bounded_logging_manager_creation() {
-        let limits = BoundedLoggingLimits::default();
-        let manager = BoundedLoggingManager::new(limits);
-        assert!(manager.is_ok());
+        let limits = BoundedLoggingLimits::default(;
+        let manager = BoundedLoggingManager::new(limits;
+        assert!(manager.is_ok();
         
         let manager = manager.unwrap();
-        let stats = manager.get_statistics();
-        assert_eq!(stats.registered_loggers, 0);
-        assert_eq!(stats.total_log_entries, 0);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.registered_loggers, 0;
+        assert_eq!(stats.total_log_entries, 0;
     }
     
     #[test]
     fn test_logger_registration() {
-        let limits = BoundedLoggingLimits::default();
+        let limits = BoundedLoggingLimits::default(;
         let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
@@ -1113,16 +1113,16 @@ mod tests {
             LogLevel::Info,
         ).unwrap();
         
-        assert_eq!(logger_id.0, 1);
+        assert_eq!(logger_id.0, 1;
         
-        let stats = manager.get_statistics();
-        assert_eq!(stats.registered_loggers, 1);
-        assert_eq!(stats.active_loggers, 1);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.registered_loggers, 1;
+        assert_eq!(stats.active_loggers, 1;
     }
     
     #[test]
     fn test_log_message() {
-        let limits = BoundedLoggingLimits::default();
+        let limits = BoundedLoggingLimits::default(;
         let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
@@ -1131,17 +1131,17 @@ mod tests {
             LogLevel::Debug,
         ).unwrap();
         
-        let result = manager.log(logger_id, LogLevel::Info, "Test message".to_string());
-        assert!(result.is_ok());
+        let result = manager.log(logger_id, LogLevel::Info, "Test message".to_string();
+        assert!(result.is_ok();
         
-        let stats = manager.get_statistics();
-        assert_eq!(stats.total_log_entries, 1);
-        assert_eq!(stats.total_messages, 1);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.total_log_entries, 1;
+        assert_eq!(stats.total_messages, 1;
     }
     
     #[test]
     fn test_log_level_filtering() {
-        let limits = BoundedLoggingLimits::default();
+        let limits = BoundedLoggingLimits::default(;
         let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
@@ -1151,16 +1151,16 @@ mod tests {
         ).unwrap();
         
         // This should be ignored (Debug < Warning)
-        let result = manager.log(logger_id, LogLevel::Debug, "Debug message".to_string());
-        assert!(result.is_ok());
+        let result = manager.log(logger_id, LogLevel::Debug, "Debug message".to_string();
+        assert!(result.is_ok();
         
         // This should be logged (Warning >= Warning)
-        let result = manager.log(logger_id, LogLevel::Warn, "Warning message".to_string());
-        assert!(result.is_ok());
+        let result = manager.log(logger_id, LogLevel::Warn, "Warning message".to_string();
+        assert!(result.is_ok();
         
-        let stats = manager.get_statistics();
+        let stats = manager.get_statistics(;
         assert_eq!(stats.total_log_entries, 1); // Only the warning message
-        assert_eq!(stats.total_messages, 1);
+        assert_eq!(stats.total_messages, 1;
     }
     
     #[test]
@@ -1178,11 +1178,11 @@ mod tests {
         ).unwrap();
         
         // This message is too long (20 chars > 10 limit)
-        let result = manager.log(logger_id, LogLevel::Info, "This message is too long".to_string());
-        assert!(result.is_err());
+        let result = manager.log(logger_id, LogLevel::Info, "This message is too long".to_string();
+        assert!(result.is_err();
         
-        let stats = manager.get_statistics();
-        assert_eq!(stats.dropped_messages, 1);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.dropped_messages, 1;
     }
     
     #[test]
@@ -1204,12 +1204,12 @@ mod tests {
         manager.log(logger_id, LogLevel::Info, "Message 2".to_string()).unwrap();
         manager.log(logger_id, LogLevel::Info, "Message 3".to_string()).unwrap();
         
-        let entries = manager.get_log_entries();
-        assert_eq!(entries.len(), 2);
+        let entries = manager.get_log_entries(;
+        assert_eq!(entries.len(), 2;
         
         // Should have the last two messages
-        assert_eq!(entries[0].message, "Message 2");
-        assert_eq!(entries[1].message, "Message 3");
+        assert_eq!(entries[0].message, "Message 2";
+        assert_eq!(entries[1].message, "Message 3";
     }
     
     #[test]
@@ -1225,21 +1225,21 @@ mod tests {
             ComponentLoggingId(1),
             "logger1".to_string(),
             LogLevel::Debug,
-        );
-        assert!(result1.is_ok());
+        ;
+        assert!(result1.is_ok();
         
         // Second logger should fail
         let result2 = manager.register_logger(
             ComponentLoggingId(2),
             "logger2".to_string(),
             LogLevel::Debug,
-        );
-        assert!(result2.is_err());
+        ;
+        assert!(result2.is_err();
     }
     
     #[test]
     fn test_component_logger_removal() {
-        let limits = BoundedLoggingLimits::default();
+        let limits = BoundedLoggingLimits::default(;
         let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger1_id = manager.register_logger(
@@ -1260,22 +1260,22 @@ mod tests {
             LogLevel::Debug,
         ).unwrap();
         
-        let removed = manager.remove_component_loggers(ComponentLoggingId(1));
-        assert_eq!(removed, 2);
+        let removed = manager.remove_component_loggers(ComponentLoggingId(1;
+        assert_eq!(removed, 2;
         
-        let stats = manager.get_statistics();
-        assert_eq!(stats.registered_loggers, 1);
+        let stats = manager.get_statistics(;
+        assert_eq!(stats.registered_loggers, 1;
         
         // Logger3 should still exist
-        assert!(manager.get_logger(logger3_id).is_some());
+        assert!(manager.get_logger(logger3_id).is_some();
         // Logger1 and Logger2 should be gone
-        assert!(manager.get_logger(logger1_id).is_none());
-        assert!(manager.get_logger(logger2_id).is_none());
+        assert!(manager.get_logger(logger1_id).is_none();
+        assert!(manager.get_logger(logger2_id).is_none();
     }
     
     #[test]
     fn test_log_filtering_by_component() {
-        let limits = BoundedLoggingLimits::default();
+        let limits = BoundedLoggingLimits::default(;
         let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger1_id = manager.register_logger(
@@ -1294,10 +1294,10 @@ mod tests {
         manager.log(logger2_id, LogLevel::Info, "Message from component 2".to_string()).unwrap();
         manager.log(logger1_id, LogLevel::Error, "Error from component 1".to_string()).unwrap();
         
-        let component1_entries = manager.get_entries_by_component(ComponentLoggingId(1));
-        let component2_entries = manager.get_entries_by_component(ComponentLoggingId(2));
+        let component1_entries = manager.get_entries_by_component(ComponentLoggingId(1;
+        let component2_entries = manager.get_entries_by_component(ComponentLoggingId(2;
         
-        assert_eq!(component1_entries.len(), 2);
-        assert_eq!(component2_entries.len(), 1);
+        assert_eq!(component1_entries.len(), 2;
+        assert_eq!(component2_entries.len(), 1;
     }
 }

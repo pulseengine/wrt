@@ -277,7 +277,7 @@ impl wrt_foundation::traits::Checksummable for ElementSegmentType {
             ElementSegmentType::Passive => 1u8,
             ElementSegmentType::Declared => 2u8,
         };
-        checksum.update_slice(&[value]);
+        checksum.update_slice(&[value];
     }
 }
 
@@ -319,12 +319,12 @@ impl wrt_foundation::traits::FromBytes for ElementSegmentType {
 
 impl wrt_foundation::traits::Checksummable for ElementInitializationHint {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.segment_type.update_checksum(checksum);
+        self.segment_type.update_checksum(checksum;
         if let Some(target) = self.table_target {
-            checksum.update_slice(&target.to_le_bytes());
+            checksum.update_slice(&target.to_le_bytes(;
         }
-        checksum.update_slice(&[self.offset_evaluation_needed as u8]);
-        checksum.update_slice(&self.element_count.to_le_bytes());
+        checksum.update_slice(&[self.offset_evaluation_needed as u8];
+        checksum.update_slice(&self.element_count.to_le_bytes(;
     }
 }
 
@@ -355,7 +355,7 @@ impl wrt_foundation::traits::FromBytes for ElementInitializationHint {
         
         let mut target_bytes = [0u8; 4];
         reader.read_exact(&mut target_bytes)?;
-        let table_target_val = u32::from_le_bytes(target_bytes);
+        let table_target_val = u32::from_le_bytes(target_bytes;
         let table_target = if table_target_val == 0 { None } else { Some(table_target_val) };
         
         let mut bool_bytes = [0u8; 1];
@@ -364,7 +364,7 @@ impl wrt_foundation::traits::FromBytes for ElementInitializationHint {
         
         let mut count_bytes = [0u8; 8];
         reader.read_exact(&mut count_bytes)?;
-        let element_count = usize::from_le_bytes(count_bytes);
+        let element_count = usize::from_le_bytes(count_bytes;
         
         Ok(Self {
             segment_type,
@@ -394,7 +394,7 @@ impl ModuleBridge {
     pub fn extract_module_runtime_data(module: &crate::module::Module) -> ModuleRuntimeData {
         // Convert module data segments to runtime extractions
         #[cfg(feature = "std")]
-        let mut data_extractions = DataExtractionVec::new();
+        let mut data_extractions = DataExtractionVec::new(;
         #[cfg(not(feature = "std"))]
         let mut data_extractions = {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
@@ -431,7 +431,7 @@ impl ModuleBridge {
             
         // Convert module element segments to runtime extractions
         #[cfg(feature = "std")]
-        let mut element_extractions = ElementExtractionVec::new();
+        let mut element_extractions = ElementExtractionVec::new(;
         #[cfg(not(feature = "std"))]
         let mut element_extractions = {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
@@ -483,7 +483,7 @@ impl ModuleBridge {
     pub fn create_initialization_plan(module: &crate::module::Module) -> ModuleInitializationPlan {
         // Create data initialization hints directly from module data
         #[cfg(feature = "std")]
-        let mut data_hints = Vec::new();
+        let mut data_hints = Vec::new(;
         #[cfg(not(feature = "std"))]
         let mut data_hints = {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
@@ -505,14 +505,14 @@ impl ModuleBridge {
                 },
             };
             #[cfg(feature = "std")]
-            data_hints.push((index, hint));
+            data_hints.push((index, hint);
             #[cfg(not(feature = "std"))]
             data_hints.push((index, hint)).unwrap();
         }
             
         // Create element initialization hints directly from module elements
         #[cfg(feature = "std")]
-        let mut element_hints = Vec::new();
+        let mut element_hints = Vec::new(;
         #[cfg(not(feature = "std"))]
         let mut element_hints = {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
@@ -529,7 +529,7 @@ impl ModuleBridge {
                 },
             };
             #[cfg(feature = "std")]
-            element_hints.push((index, hint));
+            element_hints.push((index, hint);
             #[cfg(not(feature = "std"))]
             element_hints.push((index, hint)).unwrap();
         }
@@ -598,7 +598,7 @@ impl wrt_foundation::traits::Checksummable for DataSegmentType {
             DataSegmentType::Active => 0u8,
             DataSegmentType::Passive => 1u8,
         };
-        checksum.update_slice(&[value]);
+        checksum.update_slice(&[value];
     }
 }
 
@@ -639,9 +639,9 @@ impl wrt_foundation::traits::FromBytes for DataSegmentType {
 /// Add missing trait implementations for DataBytesReference
 impl wrt_foundation::traits::Checksummable for DataBytesReference {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.start_offset.to_le_bytes());
-        checksum.update_slice(&self.length.to_le_bytes());
-        checksum.update_slice(&[self.requires_copy as u8]);
+        checksum.update_slice(&self.start_offset.to_le_bytes(;
+        checksum.update_slice(&self.length.to_le_bytes(;
+        checksum.update_slice(&[self.requires_copy as u8];
     }
 }
 
@@ -669,11 +669,11 @@ impl wrt_foundation::traits::FromBytes for DataBytesReference {
     ) -> wrt_foundation::Result<Self> {
         let mut offset_bytes = [0u8; 8];
         reader.read_exact(&mut offset_bytes)?;
-        let start_offset = usize::from_le_bytes(offset_bytes);
+        let start_offset = usize::from_le_bytes(offset_bytes;
         
         let mut length_bytes = [0u8; 8];
         reader.read_exact(&mut length_bytes)?;
-        let length = usize::from_le_bytes(length_bytes);
+        let length = usize::from_le_bytes(length_bytes;
         
         let mut bool_bytes = [0u8; 1];
         reader.read_exact(&mut bool_bytes)?;
@@ -690,12 +690,12 @@ impl wrt_foundation::traits::FromBytes for DataBytesReference {
 /// Add missing trait implementations for DataInitializationHint
 impl wrt_foundation::traits::Checksummable for DataInitializationHint {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.segment_type.update_checksum(checksum);
+        self.segment_type.update_checksum(checksum;
         if let Some(target) = self.memory_target {
-            checksum.update_slice(&target.to_le_bytes());
+            checksum.update_slice(&target.to_le_bytes(;
         }
-        checksum.update_slice(&[self.offset_evaluation_needed as u8]);
-        self.data_bytes_ref.update_checksum(checksum);
+        checksum.update_slice(&[self.offset_evaluation_needed as u8];
+        self.data_bytes_ref.update_checksum(checksum;
     }
 }
 
@@ -726,7 +726,7 @@ impl wrt_foundation::traits::FromBytes for DataInitializationHint {
         
         let mut target_bytes = [0u8; 4];
         reader.read_exact(&mut target_bytes)?;
-        let memory_target_val = u32::from_le_bytes(target_bytes);
+        let memory_target_val = u32::from_le_bytes(target_bytes;
         let memory_target = if memory_target_val == 0 { None } else { Some(memory_target_val) };
         
         let mut bool_bytes = [0u8; 1];
@@ -751,7 +751,7 @@ impl wrt_foundation::traits::Checksummable for ElementInitType {
             ElementInitType::FunctionIndices => 0u8,
             ElementInitType::ExpressionBytes => 1u8,
         };
-        checksum.update_slice(&[value]);
+        checksum.update_slice(&[value];
     }
 }
 
@@ -795,12 +795,12 @@ impl wrt_foundation::traits::FromBytes for ElementInitType {
 /// Add minimal trait implementations for RuntimeDataExtraction
 impl wrt_foundation::traits::Checksummable for RuntimeDataExtraction {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[self.is_active as u8]);
+        checksum.update_slice(&[self.is_active as u8];
         if let Some(index) = self.memory_index {
-            checksum.update_slice(&index.to_le_bytes());
+            checksum.update_slice(&index.to_le_bytes(;
         }
-        checksum.update_slice(&self.data_size.to_le_bytes());
-        checksum.update_slice(&[self.requires_initialization as u8]);
+        checksum.update_slice(&self.data_size.to_le_bytes(;
+        checksum.update_slice(&[self.requires_initialization as u8];
     }
 }
 
@@ -833,19 +833,19 @@ impl wrt_foundation::traits::FromBytes for RuntimeDataExtraction {
         
         let mut index_bytes = [0u8; 4];
         reader.read_exact(&mut index_bytes)?;
-        let memory_index_val = u32::from_le_bytes(index_bytes);
+        let memory_index_val = u32::from_le_bytes(index_bytes;
         let memory_index = if memory_index_val == 0 { None } else { Some(memory_index_val) };
         
         let mut size_bytes = [0u8; 8];
         reader.read_exact(&mut size_bytes)?;
-        let data_size = usize::from_le_bytes(size_bytes);
+        let data_size = usize::from_le_bytes(size_bytes;
         
         reader.read_exact(&mut bool_bytes)?;
         let requires_initialization = bool_bytes[0] != 0;
         
         // Create empty Vec for offset_expr_bytes
         #[cfg(feature = "std")]
-        let offset_expr_bytes = std::vec::Vec::new();
+        let offset_expr_bytes = std::vec::Vec::new(;
         #[cfg(not(feature = "std"))]
         let offset_expr_bytes = {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
@@ -865,12 +865,12 @@ impl wrt_foundation::traits::FromBytes for RuntimeDataExtraction {
 /// Add minimal trait implementations for RuntimeElementExtraction
 impl wrt_foundation::traits::Checksummable for RuntimeElementExtraction {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[self.is_active as u8]);
+        checksum.update_slice(&[self.is_active as u8];
         if let Some(index) = self.table_index {
-            checksum.update_slice(&index.to_le_bytes());
+            checksum.update_slice(&index.to_le_bytes(;
         }
-        self.init_data_type.update_checksum(checksum);
-        checksum.update_slice(&[self.requires_initialization as u8]);
+        self.init_data_type.update_checksum(checksum;
+        checksum.update_slice(&[self.requires_initialization as u8];
     }
 }
 
@@ -903,7 +903,7 @@ impl wrt_foundation::traits::FromBytes for RuntimeElementExtraction {
         
         let mut index_bytes = [0u8; 4];
         reader.read_exact(&mut index_bytes)?;
-        let table_index_val = u32::from_le_bytes(index_bytes);
+        let table_index_val = u32::from_le_bytes(index_bytes;
         let table_index = if table_index_val == 0 { None } else { Some(table_index_val) };
         
         let init_data_type = ElementInitType::from_bytes_with_provider(reader, provider)?;
@@ -913,7 +913,7 @@ impl wrt_foundation::traits::FromBytes for RuntimeElementExtraction {
         
         // Create defaults for complex fields
         #[cfg(feature = "std")]
-        let offset_expr_bytes = std::vec::Vec::new();
+        let offset_expr_bytes = std::vec::Vec::new(;
         #[cfg(not(feature = "std"))]
         let offset_expr_bytes = {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();

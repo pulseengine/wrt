@@ -77,13 +77,13 @@ impl ValidationIssue {
 
     /// Add context information
     pub fn with_context(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.context.insert(key.into(), value.into());
+        self.context.insert(key.into(), value.into();
         self
     }
 
     /// Add suggested fix
     pub fn with_fix(mut self, fix: impl Into<String>) -> Self {
-        self.suggested_fix = Some(fix.into());
+        self.suggested_fix = Some(fix.into();
         self
     }
 
@@ -193,14 +193,14 @@ impl StreamingValidator {
 
     /// Enter a new validation context
     pub fn enter_context(&mut self, context: impl Into<String>) -> Result<()> {
-        self.context_stack.push(context.into());
+        self.context_stack.push(context.into();
         Ok(())
     }
 
     /// Exit the current validation context
     pub fn exit_context(&mut self) -> Result<()> {
         if self.context_stack.pop().is_none() {
-            return Err(Error::validation_error("Context stack underflow"));
+            return Err(Error::validation_error("Context stack underflow";
         }
         Ok(())
     }
@@ -208,7 +208,7 @@ impl StreamingValidator {
     /// Add a validation issue
     pub fn add_issue(&mut self, issue: ValidationIssue) -> Result<()> {
         if self.issues.len() >= self.config.max_issues {
-            return Err(Error::validation_error("Too many validation issues"));
+            return Err(Error::validation_error("Too many validation issues";
         }
 
         let should_abort =
@@ -217,7 +217,7 @@ impl StreamingValidator {
         self.issues.push(issue);
 
         if should_abort {
-            return Err(Error::validation_error("Critical validation error"));
+            return Err(Error::validation_error("Critical validation error";
         }
 
         Ok(())
@@ -238,7 +238,7 @@ impl StreamingValidator {
                 .with_context("expected_size", "8")
                 .with_context("actual_size", data.len().to_string()),
             )?;
-            return Ok(());
+            return Ok((;
         }
 
         // Check magic number
@@ -262,7 +262,7 @@ impl StreamingValidator {
         }
 
         // Check version
-        let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
+        let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]];
         match version {
             1 => {
                 // Valid core module version
@@ -390,7 +390,7 @@ impl StreamingValidator {
                     .with_context("max_bytes", "10")
                     .with_context("bytes_read", bytes_read.to_string()),
                 )?;
-                return Err(Error::parse_error("Invalid LEB128 encoding"));
+                return Err(Error::parse_error("Invalid LEB128 encoding";
             }
 
             result |= ((byte & 0x7F) as u64) << shift;
@@ -576,8 +576,8 @@ mod tests {
     #[test]
     fn test_validator_creation() {
         let validator = StreamingValidator::new().unwrap();
-        assert_eq!(validator.issues.len(), 0);
-        assert!(validator.validation_passed());
+        assert_eq!(validator.issues.len(), 0;
+        assert!(validator.validation_passed();
     }
 
     #[test]
@@ -588,7 +588,7 @@ mod tests {
         let valid_header = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         validator.validate_header(&valid_header, 0).unwrap();
 
-        let report = validator.generate_report();
+        let report = validator.generate_report(;
         assert_eq!(report.info_count, 1); // Should have info about core module
         assert!(report.validation_passed);
     }
@@ -601,7 +601,7 @@ mod tests {
         let invalid_header = [0xFF, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
         validator.validate_header(&invalid_header, 0).unwrap();
 
-        let report = validator.generate_report();
+        let report = validator.generate_report(;
         assert!(report.critical_count > 0);
         assert!(!report.validation_passed);
     }
@@ -613,8 +613,8 @@ mod tests {
         // Valid LEB128: 42 (0x2A)
         let leb_data = [0x2A];
         let (value, bytes_read) = validator.validate_leb128(&leb_data, 0, false).unwrap();
-        assert_eq!(value, 42);
-        assert_eq!(bytes_read, 1);
+        assert_eq!(value, 42;
+        assert_eq!(bytes_read, 1;
     }
 
     #[test]

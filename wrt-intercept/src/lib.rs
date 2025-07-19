@@ -54,14 +54,14 @@
 //! # }
 //!
 //! // Create your custom strategy
-//! let my_strategy = Arc::new(MyStrategy);
+//! let my_strategy = Arc::new(MyStrategy;
 //!
 //! // Create an interceptor and add your strategy
-//! let mut interceptor = LinkInterceptor::new("my_interceptor");
-//! interceptor.add_strategy(my_strategy);
+//! let mut interceptor = LinkInterceptor::new("my_interceptor";
+//! interceptor.add_strategy(my_strategy;
 //!
 //! // Attach to component or host
-//! // component.with_interceptor(Arc::new(interceptor));
+//! // component.with_interceptor(Arc::new(interceptor;
 //! ```
 
 #![forbid(unsafe_code)] // Rule 2
@@ -513,16 +513,16 @@ impl LinkInterceptor {
 
             // Early return if strategy bypasses execution
             if strategy.should_bypass() {
-                return Ok(modified_args);
+                return Ok(modified_args;
             }
         }
 
         // Execute the actual call
-        let mut result = call_fn(modified_args);
+        let mut result = call_fn(modified_args;
 
         // Apply after_call interceptors in reverse order
         for strategy in self.strategies.iter().rev() {
-            result = strategy.after_call(&self.name, target, function, &args, result);
+            result = strategy.after_call(&self.name, target, function, &args, result;
         }
 
         result
@@ -608,7 +608,7 @@ impl LinkInterceptor {
         serialized_data: &[u8],
         modifications: &[Modification],
     ) -> Result<Vec<u8>> {
-        let mut modified_data = serialized_data.to_vec();
+        let mut modified_data = serialized_data.to_vec(;
 
         for modification in modifications {
             match modification {
@@ -616,15 +616,15 @@ impl LinkInterceptor {
                     // No modification needed
                 }
                 Modification::Replace { offset, data } => {
-                    let end_offset = offset + data.len();
+                    let end_offset = offset + data.len(;
                     if end_offset > modified_data.len() {
-                        return Err(Error::runtime_execution_error("Replace range exceeds data length"));
+                        return Err(Error::runtime_execution_error("Replace range exceeds data length";
                     }
 
                     // Fixed version without borrowing issues
                     let start = *offset;
-                    let end = start + data.len();
-                    modified_data[start..end].copy_from_slice(data);
+                    let end = start + data.len(;
+                    modified_data[start..end].copy_from_slice(data;
                 }
                 Modification::Insert { offset, data } => {
                     let start = *offset;
@@ -632,19 +632,19 @@ impl LinkInterceptor {
                         return Err(Error::new(
                             wrt_error::ErrorCategory::Validation,
                             wrt_error::codes::VALIDATION_ERROR,
-                            "Insert offset exceeds data length"));
+                            "Insert offset exceeds data length";
                     }
 
-                    modified_data.splice(start..start, data.iter().cloned());
+                    modified_data.splice(start..start, data.iter().cloned(;
                 }
                 Modification::Remove { offset, length } => {
                     let start = *offset;
                     let end = start + length;
                     if end > modified_data.len() {
-                        return Err(Error::runtime_execution_error("Remove range exceeds data length"));
+                        return Err(Error::runtime_execution_error("Remove range exceeds data length";
                     }
 
-                    modified_data.drain(start..end);
+                    modified_data.drain(start..end;
                 }
             }
         }
@@ -713,35 +713,35 @@ impl wrt_foundation::traits::Checksummable for Modification {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             Modification::None => {
-                checksum.update_slice(&[0u8]);
+                checksum.update_slice(&[0u8];
             },
             Modification::Replace { offset, data } => {
-                checksum.update_slice(&offset.to_le_bytes());
+                checksum.update_slice(&offset.to_le_bytes(;
                 checksum.update_slice(&[1u8]); // tag for Replace variant
                 #[cfg(feature = "std")]
-                checksum.update_slice(data);
+                checksum.update_slice(data;
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
                     if let Ok(byte) = data.get(i) {
-                        checksum.update_slice(&[byte]);
+                        checksum.update_slice(&[byte];
                     }
                 }
             },
             Modification::Insert { offset, data } => {
-                checksum.update_slice(&offset.to_le_bytes());
+                checksum.update_slice(&offset.to_le_bytes(;
                 checksum.update_slice(&[2u8]); // tag for Insert variant
                 #[cfg(feature = "std")]
-                checksum.update_slice(data);
+                checksum.update_slice(data;
                 #[cfg(not(feature = "std"))]
                 for i in 0..data.len() {
                     if let Ok(byte) = data.get(i) {
-                        checksum.update_slice(&[byte]);
+                        checksum.update_slice(&[byte];
                     }
                 }
             },
             Modification::Remove { offset, length } => {
-                checksum.update_slice(&offset.to_le_bytes());
-                checksum.update_slice(&length.to_le_bytes());
+                checksum.update_slice(&offset.to_le_bytes(;
+                checksum.update_slice(&length.to_le_bytes(;
                 checksum.update_slice(&[3u8]); // tag for Remove variant
             },
         }
@@ -827,9 +827,9 @@ impl wrt_foundation::traits::FromBytes for Modification {
                 
                 #[cfg(feature = "std")]
                 let data = {
-                    let mut vec = Vec::with_capacity(data_len);
+                    let mut vec = Vec::with_capacity(data_len;
                     for _ in 0..data_len {
-                        vec.push(reader.read_u8()?);
+                        vec.push(reader.read_u8()?;
                     }
                     vec
                 };
@@ -856,9 +856,9 @@ impl wrt_foundation::traits::FromBytes for Modification {
                 
                 #[cfg(feature = "std")]
                 let data = {
-                    let mut vec = Vec::with_capacity(data_len);
+                    let mut vec = Vec::with_capacity(data_len;
                     for _ in 0..data_len {
-                        vec.push(reader.read_u8()?);
+                        vec.push(reader.read_u8()?;
                     }
                     vec
                 };
@@ -1054,84 +1054,84 @@ mod tests {
     #[test]
     fn test_interceptor_passthrough() {
         let strategy =
-            Arc::new(TestStrategy { bypass: false, modify_args: false, modify_result: false });
+            Arc::new(TestStrategy { bypass: false, modify_args: false, modify_result: false };
 
-        let mut interceptor = LinkInterceptor::new("test");
-        interceptor.add_strategy(strategy);
+        let mut interceptor = LinkInterceptor::new("test";
+        interceptor.add_strategy(strategy;
 
         let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
-            assert_eq!(args, vec![Value::I32(10)]);
+            assert_eq!(args, vec![Value::I32(10)];
             Ok(vec![Value::I32(20)])
-        });
+        };
 
-        assert_eq!(result.unwrap(), vec![Value::I32(20)]);
+        assert_eq!(result.unwrap(), vec![Value::I32(20)];
     }
 
     #[test]
     fn test_interceptor_modify_args() {
         let strategy =
-            Arc::new(TestStrategy { bypass: false, modify_args: true, modify_result: false });
+            Arc::new(TestStrategy { bypass: false, modify_args: true, modify_result: false };
 
-        let mut interceptor = LinkInterceptor::new("test");
-        interceptor.add_strategy(strategy);
+        let mut interceptor = LinkInterceptor::new("test";
+        interceptor.add_strategy(strategy;
 
         let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
-            assert_eq!(args, vec![Value::I32(42)]);
+            assert_eq!(args, vec![Value::I32(42)];
             Ok(vec![Value::I32(20)])
-        });
+        };
 
-        assert_eq!(result.unwrap(), vec![Value::I32(20)]);
+        assert_eq!(result.unwrap(), vec![Value::I32(20)];
     }
 
     #[test]
     fn test_interceptor_modify_result() {
         let strategy =
-            Arc::new(TestStrategy { bypass: false, modify_args: false, modify_result: true });
+            Arc::new(TestStrategy { bypass: false, modify_args: false, modify_result: true };
 
-        let mut interceptor = LinkInterceptor::new("test");
-        interceptor.add_strategy(strategy);
+        let mut interceptor = LinkInterceptor::new("test";
+        interceptor.add_strategy(strategy;
 
         let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
-            assert_eq!(args, vec![Value::I32(10)]);
+            assert_eq!(args, vec![Value::I32(10)];
             Ok(vec![Value::I32(20)])
-        });
+        };
 
-        assert_eq!(result.unwrap(), vec![Value::I32(99)]);
+        assert_eq!(result.unwrap(), vec![Value::I32(99)];
     }
 
     #[test]
     fn test_interceptor_bypass() {
         let strategy =
-            Arc::new(TestStrategy { bypass: true, modify_args: true, modify_result: false });
+            Arc::new(TestStrategy { bypass: true, modify_args: true, modify_result: false };
 
-        let mut interceptor = LinkInterceptor::new("test");
-        interceptor.add_strategy(strategy);
+        let mut interceptor = LinkInterceptor::new("test";
+        interceptor.add_strategy(strategy;
 
         let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |_| {
-            panic!("This should not be called");
-        });
+            panic!("This should not be called";
+        };
 
-        assert_eq!(result.unwrap(), vec![Value::I32(42)]);
+        assert_eq!(result.unwrap(), vec![Value::I32(42)];
     }
 
     #[test]
     fn test_multiple_strategies() {
         let strategy1 =
-            Arc::new(TestStrategy { bypass: false, modify_args: true, modify_result: false });
+            Arc::new(TestStrategy { bypass: false, modify_args: true, modify_result: false };
 
         let strategy2 =
-            Arc::new(TestStrategy { bypass: false, modify_args: false, modify_result: true });
+            Arc::new(TestStrategy { bypass: false, modify_args: false, modify_result: true };
 
-        let mut interceptor = LinkInterceptor::new("test");
-        interceptor.add_strategy(strategy1);
-        interceptor.add_strategy(strategy2);
+        let mut interceptor = LinkInterceptor::new("test";
+        interceptor.add_strategy(strategy1;
+        interceptor.add_strategy(strategy2;
 
         let result = interceptor.intercept_call("target", "func", vec![Value::I32(10)], |args| {
-            assert_eq!(args, vec![Value::I32(42)]);
+            assert_eq!(args, vec![Value::I32(42)];
             Ok(vec![Value::I32(20)])
-        });
+        };
 
-        assert_eq!(result.unwrap(), vec![Value::I32(99)]);
+        assert_eq!(result.unwrap(), vec![Value::I32(99)];
     }
 }
 

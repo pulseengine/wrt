@@ -133,7 +133,7 @@ fn parse_data(
 
 fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limits, usize)> {
     if offset >= bytes.len() {
-        return Err(Error::parse_error("Unexpected end while parsing limits"));
+        return Err(Error::parse_error("Unexpected end while parsing limits";
     }
 
     let flags = bytes[offset];
@@ -178,7 +178,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "type count")?;
         let count_usize = safe_usize_conversion(count, "type count")?;
 
-        let mut format_func_types = Vec::new();
+        let mut format_func_types = Vec::new(;
         format_func_types.reserve(count_usize.min(1024)); // Reserve conservatively
 
         for _ in 0..count {
@@ -186,7 +186,7 @@ pub mod parsers {
             if offset >= bytes.len() || bytes[offset] != 0x60 {
                 return Err(Error::parse_error(
                     "Expected function type indicator (0x60)",
-                ));
+                ;
             }
             offset += 1;
 
@@ -198,11 +198,11 @@ pub mod parsers {
             check_bounds_u32(param_count, 1000, "param count")?;
             let param_count_usize = safe_usize_conversion(param_count, "param count")?;
 
-            let mut params = Vec::new();
+            let mut params = Vec::new(;
             params.reserve(param_count_usize.min(256)); // Conservative reservation
             for _ in 0..param_count {
                 if offset >= bytes.len() {
-                    return Err(Error::parse_error("Unexpected end of param types"));
+                    return Err(Error::parse_error("Unexpected end of param types";
                 }
 
                 let val_type_byte = bytes[offset];
@@ -222,11 +222,11 @@ pub mod parsers {
             check_bounds_u32(result_count, 1000, "result count")?;
             let result_count_usize = safe_usize_conversion(result_count, "result count")?;
 
-            let mut results = Vec::new();
+            let mut results = Vec::new(;
             results.reserve(result_count_usize.min(256)); // Conservative reservation
             for _ in 0..result_count {
                 if offset >= bytes.len() {
-                    return Err(Error::parse_error("Unexpected end of result types"));
+                    return Err(Error::parse_error("Unexpected end of result types";
                 }
 
                 let val_type_byte = bytes[offset];
@@ -242,7 +242,7 @@ pub mod parsers {
                 65536,
                 wrt_foundation::budget_aware_provider::CrateId::Decoder
             )?;
-            format_func_types.push(wrt_format::types::FuncType::new(provider, params, results)?);
+            format_func_types.push(wrt_format::types::FuncType::new(provider, params, results)?;
         }
 
         // Since wrt_format::types::FuncType is re-exported from wrt_foundation,
@@ -253,7 +253,7 @@ pub mod parsers {
     /// Parse a function section
     pub fn parse_function_section(bytes: &[u8]) -> Result<Vec<u32>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut indices = Vec::with_capacity(count as usize);
+        let mut indices = Vec::with_capacity(count as usize;
 
         for _ in 0..count {
             let (index, new_offset) = binary::read_leb128_u32(bytes, offset)?;
@@ -272,7 +272,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "import count")?;
         let count_usize = safe_usize_conversion(count, "import count")?;
 
-        let mut format_imports = Vec::new();
+        let mut format_imports = Vec::new(;
         format_imports.reserve(count_usize.min(1024)); // Conservative reservation
 
         for _ in 0..count {
@@ -285,7 +285,7 @@ pub mod parsers {
             offset = new_offset;
 
             if offset >= bytes.len() {
-                return Err(Error::parse_error("Unexpected end of import description"));
+                return Err(Error::parse_error("Unexpected end of import description";
             }
 
             // Parse import description kind byte
@@ -320,7 +320,7 @@ pub mod parsers {
                 },
                 // TODO: Handle 0x04 Tag import if/when supported by wrt_format
                 _ => {
-                    return Err(Error::parse_error("Invalid import description kind"));
+                    return Err(Error::parse_error("Invalid import description kind";
                 },
             };
 
@@ -328,13 +328,13 @@ pub mod parsers {
                 module: module_string,
                 name:   field_string,
                 desc:   format_desc,
-            });
+            };
         }
 
         // Convert wrt_format::Import to wrt_foundation::Import
         // Since Table and Memory are now type aliases to foundation types, this should
         // work directly
-        let mut wrt_imports = Vec::with_capacity(format_imports.len());
+        let mut wrt_imports = Vec::with_capacity(format_imports.len(;
         let provider = wrt_foundation::safe_managed_alloc!(
             65536,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -366,7 +366,7 @@ pub mod parsers {
                     let global_type = wrt_foundation::GlobalType::new(
                         format_global.value_type,
                         format_global.mutable,
-                    );
+                    ;
                     wrt_foundation::types::ImportDesc::Global(global_type)
                 },
                 wrt_format::module::ImportDesc::Tag(type_idx) => {
@@ -379,7 +379,7 @@ pub mod parsers {
                 module_name,
                 item_name,
                 desc: wrt_desc,
-            });
+            };
         }
 
         Ok(wrt_imports)
@@ -388,7 +388,7 @@ pub mod parsers {
     /// Parse a table section
     pub fn parse_table_section(bytes: &[u8]) -> Result<Vec<WrtTableType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut wrt_tables = Vec::with_capacity(count as usize);
+        let mut wrt_tables = Vec::with_capacity(count as usize;
 
         // Parse format tables and convert directly to foundation types
         for _ in 0..count {
@@ -410,7 +410,7 @@ pub mod parsers {
         if offset >= bytes.len() {
             return Err(Error::parse_error(
                 "Unexpected end of table entry (element type byte)",
-            ));
+            ;
         }
         let element_type_byte = bytes[offset];
         offset += 1;
@@ -423,7 +423,7 @@ pub mod parsers {
                 ErrorCategory::Parse,
                 codes::INVALID_TYPE,
                 "Invalid table element type",
-            ));
+            ;
         }
 
         let (limits, new_offset) = parse_limits(bytes, offset)?;
@@ -434,7 +434,7 @@ pub mod parsers {
             FormatValueType::FuncRef => wrt_foundation::RefType::Funcref,
             FormatValueType::ExternRef => wrt_foundation::RefType::Externref,
             _ => {
-                return Err(Error::runtime_execution_error("Invalid table element type"));
+                return Err(Error::runtime_execution_error("Invalid table element type";
             },
         };
 
@@ -442,7 +442,7 @@ pub mod parsers {
         let foundation_limits = wrt_foundation::Limits::new(
             limits.min as u32, // Convert u64 to u32
             limits.max.map(|m| m as u32),
-        );
+        ;
 
         Ok((
             wrt_foundation::TableType {
@@ -456,7 +456,7 @@ pub mod parsers {
     /// Parse a memory section
     pub fn parse_memory_section(bytes: &[u8]) -> Result<Vec<WrtMemoryType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut wrt_memories = Vec::with_capacity(count as usize);
+        let mut wrt_memories = Vec::with_capacity(count as usize;
 
         // Parse format memories and convert directly to foundation types
         for _ in 0..count {
@@ -481,7 +481,7 @@ pub mod parsers {
         let foundation_limits = wrt_foundation::Limits::new(
             limits.min as u32, // Convert u64 to u32
             limits.max.map(|m| m as u32),
-        );
+        ;
 
         Ok((
             wrt_foundation::MemoryType::new(foundation_limits, limits.shared),
@@ -495,7 +495,7 @@ pub mod parsers {
     ) -> Result<(wrt_format::types::FormatGlobalType, usize)> {
         if offset + 1 >= bytes.len() {
             // Need valtype + mutability byte
-            return Err(Error::parse_error("Unexpected end of global type"));
+            return Err(Error::parse_error("Unexpected end of global type";
         }
         let val_type_byte = bytes[offset];
         offset += 1;
@@ -523,7 +523,7 @@ pub mod parsers {
     /// Parse a global section
     pub fn parse_global_section(bytes: &[u8]) -> Result<Vec<WrtGlobalType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut wrt_globals = Vec::with_capacity(count as usize);
+        let mut wrt_globals = Vec::with_capacity(count as usize;
 
         for _ in 0..count {
             let (format_global_type, new_offset) = parse_format_global_type(bytes, offset)?;
@@ -539,7 +539,7 @@ pub mod parsers {
                 if temp_offset >= bytes.len() {
                     return Err(Error::parse_error(
                         "Global init expression unterminated or extends beyond section bounds",
-                    ));
+                    ;
                 }
                 // A simple way to find END is to try parsing instructions one by one,
                 // but that requires a full instruction parser here or assumptions.
@@ -549,7 +549,7 @@ pub mod parsers {
                 // we can scan for the END opcode.
                 if bytes[temp_offset] == binary::END {
                     // binary::END should be 0x0B
-                    end_opcode_idx = Some(temp_offset);
+                    end_opcode_idx = Some(temp_offset;
                     break;
                 }
                 // To avoid infinite loop on malformed input without END, check reasonable
@@ -560,7 +560,7 @@ pub mod parsers {
                     return Err(Error::parse_error(
                         "Global init expression too long or END opcode not found within \
                          reasonable limit",
-                    ));
+                    ;
                 }
                 temp_offset += 1;
             }
@@ -596,7 +596,7 @@ pub mod parsers {
         check_bounds_u32(count, 10000, "export count")?;
         let count_usize = safe_usize_conversion(count, "export count")?;
 
-        let mut format_exports = Vec::new();
+        let mut format_exports = Vec::new(;
         format_exports.reserve(count_usize.min(1024)); // Conservative reservation
 
         for _ in 0..count {
@@ -605,7 +605,7 @@ pub mod parsers {
             offset = new_offset;
 
             if offset >= bytes.len() {
-                return Err(Error::parse_error("Unexpected end of export kind"));
+                return Err(Error::parse_error("Unexpected end of export kind";
             }
             let kind_byte = bytes[offset];
             offset += 1;
@@ -626,7 +626,7 @@ pub mod parsers {
                 name: export_name,
                 kind: format_kind,
                 index,
-            });
+            };
         }
         // Return the format_exports since wrt_format::module::Export is what's expected
         Ok(format_exports)
@@ -635,7 +635,7 @@ pub mod parsers {
     /// Parse an element section
     pub fn parse_element_section(bytes: &[u8]) -> Result<Vec<WrtElementSegment>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut wrt_elements = Vec::with_capacity(count as usize);
+        let mut wrt_elements = Vec::with_capacity(count as usize;
 
         for _ in 0..count {
             // Parse using pure format type
@@ -657,7 +657,7 @@ pub mod parsers {
         check_bounds_u32(count, 100000, "function count")?;
         let count_usize = safe_usize_conversion(count, "function count")?;
 
-        let mut bodies = Vec::new();
+        let mut bodies = Vec::new(;
         bodies.reserve(count_usize.min(10000)); // Conservative reservation
 
         for _ in 0..count {
@@ -670,13 +670,13 @@ pub mod parsers {
             let body_size_usize = safe_usize_conversion(body_size, "function body size")?;
 
             if offset + body_size_usize > bytes.len() {
-                return Err(Error::parse_error("Unexpected end of code body"));
+                return Err(Error::parse_error("Unexpected end of code body";
             }
 
             // Binary std/no_std choice
-            let mut body = Vec::new();
-            body.reserve_exact(body_size_usize);
-            body.extend_from_slice(&bytes[offset..offset + body_size_usize]);
+            let mut body = Vec::new(;
+            body.reserve_exact(body_size_usize;
+            body.extend_from_slice(&bytes[offset..offset + body_size_usize];
             offset += body_size_usize;
 
             bodies.push(body);
@@ -688,7 +688,7 @@ pub mod parsers {
     /// Parse a data section
     pub fn parse_data_section(bytes: &[u8]) -> Result<Vec<WrtDataSegment>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut wrt_data_segments = Vec::with_capacity(count as usize);
+        let mut wrt_data_segments = Vec::with_capacity(count as usize;
 
         for _ in 0..count {
             // Parse using pure format type

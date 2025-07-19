@@ -81,7 +81,7 @@ impl WitParser {
             let mut i = 0;
 
             while i < lines.len() {
-                let line = lines[i].trim();
+                let line = lines[i].trim(;
                 
                 if line.is_empty() || line.starts_with("//") {
                     i += 1;
@@ -126,7 +126,7 @@ impl WitParser {
             let mut i = 0;
 
             while i < lines.len() {
-                let line = lines[i].trim();
+                let line = lines[i].trim(;
                 
                 if line.is_empty() || line.starts_with("//") {
                     i += 1;
@@ -160,7 +160,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
-                ));
+                ;
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -177,7 +177,7 @@ impl WitParser {
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
                         BoundedString::from_str("Unsupported import type", self.provider.clone()).unwrap()
-                    ));
+                    ;
                 }
             };
 
@@ -193,7 +193,7 @@ impl WitParser {
             
             // Split whitespace manually for no_std
             let mut start = 0;
-            let bytes = line.as_bytes();
+            let bytes = line.as_bytes(;
             
             for (i, &byte) in bytes.iter().enumerate() {
                 if byte.is_ascii_whitespace() {
@@ -202,7 +202,7 @@ impl WitParser {
                             if parts.push(part).is_err() {
                                 return Err(WitParseError::InvalidSyntax(
                                     BoundedString::from_str("Too many import parts", self.provider.clone()).unwrap()
-                                ));
+                                ;
                             }
                         }
                     }
@@ -220,7 +220,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
-                ));
+                ;
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -237,7 +237,7 @@ impl WitParser {
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
                         BoundedString::from_str("Unsupported import type", self.provider.clone()).unwrap()
-                    ));
+                    ;
                 }
             };
 
@@ -252,7 +252,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
-                ));
+                ;
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -269,7 +269,7 @@ impl WitParser {
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
                         BoundedString::from_str("Unsupported export type", self.provider.clone()).unwrap()
-                    ));
+                    ;
                 }
             };
 
@@ -285,7 +285,7 @@ impl WitParser {
             
             // Split whitespace manually for no_std
             let mut start = 0;
-            let bytes = line.as_bytes();
+            let bytes = line.as_bytes(;
             
             for (i, &byte) in bytes.iter().enumerate() {
                 if byte.is_ascii_whitespace() {
@@ -294,7 +294,7 @@ impl WitParser {
                             if parts.push(part).is_err() {
                                 return Err(WitParseError::InvalidSyntax(
                                     BoundedString::from_str("Too many export parts", self.provider.clone()).unwrap()
-                                ));
+                                ;
                             }
                         }
                     }
@@ -312,7 +312,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
-                ));
+                ;
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -329,7 +329,7 @@ impl WitParser {
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
                         BoundedString::from_str("Unsupported export type", self.provider.clone()).unwrap()
-                    ));
+                    ;
                 }
             };
 
@@ -347,7 +347,7 @@ impl WitParser {
 
         #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
-            let name_part = &line[..colon_pos].trim();
+            let name_part = &line[..colon_pos].trim(;
             let parts: Vec<&str> = name_part.split_whitespace().collect();
             
             if let Some(name) = parts.last() {
@@ -368,7 +368,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()
-                ));
+                ;
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -377,7 +377,7 @@ impl WitParser {
                 ))?;
 
             let type_str = parts[2];
-            let is_resource = type_str.starts_with("resource");
+            let is_resource = type_str.starts_with("resource";
             
             let ty = self.parse_type(type_str)?;
 
@@ -397,7 +397,7 @@ impl WitParser {
             
             // Split by space for type definition (e.g., "type name value")
             let mut start = 0;
-            let bytes = line.as_bytes();
+            let bytes = line.as_bytes(;
             let mut part_count = 0;
             
             for (i, &byte) in bytes.iter().enumerate() {
@@ -407,7 +407,7 @@ impl WitParser {
                             if parts.push(part).is_err() {
                                 return Err(WitParseError::InvalidSyntax(
                                     BoundedString::from_str("Too many type def parts", self.provider.clone()).unwrap()
-                                ));
+                                ;
                             }
                             part_count += 1;
                         }
@@ -426,7 +426,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()
-                ));
+                ;
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -448,7 +448,7 @@ impl WitParser {
     }
 
     fn parse_type(&mut self, type_str: &str) -> Result<WitType, WitParseError> {
-        let type_str = type_str.trim();
+        let type_str = type_str.trim(;
         
         match type_str {
             "bool" => Ok(WitType::Bool),
@@ -495,7 +495,7 @@ impl WitParser {
                 #[cfg(not(any(feature = "std", )))]
                 {
                     // Handle complex types in no_std environments
-                    let bytes = type_str.as_bytes();
+                    let bytes = type_str.as_bytes(;
                     
                     // Check for list<T>
                     if bytes.len() > 6 && &bytes[..5] == b"list<" && bytes[bytes.len()-1] == b'>' {
@@ -606,25 +606,25 @@ mod tests {
 
     #[test]
     fn test_wit_parser_creation() {
-        let parser = WitParser::new();
-        assert_eq!(parser.current_position, 0);
-        assert_eq!(parser.type_definitions.len(), 0);
+        let parser = WitParser::new(;
+        assert_eq!(parser.current_position, 0;
+        assert_eq!(parser.type_definitions.len(), 0;
     }
 
     #[test]
     fn test_parse_basic_types() {
-        let mut parser = WitParser::new();
+        let mut parser = WitParser::new(;
         
-        assert_eq!(parser.parse_type("bool").unwrap(), WitType::Bool);
-        assert_eq!(parser.parse_type("u32").unwrap(), WitType::U32);
-        assert_eq!(parser.parse_type("string").unwrap(), WitType::String);
-        assert_eq!(parser.parse_type("f64").unwrap(), WitType::F64);
+        assert_eq!(parser.parse_type("bool").unwrap(), WitType::Bool;
+        assert_eq!(parser.parse_type("u32").unwrap(), WitType::U32;
+        assert_eq!(parser.parse_type("string").unwrap(), WitType::String;
+        assert_eq!(parser.parse_type("f64").unwrap(), WitType::F64;
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_compound_types() {
-        let mut parser = WitParser::new();
+        let mut parser = WitParser::new(;
         
         let list_type = parser.parse_type("list<u32>").unwrap();
         match list_type {
@@ -642,7 +642,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_async_types() {
-        let mut parser = WitParser::new();
+        let mut parser = WitParser::new(;
         
         let stream_type = parser.parse_type("stream<u8>").unwrap();
         match stream_type {
@@ -660,7 +660,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_simple_world() {
-        let mut parser = WitParser::new();
+        let mut parser = WitParser::new(;
         let source = r#"
             world test-world {
                 import test-func: func()
@@ -668,28 +668,28 @@ mod tests {
             }
         "#;
 
-        let world = parser.parse_world(source);
-        assert!(world.is_ok());
+        let world = parser.parse_world(source;
+        assert!(world.is_ok();
         
         let world = world.unwrap();
-        assert_eq!(world.name.as_str().unwrap(), "test-world");
+        assert_eq!(world.name.as_str().unwrap(), "test-world";
         
         // Import BoundedCapacity trait for len() method
         use wrt_foundation::traits::BoundedCapacity;
-        assert_eq!(world.imports.len(), 1);
-        assert_eq!(world.exports.len(), 1);
+        assert_eq!(world.imports.len(), 1;
+        assert_eq!(world.exports.len(), 1;
     }
 
     #[cfg(feature = "std")]
     #[test]
     fn test_convert_to_valtype() {
-        let parser = WitParser::new();
+        let parser = WitParser::new(;
         
-        assert_eq!(parser.convert_to_valtype(&WitType::Bool).unwrap(), crate::types::ValueType::I32);
-        assert_eq!(parser.convert_to_valtype(&WitType::U32).unwrap(), crate::types::ValueType::I32);
-        assert_eq!(parser.convert_to_valtype(&WitType::String).unwrap(), crate::types::ValueType::I32);
+        assert_eq!(parser.convert_to_valtype(&WitType::Bool).unwrap(), crate::types::ValueType::I32;
+        assert_eq!(parser.convert_to_valtype(&WitType::U32).unwrap(), crate::types::ValueType::I32;
+        assert_eq!(parser.convert_to_valtype(&WitType::String).unwrap(), crate::types::ValueType::I32;
         
-        let list_wit = WitType::List(Box::new(WitType::U32));
+        let list_wit = WitType::List(Box::new(WitType::U32;
         let list_val = parser.convert_to_valtype(&list_wit).unwrap();
         assert_eq!(list_val, crate::types::ValueType::I32); // Lists are represented as pointers
     }

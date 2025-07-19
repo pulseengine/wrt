@@ -44,7 +44,7 @@ impl<'a> StreamingDecoder<'a> {
     /// Create a new streaming decoder (std version)
     #[cfg(feature = "std")]
     pub fn new(binary: &'a [u8]) -> Result<Self> {
-        let module = WrtModule::default();
+        let module = WrtModule::default(;
 
         Ok(Self {
             binary,
@@ -61,7 +61,7 @@ impl<'a> StreamingDecoder<'a> {
             8192,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
         )?;
-        let module = WrtModule::default();
+        let module = WrtModule::default(;
 
         Ok(Self {
             binary,
@@ -77,17 +77,17 @@ impl<'a> StreamingDecoder<'a> {
         if self.binary.len() < 8 {
             return Err(Error::parse_error(
                 "Binary too small for WebAssembly header",
-            ));
+            ;
         }
 
         // Check magic number
         if &self.binary[0..4] != b"\0asm" {
-            return Err(Error::parse_error("Invalid WebAssembly magic number"));
+            return Err(Error::parse_error("Invalid WebAssembly magic number";
         }
 
         // Check version
         if &self.binary[4..8] != &[0x01, 0x00, 0x00, 0x00] {
-            return Err(Error::parse_error("Unsupported WebAssembly version"));
+            return Err(Error::parse_error("Unsupported WebAssembly version";
         }
 
         self.offset = 8;
@@ -110,7 +110,7 @@ impl<'a> StreamingDecoder<'a> {
 
         let section_end = self.offset + section_size as usize;
         if section_end > self.binary.len() {
-            return Err(Error::parse_error("Section extends beyond binary"));
+            return Err(Error::parse_error("Section extends beyond binary";
         }
 
         // Process section data without loading it all into memory
@@ -209,7 +209,7 @@ impl<'a> StreamingDecoder<'a> {
         if count > 1 && !self.platform_limits.max_components > 0 {
             return Err(Error::resource_exhausted(
                 "Multiple memories not supported on this platform",
-            ));
+            ;
         }
 
         // Process each memory one at a time
@@ -240,7 +240,7 @@ impl<'a> StreamingDecoder<'a> {
             offset = new_offset;
 
             if offset >= data.len() {
-                return Err(Error::parse_error("Unexpected end of export kind"));
+                return Err(Error::parse_error("Unexpected end of export kind";
             }
 
             // Parse export kind
@@ -264,7 +264,7 @@ impl<'a> StreamingDecoder<'a> {
                 name: export_name,
                 kind,
                 index,
-            });
+            };
         }
 
         Ok(())
@@ -273,7 +273,7 @@ impl<'a> StreamingDecoder<'a> {
     /// Process start section
     fn process_start_section(&mut self, data: &[u8]) -> Result<()> {
         let (start_idx, _) = read_leb128_u32(data, 0)?;
-        self.module.start = Some(start_idx);
+        self.module.start = Some(start_idx;
         Ok(())
     }
 
@@ -298,13 +298,13 @@ impl<'a> StreamingDecoder<'a> {
             // one at a time for even lower memory usage
             let body_end = offset + body_size as usize;
             if body_end > data.len() {
-                return Err(Error::parse_error("Function body extends beyond section"));
+                return Err(Error::parse_error("Function body extends beyond section";
             }
 
             // For now, copy the body - but this could be optimized further
             if let Some(func) = self.module.functions.get_mut(i as usize) {
                 let body_data = &data[offset..body_end];
-                func.code.extend_from_slice(body_data);
+                func.code.extend_from_slice(body_data;
             }
 
             offset = body_end;

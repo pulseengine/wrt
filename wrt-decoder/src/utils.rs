@@ -57,16 +57,16 @@ pub fn verify_binary_header(data: &[u8]) -> Result<()> {
     // Use wrt-format's is_valid_wasm_header function
     if !is_valid_wasm_header(data) {
         if data.len() < 8 {
-            return Err(Error::parse_error("WebAssembly binary too short"));
+            return Err(Error::parse_error("WebAssembly binary too short";
         }
 
         if data[0..4] != WASM_MAGIC {
-            return Err(Error::parse_error("Invalid WebAssembly magic number"));
+            return Err(Error::parse_error("Invalid WebAssembly magic number";
         }
 
         return Err(Error::runtime_execution_error(
             "Invalid WebAssembly version",
-        ));
+        ;
     }
 
     Ok(())
@@ -86,7 +86,7 @@ pub fn varuint_size(value: u32) -> usize {
 /// Detect if a binary is a WebAssembly component or core module
 pub fn detect_binary_type(data: &[u8]) -> Result<BinaryType> {
     if data.len() < 8 {
-        return Err(Error::parse_error("Binary data too short"));
+        return Err(Error::parse_error("Binary data too short";
     }
 
     // Check magic number

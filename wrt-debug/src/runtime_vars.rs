@@ -96,7 +96,7 @@ impl<'a> VariableInspector<'a> {
                 // Read from local variable slot
                 state.read_local(*index).map(|value| {
                     let mut bytes = [0u8; 8];
-                    bytes[0..8].copy_from_slice(&value.to_le_bytes());
+                    bytes[0..8].copy_from_slice(&value.to_le_bytes(;
                     VariableValue {
                         bytes,
                         size: size_for_type(&var.var_type),
@@ -110,8 +110,8 @@ impl<'a> VariableInspector<'a> {
                 let size = size_for_type(&var.var_type) as usize;
                 memory.read_bytes(*addr, size).map(|data| {
                     let mut bytes = [0u8; 8];
-                    let copy_size = size.min(8);
-                    bytes[0..copy_size].copy_from_slice(&data[0..copy_size]);
+                    let copy_size = size.min(8;
+                    bytes[0..copy_size].copy_from_slice(&data[0..copy_size];
                     VariableValue {
                         bytes,
                         size: size as u8,
@@ -127,8 +127,8 @@ impl<'a> VariableInspector<'a> {
                     let size = size_for_type(&var.var_type) as usize;
                     memory.read_bytes(addr, size).map(|data| {
                         let mut bytes = [0u8; 8];
-                        let copy_size = size.min(8);
-                        bytes[0..copy_size].copy_from_slice(&data[0..copy_size]);
+                        let copy_size = size.min(8;
+                        bytes[0..copy_size].copy_from_slice(&data[0..copy_size];
                         VariableValue {
                             bytes,
                             size: size as u8,
@@ -155,10 +155,10 @@ impl<'a> VariableInspector<'a> {
         memory: &dyn DebugMemory,
     ) -> BoundedVec<LiveVariable<'a>, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>
     {
-        let mut live_vars = crate::bounded_debug_infra::create_debug_vec();
+        let mut live_vars = crate::bounded_debug_infra::create_debug_vec(;
 
         for var_def in self.find_variables_at_pc(pc) {
-            let value = self.read_variable(var_def, state, memory);
+            let value = self.read_variable(var_def, state, memory;
 
             let live_var = LiveVariable {
                 name: var_def.name.clone(),
@@ -233,7 +233,7 @@ impl<'a> ValueDisplay<'a> {
                 if let Some(val) = self.value.as_f64() {
                     // Simplified float display
                     writer("<f64:")?;
-                    let bits = val.to_bits();
+                    let bits = val.to_bits(;
                     let mut buf = [0u8; 16];
                     writer(format_hex_u64(bits, &mut buf))?;
                     writer(">")?;
@@ -269,7 +269,7 @@ impl<'a> ValueDisplay<'a> {
 
 // Binary std/no_std choice
 fn format_i32(mut n: i32, buf: &mut [u8]) -> &str {
-    let mut i = buf.len();
+    let mut i = buf.len(;
     let negative = n < 0;
 
     if negative {
@@ -299,7 +299,7 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
         return "0";
     }
 
-    let mut i = buf.len();
+    let mut i = buf.len(;
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
@@ -309,7 +309,7 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
     core::str::from_utf8(&buf[i..]).unwrap_or("?")
 }
 
-fn format_hex_u8(n: u8, buf: &mut [u8; 2]) -> &str {
+fn format_hex_u8(n: u8, buf: &mut [u8); 2]) -> &str {
     let high = (n >> 4) & 0xF;
     let low = n & 0xF;
 
@@ -351,35 +351,35 @@ mod tests {
             address:  None,
         };
 
-        let mut output = String::new();
+        let mut output = String::new(;
         ValueDisplay { value: &value }
             .display(|s| {
-                output.push_str(s);
+                output.push_str(s;
                 Ok(())
             })
             .unwrap();
 
-        assert_eq!(output, "42");
+        assert_eq!(output, "42";
 
         // Test boolean formatting
         value.var_type = BasicType::Bool;
         value.size = 1;
         value.bytes[0] = 1;
 
-        output.clear();
+        output.clear(;
         ValueDisplay { value: &value }
             .display(|s| {
-                output.push_str(s);
+                output.push_str(s;
                 Ok(())
             })
             .unwrap();
 
-        assert_eq!(output, "true");
+        assert_eq!(output, "true";
     }
 
     #[test]
     fn test_variable_scope() {
-        let mut inspector = VariableInspector::new();
+        let mut inspector = VariableInspector::new(;
 
         let var = VariableDefinition {
             name:       None,
@@ -398,10 +398,10 @@ mod tests {
 
         // Variable should be in scope at 0x1500
         let vars: Vec<_> = inspector.find_variables_at_pc(0x1500).collect();
-        assert_eq!(vars.len(), 1);
+        assert_eq!(vars.len(), 1;
 
         // Variable should not be in scope at 0x2500
         let vars: Vec<_> = inspector.find_variables_at_pc(0x2500).collect();
-        assert_eq!(vars.len(), 0);
+        assert_eq!(vars.len(), 0;
     }
 }

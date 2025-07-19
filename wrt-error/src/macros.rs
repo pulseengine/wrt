@@ -24,22 +24,22 @@
 ///     codes::SAFETY_VIOLATION,
 ///     "Critical safety violation",
 ///     "asil-b"
-/// );
+/// ;
 /// ```
 #[macro_export]
 macro_rules! asil_error {
     ($category:expr, $code:expr, $message:expr,"asil-d") => {{
         #[cfg(not(feature = "asil-d"))]
-        compile_error!("This error requires ASIL-D safety level");
+        compile_error!("This error requires ASIL-D safety level";
 
         #[cfg(feature = "asil-d")]
         {
-            let error = $crate::Error::new($category, $code, $message);
+            let error = $crate::Error::new($category, $code, $message;
             // Validate at runtime for ASIL-D
             if !error.validate_integrity() {
                 // ASIL-D: Enter safe state instead of panic
                 loop {
-                    core::hint::spin_loop();
+                    core::hint::spin_loop(;
                 }
             }
             error
@@ -47,14 +47,14 @@ macro_rules! asil_error {
     }};
     ($category:expr, $code:expr, $message:expr,"asil-c") => {{
         #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
-        compile_error!("This error requires ASIL-C safety level or higher");
+        compile_error!("This error requires ASIL-C safety level or higher";
 
         #[cfg(any(feature = "asil-c", feature = "asil-d"))]
         $crate::Error::new($category, $code, $message)
     }};
     ($category:expr, $code:expr, $message:expr,"asil-b") => {{
         #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
-        compile_error!("This error requires ASIL-B safety level or higher");
+        compile_error!("This error requires ASIL-B safety level or higher";
 
         #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
         $crate::Error::new($category, $code, $message)
@@ -71,15 +71,15 @@ macro_rules! asil_error {
 /// ```ignore
 /// use wrt_error::{monitor_error, Error, ErrorCategory, codes};
 ///
-/// let monitor = SafetyMonitor::new();
-/// let error = Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Out of bounds");
-/// monitor_error!(monitor, error);
+/// let monitor = SafetyMonitor::new(;
+/// let error = Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Out of bounds";
+/// monitor_error!(monitor, error;
 /// ```
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 #[macro_export]
 macro_rules! monitor_error {
     ($monitor:expr, $error:expr) => {{
-        $monitor.record_error(&$error);
+        $monitor.record_error(&$error;
 
         // ASIL-D: Check if immediate safe state is required
         #[cfg(feature = "asil-d")]
@@ -126,7 +126,7 @@ macro_rules! asil_assert {
             if !$condition {
                 // ASIL-D: Enter safe state instead of panic
                 loop {
-                    core::hint::spin_loop();
+                    core::hint::spin_loop(;
                 }
             }
             Ok(())
@@ -137,7 +137,7 @@ macro_rules! asil_assert {
             if !$condition {
                 // ASIL-C: Enter safe state for critical assertions
                 loop {
-                    core::hint::spin_loop();
+                    core::hint::spin_loop(;
                 }
             }
             Ok(())
@@ -176,13 +176,13 @@ macro_rules! asil_assert {
 /// let error = safety_error!(
 ///     codes::MEMORY_CORRUPTION_DETECTED,
 ///     "Critical memory corruption detected"
-/// );
+/// ;
 /// ```
 #[macro_export]
 macro_rules! safety_error {
     ($code:expr, $message:expr) => {{
         #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
-        compile_error!("Safety errors require ASIL-C or higher");
+        compile_error!("Safety errors require ASIL-C or higher";
 
         #[cfg(any(feature = "asil-c", feature = "asil-d"))]
         $crate::Error::new($crate::ErrorCategory::Safety, $code, $message)

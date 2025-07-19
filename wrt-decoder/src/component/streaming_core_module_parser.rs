@@ -118,14 +118,14 @@ impl<'a> StreamingCoreModuleParser<'a> {
     /// A new parser instance ready to process core modules
     pub fn new(data: &'a [u8], verification_level: VerificationLevel) -> Result<Self> {
         if data.is_empty() {
-            return Err(Error::runtime_execution_error("Streaming parser error"));
+            return Err(Error::runtime_execution_error("Streaming parser error";
         }
 
         // ASIL constraint: Verify data size constraints
         if data.len() > MAX_CORE_MODULE_SIZE {
             return Err(Error::validation_error(
                 "Core module size exceeds maximum allowed",
-            ));
+            ;
         }
 
         Ok(Self {
@@ -152,11 +152,11 @@ impl<'a> StreamingCoreModuleParser<'a> {
         if module_count > MAX_MODULES_PER_COMPONENT as u32 {
             return Err(Error::validation_error(
                 "Too many core modules in component",
-            ));
+            ;
         }
 
         // Initialize storage (simplified for now)
-        let mut modules = Vec::new();
+        let mut modules = Vec::new(;
 
         // Parse each core module
         for i in 0..module_count {
@@ -181,14 +181,14 @@ impl<'a> StreamingCoreModuleParser<'a> {
 
         // ASIL constraint: Validate module size
         if module_size > MAX_CORE_MODULE_SIZE as u32 {
-            return Err(Error::validation_error("Core module size exceeds maximum"));
+            return Err(Error::validation_error("Core module size exceeds maximum";
         }
 
         // Ensure we have enough data
         if self.offset + module_size as usize > self.data.len() {
             return Err(Error::parse_error(
                 "Core module extends beyond section data",
-            ));
+            ;
         }
 
         // Extract module binary data
@@ -198,13 +198,13 @@ impl<'a> StreamingCoreModuleParser<'a> {
         if module_data.len() < 8 {
             return Err(Error::parse_invalid_binary(
                 "Core module too small for WASM header",
-            ));
+            ;
         }
 
         if &module_data[0..4] != WASM_MAGIC {
             return Err(Error::parse_invalid_binary(
                 "Invalid WASM magic number in core module",
-            ));
+            ;
         }
 
         let version_bytes = [
@@ -214,7 +214,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
             module_data[7],
         ];
         if version_bytes != WASM_VERSION {
-            return Err(Error::runtime_execution_error("Streaming parser error"));
+            return Err(Error::runtime_execution_error("Streaming parser error";
         }
 
         // Use existing streaming decoder for the core module
@@ -308,21 +308,21 @@ mod tests {
         let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
 
         let result = parser.parse().unwrap();
-        assert_eq!(result.module_count(), 0);
-        assert_eq!(result.bytes_consumed(), 1);
-        assert!(result.is_empty());
+        assert_eq!(result.module_count(), 0;
+        assert_eq!(result.bytes_consumed(), 1;
+        assert!(result.is_empty();
     }
 
     #[test]
     fn test_invalid_module_count() {
         // Create data with too many modules
         let module_count = (MAX_MODULES_PER_COMPONENT + 1) as u32;
-        let mut data = Vec::new();
+        let mut data = Vec::new(;
 
         // Write LEB128 encoded module count
         let mut count = module_count;
         while count >= 0x80 {
-            data.push((count & 0x7F) as u8 | 0x80);
+            data.push((count & 0x7F) as u8 | 0x80;
             count >>= 7;
         }
         data.push(count as u8);
@@ -330,19 +330,19 @@ mod tests {
         let mut parser =
             StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
 
-        assert!(parser.parse().is_err());
+        assert!(parser.parse().is_err();
     }
 
     #[test]
     fn test_invalid_module_size() {
-        let mut data = Vec::new();
+        let mut data = Vec::new(;
         data.push(1); // One module
 
         // Write oversized module size
         let oversized = MAX_CORE_MODULE_SIZE as u32 + 1;
         let mut size = oversized;
         while size >= 0x80 {
-            data.push((size & 0x7F) as u8 | 0x80);
+            data.push((size & 0x7F) as u8 | 0x80;
             size >>= 7;
         }
         data.push(size as u8);
@@ -350,7 +350,7 @@ mod tests {
         let mut parser =
             StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
 
-        assert!(parser.parse().is_err());
+        assert!(parser.parse().is_err();
     }
 
     #[test]
@@ -359,12 +359,12 @@ mod tests {
 
         let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
 
-        assert_eq!(parser.offset(), 0);
-        assert_eq!(parser.remaining(), 1);
+        assert_eq!(parser.offset(), 0;
+        assert_eq!(parser.remaining(), 1;
 
         let result = parser.parse().unwrap();
-        assert_eq!(parser.offset(), 1);
-        assert_eq!(parser.remaining(), 0);
-        assert_eq!(result.bytes_consumed(), 1);
+        assert_eq!(parser.offset(), 1;
+        assert_eq!(parser.remaining(), 0;
+        assert_eq!(result.bytes_consumed(), 1;
     }
 }

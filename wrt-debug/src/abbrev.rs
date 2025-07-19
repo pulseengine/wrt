@@ -126,9 +126,9 @@ impl AbbreviationTable {
 
     /// Parse abbreviations from data
     pub fn parse(&mut self, data: &[u8]) -> Result<()> {
-        let mut cursor = DwarfCursor::new(data);
+        let mut cursor = DwarfCursor::new(data;
 
-        self.entries.clear();
+        self.entries.clear(;
 
         while !cursor.is_at_end() {
             // Read abbreviation code
@@ -145,7 +145,7 @@ impl AbbreviationTable {
             let has_children = cursor.read_u8()? != 0;
 
             // Read attributes
-            let mut attributes = BoundedVec::new(NoStdProvider);
+            let mut attributes = BoundedVec::new(NoStdProvider;
 
             loop {
                 let name = cursor.read_uleb128()? as u16;

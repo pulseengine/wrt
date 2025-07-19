@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn test_all_error_constants_are_unique() {
-        let mut seen_codes = HashSet::new();
+        let mut seen_codes = HashSet::new(;
 
         // Core error codes (1000-1999)
         let core_codes = vec![
@@ -42,7 +42,7 @@ mod tests {
                 *code >= 1000 && *code < 2000,
                 "Core error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Component model error codes (2000-2999)
@@ -62,7 +62,7 @@ mod tests {
                 *code >= 2000 && *code < 3000,
                 "Component error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Resource error codes (3000-3999)
@@ -83,7 +83,7 @@ mod tests {
                 *code >= 3000 && *code < 4000,
                 "Resource error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Memory error codes (4000-4999)
@@ -100,7 +100,7 @@ mod tests {
                 *code >= 4000 && *code < 5000,
                 "Memory error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Validation error codes (5000-5999)
@@ -140,7 +140,7 @@ mod tests {
                 *code >= 5000 && *code < 6000,
                 "Validation error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Type error codes (6000-6999)
@@ -169,7 +169,7 @@ mod tests {
                 *code >= 6000 && *code < 7000,
                 "Type error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Runtime error codes (7000-7999)
@@ -190,7 +190,7 @@ mod tests {
                 *code >= 7000 && *code < 8000,
                 "Runtime error code {} out of range",
                 code
-            );
+            ;
         }
 
         // System error codes (8000-8999)
@@ -217,7 +217,7 @@ mod tests {
                 *code >= 8000 && *code < 9000,
                 "System error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Parser error codes (8100-8199)
@@ -245,7 +245,7 @@ mod tests {
                 *code >= 8100 && *code < 8200,
                 "Parser error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Validation error codes (8200-8299)
@@ -265,15 +265,15 @@ mod tests {
                 *code >= 8200 && *code < 8300,
                 "Extended validation error code {} out of range",
                 code
-            );
+            ;
         }
 
         // Unknown error
         assert!(
             seen_codes.insert(codes::UNKNOWN),
             "Duplicate error code: UNKNOWN"
-        );
-        assert_eq!(codes::UNKNOWN, 9999);
+        ;
+        assert_eq!(codes::UNKNOWN, 9999;
     }
 
     #[test]
@@ -305,8 +305,8 @@ mod tests {
         assert_eq!(
             get_error_description(codes::STACK_UNDERFLOW),
             "Stack underflow"
-        );
-        assert_eq!(get_error_description(codes::UNKNOWN), "Unknown error");
-        assert_eq!(get_error_description(12345), "Other error");
+        ;
+        assert_eq!(get_error_description(codes::UNKNOWN), "Unknown error";
+        assert_eq!(get_error_description(12345), "Other error";
     }
 }

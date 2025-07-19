@@ -68,13 +68,13 @@ impl Default for Function {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for Function {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.type_idx.to_le_bytes());
+        checksum.update_slice(&self.type_idx.to_le_bytes(;
         // For Vec<ValueType>, we need to checksum each element  
         for local in &self.locals {
-            local.update_checksum(checksum);
+            local.update_checksum(checksum;
         }
         // For Vec<u8>, checksum the slice
-        checksum.update_slice(&self.code);
+        checksum.update_slice(&self.code;
     }
 }
 
@@ -112,23 +112,23 @@ impl wrt_foundation::traits::FromBytes for Function {
     {
         let mut idx_bytes = [0u8; 4];
         stream.read_exact(&mut idx_bytes)?;
-        let type_idx = u32::from_le_bytes(idx_bytes);
+        let type_idx = u32::from_le_bytes(idx_bytes;
         
         // Read locals count and locals
         let mut count_bytes = [0u8; 4];
         stream.read_exact(&mut count_bytes)?;
         let locals_count = u32::from_le_bytes(count_bytes) as usize;
-        let mut locals = alloc::vec::Vec::with_capacity(locals_count);
+        let mut locals = alloc::vec::Vec::with_capacity(locals_count;
         for _ in 0..locals_count {
-            locals.push(ValueType::from_bytes_with_provider(stream, provider)?);
+            locals.push(ValueType::from_bytes_with_provider(stream, provider)?;
         }
         
         // Read code length and code
         let mut code_len_bytes = [0u8; 4];
         stream.read_exact(&mut code_len_bytes)?;
         let code_len = u32::from_le_bytes(code_len_bytes) as usize;
-        let mut code = alloc::vec::Vec::with_capacity(code_len);
-        code.resize(code_len, 0);
+        let mut code = alloc::vec::Vec::with_capacity(code_len;
+        code.resize(code_len, 0;
         stream.read_exact(&mut code)?;
 
         Ok(Function { type_idx, locals, code })
@@ -197,8 +197,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     for Global<P>
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.global_type.update_checksum(checksum);
-        self.init.update_checksum(checksum);
+        self.global_type.update_checksum(checksum;
+        self.init.update_checksum(checksum;
     }
 }
 
@@ -316,10 +316,10 @@ impl Default for Data {
 #[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Data<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.mode.update_checksum(checksum);
-        checksum.update_slice(&self.memory_idx.to_le_bytes());
-        self.offset.update_checksum(checksum);
-        self.init.update_checksum(checksum);
+        self.mode.update_checksum(checksum;
+        checksum.update_slice(&self.memory_idx.to_le_bytes(;
+        self.offset.update_checksum(checksum;
+        self.init.update_checksum(checksum;
     }
 }
 
@@ -327,10 +327,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for Data {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.mode.update_checksum(checksum);
-        checksum.update_slice(&self.memory_idx.to_le_bytes());
-        checksum.update_slice(&self.offset);
-        checksum.update_slice(&self.init);
+        self.mode.update_checksum(checksum;
+        checksum.update_slice(&self.memory_idx.to_le_bytes(;
+        checksum.update_slice(&self.offset;
+        checksum.update_slice(&self.init;
     }
 }
 
@@ -399,7 +399,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
         
         let mut memory_idx_bytes = [0u8; 4];
         reader.read_exact(&mut memory_idx_bytes)?;
-        let memory_idx = u32::from_le_bytes(memory_idx_bytes);
+        let memory_idx = u32::from_le_bytes(memory_idx_bytes;
         
         let offset = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
         let init = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
@@ -429,7 +429,7 @@ impl wrt_foundation::traits::FromBytes for Data {
         
         let mut memory_idx_bytes = [0u8; 4];
         reader.read_exact(&mut memory_idx_bytes)?;
-        let memory_idx = u32::from_le_bytes(memory_idx_bytes);
+        let memory_idx = u32::from_le_bytes(memory_idx_bytes;
         
         // Read length-prefixed vectors
         let mut offset_len_bytes = [0u8; 4];
@@ -456,7 +456,7 @@ impl wrt_foundation::traits::FromBytes for Data {
 // Implement Checksummable for DataMode
 impl wrt_foundation::traits::Checksummable for DataMode {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[*self as u8]);
+        checksum.update_slice(&[*self as u8];
     }
 }
 
@@ -581,11 +581,11 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
         match self {
             Self::FuncIndices(indices) => {
                 checksum.update_slice(&[0u8]); // discriminant
-                indices.update_checksum(checksum);
+                indices.update_checksum(checksum;
             }
             Self::Expressions(exprs) => {
                 checksum.update_slice(&[1u8]); // discriminant
-                exprs.update_checksum(checksum);
+                exprs.update_checksum(checksum;
             }
         }
     }
@@ -599,13 +599,13 @@ impl wrt_foundation::traits::Checksummable for ElementInit {
             Self::FuncIndices(indices) => {
                 checksum.update_slice(&[0u8]); // discriminant
                 for idx in indices {
-                    checksum.update_slice(&idx.to_le_bytes());
+                    checksum.update_slice(&idx.to_le_bytes(;
                 }
             }
             Self::Expressions(exprs) => {
                 checksum.update_slice(&[1u8]); // discriminant
                 for expr in exprs {
-                    checksum.update_slice(expr);
+                    checksum.update_slice(expr;
                 }
             }
         }
@@ -712,11 +712,11 @@ impl wrt_foundation::traits::FromBytes for ElementInit {
                 let mut len_bytes = [0u8; 4];
                 reader.read_exact(&mut len_bytes)?;
                 let len = u32::from_le_bytes(len_bytes) as usize;
-                let mut indices = Vec::with_capacity(len);
+                let mut indices = Vec::with_capacity(len;
                 for _ in 0..len {
                     let mut idx_bytes = [0u8; 4];
                     reader.read_exact(&mut idx_bytes)?;
-                    indices.push(u32::from_le_bytes(idx_bytes));
+                    indices.push(u32::from_le_bytes(idx_bytes);
                 }
                 Ok(Self::FuncIndices(indices))
             }
@@ -724,7 +724,7 @@ impl wrt_foundation::traits::FromBytes for ElementInit {
                 let mut len_bytes = [0u8; 4];
                 reader.read_exact(&mut len_bytes)?;
                 let len = u32::from_le_bytes(len_bytes) as usize;
-                let mut exprs = Vec::with_capacity(len);
+                let mut exprs = Vec::with_capacity(len;
                 for _ in 0..len {
                     let mut expr_len_bytes = [0u8; 4];
                     reader.read_exact(&mut expr_len_bytes)?;
@@ -801,8 +801,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
         match self {
             Self::Active { table_index, offset_expr } => {
                 checksum.update_slice(&[0u8]); // discriminant
-                checksum.update_slice(&table_index.to_le_bytes());
-                offset_expr.update_checksum(checksum);
+                checksum.update_slice(&table_index.to_le_bytes(;
+                offset_expr.update_checksum(checksum;
             }
             Self::Passive => {
                 checksum.update_slice(&[1u8]); // discriminant
@@ -821,8 +821,8 @@ impl wrt_foundation::traits::Checksummable for ElementMode {
         match self {
             Self::Active { table_index, offset_expr } => {
                 checksum.update_slice(&[0u8]); // discriminant
-                checksum.update_slice(&table_index.to_le_bytes());
-                checksum.update_slice(offset_expr);
+                checksum.update_slice(&table_index.to_le_bytes(;
+                checksum.update_slice(offset_expr;
             }
             Self::Passive => {
                 checksum.update_slice(&[1u8]); // discriminant
@@ -879,7 +879,7 @@ impl wrt_foundation::traits::FromBytes for ElementMode {
             0 => {
                 let mut table_index_bytes = [0u8; 4];
                 reader.read_exact(&mut table_index_bytes)?;
-                let table_index = u32::from_le_bytes(table_index_bytes);
+                let table_index = u32::from_le_bytes(table_index_bytes;
                 let offset_expr = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
                 Ok(Self::Active { table_index, offset_expr })
             }
@@ -1005,9 +1005,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
 #[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Element<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.element_type.update_checksum(checksum);
-        self.init.update_checksum(checksum);
-        self.mode.update_checksum(checksum);
+        self.element_type.update_checksum(checksum;
+        self.init.update_checksum(checksum;
+        self.mode.update_checksum(checksum;
     }
 }
 
@@ -1062,9 +1062,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     for Export<P>
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.name.update_checksum(checksum);
-        checksum.update_slice(&[self.kind as u8]);
-        checksum.update_slice(&self.index.to_le_bytes());
+        self.name.update_checksum(checksum;
+        checksum.update_slice(&[self.kind as u8];
+        checksum.update_slice(&self.index.to_le_bytes(;
     }
 }
 
@@ -1111,7 +1111,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         };
         let mut idx_bytes = [0u8; 4];
         stream.read_exact(&mut idx_bytes)?;
-        let index = u32::from_le_bytes(idx_bytes);
+        let index = u32::from_le_bytes(idx_bytes;
 
         Ok(Export { name, kind, index })
     }
@@ -1211,19 +1211,19 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             ImportDesc::Function(idx, _) => {
-                checksum.update_slice(&idx.to_le_bytes());
+                checksum.update_slice(&idx.to_le_bytes(;
             }
             ImportDesc::Table(_, _) => {
-                checksum.update_slice(&[0x01]);
+                checksum.update_slice(&[0x01];
             }
             ImportDesc::Memory(_, _) => {
-                checksum.update_slice(&[0x02]);
+                checksum.update_slice(&[0x02];
             }
             ImportDesc::Global(_, _) => {
-                checksum.update_slice(&[0x03]);
+                checksum.update_slice(&[0x03];
             }
             ImportDesc::Tag(idx, _) => {
-                checksum.update_slice(&idx.to_le_bytes());
+                checksum.update_slice(&idx.to_le_bytes(;
             }
         }
     }
@@ -1234,9 +1234,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     for Import<P>
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.module.update_checksum(checksum);
-        self.name.update_checksum(checksum);
-        self.desc.update_checksum(checksum);
+        self.module.update_checksum(checksum;
+        self.name.update_checksum(checksum;
+        self.desc.update_checksum(checksum;
     }
 }
 
@@ -1313,7 +1313,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
                 // Function
                 let mut idx_bytes = [0u8; 4];
                 stream.read_exact(&mut idx_bytes)?;
-                let idx = u32::from_le_bytes(idx_bytes);
+                let idx = u32::from_le_bytes(idx_bytes;
                 Ok(ImportDesc::Function(idx, core::marker::PhantomData))
             }
             0x01 => {
@@ -1332,7 +1332,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
                 // Tag
                 let mut idx_bytes = [0u8; 4];
                 stream.read_exact(&mut idx_bytes)?;
-                let idx = u32::from_le_bytes(idx_bytes);
+                let idx = u32::from_le_bytes(idx_bytes;
                 Ok(ImportDesc::Tag(idx, core::marker::PhantomData))
             }
             _ => Err(wrt_error::Error::runtime_execution_error("Invalid import descriptor tag")),
@@ -1398,8 +1398,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     for TypeInformationEntry<P>
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.type_index.to_le_bytes());
-        self.name.update_checksum(checksum);
+        checksum.update_slice(&self.type_index.to_le_bytes(;
+        self.name.update_checksum(checksum;
     }
 }
 
@@ -1434,7 +1434,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     {
         let mut idx_bytes = [0u8; 4];
         stream.read_exact(&mut idx_bytes)?;
-        let type_index = u32::from_le_bytes(idx_bytes);
+        let type_index = u32::from_le_bytes(idx_bytes;
         let name = crate::WasmString::from_bytes_with_provider(stream, provider)?;
 
         Ok(TypeInformationEntry { type_index, name })
@@ -1655,29 +1655,29 @@ impl Validatable for Module {
 
         // Check for reasonable number of types
         if self.types.len() > 10000 {
-            return Err(Error::validation_error("Module has too many types"));
+            return Err(Error::validation_error("Module has too many types";
         }
 
         // Check for reasonable number of functions
         if self.functions.len() > 10000 {
-            return Err(Error::validation_error("Module has too many functions"));
+            return Err(Error::validation_error("Module has too many functions";
         }
 
         // Check for empty exports
         for export in self.exports.iter() {
             if export.name.is_empty() {
-                return Err(Error::validation_error("Export name cannot be empty"));
+                return Err(Error::validation_error("Export name cannot be empty";
             }
         }
 
         // Check for empty imports
         for import in self.imports.iter() {
             if import.module.is_empty() {
-                return Err(Error::validation_error("Import module name cannot be empty"));
+                return Err(Error::validation_error("Import module name cannot be empty";
             }
 
             if import.name.is_empty() {
-                return Err(Error::validation_error("Import name cannot be empty"));
+                return Err(Error::validation_error("Import name cannot be empty";
             }
         }
 

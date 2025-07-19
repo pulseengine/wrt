@@ -93,16 +93,16 @@ impl LazyDetector {
     pub fn detect_format(&self, binary: &[u8]) -> Result<ComponentDetection> {
         // Basic validation
         if binary.len() < 8 {
-            return Ok(ComponentDetection::Invalid);
+            return Ok(ComponentDetection::Invalid;
         }
 
         // Check magic number
         if &binary[0..4] != b"\0asm" {
-            return Ok(ComponentDetection::Invalid);
+            return Ok(ComponentDetection::Invalid;
         }
 
         // Check version
-        let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
+        let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]];
 
         // Component Model typically uses different version numbers
         match version {
@@ -129,7 +129,7 @@ impl LazyDetector {
         let mut component_indicators = 0;
         let mut core_indicators = 0;
 
-        let scan_limit = core::cmp::min(binary.len(), 8 + self.config.max_scan_bytes);
+        let scan_limit = core::cmp::min(binary.len(), 8 + self.config.max_scan_bytes;
 
         while offset < scan_limit && sections_examined < self.config.max_sections {
             if offset + 1 >= binary.len() {
@@ -145,7 +145,7 @@ impl LazyDetector {
 
             let section_end = offset + section_size as usize;
             if section_end > binary.len() {
-                return Ok(ComponentDetection::Invalid);
+                return Ok(ComponentDetection::Invalid;
             }
 
             // Analyze section ID
@@ -317,11 +317,11 @@ impl LazyDetector {
         offset += bytes_read;
 
         if offset + name_len as usize > data.len() {
-            return Ok(SectionHint::Neutral);
+            return Ok(SectionHint::Neutral;
         }
 
         let section_name =
-            core::str::from_utf8(&data[offset..offset + name_len as usize]).unwrap_or("");
+            core::str::from_utf8(&data[offset..offset + name_len as usize]).unwrap_or("";
 
         // Check for component-specific custom sections
         if section_name == "component-type"
@@ -329,7 +329,7 @@ impl LazyDetector {
             || section_name.starts_with("component:")
             || section_name.starts_with("interface:")
         {
-            return Ok(SectionHint::Component);
+            return Ok(SectionHint::Component;
         }
 
         // Check for core-specific custom sections
@@ -337,7 +337,7 @@ impl LazyDetector {
             || section_name == "producers"
             || section_name == "target_features"
         {
-            return Ok(SectionHint::Core);
+            return Ok(SectionHint::Core;
         }
 
         Ok(SectionHint::Neutral)
@@ -408,7 +408,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
         if offset + i >= data.len() {
             return Err(Error::parse_error(
                 "Unexpected end of data while reading LEB128",
-            ));
+            ;
         }
 
         let byte = data[offset + i];
@@ -422,7 +422,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 value too large for u32"));
+            return Err(Error::parse_error("LEB128 value too large for u32";
         }
     }
 
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_basic_detection() {
-        let detector = LazyDetector::new();
+        let detector = LazyDetector::new(;
 
         // Core module header
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
@@ -444,49 +444,49 @@ mod tests {
         assert!(matches!(
             result,
             ComponentDetection::Ambiguous | ComponentDetection::CoreModule
-        ));
+        ;
     }
 
     #[test]
     fn test_invalid_magic() {
-        let detector = LazyDetector::new();
+        let detector = LazyDetector::new(;
         let invalid = [0x00, 0x61, 0x73, 0x6E, 0x01, 0x00, 0x00, 0x00];
         let result = detector.detect_format(&invalid).unwrap();
-        assert_eq!(result, ComponentDetection::Invalid);
+        assert_eq!(result, ComponentDetection::Invalid;
     }
 
     #[test]
     fn test_too_small() {
-        let detector = LazyDetector::new();
+        let detector = LazyDetector::new(;
         let too_small = [0x00, 0x61, 0x73];
         let result = detector.detect_format(&too_small).unwrap();
-        assert_eq!(result, ComponentDetection::Invalid);
+        assert_eq!(result, ComponentDetection::Invalid;
     }
 
     #[test]
     fn test_fast_detector() {
-        let detector = create_fast_detector();
-        assert_eq!(detector.config.max_scan_bytes, 1024);
-        assert_eq!(detector.config.max_sections, 5);
+        let detector = create_fast_detector(;
+        assert_eq!(detector.config.max_scan_bytes, 1024;
+        assert_eq!(detector.config.max_sections, 5;
         assert!(!detector.config.use_heuristics);
     }
 
     #[test]
     fn test_thorough_detector() {
-        let detector = create_thorough_detector();
-        assert_eq!(detector.config.max_scan_bytes, 16384);
-        assert_eq!(detector.config.max_sections, 20);
+        let detector = create_thorough_detector(;
+        assert_eq!(detector.config.max_scan_bytes, 16384;
+        assert_eq!(detector.config.max_sections, 20;
         assert!(detector.config.use_heuristics);
     }
 
     #[test]
     fn test_needs_component_processing() {
-        let detector = LazyDetector::new();
+        let detector = LazyDetector::new(;
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
         // Should handle safely even with ambiguous detection
         let result = detector.needs_component_processing(&core_module).unwrap();
-        assert!(result || !result); // Either result is acceptable for empty
+        assert!(result || !result)); // Either result is acceptable for empty
                                     // module
     }
 }

@@ -149,7 +149,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             },
         },
         ValType::Record(fields) => {
-            let mut field_layouts = Vec::with_capacity(fields.len());
+            let mut field_layouts = Vec::with_capacity(fields.len(;
             let mut total_size = 0;
             let mut max_alignment = 1;
 
@@ -163,22 +163,22 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 };
 
                 // Calculate field offset (respecting alignment)
-                total_size = align_up(total_size, field_layout.alignment);
-                field_layout.offset = Some(total_size);
+                total_size = align_up(total_size, field_layout.alignment;
+                field_layout.offset = Some(total_size;
 
                 // Add field size
                 total_size += field_layout.size;
 
                 // Update max alignment
-                max_alignment = max_alignment.max(field_layout.alignment);
+                max_alignment = max_alignment.max(field_layout.alignment;
 
                 // Convert WasmName to String
                 let name_str = name.as_str().unwrap_or("unknown").to_string();
-                field_layouts.push((name_str, field_layout));
+                field_layouts.push((name_str, field_layout);
             }
 
             // Align the total size to the max alignment
-            total_size = align_up(total_size, max_alignment);
+            total_size = align_up(total_size, max_alignment;
 
             CanonicalLayout {
                 size:      total_size,
@@ -190,7 +190,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             }
         },
         ValType::Variant(cases) => {
-            let case_count = cases.len();
+            let case_count = cases.len(;
             let tag_size = if case_count <= 256 {
                 1
             } else if case_count <= 65536 {
@@ -199,7 +199,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 4
             };
 
-            let mut case_layouts = Vec::with_capacity(cases.len());
+            let mut case_layouts = Vec::with_capacity(cases.len(;
             let mut max_payload_size = 0;
             let mut max_payload_alignment = 1;
 
@@ -212,18 +212,18 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                         offset:    None,
                         details:   CanonicalLayoutDetails::Primitive,
                     };
-                    max_payload_size = max_payload_size.max(payload_layout.size);
-                    max_payload_alignment = max_payload_alignment.max(payload_layout.alignment);
+                    max_payload_size = max_payload_size.max(payload_layout.size;
+                    max_payload_alignment = max_payload_alignment.max(payload_layout.alignment;
                     let name_str = name.as_str().unwrap_or("unknown").to_string();
-                    case_layouts.push((name_str, Some(payload_layout)));
+                    case_layouts.push((name_str, Some(payload_layout);
                 } else {
                     let name_str = name.as_str().unwrap_or("unknown").to_string();
-                    case_layouts.push((name_str, None));
+                    case_layouts.push((name_str, None);
                 }
             }
 
             // Calculate total size including tag and alignment padding
-            let payload_offset = align_up(tag_size as u32, max_payload_alignment);
+            let payload_offset = align_up(tag_size as u32, max_payload_alignment;
             let total_size = payload_offset + max_payload_size;
 
             CanonicalLayout {
@@ -274,7 +274,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             }
         },
         ValType::Tuple(elements) => {
-            let mut field_layouts = Vec::with_capacity(elements.len());
+            let mut field_layouts = Vec::with_capacity(elements.len(;
             let mut total_size = 0;
             let mut max_alignment = 1;
 
@@ -288,20 +288,20 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 };
 
                 // Calculate field offset (respecting alignment)
-                total_size = align_up(total_size, element_layout.alignment);
-                element_layout.offset = Some(total_size);
+                total_size = align_up(total_size, element_layout.alignment;
+                element_layout.offset = Some(total_size;
 
                 // Add field size
                 total_size += element_layout.size;
 
                 // Update max alignment
-                max_alignment = max_alignment.max(element_layout.alignment);
+                max_alignment = max_alignment.max(element_layout.alignment;
 
-                field_layouts.push((i.to_string(), element_layout));
+                field_layouts.push((i.to_string(), element_layout;
             }
 
             // Align the total size to the max alignment
-            total_size = align_up(total_size, max_alignment);
+            total_size = align_up(total_size, max_alignment;
 
             CanonicalLayout {
                 size:      total_size,
@@ -313,7 +313,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             }
         },
         ValType::Flags(names) => {
-            let byte_count = names.len().div_ceil(8);
+            let byte_count = names.len().div_ceil(8;
             CanonicalLayout {
                 size:      byte_count as u32,
                 alignment: 1,
@@ -342,7 +342,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
 
             // 1 byte tag + aligned value
             let tag_size = 1;
-            let payload_offset = align_up(tag_size as u32, inner_layout.alignment);
+            let payload_offset = align_up(tag_size as u32, inner_layout.alignment;
             let total_size = payload_offset + inner_layout.size;
 
             CanonicalLayout {
@@ -370,7 +370,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
 
             // 1 byte tag + aligned value
             let tag_size = 1;
-            let payload_offset = align_up(tag_size as u32, ok_layout.alignment);
+            let payload_offset = align_up(tag_size as u32, ok_layout.alignment;
             let total_size = payload_offset + ok_layout.size;
 
             CanonicalLayout {
@@ -507,17 +507,17 @@ mod tests {
         #[cfg(not(any(feature = "std")))]
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
-        let bool_layout = calculate_layout::<TestProvider>(&ValType::Bool);
-        assert_eq!(bool_layout.size, 1);
-        assert_eq!(bool_layout.alignment, 1);
+        let bool_layout = calculate_layout::<TestProvider>(&ValType::Bool;
+        assert_eq!(bool_layout.size, 1;
+        assert_eq!(bool_layout.alignment, 1;
 
-        let i32_layout = calculate_layout::<TestProvider>(&ValType::S32);
-        assert_eq!(i32_layout.size, 4);
-        assert_eq!(i32_layout.alignment, 4);
+        let i32_layout = calculate_layout::<TestProvider>(&ValType::S32;
+        assert_eq!(i32_layout.size, 4;
+        assert_eq!(i32_layout.alignment, 4;
 
-        let i64_layout = calculate_layout::<TestProvider>(&ValType::S64);
-        assert_eq!(i64_layout.size, 8);
-        assert_eq!(i64_layout.alignment, 8);
+        let i64_layout = calculate_layout::<TestProvider>(&ValType::S64;
+        assert_eq!(i64_layout.size, 8;
+        assert_eq!(i64_layout.alignment, 8;
     }
 
     // TODO: Fix ValType record construction with BoundedVec
@@ -538,25 +538,25 @@ mod tests {
         // ("a".to_string(), ValType::<TestProvider>::Bool),
         // ("b".to_string(), ValType::<TestProvider>::S32),
         // ("c".to_string(), ValType::<TestProvider>::S16),
-        // ]);
+        // ];
         //
-        // let layout = calculate_layout::<TestProvider>(&record_type);
-        // assert_eq!(layout.alignment, 4);
+        // let layout = calculate_layout::<TestProvider>(&record_type;
+        // assert_eq!(layout.alignment, 4;
         //
         // Note: The exact size depends on padding rules but should be at least
         // 8 bytes (0-1: bool, 2-3: padding, 4-7: i32, 8-9: i16, 10-11:
         // padding) assert!(layout.size >= 8);
         //
         // if let CanonicalLayoutDetails::Record { fields } = &layout.details {
-        // assert_eq!(fields.len(), 3);
-        // assert_eq!(fields[0].0, "a");
-        // assert_eq!(fields[0].1.offset, Some(0));
-        // assert_eq!(fields[1].0, "b");
-        // assert_eq!(fields[1].1.offset, Some(4));
-        // assert_eq!(fields[2].0, "c");
+        // assert_eq!(fields.len(), 3;
+        // assert_eq!(fields[0].0, "a";
+        // assert_eq!(fields[0].1.offset, Some(0;
+        // assert_eq!(fields[1].0, "b";
+        // assert_eq!(fields[1].1.offset, Some(4;
+        // assert_eq!(fields[2].0, "c";
         // assert!(fields[2].1.offset.unwrap() >= 8);
         // } else {
-        // panic!("Expected Record layout details");
+        // panic!("Expected Record layout details";
         // }
     }
 
@@ -577,18 +577,18 @@ mod tests {
         // ("a".to_string(), Some(ValType::<TestProvider>::Bool)),
         // ("b".to_string(), Some(ValType::<TestProvider>::S32)),
         // ("c".to_string(), None),
-        // ]);
+        // ];
         //
-        // let layout = calculate_layout::<TestProvider>(&variant_type);
-        // assert_eq!(layout.alignment, 4);
+        // let layout = calculate_layout::<TestProvider>(&variant_type;
+        // assert_eq!(layout.alignment, 4;
         // assert_eq!(layout.size, 8); // 0: tag, 1-3: padding, 4-7: payload
         // (i32)
         //
         // if let CanonicalLayoutDetails::Variant { tag_size, cases } =
-        // &layout.details { assert_eq!(*tag_size, 1);
-        // assert_eq!(cases.len(), 3);
+        // &layout.details { assert_eq!(*tag_size, 1;
+        // assert_eq!(cases.len(), 3;
         // } else {
-        // panic!("Expected Variant layout details");
+        // panic!("Expected Variant layout details";
         // }
     }
 
@@ -610,20 +610,20 @@ mod tests {
         // let element_type = ValType::<TestProvider>::U32;
         // let length = 10;
         // let fixed_list_type = ValType::FixedList(Box::new(element_type),
-        // length);
+        // length;
         //
-        // let layout = calculate_layout::<TestProvider>(&fixed_list_type);
+        // let layout = calculate_layout::<TestProvider>(&fixed_list_type;
         //
         // Each u32 is 4 bytes, so 10 elements = 40 bytes
-        // assert_eq!(layout.size, 40);
-        // assert_eq!(layout.alignment, 4);
+        // assert_eq!(layout.size, 40;
+        // assert_eq!(layout.alignment, 4;
         //
         // if let CanonicalLayoutDetails::List { element, fixed_length } =
-        // &layout.details { assert_eq!(element.size, 4);
-        // assert_eq!(element.alignment, 4);
-        // assert_eq!(fixed_length, &Some(10));
+        // &layout.details { assert_eq!(element.size, 4;
+        // assert_eq!(element.alignment, 4;
+        // assert_eq!(fixed_length, &Some(10;
         // } else {
-        // panic!("Expected List layout details");
+        // panic!("Expected List layout details";
         // }
     }
 
@@ -638,15 +638,15 @@ mod tests {
 
         // Test error context layout
         let error_context_type = ValType::<TestProvider>::ErrorContext;
-        let layout = calculate_layout::<TestProvider>(&error_context_type);
+        let layout = calculate_layout::<TestProvider>(&error_context_type;
 
-        assert_eq!(layout.size, 16);
-        assert_eq!(layout.alignment, 8);
+        assert_eq!(layout.size, 16;
+        assert_eq!(layout.alignment, 8;
 
         if let CanonicalLayoutDetails::Primitive = &layout.details {
             // This is correct
         } else {
-            panic!("Expected Primitive layout details");
+            panic!("Expected Primitive layout details";
         }
     }
 
@@ -660,41 +660,41 @@ mod tests {
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         // Test resource handle layouts
-        let own_type = ValType::<TestProvider>::Own(42);
-        let borrow_type = ValType::<TestProvider>::Borrow(42);
+        let own_type = ValType::<TestProvider>::Own(42;
+        let borrow_type = ValType::<TestProvider>::Borrow(42;
 
-        let own_layout = calculate_layout::<TestProvider>(&own_type);
-        let borrow_layout = calculate_layout::<TestProvider>(&borrow_type);
+        let own_layout = calculate_layout::<TestProvider>(&own_type;
+        let borrow_layout = calculate_layout::<TestProvider>(&borrow_type;
 
         // Both should be 32-bit handles
-        assert_eq!(own_layout.size, 4);
-        assert_eq!(own_layout.alignment, 4);
-        assert_eq!(borrow_layout.size, 4);
-        assert_eq!(borrow_layout.alignment, 4);
+        assert_eq!(own_layout.size, 4;
+        assert_eq!(own_layout.alignment, 4;
+        assert_eq!(borrow_layout.size, 4;
+        assert_eq!(borrow_layout.alignment, 4;
 
         if let CanonicalLayoutDetails::Resource { handle_bits } = &own_layout.details {
-            assert_eq!(*handle_bits, 32);
+            assert_eq!(*handle_bits, 32;
         } else {
-            panic!("Expected Resource layout details");
+            panic!("Expected Resource layout details";
         }
 
         if let CanonicalLayoutDetails::Resource { handle_bits } = &borrow_layout.details {
-            assert_eq!(*handle_bits, 32);
+            assert_eq!(*handle_bits, 32;
         } else {
-            panic!("Expected Resource layout details");
+            panic!("Expected Resource layout details";
         }
     }
 
     #[test]
     fn test_align_up_function() {
         // Test the align_up utility function
-        assert_eq!(align_up(0, 4), 0);
-        assert_eq!(align_up(1, 4), 4);
-        assert_eq!(align_up(4, 4), 4);
-        assert_eq!(align_up(5, 4), 8);
-        assert_eq!(align_up(10, 8), 16);
-        assert_eq!(align_up(15, 16), 16);
-        assert_eq!(align_up(16, 16), 16);
-        assert_eq!(align_up(17, 16), 32);
+        assert_eq!(align_up(0, 4), 0;
+        assert_eq!(align_up(1, 4), 4;
+        assert_eq!(align_up(4, 4), 4;
+        assert_eq!(align_up(5, 4), 8;
+        assert_eq!(align_up(10, 8), 16;
+        assert_eq!(align_up(15, 16), 16;
+        assert_eq!(align_up(16, 16), 16;
+        assert_eq!(align_up(17, 16), 32;
     }
 }

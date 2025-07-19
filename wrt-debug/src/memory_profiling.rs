@@ -53,8 +53,8 @@ const MAX_PERF_SAMPLES: usize = 128;
 const MAX_CALL_STACK_DEPTH: usize = 8;
 
 /// Global profiling state
-static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
-static ALLOCATION_TRACKING_ENABLED: AtomicBool = AtomicBool::new(false);
+static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false;
+static ALLOCATION_TRACKING_ENABLED: AtomicBool = AtomicBool::new(false;
 
 /// Allocation tracking record
 #[derive(Debug, Clone, PartialEq)]
@@ -131,7 +131,7 @@ impl wrt_foundation::traits::FromBytes for AllocationType {
         if bytes.is_empty() {
             return Err(wrt_foundation::Error::from(
                 wrt_foundation::ErrorCategory::Parse("Empty bytes for AllocationType".into()),
-            ));
+            ;
         }
         match bytes[0] {
             0 => Ok(Self::Heap),
@@ -276,17 +276,17 @@ impl<'a> MemoryProfiler<'a> {
 
     /// Attach to a memory inspector for integrated debugging
     pub fn attach_inspector(&mut self, inspector: &'a MemoryInspector<'a>) {
-        self.memory_inspector = Some(inspector);
+        self.memory_inspector = Some(inspector;
     }
 
     /// Enable profiling
     pub fn enable_profiling() {
-        PROFILING_ENABLED.store(true, Ordering::SeqCst);
+        PROFILING_ENABLED.store(true, Ordering::SeqCst;
     }
 
     /// Disable profiling
     pub fn disable_profiling() {
-        PROFILING_ENABLED.store(false, Ordering::SeqCst);
+        PROFILING_ENABLED.store(false, Ordering::SeqCst;
     }
 
     /// Check if profiling is enabled
@@ -296,12 +296,12 @@ impl<'a> MemoryProfiler<'a> {
 
     /// Enable allocation tracking
     pub fn enable_allocation_tracking() {
-        ALLOCATION_TRACKING_ENABLED.store(true, Ordering::SeqCst);
+        ALLOCATION_TRACKING_ENABLED.store(true, Ordering::SeqCst;
     }
 
     /// Disable allocation tracking
     pub fn disable_allocation_tracking() {
-        ALLOCATION_TRACKING_ENABLED.store(false, Ordering::SeqCst);
+        ALLOCATION_TRACKING_ENABLED.store(false, Ordering::SeqCst;
     }
 
     /// Check if allocation tracking is enabled
@@ -318,11 +318,11 @@ impl<'a> MemoryProfiler<'a> {
         tag: &str,
     ) -> WrtResult<u32> {
         if !Self::is_allocation_tracking_enabled() {
-            return Ok(0);
+            return Ok(0;
         }
 
-        let id = self.next_alloc_id.fetch_add(1, Ordering::SeqCst);
-        self.total_allocations.fetch_add(1, Ordering::SeqCst);
+        let id = self.next_alloc_id.fetch_add(1, Ordering::SeqCst;
+        self.total_allocations.fetch_add(1, Ordering::SeqCst;
 
         let record = AllocationRecord {
             id,
@@ -348,10 +348,10 @@ impl<'a> MemoryProfiler<'a> {
     /// Track a deallocation
     pub fn track_deallocation(&mut self, alloc_id: u32) -> WrtResult<()> {
         if !Self::is_allocation_tracking_enabled() {
-            return Ok(());
+            return Ok((;
         }
 
-        self.total_deallocations.fetch_add(1, Ordering::SeqCst);
+        self.total_deallocations.fetch_add(1, Ordering::SeqCst;
 
         // Mark allocation as inactive
         for alloc in self.allocations.iter_mut() {
@@ -373,7 +373,7 @@ impl<'a> MemoryProfiler<'a> {
         crate_id: CrateId,
     ) -> WrtResult<()> {
         if !Self::is_profiling_enabled() {
-            return Ok(());
+            return Ok((;
         }
 
         let record = AccessRecord {
@@ -386,7 +386,7 @@ impl<'a> MemoryProfiler<'a> {
 
         if self.access_records.len() >= 256 {
             // Remove oldest record
-            self.access_records.remove(0);
+            self.access_records.remove(0;
         }
         self.access_records.push(record)?;
 
@@ -407,7 +407,7 @@ impl<'a> MemoryProfiler<'a> {
     /// Complete profiling and record sample
     pub fn complete_profiling(&mut self, handle: ProfilingHandle) -> WrtResult<()> {
         if !Self::is_profiling_enabled() {
-            return Ok(());
+            return Ok((;
         }
 
         let duration = self.get_relative_timestamp() - handle.start_time;
@@ -426,7 +426,7 @@ impl<'a> MemoryProfiler<'a> {
         };
 
         if self.perf_samples.len() >= MAX_PERF_SAMPLES {
-            self.perf_samples.remove(0);
+            self.perf_samples.remove(0;
         }
         self.perf_samples.push(sample)?;
 
@@ -437,7 +437,7 @@ impl<'a> MemoryProfiler<'a> {
     pub fn detect_leaks(&self) -> WrtResult<BoundedVec<LeakInfo, 16, NoStdProvider<{ 16 * 256 }>>> {
         let mut leaks =
             BoundedVec::new(wrt_provider!({ 16 * 256 }, CrateId::Debug).unwrap_or_default())?;
-        let current_time = self.get_relative_timestamp();
+        let current_time = self.get_relative_timestamp(;
 
         for alloc in self.allocations.iter() {
             if !alloc.active {
@@ -455,7 +455,7 @@ impl<'a> MemoryProfiler<'a> {
             if age > 60_000_000 {
                 // 1 minute in microseconds
                 confidence += 30;
-                let _ = reason.push_str("Long-lived allocation");
+                let _ = reason.push_str("Long-lived allocation";
             }
 
             // Large allocation
@@ -463,18 +463,18 @@ impl<'a> MemoryProfiler<'a> {
                 // 1MB
                 confidence += 20;
                 if !reason.is_empty() {
-                    let _ = reason.push_str(", ");
+                    let _ = reason.push_str(", ";
                 }
-                let _ = reason.push_str("Large allocation");
+                let _ = reason.push_str("Large allocation";
             }
 
             // No recent access (simplified check)
             if self.no_recent_access(alloc.id, 30_000_000)? {
                 confidence += 40;
                 if !reason.is_empty() {
-                    let _ = reason.push_str(", ");
+                    let _ = reason.push_str(", ";
                 }
-                let _ = reason.push_str("No recent access");
+                let _ = reason.push_str("No recent access";
             }
 
             if confidence >= 50 {
@@ -494,19 +494,19 @@ impl<'a> MemoryProfiler<'a> {
     pub fn generate_profile_report(&self) -> WrtResult<ProfileReport> {
         // Create bounded maps for stats
         #[cfg(feature = "std")]
-        let mut crate_stats = BTreeMap::new();
+        let mut crate_stats = BTreeMap::new(;
         #[cfg(feature = "std")]
-        let mut type_stats = BTreeMap::new();
+        let mut type_stats = BTreeMap::new(;
 
         #[cfg(not(feature = "std"))]
         let mut crate_stats = BoundedHashMap::<CrateId, usize, 32, NoStdProvider<{ 32 * 64 }>>::new(
             wrt_provider!({ 32 * 64 }, CrateId::Debug).unwrap_or_default(),
-        );
+        ;
         #[cfg(not(feature = "std"))]
         let mut type_stats =
             BoundedHashMap::<AllocationType, usize, 16, NoStdProvider<{ 16 * 64 }>>::new(
                 wrt_provider!({ 16 * 64 }, CrateId::Debug).unwrap_or_default(),
-            );
+            ;
 
         // Analyze active allocations
         for alloc in self.allocations.iter() {
@@ -601,11 +601,11 @@ impl<'a> MemoryProfiler<'a> {
 
         // Group accesses by address range
         #[cfg(feature = "std")]
-        let mut access_counts = BTreeMap::new();
+        let mut access_counts = BTreeMap::new(;
         #[cfg(not(feature = "std"))]
         let mut access_counts = BoundedHashMap::<usize, usize, 64, NoStdProvider<{ 64 * 32 }>>::new(
             wrt_provider!({ 64 * 32 }, CrateId::Debug).unwrap_or_default(),
-        );
+        ;
 
         for access in self.access_records.iter() {
             let region = access.address / 4096; // 4KB pages
@@ -616,14 +616,14 @@ impl<'a> MemoryProfiler<'a> {
         let mut sorted: BoundedVec<(usize, usize), 32, NoStdProvider<{ 32 * 16 }>> =
             BoundedVec::new(wrt_provider!({ 32 * 16 }, CrateId::Debug).unwrap_or_default())?;
         for (region, count) in access_counts {
-            let _ = sorted.push((region, count));
+            let _ = sorted.push((region, count);
         }
 
         // Simple bubble sort for top entries
         for i in 0..sorted.len().min(8) {
             for j in i + 1..sorted.len() {
                 if sorted.get(j).unwrap().1 > sorted.get(i).unwrap().1 {
-                    sorted.swap(i, j);
+                    sorted.swap(i, j;
                 }
             }
         }
@@ -651,7 +651,7 @@ impl<'a> MemoryProfiler<'a> {
         let mut total_deallocations = 0usize;
 
         #[cfg(feature = "std")]
-        let mut operation_times = BTreeMap::new();
+        let mut operation_times = BTreeMap::new(;
         #[cfg(not(feature = "std"))]
         let mut operation_times =
             BoundedHashMap::<
@@ -659,14 +659,14 @@ impl<'a> MemoryProfiler<'a> {
                 (u64, u32),
                 32,
                 NoStdProvider<{ 32 * 96 }>,
-            >::new(wrt_provider!({ 32 * 96 }, CrateId::Debug).unwrap_or_default());
+            >::new(wrt_provider!({ 32 * 96 }, CrateId::Debug).unwrap_or_default(;
 
         for sample in self.perf_samples.iter() {
             total_duration += sample.duration;
             total_allocations += sample.memory_allocated;
             total_deallocations += sample.memory_freed;
 
-            let entry = operation_times.entry(sample.operation.clone()).or_insert((0u64, 0u32));
+            let entry = operation_times.entry(sample.operation.clone()).or_insert((0u64, 0u32;
             entry.0 += sample.duration;
             entry.1 += 1;
         }
@@ -683,14 +683,14 @@ impl<'a> MemoryProfiler<'a> {
             >::new(wrt_provider!({ 5 * 72 }, CrateId::Debug).unwrap_or_default())?;
         for (op, (total_time, count)) in operation_times {
             let avg_time = total_time / count as u64;
-            let _ = slowest_ops.push((op, avg_time));
+            let _ = slowest_ops.push((op, avg_time);
         }
 
         // Sort by average time
         for i in 0..slowest_ops.len() {
             for j in i + 1..slowest_ops.len() {
                 if slowest_ops.get(j).unwrap().1 > slowest_ops.get(i).unwrap().1 {
-                    slowest_ops.swap(i, j);
+                    slowest_ops.swap(i, j;
                 }
             }
         }
@@ -731,7 +731,7 @@ impl<'a> MemoryProfiler<'a> {
     fn get_timestamp() -> u64 {
         // In no_std, this would use a platform-specific timer
         // For now, use a simple counter
-        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        static COUNTER: AtomicU32 = AtomicU32::new(0;
         COUNTER.fetch_add(1000, Ordering::SeqCst) as u64
     }
 
@@ -743,12 +743,12 @@ impl<'a> MemoryProfiler<'a> {
         for (i, alloc) in self.allocations.iter().enumerate() {
             if !alloc.active && alloc.timestamp < oldest_time {
                 oldest_time = alloc.timestamp;
-                oldest_idx = Some(i);
+                oldest_idx = Some(i;
             }
         }
 
         if let Some(idx) = oldest_idx {
-            self.allocations.remove(idx);
+            self.allocations.remove(idx;
         }
 
         Ok(())
@@ -844,25 +844,25 @@ pub struct PerformanceAnalysis {
 /// Memory profiler instance
 // ASIL-D safe: Use thread-safe static with lazy initialization
 #[cfg(feature = "std")]
-static MEMORY_PROFILER: OnceLock<Mutex<MemoryProfiler<'static>>> = OnceLock::new();
+static MEMORY_PROFILER: OnceLock<Mutex<MemoryProfiler<'static>>> = OnceLock::new(;
 
 #[cfg(not(feature = "std"))]
 use core::sync::atomic::AtomicPtr;
 #[cfg(not(feature = "std"))]
-static MEMORY_PROFILER: AtomicPtr<MemoryProfiler<'static>> = AtomicPtr::new(core::ptr::null_mut());
+static MEMORY_PROFILER: AtomicPtr<MemoryProfiler<'static>> = AtomicPtr::new(core::ptr::null_mut(;
 
 /// Initialize the memory profiler (ASIL-D safe)
 pub fn init_profiler() -> WrtResult<()> {
     #[cfg(feature = "std")]
     {
-        MEMORY_PROFILER.get_or_init(|| Mutex::new(MemoryProfiler::new()));
+        MEMORY_PROFILER.get_or_init(|| Mutex::new(MemoryProfiler::new();
     }
     #[cfg(not(feature = "std"))]
     {
         // For no_std, we use a simpler approach - just store a raw pointer
         // This is safe because we only initialize once
-        let profiler = Box::leak(Box::new(MemoryProfiler::new()));
-        MEMORY_PROFILER.store(profiler as *mut _, Ordering::SeqCst);
+        let profiler = Box::leak(Box::new(MemoryProfiler::new();
+        MEMORY_PROFILER.store(profiler as *mut _, Ordering::SeqCst;
     }
     Ok(())
 }
@@ -889,7 +889,7 @@ where
     }
     #[cfg(not(feature = "std"))]
     {
-        let ptr = MEMORY_PROFILER.load(Ordering::SeqCst);
+        let ptr = MEMORY_PROFILER.load(Ordering::SeqCst;
         if ptr.is_null() {
             Err(wrt_foundation::Error::from(
                 wrt_foundation::ErrorCategory::Memory,
@@ -929,14 +929,14 @@ macro_rules! profile_operation {
     ($operation:expr, $crate_id:expr, $body:expr) => {{
         let _handle = $crate::memory_profiling::with_profiler(|profiler| {
             Ok(profiler.start_profiling($operation, $crate_id))
-        });
+        };
 
         let _result = $body;
 
         if let Ok(handle) = _handle {
             let _ = $crate::memory_profiling::with_profiler(|profiler| {
                 profiler.complete_profiling(handle)
-            });
+            };
         }
 
         _result
@@ -950,7 +950,7 @@ mod tests {
     #[test]
     fn test_memory_profiler_basic() {
         init_profiler().unwrap();
-        MemoryProfiler::enable_allocation_tracking();
+        MemoryProfiler::enable_allocation_tracking(;
 
         // Track an allocation
         let alloc_id = with_profiler(|profiler| {
@@ -971,14 +971,14 @@ mod tests {
         // Generate report
         let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap();
 
-        assert_eq!(report.total_allocations, 1);
-        assert_eq!(report.total_deallocations, 1);
+        assert_eq!(report.total_allocations, 1;
+        assert_eq!(report.total_deallocations, 1;
     }
 
     #[test]
     fn test_leak_detection() {
         init_profiler().unwrap();
-        MemoryProfiler::enable_allocation_tracking();
+        MemoryProfiler::enable_allocation_tracking(;
 
         // Create allocation without deallocation
         let _alloc_id = with_profiler(|profiler| {
@@ -995,13 +995,13 @@ mod tests {
         let leaks = with_profiler(|profiler| profiler.detect_leaks()).unwrap();
 
         // Should detect the large allocation as potential leak
-        assert!(!leaks.is_empty());
+        assert!(!leaks.is_empty();
     }
 
     #[test]
     fn test_profiling() {
         init_profiler().unwrap();
-        MemoryProfiler::enable_profiling();
+        MemoryProfiler::enable_profiling(;
 
         // Profile an operation
         let result = profile_operation!("test_operation", CrateId::Foundation, {
@@ -1011,13 +1011,13 @@ mod tests {
                 sum += i;
             }
             sum
-        });
+        };
 
-        assert_eq!(result, 4950);
+        assert_eq!(result, 4950;
 
         // Check that profiling was recorded
         let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap();
 
-        assert!(!report.performance_metrics.slowest_operations.is_empty());
+        assert!(!report.performance_metrics.slowest_operations.is_empty();
     }
 }
