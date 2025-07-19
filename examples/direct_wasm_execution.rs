@@ -8,7 +8,7 @@ use wrt_runtime::value::Value;
 use wrt_error::Result;
 
 fn main() -> Result<()> {
-    println!("=== Direct WASM Execution Demo ===\n");
+    println!("=== Direct WASM Execution Demo ===\n";
     
     // Simple add function WASM bytes
     let wasm_bytes: &[u8] = &[
@@ -20,27 +20,27 @@ fn main() -> Result<()> {
         0x0b                                              // End
     ];
     
-    println!("1. Parsing WASM module ({} bytes)...", wasm_bytes.len());
+    println!("1. Parsing WASM module ({} bytes)...", wasm_bytes.len(;
     
     // Parse WASM format using the decoder  
     let format_module = wrt_decoder::decode_module(wasm_bytes)?;
-    println!("✓ Module parsed successfully");
-    println!("  - {} function types", format_module.types.len());
-    println!("  - {} functions", format_module.functions.len());
-    println!("  - {} exports", format_module.exports.len());
+    println!("✓ Module parsed successfully";
+    println!("  - {} function types", format_module.types.len(;
+    println!("  - {} functions", format_module.functions.len(;
+    println!("  - {} exports", format_module.exports.len(;
     
     // Convert to runtime module
-    println!("\n2. Converting to runtime module...");
+    println!("\n2. Converting to runtime module...";
     let runtime_module = RuntimeModule::from_wrt_module(&format_module)?;
-    println!("✓ Runtime module created");
+    println!("✓ Runtime module created";
     
     // Create module instance
-    println!("\n3. Creating module instance...");
+    println!("\n3. Creating module instance...";
     let mut instance = ModuleInstance::new(runtime_module)?;
-    println!("✓ Module instance created");
+    println!("✓ Module instance created";
     
     // Find the "add" function
-    println!("\n4. Looking up 'add' function...");
+    println!("\n4. Looking up 'add' function...";
     let add_func_idx = instance.module()
         .exports
         .iter()
@@ -48,25 +48,25 @@ fn main() -> Result<()> {
         .map(|(_, export)| export.index)
         .ok_or_else(|| wrt_error::Error::runtime_function_not_found("add function not found"))?;
     
-    println!("✓ Found 'add' function at index {}", add_func_idx);
+    println!("✓ Found 'add' function at index {}", add_func_idx;
     
     // Execute the function
-    println!("\n5. Executing add(5, 3)...");
+    println!("\n5. Executing add(5, 3)...";
     let args = vec![Value::I32(5), Value::I32(3)];
     
     // This would be actual execution if the runtime was fully working
-    println!("\nNOTE: Actual execution would happen here, but requires:");
-    println!("- Fixing all 88 compilation errors in wrt-runtime");
-    println!("- Implementing the execution engine");
-    println!("- Handling the instruction interpreter");
+    println!("\nNOTE: Actual execution would happen here, but requires:";
+    println!("- Fixing all 88 compilation errors in wrt-runtime";
+    println!("- Implementing the execution engine";
+    println!("- Handling the instruction interpreter";
     
-    println!("\nWhat WOULD happen with working execution:");
-    println!("1. Push Value::I32(5) onto value stack");
-    println!("2. Push Value::I32(3) onto value stack");
-    println!("3. Execute 'local.get 0' - load first parameter");
-    println!("4. Execute 'local.get 1' - load second parameter");
-    println!("5. Execute 'i32.add' - pop two values, add, push result");
-    println!("6. Return Value::I32(8)");
+    println!("\nWhat WOULD happen with working execution:";
+    println!("1. Push Value::I32(5) onto value stack";
+    println!("2. Push Value::I32(3) onto value stack";
+    println!("3. Execute 'local.get 0' - load first parameter";
+    println!("4. Execute 'local.get 1' - load second parameter";
+    println!("5. Execute 'i32.add' - pop two values, add, push result";
+    println!("6. Return Value::I32(8)";
     
     Ok(())
 }

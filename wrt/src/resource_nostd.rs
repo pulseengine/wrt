@@ -93,7 +93,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
         for idx in 0..self.resource_type_count {
             if let Ok(rt) = self.resource_types.get(idx) {
                 if rt == resource_type {
-                    return Ok(idx as u32);
+                    return Ok(idx as u32;
                 }
             }
         }
@@ -111,7 +111,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
         if type_idx as usize >= self.resource_type_count {
             return Err(Error::runtime_execution_error(
                 "Invalid resource type index",
-            ));
+            ;
         }
 
         // Get the resource type
@@ -125,7 +125,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
         };
 
         // Create resource
-        let resource_id = ResourceId(self.resource_count as u32);
+        let resource_id = ResourceId(self.resource_count as u32;
         let resource = BoundedResource {
             id: resource_id,
             resource_type,
@@ -148,7 +148,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_NOT_FOUND,
                 "Resource not found",
-            ));
+            ;
         }
 
         // Get the resource
@@ -156,7 +156,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
 
         // Check if the resource is dropped
         if resource.is_dropped {
-            return Err(Error::runtime_execution_error("Resource has been dropped"));
+            return Err(Error::runtime_execution_error("Resource has been dropped";
         }
 
         Ok(resource)
@@ -170,13 +170,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_NOT_FOUND,
                 "Resource not found",
-            ));
+            ;
         }
 
         // Get mutable reference to mark as dropped
         if let Ok(resource) = self.resources.get(idx) {
             if resource.is_dropped {
-                return Err(Error::runtime_execution_error("Resource already dropped"));
+                return Err(Error::runtime_execution_error("Resource already dropped";
             }
         }
 
@@ -255,7 +255,7 @@ mod tests {
 
         // Create a resource type
         let record_fields = BoundedVec::new(provider.clone()).unwrap();
-        let resource_type = ResourceType::Record(record_fields);
+        let resource_type = ResourceType::Record(record_fields;
 
         // Register the type
         let type_idx = table
@@ -270,12 +270,12 @@ mod tests {
         // Get the resource
         let resource = table.get_resource(resource_id).expect("Failed to get resource");
 
-        assert_eq!(resource.id, resource_id);
+        assert_eq!(resource.id, resource_id;
         assert!(!resource.is_dropped);
         assert_eq!(
             resource.name.as_ref().unwrap().as_str().unwrap(),
             "test_resource"
-        );
+        ;
 
         // Drop the resource
         table.drop_resource(resource_id).expect("Failed to drop resource");
@@ -285,9 +285,9 @@ mod tests {
         // elements in place
 
         // Check counts
-        assert_eq!(table.resource_count(), 1);
+        assert_eq!(table.resource_count(), 1;
         // active_resource_count might still return 1 due to the limitation mentioned
         // above
-        assert_eq!(table.resource_type_count(), 1);
+        assert_eq!(table.resource_type_count(), 1;
     }
 }

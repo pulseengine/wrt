@@ -79,7 +79,7 @@ extern crate alloc;
 //     loop {
 //         // Use spin_loop hint for power efficiency and better behavior
 //         // in virtualized environments
-//         core::hint::spin_loop();
+//         core::hint::spin_loop(;
 //     }
 // }
 
@@ -89,7 +89,7 @@ extern crate alloc;
 macro_rules! debug_println {
     ($($arg:tt)*) => {
         if cfg!(debug_assertions) {
-            println!($($arg)*);
+            println!($($arg)*;
         }
     };
 }
@@ -220,7 +220,7 @@ pub fn new_stackless_engine() -> wrt_runtime::stackless::StacklessEngine {
 // TODO: Re-enable after fixing dependency compilation issues in wrt-instructions
 // pub fn new_table(table_type: ComponentTableType) -> Table {
 //     // Create a default value based on the element type
-//     let default_value = Value::default_for_type(&table_type.element_type);
+//     let default_value = Value::default_for_type(&table_type.element_type;
 //
 //     Table::new(table_type, default_value).unwrap()
 // }

@@ -28,10 +28,10 @@ fn benchmark_operations<F>(name: &str, operations: F) -> Duration
 where
     F: FnOnce(),
 {
-    let start = Instant::now();
-    operations();
-    let duration = start.elapsed();
-    println!("{} took: {:?}", name, duration);
+    let start = Instant::now(;
+    operations(;
+    let duration = start.elapsed(;
+    println!("{} took: {:?}", name, duration;
     duration
 }
 
@@ -42,11 +42,11 @@ fn test_memory_optimization_configurations() {
         .with_size(4096)
         .with_verification_level(VerificationLevel::Critical)
         .with_optimization(MemoryOptimization::HardwareAcceleration)
-        .with_optimization(MemoryOptimization::SecureZeroing);
+        .with_optimization(MemoryOptimization::SecureZeroing;
     
     // The builder is created successfully
-    assert_eq!(builder.size(), 4096);
-    assert_eq!(builder.verification_level(), VerificationLevel::Critical);
+    assert_eq!(builder.size(), 4096;
+    assert_eq!(builder.verification_level(), VerificationLevel::Critical;
 }
 
 #[test]
@@ -62,14 +62,14 @@ fn test_bounded_collections_with_standard_provider() {
         for i in 0..50 {
             queue.enqueue(i).unwrap();
         }
-    });
+    };
     
     // Benchmark removing 25 items
     let dequeue_duration = benchmark_operations("BoundedQueue dequeue", || {
         for _ in 0..25 {
             queue.dequeue().unwrap();
         }
-    });
+    };
     
     // Test BoundedMap
     let provider2 = safe_managed_alloc!(8192, CrateId::Test).unwrap();
@@ -80,34 +80,34 @@ fn test_bounded_collections_with_standard_provider() {
         for i in 0..50 {
             map.insert(i, i * 2).unwrap();
         }
-    });
+    };
     
     // Benchmark looking up 50 items
     let lookup_duration = benchmark_operations("BoundedMap lookup", || {
         for i in 0..50 {
-            let _ = map.get(&i);
+            let _ = map.get(&i;
         }
-    });
+    };
     
     // Print results
-    println!("Performance results:");
-    println!("  Queue enqueue: {:?}", enqueue_duration);
-    println!("  Queue dequeue: {:?}", dequeue_duration);
-    println!("  Map insert: {:?}", insert_duration);
-    println!("  Map lookup: {:?}", lookup_duration);
+    println!("Performance results:";
+    println!("  Queue enqueue: {:?}", enqueue_duration;
+    println!("  Queue dequeue: {:?}", dequeue_duration;
+    println!("  Map insert: {:?}", insert_duration;
+    println!("  Map lookup: {:?}", lookup_duration;
 }
 
 #[test]
 fn test_memory_optimizer() {
     // Test the PlatformMemoryOptimizer
-    let optimizer = PlatformMemoryOptimizer::new();
+    let optimizer = PlatformMemoryOptimizer::new(;
     
     // Check available optimizations
-    let available = optimizer.available_optimizations();
-    println!("Available optimizations: {:?}", available);
+    let available = optimizer.available_optimizations(;
+    println!("Available optimizations: {:?}", available;
     
     // The optimizer should support at least basic optimizations
-    assert!(!available.is_empty());
+    assert!(!available.is_empty();
 }
 
 #[test]
@@ -124,9 +124,9 @@ fn test_bounded_vec_with_different_sizes() {
             for i in 0..100 {
                 vec.push(i as u8).unwrap();
             }
-        });
+        };
         
-        println!("Fill duration for size {}: {:?}", size, fill_duration);
+        println!("Fill duration for size {}: {:?}", size, fill_duration;
     }
 }
 
@@ -144,11 +144,11 @@ fn test_verification_levels() {
     for level in &levels {
         let builder = PlatformOptimizedProviderBuilder::default()
             .with_size(2048)
-            .with_verification_level(*level);
+            .with_verification_level(*level;
         
         // Verify the builder accepts the level
-        assert_eq!(builder.verification_level(), *level);
-        println!("Successfully configured verification level: {:?}", level);
+        assert_eq!(builder.verification_level(), *level;
+        println!("Successfully configured verification level: {:?}", level;
     }
 }
 
@@ -164,8 +164,8 @@ fn test_memory_optimization_flags() {
     
     for opt in &optimizations {
         let builder = PlatformOptimizedProviderBuilder::default()
-            .with_optimization(*opt);
+            .with_optimization(*opt;
         
-        println!("Successfully configured optimization: {:?}", opt);
+        println!("Successfully configured optimization: {:?}", opt;
     }
 }

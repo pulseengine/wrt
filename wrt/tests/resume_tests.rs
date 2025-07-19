@@ -37,7 +37,7 @@ mod resume_tests {
         module.functions.push(function);
 
         // Create an engine and instantiate
-        let mut engine = StacklessEngine::new(module.clone());
+        let mut engine = StacklessEngine::new(module.clone();
         let instance_idx = engine.instantiate(module)?;
 
         // Manually set the engine state to paused
@@ -46,16 +46,16 @@ mod resume_tests {
         //     func_idx: 0,
         //     pc: 0,
         //     expected_results: 1,
-        // });
+        // };
 
         // Now resume execution
         // let result = engine.resume(vec![])?;
 
         // The result should be 42
-        // assert_eq!(result, vec![Value::I32(42)]);
+        // assert_eq!(result, vec![Value::I32(42)];
 
         // The engine state should be Finished
-        // assert!(matches!(engine.state, ExecutionState::Finished));
+        // assert!(matches!(engine.state, ExecutionState::Finished);
 
         Ok(())
     }
@@ -87,19 +87,19 @@ mod resume_tests {
         module.functions.push(function);
 
         // Create an engine and instantiate
-        let mut engine = StacklessEngine::new(module.clone());
+        let mut engine = StacklessEngine::new(module.clone();
         engine.instantiate(module)?;
 
         // Try to resume when the engine is not paused
-        // let result = engine.resume(vec![]);
+        // let result = engine.resume(vec![];
 
         // Should get an error
-        // assert!(result.is_err());
-        // let err = result.unwrap_err();
+        // assert!(result.is_err();
+        // let err = result.unwrap_err(;
         // assert_eq!(
         //     err.to_string(),
         //     "Execution error: Cannot resume: engine is not paused"
-        // );
+        // ;
 
         Ok(())
     }
@@ -110,20 +110,20 @@ mod resume_tests {
         let wasm_bytes = wat::parse_str(wat).unwrap();
         let mut module = Module::new()?;
         let module = module.load_from_binary(&wasm_bytes).unwrap();
-        let mut engine = StacklessEngine::new_with_module(module);
+        let mut engine = StacklessEngine::new_with_module(module;
 
         engine.fuel = Some(5); // Set fuel less than needed
 
         // Execute until fuel exhausted
-        let result = engine.invoke_export("loop", &[]);
+        let result = engine.invoke_export("loop", &[];
 
         // The result should be an error
-        // assert!(result.is_err());
-        // let err = result.unwrap_err();
+        // assert!(result.is_err();
+        // let err = result.unwrap_err(;
         // assert_eq!(
         //     err.to_string(),
         //     "Execution error: Insufficient fuel"
-        // );
+        // ;
 
         Ok(())
     }

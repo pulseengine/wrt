@@ -29,8 +29,8 @@ pub mod lockstep_execution {
         
         pub fn execute(&mut self, input: u32) -> u32 {
             // Simulate computation
-            self.state = self.state.wrapping_add(input as u64);
-            self.checksum = self.checksum.wrapping_add(input);
+            self.state = self.state.wrapping_add(input as u64;
+            self.checksum = self.checksum.wrapping_add(input;
             (self.state & 0xFFFFFFFF) as u32
         }
         
@@ -58,19 +58,19 @@ pub mod lockstep_execution {
         }
         
         pub fn execute_lockstep(&mut self, input: u32) -> Result<u32, &'static str> {
-            let primary_result = self.primary.execute(input);
-            let secondary_result = self.secondary.execute(input);
+            let primary_result = self.primary.execute(input;
+            let secondary_result = self.secondary.execute(input;
             
             if primary_result != secondary_result {
                 self.divergence_count += 1;
                 if self.divergence_count > self.max_divergences {
-                    return Err("Lock-step execution divergence exceeded threshold");
+                    return Err("Lock-step execution divergence exceeded threshold";
                 }
                 // Voting: use primary result but flag for investigation
             }
             
             if !self.primary.verify_sync(&self.secondary) {
-                return Err("Lock-step state synchronization failed");
+                return Err("Lock-step state synchronization failed";
             }
             
             Ok(primary_result)
@@ -126,7 +126,7 @@ pub mod redundant_computation {
     
     impl DiverseRedundancy {
         pub fn new() -> Self {
-            let mut algorithms = bounded_vec(4);
+            let mut algorithms = bounded_vec(4;
             
             // Algorithm 1: Direct computation
             algorithms.push(Box::new(|x| x.wrapping_mul(2))).unwrap();
@@ -146,7 +146,7 @@ pub mod redundant_computation {
         }
         
         pub fn compute_with_verification(&self, input: u32) -> Result<u32, &'static str> {
-            let mut results = bounded_vec(4);
+            let mut results = bounded_vec(4;
             
             for algo in self.algorithms.iter() {
                 results.push(algo(input)).unwrap();
@@ -156,7 +156,7 @@ pub mod redundant_computation {
             let first = results.get(0).unwrap();
             for i in 1..results.len() {
                 if results.get(i).unwrap() != first {
-                    return Err("Diverse redundancy check failed");
+                    return Err("Diverse redundancy check failed";
                 }
             }
             
@@ -188,7 +188,7 @@ pub mod hardware_error_detection {
         /// Simulate memory read with error detection
         pub fn read_with_edc(&mut self, addr: usize, data: &[u8]) -> Result<Vec<u8>, &'static str> {
             // Simulate parity check
-            let parity = data.iter().fold(0u8, |acc, &byte| acc ^ byte.count_ones() as u8);
+            let parity = data.iter().fold(0u8, |acc, &byte| acc ^ byte.count_ones() as u8;
             
             if parity != 0 {
                 self.parity_errors += 1;
@@ -234,7 +234,7 @@ pub mod hardware_error_detection {
         }
         
         pub fn set_expected_flow(&mut self, sequence: &[u32]) -> Result<(), &'static str> {
-            self.expected_sequence.clear();
+            self.expected_sequence.clear(;
             for &step in sequence {
                 self.expected_sequence.push(step)
                     .map_err(|_| "Expected sequence too long")?;
@@ -252,7 +252,7 @@ pub mod hardware_error_detection {
                 let expected = self.expected_sequence.get(idx).unwrap();
                 if *expected != step {
                     self.violations += 1;
-                    return Err("Control flow violation detected");
+                    return Err("Control flow violation detected";
                 }
             }
             
@@ -277,7 +277,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_lockstep_synchronization() {
-        let mut coordinator = LockStepCoordinator::new();
+        let mut coordinator = LockStepCoordinator::new(;
         
         // Execute sequence of operations
         let inputs = [1u32, 2, 3, 4, 5];
@@ -296,12 +296,12 @@ mod proofs {
             kani::assert(
                 all_ok,
                 "Lock-step execution should maintain synchronization"
-            );
+            ;
             
             kani::assert(
                 coordinator.primary.state == coordinator.secondary.state,
                 "Primary and secondary units must maintain identical state"
-            );
+            ;
         }
         
         assert!(all_ok);
@@ -321,41 +321,41 @@ mod proofs {
                 if self.fault_injected {
                     self.value = self.value.wrapping_add(2); // Faulty behavior
                 } else {
-                    self.value = self.value.wrapping_add(1);
+                    self.value = self.value.wrapping_add(1;
                 }
                 self.value
             }
         }
         
-        let mut tmr = TripleModularRedundancy::new(Counter { value: 0, fault_injected: false });
+        let mut tmr = TripleModularRedundancy::new(Counter { value: 0, fault_injected: false };
         
         // Inject single fault
         tmr.units[1].fault_injected = true;
         
         // Execute with voting
-        let result = tmr.execute_with_voting(|c| c.increment());
+        let result = tmr.execute_with_voting(|c| c.increment(;
         
         #[cfg(feature = "kani")]
         {
             kani::assert(
                 result.is_ok(),
                 "TMR should tolerate single unit failure"
-            );
+            ;
             
             kani::assert(
                 result.unwrap() == 1,
                 "TMR should produce correct result despite single fault"
-            );
+            ;
         }
         
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 1);
+        assert!(result.is_ok();
+        assert_eq!(result.unwrap(), 1;
     }
     
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_diverse_redundancy_correctness() {
-        let redundancy = DiverseRedundancy::new();
+        let redundancy = DiverseRedundancy::new(;
         
         // Test with various inputs
         let test_inputs = [0u32, 1, 42, 1000, u32::MAX / 2];
@@ -364,7 +364,7 @@ mod proofs {
         for &input in &test_inputs {
             match redundancy.compute_with_verification(input) {
                 Ok(result) => {
-                    let expected = input.wrapping_mul(2);
+                    let expected = input.wrapping_mul(2;
                     if result != expected {
                         all_verified = false;
                         break;
@@ -382,7 +382,7 @@ mod proofs {
             kani::assert(
                 all_verified,
                 "All diverse algorithms should produce identical correct results"
-            );
+            ;
         }
         
         assert!(all_verified);
@@ -391,41 +391,41 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_memory_edc_effectiveness() {
-        let mut edc = MemoryEDC::new();
+        let mut edc = MemoryEDC::new(;
         
         // Test data with no errors
         let good_data = vec![0x12, 0x34, 0x56, 0x78];
-        let result1 = edc.read_with_edc(0x1000, &good_data);
+        let result1 = edc.read_with_edc(0x1000, &good_data;
         
         // Test data with correctable error
         let correctable_data = vec![0x12, 0xFF, 0x56, 0x78];
-        let result2 = edc.read_with_edc(0x2000, &correctable_data);
+        let result2 = edc.read_with_edc(0x2000, &correctable_data;
         
         #[cfg(feature = "kani")]
         {
             kani::assert(
                 result1.is_ok(),
                 "EDC should pass clean data"
-            );
+            ;
             
             kani::assert(
                 result2.is_ok() || result2.is_err(),
                 "EDC should handle errors deterministically"
-            );
+            ;
             
             kani::assert(
                 edc.uncorrectable_errors <= edc.parity_errors,
                 "Uncorrectable errors cannot exceed total parity errors"
-            );
+            ;
         }
         
-        assert!(result1.is_ok());
+        assert!(result1.is_ok();
     }
     
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_control_flow_integrity() {
-        let mut monitor = ControlFlowMonitor::new();
+        let mut monitor = ControlFlowMonitor::new(;
         
         // Set expected control flow
         let expected = vec![1, 2, 3, 4, 5];
@@ -445,43 +445,43 @@ mod proofs {
             kani::assert(
                 flow_correct,
                 "Correct control flow should not trigger violations"
-            );
+            ;
             
             kani::assert(
                 monitor.verify_complete(),
                 "Monitor should verify complete correct execution"
-            );
+            ;
         }
         
         assert!(flow_correct);
-        assert!(monitor.verify_complete());
+        assert!(monitor.verify_complete();
     }
     
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_fault_propagation_prevention() {
-        let mut coordinator = LockStepCoordinator::new();
+        let mut coordinator = LockStepCoordinator::new(;
         
         // Simulate fault injection
         coordinator.secondary.state = 0xDEADBEEF; // Inject fault
         
         // Attempt to execute
-        let result = coordinator.execute_lockstep(42);
+        let result = coordinator.execute_lockstep(42;
         
         #[cfg(feature = "kani")]
         {
             kani::assert(
                 result.is_err(),
                 "Fault should be detected and prevented from propagating"
-            );
+            ;
             
             kani::assert(
                 coordinator.divergence_count > 0,
                 "Divergence counter should track faults"
-            );
+            ;
         }
         
-        assert!(result.is_err());
+        assert!(result.is_err();
     }
     
     /// Register all advanced proofs with the test registry
@@ -490,37 +490,37 @@ mod proofs {
             "verify_lockstep_synchronization",
             "Verify lock-step execution maintains synchronization",
             verify_lockstep_synchronization,
-        );
+        ;
         
         registry.register(
             "verify_tmr_fault_tolerance",
             "Verify TMR tolerates single unit failures",
             verify_tmr_fault_tolerance,
-        );
+        ;
         
         registry.register(
             "verify_diverse_redundancy_correctness",
             "Verify diverse redundancy algorithms produce identical results",
             verify_diverse_redundancy_correctness,
-        );
+        ;
         
         registry.register(
             "verify_memory_edc_effectiveness",
             "Verify memory EDC detects and corrects errors",
             verify_memory_edc_effectiveness,
-        );
+        ;
         
         registry.register(
             "verify_control_flow_integrity",
             "Verify control flow monitoring detects violations",
             verify_control_flow_integrity,
-        );
+        ;
         
         registry.register(
             "verify_fault_propagation_prevention",
             "Verify faults are contained and don't propagate",
             verify_fault_propagation_prevention,
-        );
+        ;
     }
 }
 
@@ -536,10 +536,10 @@ pub fn property_count() -> usize {
 #[cfg(kani)]
 pub fn run_all_proofs() {
     use proofs::*;
-    verify_lockstep_synchronization();
-    verify_tmr_fault_tolerance();
-    verify_diverse_redundancy_correctness();
-    verify_memory_edc_effectiveness();
-    verify_control_flow_integrity();
-    verify_fault_propagation_prevention();
+    verify_lockstep_synchronization(;
+    verify_tmr_fault_tolerance(;
+    verify_diverse_redundancy_correctness(;
+    verify_memory_edc_effectiveness(;
+    verify_control_flow_integrity(;
+    verify_fault_propagation_prevention(;
 }

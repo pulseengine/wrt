@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use wrt_foundation::verification::VerificationLevel;
     
     // Create wrtd configuration
-    let mut config = WrtdConfig::default();
+    let mut config = WrtdConfig::default(;
     config.enable_wasi = true;
     config.engine_mode = EngineMode::Interpreter;
     
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     wasi_caps.nn = nn_caps;
-    config.wasi_capabilities = Some(wasi_caps);
+    config.wasi_capabilities = Some(wasi_caps;
     
     // Create and initialize the engine
     let mut engine = WrtdEngine::new(config)?;
@@ -68,29 +68,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         initialize_graph_store()?;
         initialize_context_store()?;
         
-        println!("WASI-NN initialized successfully");
+        println!("WASI-NN initialized successfully";
     }
     
     // Example: Load a WebAssembly module that uses WASI-NN
     // This would be a real .wasm file in practice
-    let wasm_module = include_bytes!("../../simple_inference.wasm");
+    let wasm_module = include_bytes!("../../simple_inference.wasm";
     
     // Execute the module
     match engine.execute(wasm_module) {
         Ok(result) => {
-            println!("Module executed successfully");
-            println!("Result: {:?}", result);
+            println!("Module executed successfully";
+            println!("Result: {:?}", result;
             
             // Print runtime statistics
-            let stats = engine.get_stats();
-            println!("\nRuntime Statistics:");
-            println!("  Modules executed: {}", stats.modules_executed);
-            println!("  WASI functions called: {}", stats.wasi_functions_called);
-            println!("  Peak memory usage: {} bytes", stats.peak_memory);
+            let stats = engine.get_stats(;
+            println!("\nRuntime Statistics:";
+            println!("  Modules executed: {}", stats.modules_executed;
+            println!("  WASI functions called: {}", stats.wasi_functions_called;
+            println!("  Peak memory usage: {} bytes", stats.peak_memory;
         }
         Err(e) => {
-            eprintln!("Execution failed: {}", e);
-            return Err(e.into());
+            eprintln!("Execution failed: {}", e;
+            return Err(e.into();
         }
     }
     
@@ -99,8 +99,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(not(all(feature = "std", feature = "wasi", feature = "wasi-nn")))]
 fn main() {
-    eprintln!("This example requires features: std, wasi, wasi-nn");
-    std::process::exit(1);
+    eprintln!("This example requires features: std, wasi, wasi-nn";
+    std::process::exit(1;
 }
 
 /// Example of creating a simple NN inference module
@@ -116,14 +116,14 @@ mod tests {
         
         // Test QM level
         let qm_cap = create_nn_capability(VerificationLevel::Standard).unwrap();
-        assert!(qm_cap.allows_dynamic_loading());
+        assert!(qm_cap.allows_dynamic_loading();
         
         // Test ASIL-A level
         let asil_a_cap = create_nn_capability(VerificationLevel::Sampling).unwrap();
-        assert!(asil_a_cap.allows_dynamic_loading());
+        assert!(asil_a_cap.allows_dynamic_loading();
         
         // Test ASIL-B level
         let asil_b_cap = create_nn_capability(VerificationLevel::Continuous).unwrap();
-        assert!(!asil_b_cap.allows_dynamic_loading());
+        assert!(!asil_b_cap.allows_dynamic_loading();
     }
 }

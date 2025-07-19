@@ -86,19 +86,19 @@ use wrt_error::{Error, AsilLevel};
 #[cfg(kani)]
 pub fn verify_memory_violation_detection() {
     // Generate arbitrary memory access patterns
-    let buffer_size: usize = kani::any();
-    let access_index: usize = kani::any();
-    let write_value: u8 = kani::any();
+    let buffer_size: usize = kani::any(;
+    let access_index: usize = kani::any(;
+    let write_value: u8 = kani::any(;
     
     // Constrain to reasonable bounds for verification
-    kani::assume(buffer_size > 0);
-    kani::assume(buffer_size <= 1024);
+    kani::assume(buffer_size > 0;
+    kani::assume(buffer_size <= 1024;
     
     // Test memory violation detection through bounded collections
     match safe_managed_alloc!(4096, CrateId::Foundation) {
         Ok(provider) => {
             // Create bounded vector with specific capacity
-            let capacity = buffer_size.min(256);
+            let capacity = buffer_size.min(256;
             match BoundedVec::<u8, 256, _>::new(provider) {
                 Ok(mut vec) => {
                     // Fill vector to test boundary conditions
@@ -111,23 +111,23 @@ pub fn verify_memory_violation_detection() {
                     
                     // Verify vector respects its bounds
                     assert!(vec.len() <= capacity);
-                    assert!(vec.len() <= 256); // Static capacity limit
+                    assert!(vec.len() <= 256)); // Static capacity limit
                     
                     // Test that we cannot exceed capacity
                     let overflow_result = vec.push(write_value);
                     if vec.len() >= capacity {
                         // Should fail when at capacity
-                        assert!(overflow_result.is_err());
+                        assert!(overflow_result.is_err();
                     }
                     
                     // Test safe access patterns
                     if vec.len() > 0 {
-                        let safe_index = access_index % vec.len();
+                        let safe_index = access_index % vec.len(;
                         let _value = vec[safe_index]; // Should not panic
                     }
                     
                     // Verify vector maintains integrity after operations
-                    assert!(vec.len() <= vec.capacity());
+                    assert!(vec.len() <= vec.capacity();
                 }
                 Err(_allocation_error) => {
                     // Allocation failure is a valid fault condition
@@ -149,8 +149,8 @@ pub fn verify_memory_violation_detection() {
 #[cfg(kani)]
 pub fn verify_budget_violation_detection() {
     // Test various budget violation scenarios
-    let allocation_size: u32 = kani::any();
-    kani::assume(allocation_size > 0);
+    let allocation_size: u32 = kani::any(;
+    kani::assume(allocation_size > 0;
     
     // Test reasonable allocation sizes vs. unreasonable ones
     let test_size = if allocation_size <= 65536 {
@@ -162,8 +162,8 @@ pub fn verify_budget_violation_detection() {
     };
     
     // Generate crate ID for testing
-    let crate_id: u8 = kani::any();
-    kani::assume(crate_id < 19);
+    let crate_id: u8 = kani::any(;
+    kani::assume(crate_id < 19;
     let crate_id = unsafe { core::mem::transmute::<u8, CrateId>(crate_id) };
     
     // Test budget enforcement
@@ -173,13 +173,13 @@ pub fn verify_budget_violation_detection() {
             assert!(provider.available_memory() <= test_size);
             
             // Test that provider correctly limits further allocations
-            let vec_result = BoundedVec::<u64, 1024, _>::new(provider.clone());
+            let vec_result = BoundedVec::<u64, 1024, _>::new(provider.clone();
             match vec_result {
                 Ok(vec) => {
                     // Vector creation succeeded
-                    let element_size = core::mem::size_of::<u64>();
+                    let element_size = core::mem::size_of::<u64>(;
                     let max_elements = test_size / element_size;
-                    assert!(vec.capacity() <= 1024.min(max_elements));
+                    assert!(vec.capacity() <= 1024.min(max_elements);
                 }
                 Err(_) => {
                     // Vector creation failed - acceptable if budget is tight
@@ -187,7 +187,7 @@ pub fn verify_budget_violation_detection() {
             }
             
             // Test detection of secondary budget violations
-            let secondary_alloc = BoundedVec::<u8, 2048, _>::new(provider);
+            let secondary_alloc = BoundedVec::<u8, 2048, _>::new(provider;
             match secondary_alloc {
                 Ok(_) | Err(_) => {
                     // Either outcome is acceptable - depends on remaining budget
@@ -199,7 +199,7 @@ pub fn verify_budget_violation_detection() {
             assert!(budget_error.asil_level() as u8 >= AsilLevel::AsilA as u8);
             
             // Verify system remains functional for smaller allocations
-            let fallback_alloc = safe_managed_alloc!(128, CrateId::Foundation);
+            let fallback_alloc = safe_managed_alloc!(128, CrateId::Foundation;
             match fallback_alloc {
                 Ok(_) | Err(_) => {
                     // System should remain stable for reasonable requests
@@ -216,16 +216,16 @@ pub fn verify_budget_violation_detection() {
 #[cfg(kani)]
 pub fn verify_fault_isolation() {
     // Simulate faults in different components
-    let fault_component: u8 = kani::any();
-    kani::assume(fault_component < 4);
+    let fault_component: u8 = kani::any(;
+    kani::assume(fault_component < 4;
     
-    let fault_type: u8 = kani::any();
-    kani::assume(fault_type < 3);
+    let fault_type: u8 = kani::any(;
+    kani::assume(fault_type < 3;
     
     // Create allocations for multiple components
-    let component_a = safe_managed_alloc!(2048, CrateId::Component);
-    let component_b = safe_managed_alloc!(2048, CrateId::Runtime);
-    let foundation = safe_managed_alloc!(1024, CrateId::Foundation);
+    let component_a = safe_managed_alloc!(2048, CrateId::Component;
+    let component_b = safe_managed_alloc!(2048, CrateId::Runtime;
+    let foundation = safe_managed_alloc!(1024, CrateId::Foundation;
     
     match fault_component {
         0 => {
@@ -252,8 +252,8 @@ pub fn verify_fault_isolation() {
                     match (component_b, foundation) {
                         (Ok(provider_b), Ok(provider_f)) => {
                             // B and Foundation should remain functional
-                            let test_b = BoundedVec::<u8, 64, _>::new(provider_b);
-                            let test_f = BoundedVec::<u8, 32, _>::new(provider_f);
+                            let test_b = BoundedVec::<u8, 64, _>::new(provider_b;
+                            let test_f = BoundedVec::<u8, 32, _>::new(provider_f;
                             
                             // These should be independent of component A's fault
                             match (test_b, test_f, fault_result) {
@@ -294,9 +294,9 @@ pub fn verify_fault_isolation() {
             match (component_a, component_b, foundation) {
                 (Ok(provider_a), Ok(provider_b), Ok(provider_f)) => {
                     // Trigger fault in B, verify A and F unaffected
-                    let _fault_b = BoundedVec::<u64, 1024, _>::new(provider_b);
-                    let test_a = BoundedVec::<u8, 32, _>::new(provider_a);
-                    let test_f = BoundedVec::<u8, 16, _>::new(provider_f);
+                    let _fault_b = BoundedVec::<u64, 1024, _>::new(provider_b;
+                    let test_a = BoundedVec::<u8, 32, _>::new(provider_a;
+                    let test_f = BoundedVec::<u8, 16, _>::new(provider_f;
                     
                     // A and F should remain independent
                     match (test_a, test_f) {
@@ -321,7 +321,7 @@ pub fn verify_fault_isolation() {
             
             for result in results.iter() {
                 if let Ok(provider) = result {
-                    let test_vec = BoundedVec::<u8, 16, _>::new(provider.clone());
+                    let test_vec = BoundedVec::<u8, 16, _>::new(provider.clone();
                     if test_vec.is_ok() {
                         functional_count += 1;
                     }
@@ -330,7 +330,7 @@ pub fn verify_fault_isolation() {
             
             // At least some functionality should remain
             // (or complete failure is graceful)
-            assert!(functional_count >= 0); // Always true, but demonstrates verification
+            assert!(functional_count >= 0)); // Always true, but demonstrates verification
         }
         _ => {
             // Test system-level fault handling
@@ -354,8 +354,8 @@ pub fn verify_fault_isolation() {
 #[cfg(kani)]
 pub fn verify_safe_state_maintenance() {
     // Generate various fault scenarios
-    let fault_scenario: u8 = kani::any();
-    kani::assume(fault_scenario < 5);
+    let fault_scenario: u8 = kani::any(;
+    kani::assume(fault_scenario < 5;
     
     // Track system state through fault scenarios
     let mut system_stable = true;
@@ -370,7 +370,7 @@ pub fn verify_safe_state_maintenance() {
                 match safe_managed_alloc!(8192, CrateId::Component) {
                     Ok(provider) => {
                         // Allocation succeeded - verify system integrity
-                        let integrity_check = BoundedVec::<u8, 32, _>::new(provider);
+                        let integrity_check = BoundedVec::<u8, 32, _>::new(provider;
                         if integrity_check.is_err() {
                             // Internal inconsistency might indicate unsafe state
                             system_stable = false;
@@ -380,7 +380,7 @@ pub fn verify_safe_state_maintenance() {
                     Err(_) => {
                         // Allocation failed - this is acceptable
                         // Verify we can still do minimal operations
-                        let minimal_check = safe_managed_alloc!(64, CrateId::Foundation);
+                        let minimal_check = safe_managed_alloc!(64, CrateId::Foundation;
                         if minimal_check.is_ok() {
                             // System retains minimal functionality
                         }
@@ -398,7 +398,7 @@ pub fn verify_safe_state_maintenance() {
             match safe_managed_alloc!(1024, CrateId::Runtime) {
                 Ok(provider) => {
                     // Try to create oversized vector
-                    let oversized_result = BoundedVec::<u64, 2048, _>::new(provider.clone());
+                    let oversized_result = BoundedVec::<u64, 2048, _>::new(provider.clone();
                     
                     match oversized_result {
                         Ok(_) => {
@@ -407,7 +407,7 @@ pub fn verify_safe_state_maintenance() {
                         }
                         Err(_) => {
                             // Failed appropriately - verify recovery
-                            let recovery = BoundedVec::<u8, 32, _>::new(provider);
+                            let recovery = BoundedVec::<u8, 32, _>::new(provider;
                             if recovery.is_ok() {
                                 // Recovery successful
                             }
@@ -416,7 +416,7 @@ pub fn verify_safe_state_maintenance() {
                 }
                 Err(_) => {
                     // Provider creation failed - test system stability
-                    let stability_check = safe_managed_alloc!(128, CrateId::Foundation);
+                    let stability_check = safe_managed_alloc!(128, CrateId::Foundation;
                     match stability_check {
                         Ok(_) | Err(_) => {
                             // Either outcome indicates stable system
@@ -437,7 +437,7 @@ pub fn verify_safe_state_maintenance() {
             
             for component_result in components.iter() {
                 if let Ok(provider) = component_result {
-                    let test = BoundedVec::<u8, 16, _>::new(provider.clone());
+                    let test = BoundedVec::<u8, 16, _>::new(provider.clone();
                     if test.is_ok() {
                         functional_components += 1;
                     }
@@ -449,7 +449,7 @@ pub fn verify_safe_state_maintenance() {
             if functional_components == 0 {
                 // If all components failed, verify it was graceful
                 // System should still respond to queries
-                let emergency_alloc = safe_managed_alloc!(32, CrateId::Foundation);
+                let emergency_alloc = safe_managed_alloc!(32, CrateId::Foundation;
                 match emergency_alloc {
                     Ok(_) | Err(_) => {
                         // System responds to requests (even if failing)
@@ -467,7 +467,7 @@ pub fn verify_safe_state_maintenance() {
                     break; // Prevent infinite loops
                 }
                 
-                let test_alloc = safe_managed_alloc!(2048, CrateId::Component);
+                let test_alloc = safe_managed_alloc!(2048, CrateId::Component;
                 match test_alloc {
                     Ok(_) => {
                         exhaustion_test_count += 1;
@@ -475,7 +475,7 @@ pub fn verify_safe_state_maintenance() {
                     }
                     Err(_) => {
                         // Resource exhausted - test recovery
-                        let recovery_alloc = safe_managed_alloc!(64, CrateId::Foundation);
+                        let recovery_alloc = safe_managed_alloc!(64, CrateId::Foundation;
                         match recovery_alloc {
                             Ok(_) => {
                                 // Recovery successful - system maintained essential functions
@@ -498,14 +498,14 @@ pub fn verify_safe_state_maintenance() {
             // Test fundamental safety invariants
             
             // Property 1: Memory operations don't corrupt system state
-            let test1 = safe_managed_alloc!(256, CrateId::Foundation);
-            let test2 = safe_managed_alloc!(256, CrateId::Component);
+            let test1 = safe_managed_alloc!(256, CrateId::Foundation;
+            let test2 = safe_managed_alloc!(256, CrateId::Component;
             
             match (test1, test2) {
                 (Ok(p1), Ok(p2)) => {
                     // Both allocations succeeded - verify independence
-                    let v1 = BoundedVec::<u8, 32, _>::new(p1);
-                    let v2 = BoundedVec::<u8, 32, _>::new(p2);
+                    let v1 = BoundedVec::<u8, 32, _>::new(p1;
+                    let v2 = BoundedVec::<u8, 32, _>::new(p2;
                     
                     // Operations on one shouldn't affect the other
                     match (v1, v2) {
@@ -519,7 +519,7 @@ pub fn verify_safe_state_maintenance() {
                 }
                 _ => {
                     // Some allocations failed - verify graceful degradation
-                    let minimal = safe_managed_alloc!(32, CrateId::Foundation);
+                    let minimal = safe_managed_alloc!(32, CrateId::Foundation;
                     match minimal {
                         Ok(_) | Err(_) => {
                             // System responds to minimal requests
@@ -532,7 +532,7 @@ pub fn verify_safe_state_maintenance() {
     
     // Final system stability check
     // This represents the overall safety property: system must remain responsive
-    let final_check = safe_managed_alloc!(64, CrateId::Foundation);
+    let final_check = safe_managed_alloc!(64, CrateId::Foundation;
     match final_check {
         Ok(_) | Err(_) => {
             // System responds (success or controlled failure)
@@ -565,15 +565,15 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
         }
         
         // Verify capacity limits are enforced
-        assert!(vec.push(16).is_err()); // Should fail at capacity
-        assert_eq!(vec.len(), 16);
+        assert!(vec.push(16).is_err())); // Should fail at capacity
+        assert_eq!(vec.len(), 16;
         
         Ok(())
     })?;
     
     registry.register_test("budget_violation_detection_basic", || {
         // Basic budget violation detection test
-        let large_alloc = safe_managed_alloc!(1024 * 1024 * 1024, CrateId::Component);
+        let large_alloc = safe_managed_alloc!(1024 * 1024 * 1024, CrateId::Component;
         // This might succeed or fail depending on system state
         // Key property: system remains stable either way
         match large_alloc {
@@ -583,7 +583,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
         }
         
         // Verify smaller allocations still work
-        let small_alloc = safe_managed_alloc!(128, CrateId::Foundation);
+        let small_alloc = safe_managed_alloc!(128, CrateId::Foundation;
         // This should generally succeed unless system is severely constrained
         match small_alloc {
             Ok(_) | Err(_) => {
@@ -596,8 +596,8 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("fault_isolation_basic", || {
         // Basic fault isolation test
-        let comp_a = safe_managed_alloc!(1024, CrateId::Component);
-        let comp_b = safe_managed_alloc!(1024, CrateId::Runtime);
+        let comp_a = safe_managed_alloc!(1024, CrateId::Component;
+        let comp_b = safe_managed_alloc!(1024, CrateId::Runtime;
         
         // Test that components are independent
         match (comp_a, comp_b) {
@@ -627,7 +627,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
         }
         
         // System should remain responsive regardless of allocation success
-        assert!(allocation_count >= 0); // Always true, demonstrates safety property
+        assert!(allocation_count >= 0)); // Always true, demonstrates safety property
         
         Ok(())
     })?;
@@ -650,38 +650,38 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for fault detection properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_memory_violation_detection();
-    verify_budget_violation_detection();
-    verify_fault_isolation();
-    verify_safe_state_maintenance();
+    verify_memory_violation_detection(;
+    verify_budget_violation_detection(;
+    verify_fault_isolation(;
+    verify_safe_state_maintenance(;
 }
 
 /// KANI harness for memory violation detection verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_memory_violation_detection() {
-    verify_memory_violation_detection();
+    verify_memory_violation_detection(;
 }
 
 /// KANI harness for budget violation detection verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_budget_violation_detection() {
-    verify_budget_violation_detection();
+    verify_budget_violation_detection(;
 }
 
 /// KANI harness for fault isolation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_fault_isolation() {
-    verify_fault_isolation();
+    verify_fault_isolation(;
 }
 
 /// KANI harness for safe state maintenance verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_safe_state_maintenance() {
-    verify_safe_state_maintenance();
+    verify_safe_state_maintenance(;
 }
 
 #[cfg(test)]
@@ -690,10 +690,10 @@ mod tests {
     
     #[test]
     fn test_fault_detection_verification() {
-        let registry = TestRegistry::global();
-        let result = register_tests(registry);
-        assert!(result.is_ok());
-        assert_eq!(property_count(), 4);
+        let registry = TestRegistry::global(;
+        let result = register_tests(registry;
+        assert!(result.is_ok();
+        assert_eq!(property_count(), 4;
     }
     
     #[test]
@@ -703,12 +703,12 @@ mod tests {
         
         // Fill to capacity
         for i in 0..8 {
-            assert!(vec.push(i).is_ok());
+            assert!(vec.push(i).is_ok();
         }
         
         // Verify overflow protection
-        assert!(vec.push(8).is_err());
-        assert_eq!(vec.len(), 8);
+        assert!(vec.push(8).is_err();
+        assert_eq!(vec.len(), 8;
     }
     
     #[test]

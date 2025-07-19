@@ -106,7 +106,7 @@ pub mod std_runtime {
         
         /// Execute a WebAssembly module (placeholder implementation)
         pub fn execute_module(&self, module_path: &str, function: &str) -> Result<String, String> {
-            let start = Instant::now();
+            let start = Instant::now(;
             
             // Load module (placeholder)
             let module_bytes = match fs::read(module_path) {
@@ -115,13 +115,13 @@ pub mod std_runtime {
             };
             
             if self.config.verbose {
-                println!("Loaded module: {} bytes", module_bytes.len());
+                println!("Loaded module: {} bytes", module_bytes.len(;
             }
             
             // Cache the module
             {
                 let mut cache = self.module_cache.lock().unwrap();
-                cache.insert(module_path.to_string(), module_bytes.clone());
+                cache.insert(module_path.to_string(), module_bytes.clone();
             }
             
             // Simulate execution
@@ -129,11 +129,11 @@ pub mod std_runtime {
             let memory_used = module_bytes.len() * 2; // Estimate
             
             if fuel_used > self.config.max_fuel {
-                return Err(format!("Fuel limit exceeded: {} > {}", fuel_used, self.config.max_fuel));
+                return Err(format!("Fuel limit exceeded: {} > {}", fuel_used, self.config.max_fuel;
             }
             
             if memory_used > self.config.max_memory {
-                return Err(format!("Memory limit exceeded: {} > {}", memory_used, self.config.max_memory));
+                return Err(format!("Memory limit exceeded: {} > {}", memory_used, self.config.max_memory;
             }
             
             // Update stats
@@ -141,7 +141,7 @@ pub mod std_runtime {
                 let mut stats = self.stats.lock().unwrap();
                 stats.modules_executed += 1;
                 stats.fuel_consumed += fuel_used;
-                stats.peak_memory = stats.peak_memory.max(memory_used);
+                stats.peak_memory = stats.peak_memory.max(memory_used;
                 stats.execution_time_ms += start.elapsed().as_millis() as u64;
             }
             
@@ -162,13 +162,13 @@ pub mod std_runtime {
     
     /// Main function for std runtime
     pub fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-        println!("WRT Daemon - Standard Runtime Mode");
-        println!("=================================");
+        println!("WRT Daemon - Standard Runtime Mode";
+        println!("=================================";
         
         let args: Vec<String> = env::args().collect();
         if args.len() < 3 {
-            println!("Usage: {} <module.wasm> <function>", args[0]);
-            return Ok(());
+            println!("Usage: {} <module.wasm> <function>", args[0];
+            return Ok((;
         }
         
         let module_path = &args[1];
@@ -180,18 +180,18 @@ pub mod std_runtime {
             verbose: args.contains(&"--verbose".to_string()),
         };
         
-        let runtime = StdRuntime::new(config);
+        let runtime = StdRuntime::new(config;
         
         match runtime.execute_module(module_path, function) {
             Ok(result) => {
-                println!("✓ {}", result);
-                let stats = runtime.stats();
+                println!("✓ {}", result;
+                let stats = runtime.stats(;
                 println!("📊 Stats: {} modules, {} fuel, {}KB peak memory", 
-                        stats.modules_executed, stats.fuel_consumed, stats.peak_memory / 1024);
+                        stats.modules_executed, stats.fuel_consumed, stats.peak_memory / 1024;
             }
             Err(e) => {
-                eprintln!("✗ Error: {}", e);
-                std::process::exit(1);
+                eprintln!("✗ Error: {}", e;
+                std::process::exit(1;
             }
         }
         
@@ -229,20 +229,20 @@ pub mod alloc_runtime {
             }
             
             let fuel_used = module_data.len() as u64 / 50; // More conservative than std
-            let memory_used = module_data.len();
+            let memory_used = module_data.len(;
             
             if fuel_used > self.config.max_fuel {
-                return Err("Fuel limit exceeded".to_string());
+                return Err("Fuel limit exceeded".to_string();
             }
             
             if memory_used > self.config.max_memory {
-                return Err("Memory limit exceeded".to_string());
+                return Err("Memory limit exceeded".to_string();
             }
             
             // Update stats
             self.stats.modules_executed += 1;
             self.stats.fuel_consumed += fuel_used;
-            self.stats.peak_memory = self.stats.peak_memory.max(memory_used);
+            self.stats.peak_memory = self.stats.peak_memory.max(memory_used;
             
             Ok(format!("Executed '{}' (alloc mode)", function))
         }
@@ -264,14 +264,14 @@ pub mod alloc_runtime {
             verbose: false,
         };
         
-        let mut runtime = AllocRuntime::new(config);
+        let mut runtime = AllocRuntime::new(config;
         
         // Simulate a small WASM module
         let fake_module = vec![0x00, 0x61, 0x73, 0x6d]; // WASM magic number
         
         match runtime.execute_module(&fake_module, "start") {
             Ok(_) => {
-                let stats = runtime.stats();
+                let stats = runtime.stats(;
                 // Success - in real implementation this would signal back to host
                 Ok(())
             }
@@ -307,7 +307,7 @@ pub mod nostd_runtime {
         pub fn execute_module(&mut self, module_data: &[u8], _function: &str) -> Result<u32, u8> {
             // Very conservative limits for bare metal
             let fuel_used = module_data.len() as u64 / 10;
-            let memory_used = module_data.len();
+            let memory_used = module_data.len(;
             
             if fuel_used > self.config.max_fuel {
                 return Err(1); // Error code: fuel exceeded
@@ -323,7 +323,7 @@ pub mod nostd_runtime {
             // Update stats
             self.stats.modules_executed += 1;
             self.stats.fuel_consumed += fuel_used;
-            self.stats.peak_memory = self.stats.peak_memory.max(memory_used);
+            self.stats.peak_memory = self.stats.peak_memory.max(memory_used;
             
             Ok(fuel_used as u32)
         }
@@ -342,7 +342,7 @@ pub mod nostd_runtime {
             verbose: false,
         };
         
-        let mut runtime = NoStdRuntime::new(config);
+        let mut runtime = NoStdRuntime::new(config;
         
         // Simulate a tiny WASM module for bare metal
         let fake_module = [0x00, 0x61, 0x73, 0x6d]; // WASM magic number

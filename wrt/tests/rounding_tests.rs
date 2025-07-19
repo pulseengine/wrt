@@ -38,34 +38,34 @@ fn test_f32_nearest_rounding() {
 
     for (input, expected) in test_cases {
         // Call the function directly
-        let value = Value::F32(input);
-        let result = f32_nearest(&value);
+        let value = Value::F32(input;
+        let result = f32_nearest(&value;
 
         assert_eq!(
             result, expected,
             "f32.nearest({}) should be {}, got {}",
             input, expected, result
-        );
+        ;
     }
 
     // Special cases
-    let nan_value = Value::F32(f32::NAN);
-    let nan_result = f32_nearest(&nan_value);
+    let nan_value = Value::F32(f32::NAN;
+    let nan_result = f32_nearest(&nan_value;
     assert!(nan_result.is_nan(), "f32.nearest(NaN) should be NaN");
 
-    let inf_value = Value::F32(f32::INFINITY);
-    let inf_result = f32_nearest(&inf_value);
+    let inf_value = Value::F32(f32::INFINITY;
+    let inf_result = f32_nearest(&inf_value;
     assert!(
         inf_result.is_infinite() && inf_result.is_sign_positive(),
         "f32.nearest(∞) should be ∞"
-    );
+    ;
 
-    let neg_inf_value = Value::F32(f32::NEG_INFINITY);
-    let neg_inf_result = f32_nearest(&neg_inf_value);
+    let neg_inf_value = Value::F32(f32::NEG_INFINITY;
+    let neg_inf_result = f32_nearest(&neg_inf_value;
     assert!(
         neg_inf_result.is_infinite() && neg_inf_result.is_sign_negative(),
         "f32.nearest(-∞) should be -∞"
-    );
+    ;
 }
 
 #[test]
@@ -96,32 +96,32 @@ fn test_f64_nearest_rounding() {
 
     for (input, expected) in test_cases {
         // Call the function directly
-        let value = Value::F64(input);
-        let result = f64_nearest(&value);
+        let value = Value::F64(input;
+        let result = f64_nearest(&value;
 
         assert_eq!(
             result, expected,
             "f64.nearest({}) should be {}, got {}",
             input, expected, result
-        );
+        ;
     }
 
     // Special cases
-    let nan_value = Value::F64(f64::NAN);
-    let nan_result = f64_nearest(&nan_value);
+    let nan_value = Value::F64(f64::NAN;
+    let nan_result = f64_nearest(&nan_value;
     assert!(nan_result.is_nan(), "f64.nearest(NaN) should be NaN");
 
-    let inf_value = Value::F64(f64::INFINITY);
-    let inf_result = f64_nearest(&inf_value);
+    let inf_value = Value::F64(f64::INFINITY;
+    let inf_result = f64_nearest(&inf_value;
     assert!(
         inf_result.is_infinite() && inf_result.is_sign_positive(),
         "f64.nearest(∞) should be ∞"
-    );
+    ;
 
-    let neg_inf_value = Value::F64(f64::NEG_INFINITY);
-    let neg_inf_result = f64_nearest(&neg_inf_value);
+    let neg_inf_value = Value::F64(f64::NEG_INFINITY;
+    let neg_inf_result = f64_nearest(&neg_inf_value;
     assert!(
         neg_inf_result.is_infinite() && neg_inf_result.is_sign_negative(),
         "f64.nearest(-∞) should be -∞"
-    );
+    ;
 }

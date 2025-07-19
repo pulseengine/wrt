@@ -44,7 +44,7 @@ fn test_bitwise_operations() -> Result<()> {
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
-    let mut engine = StacklessEngine::new_with_module(module.clone());
+    let mut engine = StacklessEngine::new_with_module(module.clone();
 
     // Instantiate the module
     engine.instantiate(module)?;
@@ -67,7 +67,7 @@ fn test_bitwise_operations() -> Result<()> {
         println!(
             "AND: {:#b} & {:#b} = {:#b} (Expected) | Result: {:?}",
             a, b, expected_and, result
-        );
+        ;
 
         // Test OR
         let result = engine.execute(0usize, 1, args.clone())?;
@@ -75,7 +75,7 @@ fn test_bitwise_operations() -> Result<()> {
         println!(
             "OR: {:#b} | {:#b} = {:#b} (Expected) | Result: {:?}",
             a, b, expected_or, result
-        );
+        ;
 
         // Test XOR
         let result = engine.execute(0usize, 2, args.clone())?;
@@ -83,9 +83,9 @@ fn test_bitwise_operations() -> Result<()> {
         println!(
             "XOR: {:#b} ^ {:#b} = {:#b} (Expected) | Result: {:?}",
             a, b, expected_xor, result
-        );
+        ;
 
-        println!("---");
+        println!("---";
     }
 
     Ok(())

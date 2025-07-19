@@ -139,11 +139,11 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             memory_safety_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += memory_safety_proofs::property_count();
+            self.stats.verified_properties += memory_safety_proofs::property_count(;
             
             // Also register simplified memory safety tests
             memory_safety_simple::register_tests(self.registry)?;
-            self.stats.verified_properties += memory_safety_simple::property_count();
+            self.stats.verified_properties += memory_safety_simple::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -159,7 +159,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(()) // Always pass when KANI not available
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -170,7 +170,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             safety_invariants_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += safety_invariants_proofs::property_count();
+            self.stats.verified_properties += safety_invariants_proofs::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -185,7 +185,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(())
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -196,7 +196,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             concurrency_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += concurrency_proofs::property_count();
+            self.stats.verified_properties += concurrency_proofs::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -211,7 +211,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(())
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -222,7 +222,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             resource_lifecycle_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += resource_lifecycle_proofs::property_count();
+            self.stats.verified_properties += resource_lifecycle_proofs::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -237,7 +237,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(())
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -248,7 +248,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             integration_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += integration_proofs::property_count();
+            self.stats.verified_properties += integration_proofs::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -263,7 +263,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(())
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -274,7 +274,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             advanced_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += advanced_proofs::property_count();
+            self.stats.verified_properties += advanced_proofs::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -289,7 +289,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(())
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -300,7 +300,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             error_handling_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += error_handling_proofs::property_count();
+            self.stats.verified_properties += error_handling_proofs::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -315,7 +315,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(())
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -326,7 +326,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             fault_detection_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += fault_detection_proofs::property_count();
+            self.stats.verified_properties += fault_detection_proofs::property_count(;
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -341,7 +341,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(())
                 }
-            );
+            ;
         }
         
         Ok(())
@@ -355,15 +355,15 @@ impl KaniTestRunner {
     /// Run all formal verification proofs (KANI mode only)
     #[cfg(kani)]
     pub fn run_all_proofs() {
-        memory_safety_proofs::run_all_proofs();
-        memory_safety_simple::run_all_proofs();
-        safety_invariants_proofs::run_all_proofs();
-        concurrency_proofs::run_all_proofs();
-        resource_lifecycle_proofs::run_all_proofs();
-        integration_proofs::run_all_proofs();
-        advanced_proofs::run_all_proofs();
-        error_handling_proofs::run_all_proofs();
-        fault_detection_proofs::run_all_proofs();
+        memory_safety_proofs::run_all_proofs(;
+        memory_safety_simple::run_all_proofs(;
+        safety_invariants_proofs::run_all_proofs(;
+        concurrency_proofs::run_all_proofs(;
+        resource_lifecycle_proofs::run_all_proofs(;
+        integration_proofs::run_all_proofs(;
+        advanced_proofs::run_all_proofs(;
+        error_handling_proofs::run_all_proofs(;
+        fault_detection_proofs::run_all_proofs(;
     }
 }
 
@@ -375,29 +375,29 @@ pub fn run_tests() -> TestResult {
     #[cfg(kani)]
     {
         // When running under KANI, execute formal proofs
-        KaniTestRunner::run_all_proofs();
+        KaniTestRunner::run_all_proofs(;
     }
     
     #[cfg(not(kani))]
     {
         // When not under KANI, run as traditional tests via TestRegistry
-        let mut runner = KaniTestRunner::new();
+        let mut runner = KaniTestRunner::new(;
         runner.register_all_kani_tests()?;
         
-        let registry = TestRegistry::global();
-        let executed = registry.run_filtered_tests(None, Some("formal-verification"), true);
+        let registry = TestRegistry::global(;
+        let executed = registry.run_filtered_tests(None, Some("formal-verification"), true;
         
         if executed == 0 {
-            return Err("No formal verification tests executed".to_string());
+            return Err("No formal verification tests executed".to_string();
         }
         
         #[cfg(feature = "std")]
         {
-            let stats = runner.get_stats();
-            println!("Formal verification completed:");
-            println!("  Properties verified: {}", stats.verified_properties);
-            println!("  Properties failed: {}", stats.failed_properties);
-            println!("  Properties skipped: {}", stats.skipped_properties);
+            let stats = runner.get_stats(;
+            println!("Formal verification completed:";
+            println!("  Properties verified: {}", stats.verified_properties;
+            println!("  Properties failed: {}", stats.failed_properties;
+            println!("  Properties skipped: {}", stats.skipped_properties;
         }
     }
     
@@ -410,18 +410,18 @@ mod tests {
     
     #[test]
     fn test_kani_runner_creation() {
-        let runner = KaniTestRunner::new();
-        let stats = runner.get_stats();
+        let runner = KaniTestRunner::new(;
+        let stats = runner.get_stats(;
         
         // Initially no properties should be registered
-        assert_eq!(stats.verified_properties, 0);
-        assert_eq!(stats.failed_properties, 0);
-        assert_eq!(stats.skipped_properties, 0);
+        assert_eq!(stats.verified_properties, 0;
+        assert_eq!(stats.failed_properties, 0;
+        assert_eq!(stats.skipped_properties, 0;
     }
     
     #[test]
     fn test_run_tests_integration() {
-        let result = run_tests();
+        let result = run_tests(;
         assert!(result.is_ok(), "Formal verification tests should not fail: {:?}", result);
     }
 }

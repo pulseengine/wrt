@@ -302,9 +302,9 @@ impl MultiMemoryContext {
         #[cfg(feature = "std")]
         {
             if self.memories.len() >= MAX_MEMORIES {
-                return Err(Error::memory_error("Maximum number of memories reached"));
+                return Err(Error::memory_error("Maximum number of memories reached";
             }
-            self.memories.insert(memory_index, memory);
+            self.memories.insert(memory_index, memory;
         }
 
         #[cfg(not(feature = "std"))]
@@ -314,11 +314,11 @@ impl MultiMemoryContext {
                 .iter_mut()
                 .find(|(idx, mem)| *idx == memory_index && mem.is_none())
             {
-                slot.1 = Some(memory);
+                slot.1 = Some(memory;
             } else {
                 return Err(Error::memory_error(
                     "Memory index already exists or maximum memories reached",
-                ));
+                ;
             }
         }
 
@@ -511,7 +511,7 @@ impl MultiMemoryProvider for ASILCompliantMultiMemoryProvider {
         if offset.saturating_add(size) > u32::MAX as u64 {
             return Err(Error::validation_error(
                 "Memory access exceeds 32-bit address space",
-            ));
+            ;
         }
 
         Ok(())
@@ -526,7 +526,7 @@ impl ASILCompliantMultiMemoryProvider {
             | MultiMemoryOperation::Store { memory_index, .. }
             | MultiMemoryOperation::Bulk { memory_index, .. } => {
                 if *memory_index >= MAX_MEMORIES as u32 {
-                    return Err(Error::validation_error("Memory index exceeds maximum"));
+                    return Err(Error::validation_error("Memory index exceeds maximum";
                 }
             },
             MultiMemoryOperation::CrossCopy { cross_copy_op, .. } => {
@@ -535,17 +535,17 @@ impl ASILCompliantMultiMemoryProvider {
                 {
                     return Err(Error::validation_error(
                         "Cross-copy memory index exceeds maximum",
-                    ));
+                    ;
                 }
             },
             MultiMemoryOperation::Size { size_op } => {
                 if size_op.memory_index >= MAX_MEMORIES as u32 {
-                    return Err(Error::validation_error("Memory index exceeds maximum"));
+                    return Err(Error::validation_error("Memory index exceeds maximum";
                 }
             },
             MultiMemoryOperation::Grow { grow_op, .. } => {
                 if grow_op.memory_index >= MAX_MEMORIES as u32 {
-                    return Err(Error::validation_error("Memory index exceeds maximum"));
+                    return Err(Error::validation_error("Memory index exceeds maximum";
                 }
             },
         }
@@ -633,7 +633,7 @@ pub fn create_and_register_memory(
     memory_index: u32,
     memory_type: ComponentMemoryType,
 ) -> Result<Arc<MultiMemoryInstance>> {
-    let memory = Arc::new(MultiMemoryInstance::new(memory_index, memory_type)?);
+    let memory = Arc::new(MultiMemoryInstance::new(memory_index, memory_type)?;
     context.register_memory(memory.clone())?;
     Ok(memory)
 }
@@ -686,7 +686,7 @@ pub fn copy_between_memories(
     src_addr: u32,
     size: u32,
 ) -> Result<()> {
-    let cross_copy_op = MultiMemoryCrossCopy::new(dest_memory, src_memory);
+    let cross_copy_op = MultiMemoryCrossCopy::new(dest_memory, src_memory;
     let operation = MultiMemoryOperation::CrossCopy {
         cross_copy_op,
         dest_addr: Value::I32(dest_addr as i32),
@@ -704,7 +704,7 @@ pub fn grow_memory(
     memory_index: u32,
     delta_pages: u32,
 ) -> Result<u32> {
-    let grow_op = MultiMemoryGrow::new(memory_index);
+    let grow_op = MultiMemoryGrow::new(memory_index;
     let operation = MultiMemoryOperation::Grow {
         grow_op,
         delta_pages: Value::I32(delta_pages as i32),

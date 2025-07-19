@@ -5,7 +5,7 @@ use wrt::prelude::*;
 use wrt::engine::Engine;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== WRT Minimal WASM Execution Demo ===\n");
+    println!("=== WRT Minimal WASM Execution Demo ===\n";
     
     // Create a simple WASM module that adds two numbers
     let wat_code = r#"
@@ -37,35 +37,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         0x0b                                              // End
     ];
     
-    println!("1. Creating WRT Engine...");
+    println!("1. Creating WRT Engine...";
     let mut engine = Engine::new()?;
     
-    println!("2. Loading WASM module ({} bytes)...", wasm_bytes.len());
+    println!("2. Loading WASM module ({} bytes)...", wasm_bytes.len(;
     let module = engine.load_module(wasm_bytes)?;
     
-    println!("3. Instantiating module...");
+    println!("3. Instantiating module...";
     let instance = engine.instantiate(module)?;
     
-    println!("4. Getting exported 'add' function...");
+    println!("4. Getting exported 'add' function...";
     let add_func = engine.get_function(instance, "add")?;
     
-    println!("5. Executing add(5, 3)...");
+    println!("5. Executing add(5, 3)...";
     let args = vec![Value::I32(5), Value::I32(3)];
     let results = engine.invoke_function(add_func, &args)?;
     
-    println!("\n✅ ACTUAL EXECUTION RESULT: {:?}", results);
-    println!("   Expected: [I32(8)]");
-    println!("   Got:      {:?}", results);
+    println!("\n✅ ACTUAL EXECUTION RESULT: {:?}", results;
+    println!("   Expected: [I32(8)]";
+    println!("   Got:      {:?}", results;
     
     // Verify the result
     if let Some(Value::I32(result)) = results.get(0) {
         if *result == 8 {
-            println!("\n🎉 SUCCESS! The WASM function actually executed and returned the correct result!");
+            println!("\n🎉 SUCCESS! The WASM function actually executed and returned the correct result!";
         } else {
-            println!("\n❌ ERROR: Got unexpected result: {}", result);
+            println!("\n❌ ERROR: Got unexpected result: {}", result;
         }
     } else {
-        println!("\n❌ ERROR: No result returned");
+        println!("\n❌ ERROR: No result returned";
     }
     
     Ok(())

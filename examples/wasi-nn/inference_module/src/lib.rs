@@ -80,7 +80,7 @@ pub extern "C" fn run_inference() -> u32 {
             ENCODING_ONNX,
             TARGET_CPU,
             &mut graph_id,
-        );
+        ;
         
         if load_result != SUCCESS {
             return load_result;
@@ -88,7 +88,7 @@ pub extern "C" fn run_inference() -> u32 {
         
         // 2. Create execution context
         let mut context_id: u32 = 0;
-        let init_result = nn_init_execution_context(graph_id, &mut context_id);
+        let init_result = nn_init_execution_context(graph_id, &mut context_id;
         
         if init_result != SUCCESS {
             return init_result;
@@ -103,14 +103,14 @@ pub extern "C" fn run_inference() -> u32 {
             INPUT_DIMS.as_ptr(),
             INPUT_DIMS.len() as u32,
             TENSOR_TYPE_F32,
-        );
+        ;
         
         if set_input_result != SUCCESS {
             return set_input_result;
         }
         
         // 4. Run inference
-        let compute_result = nn_compute(context_id);
+        let compute_result = nn_compute(context_id;
         
         if compute_result != SUCCESS {
             return compute_result;
@@ -126,7 +126,7 @@ pub extern "C" fn run_inference() -> u32 {
             OUTPUT_DIMS.as_mut_ptr(),
             OUTPUT_DIMS.len() as u32,
             &mut output_type,
-        );
+        ;
         
         if get_output_result != SUCCESS {
             return get_output_result;
@@ -145,7 +145,7 @@ pub extern "C" fn malloc(size: usize) -> *mut u8 {
     static mut HEAP_POS: usize = 0;
     
     unsafe {
-        let ptr = HEAP.as_mut_ptr().add(HEAP_POS);
+        let ptr = HEAP.as_mut_ptr().add(HEAP_POS;
         HEAP_POS += size;
         ptr
     }

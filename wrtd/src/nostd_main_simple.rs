@@ -60,7 +60,7 @@ impl NoStdRuntime {
     /// Execute a module (returns fuel used or error code)
     pub fn execute_module(&mut self, module_data: &[u8], _function: &str) -> Result<u32, u8> {
         let fuel_used = module_data.len() as u64 / 10;
-        let memory_used = module_data.len();
+        let memory_used = module_data.len(;
         
         if fuel_used > self.config.max_fuel {
             return Err(1); // Error code: fuel exceeded
@@ -75,7 +75,7 @@ impl NoStdRuntime {
         
         self.stats.modules_executed += 1;
         self.stats.fuel_consumed += fuel_used;
-        self.stats.peak_memory = self.stats.peak_memory.max(memory_used);
+        self.stats.peak_memory = self.stats.peak_memory.max(memory_used;
         
         Ok(fuel_used as u32)
     }
@@ -98,8 +98,8 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 /// Entry point for no-std mode
 fn main() -> Result<(), u8> {
-    let config = NoStdConfig::default();
-    let mut runtime = NoStdRuntime::new(config);
+    let config = NoStdConfig::default(;
+    let mut runtime = NoStdRuntime::new(config;
     
     // Simulate execution with minimal WASM module
     let fake_module = [0x00, 0x61, 0x73, 0x6d]; // WASM magic number

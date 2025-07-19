@@ -24,7 +24,7 @@ use wast_test_runner::{
 /// Example: Basic WAST test execution
 #[test]
 fn example_basic_wast_execution() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let wast_content = r#"
         (module
@@ -43,14 +43,14 @@ fn example_basic_wast_execution() -> Result<()> {
 
     let stats = runner.run_wast_content(wast_content)?;
 
-    println!("Basic example results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
-    println!("  assert_return tests: {}", stats.assert_return_count);
+    println!("Basic example results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
+    println!("  assert_return tests: {}", stats.assert_return_count;
 
-    assert_eq!(stats.passed, 2);
-    assert_eq!(stats.failed, 0);
-    assert_eq!(stats.assert_return_count, 2);
+    assert_eq!(stats.passed, 2;
+    assert_eq!(stats.failed, 0;
+    assert_eq!(stats.assert_return_count, 2;
 
     Ok(())
 }
@@ -58,7 +58,7 @@ fn example_basic_wast_execution() -> Result<()> {
 /// Example: Testing trap conditions
 #[test]
 fn example_trap_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let wast_content = r#"
         (module
@@ -75,12 +75,12 @@ fn example_trap_testing() -> Result<()> {
 
     let stats = runner.run_wast_content(wast_content)?;
 
-    println!("Trap testing results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
-    println!("  assert_trap tests: {}", stats.assert_trap_count);
+    println!("Trap testing results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
+    println!("  assert_trap tests: {}", stats.assert_trap_count;
 
-    assert_eq!(stats.assert_trap_count, 2);
+    assert_eq!(stats.assert_trap_count, 2;
     // Note: Trap tests might fail if the engine doesn't properly implement trap
     // detection This is expected during development
 
@@ -90,7 +90,7 @@ fn example_trap_testing() -> Result<()> {
 /// Example: Testing invalid modules
 #[test]
 fn example_validation_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let wast_content = r#"
         ;; This module should be invalid due to type mismatch
@@ -109,12 +109,12 @@ fn example_validation_testing() -> Result<()> {
 
     let stats = runner.run_wast_content(wast_content)?;
 
-    println!("Validation testing results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
-    println!("  assert_invalid tests: {}", stats.assert_invalid_count);
+    println!("Validation testing results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
+    println!("  assert_invalid tests: {}", stats.assert_invalid_count;
 
-    assert_eq!(stats.assert_invalid_count, 2);
+    assert_eq!(stats.assert_invalid_count, 2;
 
     Ok(())
 }
@@ -122,14 +122,14 @@ fn example_validation_testing() -> Result<()> {
 /// Example: Testing with resource limits
 #[test]
 fn example_resource_limit_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     // Set strict resource limits
     runner.set_resource_limits(ResourceLimits {
         max_stack_depth:     100,
         max_memory_size:     1024 * 1024, // 1MB
         max_execution_steps: 10000,
-    });
+    };
 
     let wast_content = r#"
         (module
@@ -141,12 +141,12 @@ fn example_resource_limit_testing() -> Result<()> {
 
     let stats = runner.run_wast_content(wast_content)?;
 
-    println!("Resource limit testing results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
+    println!("Resource limit testing results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
 
-    assert_eq!(stats.passed, 1);
-    assert_eq!(stats.failed, 0);
+    assert_eq!(stats.passed, 1;
+    assert_eq!(stats.failed, 0;
 
     Ok(())
 }
@@ -154,7 +154,7 @@ fn example_resource_limit_testing() -> Result<()> {
 /// Example: Float precision and NaN testing
 #[test]
 fn example_float_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let wast_content = r#"
         (module
@@ -175,12 +175,12 @@ fn example_float_testing() -> Result<()> {
 
     let stats = runner.run_wast_content(wast_content)?;
 
-    println!("Float testing results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
-    println!("  assert_return tests: {}", stats.assert_return_count);
+    println!("Float testing results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
+    println!("  assert_return tests: {}", stats.assert_return_count;
 
-    assert_eq!(stats.assert_return_count, 3);
+    assert_eq!(stats.assert_return_count, 3;
 
     Ok(())
 }
@@ -188,7 +188,7 @@ fn example_float_testing() -> Result<()> {
 /// Example: Memory operations testing
 #[test]
 fn example_memory_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let wast_content = r#"
         (module
@@ -210,9 +210,9 @@ fn example_memory_testing() -> Result<()> {
 
     let stats = runner.run_wast_content(wast_content)?;
 
-    println!("Memory testing results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
+    println!("Memory testing results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
     println!("  Total directives: {}", stats.assert_return_count + 1); // +1 for invoke
 
     Ok(())
@@ -221,7 +221,7 @@ fn example_memory_testing() -> Result<()> {
 /// Example: Control flow testing
 #[test]
 fn example_control_flow_testing() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let wast_content = r#"
         (module
@@ -263,12 +263,12 @@ fn example_control_flow_testing() -> Result<()> {
 
     let stats = runner.run_wast_content(wast_content)?;
 
-    println!("Control flow testing results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
-    println!("  assert_return tests: {}", stats.assert_return_count);
+    println!("Control flow testing results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
+    println!("  assert_return tests: {}", stats.assert_return_count;
 
-    assert_eq!(stats.assert_return_count, 3);
+    assert_eq!(stats.assert_return_count, 3;
 
     Ok(())
 }
@@ -276,7 +276,7 @@ fn example_control_flow_testing() -> Result<()> {
 /// Example: Comprehensive test statistics analysis
 #[test]
 fn example_statistics_analysis() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let comprehensive_wast = r#"
         (module
@@ -303,18 +303,18 @@ fn example_statistics_analysis() -> Result<()> {
 
     let stats = runner.run_wast_content(comprehensive_wast)?;
 
-    println!("\n=== Comprehensive Test Statistics ===");
-    println!("Total tests executed:");
-    println!("  assert_return: {}", stats.assert_return_count);
-    println!("  assert_trap: {}", stats.assert_trap_count);
-    println!("  assert_invalid: {}", stats.assert_invalid_count);
-    println!("  assert_malformed: {}", stats.assert_malformed_count);
-    println!("  assert_unlinkable: {}", stats.assert_unlinkable_count);
-    println!("  assert_exhaustion: {}", stats.assert_exhaustion_count);
-    println!("  register: {}", stats.register_count);
-    println!("\nResults:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
+    println!("\n=== Comprehensive Test Statistics ===";
+    println!("Total tests executed:";
+    println!("  assert_return: {}", stats.assert_return_count;
+    println!("  assert_trap: {}", stats.assert_trap_count;
+    println!("  assert_invalid: {}", stats.assert_invalid_count;
+    println!("  assert_malformed: {}", stats.assert_malformed_count;
+    println!("  assert_unlinkable: {}", stats.assert_unlinkable_count;
+    println!("  assert_exhaustion: {}", stats.assert_exhaustion_count;
+    println!("  register: {}", stats.register_count;
+    println!("\nResults:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
     println!(
         "  Success rate: {:.1}%",
         if stats.passed + stats.failed > 0 {
@@ -322,7 +322,7 @@ fn example_statistics_analysis() -> Result<()> {
         } else {
             0.0
         }
-    );
+    ;
 
     // Verify we executed the expected number of directives
     let total_directives =
@@ -335,7 +335,7 @@ fn example_statistics_analysis() -> Result<()> {
 /// Example: Error handling and debugging
 #[test]
 fn example_error_handling() -> Result<()> {
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     // This WAST content has intentional issues for demonstration
     let problematic_wast = r#"
@@ -352,17 +352,17 @@ fn example_error_handling() -> Result<()> {
 
     let stats = runner.run_wast_content(problematic_wast)?;
 
-    println!("Error handling example results:");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
+    println!("Error handling example results:";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
 
     if stats.failed > 0 {
-        println!("  Note: Some failures are expected in this example");
-        println!("        This demonstrates error handling capabilities");
+        println!("  Note: Some failures are expected in this example";
+        println!("        This demonstrates error handling capabilities";
     }
 
-    assert_eq!(stats.assert_return_count, 2);
-    assert!(stats.passed >= 1); // At least one should pass
+    assert_eq!(stats.assert_return_count, 2;
+    assert!(stats.passed >= 1)); // At least one should pass
 
     Ok(())
 }
@@ -373,7 +373,7 @@ fn example_no_std_usage() -> Result<()> {
     // This example shows how the WAST runner works in no_std environments
     // All the string content is static, no file I/O required
 
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     let simple_wast = r#"
         (module
@@ -385,30 +385,30 @@ fn example_no_std_usage() -> Result<()> {
 
     let stats = runner.run_wast_content(simple_wast)?;
 
-    println!("No-std compatibility example:");
-    println!("  This test runs the same in std and no_std environments");
-    println!("  Passed: {}", stats.passed);
-    println!("  Failed: {}", stats.failed);
+    println!("No-std compatibility example:";
+    println!("  This test runs the same in std and no_std environments";
+    println!("  Passed: {}", stats.passed;
+    println!("  Failed: {}", stats.failed;
 
-    assert_eq!(stats.passed, 1);
-    assert_eq!(stats.failed, 0);
+    assert_eq!(stats.passed, 1;
+    assert_eq!(stats.failed, 0;
 
     Ok(())
 }
 
 /// Helper function to demonstrate custom test analysis
 fn analyze_test_results(stats: &WastTestStats) {
-    println!("\n=== Test Analysis ===");
+    println!("\n=== Test Analysis ===";
 
     let total_tests = stats.passed + stats.failed;
     if total_tests == 0 {
-        println!("No tests executed");
+        println!("No tests executed";
         return;
     }
 
     let success_rate = (stats.passed as f64 / total_tests as f64) * 100.0;
 
-    println!("Execution Summary:");
+    println!("Execution Summary:";
     println!(
         "  Total directives: {}",
         stats.assert_return_count
@@ -418,51 +418,51 @@ fn analyze_test_results(stats: &WastTestStats) {
             + stats.assert_unlinkable_count
             + stats.assert_exhaustion_count
             + stats.register_count
-    );
+    ;
 
-    println!("  Test distribution:");
+    println!("  Test distribution:";
     if stats.assert_return_count > 0 {
-        println!("    Correctness tests: {}", stats.assert_return_count);
+        println!("    Correctness tests: {}", stats.assert_return_count;
     }
     if stats.assert_trap_count > 0 {
-        println!("    Trap tests: {}", stats.assert_trap_count);
+        println!("    Trap tests: {}", stats.assert_trap_count;
     }
     if stats.assert_invalid_count > 0 {
-        println!("    Validation tests: {}", stats.assert_invalid_count);
+        println!("    Validation tests: {}", stats.assert_invalid_count;
     }
     if stats.register_count > 0 {
-        println!("    Integration tests: {}", stats.register_count);
+        println!("    Integration tests: {}", stats.register_count;
     }
 
     println!(
         "  Results: {} passed, {} failed ({:.1}% success)",
         stats.passed, stats.failed, success_rate
-    );
+    ;
 
     if success_rate >= 95.0 {
-        println!("  Status: Excellent compliance ✅");
+        println!("  Status: Excellent compliance ✅";
     } else if success_rate >= 80.0 {
-        println!("  Status: Good compliance ✓");
+        println!("  Status: Good compliance ✓";
     } else if success_rate >= 60.0 {
-        println!("  Status: Needs improvement ⚠️");
+        println!("  Status: Needs improvement ⚠️";
     } else {
-        println!("  Status: Significant issues ❌");
+        println!("  Status: Significant issues ❌";
     }
 }
 
 /// Integration test that demonstrates the full workflow
 #[test]
 fn example_full_workflow() -> Result<()> {
-    println!("=== Full WAST Testing Workflow Example ===");
+    println!("=== Full WAST Testing Workflow Example ===";
 
-    let mut runner = WastTestRunner::new();
+    let mut runner = WastTestRunner::new(;
 
     // Configure resource limits
     runner.set_resource_limits(ResourceLimits {
         max_stack_depth:     1024,
         max_memory_size:     16 * 1024 * 1024, // 16MB
         max_execution_steps: 1_000_000,
-    });
+    };
 
     let comprehensive_test = r#"
         ;; Module with various functionality
@@ -500,17 +500,17 @@ fn example_full_workflow() -> Result<()> {
         (assert_trap (invoke "trap_divide" (i32.const 1) (i32.const 0)) "integer divide by zero")
     "#;
 
-    println!("Executing comprehensive WAST test suite...");
+    println!("Executing comprehensive WAST test suite...";
     let stats = runner.run_wast_content(comprehensive_test)?;
 
-    analyze_test_results(&stats);
+    analyze_test_results(&stats;
 
     // Verify expected results
     assert!(stats.assert_return_count >= 2);
     assert!(stats.assert_trap_count >= 1);
     assert!(stats.passed > 0);
 
-    println!("\n✅ Full workflow example completed successfully!");
+    println!("\n✅ Full workflow example completed successfully!";
 
     Ok(())
 }

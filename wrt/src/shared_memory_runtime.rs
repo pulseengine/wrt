@@ -169,7 +169,7 @@ impl SharedMemoryInstance {
         if !memory_type.is_shared() {
             return Err(Error::validation_error(
                 "SharedMemoryInstance requires shared memory type",
-            ));
+            ;
         }
 
         memory_type.validate()?;
@@ -216,7 +216,7 @@ impl SharedMemoryInstance {
                     align:  2,
                 }; // Assume 4-byte alignment
                 let load_op = wrt_instructions::atomic_ops::AtomicLoadOp::I32AtomicLoad { memarg };
-                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::Load(load_op);
+                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::Load(load_op;
 
                 let result = atomic_context.execute_atomic(thread_id, atomic_op)?;
                 if result.len() == 1 {
@@ -241,7 +241,7 @@ impl SharedMemoryInstance {
                 }; // Assume 4-byte alignment
                 let store_op =
                     wrt_instructions::atomic_ops::AtomicStoreOp::I32AtomicStore { memarg };
-                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::Store(store_op);
+                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::Store(store_op;
 
                 atomic_context.execute_atomic(thread_id, atomic_op)?;
                 Ok(None)
@@ -270,7 +270,7 @@ impl SharedMemoryInstance {
                     Value::I64(_) => AtomicWaitNotifyOp::MemoryAtomicWait64 { memarg },
                     _ => return Err(Error::type_error("Atomic wait expects i32 or i64 value")),
                 };
-                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(wait_op);
+                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(wait_op;
 
                 let result = atomic_context.execute_atomic(thread_id, atomic_op)?;
                 if result.len() == 1 {
@@ -294,7 +294,7 @@ impl SharedMemoryInstance {
                     align:  2,
                 };
                 let notify_op = AtomicWaitNotifyOp::MemoryAtomicNotify { memarg };
-                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(notify_op);
+                let atomic_op = wrt_instructions::atomic_ops::AtomicOp::WaitNotify(notify_op;
 
                 let result = atomic_context.execute_atomic(thread_id, atomic_op)?;
                 if result.len() == 1 {
@@ -337,7 +337,7 @@ impl SharedMemoryInstance {
         if !manager.allows_atomic_at(address) {
             return Err(Error::runtime_execution_error(
                 "Atomic operations not allowed at this address",
-            ));
+            ;
         }
 
         // Update statistics
@@ -345,7 +345,7 @@ impl SharedMemoryInstance {
             .stats
             .lock()
             .map_err(|_| Error::runtime_execution_error("Failed to acquire stats lock"))?;
-        stats.record_atomic_operation();
+        stats.record_atomic_operation(;
 
         Ok(())
     }
@@ -407,19 +407,19 @@ impl SharedMemoryContext {
             if self.memories.len() >= MAX_SHARED_MEMORIES {
                 return Err(Error::memory_error(
                     "Maximum number of shared memories reached",
-                ));
+                ;
             }
-            self.memories.insert(memory_index, memory);
+            self.memories.insert(memory_index, memory;
         }
 
         #[cfg(not(feature = "std"))]
         {
             if let Some(slot) = self.memories.iter_mut().find(|(_, mem)| mem.is_none()) {
-                slot.1 = Some(memory);
+                slot.1 = Some(memory;
             } else {
                 return Err(Error::memory_error(
                     "Maximum number of shared memories reached",
-                ));
+                ;
             }
         }
 
@@ -500,7 +500,7 @@ impl SharedMemoryProvider for ASILCompliantSharedMemoryProvider {
     ) -> Result<Option<Value>> {
         // For ASIL compliance, we use a dummy thread ID
         // In real implementation, this would come from the execution context
-        let thread_id = wrt_runtime::thread_manager::ThreadId::from_u32(1);
+        let thread_id = wrt_runtime::thread_manager::ThreadId::from_u32(1;
 
         context.execute_operation(thread_id, operation)
     }
@@ -516,7 +516,7 @@ impl SharedMemoryProvider for ASILCompliantSharedMemoryProvider {
         if addr > u32::MAX as u64 {
             return Err(Error::validation_error(
                 "Memory address exceeds 32-bit range",
-            ));
+            ;
         }
 
         Ok(())

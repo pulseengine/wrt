@@ -21,7 +21,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
-//!     let config = ContainerConfig::default();
+//!     let config = ContainerConfig::default(;
 //!     let pipeline = DaggerPipeline::new(config).await?;
 //!
 //!     // Run cargo-wrt build in container
@@ -69,9 +69,9 @@ pub struct ContainerConfig {
 
 impl Default for ContainerConfig {
     fn default() -> Self {
-        let mut environment = HashMap::new();
-        environment.insert("RUST_LOG".to_string(), "info".to_string());
-        environment.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
+        let mut environment = HashMap::new(;
+        environment.insert("RUST_LOG".to_string(), "info".to_string();
+        environment.insert("CARGO_INCREMENTAL".to_string(), "0".to_string();
 
         Self {
             base_image: "ubuntu:22.04".to_string(),
@@ -106,7 +106,7 @@ impl DaggerPipeline {
             // Falling back to local execution even with dagger feature enabled
             eprintln!(
                 "⚠️  Dagger SDK integration disabled due to API changes. Using local fallback."
-            );
+            ;
             Ok(Self { config })
         }
 
@@ -161,7 +161,7 @@ impl DaggerPipeline {
         anyhow::bail!(
             "Dagger integration is currently disabled due to API changes in dagger-sdk v0.11+. \
              Please use the local fallback mode or help update the integration."
-        );
+        ;
 
         // TODO: Implement updated Dagger SDK v0.11+ integration
         // The previous implementation was based on older API that has changed
@@ -172,19 +172,19 @@ impl DaggerPipeline {
     async fn run_local_fallback(&self, args: &[&str]) -> Result<String> {
         use std::process::Command;
 
-        eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution");
+        eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution";
 
-        let mut cmd = Command::new("cargo-wrt");
-        cmd.args(args);
+        let mut cmd = Command::new("cargo-wrt";
+        cmd.args(args;
 
         let output = cmd.output().context("Failed to execute cargo-wrt locally")?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!("cargo-wrt failed: {}", stderr);
+            let stderr = String::from_utf8_lossy(&output.stderr;
+            anyhow::bail!("cargo-wrt failed: {}", stderr;
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stdout = String::from_utf8_lossy(&output.stdout;
         Ok(stdout.to_string())
     }
 }
@@ -216,13 +216,13 @@ impl ContainerConfigBuilder {
 
     /// Add a system package
     pub fn add_package(mut self, package: &str) -> Self {
-        self.config.system_packages.push(package.to_string());
+        self.config.system_packages.push(package.to_string();
         self
     }
 
     /// Set an environment variable
     pub fn env(mut self, key: &str, value: &str) -> Self {
-        self.config.environment.insert(key.to_string(), value.to_string());
+        self.config.environment.insert(key.to_string(), value.to_string();
         self
     }
 
@@ -269,7 +269,7 @@ pub mod utils {
             .env("CI", "true")
             .env("CARGO_TERM_COLOR", "always")
             .timeout(7200) // 2 hours for CI
-            .build();
+            .build(;
 
         DaggerPipeline::new(config).await
     }
@@ -280,7 +280,7 @@ pub mod utils {
             .cache_dependencies(true)
             .env("RUST_LOG", "debug")
             .timeout(1800) // 30 minutes for dev
-            .build();
+            .build(;
 
         DaggerPipeline::new(config).await
     }
@@ -293,7 +293,7 @@ pub mod utils {
             .env("KANI_REACH_CHECKS", "1")
             .env("ASIL_LEVEL", "D")
             .timeout(10800) // 3 hours for formal verification
-            .build();
+            .build(;
 
         DaggerPipeline::new(config).await
     }
@@ -305,10 +305,10 @@ mod tests {
 
     #[test]
     fn test_container_config_default() {
-        let config = ContainerConfig::default();
-        assert_eq!(config.base_image, "ubuntu:22.04");
-        assert_eq!(config.rust_version, "1.86.0");
-        assert!(!config.system_packages.is_empty());
+        let config = ContainerConfig::default(;
+        assert_eq!(config.base_image, "ubuntu:22.04";
+        assert_eq!(config.rust_version, "1.86.0";
+        assert!(!config.system_packages.is_empty();
     }
 
     #[test]
@@ -320,28 +320,28 @@ mod tests {
             .env("DEBUG", "1")
             .work_dir("/app")
             .timeout(1200)
-            .build();
+            .build(;
 
-        assert_eq!(config.base_image, "alpine:latest");
-        assert_eq!(config.rust_version, "1.85.0");
-        assert!(config.system_packages.contains(&"git".to_string()));
-        assert_eq!(config.environment.get("DEBUG"), Some(&"1".to_string()));
-        assert_eq!(config.work_dir, "/app");
-        assert_eq!(config.timeout, 1200);
+        assert_eq!(config.base_image, "alpine:latest";
+        assert_eq!(config.rust_version, "1.85.0";
+        assert!(config.system_packages.contains(&"git".to_string());
+        assert_eq!(config.environment.get("DEBUG"), Some(&"1".to_string();
+        assert_eq!(config.work_dir, "/app";
+        assert_eq!(config.timeout, 1200;
     }
 
     #[tokio::test]
     async fn test_pipeline_creation() {
-        let config = ContainerConfig::default();
+        let config = ContainerConfig::default(;
         let result = DaggerPipeline::new(config).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok();
     }
 
     #[tokio::test]
     async fn test_utils_pipelines() {
         // These should not fail to create (even if Dagger is not available)
-        assert!(utils::ci_pipeline().await.is_ok());
-        assert!(utils::dev_pipeline().await.is_ok());
-        assert!(utils::safety_pipeline().await.is_ok());
+        assert!(utils::ci_pipeline().await.is_ok();
+        assert!(utils::dev_pipeline().await.is_ok();
+        assert!(utils::safety_pipeline().await.is_ok();
     }
 }

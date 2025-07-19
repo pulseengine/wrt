@@ -45,7 +45,7 @@ mod validation {
             module_loading::FILE_BUFFER_SIZE; // I/O buffer
             
         // This will be large due to module size, but it's bounded
-        assert!(budget < 12 * 1024 * 1024, "Module loading budget exceeds 12MB: {}MB", budget / (1024 * 1024));
+        assert!(budget < 12 * 1024 * 1024, "Module loading budget exceeds 12MB: {}MB", budget / (1024 * 1024);
     }
     
     #[test]
@@ -67,7 +67,7 @@ mod validation {
             32 * 1024;  // Logging and stats
             
         assert!(runtime_budget <= TOTAL_BUDGET,
-            "Runtime memory exceeds 512KB: {}KB", runtime_budget / 1024);
+            "Runtime memory exceeds 512KB: {}KB", runtime_budget / 1024;
     }
 }
 

@@ -10,7 +10,7 @@ fn test_add_wasm_execution() {
     use wrt_foundation::values::Value;
     
     // Load test_add.wasm binary
-    let wasm_bytes = include_bytes!("../../test_add.wasm");
+    let wasm_bytes = include_bytes!("../../test_add.wasm";
     
     // Create execution engine
     let mut engine = CapabilityAwareEngine::new(EnginePreset::QM)
@@ -30,10 +30,10 @@ fn test_add_wasm_execution() {
         .expect("Failed to execute add function");
     
     // Verify the result
-    assert_eq!(results.len(), 1, "Expected one return value");
+    assert_eq!(results.len(), 1, "Expected one return value";
     match &results[0] {
         Value::I32(result) => {
-            assert_eq!(*result, 8, "5 + 3 should equal 8");
+            assert_eq!(*result, 8, "5 + 3 should equal 8";
         }
         _ => panic!("Expected I32 result"),
     }
@@ -42,5 +42,5 @@ fn test_add_wasm_execution() {
 #[cfg(not(all(feature = "std", feature = "wrt-execution")))]
 #[test]
 fn test_add_wasm_execution() {
-    println!("Test skipped: wrt-execution feature not enabled");
+    println!("Test skipped: wrt-execution feature not enabled";
 }

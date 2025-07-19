@@ -134,7 +134,7 @@ impl CfiProtectedEngine {
     /// Create a new CFI-protected WebAssembly execution engine
     pub fn new(config: CfiConfiguration) -> Result<Self> {
         // Create underlying stackless engine
-        let stackless_engine = StacklessEngine::new();
+        let stackless_engine = StacklessEngine::new(;
 
         // Configure CFI protection based on configuration
         let protection_config = Self::build_protection_config(&config)?;
@@ -143,7 +143,7 @@ impl CfiProtectedEngine {
         let cfi_engine = wrt_runtime::CfiExecutionEngine::new_with_policy(
             protection_config.clone(),
             config.violation_policy,
-        );
+        ;
 
         // Create CFI metadata generator
         let metadata_generator =
@@ -154,7 +154,7 @@ impl CfiProtectedEngine {
                 enable_temporal_validation: config.enable_temporal_validation,
                 max_shadow_stack_depth: config.max_shadow_stack_depth,
                 landing_pad_timeout_ns: config.landing_pad_timeout_ns,
-            });
+            };
 
         Ok(Self {
             stackless_engine,
@@ -172,7 +172,7 @@ impl CfiProtectedEngine {
 
     /// Load and prepare a WebAssembly module with CFI protection
     pub fn load_module_with_cfi(&mut self, binary: &[u8]) -> Result<CfiProtectedModule> {
-        let start_time = self.get_timestamp();
+        let start_time = self.get_timestamp(;
 
         // Load the module using standard WRT functionality
         let module = load_module_from_binary(binary)?;
@@ -187,13 +187,13 @@ impl CfiProtectedEngine {
             .functions
             .iter()
             .map(|f| f.indirect_call_sites.len() as u64)
-            .sum::<u64>();
+            .sum::<u64>(;
         self.execution_stats.metadata_stats.return_sites +=
-            cfi_metadata.functions.iter().map(|f| f.return_sites.len() as u64).sum::<u64>();
+            cfi_metadata.functions.iter().map(|f| f.return_sites.len() as u64).sum::<u64>(;
 
-        let end_time = self.get_timestamp();
+        let end_time = self.get_timestamp(;
         self.execution_stats.metadata_stats.generation_time_ns +=
-            end_time.saturating_sub(start_time);
+            end_time.saturating_sub(start_time;
 
         Ok(CfiProtectedModule {
             module,
@@ -208,10 +208,10 @@ impl CfiProtectedEngine {
         protected_module: &CfiProtectedModule,
         function_name: &str,
     ) -> Result<CfiExecutionResult> {
-        let start_time = self.get_timestamp();
+        let start_time = self.get_timestamp(;
 
         // Create execution context
-        let mut execution_context = wrt_runtime::ExecutionContext::new(1024);
+        let mut execution_context = wrt_runtime::ExecutionContext::new(1024;
 
         // Find the function to execute
         let function_index = self.find_function_index(&protected_module.module, function_name)?;
@@ -224,8 +224,8 @@ impl CfiProtectedEngine {
         )?;
 
         // Update execution metrics
-        let end_time = self.get_timestamp();
-        let execution_time = end_time.saturating_sub(start_time);
+        let end_time = self.get_timestamp(;
+        let execution_time = end_time.saturating_sub(start_time;
 
         self.execution_stats.execution_metrics.modules_executed += 1;
         self.execution_stats.execution_metrics.total_execution_time_ns += execution_time;
@@ -265,7 +265,7 @@ impl CfiProtectedEngine {
         self.setup_function_cfi_protection(function_metadata)?;
 
         // Execute instructions with CFI protection using bounded collections
-        let mut instruction_results = new_loaded_module_vec();
+        let mut instruction_results = new_loaded_module_vec(;
         let function = &protected_module.module.functions[function_index as usize];
 
         for instruction in &function.instructions {
@@ -325,7 +325,7 @@ impl CfiProtectedEngine {
         for export in &module.exports {
             if export.name == function_name {
                 if let ExportKind::Func = export.kind {
-                    return Ok(export.index);
+                    return Ok(export.index;
                 }
             }
         }
@@ -350,7 +350,7 @@ impl CfiProtectedEngine {
     fn build_protection_config(
         config: &CfiConfiguration,
     ) -> Result<wrt_instructions::CfiControlFlowProtection> {
-        let mut protection = wrt_instructions::CfiControlFlowProtection::default();
+        let mut protection = wrt_instructions::CfiControlFlowProtection::default(;
 
         // Configure hardware features based on auto-detection and explicit settings
         if config.hardware_features.auto_detect {
@@ -369,24 +369,24 @@ impl CfiProtectedEngine {
 
     /// Detect available hardware CFI features
     fn detect_hardware_features() -> Result<wrt_instructions::CfiHardwareConfig> {
-        let mut config = wrt_instructions::CfiHardwareConfig::default();
+        let mut config = wrt_instructions::CfiHardwareConfig::default(;
 
         // Detect ARM BTI
         #[cfg(target_arch = "aarch64")]
         {
-            config.arm_bti = wrt_platform::BranchTargetIdentification::is_available();
+            config.arm_bti = wrt_platform::BranchTargetIdentification::is_available(;
         }
 
         // Detect RISC-V CFI
         #[cfg(target_arch = "riscv64")]
         {
-            config.riscv_cfi = wrt_platform::ControlFlowIntegrity::is_available();
+            config.riscv_cfi = wrt_platform::ControlFlowIntegrity::is_available(;
         }
 
         // Detect x86 CET
         #[cfg(target_arch = "x86_64")]
         {
-            config.x86_cet = Self::detect_x86_cet();
+            config.x86_cet = Self::detect_x86_cet(;
         }
 
         Ok(config)
@@ -422,7 +422,7 @@ impl CfiProtectedEngine {
         {
             let mut cntvct: u64;
             unsafe {
-                core::arch::asm!("mrs {}, cntvct_el0", out(reg) cntvct);
+                core::arch::asm!("mrs {}, cntvct_el0", out(reg) cntvct;
             }
             cntvct
         }
@@ -430,7 +430,7 @@ impl CfiProtectedEngine {
         {
             let mut time: u64;
             unsafe {
-                core::arch::asm!("rdtime {}", out(reg) time);
+                core::arch::asm!("rdtime {}", out(reg) time;
             }
             time
         }
@@ -448,7 +448,7 @@ impl CfiProtectedEngine {
 
     /// Reset all CFI statistics
     pub fn reset_statistics(&mut self) {
-        self.execution_stats = CfiEngineStatistics::default();
+        self.execution_stats = CfiEngineStatistics::default(;
     }
 }
 
@@ -512,32 +512,32 @@ mod tests {
 
     #[test]
     fn test_cfi_configuration_default() {
-        let config = CfiConfiguration::default();
+        let config = CfiConfiguration::default(;
         assert_eq!(
             config.protection_level,
             wrt_instructions::CfiProtectionLevel::Hybrid
-        );
-        assert_eq!(config.max_shadow_stack_depth, 1024);
+        ;
+        assert_eq!(config.max_shadow_stack_depth, 1024;
         assert!(config.hardware_features.auto_detect);
     }
 
     #[test]
     fn test_cfi_engine_creation() {
-        let config = CfiConfiguration::default();
-        let result = CfiProtectedEngine::new(config);
-        assert!(result.is_ok());
+        let config = CfiConfiguration::default(;
+        let result = CfiProtectedEngine::new(config;
+        assert!(result.is_ok();
     }
 
     #[test]
     fn test_hardware_feature_detection() {
-        let config = CfiProtectedEngine::detect_hardware_features();
-        assert!(config.is_ok());
+        let config = CfiProtectedEngine::detect_hardware_features(;
+        assert!(config.is_ok();
     }
 
     #[test]
     fn test_cfi_statistics_default() {
-        let stats = CfiEngineStatistics::default();
-        assert_eq!(stats.execution_metrics.modules_executed, 0);
-        assert_eq!(stats.metadata_stats.functions_analyzed, 0);
+        let stats = CfiEngineStatistics::default(;
+        assert_eq!(stats.execution_metrics.modules_executed, 0;
+        assert_eq!(stats.metadata_stats.functions_analyzed, 0;
     }
 }

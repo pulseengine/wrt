@@ -39,7 +39,7 @@ pub fn load_module(binary: &[u8]) -> Result<Module> {
     
     // Ensure this is a core module
     if !wasm_info.is_core_module() {
-        return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module"));
+        return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module";
     }
     
     // Create module using runtime's load_from_binary which now uses unified API
@@ -76,7 +76,7 @@ pub fn decode_and_validate(binary: &[u8]) -> Result<()> {
             if let Some((min, max)) = module_info.memory_pages {
                 if let Some(max_pages) = max {
                     if min > max_pages {
-                        return Err(Error::validation_error("Memory minimum exceeds maximum"));
+                        return Err(Error::validation_error("Memory minimum exceeds maximum";
                     }
                 }
             }
@@ -108,11 +108,11 @@ mod tests {
         let binary = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
         // Load and validate the module
-        let result = decode_and_validate(&binary);
-        assert!(result.is_ok());
+        let result = decode_and_validate(&binary;
+        assert!(result.is_ok();
 
         // Load the module into the runtime
-        let result = load_module(&binary);
-        assert!(result.is_ok());
+        let result = load_module(&binary;
+        assert!(result.is_ok();
     }
 }

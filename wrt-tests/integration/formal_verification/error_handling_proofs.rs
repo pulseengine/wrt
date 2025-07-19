@@ -48,11 +48,11 @@ use wrt_foundation::{
 #[cfg(kani)]
 pub fn verify_asil_error_classification() {
     // Generate arbitrary error conditions
-    let error_code: u8 = kani::any();
-    let asil_level: u8 = kani::any();
+    let error_code: u8 = kani::any(;
+    let asil_level: u8 = kani::any(;
     
     // Constrain to valid ASIL levels (0-4: QM, ASIL-A, ASIL-B, ASIL-C, ASIL-D)
-    kani::assume(asil_level <= 4);
+    kani::assume(asil_level <= 4;
     
     // Create error with specific ASIL level
     let asil = match asil_level {
@@ -75,29 +75,29 @@ pub fn verify_asil_error_classification() {
     };
     
     // Verify error classification properties
-    assert_eq!(error.asil_level(), asil);
+    assert_eq!(error.asil_level(), asil;
     
     // Verify safety-critical errors are properly flagged
     match asil {
         AsilLevel::AsilC | AsilLevel::AsilD => {
-            assert!(error.is_safety_critical());
+            assert!(error.is_safety_critical();
         }
         AsilLevel::AsilA | AsilLevel::AsilB => {
             // These may or may not be safety-critical depending on context
             // The classification should be consistent with the level
         }
         AsilLevel::QM => {
-            assert!(!error.is_safety_critical());
+            assert!(!error.is_safety_critical();
         }
     }
     
     // Verify error serialization preserves classification
     let error_string = error.to_string();
-    assert!(!error_string.is_empty());
+    assert!(!error_string.is_empty();
     
     // Verify error chaining preserves highest ASIL level
     let chain_error = Error::system_error("Chained error", AsilLevel::QM)
-        .with_source(error.clone());
+        .with_source(error.clone();
     
     // Chained error should inherit the higher ASIL level
     if asil as u8 > AsilLevel::QM as u8 {
@@ -112,13 +112,13 @@ pub fn verify_asil_error_classification() {
 #[cfg(kani)]
 pub fn verify_error_propagation() {
     // Simulate a memory allocation that might fail
-    let allocation_size: usize = kani::any();
-    kani::assume(allocation_size > 0);
+    let allocation_size: usize = kani::any(;
+    kani::assume(allocation_size > 0;
     kani::assume(allocation_size <= 1024 * 1024); // 1MB max
     
     // Generate arbitrary crate ID (use safe match instead of transmute)
-    let crate_id_val: u8 = kani::any();
-    kani::assume(crate_id_val < 19);
+    let crate_id_val: u8 = kani::any(;
+    kani::assume(crate_id_val < 19;
     let crate_id = match crate_id_val % 19 {
         0 => CrateId::Foundation,
         1 => CrateId::Component,
@@ -167,7 +167,7 @@ pub fn verify_error_propagation() {
             // The system should remain in a safe state after allocation failure
             
             // Test that we can still perform other operations
-            let small_alloc = safe_managed_alloc!(128, CrateId::Foundation);
+            let small_alloc = safe_managed_alloc!(128, CrateId::Foundation;
             // This might succeed or fail, but shouldn't panic or corrupt state
             match small_alloc {
                 Ok(_) | Err(_) => {
@@ -185,8 +185,8 @@ pub fn verify_error_propagation() {
 #[cfg(kani)]
 pub fn verify_graceful_degradation() {
     // Simulate various error conditions that should trigger graceful degradation
-    let failure_mode: u8 = kani::any();
-    kani::assume(failure_mode < 4);
+    let failure_mode: u8 = kani::any(;
+    kani::assume(failure_mode < 4;
     
     match failure_mode {
         0 => {
@@ -209,7 +209,7 @@ pub fn verify_graceful_degradation() {
                         assert!(err.asil_level() as u8 >= AsilLevel::AsilA as u8);
                         
                         // System should still function with reduced capacity
-                        let minimal_alloc = safe_managed_alloc!(64, CrateId::Foundation);
+                        let minimal_alloc = safe_managed_alloc!(64, CrateId::Foundation;
                         match minimal_alloc {
                             Ok(_) | Err(_) => {
                                 // Either outcome is acceptable for minimal allocation
@@ -230,7 +230,7 @@ pub fn verify_graceful_degradation() {
                 }
                 Err(capability_error) => {
                     // Capability error - verify proper handling
-                    assert!(capability_error.is_recoverable() || capability_error.is_safety_critical());
+                    assert!(capability_error.is_recoverable() || capability_error.is_safety_critical();
                 }
             }
         }
@@ -246,7 +246,7 @@ pub fn verify_graceful_degradation() {
                     assert!(budget_error.asil_level() as u8 >= AsilLevel::AsilA as u8);
                     
                     // Verify we can still do smaller allocations
-                    let fallback = safe_managed_alloc!(256, CrateId::Foundation);
+                    let fallback = safe_managed_alloc!(256, CrateId::Foundation;
                     match fallback {
                         Ok(_) | Err(_) => {
                             // System remains functional for smaller requests
@@ -258,13 +258,13 @@ pub fn verify_graceful_degradation() {
         _ => {
             // System-level error scenario
             // Simulate cascading error handling
-            let primary_error = Error::system_error("Primary failure", AsilLevel::AsilB);
+            let primary_error = Error::system_error("Primary failure", AsilLevel::AsilB;
             let secondary_error = Error::runtime_execution_error("Secondary failure", AsilLevel::AsilA)
-                .with_source(primary_error);
+                .with_source(primary_error;
             
             // Verify error chaining preserves safety information
             assert!(secondary_error.asil_level() as u8 >= AsilLevel::AsilB as u8);
-            assert!(secondary_error.source().is_some());
+            assert!(secondary_error.source().is_some();
         }
     }
 }
@@ -276,8 +276,8 @@ pub fn verify_graceful_degradation() {
 #[cfg(kani)]
 pub fn verify_error_recovery() {
     // Test recovery from various error conditions
-    let recovery_scenario: u8 = kani::any();
-    kani::assume(recovery_scenario < 3);
+    let recovery_scenario: u8 = kani::any(;
+    kani::assume(recovery_scenario < 3;
     
     match recovery_scenario {
         0 => {
@@ -305,7 +305,7 @@ pub fn verify_error_recovery() {
             }
             
             // Verify system remains functional after retry loop
-            let final_test = safe_managed_alloc!(128, CrateId::Foundation);
+            let final_test = safe_managed_alloc!(128, CrateId::Foundation;
             match final_test {
                 Ok(_) | Err(_) => {
                     // System should remain stable regardless of outcome
@@ -315,13 +315,13 @@ pub fn verify_error_recovery() {
         1 => {
             // Capability refresh scenario
             // Simulate capability token refresh after expiration
-            let initial_allocation = safe_managed_alloc!(1024, CrateId::Runtime);
+            let initial_allocation = safe_managed_alloc!(1024, CrateId::Runtime;
             
             match initial_allocation {
                 Ok(_) => {
                     // Initial allocation succeeded
                     // Test that subsequent allocations also work
-                    let followup = safe_managed_alloc!(512, CrateId::Runtime);
+                    let followup = safe_managed_alloc!(512, CrateId::Runtime;
                     match followup {
                         Ok(_) | Err(_) => {
                             // Either outcome is acceptable
@@ -331,7 +331,7 @@ pub fn verify_error_recovery() {
                 Err(_) => {
                     // Initial allocation failed
                     // Test recovery with different parameters
-                    let recovery_allocation = safe_managed_alloc!(256, CrateId::Foundation);
+                    let recovery_allocation = safe_managed_alloc!(256, CrateId::Foundation;
                     match recovery_allocation {
                         Ok(_) | Err(_) => {
                             // Recovery attempt completed
@@ -343,12 +343,12 @@ pub fn verify_error_recovery() {
         _ => {
             // Resource cleanup and retry scenario
             // Simulate cleanup of failed resources
-            let resource_alloc = safe_managed_alloc!(4096, CrateId::Component);
+            let resource_alloc = safe_managed_alloc!(4096, CrateId::Component;
             
             match resource_alloc {
                 Ok(provider) => {
                     // Resource allocated successfully
-                    let vec_result = BoundedVec::<u32, 128, _>::new(provider);
+                    let vec_result = BoundedVec::<u32, 128, _>::new(provider;
                     
                     match vec_result {
                         Ok(_vec) => {
@@ -359,7 +359,7 @@ pub fn verify_error_recovery() {
                             // Resource creation failed
                             // Cleanup is automatic via RAII
                             // Test that we can try again
-                            let retry_alloc = safe_managed_alloc!(1024, CrateId::Foundation);
+                            let retry_alloc = safe_managed_alloc!(1024, CrateId::Foundation;
                             match retry_alloc {
                                 Ok(_) | Err(_) => {
                                     // Retry completed
@@ -392,21 +392,21 @@ pub fn verify_error_recovery() {
 pub fn register_tests(registry: &TestRegistry) -> TestResult {
     registry.register_test("error_classification_basic", || {
         // Basic error classification test
-        let error = Error::memory_allocation_error("Test error", AsilLevel::AsilA);
-        assert_eq!(error.asil_level(), AsilLevel::AsilA);
-        assert!(!error.is_safety_critical()); // ASIL-A is not safety-critical
+        let error = Error::memory_allocation_error("Test error", AsilLevel::AsilA;
+        assert_eq!(error.asil_level(), AsilLevel::AsilA;
+        assert!(!error.is_safety_critical())); // ASIL-A is not safety-critical
         
         Ok(())
     })?;
     
     registry.register_test("error_propagation_basic", || {
         // Basic error propagation test
-        let primary = Error::system_error("Primary", AsilLevel::AsilB);
+        let primary = Error::system_error("Primary", AsilLevel::AsilB;
         let secondary = Error::runtime_execution_error("Secondary", AsilLevel::AsilA)
-            .with_source(primary);
+            .with_source(primary;
         
         assert!(secondary.asil_level() as u8 >= AsilLevel::AsilB as u8);
-        assert!(secondary.source().is_some());
+        assert!(secondary.source().is_some();
         
         Ok(())
     })?;
@@ -415,7 +415,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
         // Basic graceful degradation test
         // Test that allocation failures don't crash the system
         for _ in 0..5 {
-            let result = safe_managed_alloc!(1024, CrateId::Foundation);
+            let result = safe_managed_alloc!(1024, CrateId::Foundation;
             match result {
                 Ok(_) | Err(_) => {
                     // Either outcome should be handled gracefully
@@ -438,7 +438,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
         }
         
         // At least some operations should succeed (or all fail gracefully)
-        assert!(success_count >= 0); // Always true, but demonstrates recovery testing
+        assert!(success_count >= 0)); // Always true, but demonstrates recovery testing
         
         Ok(())
     })?;
@@ -461,38 +461,38 @@ pub fn property_count() -> usize {
 /// all formal verification proofs for error handling properties.
 #[cfg(kani)]
 pub fn run_all_proofs() {
-    verify_asil_error_classification();
-    verify_error_propagation();
-    verify_graceful_degradation();
-    verify_error_recovery();
+    verify_asil_error_classification(;
+    verify_error_propagation(;
+    verify_graceful_degradation(;
+    verify_error_recovery(;
 }
 
 /// KANI harness for ASIL error classification verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_asil_error_classification() {
-    verify_asil_error_classification();
+    verify_asil_error_classification(;
 }
 
 /// KANI harness for error propagation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_error_propagation() {
-    verify_error_propagation();
+    verify_error_propagation(;
 }
 
 /// KANI harness for graceful degradation verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_graceful_degradation() {
-    verify_graceful_degradation();
+    verify_graceful_degradation(;
 }
 
 /// KANI harness for error recovery verification
 #[cfg(kani)]
 #[kani::proof]
 fn kani_verify_error_recovery() {
-    verify_error_recovery();
+    verify_error_recovery(;
 }
 
 #[cfg(test)]
@@ -501,25 +501,25 @@ mod tests {
     
     #[test]
     fn test_error_handling_verification() {
-        let registry = TestRegistry::global();
-        let result = register_tests(registry);
-        assert!(result.is_ok());
-        assert_eq!(property_count(), 4);
+        let registry = TestRegistry::global(;
+        let result = register_tests(registry;
+        assert!(result.is_ok();
+        assert_eq!(property_count(), 4;
     }
     
     #[test]
     fn test_error_classification() {
-        let error = Error::memory_allocation_error("Test", AsilLevel::AsilA);
-        assert_eq!(error.asil_level(), AsilLevel::AsilA);
+        let error = Error::memory_allocation_error("Test", AsilLevel::AsilA;
+        assert_eq!(error.asil_level(), AsilLevel::AsilA;
     }
     
     #[test]
     fn test_error_chaining() {
-        let root = Error::system_error("Root cause", AsilLevel::AsilB);
+        let root = Error::system_error("Root cause", AsilLevel::AsilB;
         let chained = Error::runtime_execution_error("Surface error", AsilLevel::AsilA)
-            .with_source(root);
+            .with_source(root;
         
-        assert!(chained.source().is_some());
+        assert!(chained.source().is_some();
         assert!(chained.asil_level() as u8 >= AsilLevel::AsilB as u8);
     }
 }
