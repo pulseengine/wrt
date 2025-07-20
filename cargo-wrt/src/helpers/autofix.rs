@@ -31,18 +31,18 @@ impl AutoFixManager {
     /// Apply auto-fixes to a collection of diagnostics
     #[must_use]
     pub fn apply_fixes(&self, diagnostics: &DiagnosticCollection) -> Result<AutoFixResult> {
-        let mut result = AutoFixResult::default);
+        let mut result = AutoFixResult::default();
 
         for diagnostic in &diagnostics.diagnostics {
             if let Some(fix) = self.get_fix_for_diagnostic(diagnostic) {
                 match self.apply_fix(&fix) {
                     Ok(()) => {
                         result.successful_fixes += 1;
-                        self.output.success(&format!("Fixed: {}", fix.description;
+                        self.output.success(&format!("Fixed: {}", fix.description));
                     },
                     Err(e) => {
                         result.failed_fixes += 1;
-                        self.output.warning(&format!("Failed to fix {}: {}", fix.description, e;
+                        self.output.warning(&format!("Failed to fix {}: {}", fix.description, e));
                     },
                 }
             }
@@ -93,7 +93,7 @@ impl AutoFixManager {
     /// Apply a specific fix
     fn apply_fix(&self, fix: &AutoFix) -> Result<()> {
         if self.dry_run {
-            self.output.info(&format!("[DRY RUN] Would apply: {}", fix.description;
+            self.output.info(&format!("[DRY RUN] Would apply: {}", fix.description));
             return Ok();
         }
 
@@ -114,7 +114,7 @@ impl AutoFixManager {
             .context("Failed to run rustfmt")?;
 
         if !status.success() {
-            return Err(anyhow::anyhow!("rustfmt failed";
+            return Err(anyhow::anyhow!("rustfmt failed"));
         }
 
         Ok(())
@@ -127,7 +127,7 @@ impl AutoFixManager {
         self.output.info(&format!(
             "Documentation fix for {} requires manual intervention",
             file
-        ;
+        ));
         Ok(())
     }
 
@@ -140,7 +140,7 @@ impl AutoFixManager {
             .context("Failed to run cargo fix")?;
 
         if !status.success() {
-            return Err(anyhow::anyhow!("cargo fix failed";
+            return Err(anyhow::anyhow!("cargo fix failed"));
         }
 
         Ok(())
@@ -155,7 +155,7 @@ impl AutoFixManager {
             .context("Failed to run cargo clippy --fix")?;
 
         if !status.success() {
-            return Err(anyhow::anyhow!("cargo clippy --fix failed";
+            return Err(anyhow::anyhow!("cargo clippy --fix failed"));
         }
 
         Ok(())
@@ -207,10 +207,10 @@ pub async fn apply_project_fixes(
     output: &OutputManager,
     dry_run: bool,
 ) -> Result<()> {
-    output.header("Applying project-wide fixes";
+    output.header("Applying project-wide fixes");
 
     // Format all Rust files
-    output.progress("Running rustfmt on all files...";
+    output.progress("Running rustfmt on all files...");
     if !dry_run {
         let status = std::process::Command::new("cargo")
             .arg("fmt")
@@ -219,16 +219,16 @@ pub async fn apply_project_fixes(
             .context("Failed to run cargo fmt")?;
 
         if status.success() {
-            output.success("Code formatting completed";
+            output.success("Code formatting completed");
         } else {
-            output.warning("Some files could not be formatted";
+            output.warning("Some files could not be formatted");
         }
     } else {
-        output.info("[DRY RUN] Would run: cargo fmt";
+        output.info("[DRY RUN] Would run: cargo fmt");
     }
 
     // Fix common clippy warnings
-    output.progress("Applying clippy suggestions...";
+    output.progress("Applying clippy suggestions...");
     if !dry_run {
         let status = std::process::Command::new("cargo")
             .args(&["clippy", "--fix", "--allow-dirty", "--all-targets"])
@@ -237,16 +237,16 @@ pub async fn apply_project_fixes(
             .context("Failed to run cargo clippy --fix")?;
 
         if status.success() {
-            output.success("Clippy fixes applied";
+            output.success("Clippy fixes applied");
         } else {
-            output.warning("Some clippy fixes could not be applied";
+            output.warning("Some clippy fixes could not be applied");
         }
     } else {
-        output.info("[DRY RUN] Would run: cargo clippy --fix";
+        output.info("[DRY RUN] Would run: cargo clippy --fix");
     }
 
     // Update dependencies
-    output.progress("Checking for outdated dependencies...";
+    output.progress("Checking for outdated dependencies...");
     if !dry_run {
         // Check if cargo-outdated is installed
         if which::which("cargo-outdated").is_ok() {
@@ -257,11 +257,11 @@ pub async fn apply_project_fixes(
                 .context("Failed to run cargo outdated")?;
 
             if !output_str.stdout.is_empty() {
-                output.info("Outdated dependencies found. Run 'cargo update' to update.";
+                output.info("Outdated dependencies found. Run 'cargo update' to update.");
             }
         }
     } else {
-        output.info("[DRY RUN] Would check: cargo outdated";
+        output.info("[DRY RUN] Would check: cargo outdated");
     }
 
     Ok(())

@@ -1324,7 +1324,7 @@ async fn main() -> Result<()> {
                 *fmt_check,
                 &mut global,
             )
-            .await
+            .await?
         },
         Commands::Test {
             package,
@@ -1347,7 +1347,7 @@ async fn main() -> Result<()> {
                 &cli,
                 &mut global,
             )
-            .await
+            .await?
         },
         Commands::TestAsil {
             asil,
@@ -1362,14 +1362,14 @@ async fn main() -> Result<()> {
                 *no_std_only,
                 &mut global,
             )
-            .await
+            .await?
         },
         Commands::TestNoStd {
             filter,
             test_threads,
-        } => cmd_test_no_std(filter.clone(), *test_threads, &mut global).await,
+        } => cmd_test_no_std(filter.clone(), *test_threads, &mut global).await?,
         Commands::TestConfig { output, example } => {
-            cmd_test_config(output.clone(), *example, &mut global).await
+            cmd_test_config(output.clone(), *example, &mut global).await?
         },
         Commands::Verify {
             asil,
@@ -1391,7 +1391,7 @@ async fn main() -> Result<()> {
                 &cli,
                 &mut global,
             )
-            .await
+            .await?
         },
         Commands::Docs {
             open,
@@ -1406,37 +1406,37 @@ async fn main() -> Result<()> {
                 output_dir.clone(),
                 multi_version.clone(),
             )
-            .await
+            .await?
         },
         Commands::Coverage {
             html,
             open,
             format,
             best_effort,
-        } => cmd_coverage(&build_system, *html, *open, format.clone(), *best_effort).await,
+        } => cmd_coverage(&build_system, *html, *open, format.clone(), *best_effort).await?,
         Commands::Check { strict, fix } => {
-            cmd_check(&build_system, *strict, *fix, &mut global).await
+            cmd_check(&build_system, *strict, *fix, &mut global).await?
         },
         Commands::NoStd {
             continue_on_error,
             detailed,
-        } => cmd_no_std(&build_system, *continue_on_error, *detailed, &global.output).await,
+        } => cmd_no_std(&build_system, *continue_on_error, *detailed, &global.output).await?,
         Commands::Wrtd {
             variant,
             test,
             cross,
-        } => cmd_wrtd(&build_system, *variant, *test, *cross).await,
-        Commands::Ci { fail_fast, json } => cmd_ci(&build_system, *fail_fast, *json).await,
-        Commands::Clean { all } => cmd_clean(&build_system, *all, &mut global).await,
+        } => cmd_wrtd(&build_system, *variant, *test, *cross).await?,
+        Commands::Ci { fail_fast, json } => cmd_ci(&build_system, *fail_fast, *json).await?,
+        Commands::Clean { all } => cmd_clean(&build_system, *all, &mut global).await?,
         Commands::VerifyMatrix {
             report,
             output_dir,
             verbose,
-        } => cmd_verify_matrix(&build_system, *report, output_dir.clone(), *verbose).await,
+        } => cmd_verify_matrix(&build_system, *report, output_dir.clone(), *verbose).await?,
         Commands::SimulateCi {
             verbose,
             output_dir,
-        } => cmd_simulate_ci(&build_system, *verbose, output_dir.clone()).await,
+        } => cmd_simulate_ci(&build_system, *verbose, output_dir.clone()).await?,
         Commands::KaniVerify {
             asil_profile,
             package,
@@ -1452,7 +1452,7 @@ async fn main() -> Result<()> {
                 *verbose,
                 extra_args.clone(),
             )
-            .await
+            .await?
         },
         Commands::Validate {
             check_test_files,
@@ -1469,16 +1469,16 @@ async fn main() -> Result<()> {
                 *all,
                 *verbose,
             )
-            .await
+            .await?
         },
         Commands::Setup {
             hooks,
             all,
             check,
             install,
-        } => cmd_setup(&build_system, *hooks, *all, *check, *install).await,
+        } => cmd_setup(&build_system, *hooks, *all, *check, *install).await?,
         Commands::ToolVersions { command } => {
-            cmd_tool_versions(&build_system, command.clone()).await
+            cmd_tool_versions(&build_system, command.clone()).await?
         },
         Commands::Fuzz {
             target,
@@ -1497,7 +1497,7 @@ async fn main() -> Result<()> {
                 *list,
                 package.clone(),
             )
-            .await
+            .await?
         },
         Commands::TestFeatures {
             package,
@@ -1512,7 +1512,7 @@ async fn main() -> Result<()> {
                 *groups,
                 *verbose,
             )
-            .await
+            .await?
         },
         Commands::Testsuite {
             extract,
@@ -1540,7 +1540,7 @@ async fn main() -> Result<()> {
                 *test_timeout_ms,
                 &mut global,
             )
-            .await
+            .await?
         },
         Commands::Requirements { command } => {
             cmd_requirements(
@@ -1550,7 +1550,7 @@ async fn main() -> Result<()> {
                 should_use_colors(&global.output_format),
                 &cli,
             )
-            .await
+            .await?
         },
         Commands::Wasm { command } => {
             cmd_wasm(
@@ -1560,7 +1560,7 @@ async fn main() -> Result<()> {
                 should_use_colors(&global.output_format),
                 &cli,
             )
-            .await
+            .await?
         },
         Commands::Safety { command } => {
             cmd_safety(
@@ -1570,7 +1570,7 @@ async fn main() -> Result<()> {
                 should_use_colors(&global.output_format),
                 &cli,
             )
-            .await
+            .await?
         },
         Commands::EmbedLimits {
             wasm_file,
@@ -3317,11 +3317,11 @@ async fn cmd_requirements(
 
             if enhanced {
                 // Use enhanced SCORE verification
-                let mut verifier = EnhancedRequirementsVerifier::new(workspace_root.to_path_buf();
+                let mut verifier = EnhancedRequirementsVerifier::new(workspace_root.to_path_buf());
                 verifier.load_requirements(&req_path)?;
                 verifier.verify_all()?;
 
-                let registry = verifier.registry);
+                let registry = verifier.registry();
                 let report = registry.generate_compliance_report();
 
                 match output_format {
@@ -3679,7 +3679,7 @@ async fn cmd_wasm(
             let wasm_path = workspace_root.join(&file);
 
             if !wasm_path.exists() {
-                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display();
+                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display());
             }
 
             let verifier = WasmVerifier::new(&wasm_path);
@@ -3725,7 +3725,7 @@ async fn cmd_wasm(
             let wasm_path = workspace_root.join(&file);
 
             if !wasm_path.exists() {
-                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display();
+                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display());
             }
 
             let verifier = WasmVerifier::new(&wasm_path);
@@ -3783,7 +3783,7 @@ async fn cmd_wasm(
             let wasm_path = workspace_root.join(&file);
 
             if !wasm_path.exists() {
-                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display();
+                anyhow::bail!("WebAssembly module not found: {}", wasm_path.display());
             }
 
             let verifier = WasmVerifier::new(&wasm_path);
@@ -4454,7 +4454,7 @@ async fn cmd_safety(
                 "  Function Coverage: {:.1}%",
                 coverage_data.function_coverage
             );
-            println!("  Overall: {:.1}%", coverage_data.overall_coverage();
+            println!("  Overall: {:.1}%", coverage_data.overall_coverage());
 
             Ok(())
         },
@@ -4553,7 +4553,7 @@ async fn cmd_safety(
                 "{} Creating SCORE methodology demonstration in {}",
                 "🎯".bright_blue(),
                 demo_path.display()
-            ;
+            );
 
             if interactive {
                 println!("🔄 Interactive demo mode not yet implemented");
@@ -4563,7 +4563,7 @@ async fn cmd_safety(
                 println!("🏆 Certification workflow demo not yet implemented");
             }
 
-            println!("{} SCORE demo setup complete", "✅".bright_green();
+            println!("{} SCORE demo setup complete", "✅".bright_green());
             Ok(())
         },
 
@@ -4580,10 +4580,10 @@ async fn cmd_safety(
                 Requirements,
             };
 
-            let mut framework = DocumentationVerificationFramework::new(workspace_root.clone();
+            let mut framework = DocumentationVerificationFramework::new(workspace_root.clone());
 
             // Configure the framework based on options
-            let mut config = DocumentationVerificationConfig::default);
+            let mut config = DocumentationVerificationConfig::default();
             config.enable_api_documentation_check = check_api;
             framework = framework.with_config(config);
 
@@ -4636,7 +4636,7 @@ async fn cmd_safety(
                         );
 
                         if !result.violations.is_empty() {
-                            println!("\n{} Documentation Violations:", "⚠️ ".bright_yellow();
+                            println!("\n{} Documentation Violations:", "⚠️ ".bright_yellow());
                             for violation in &result.violations {
                                 println!(
                                     "  • {} ({}): {}",
@@ -4664,7 +4664,7 @@ async fn cmd_safety(
                 Requirements,
             };
 
-            let mut framework = DocumentationVerificationFramework::new(workspace_root.clone();
+            let mut framework = DocumentationVerificationFramework::new(workspace_root.clone());
 
             // Load requirements
             let requirements_path = workspace_root.join(&requirements);
@@ -4677,7 +4677,7 @@ async fn cmd_safety(
             }
 
             // Generate comprehensive documentation report
-            let (doc_report, diagnostics) = framework.generate_report);
+            let (doc_report, diagnostics) = framework.generate_report();
 
             // Format output based on requested format
             let report_content = match format.as_str() {
@@ -4797,9 +4797,9 @@ async fn cmd_safety(
                             wrt_build_core::config::AsilLevel::B => 2,
                             wrt_build_core::config::AsilLevel::C => 3,
                             wrt_build_core::config::AsilLevel::D => 4,
-                        };
+                        });
                         for (asil, compliance) in sorted_asil {
-                            content.push_str(&format!("  {}: {:.1}%\n", asil, compliance);
+                            content.push_str(&format!("  {}: {:.1}%\n", asil, compliance));
                         }
                         content.push('\n');
                     }
@@ -4998,7 +4998,7 @@ For command-specific help: cargo-wrt <command> --help
         "•".bright_green(),
         "•".bright_green(),
         "🔗".bright_cyan()
-    ;
+    );
 }
 
 /// Generate a markdown report for WAST test results
@@ -5007,59 +5007,59 @@ fn generate_markdown_report(
     results: &[wrt_build_core::wast::WastFileResult],
     total_time: std::time::Duration,
 ) -> String {
-    let mut report = String::new);
+    let mut report = String::new();
 
     report.push_str("# WAST Test Suite Report\n\n");
     report.push_str(&format!(
         "Generated on: {}\n\n",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()
-    );
+    ));
 
     // Summary
     report.push_str("## Summary\n\n");
     report.push_str(&format!(
         "- **Files processed**: {}\n",
         runner.stats.files_processed
-    );
+    ));
     report.push_str(&format!(
         "- **Total assertions**: {} passed, {} failed, {} skipped\n",
         runner.stats.passed, runner.stats.failed, runner.stats.skipped
-    );
+    ));
     report.push_str(&format!(
         "- **Execution time**: {:.2}s\n",
         total_time.as_secs_f64()
-    );
+    ));
 
     // Test type breakdown
     report.push_str("\n## Test Type Breakdown\n\n");
     report.push_str(&format!(
         "- **assert_return**: {}\n",
         runner.stats.assert_return_count
-    );
+    ));
     report.push_str(&format!(
         "- **assert_trap**: {}\n",
         runner.stats.assert_trap_count
-    );
+    ));
     report.push_str(&format!(
         "- **assert_invalid**: {}\n",
         runner.stats.assert_invalid_count
-    );
+    ));
     report.push_str(&format!(
         "- **assert_malformed**: {}\n",
         runner.stats.assert_malformed_count
-    );
+    ));
     report.push_str(&format!(
         "- **assert_unlinkable**: {}\n",
         runner.stats.assert_unlinkable_count
-    );
+    ));
     report.push_str(&format!(
         "- **assert_exhaustion**: {}\n",
         runner.stats.assert_exhaustion_count
-    );
+    ));
     report.push_str(&format!(
         "- **register**: {}\n",
         runner.stats.register_count
-    );
+    ));
 
     // File results
     report.push_str("\n## File Results\n\n");
@@ -5078,7 +5078,7 @@ fn generate_markdown_report(
             status_icon,
             file_result.directives_count,
             file_result.execution_time_ms
-        );
+        ));
     }
 
     // Failed tests details
@@ -5089,10 +5089,10 @@ fn generate_markdown_report(
     if !failed_files.is_empty() {
         report.push_str("\n## Failed Tests Details\n\n");
         for file_result in failed_files {
-            report.push_str(&format!("### {}\n\n", file_result.file_path);
+            report.push_str(&format!("### {}\n\n", file_result.file_path));
 
             if let Some(error) = &file_result.error_message {
-                report.push_str(&format!("**File Error**: {}\n\n", error);
+                report.push_str(&format!("**File Error**: {}\n\n", error));
             }
 
             for directive in &file_result.directive_results {
@@ -5101,7 +5101,7 @@ fn generate_markdown_report(
                         "- **{}**: {}\n",
                         directive.directive_name,
                         directive.error_message.as_deref().unwrap_or("Unknown error")
-                    );
+                    ));
                 }
             }
             report.push_str("\n");

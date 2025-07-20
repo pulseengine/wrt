@@ -51,12 +51,12 @@ pub trait CommandExt: StandardCommand {
                 "Command '{}' does not support output format '{:?}'",
                 self.name(),
                 global.output_format
-            ;
+            );
         }
 
         // Log command execution in verbose mode
         if global.verbose {
-            global.output.subheader(&format!("Executing command: {}", self.name();
+            global.output.subheader(&format!("Executing command: {}", self.name()));
         }
 
         // Execute main command
@@ -65,12 +65,12 @@ pub trait CommandExt: StandardCommand {
         // Post-execution processing
         if let Err(ref e) = result {
             if global.verbose {
-                global.output.error(&format!("Command '{}' failed: {}", self.name(), e;
+                global.output.error(&format!("Command '{}' failed: {}", self.name(), e));
             }
         } else if global.verbose {
             global
                 .output
-                .success(&format!("Command '{}' completed successfully", self.name();
+                .success(&format!("Command '{}' completed successfully", self.name()));
         }
 
         result
@@ -145,7 +145,7 @@ impl StandardCommand for TestCommand {
         };
 
         let output_format = global.output_format.clone();
-        let use_colors = global.output.is_colored);
+        let use_colors = global.output.is_colored();
 
         crate::cmd_test(
             build_system,

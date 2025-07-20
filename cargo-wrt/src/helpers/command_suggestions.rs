@@ -76,9 +76,9 @@ impl CommandSuggestionEngine {
             workflows:        Vec::new(),
         };
 
-        engine.initialize_commands);
-        engine.initialize_typo_corrections);
-        engine.initialize_workflows);
+        engine.initialize_commands();
+        engine.initialize_typo_corrections();
+        engine.initialize_workflows();
         engine
     }
 
@@ -144,7 +144,7 @@ impl CommandSuggestionEngine {
         ];
 
         for cmd in commands {
-            self.commands.insert(cmd.name.clone(), cmd;
+            self.commands.insert(cmd.name.clone(), cmd);
         }
     }
 
@@ -171,7 +171,7 @@ impl CommandSuggestionEngine {
         ];
 
         for (typo, correction) in corrections {
-            self.typo_corrections.insert(typo.to_string(), correction.to_string();
+            self.typo_corrections.insert(typo.to_string(), correction.to_string());
         }
     }
 
@@ -219,8 +219,8 @@ impl CommandSuggestionEngine {
 
     /// Suggest commands based on input
     pub fn suggest(&self, input: &str, context: Option<&ProjectContext>) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new);
-        let input_lower = input.to_lowercase);
+        let mut suggestions = Vec::new();
+        let input_lower = input.to_lowercase();
 
         // Exact match
         if let Some(cmd) = self.commands.get(&input_lower) {
@@ -230,7 +230,7 @@ impl CommandSuggestionEngine {
                 description:     cmd.description.clone(),
                 confidence:      1.0,
                 reason:          "Exact match".to_string(),
-            };
+            });
             return suggestions;
         }
 
@@ -243,7 +243,7 @@ impl CommandSuggestionEngine {
                     description:     cmd.description.clone(),
                     confidence:      1.0,
                     reason:          format!("Alias for '{}'", cmd.name),
-                };
+                });
                 return suggestions;
             }
         }
@@ -257,13 +257,13 @@ impl CommandSuggestionEngine {
                     description:     cmd.description.clone(),
                     confidence:      0.9,
                     reason:          format!("Did you mean '{}'?", cmd.name),
-                };
+                });
             }
         }
 
         // Fuzzy matching for similar commands
         for cmd in self.commands.values() {
-            let similarity = self.calculate_similarity(&input_lower, &cmd.name;
+            let similarity = self.calculate_similarity(&input_lower, &cmd.name);
             if similarity > 0.6 {
                 suggestions.push(Suggestion {
                     suggestion_type: SuggestionType::Similar,
@@ -271,33 +271,33 @@ impl CommandSuggestionEngine {
                     description:     cmd.description.clone(),
                     confidence:      similarity,
                     reason:          format!("Similar to '{}'", input),
-                };
+                });
             }
         }
 
         // Context-based suggestions
         if let Some(ctx) = context {
-            suggestions.extend(self.suggest_from_context(ctx);
+            suggestions.extend(self.suggest_from_context(ctx));
         }
 
         // Workflow suggestions
-        suggestions.extend(self.suggest_workflows(&input_lower);
+        suggestions.extend(self.suggest_workflows(&input_lower));
 
         // Sort by confidence and limit results
-        suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap();
-        suggestions.truncate(5;
+        suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        suggestions.truncate(5);
 
         suggestions
     }
 
     /// Calculate similarity between two strings
     fn calculate_similarity(&self, a: &str, b: &str) -> f64 {
-        let max_len = a.len().max(b.len);
+        let max_len = a.len().max(b.len());
         if max_len == 0 {
             return 1.0;
         }
 
-        let distance = self.levenshtein_distance(a, b;
+        let distance = self.levenshtein_distance(a, b);
         1.0 - (distance as f64 / max_len as f64)
     }
 
@@ -305,8 +305,8 @@ impl CommandSuggestionEngine {
     fn levenshtein_distance(&self, a: &str, b: &str) -> usize {
         let a_chars: Vec<char> = a.chars().collect();
         let b_chars: Vec<char> = b.chars().collect();
-        let a_len = a_chars.len);
-        let b_len = b_chars.len);
+        let a_len = a_chars.len();
+        let b_len = b_chars.len();
 
         let mut dp = vec![vec![0; b_len + 1]; a_len + 1];
 
@@ -320,7 +320,7 @@ impl CommandSuggestionEngine {
         for i in 1..=a_len {
             for j in 1..=b_len {
                 let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
-                dp[i][j] = (dp[i - 1][j] + 1).min(dp[i][j - 1] + 1).min(dp[i - 1][j - 1] + cost;
+                dp[i][j] = (dp[i - 1][j] + 1).min(dp[i][j - 1] + 1).min(dp[i - 1][j - 1] + cost);
             }
         }
 
@@ -329,12 +329,12 @@ impl CommandSuggestionEngine {
 
     /// Suggest commands based on project context
     fn suggest_from_context(&self, context: &ProjectContext) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new);
+        let mut suggestions = Vec::new();
 
         // Suggest based on recommendations
         for rec in &context.recommendations {
             if let Some(command) = &rec.command {
-                let command_name = command.split_whitespace().next().unwrap_or(command;
+                let command_name = command.split_whitespace().next().unwrap_or(command);
                 if let Some(cmd_info) = self.commands.get(command_name) {
                     let confidence = match rec.priority {
                         RecommendationPriority::Critical => 0.95,
@@ -350,7 +350,7 @@ impl CommandSuggestionEngine {
                         description: rec.description.clone(),
                         confidence,
                         reason: format!("{} priority recommendation", rec.priority.name()),
-                    };
+                    });
                 }
             }
         }
@@ -360,7 +360,7 @@ impl CommandSuggestionEngine {
 
     /// Suggest workflow patterns
     fn suggest_workflows(&self, input: &str) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new);
+        let mut suggestions = Vec::new();
 
         for workflow in &self.workflows {
             // Check if input matches workflow triggers
@@ -377,7 +377,7 @@ impl CommandSuggestionEngine {
                                 ),
                                 confidence:      0.7,
                                 reason:          format!("Suggested by {} workflow", workflow.name),
-                            };
+                            });
                         }
                     }
                     break;
@@ -400,12 +400,12 @@ impl CommandSuggestionEngine {
             };
         }
 
-        let mut output = String::new);
+        let mut output = String::new();
 
         if use_colors {
-            output.push_str(&format!("{}\n", "Did you mean:".bright_yellow().bold();
+            output.push_str(&format!("{}\n", "Did you mean:".bright_yellow().bold()));
         } else {
-            output.push_str("Did you mean:\n";
+            output.push_str("Did you mean:\n");
         }
 
         for (i, suggestion) in suggestions.iter().enumerate() {
@@ -424,12 +424,12 @@ impl CommandSuggestionEngine {
                     icon,
                     suggestion.command.bright_green(),
                     suggestion.description.bright_white()
-                ;
+                ));
                 output.push_str(&format!(
                     "     {} (confidence: {:.0}%)\n",
                     suggestion.reason.bright_black(),
                     suggestion.confidence * 100.0
-                ;
+                ));
             } else {
                 output.push_str(&format!(
                     "  {}: {} {}: {}\n",
@@ -437,12 +437,12 @@ impl CommandSuggestionEngine {
                     icon,
                     suggestion.command,
                     suggestion.description
-                ;
+                ));
                 output.push_str(&format!(
                     "     {} (confidence: {:.0}%)\n",
                     suggestion.reason,
                     suggestion.confidence * 100.0
-                ;
+                ));
             }
         }
 
@@ -451,9 +451,9 @@ impl CommandSuggestionEngine {
             output.push_str(&format!(
                 "Run: {}\n",
                 format!("cargo-wrt <command>").bright_cyan()
-            ;
+            ));
         } else {
-            output.push_str("Run: cargo-wrt <command>\n";
+            output.push_str("Run: cargo-wrt <command>\n");
         }
 
         output

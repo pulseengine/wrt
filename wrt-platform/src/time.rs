@@ -45,8 +45,8 @@ impl PlatformTime {
         {
             // Fallback to instant
             use std::time::Instant;
-            static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new);
-            let start = START.get_or_init(Instant::now;
+            static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+            let start = START.get_or_init(Instant::now);
             start.elapsed().as_nanos() as u64
         }
     }
@@ -69,7 +69,7 @@ impl PlatformTime {
         const CLOCK_MONOTONIC: i32 = 1;
         
         unsafe {
-            let mut ts = mem::zeroed::<Timespec>);
+            let mut ts = mem::zeroed::<Timespec>();
             if clock_gettime(CLOCK_MONOTONIC, &mut ts) == 0 {
                 (ts.tv_sec as u64) * 1_000_000_000 + (ts.tv_nsec as u64)
             } else {
@@ -95,13 +95,13 @@ impl PlatformTime {
         
         unsafe {
             static mut TIMEBASE: MachTimebaseInfo = MachTimebaseInfo { numer: 0, denom: 0 };
-            static INIT: std::sync::Once = std::sync::Once::new);
+            static INIT: std::sync::Once = std::sync::Once::new();
             
             INIT.call_once(|| {
-                mach_timebase_info(&raw mut TIMEBASE;
-            };
+                mach_timebase_info(&raw mut TIMEBASE);
+            });
             
-            let ticks = mach_absolute_time);
+            let ticks = mach_absolute_time();
             ticks * TIMEBASE.numer as u64 / TIMEBASE.denom as u64
         }
     }
@@ -118,13 +118,13 @@ impl PlatformTime {
         
         unsafe {
             static mut FREQUENCY: i64 = 0;
-            static INIT: std::sync::Once = std::sync::Once::new);
+            static INIT: std::sync::Once = std::sync::Once::new();
             
             INIT.call_once(|| {
-                QueryPerformanceFrequency(&mut FREQUENCY;
-            };
+                QueryPerformanceFrequency(&mut FREQUENCY);
+            });
             
-            let mut counter = mem::zeroed::<i64>);
+            let mut counter = mem::zeroed::<i64>();
             if QueryPerformanceCounter(&mut counter) != 0 && FREQUENCY > 0 {
                 (counter as u64) * 1_000_000_000 / (FREQUENCY as u64)
             } else {
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn test_wall_clock() {
         let time1 = PlatformTime::wall_clock_ns().unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(10;
+        std::thread::sleep(std::time::Duration::from_millis(10));
         let time2 = PlatformTime::wall_clock_ns().unwrap();
         
         assert!(time2 > time1);
@@ -194,9 +194,9 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_monotonic_clock() {
-        let time1 = PlatformTime::monotonic_ns);
-        std::thread::sleep(std::time::Duration::from_millis(10;
-        let time2 = PlatformTime::monotonic_ns);
+        let time1 = PlatformTime::monotonic_ns();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let time2 = PlatformTime::monotonic_ns();
         
         assert!(time2 > time1);
         // Monotonic clock should never go backwards
@@ -205,8 +205,8 @@ mod tests {
     
     #[test]
     fn test_clock_resolution() {
-        assert_eq!(PlatformTime::clock_resolution_ns(0), 1_000_000;
-        assert_eq!(PlatformTime::clock_resolution_ns(1), 1;
-        assert_eq!(PlatformTime::clock_resolution_ns(99), 1_000_000;
+        assert_eq!(PlatformTime::clock_resolution_ns(0), 1_000_000);
+        assert_eq!(PlatformTime::clock_resolution_ns(1), 1);
+        assert_eq!(PlatformTime::clock_resolution_ns(99), 1_000_000);
     }
 }

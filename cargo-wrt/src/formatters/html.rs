@@ -94,7 +94,7 @@ impl HtmlFormatter {
 
     /// Get JavaScript for interactive features
     fn get_javascript(&self) -> String {
-        let js = include_str!("templates/scripts/interactive.js";
+        let js = include_str!("templates/scripts/interactive.js");
         format!("<script>{}</script>", js)
     }
 }
@@ -108,16 +108,16 @@ impl HtmlReportGenerator {
         requirements: &[RequirementData],
         formatter: &HtmlFormatter,
     ) -> Result<String> {
-        let mut content = String::new);
+        let mut content = String::new();
 
-        content.push_str(r#"<div class="requirements-matrix">"#;
-        content.push_str(r#"<h2>Requirements Traceability Matrix</h2>"#;
+        content.push_str(r#"<div class="requirements-matrix">"#);
+        content.push_str(r#"<h2>Requirements Traceability Matrix</h2>"#);
 
         // Summary statistics
-        let total = requirements.len);
-        let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count);
-        let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count);
-        let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count);
+        let total = requirements.len();
+        let implemented = requirements.iter().filter(|r| !r.implementations.is_empty()).count();
+        let tested = requirements.iter().filter(|r| !r.tests.is_empty()).count();
+        let documented = requirements.iter().filter(|r| !r.documentation.is_empty()).count();
 
         content.push_str(&format!(
             r#"<div class="summary">
@@ -139,10 +139,10 @@ impl HtmlReportGenerator {
                 </div>
             </div>"#,
             total, implemented, tested, documented
-        ;
+        ));
 
         // Requirements table
-        content.push_str(r#"<table class="requirements-table">"#;
+        content.push_str(r#"<table class="requirements-table">"#);
         content.push_str(
             r#"<thead>
             <tr>
@@ -156,7 +156,7 @@ impl HtmlReportGenerator {
                 <th>Documentation</th>
             </tr>
         </thead><tbody>"#,
-        ;
+        );
 
         for req in requirements {
             let status_class = match req.status.as_str() {
@@ -187,21 +187,21 @@ impl HtmlReportGenerator {
                 req.implementations.join(", "),
                 req.tests.join(", "),
                 req.documentation.join(", ")
-            ;
+            ));
         }
 
-        content.push_str("</tbody></table>";
-        content.push_str("</div>";
+        content.push_str("</tbody></table>");
+        content.push_str("</div>");
 
         Ok(formatter.generate_document("Requirements Traceability Matrix", &content))
     }
 
     /// Generate safety verification report HTML
     pub fn safety_report(report: &SafetyReportData, formatter: &HtmlFormatter) -> Result<String> {
-        let mut content = String::new);
+        let mut content = String::new();
 
-        content.push_str(r#"<div class="safety-report">"#;
-        content.push_str(r#"<h2>Safety Verification Report</h2>"#;
+        content.push_str(r#"<div class="safety-report">"#);
+        content.push_str(r#"<h2>Safety Verification Report</h2>"#);
 
         // Overall compliance
         let compliance_class = if report.overall_compliance >= 95.0 {
@@ -222,12 +222,12 @@ impl HtmlReportGenerator {
                 </div>
             </div>"#,
             compliance_class, report.overall_compliance
-        ;
+        ));
 
         // ASIL breakdown
-        content.push_str(r#"<div class="asil-breakdown">"#;
-        content.push_str(r#"<h3>ASIL Level Compliance</h3>"#;
-        content.push_str(r#"<div class="asil-grid">"#;
+        content.push_str(r#"<div class="asil-breakdown">"#);
+        content.push_str(r#"<h3>ASIL Level Compliance</h3>"#);
+        content.push_str(r#"<div class="asil-grid">"#);
 
         for (asil, compliance) in &report.asil_compliance {
             content.push_str(&format!(
@@ -238,10 +238,10 @@ impl HtmlReportGenerator {
                 asil.to_lowercase(),
                 asil,
                 compliance * 100.0
-            ;
+            ));
         }
 
-        content.push_str("</div></div>";
+        content.push_str("</div></div>");
 
         // Test summary
         content.push_str(&format!(
@@ -270,22 +270,22 @@ impl HtmlReportGenerator {
             report.test_summary.passed_tests,
             report.test_summary.failed_tests,
             report.test_summary.coverage_percentage
-        ;
+        ));
 
         // Recommendations
         if !report.recommendations.is_empty() {
-            content.push_str(r#"<div class="recommendations">"#;
-            content.push_str(r#"<h3>Recommendations</h3>"#;
-            content.push_str(r#"<ul>"#;
+            content.push_str(r#"<div class="recommendations">"#);
+            content.push_str(r#"<h3>Recommendations</h3>"#);
+            content.push_str(r#"<ul>"#);
 
             for rec in &report.recommendations {
-                content.push_str(&format!(r#"<li>{}</li>"#, rec;
+                content.push_str(&format!(r#"<li>{}</li>"#, rec));
             }
 
-            content.push_str("</ul></div>";
+            content.push_str("</ul></div>");
         }
 
-        content.push_str("</div>";
+        content.push_str("</div>");
 
         Ok(formatter.generate_document("Safety Verification Report", &content))
     }
@@ -295,10 +295,10 @@ impl HtmlReportGenerator {
         report: &DocumentationReportData,
         formatter: &HtmlFormatter,
     ) -> Result<String> {
-        let mut content = String::new);
+        let mut content = String::new();
 
-        content.push_str(r#"<div class="documentation-report">"#;
-        content.push_str(r#"<h2>Documentation Compliance Report</h2>"#;
+        content.push_str(r#"<div class="documentation-report">"#);
+        content.push_str(r#"<h2>Documentation Compliance Report</h2>"#);
 
         // Compliance overview
         content.push_str(&format!(
@@ -324,12 +324,12 @@ impl HtmlReportGenerator {
             report.total_requirements,
             report.total_violations,
             report.critical_violations
-        ;
+        ));
 
         // ASIL compliance breakdown
-        content.push_str(r#"<div class="asil-doc-compliance">"#;
-        content.push_str(r#"<h3>Documentation Compliance by ASIL Level</h3>"#;
-        content.push_str(r#"<div class="asil-doc-grid">"#;
+        content.push_str(r#"<div class="asil-doc-compliance">"#);
+        content.push_str(r#"<h3>Documentation Compliance by ASIL Level</h3>"#);
+        content.push_str(r#"<div class="asil-doc-grid">"#);
 
         for (asil, compliance) in &report.asil_compliance {
             content.push_str(&format!(
@@ -338,12 +338,12 @@ impl HtmlReportGenerator {
                     <div class="compliance">{:.1}%</div>
                 </div>"#,
                 asil, compliance
-            ;
+            ));
         }
 
-        content.push_str("</div></div>";
+        content.push_str("</div></div>");
 
-        content.push_str("</div>";
+        content.push_str("</div>");
 
         Ok(formatter.generate_document("Documentation Compliance Report", &content))
     }

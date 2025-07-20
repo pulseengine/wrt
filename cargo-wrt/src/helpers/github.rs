@@ -62,10 +62,10 @@ pub async fn post_safety_report_comment(
     report: &SafetyReportData,
 ) -> Result<()> {
     if !context.is_pr() {
-        return Err(anyhow::anyhow!("Not running in a PR context";
+        return Err(anyhow::anyhow!("Not running in a PR context"));
     }
 
-    let formatter = MarkdownFormatter::github);
+    let formatter = MarkdownFormatter::github();
     let report_markdown = MarkdownReportGenerator::safety_report(report, &formatter)?;
 
     // Create sections for collapsible details
@@ -76,7 +76,7 @@ pub async fn post_safety_report_comment(
         details.push((
             "Failed Tests Details",
             "See test output for detailed failure information",
-        ;
+        ));
     }
 
     // Format recommendations if any
@@ -96,7 +96,7 @@ pub async fn post_safety_report_comment(
 
     // Add recommendations to details if present
     if let Some(ref rec_text) = recommendations {
-        details.push(("Recommendations", rec_text);
+        details.push(("Recommendations", rec_text));
     }
 
     // Build comment
@@ -108,7 +108,7 @@ pub async fn post_safety_report_comment(
             get_status_emoji(report.overall_compliance)
         ),
         details,
-    ;
+    );
 
     post_pr_comment(context, &comment).await
 }
@@ -119,10 +119,10 @@ pub async fn post_requirements_comment(
     requirements: &[RequirementData],
 ) -> Result<()> {
     if !context.is_pr() {
-        return Err(anyhow::anyhow!("Not running in a PR context";
+        return Err(anyhow::anyhow!("Not running in a PR context"));
     }
 
-    let formatter = MarkdownFormatter::github);
+    let formatter = MarkdownFormatter::github();
     let matrix_markdown = MarkdownReportGenerator::requirements_matrix(requirements, &formatter)?;
 
     // For large matrices, truncate and provide a link
@@ -146,10 +146,10 @@ pub async fn post_documentation_comment(
     report: &DocumentationReportData,
 ) -> Result<()> {
     if !context.is_pr() {
-        return Err(anyhow::anyhow!("Not running in a PR context";
+        return Err(anyhow::anyhow!("Not running in a PR context"));
     }
 
-    let formatter = MarkdownFormatter::github);
+    let formatter = MarkdownFormatter::github();
     let report_markdown = MarkdownReportGenerator::documentation_report(report, &formatter)?;
 
     post_pr_comment(context, &report_markdown).await
@@ -162,7 +162,7 @@ async fn post_pr_comment(context: &GitHubContext, comment: &str) -> Result<()> {
     let url = format!(
         "https://api.github.com/repos/{}/issues/{}/comments",
         context.repository, pr_number
-    ;
+    );
 
     #[derive(Serialize)]
     struct CommentPayload {
@@ -173,7 +173,7 @@ async fn post_pr_comment(context: &GitHubContext, comment: &str) -> Result<()> {
         body: comment.to_string(),
     };
 
-    let client = reqwest::Client::new);
+    let client = reqwest::Client::new();
     let response = client
         .post(&url)
         .header("Authorization", format!("token {}", context.token))
@@ -184,14 +184,14 @@ async fn post_pr_comment(context: &GitHubContext, comment: &str) -> Result<()> {
         .await
         .context("Failed to post GitHub comment")?;
 
-    let status = response.status);
+    let status = response.status();
     if !status.is_success() {
         let error_text = response.text().await?;
         return Err(anyhow::anyhow!(
             "GitHub API error: {} - {}",
             status,
             error_text
-        ;
+        ));
     }
 
     Ok(())
@@ -214,20 +214,20 @@ pub fn generate_workflow_summary(
     safety_report: Option<&SafetyReportData>,
     documentation_report: Option<&DocumentationReportData>,
 ) -> Result<String> {
-    let mut summary = String::new);
+    let mut summary = String::new();
 
-    summary.push_str("# WRT Verification Summary\n\n";
+    summary.push_str("# WRT Verification Summary\n\n");
 
     // Requirements summary
     if let Some(reqs) = requirements {
-        let total = reqs.len);
-        let implemented = reqs.iter().filter(|r| !r.implementations.is_empty()).count);
+        let total = reqs.len();
+        let implemented = reqs.iter().filter(|r| !r.implementations.is_empty()).count();
         let coverage = if total > 0 { (implemented as f64 / total as f64) * 100.0 } else { 0.0 };
 
         summary.push_str(&format!(
             "## 📋 Requirements\n- Total: {}\n- Coverage: {:.1}%\n\n",
             total, coverage
-        ;
+        ));
     }
 
     // Safety summary
@@ -238,7 +238,7 @@ pub fn generate_workflow_summary(
             get_status_emoji(safety.overall_compliance),
             safety.test_summary.passed_tests,
             safety.test_summary.failed_tests
-        ;
+        ));
     }
 
     // Documentation summary
@@ -249,7 +249,7 @@ pub fn generate_workflow_summary(
             get_status_emoji(docs.overall_compliance),
             docs.total_violations,
             docs.critical_violations
-        ;
+        ));
     }
 
     Ok(summary)

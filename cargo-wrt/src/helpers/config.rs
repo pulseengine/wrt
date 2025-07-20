@@ -85,7 +85,7 @@ pub fn load_config_file(workspace_root: &Path) -> Result<CargoWrtConfig> {
                 format!("Failed to parse config file: {}", config_path.display())
             })?;
 
-            return Ok(config;
+            return Ok(config);
         }
     }
 
@@ -166,16 +166,16 @@ where
 
 /// Initialize a sample configuration file
 pub fn init_config_file(workspace_root: &Path, force: bool) -> Result<PathBuf> {
-    let config_path = workspace_root.join(".cargo-wrt.toml";
+    let config_path = workspace_root.join(".cargo-wrt.toml");
 
     if config_path.exists() && !force {
         return Err(anyhow::anyhow!(
             "Configuration file already exists: {}. Use --force to overwrite",
             config_path.display()
-        ;
+        ));
     }
 
-    let default_config = CargoWrtConfig::default);
+    let default_config = CargoWrtConfig::default();
     let content = toml::to_string_pretty(&default_config)
         .context("Failed to serialize default configuration")?;
 
@@ -188,18 +188,18 @@ pub fn init_config_file(workspace_root: &Path, force: bool) -> Result<PathBuf> {
 /// Get the browser command from config or system default
 pub fn get_browser_command(config: &CargoWrtConfig) -> Option<String> {
     if let Some(ref browser) = config.browser_command {
-        return Some(browser.clone();
+        return Some(browser.clone());
     }
 
     // Try to detect system browser
     #[cfg(target_os = "macos")]
     {
-        return Some("open".to_string();
+        return Some("open".to_string());
     }
 
     #[cfg(target_os = "windows")]
     {
-        return Some("start".to_string();
+        return Some("start".to_string());
     }
 
     #[cfg(target_os = "linux")]
@@ -207,7 +207,7 @@ pub fn get_browser_command(config: &CargoWrtConfig) -> Option<String> {
         // Try common browser commands
         for browser in &["xdg-open", "firefox", "chrome", "chromium"] {
             if which::which(browser).is_ok() {
-                return Some(browser.to_string();
+                return Some(browser.to_string());
             }
         }
         return None;
@@ -241,27 +241,27 @@ pub fn create_and_open_html_report(
     output: &super::OutputManager,
 ) -> Result<PathBuf> {
     // Create temp directory if it doesn't exist
-    let temp_dir = std::env::temp_dir().join("cargo-wrt-reports";
+    let temp_dir = std::env::temp_dir().join("cargo-wrt-reports");
     std::fs::create_dir_all(&temp_dir)
         .context("Failed to create temp directory for HTML reports")?;
 
     // Generate unique filename
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let filename = format!("{}_{}.html", report_name, timestamp;
-    let report_path = temp_dir.join(filename;
+    let filename = format!("{}_{}.html", report_name, timestamp);
+    let report_path = temp_dir.join(filename);
 
     // Write HTML content
     std::fs::write(&report_path, report_content)
         .with_context(|| format!("Failed to write HTML report: {}", report_path.display()))?;
 
-    output.success(&format!("HTML report generated: {}", report_path.display();
+    output.success(&format!("HTML report generated: {}", report_path.display()));
 
     if auto_open {
         if let Err(e) = open_in_browser(&report_path.to_string_lossy(), config) {
-            output.warning(&format!("Failed to open browser: {}", e;
-            output.info(&format!("You can manually open: {}", report_path.display();
+            output.warning(&format!("Failed to open browser: {}", e));
+            output.info(&format!("You can manually open: {}", report_path.display()));
         } else {
-            output.info("Opening report in browser...";
+            output.info("Opening report in browser...");
         }
     }
 
