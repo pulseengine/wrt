@@ -72,7 +72,7 @@ impl CpuSet {
     /// Remove CPU from set
     pub fn remove(&mut self, cpu: usize) {
         if cpu < 64 {
-            self.mask &= !(1 << cpu;
+            self.mask &= !(1 << cpu);
         }
     }
 
@@ -366,34 +366,34 @@ impl ResourceTracker {
     /// Binary std/no_std choice
     pub fn can_allocate_thread(&self, request: &ThreadSpawnRequest) -> Result<bool> {
         // Check total thread limit
-        let total = self.total_threads.load(Ordering::Acquire;
+        let total = self.total_threads.load(Ordering::Acquire);
         if total >= self.limits.max_total_threads {
-            return Ok(false;
+            return Ok(false);
         }
 
         // Check per-module limit
         let module_threads = {
-            let modules = self.threads_per_module.read);
+            let modules = self.threads_per_module.read();
             modules
                 .get(&request.module_id)
                 .map_or(0, |count| count.load(Ordering::Acquire))
         };
 
         if module_threads >= self.limits.max_threads_per_module {
-            return Ok(false;
+            return Ok(false);
         }
 
         // Check memory limit
         let module_memory = {
-            let memory = self.memory_per_module.read);
+            let memory = self.memory_per_module.read();
             memory
                 .get(&request.module_id)
                 .map_or(0, |usage| usage.load(Ordering::Acquire))
         };
 
-        let stack_size = request.stack_size.unwrap_or(2 * 1024 * 1024;
+        let stack_size = request.stack_size.unwrap_or(2 * 1024 * 1024);
         if module_memory + stack_size > self.limits.memory_limit_per_module {
-            return Ok(false;
+            return Ok(false);
         }
 
         Ok(true)
@@ -402,24 +402,24 @@ impl ResourceTracker {
     /// Allocate thread resources
     pub fn allocate_thread(&self, module_id: u64, stack_size: usize) -> Result<()> {
         // Increment total threads
-        self.total_threads.fetch_add(1, Ordering::AcqRel;
+        self.total_threads.fetch_add(1, Ordering::AcqRel);
 
         // Increment module threads
         {
-            let mut modules = self.threads_per_module.write);
+            let mut modules = self.threads_per_module.write();
             modules
                 .entry(module_id)
                 .or_insert_with(|| AtomicUsize::new(0))
-                .fetch_add(1, Ordering::AcqRel;
+                .fetch_add(1, Ordering::AcqRel);
         }
 
         // Add memory usage
         {
-            let mut memory = self.memory_per_module.write);
+            let mut memory = self.memory_per_module.write();
             memory
                 .entry(module_id)
                 .or_insert_with(|| AtomicUsize::new(0))
-                .fetch_add(stack_size, Ordering::AcqRel;
+                .fetch_add(stack_size, Ordering::AcqRel);
         }
 
         Ok(())
@@ -428,21 +428,21 @@ impl ResourceTracker {
     /// Release thread resources
     pub fn release_thread(&self, module_id: u64, stack_size: usize) {
         // Decrement total threads
-        self.total_threads.fetch_sub(1, Ordering::AcqRel;
+        self.total_threads.fetch_sub(1, Ordering::AcqRel);
 
         // Decrement module threads
         {
-            let modules = self.threads_per_module.read);
+            let modules = self.threads_per_module.read();
             if let Some(count) = modules.get(&module_id) {
-                count.fetch_sub(1, Ordering::AcqRel;
+                count.fetch_sub(1, Ordering::AcqRel);
             }
         }
 
         // Subtract memory usage
         {
-            let memory = self.memory_per_module.read);
+            let memory = self.memory_per_module.read();
             if let Some(usage) = memory.get(&module_id) {
-                usage.fetch_sub(stack_size, Ordering::AcqRel;
+                usage.fetch_sub(stack_size, Ordering::AcqRel);
             }
         }
     }
@@ -508,18 +508,18 @@ mod tests {
 
     #[test]
     fn test_cpu_set() {
-        let mut cpu_set = CpuSet::new);
-        assert!(!cpu_set.contains(0);
+        let mut cpu_set = CpuSet::new();
+        assert!(!cpu_set.contains(0));
         
-        cpu_set.add(0;
-        cpu_set.add(3;
-        assert!(cpu_set.contains(0);
-        assert!(cpu_set.contains(3);
-        assert!(!cpu_set.contains(1);
+        cpu_set.add(0);
+        cpu_set.add(3);
+        assert!(cpu_set.contains(0));
+        assert!(cpu_set.contains(3));
+        assert!(!cpu_set.contains(1));
         
-        cpu_set.remove(0;
-        assert!(!cpu_set.contains(0);
-        assert!(cpu_set.contains(3);
+        cpu_set.remove(0);
+        assert!(!cpu_set.contains(0));
+        assert!(cpu_set.contains(3));
     }
 
     #[test]
@@ -530,7 +530,7 @@ mod tests {
             ..Default::default()
         };
         
-        let tracker = ResourceTracker::new(limits;
+        let tracker = ResourceTracker::new(limits);
         
         // First thread should be allowed
         let request1 = ThreadSpawnRequest {
@@ -541,11 +541,11 @@ mod tests {
             stack_size: Some(1024 * 1024),
         };
         assert!(tracker.can_allocate_thread(&request1).unwrap());
-        tracker.allocate_thread(1, 1024 * 1024).unwrap());
+        tracker.allocate_thread(1, 1024 * 1024).unwrap();
         
         // Second thread for same module should be allowed
         assert!(tracker.can_allocate_thread(&request1).unwrap());
-        tracker.allocate_thread(1, 1024 * 1024).unwrap());
+        tracker.allocate_thread(1, 1024 * 1024).unwrap();
         
         // Third thread for same module should be denied (per-module limit)
         assert!(!tracker.can_allocate_thread(&request1).unwrap());
@@ -582,7 +582,7 @@ where
     };
     
     let _handle = builder.spawn(move || {
-        let _ = task);
+        let _ = task;
     }).map_err(|_e| wrt_error::Error::runtime_execution_error("Failed to spawn thread"))?;
     
     // Create a simplified thread handle

@@ -203,7 +203,7 @@ pub mod arm {
 
         fn optimize_memory(&self, ptr: *mut u8, size: usize) -> Result<(), Error> {
             if size == 0 {
-                return Ok();
+                return Ok(());
             }
 
             // Tag memory region with MTE tags
@@ -288,7 +288,7 @@ pub mod arm {
 
         fn optimize_memory(&self, ptr: *mut u8, size: usize) -> Result<(), Error> {
             if size == 0 {
-                return Ok();
+                return Ok(());
             }
 
             // Mark memory region as BTI-compatible
@@ -622,7 +622,7 @@ pub mod riscv {
 
         fn optimize_memory(&self, ptr: *mut u8, size: usize) -> Result<(), Error> {
             if size == 0 {
-                return Ok();
+                return Ok(());
             }
 
             // Configure CFI protection for memory region

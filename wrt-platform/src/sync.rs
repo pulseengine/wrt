@@ -172,7 +172,7 @@ impl FutexLike for SpinFutex {
         // Check if the current value matches the expected value
         if self.value.load(Ordering::Acquire) != expected {
             // Value has changed, no need to wait
-            return Ok();
+            return Ok(());
         }
 
         // Calculate timeout in iterations (very rough estimation)
@@ -195,7 +195,7 @@ impl FutexLike for SpinFutex {
 
             // Check if value has changed
             if self.value.load(Ordering::Acquire) != expected {
-                return Ok();
+                return Ok(());
             }
         }
 
