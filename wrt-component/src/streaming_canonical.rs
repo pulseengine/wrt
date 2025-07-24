@@ -583,8 +583,8 @@ mod tests {
     #[test]
     fn test_streaming_abi_creation() {
         let abi = StreamingCanonicalAbi::new);
-        assert_eq!(abi.streams.len(), 0;
-        assert_eq!(abi.next_stream_id, 1;
+        assert_eq!(abi.streams.len(), 0);
+        assert_eq!(abi.next_stream_id, 1);
     }
 
     #[test]
@@ -594,10 +594,10 @@ mod tests {
             ValType::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
-        ).unwrap();
+        ).unwrap());
         
-        assert_eq!(handle.0, 1;
-        assert_eq!(abi.streams.len(), 1;
+        assert_eq!(handle.0, 1);
+        assert_eq!(abi.streams.len(), 1);
         assert_eq!(abi.next_stream_id, 2;
     }
 
@@ -608,12 +608,12 @@ mod tests {
             ValType::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
-        ).unwrap();
+        ).unwrap());
 
         let input_bytes = 42u32.to_le_bytes);
-        let result = abi.streaming_lift(handle, &input_bytes).unwrap();
+        let result = abi.streaming_lift(handle, &input_bytes).unwrap());
 
-        assert_eq!(result.values.len(), 1;
+        assert_eq!(result.values.len(), 1);
         assert_eq!(result.values[0], Value::U32(42;
         assert_eq!(result.bytes_consumed, 4;
         assert!(!result.backpressure_active);
@@ -626,13 +626,13 @@ mod tests {
             ValType::U32,
             StreamDirection::Lowering,
             CanonicalOptions::default(),
-        ).unwrap();
+        ).unwrap());
 
         let input_values = vec![Value::U32(42)];
-        let result = abi.streaming_lower(handle, &input_values).unwrap();
+        let result = abi.streaming_lower(handle, &input_values).unwrap());
 
         assert_eq!(result.bytes, 42u32.to_le_bytes);
-        assert_eq!(result.values_consumed, 1;
+        assert_eq!(result.values_consumed, 1);
         assert!(!result.backpressure_active);
     }
 
@@ -643,18 +643,18 @@ mod tests {
             ValType::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
-        ).unwrap();
+        ).unwrap());
 
-        let stats = abi.get_stream_stats(handle).unwrap();
+        let stats = abi.get_stream_stats(handle).unwrap());
         assert_eq!(stats.handle, handle;
-        assert_eq!(stats.bytes_processed, 0;
+        assert_eq!(stats.bytes_processed, 0);
         assert!(!stats.backpressure_active);
     }
 
     #[test]
     fn test_backpressure_config() {
         let mut abi = StreamingCanonicalAbi::new);
-        let mut config = BackpressureConfig::default);
+        let mut config = BackpressureConfig::default());
         config.default_high_water_percent = 90;
         config.default_low_water_percent = 10;
 
@@ -669,11 +669,11 @@ mod tests {
             ValType::U32,
             StreamDirection::Lifting,
             CanonicalOptions::default(),
-        ).unwrap();
+        ).unwrap());
 
-        assert_eq!(abi.streams.len(), 1;
-        abi.close_stream(handle).unwrap();
-        assert_eq!(abi.streams.len(), 0;
+        assert_eq!(abi.streams.len(), 1);
+        abi.close_stream(handle).unwrap());
+        assert_eq!(abi.streams.len(), 0);
     }
 
     #[test]

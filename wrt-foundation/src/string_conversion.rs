@@ -43,7 +43,7 @@ where
     P: MemoryProvider + Clone + PartialEq + Eq + Default,
 {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         Self {
             inner: BoundedString::new(provider).unwrap_or_else(|_| BoundedString::default()),
         }
@@ -260,8 +260,8 @@ mod tests {
     
     #[test]
     fn test_component_string_creation() {
-        let provider = NoStdProvider::<1024>::default);
-        let component_string = ComponentString::<128, _>::from_str_truncate("test_string", provider).unwrap();
+        let provider = NoStdProvider::<1024>::default());
+        let component_string = ComponentString::<128, _>::from_str_truncate("test_string", provider).unwrap());
         
         assert_eq!(component_string.as_str().unwrap(), "test_string";
         assert_eq!(component_string.len(), 11;
@@ -270,32 +270,32 @@ mod tests {
     
     #[test]
     fn test_string_conversion() {
-        let provider = NoStdProvider::<1024>::default);
-        let component_string = ComponentString::<128, _>::from_str_truncate("hello_world", provider).unwrap();
+        let provider = NoStdProvider::<1024>::default());
+        let component_string = ComponentString::<128, _>::from_str_truncate("hello_world", provider).unwrap());
         
-        let std_string = component_string.convert_to().unwrap();
+        let std_string = component_string.convert_to().unwrap());
         assert_eq!(std_string, "hello_world";
     }
     
     #[test]
     fn test_component_string_adapter() {
-        let provider = NoStdProvider::<1024>::default);
+        let provider = NoStdProvider::<1024>::default());
         
         // Test to_component_string
-        let component_string = ComponentStringAdapter::to_component_string::<256, _>("test", provider).unwrap();
+        let component_string = ComponentStringAdapter::to_component_string::<256, _>("test", provider).unwrap());
         assert_eq!(component_string.as_str().unwrap(), "test";
         
         // Test from_component_string
-        let std_string = ComponentStringAdapter::from_component_string(&component_string).unwrap();
+        let std_string = ComponentStringAdapter::from_component_string(&component_string).unwrap());
         assert_eq!(std_string, "test";
     }
     
     #[test]
     fn test_string_array_conversion() {
-        let provider = NoStdProvider::<1024>::default);
+        let provider = NoStdProvider::<1024>::default());
         let strings = vec!["first".to_string(), "second".to_string(), "third".to_string()];
         
-        let component_strings = component_utils::convert_string_array::<64, _>(&strings, provider).unwrap();
+        let component_strings = component_utils::convert_string_array::<64, _>(&strings, provider).unwrap());
         
         assert_eq!(component_strings.len(), 3;
         assert_eq!(component_strings.get(0).unwrap().as_str().unwrap(), "first";

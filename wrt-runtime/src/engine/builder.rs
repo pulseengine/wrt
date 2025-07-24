@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_builder_qm() {
-        let engine = EngineBuilder::qm().build().unwrap();
+        let engine = EngineBuilder::qm().build().unwrap());
         // Test that engine was created successfully
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_builder_asil_d() {
-        let engine = EngineBuilder::asil_d().build().unwrap();
+        let engine = EngineBuilder::asil_d().build().unwrap());
         // Test that engine was created successfully
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime
@@ -169,7 +169,7 @@ mod tests {
         let engine = EngineBuilder::new()
             .with_asil_level(ASILExecutionMode::ASIL_B)
             .build()
-            .unwrap();
+            .unwrap());
         
         // Test that engine was created successfully
         assert!(engine.capability_context().has_capability(
@@ -185,8 +185,8 @@ mod tests {
             0x01, 0x00, 0x00, 0x00, // Version 1
         ];
 
-        let builder = EngineBuilder::from_binary(minimal_wasm).unwrap();
-        let engine = builder.build().unwrap();
+        let builder = EngineBuilder::from_binary(minimal_wasm).unwrap());
+        let engine = builder.build().unwrap());
         
         // Should fall back to QM mode
         assert!(engine.capability_context().has_capability(
@@ -197,13 +197,13 @@ mod tests {
     #[test]
     fn test_builder_priority_order() {
         // Custom context should take priority over preset
-        let custom_context = super::super::presets::qm().unwrap();
+        let custom_context = super::super::presets::qm().unwrap());
         
         let engine = EngineBuilder::new()
             .with_preset(EnginePreset::AsilD) // This should be overridden
             .with_custom_context(custom_context)
             .build()
-            .unwrap();
+            .unwrap());
         
         assert!(engine.capability_context().has_capability(
             wrt_foundation::budget_aware_provider::CrateId::Runtime

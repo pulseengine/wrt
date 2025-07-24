@@ -571,14 +571,14 @@ where
             // ZSTs. Or, if this is allowed, ensure memory_needed is handled
             // correctly. For now, consider it an invalid configuration for
             // typical BoundedStack usage.
-            return Err(crate::Error::runtime_execution_error("Operation failed";
+            return Err(crate::Error::runtime_execution_error("Operation failed"));
         }
 
-        let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size;
-        let handler = SafeMemoryHandler::new(provider_arg;
+        let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size);
+        let handler = SafeMemoryHandler::new(provider_arg);
 
         // Record creation operation
-        record_global_operation(OperationType::CollectionCreate, level;
+        record_global_operation(OperationType::CollectionCreate, level);
 
         Ok(Self {
             handler,
@@ -603,24 +603,24 @@ where
             return Err(BoundedError::capacity_exceeded);
         }
 
-        let offset = self.length.saturating_mul(self.item_serialized_size;
+        let offset = self.length.saturating_mul(self.item_serialized_size);
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
 
         let item_size = item.serialized_size();
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
-                "Item too large for collection";
+                "Item too large for collection"));
         }
 
         if item_size == 0 {
             // Handling ZSTs
             self.length += 1;
             item.update_checksum(&mut self.checksum); // ZSTs can affect checksum
-            record_global_operation(OperationType::CollectionPush, self.verification_level;
+            record_global_operation(OperationType::CollectionPush, self.verification_level);
             if self.verification_level >= VerificationLevel::Full {
                 // Was should_recalculate_checksum_on_mutate
-                self.recalculate_checksum);
+                self.recalculate_checksum();
             }
             return Ok();
         }
@@ -630,7 +630,7 @@ where
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::runtime_execution_error("Operation failed")
                 })?;
-            let mut write_stream = WriteStream::new(buffer_slice;
+            let mut write_stream = WriteStream::new(buffer_slice);
             item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(
                 |_| {
                     BoundedError::new(
@@ -650,7 +650,7 @@ where
 
         if self.verification_level >= VerificationLevel::Full {
             // Was should_recalculate_checksum_on_mutate
-            item.update_checksum(&mut self.checksum;
+            item.update_checksum(&mut self.checksum);
         }
         Ok(())
     }
@@ -665,11 +665,11 @@ where
     /// checksum verification fails.
     pub fn pop(&mut self) -> core::result::Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
 
         self.length -= 1;
-        let offset = self.length.saturating_mul(self.item_serialized_size;
+        let offset = self.length.saturating_mul(self.item_serialized_size);
         record_global_operation(OperationType::CollectionWrite, self.verification_level); // Pop modifies length, considered a write/mutate to collection state
 
         if self.item_serialized_size == 0 {
@@ -681,7 +681,7 @@ where
                 self.recalculate_checksum(); // Recalculate based on remaining
                                              // items
             }
-            return Ok(Some(T::default();
+            return Ok(Some(T::default()));
         }
 
         // Clone provider to avoid borrowing conflicts
@@ -703,14 +703,14 @@ where
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
                 "Operation failed")
-        })?;
+        })?);
         let item = T::from_bytes_with_provider(&mut read_stream, &provider).map_err(|_e| {
             BoundedError::runtime_execution_error("Failed to deserialize item")
         })?;
 
         if self.verification_level >= VerificationLevel::Full {
             // Was should_recalculate_checksum_on_mutate
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
 
         // Optionally, zero out the popped memory for security/safety if required by
@@ -724,23 +724,23 @@ where
     /// Returns `None` if the stack is empty.
     pub fn peek(&self) -> core::result::Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
-        let offset = (self.length - 1).saturating_mul(self.item_serialized_size;
+        let offset = (self.length - 1).saturating_mul(self.item_serialized_size);
         record_global_operation(OperationType::CollectionRead, self.verification_level); // Peek is a read
 
         if self.item_serialized_size == 0 {
             // Handle ZSTs
-            return Ok(None;
+            return Ok(None);
         }
 
-        let slice_view_result = self.handler.get_slice(offset, self.item_serialized_size;
+        let slice_view_result = self.handler.get_slice(offset, self.item_serialized_size);
 
         match slice_view_result {
             Ok(slice_view) => {
                 // Assuming T::from_bytes doesn't modify the underlying slice if it's just a
                 // view
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 match T::from_bytes_with_provider(&mut read_stream, self.handler.provider()) {
                     // Added .as_ref()
                     Ok(item) => Ok(Some(item)),
@@ -760,7 +760,7 @@ where
     /// Sets the verification level for this stack.
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
-        self.handler.set_verification_level(level;
+        self.handler.set_verification_level(level);
     }
 
     /// Verifies the integrity of the stack using its checksum.
@@ -772,22 +772,22 @@ where
         }
         if self.item_serialized_size == 0 && self.length > 0 {
             // ZST handling
-            let mut temp_checksum = Checksum::new);
+            let mut temp_checksum = Checksum::new();
             for _ in 0..self.length {
-                T::default().update_checksum(&mut temp_checksum;
+                T::default().update_checksum(&mut temp_checksum);
             }
-            return self.checksum.verify(&temp_checksum;
+            return self.checksum.verify(&temp_checksum);
         }
 
-        let mut current_checksum = Checksum::new);
+        let mut current_checksum = Checksum::new();
         for i in 0..self.length {
-            let offset = i.saturating_mul(self.item_serialized_size;
+            let offset = i.saturating_mul(self.item_serialized_size);
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 match T::from_bytes_with_provider(&mut read_stream, self.handler.provider()) {
                     // Added .as_ref()
                     Ok(item) => {
-                        item.update_checksum(&mut current_checksum;
+                        item.update_checksum(&mut current_checksum);
                     }
                     Err(_) => return false, // Deserialization failure means data corruption
                 }
@@ -803,28 +803,28 @@ where
     /// checksum if per-item updates are not feasible or verification level
     /// is high.
     pub fn recalculate_checksum(&mut self) {
-        self.checksum.reset);
+        self.checksum.reset();
         if self.item_serialized_size == 0 {
             // ZST handling
             for _ in 0..self.length {
-                T::default().update_checksum(&mut self.checksum;
+                T::default().update_checksum(&mut self.checksum);
             }
             return;
         }
 
         for i in 0..self.length {
-            let offset = i.saturating_mul(self.item_serialized_size;
+            let offset = i.saturating_mul(self.item_serialized_size);
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
                 // It's safer to deserialize and then use the item's Checksummable impl
                 // if the byte representation for checksumming might differ from raw storage.
                 // However, if T::from_bytes is cheap and Checksummable uses `to_ne_bytes`
                 // for primitives, direct checksum of bytes might be okay for those.
                 // For complex types, deserializing then checksumming `item` is more robust.
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 match T::from_bytes_with_provider(&mut read_stream, self.handler.provider()) {
                     // Added .as_ref()
                     Ok(item) => {
-                        item.update_checksum(&mut self.checksum;
+                        item.update_checksum(&mut self.checksum);
                     }
                     Err(_) => {
                         // Error during deserialization while recalculating checksum.
@@ -844,7 +844,7 @@ where
                 break;
             }
         }
-        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level;
+        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level);
     }
 }
 
@@ -879,12 +879,12 @@ where
     }
 
     fn recalculate_checksum(&mut self) {
-        self.checksum = Checksum::new);
+        self.checksum = Checksum::new();
         for i in 0..self.length {
             let offset = i * self.item_serialized_size;
             match self.handler.borrow_slice(offset, self.item_serialized_size) {
                 Ok(slice_view) => {
-                    let mut read_stream = ReadStream::new(slice_view;
+                    let mut read_stream = ReadStream::new(slice_view);
                     match T::from_bytes_with_provider(&mut read_stream, self.handler.provider()) {
                         Ok(item) => item.update_checksum(&mut self.checksum),
                         Err(_) => {
@@ -907,17 +907,17 @@ where
     }
 
     fn verify_checksum(&self) -> bool {
-        record_global_operation(OperationType::CollectionValidate, self.verification_level;
+        record_global_operation(OperationType::CollectionValidate, self.verification_level);
         if !self.verification_level.should_verify(importance::CRITICAL) {
             // Was HIGH, // Use high importance for this check
             return true; // Skip if verification level allows
         }
-        let mut current_checksum = Checksum::new);
+        let mut current_checksum = Checksum::new();
         for i in 0..self.length {
             let offset = i * self.item_serialized_size;
             match self.handler.borrow_slice(offset, self.item_serialized_size) {
                 Ok(slice_view) => {
-                    let mut read_stream = ReadStream::new(slice_view;
+                    let mut read_stream = ReadStream::new(slice_view);
                     match T::from_bytes_with_provider(&mut read_stream, self.handler.provider()) {
                         Ok(item) => item.update_checksum(&mut current_checksum),
                         Err(_) => return false, // Getting data from SafeSlice failed
@@ -977,7 +977,7 @@ where
     pub fn new(provider_arg: P) -> Result<Self> {
         let item_s_size = T::default().serialized_size();
         if item_s_size == 0 && N_ELEMENTS > 0 {
-            return Err(crate::Error::runtime_execution_error("Item serialized size cannot be zero with non-zero capacity";
+            return Err(crate::Error::runtime_execution_error("Item serialized size cannot be zero with non-zero capacity"));
         }
 
         Ok(Self {
@@ -1003,12 +1003,12 @@ where
         if item_size == 0 && N_ELEMENTS > 0 {
             return Err(crate::Error::foundation_bounded_capacity_exceeded(
                 "Item serialized size cannot be zero with non-zero capacity"
-            ;
+            ));
         }
 
         // No SafeMemoryHandler needed directly here if P itself manages memory regions.
         // The provider is stored directly.
-        record_global_operation(OperationType::CollectionCreate, verification_level;
+        record_global_operation(OperationType::CollectionCreate, verification_level);
         Ok(Self {
             provider: provider_arg,
             length: 0,
@@ -1045,22 +1045,22 @@ where
                 .map_err(|_| BoundedError::capacity_exceeded())?;
         }
 
-        let offset = self.length.saturating_mul(self.item_serialized_size;
+        let offset = self.length.saturating_mul(self.item_serialized_size);
         let mut item_bytes_buffer = [0u8; MAX_ITEM_SERIALIZED_SIZE];
 
         let item_size = item.serialized_size();
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         if item_size == 0 {
             // ZST Handling
             self.length += 1;
             item.update_checksum(&mut self.checksum); // ZSTs can affect checksum
-            record_global_operation(OperationType::CollectionPush, self.verification_level;
+            record_global_operation(OperationType::CollectionPush, self.verification_level);
             if self.verification_level >= VerificationLevel::Full {
                 // Was should_recalculate_checksum_on_mutate
-                self.recalculate_checksum);
+                self.recalculate_checksum();
             }
             return Ok();
         }
@@ -1070,7 +1070,7 @@ where
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
                 })?;
-            let mut write_stream = WriteStream::new(buffer_slice;
+            let mut write_stream = WriteStream::new(buffer_slice);
             item.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(|_| {
                 BoundedError::runtime_execution_error("Failed to serialize item")
             })?;
@@ -1086,7 +1086,7 @@ where
 
         if self.verification_level >= VerificationLevel::Full {
             // Was should_recalculate_checksum_on_mutate
-            item.update_checksum(&mut self.checksum;
+            item.update_checksum(&mut self.checksum);
         }
         Ok(())
     }
@@ -1100,20 +1100,20 @@ where
     /// Returns `BoundedError` if reading the item from memory fails.
     pub fn pop(&mut self) -> core::result::Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
         self.length -= 1;
-        let offset = self.length.saturating_mul(self.item_serialized_size;
+        let offset = self.length.saturating_mul(self.item_serialized_size);
         record_global_operation(OperationType::CollectionWrite, self.verification_level); // Corrected, pop modifies collection state
 
         if self.item_serialized_size == 0 {
             // ZST handling
-            let item = T::default);
+            let item = T::default();
             if self.verification_level >= VerificationLevel::Full {
                 // Was should_recalculate_checksum_on_mutate
-                self.recalculate_checksum);
+                self.recalculate_checksum();
             }
-            return Ok(Some(item;
+            return Ok(Some(item));
         }
 
         let slice_view = self
@@ -1130,7 +1130,7 @@ where
         // If P::get_slice returns safe_memory::Slice, then .as_ref() is correct.
         // Let's assume for now P::get_slice returns something T::from_bytes can handle
         // or it's Slice.
-        let mut read_stream = ReadStream::new(slice_view;
+        let mut read_stream = ReadStream::new(slice_view);
         let item = T::from_bytes_with_provider(&mut read_stream, &self.provider).map_err(|_e| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
@@ -1139,7 +1139,7 @@ where
 
         if self.verification_level >= VerificationLevel::Full {
             // Was should_recalculate_checksum_on_mutate
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
         Ok(Some(item))
     }
@@ -1148,7 +1148,7 @@ where
     /// of bounds.
     pub fn get(&self, index: usize) -> Result<T> {
         if index >= self.length {
-            return Err(crate::Error::index_out_of_bounds("Index out of bounds";
+            return Err(crate::Error::index_out_of_bounds("Index out of bounds"));
         }
         
         // ASIL-A: Fault detection for bounds checking
@@ -1169,7 +1169,7 @@ where
         // Use borrow_slice for immutable access
         match self.provider.borrow_slice(offset, self.item_serialized_size) {
             Ok(slice_view) => {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 // Deserialize T using FromBytes trait
                 match T::from_bytes_with_provider(&mut read_stream, &self.provider) {
                     Ok(item) => {
@@ -1179,27 +1179,27 @@ where
                             if let Ok(checksum_slice) =
                                 self.provider.borrow_slice(checksum_offset, CHECKSUM_SIZE)
                             {
-                                let mut cs_stream = ReadStream::new(checksum_slice;
+                                let mut cs_stream = ReadStream::new(checksum_slice);
                                 if let Ok(stored_checksum) = Checksum::from_bytes_with_provider(
                                     &mut cs_stream,
                                     &self.provider,
                                 ) {
-                                    let mut current_checksum = Checksum::new);
-                                    item.update_checksum(&mut current_checksum;
+                                    let mut current_checksum = Checksum::new();
+                                    item.update_checksum(&mut current_checksum);
                                     if current_checksum != stored_checksum {
                                         return Err(crate::Error::validation_error(
                                             "Checksum mismatch on BoundedVec::get",
-                                        ;
+                                        ));
                                     }
                                 } else {
                                     return Err(crate::Error::deserialization_error(
                                         "Failed to read stored checksum on BoundedVec::get",
-                                    ;
+                                    ));
                                 }
                             } else {
                                 return Err(crate::Error::memory_error(
                                     "Failed to get checksum slice on BoundedVec::get",
-                                ;
+                                ));
                             }
                         }
                         Ok(item)
@@ -1215,11 +1215,11 @@ where
 
     /// Recalculates the checksum for the entire vector.
     fn recalculate_checksum(&mut self) {
-        self.checksum.reset);
+        self.checksum.reset();
         if self.item_serialized_size == 0 {
             // ZST handling
             for _ in 0..self.length {
-                T::default().update_checksum(&mut self.checksum;
+                T::default().update_checksum(&mut self.checksum);
             }
             return;
         }
@@ -1227,10 +1227,10 @@ where
         for i in 0..self.length {
             let offset = i * self.item_serialized_size;
             if let Ok(slice_view) = self.provider.borrow_slice(offset, self.item_serialized_size) {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 match T::from_bytes_with_provider(&mut read_stream, &self.provider) {
                     Ok(item) => {
-                        item.update_checksum(&mut self.checksum;
+                        item.update_checksum(&mut self.checksum);
                     }
                     Err(_) => {
                         // Data corruption, checksum will not match.
@@ -1242,7 +1242,7 @@ where
                 break;
             }
         }
-        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level;
+        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level);
     }
 
     /// Verifies the integrity of the vector using its checksum.
@@ -1252,21 +1252,21 @@ where
         }
         if self.item_serialized_size == 0 && self.length > 0 {
             // ZST handling
-            let mut temp_checksum = Checksum::new);
+            let mut temp_checksum = Checksum::new();
             for _ in 0..self.length {
-                T::default().update_checksum(&mut temp_checksum;
+                T::default().update_checksum(&mut temp_checksum);
             }
-            return self.checksum.verify(&temp_checksum;
+            return self.checksum.verify(&temp_checksum);
         }
 
-        let mut current_checksum = Checksum::new);
+        let mut current_checksum = Checksum::new();
         for i in 0..self.length {
             let offset = i * self.item_serialized_size;
             if let Ok(slice_view) = self.provider.borrow_slice(offset, self.item_serialized_size) {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 match T::from_bytes_with_provider(&mut read_stream, &self.provider) {
                     Ok(item) => {
-                        item.update_checksum(&mut current_checksum;
+                        item.update_checksum(&mut current_checksum);
                     }
                     Err(_) => return false,
                 }
@@ -1281,7 +1281,7 @@ where
     /// Note: This is a low-level operation. Prefer `get` for most use cases.
     pub fn get_item_slice(&self, index: usize) -> Result<Slice<'_>> {
         if index >= self.length {
-            return Err(crate::Error::index_out_of_bounds("Index out of bounds";
+            return Err(crate::Error::index_out_of_bounds("Index out of bounds"));
         }
         let offset = index * self.item_serialized_size;
         self.provider.borrow_slice(offset, self.item_serialized_size)
@@ -1292,7 +1292,7 @@ where
     /// use cases.
     pub fn get_item_slice_mut(&mut self, index: usize) -> Result<SliceMut<'_>> {
         if index >= self.length {
-            return Err(crate::Error::index_out_of_bounds("Index out of bounds";
+            return Err(crate::Error::index_out_of_bounds("Index out of bounds"));
         }
         let offset = index * self.item_serialized_size;
         self.provider.get_slice_mut(offset, self.item_serialized_size)
@@ -1312,7 +1312,7 @@ where
 
         match self.provider.borrow_slice(offset, self.item_serialized_size) {
             Ok(slice_view) => {
-                let mut stream = ReadStream::new(slice_view;
+                let mut stream = ReadStream::new(slice_view);
                 let item = T::from_bytes_with_provider(&mut stream, &self.provider)?;
                 let stored_checksum_bytes = [0u8; 4]; // Checksum is u32, 4 bytes
                 let checksum_offset = offset + self.item_serialized_size;
@@ -1326,14 +1326,14 @@ where
                         // assume direct access for checksum bytes, though this is unsafe.
                         // This needs a safe way to read bytes for the checksum.
                         // A temporary workaround might be to re-deserialize the checksum.
-                        let mut checksum_read_stream = ReadStream::new(checksum_slice_view;
+                        let mut checksum_read_stream = ReadStream::new(checksum_slice_view);
                         let stored_checksum = Checksum::from_bytes_with_provider(
                             &mut checksum_read_stream,
                             &self.provider,
                         )?;
 
-                        let mut current_checksum = Checksum::new);
-                        item.update_checksum(&mut current_checksum;
+                        let mut current_checksum = Checksum::new();
+                        item.update_checksum(&mut current_checksum);
 
                         if current_checksum == stored_checksum {
                             Ok(())
@@ -1365,17 +1365,17 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// let standard_vec = vec.to_vec().unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// let standard_vec = vec.to_vec().unwrap());
     /// assert_eq!(standard_vec, vec![1, 2, 3];
     /// ```
     #[cfg(feature = "std")]
     pub fn to_vec(&self) -> Result<std::vec::Vec<T>> {
-        let mut result = std::vec::Vec::with_capacity(self.length;
+        let mut result = std::vec::Vec::with_capacity(self.length);
         for i in 0..self.length {
             let item = self.get(i)?;
             result.push(item);
@@ -1414,23 +1414,23 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
     /// # assert_eq!(vec.len(), 3;
     /// vec.clear);
-    /// assert_eq!(vec.len(), 0;
+    /// assert_eq!(vec.len(), 0);
     /// ```
     pub fn clear(&mut self) -> core::result::Result<(), BoundedError> {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Simply reset the length to 0
         self.length = 0;
 
         // Reset the checksum
-        self.checksum = Checksum::new);
+        self.checksum = Checksum::new();
 
         Ok(())
     }
@@ -1446,12 +1446,12 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// let old_value = vec.set(1, 42).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// let old_value = vec.set(1, 42).unwrap());
     /// assert_eq!(old_value, 2;
     /// # assert_eq!(vec.get(1).unwrap(), 42;
     /// ```
@@ -1459,7 +1459,7 @@ where
         if index >= self.length {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Operation failed";
+                "Operation failed"));
         }
         
         // ASIL-A: Fault detection for bounds checking
@@ -1476,13 +1476,13 @@ where
                 .map_err(|_| BoundedError::new(BoundedErrorKind::SliceError, "Operation failed"))?;
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Get current value at the index
         let current_value = match self.get(index) {
             Ok(value) => value,
             Err(_) => {
-                return Err(BoundedError::runtime_execution_error("Operation failed";
+                return Err(BoundedError::runtime_execution_error("Operation failed"));
             }
         };
 
@@ -1494,17 +1494,17 @@ where
             // For ZSTs, we only need to update the checksum if verification is enabled
             if self.verification_level >= VerificationLevel::Full {
                 // Remove old item from checksum
-                let mut old_checksum = Checksum::new);
-                current_value.update_checksum(&mut old_checksum;
+                let mut old_checksum = Checksum::new();
+                current_value.update_checksum(&mut old_checksum);
                 // This is a simplification - ideally we'd want to remove just this item's
                 // contribution to the checksum, but for now we'll recalculate the entire
                 // checksum
-                self.recalculate_checksum);
+                self.recalculate_checksum();
 
                 // Add new item to checksum
-                value.update_checksum(&mut self.checksum;
+                value.update_checksum(&mut self.checksum);
             }
-            return Ok(current_value;
+            return Ok(current_value);
         }
 
         // Serialize the new value
@@ -1514,7 +1514,7 @@ where
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
-                "Item too large for collection";
+                "Item too large for collection"));
         }
 
         let bytes_written = {
@@ -1522,7 +1522,7 @@ where
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::runtime_execution_error("Operation failed")
                 })?;
-            let mut write_stream = WriteStream::new(buffer_slice;
+            let mut write_stream = WriteStream::new(buffer_slice);
             value.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(|_| {
                 BoundedError::new(
                     BoundedErrorKind::ConversionError,
@@ -1540,7 +1540,7 @@ where
         if self.verification_level >= VerificationLevel::Full {
             // Option 1: Recalculate the entire checksum (more expensive but ensures
             // correctness)
-            self.recalculate_checksum);
+            self.recalculate_checksum();
 
             // Option 2: Update incrementally (more efficient but potentially
             // less reliable) Let's use option 1 for now to ensure
@@ -1564,12 +1564,12 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(3).unwrap();
-    /// vec.insert(1, 2).unwrap();
-    /// # assert_eq!(vec.get(0).unwrap(), 1;
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(3).unwrap());
+    /// vec.insert(1, 2).unwrap());
+    /// # assert_eq!(vec.get(0).unwrap(), 1);
     /// # assert_eq!(vec.get(1).unwrap(), 2;
     /// # assert_eq!(vec.get(2).unwrap(), 3;
     /// ```
@@ -1577,21 +1577,21 @@ where
         if index > self.length {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Operation failed";
+                "Operation failed"));
         }
 
         if self.is_full() {
             return Err(BoundedError::capacity_exceeded);
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types
         if self.item_serialized_size == 0 {
             self.length += 1;
             if self.verification_level >= VerificationLevel::Full {
                 // Add new item to checksum
-                value.update_checksum(&mut self.checksum;
+                value.update_checksum(&mut self.checksum);
             }
             return Ok();
         }
@@ -1608,7 +1608,7 @@ where
             let current_item = match self.get(i) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
@@ -1620,7 +1620,7 @@ where
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(
                     BoundedErrorKind::ItemTooLarge,
-                    "Operation failed";
+                    "Operation failed",\n                ));
             }
 
             let bytes_written = {
@@ -1628,7 +1628,7 @@ where
                     SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                         BoundedError::runtime_execution_error("Operation failed")
                     })?;
-                let mut write_stream = WriteStream::new(buffer_slice;
+                let mut write_stream = WriteStream::new(buffer_slice);
                 current_item.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(
                     |_| {
                         BoundedError::new(
@@ -1654,7 +1654,7 @@ where
         if item_size > MAX_ITEM_SERIALIZED_SIZE {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
-                "Item too large for collection";
+                "Item too large for collection"));
         }
 
         let bytes_written = {
@@ -1662,7 +1662,7 @@ where
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::runtime_execution_error("Operation failed")
                 })?;
-            let mut write_stream = WriteStream::new(buffer_slice;
+            let mut write_stream = WriteStream::new(buffer_slice);
             value.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(|_| {
                 BoundedError::new(
                     BoundedErrorKind::ConversionError,
@@ -1680,7 +1680,7 @@ where
 
         // Update checksum if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
 
         Ok(())
@@ -1698,14 +1698,14 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// let removed = vec.remove(1).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// let removed = vec.remove(1).unwrap());
     /// assert_eq!(removed, 2;
-    /// # assert_eq!(vec.get(0).unwrap(), 1;
+    /// # assert_eq!(vec.get(0).unwrap(), 1);
     /// # assert_eq!(vec.get(1).unwrap(), 3;
     /// # assert_eq!(vec.len(), 2;
     /// ```
@@ -1713,16 +1713,16 @@ where
         if index >= self.length {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Operation failed";
+                "Operation failed"));
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Get the item to remove first
         let item_to_remove = match self.get(index) {
             Ok(item) => item,
             Err(_) => {
-                return Err(BoundedError::runtime_execution_error("Operation failed";
+                return Err(BoundedError::runtime_execution_error("Operation failed"));
             }
         };
 
@@ -1730,9 +1730,9 @@ where
         if self.item_serialized_size == 0 {
             self.length -= 1;
             if self.verification_level >= VerificationLevel::Full {
-                self.recalculate_checksum);
+                self.recalculate_checksum();
             }
-            return Ok(item_to_remove;
+            return Ok(item_to_remove);
         }
 
         // If we're removing the last element, this is equivalent to pop
@@ -1752,7 +1752,7 @@ where
             let next_item = match self.get(i + 1) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
@@ -1764,7 +1764,7 @@ where
             if item_size > MAX_ITEM_SERIALIZED_SIZE {
                 return Err(BoundedError::new(
                     BoundedErrorKind::ItemTooLarge,
-                    "Operation failed";
+                    "Operation failed",\n                ));
             }
 
             let bytes_written = {
@@ -1772,7 +1772,7 @@ where
                     SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                         BoundedError::runtime_execution_error("Operation failed")
                     })?;
-                let mut write_stream = WriteStream::new(buffer_slice;
+                let mut write_stream = WriteStream::new(buffer_slice);
                 next_item.to_bytes_with_provider(&mut write_stream, &self.provider).map_err(
                     |_| {
                         BoundedError::new(
@@ -1795,7 +1795,7 @@ where
 
         // Update checksum if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
 
         Ok(item_to_remove)
@@ -1809,25 +1809,25 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// assert!(vec.contains(&2).unwrap();
-    /// assert!(!vec.contains(&4).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// assert!(vec.contains(&2).unwrap());
+    /// assert!(!vec.contains(&4).unwrap());
     /// ```
     pub fn contains(&self, item: &T) -> core::result::Result<bool, BoundedError>
     where
         T: PartialEq,
     {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         for i in 0..self.length {
             match self.get(i) {
                 Ok(current_item) => {
                     if &current_item == item {
-                        return Ok(true;
+                        return Ok(true);
                     }
                 }
                 Err(_) => {
@@ -1852,29 +1852,29 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
     /// # assert_eq!(vec.len(), 3;
-    /// vec.truncate(1).unwrap();
-    /// assert_eq!(vec.len(), 1;
-    /// # assert_eq!(vec.get(0).unwrap(), 1;
+    /// vec.truncate(1).unwrap());
+    /// assert_eq!(vec.len(), 1);
+    /// # assert_eq!(vec.get(0).unwrap(), 1);
     /// ```
     pub fn truncate(&mut self, new_len: usize) -> core::result::Result<(), BoundedError> {
         if new_len >= self.length {
             return Ok();
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Simply update the length - we don't need to clear the memory
         self.length = new_len;
 
         // Update checksum if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
 
         Ok(())
@@ -1893,9 +1893,9 @@ where
     /// the validity of the collection.
     fn get_item_mut_slice_for_write(&mut self, index: usize) -> Result<SliceMut<'_>> {
         if index >= self.length {
-            return Err(crate::Error::index_out_of_bounds("Index out of bounds";
+            return Err(crate::Error::index_out_of_bounds("Index out of bounds"));
         }
-        let offset = index.saturating_mul(self.item_serialized_size;
+        let offset = index.saturating_mul(self.item_serialized_size);
         self.provider.get_slice_mut(offset, self.item_serialized_size)
     }
 
@@ -1911,18 +1911,18 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// vec.swap(0, 2).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// vec.swap(0, 2).unwrap());
     /// assert_eq!(vec.get(0).unwrap(), 3;
-    /// assert_eq!(vec.get(2).unwrap(), 1;
+    /// assert_eq!(vec.get(2).unwrap(), 1);
     /// ```
     pub fn swap(&mut self, a: usize, b: usize) -> core::result::Result<(), BoundedError> {
         if a >= self.length || b >= self.length {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         // If indices are the same, nothing to do
@@ -1930,7 +1930,7 @@ where
             return Ok();
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types (no-op since all ZSTs are identical)
         if self.item_serialized_size == 0 {
@@ -1950,7 +1950,7 @@ where
         let item_b = match self.get(b) {
             Ok(item) => item,
             Err(_) => {
-                return Err(BoundedError::runtime_execution_error("Operation failed";
+                return Err(BoundedError::runtime_execution_error("Operation failed"));
             }
         };
 
@@ -1969,22 +1969,22 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// vec.reverse().unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// vec.reverse().unwrap());
     /// assert_eq!(vec.get(0).unwrap(), 3;
     /// assert_eq!(vec.get(1).unwrap(), 2;
-    /// assert_eq!(vec.get(2).unwrap(), 1;
+    /// assert_eq!(vec.get(2).unwrap(), 1);
     /// ```
     pub fn reverse(&mut self) -> core::result::Result<(), BoundedError> {
         if self.length <= 1 {
             return Ok();
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types (no visible effect)
         if self.item_serialized_size == 0 {
@@ -2015,13 +2015,13 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(4).unwrap();
-    /// vec.retain(|&x| x % 2 == 0).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(4).unwrap());
+    /// vec.retain(|&x| x % 2 == 0).unwrap());
     /// assert_eq!(vec.len(), 2;
     /// assert_eq!(vec.get(0).unwrap(), 2;
     /// assert_eq!(vec.get(1).unwrap(), 4;
@@ -2030,7 +2030,7 @@ where
     where
         F: FnMut(&T) -> bool,
     {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types (no visible effect)
         if self.item_serialized_size == 0 {
@@ -2089,11 +2089,11 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(5).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(5).unwrap());
     /// assert_eq!(vec.binary_search(&1).unwrap(), Ok(0;
     /// assert_eq!(vec.binary_search(&2).unwrap(), Err(1;
     /// assert_eq!(vec.binary_search(&6).unwrap(), Err(3;
@@ -2102,12 +2102,12 @@ where
     where
         T: Ord,
     {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Special handling for zero-sized types (arbitrary behavior, but consistent)
         if self.item_serialized_size == 0 {
             if self.is_empty() {
-                return Ok(Err(0;
+                return Ok(Err(0));
             }
             return Ok(Ok(0)); // All ZSTs are equal
         }
@@ -2128,7 +2128,7 @@ where
             let item = match self.get(mid) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
@@ -2174,12 +2174,12 @@ where
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// # use core::cmp::Ordering;
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<(u32, u32), 10, _>::new(provider).unwrap();
-    /// # vec.push((1, 2)).unwrap();
-    /// # vec.push((3, 4)).unwrap();
-    /// # vec.push((5, 6)).unwrap();
-    /// let result = vec.binary_search_by(|&(a, _)| a.cmp(&3)).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<(u32, u32), 10, _>::new(provider).unwrap());
+    /// # vec.push((1, 2)).unwrap());
+    /// # vec.push((3, 4)).unwrap());
+    /// # vec.push((5, 6)).unwrap());
+    /// let result = vec.binary_search_by(|&(a, _)| a.cmp(&3)).unwrap());
     /// assert_eq!(result, Ok(1;
     /// ```
     pub fn binary_search_by<F>(
@@ -2189,16 +2189,16 @@ where
     where
         F: FnMut(&T) -> core::cmp::Ordering,
     {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Special handling for zero-sized types (arbitrary behavior, but consistent)
         if self.item_serialized_size == 0 {
             if self.is_empty() {
-                return Ok(Err(0;
+                return Ok(Err(0));
             }
             // Apply comparator to ZST to get consistent behavior
-            let zst = T::default);
-            let ordering = f(&zst;
+            let zst = T::default();
+            let ordering = f(&zst);
             return Ok(match ordering {
                 core::cmp::Ordering::Equal => Ok(0),
                 core::cmp::Ordering::Greater => Err(0),
@@ -2222,11 +2222,11 @@ where
             let item = match self.get(mid) {
                 Ok(item) => item,
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             };
 
-            let cmp = f(&item;
+            let cmp = f(&item);
             base = if cmp == core::cmp::Ordering::Greater { base } else { mid };
             size -= half;
         }
@@ -2241,7 +2241,7 @@ where
             }
         };
 
-        let cmp = f(&item;
+        let cmp = f(&item);
         Ok(match cmp {
             core::cmp::Ordering::Equal => Ok(base),
             core::cmp::Ordering::Greater => Err(base),
@@ -2265,12 +2265,12 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<(u32, u32), 10, _>::new(provider).unwrap();
-    /// # vec.push((1, 42)).unwrap();
-    /// # vec.push((3, 100)).unwrap();
-    /// # vec.push((5, 200)).unwrap();
-    /// let result = vec.binary_search_by_key(&3, |&(a, _)| a).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<(u32, u32), 10, _>::new(provider).unwrap());
+    /// # vec.push((1, 42)).unwrap());
+    /// # vec.push((3, 100)).unwrap());
+    /// # vec.push((5, 200)).unwrap());
+    /// let result = vec.binary_search_by_key(&3, |&(a, _)| a).unwrap());
     /// assert_eq!(result, Ok(1;
     /// ```
     pub fn binary_search_by_key<B, F>(
@@ -2296,15 +2296,15 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
-    /// # vec.push(5).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(4).unwrap();
-    /// # vec.push(2).unwrap();
-    /// vec.sort().unwrap();
-    /// assert_eq!(vec.get(0).unwrap(), 1;
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap());
+    /// # vec.push(5).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(4).unwrap());
+    /// # vec.push(2).unwrap());
+    /// vec.sort().unwrap());
+    /// assert_eq!(vec.get(0).unwrap(), 1);
     /// assert_eq!(vec.get(1).unwrap(), 2;
     /// assert_eq!(vec.get(2).unwrap(), 3;
     /// assert_eq!(vec.get(3).unwrap(), 4;
@@ -2329,27 +2329,27 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
-    /// # vec.push(5).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(4).unwrap();
-    /// # vec.push(2).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap());
+    /// # vec.push(5).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(4).unwrap());
+    /// # vec.push(2).unwrap());
     /// // Sort in reverse order
-    /// vec.sort_by(|a, b| b.cmp(a)).unwrap();
+    /// vec.sort_by(|a, b| b.cmp(a)).unwrap());
     /// assert_eq!(vec.get(0).unwrap(), 5;
     /// assert_eq!(vec.get(1).unwrap(), 4;
     /// assert_eq!(vec.get(2).unwrap(), 3;
     /// assert_eq!(vec.get(3).unwrap(), 2;
-    /// assert_eq!(vec.get(4).unwrap(), 1;
+    /// assert_eq!(vec.get(4).unwrap(), 1);
     /// ```
     #[cfg(feature = "std")]
     pub fn sort_by<F>(&mut self, mut compare: F) -> core::result::Result<(), BoundedError>
     where
         F: FnMut(&T, &T) -> core::cmp::Ordering,
     {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types or empty/single element vectors
         if self.item_serialized_size == 0 || self.length <= 1 {
@@ -2362,13 +2362,13 @@ where
             match self.get(i) {
                 Ok(item) => temp_vec.push(item),
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
 
         // Sort the temporary vector
-        temp_vec.sort_by(compare;
+        temp_vec.sort_by(compare);
 
         // Write sorted elements back to BoundedVec
         for (i, item) in temp_vec.iter().enumerate() {
@@ -2379,10 +2379,10 @@ where
         }
 
         // Recalculate checksum after sort
-        self.checksum.reset);
+        self.checksum.reset();
         for i in 0..self.length {
             if let Ok(item) = self.get(i) {
-                item.update_checksum(&mut self.checksum;
+                item.update_checksum(&mut self.checksum);
             }
         }
 
@@ -2400,16 +2400,16 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<(i32, &str), 10, _>::new(provider).unwrap();
-    /// # vec.push((5, "five")).unwrap();
-    /// # vec.push((3, "three")).unwrap();
-    /// # vec.push((1, "one")).unwrap();
-    /// # vec.push((4, "four")).unwrap();
-    /// # vec.push((2, "two")).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<(i32, &str), 10, _>::new(provider).unwrap());
+    /// # vec.push((5, "five")).unwrap());
+    /// # vec.push((3, "three")).unwrap());
+    /// # vec.push((1, "one")).unwrap());
+    /// # vec.push((4, "four")).unwrap());
+    /// # vec.push((2, "two")).unwrap());
     /// // Sort by the numeric key
-    /// vec.sort_by_key(|k| k.0).unwrap();
-    /// assert_eq!(vec.get(0).unwrap().0, 1;
+    /// vec.sort_by_key(|k| k.0).unwrap());
+    /// assert_eq!(vec.get(0).unwrap().0, 1);
     /// assert_eq!(vec.get(1).unwrap().0, 2;
     /// assert_eq!(vec.get(2).unwrap().0, 3;
     /// assert_eq!(vec.get(3).unwrap().0, 4;
@@ -2435,19 +2435,19 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(4).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(4).unwrap());
     /// # assert_eq!(vec.len(), 7;
-    /// vec.dedup().unwrap();
+    /// vec.dedup().unwrap());
     /// assert_eq!(vec.len(), 4;
-    /// assert_eq!(vec.get(0).unwrap(), 1;
+    /// assert_eq!(vec.get(0).unwrap(), 1);
     /// assert_eq!(vec.get(1).unwrap(), 2;
     /// assert_eq!(vec.get(2).unwrap(), 3;
     /// assert_eq!(vec.get(3).unwrap(), 4;
@@ -2472,18 +2472,18 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
-    /// # vec.push(10).unwrap();
-    /// # vec.push(20).unwrap();
-    /// # vec.push(21).unwrap();
-    /// # vec.push(30).unwrap();
-    /// # vec.push(31).unwrap();
-    /// # vec.push(32).unwrap();
-    /// # vec.push(40).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap());
+    /// # vec.push(10).unwrap());
+    /// # vec.push(20).unwrap());
+    /// # vec.push(21).unwrap());
+    /// # vec.push(30).unwrap());
+    /// # vec.push(31).unwrap());
+    /// # vec.push(32).unwrap());
+    /// # vec.push(40).unwrap());
     /// # assert_eq!(vec.len(), 7;
     /// // Deduplicate based on integer division by 10
-    /// vec.dedup_by(|a, b| a / 10 == b / 10).unwrap();
+    /// vec.dedup_by(|a, b| a / 10 == b / 10).unwrap());
     /// assert_eq!(vec.len(), 4;
     /// assert_eq!(vec.get(0).unwrap(), 10;
     /// assert_eq!(vec.get(1).unwrap(), 20;
@@ -2495,7 +2495,7 @@ where
     where
         F: FnMut(&T, &T) -> bool,
     {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types or empty/single element vectors
         if self.item_serialized_size == 0 || self.length <= 1 {
@@ -2508,7 +2508,7 @@ where
             match self.get(i) {
                 Ok(item) => temp_vec.push(item),
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
@@ -2527,7 +2527,7 @@ where
             j += 1;
         }
 
-        temp_vec.truncate(i;
+        temp_vec.truncate(i);
 
         // Clear current vector
         self.length = 0;
@@ -2557,20 +2557,20 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<(i32, &str), 10, _>::new(provider).unwrap();
-    /// # vec.push((1, "one")).unwrap();
-    /// # vec.push((2, "two")).unwrap();
-    /// # vec.push((2, "dos")).unwrap();
-    /// # vec.push((3, "three")).unwrap();
-    /// # vec.push((3, "tres")).unwrap();
-    /// # vec.push((3, "drei")).unwrap();
-    /// # vec.push((4, "four")).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<(i32, &str), 10, _>::new(provider).unwrap());
+    /// # vec.push((1, "one")).unwrap());
+    /// # vec.push((2, "two")).unwrap());
+    /// # vec.push((2, "dos")).unwrap());
+    /// # vec.push((3, "three")).unwrap());
+    /// # vec.push((3, "tres")).unwrap());
+    /// # vec.push((3, "drei")).unwrap());
+    /// # vec.push((4, "four")).unwrap());
     /// # assert_eq!(vec.len(), 7;
     /// // Deduplicate based on the first element of each tuple
-    /// vec.dedup_by_key(|e| e.0).unwrap();
+    /// vec.dedup_by_key(|e| e.0).unwrap());
     /// assert_eq!(vec.len(), 4;
-    /// assert_eq!(vec.get(0).unwrap().0, 1;
+    /// assert_eq!(vec.get(0).unwrap().0, 1);
     /// assert_eq!(vec.get(1).unwrap().0, 2;
     /// assert_eq!(vec.get(2).unwrap().0, 3;
     /// assert_eq!(vec.get(3).unwrap().0, 4;
@@ -2596,17 +2596,17 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
-    /// # vec.push(2).unwrap();
-    /// # vec.push(3).unwrap();
-    /// # vec.push(4).unwrap();
-    /// # vec.push(5).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
+    /// # vec.push(2).unwrap());
+    /// # vec.push(3).unwrap());
+    /// # vec.push(4).unwrap());
+    /// # vec.push(5).unwrap());
     /// let replacement = [10, 20, 30];
-    /// vec.replace_range(1..4, &replacement).unwrap();
+    /// vec.replace_range(1..4, &replacement).unwrap());
     /// assert_eq!(vec.len(), 4); // 1 + 3 items replaced 3 items
-    /// assert_eq!(vec.get(0).unwrap(), 1;
+    /// assert_eq!(vec.get(0).unwrap(), 1);
     /// assert_eq!(vec.get(1).unwrap(), 10;
     /// assert_eq!(vec.get(2).unwrap(), 20;
     /// assert_eq!(vec.get(3).unwrap(), 30;
@@ -2620,7 +2620,7 @@ where
     where
         R: core::ops::RangeBounds<usize>,
     {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Convert range bounds to concrete indices
         let start = match range.start_bound() {
@@ -2637,13 +2637,13 @@ where
 
         // Validate range
         if start > end || end > self.length {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         let range_len = end - start;
 
         // Calculate new length and check capacity
-        let new_length = self.length - range_len + replacement.len);
+        let new_length = self.length - range_len + replacement.len();
         if new_length > N_ELEMENTS {
             return Err(BoundedError::new(
                 BoundedErrorKind::CapacityExceeded,
@@ -2653,29 +2653,29 @@ where
         // Handle special cases for zero-sized types
         if self.item_serialized_size == 0 {
             self.length = new_length;
-            self.checksum.reset);
+            self.checksum.reset();
             for _ in 0..self.length {
-                T::default().update_checksum(&mut self.checksum;
+                T::default().update_checksum(&mut self.checksum);
             }
             return Ok();
         }
 
         // Collect all elements we're keeping
-        let mut temp_vec = Vec::with_capacity(new_length;
+        let mut temp_vec = Vec::with_capacity(new_length);
 
         // Add elements before the range
         for i in 0..start {
             match self.get(i) {
                 Ok(item) => temp_vec.push(item),
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
 
         // Add replacement elements
         for item in replacement {
-            temp_vec.push(item.clone();
+            temp_vec.push(item.clone());
         }
 
         // Add elements after the range
@@ -2711,24 +2711,24 @@ where
     /// # use wrt_foundation::bounded::BoundedVec;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
-    /// # vec.push(1).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap());
+    /// # vec.push(1).unwrap());
     /// let items = [2, 3, 4, 5];
-    /// vec.extend_from_slice(&items).unwrap();
+    /// vec.extend_from_slice(&items).unwrap());
     /// assert_eq!(vec.len(), 5;
-    /// assert_eq!(vec.get(0).unwrap(), 1;
+    /// assert_eq!(vec.get(0).unwrap(), 1);
     /// assert_eq!(vec.get(1).unwrap(), 2;
     /// assert_eq!(vec.get(2).unwrap(), 3;
     /// assert_eq!(vec.get(3).unwrap(), 4;
     /// assert_eq!(vec.get(4).unwrap(), 5;
     /// ```
     pub fn extend_from_slice(&mut self, other: &[T]) -> core::result::Result<(), BoundedError> {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Check if there's enough capacity
         if self.length + other.len() > N_ELEMENTS {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         // Add each item from the slice
@@ -2768,7 +2768,7 @@ where
     /// Returns the last element of the vector, or None if it is empty.
     pub fn last(&self) -> Result<Option<T>> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
         self.get(self.length - 1).map(Some)
     }
@@ -2994,7 +2994,7 @@ where
         if self.item_serialized_size > 0 {
             for i in 0..self.length {
                 if let Ok(item) = self.get(i) {
-                    item.update_checksum(&mut self.checksum;
+                    item.update_checksum(&mut self.checksum);
                 } else {
                     // Error case
                 }
@@ -3003,11 +3003,11 @@ where
     }
 
     fn verify_checksum(&self) -> bool {
-        record_global_operation(OperationType::CollectionValidate, self.verification_level;
+        record_global_operation(OperationType::CollectionValidate, self.verification_level);
         if !self.verification_level.should_verify(importance::CRITICAL) {
             return true;
         }
-        let mut current_checksum = Checksum::new);
+        let mut current_checksum = Checksum::new();
         if self.item_serialized_size > 0 {
             for i in 0..self.length {
                 if let Ok(item) = self.get(i) {
@@ -3109,7 +3109,7 @@ where
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> Result<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3198,7 +3198,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> Result<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3217,7 +3217,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> Result<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3339,12 +3339,12 @@ where
         if index >= self.length {
             return None;
         }
-        let offset = index.saturating_mul(self.item_serialized_size;
+        let offset = index.saturating_mul(self.item_serialized_size);
         if self.item_serialized_size == 0 {
-            return Some(T::default);
+            return Some(T::default());
         }
         if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-            let mut read_stream = ReadStream::new(slice_view;
+            let mut read_stream = ReadStream::new(slice_view);
             if let Ok(item) = T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
             {
                 return Some(item;
@@ -3384,9 +3384,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     ///
     /// Returns an error if the string is too long or if UTF-8 validation fails.
     pub fn from_str(s: &str, provider: P) -> core::result::Result<Self, SerializationError> {
-        let s_bytes = s.as_bytes);
+        let s_bytes = s.as_bytes();
         if s_bytes.len() > N_BYTES {
-            return Err(SerializationError::Custom("String too long for BoundedString";
+            return Err(SerializationError::Custom("String too long for BoundedString"));
         }
         // Basic UTF-8 validation can be done by str::from_utf8 on the slice to be
         // stored. Since `s` is already a &str, it's valid UTF-8. We just need
@@ -3441,9 +3441,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello").unwrap();
-    /// s.push_str(", World!").unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello").unwrap());
+    /// s.push_str(", World!").unwrap());
     /// assert_eq!(s.as_str().unwrap(), "Hello, Wor"); // Truncated to fit capacity
     /// ```
     pub fn push_str(&mut self, s: &str) -> core::result::Result<(), BoundedError> {
@@ -3478,9 +3478,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
-    /// s.clear().unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap());
+    /// s.clear().unwrap());
     /// assert!(s.is_empty();
     /// ```
     pub fn clear(&mut self) -> core::result::Result<(), BoundedError> {
@@ -3495,10 +3495,10 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, World", provider).unwrap();
-    /// assert!(s.starts_with("Hello").unwrap();
-    /// assert!(!s.starts_with("World").unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, World", provider).unwrap());
+    /// assert!(s.starts_with("Hello").unwrap());
+    /// assert!(!s.starts_with("World").unwrap());
     /// ```
     pub fn starts_with(&self, prefix: &str) -> core::result::Result<bool, BoundedError> {
         let s = self.as_str()?;
@@ -3513,10 +3513,10 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, Wor", provider).unwrap();
-    /// assert!(s.ends_with("Wor").unwrap();
-    /// assert!(!s.ends_with("World").unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, Wor", provider).unwrap());
+    /// assert!(s.ends_with("Wor").unwrap());
+    /// assert!(!s.ends_with("World").unwrap());
     /// ```
     pub fn ends_with(&self, suffix: &str) -> core::result::Result<bool, BoundedError> {
         let s = self.as_str()?;
@@ -3531,9 +3531,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, World", provider).unwrap();
-    /// let substring = s.substring(0, 5).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello, World", provider).unwrap());
+    /// let substring = s.substring(0, 5).unwrap());
     /// assert_eq!(substring.as_str().unwrap(), "Hello";
     /// ```
     pub fn substring(&self, start: usize, end: usize) -> core::result::Result<Self, BoundedError>
@@ -3543,7 +3543,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
         let s = self.as_str()?;
 
         if start > end || end > s.len() {
-            return Err(BoundedError::runtime_execution_error("Invalid range";
+            return Err(BoundedError::runtime_execution_error("Invalid range"));
         }
 
         // Find valid character boundaries
@@ -3578,9 +3578,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello").unwrap();
-    /// s.push_char('!').unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let mut s = BoundedString::<10, _>::from_str_truncate("Hello").unwrap());
+    /// s.push_char('!').unwrap());
     /// assert_eq!(s.as_str().unwrap(), "Hello!";
     /// ```
     pub fn push_char(&mut self, c: char) -> core::result::Result<(), BoundedError> {
@@ -3599,9 +3599,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<20, _>::from_str_truncate("  Hello  ", provider).unwrap();
-    /// let trimmed = s.trim().unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<20, _>::from_str_truncate("  Hello  ", provider).unwrap());
+    /// let trimmed = s.trim().unwrap());
     /// assert_eq!(trimmed.as_str().unwrap(), "Hello";
     /// ```
     pub fn trim(&self) -> core::result::Result<Self, BoundedError>
@@ -3622,9 +3622,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello WORLD", provider).unwrap();
-    /// let lowercase = s.to_lowercase().unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello WORLD", provider).unwrap());
+    /// let lowercase = s.to_lowercase().unwrap());
     /// assert_eq!(lowercase.as_str().unwrap(), "hello world";
     /// ```
     #[cfg(feature = "std")]
@@ -3650,9 +3650,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello World", provider).unwrap();
-    /// let uppercase = s.to_uppercase().unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello World", provider).unwrap());
+    /// let uppercase = s.to_uppercase().unwrap());
     /// assert_eq!(uppercase.as_str().unwrap(), "HELLO WORLD";
     /// ```
     #[cfg(feature = "std")]
@@ -3674,8 +3674,8 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<10, _>::from_str_truncate("Hello", provider).unwrap());
     /// assert_eq!(s.capacity(), 10;
     /// ```
     pub fn capacity(&self) -> usize {
@@ -3690,10 +3690,10 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello World", provider).unwrap();
-    /// assert!(s.contains("World").unwrap();
-    /// assert!(!s.contains("Rust").unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello World", provider).unwrap());
+    /// assert!(s.contains("World").unwrap());
+    /// assert!(!s.contains("Rust").unwrap());
     /// ```
     pub fn contains(&self, substring: &str) -> core::result::Result<bool, BoundedError> {
         let s = self.as_str()?;
@@ -3736,7 +3736,7 @@ impl<
                     result.extend_from_slice(slice.as_ref);
                 }
                 Err(_) => {
-                    return Err(BoundedError::runtime_execution_error("Operation failed";
+                    return Err(BoundedError::runtime_execution_error("Operation failed"));
                 }
             }
         }
@@ -3757,7 +3757,7 @@ impl<
         if total_size == 0 {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Operation failed";
+                "Operation failed"));
         }
 
         match self.provider.borrow_slice(0, total_size) {
@@ -3943,9 +3943,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// # use wrt_foundation::bounded::BoundedString;
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello,World,Rust", provider).unwrap();
-    /// let parts = s.split(',').unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    /// # let s = BoundedString::<20, _>::from_str_truncate("Hello,World,Rust", provider).unwrap());
+    /// let parts = s.split(',').unwrap());
     /// assert_eq!(parts.len(), 3;
     /// assert_eq!(parts[0].as_str().unwrap(), "Hello";
     /// assert_eq!(parts[1].as_str().unwrap(), "World";
@@ -3978,18 +3978,18 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_push_capacity() {
         const CAPACITY: usize = 8;
-        let provider = SmallProvider::default);
-        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
+        let provider = SmallProvider::default());
+        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap());
         
         // Fill to capacity - 1
         for i in 0..(CAPACITY - 1) {
-            assert!(vec.push(i as u32).is_ok();
+            assert!(vec.push(i as u32).is_ok());
             assert_eq!(vec.len(), i + 1;
             assert!(!vec.is_full();
         }
         
         // Last push should succeed
-        assert!(vec.push((CAPACITY - 1) as u32).is_ok();
+        assert!(vec.push((CAPACITY - 1) as u32).is_ok());
         assert_eq!(vec.len(), CAPACITY;
         assert!(vec.is_full();
         
@@ -4002,27 +4002,27 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_pop_state() {
         const CAPACITY: usize = 4;
-        let provider = SmallProvider::default);
-        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
+        let provider = SmallProvider::default());
+        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap());
         
         // Initially empty
         assert!(vec.is_empty();
         assert_eq!(vec.pop().unwrap(), None;
         
         // Add some items
-        vec.push(10).unwrap();
-        vec.push(20).unwrap();
-        vec.push(30).unwrap();
+        vec.push(10).unwrap());
+        vec.push(20).unwrap());
+        vec.push(30).unwrap());
         
         // Pop items in LIFO order
         assert_eq!(vec.pop().unwrap(), Some(30;
         assert_eq!(vec.len(), 2;
         
         assert_eq!(vec.pop().unwrap(), Some(20;
-        assert_eq!(vec.len(), 1;
+        assert_eq!(vec.len(), 1);
         
         assert_eq!(vec.pop().unwrap(), Some(10;
-        assert_eq!(vec.len(), 0;
+        assert_eq!(vec.len(), 0);
         assert!(vec.is_empty();
         
         // Pop from empty returns None
@@ -4033,19 +4033,19 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_vec_indexing() {
         const CAPACITY: usize = 8;
-        let provider = SmallProvider::default);
-        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap();
+        let provider = SmallProvider::default());
+        let mut vec: BoundedVec<u32, CAPACITY, _> = BoundedVec::new(provider).unwrap());
         
         // Add some items
         let count: usize = kani::any_where(|&c| c <= CAPACITY;
         for i in 0..count {
-            vec.push(i as u32).unwrap();
+            vec.push(i as u32).unwrap());
         }
         
         // Valid indices should always work
         for i in 0..vec.len() {
             let result = vec.get(i;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
             if let Ok(Some(value)) = result {
                 assert_eq!(*value, i as u32;
             }
@@ -4062,14 +4062,14 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_bounded_string_utf8() {
         const CAPACITY: usize = 64;
-        let provider = SmallProvider::default);
+        let provider = SmallProvider::default());
         
         // Valid UTF-8 strings should always work
         let test_str = "Hello, 世界!";
-        let bounded_str = BoundedString::<CAPACITY, _>::from_str(test_str, provider).unwrap();
+        let bounded_str = BoundedString::<CAPACITY, _>::from_str(test_str, provider).unwrap());
         
         // Should be able to convert back to &str
-        let as_str = bounded_str.as_str().unwrap();
+        let as_str = bounded_str.as_str().unwrap());
         assert_eq!(as_str, test_str;
         
         // Length should match
@@ -4099,7 +4099,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_memory_provider_bounds() {
         const PROVIDER_SIZE: usize = crate::memory_sizing::size_classes::SMALL;
-        let provider = SmallProvider::default);
+        let provider = SmallProvider::default());
         
         let offset: usize = kani::any_where(|&o| o < PROVIDER_SIZE;
         let len: usize = kani::any_where(|&l| l <= PROVIDER_SIZE - offset;
@@ -4110,7 +4110,7 @@ mod kani_proofs {
         
         if write_result.is_ok() {
             let read_result = provider.read_data(offset, len;
-            assert!(read_result.is_ok();
+            assert!(read_result.is_ok());
             if let Ok(read_data) = read_result {
                 assert_eq!(read_data.len(), len;
             }

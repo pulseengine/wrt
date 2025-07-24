@@ -55,7 +55,7 @@ impl LinuxDomainSocket {
 
     /// Generate next client ID
     fn next_client_id(&self) -> u64 {
-        let mut id = self.next_client_id.lock().unwrap();
+        let mut id = self.next_client_id.lock().unwrap());
         let current = *id;
         *id += 1;
         current
@@ -166,9 +166,9 @@ mod tests {
     #[test]
     fn test_linux_domain_socket_creation() {
         let result = LinuxDomainSocket::create_server("test_socket";
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
-        let socket = result.unwrap();
+        let socket = result.unwrap());
         assert!(socket.socket_path.contains("test_socket");
         
         // Clean up

@@ -157,7 +157,7 @@ impl TockFutex {
         // In Tock, process ID would be provided by the kernel
         // For this implementation, we use a placeholder
         unsafe {
-            let result = sync_syscall::command(sync_syscall::IPC_DRIVER_ID, sync_syscall::IPC_DISCOVER_CMD, 0, 0;
+            let result = sync_syscall::command(sync_syscall::IPC_DRIVER_ID, sync_syscall::IPC_DISCOVER_CMD, 0, 0);
             u32::try_from(result).unwrap_or(0)
         }
     }
@@ -433,7 +433,7 @@ mod tests {
     fn test_semaphore_futex_creation() {
         let futex = TockSemaphoreFutex::new(10;
         assert_eq!(futex.load(), 10;
-        assert_eq!(futex.semaphore_count.load(Ordering::SeqCst), 0;
+        assert_eq!(futex.semaphore_count.load(Ordering::SeqCst), 0);
     }
 
     #[test]
@@ -441,11 +441,11 @@ mod tests {
         let futex = TockSemaphoreFutex::new(0;
 
         // Test wake increments semaphore count
-        assert!(futex.wake(1).is_ok();
-        assert_eq!(futex.semaphore_count.load(Ordering::SeqCst), 1;
+        assert!(futex.wake(1).is_ok());
+        assert_eq!(futex.semaphore_count.load(Ordering::SeqCst), 1);
 
         // Test wake_all sets high value
-        assert!(futex.wake_all().is_ok();
+        assert!(futex.wake_all().is_ok());
         assert_eq!(futex.semaphore_count.load(Ordering::SeqCst), u32::MAX;
     }
 
@@ -462,8 +462,8 @@ mod tests {
 
     #[test]
     fn test_callback_state_enum() {
-        assert_eq!(CallbackState::None as u32, 0;
-        assert_eq!(CallbackState::Waiting as u32, 1;
+        assert_eq!(CallbackState::None as u32, 0);
+        assert_eq!(CallbackState::Waiting as u32, 1);
         assert_eq!(CallbackState::Fired as u32, 2;
         assert_eq!(CallbackState::Timeout as u32, 3;
     }

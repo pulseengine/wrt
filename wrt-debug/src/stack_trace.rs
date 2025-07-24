@@ -240,7 +240,7 @@ mod tests {
             depth:     0,
         };
 
-        trace.push_frame(frame1).unwrap();
+        trace.push_frame(frame1).unwrap());
 
         // Test minimal display
         let mut output = String::new);
@@ -250,7 +250,7 @@ mod tests {
                 output.push_str(s;
                 Ok(())
             })
-            .unwrap();
+            .unwrap());
 
         assert!(output.contains("#0 0x00001000");
     }

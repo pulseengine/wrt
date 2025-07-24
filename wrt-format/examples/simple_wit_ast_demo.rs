@@ -33,8 +33,8 @@ fn demonstrate_source_spans() {
 
     println!("\n--- Source Span Functionality ---";
 
-    let span1 = SourceSpan::new(0, 10, 0;
-    let span2 = SourceSpan::new(10, 20, 0;
+    let span1 = SourceSpan::new(0, 10, 0);
+    let span2 = SourceSpan::new(10, 20, 0);
 
     println!(
         "Created span1: start={}, end={}, file_id={}",
@@ -69,7 +69,7 @@ fn demonstrate_primitive_types() {
 
     println!("\n--- Primitive Type System ---";
 
-    let span = SourceSpan::new(0, 10, 0;
+    let span = SourceSpan::new(0, 10, 0);
 
     let types = [
         ("Bool", PrimitiveKind::Bool),
@@ -106,7 +106,7 @@ fn demonstrate_type_expressions() {
 
     println!("\n--- Type Expression System ---";
 
-    let span = SourceSpan::new(0, 10, 0;
+    let span = SourceSpan::new(0, 10, 0);
 
     let string_type = PrimitiveType {
         kind: PrimitiveKind::String,
@@ -145,14 +145,14 @@ fn demonstrate_function_results() {
 
     println!("\n--- Function Results System ---";
 
-    let span = SourceSpan::new(0, 10, 0;
+    let span = SourceSpan::new(0, 10, 0);
 
     // Test None results
     let _no_results = FunctionResults::None;
     println!("✓ Created function with no results";
 
     // Test default implementation
-    let default_results = FunctionResults::default);
+    let default_results = FunctionResults::default());
     match default_results {
         FunctionResults::None => println!("✓ Default FunctionResults is None"),
         _ => println!("✗ Unexpected default FunctionResults"),

@@ -53,7 +53,7 @@ fn main() {
     // 3. Demonstrate memory pool efficiency
     println!("\n3. Memory Pool Efficiency:";
 
-    let provider = NoStdProvider::<4096>::default);
+    let provider = NoStdProvider::<4096>::default());
     let mut pool = MemoryPool::new(provider;
 
     // Simulate parsing multiple functions - reusing vectors
@@ -85,7 +85,7 @@ fn main() {
     let max_conservative = 1024usize; // Conservative limit
 
     if let Ok(()) = check_bounds_u32(declared_count, 2000000, "items") {
-        let safe_count = safe_usize_conversion(declared_count, "items").unwrap();
+        let safe_count = safe_usize_conversion(declared_count, "items").unwrap());
         let allocated_count = safe_count.min(max_conservative;
 
         println!("  Declared count: {}", declared_count;

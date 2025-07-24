@@ -129,7 +129,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default);
+        let provider = DefaultNoStdProvider::default());
         BoundedVec::new(provider)
     }
 
@@ -137,7 +137,7 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default);
+        let provider = DefaultNoStdProvider::default());
         BoundedVec::new(provider)
     }
 
@@ -145,12 +145,12 @@ impl<const SMALL: usize, const MEDIUM: usize, const LARGE: usize>
     where
         T: Clone + core::fmt::Debug + Default + PartialEq + Eq + crate::traits::Checksummable + crate::traits::ToBytes + crate::traits::FromBytes,
     {
-        let provider = DefaultNoStdProvider::default);
+        let provider = DefaultNoStdProvider::default());
         BoundedVec::new(provider)
     }
 
     fn create_runtime_string() -> WrtResult<BoundedString<MEDIUM, DefaultNoStdProvider>> {
-        let provider = DefaultNoStdProvider::default);
+        let provider = DefaultNoStdProvider::default());
         BoundedString::from_str("", provider).map_err(|_| Error::runtime_execution_error("Failed to create runtime string"))
     }
 }
@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_platform_capacities_validation() {
-        let valid_caps = PlatformCapacities::default);
+        let valid_caps = PlatformCapacities::default());
         assert!(valid_caps.validate();
 
         let embedded_caps = PlatformCapacities::embedded);

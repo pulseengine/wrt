@@ -58,7 +58,7 @@ pub struct ComponentTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq 
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<P> {
     /// Create a new ComponentTypeBuilder with bounded collections
     pub fn new() -> WrtResult<Self> {
-        let provider = P::default);
+        let provider = P::default());
         Ok(Self {
             imports: BoundedVec::new(provider.clone())?,
             exports: BoundedVec::new(provider.clone())?,
@@ -401,7 +401,7 @@ pub struct NamespaceBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq
 #[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for NamespaceBuilder<P> {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         let elements = BoundedVec::new(provider.clone())
             .expect("Failed to create BoundedVec with default provider");
         Self { provider, elements }
@@ -562,13 +562,13 @@ mod tests {
             ComponentTypeBuilder::new().with_provider(provider.clone()).build()?;
 
         // Verify empty collections were created
-        assert_eq!(component_type.imports.len(), 0;
-        assert_eq!(component_type.exports.len(), 0;
-        assert_eq!(component_type.aliases.len(), 0;
-        assert_eq!(component_type.instances.len(), 0;
-        assert_eq!(component_type.core_instances.len(), 0;
-        assert_eq!(component_type.component_types.len(), 0;
-        assert_eq!(component_type.core_types.len(), 0;
+        assert_eq!(component_type.imports.len(), 0);
+        assert_eq!(component_type.exports.len(), 0);
+        assert_eq!(component_type.aliases.len(), 0);
+        assert_eq!(component_type.instances.len(), 0);
+        assert_eq!(component_type.core_instances.len(), 0);
+        assert_eq!(component_type.component_types.len(), 0);
+        assert_eq!(component_type.core_types.len(), 0);
         Ok(())
     }
 

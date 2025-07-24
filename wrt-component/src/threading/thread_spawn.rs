@@ -638,12 +638,12 @@ mod tests {
     #[test]
     fn test_thread_manager_creation() {
         let manager = ComponentThreadManager::new);
-        assert_eq!(manager.get_active_thread_count(), 0;
+        assert_eq!(manager.get_active_thread_count(), 0);
     }
 
     #[test]
     fn test_thread_configuration() {
-        let config = ThreadConfiguration::default);
+        let config = ThreadConfiguration::default());
         assert_eq!(config.stack_size, DEFAULT_STACK_SIZE;
         assert!(!config.detached);
         assert!(config.name.is_none();
@@ -661,8 +661,8 @@ mod tests {
         let mut manager = ComponentThreadManager::new);
         let component_id = ComponentInstanceId::new(1;
 
-        let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-        let arguments = BoundedVec::new(provider).unwrap();
+        let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+        let arguments = BoundedVec::new(provider).unwrap());
         
         let request = ThreadSpawnRequest {
             component_id,
@@ -672,10 +672,10 @@ mod tests {
             return_type: Some(ValType::I32),
         };
 
-        let handle = manager.spawn_thread(request).unwrap();
+        let handle = manager.spawn_thread(request).unwrap());
         assert_eq!(handle.component_id, component_id;
 
-        let result = manager.join_thread(handle.thread_id).unwrap();
+        let result = manager.join_thread(handle.thread_id).unwrap());
         match result {
             ThreadResult::Success(_) => {}
             _ => panic!("Expected successful result"),
@@ -687,7 +687,7 @@ mod tests {
         let manager = ComponentThreadManager::new);
         let component_id = ComponentInstanceId::new(1;
 
-        assert_eq!(manager.get_component_thread_count(component_id), 0;
+        assert_eq!(manager.get_component_thread_count(component_id), 0);
         assert!(manager.get_component_threads(component_id).is_empty();
     }
 }

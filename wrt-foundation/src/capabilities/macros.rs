@@ -264,9 +264,9 @@ mod tests {
     #[test]
     fn test_capability_context_macro() {
         let result = capability_context!(dynamic(CrateId::Foundation, 1024;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let context = result.unwrap();
+        let context = result.unwrap());
         assert!(context.has_capability(CrateId::Foundation);
     }
 
@@ -289,10 +289,10 @@ mod tests {
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_safe_capability_alloc_macro() {
-        let context = capability_context!(dynamic(CrateId::Foundation, 2048)).unwrap();
+        let context = capability_context!(dynamic(CrateId::Foundation, 2048)).unwrap());
 
         let result = safe_capability_alloc!(context, CrateId::Foundation, 1024;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[cfg(any(feature = "std", feature = "alloc"))]
@@ -300,6 +300,6 @@ mod tests {
     fn test_safe_verified_alloc_macro() {
         let result =
             safe_verified_alloc!(CrateId::Foundation, 1024, VerificationLevel::Standard;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

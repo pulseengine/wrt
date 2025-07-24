@@ -19,8 +19,8 @@ mod tests {
         let decoded_component = decode_component(&binary)?;
 
         // Verify the component structure
-        assert_eq!(decoded_component.imports.len(), 1;
-        assert_eq!(decoded_component.exports.len(), 1;
+        assert_eq!(decoded_component.imports.len(), 1);
+        assert_eq!(decoded_component.exports.len(), 1);
 
         Ok(())
     }

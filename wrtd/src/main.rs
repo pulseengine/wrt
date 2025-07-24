@@ -30,7 +30,7 @@ use linked_list_allocator::LockedHeap;
 
 #[cfg(all(not(feature = "std"), feature = "enable-panic-handler"))]
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty);
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 // Static heap memory for the allocator
 #[cfg(all(not(feature = "std"), feature = "enable-panic-handler"))]
@@ -329,32 +329,32 @@ impl WrtdEngine {
     /// Initialize platform optimizations
     fn init_platform_optimizations(&mut self) -> Result<()> {
         if self.config.enable_platform_optimizations {
-            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Enabling platform optimizations";
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Enabling platform optimizations");
             
             // Initialize platform-specific features
             #[cfg(feature = "wrt-execution")]
             PlatformMemory::init_optimizations().map_err(|_| Error::runtime_error("Failed to initialize platform memory optimizations"))?;
             
             self.platform_optimizations = true;
-            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Platform optimizations enabled";
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Platform optimizations enabled");
         }
         Ok(())
     }
     
     /// Initialize memory profiling
     fn init_memory_profiling(&mut self) -> Result<()> {
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing memory profiling";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing memory profiling");
         
-        self.memory_profiler = Some(MemoryProfiler::new().map_err(|_| Error::runtime_error("Failed to initialize memory profiler"))?;
+        self.memory_profiler = Some(MemoryProfiler::new().map_err(|_| Error::runtime_error("Failed to initialize memory profiler"))?);
         
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Memory profiling initialized";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Memory profiling initialized");
         Ok(())
     }
     
     /// Initialize WASI host functions
     #[cfg(feature = "wasi")]
     fn init_wasi(&mut self) -> Result<()> {
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing WASI host functions";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing WASI host functions");
         
         // Get WASI capabilities or use default
         let mut capabilities = self.config.wasi_capabilities.clone()
@@ -362,7 +362,7 @@ impl WrtdEngine {
         
         // Configure environment variables
         for env_var in &self.config.wasi_env_vars {
-            capabilities.environment.add_allowed_var(env_var;
+            capabilities.environment.add_allowed_var(env_var);
         }
         
         // Enable args access if args are provided
@@ -389,18 +389,18 @@ impl WrtdEngine {
         }
         
         // Update stats
-        self.stats.host_functions_registered += provider.function_count);
+        self.stats.host_functions_registered += provider.function_count();
         
-        self.wasi_provider = Some(provider;
+        self.wasi_provider = Some(provider);
         
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI host functions registered";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI host functions registered");
         Ok(())
     }
     
     /// Initialize component model support
     #[cfg(feature = "component-model")]
     fn init_component_model(&mut self) -> Result<()> {
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing component model";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Initializing component model");
         
         let mut registry = ComponentRegistry::new()
             .map_err(|_| Error::runtime_error("Failed to create component registry"))?;
@@ -411,22 +411,22 @@ impl WrtdEngine {
                 .map_err(|_| Error::runtime_error("Failed to register component interface"))?;
         }
         
-        self.component_registry = Some(registry;
+        self.component_registry = Some(registry);
         
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Component model initialized";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Component model initialized");
         Ok(())
     }
     
     /// Detect if the binary is a WebAssembly component or module
     fn detect_component_format(&self, data: &[u8]) -> Result<bool> {
         if data.len() < 8 {
-            return Ok(false;
+            return Ok(false);
         }
         
         // Check for WASM magic number (0x00 0x61 0x73 0x6D)
         if &data[0..4] == [0x00, 0x61, 0x73, 0x6D] {
             // Check version to distinguish component vs module
-            let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]];
+            let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
             
             // Version 1 = traditional module
             // Component model uses different version encoding
@@ -440,7 +440,7 @@ impl WrtdEngine {
     /// Execute a component using the component model
     #[cfg(feature = "component-model")]
     fn execute_component(&mut self, data: &[u8]) -> Result<()> {
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing WebAssembly component";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing WebAssembly component");
         
         if let Some(ref registry) = self.component_registry {
             // Create component from binary data
@@ -468,7 +468,7 @@ impl WrtdEngine {
             
             self.stats.components_executed += 1;
         } else {
-            return Err(Error::runtime_error("Component model not initialized";
+            return Err(Error::runtime_error("Component model not initialized"));
         }
         
         Ok(())
@@ -476,12 +476,12 @@ impl WrtdEngine {
     
     /// Execute a traditional WebAssembly module
     fn execute_traditional_module(&mut self, data: &[u8]) -> Result<()> {
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing WebAssembly module";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Executing WebAssembly module");
         
         // Execute with actual WRT engine if available
         #[cfg(all(feature = "std", feature = "wrt-execution"))]
         {
-            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Using real WRT execution engine";
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Using real WRT execution engine");
             use wrt::engine::{CapabilityAwareEngine, EnginePreset};
             
             // Determine engine preset from features  
@@ -507,9 +507,9 @@ impl WrtdEngine {
             #[cfg(feature = "wasi")]
             if self.config.enable_wasi {
                 if let Err(e) = engine.enable_wasi() {
-                    let _ = self.logger.handle_minimal_log(LogLevel::Warning, &format!("WASI not available for this ASIL level: {}", e;
+                    let _ = self.logger.handle_minimal_log(LogLevel::Warning, &format!("WASI not available for this ASIL level: {}", e));
                 } else {
-                    let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI support enabled";
+                    let _ = self.logger.handle_minimal_log(LogLevel::Info, "WASI support enabled");
                 }
             }
 
@@ -525,7 +525,7 @@ impl WrtdEngine {
                     Ok(vec![])
                 }).unwrap_or();
                 
-                let _ = self.logger.handle_minimal_log(LogLevel::Info, "Example host functions registered";
+                let _ = self.logger.handle_minimal_log(LogLevel::Info, "Example host functions registered");
             }
             
             // Load module
@@ -537,14 +537,14 @@ impl WrtdEngine {
                 .map_err(|e| Error::runtime_execution_error("Failed to instantiate module"))?;
             
             // Execute function
-            let function_name = self.config.function_name.unwrap_or("start";
-            let _ = self.logger.handle_minimal_log(LogLevel::Info, &format!("Executing function: {}", function_name;
+            let function_name = self.config.function_name.unwrap_or("start");
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, &format!("Executing function: {}", function_name));
             
             // Check if function exists before execution
             if !engine.has_function(instance, function_name)
                 .map_err(|e| Error::runtime_function_not_found("Failed to check function existence"))? {
-                let _ = self.logger.handle_minimal_log(LogLevel::Error, &format!("Function '{}' not found in module exports", function_name;
-                return Err(Error::runtime_function_not_found("Function not found";
+                let _ = self.logger.handle_minimal_log(LogLevel::Error, &format!("Function '{}' not found in module exports", function_name));
+                return Err(Error::runtime_function_not_found("Function not found"));
             }
             
             engine.execute(instance, function_name, &[])
@@ -556,20 +556,20 @@ impl WrtdEngine {
         // Fallback simulation for demo/no-std modes
         #[cfg(not(all(feature = "std", feature = "wrt-execution")))]
         {
-            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Simulating execution of function";
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Simulating execution of function");
             
             // Validate module structure
             if data.len() < 8 {
-                return Err(Error::parse_error("Module too small to be valid WASM";
+                return Err(Error::parse_error("Module too small to be valid WASM"));
             }
 
             // Check for WASM magic number (0x00 0x61 0x73 0x6D)
             if &data[0..4] != [0x00, 0x61, 0x73, 0x6D] {
-                return Err(Error::parse_error("Invalid WASM magic number";
+                return Err(Error::parse_error("Invalid WASM magic number"));
             }
             
             // Simulate successful execution
-            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Module validation successful";
+            let _ = self.logger.handle_minimal_log(LogLevel::Info, "Module validation successful");
         }
         
         Ok(())
@@ -586,13 +586,13 @@ impl WrtdEngine {
             
             let file_size = metadata.len() as usize;
             if file_size > MAX_MODULE_SIZE {
-                return Err(Error::runtime_execution_error("Module file too large";
+                return Err(Error::runtime_execution_error("Module file too large"));
             }
             
             // For safety-critical mode, use bounded allocation
             #[cfg(feature = "safety-critical")]
             {
-                let mut module_data: WrtVec<u8, {CrateId::Wrtd as u8}, MAX_MODULE_SIZE> = WrtVec::new);
+                let mut module_data: WrtVec<u8, {CrateId::Wrtd as u8}, MAX_MODULE_SIZE> = WrtVec::new();
                 
                 // Read file in chunks to stay within bounds
                 let mut file = fs::File::open(path).map_err(|_| Error::system_io_error("Failed to open module file"))?;
@@ -621,7 +621,7 @@ impl WrtdEngine {
             }
         } else if let Some(data) = &self.config.module_data {
             if data.len() > MAX_MODULE_SIZE {
-                return Err(Error::runtime_execution_error("Module data too large";
+                return Err(Error::runtime_execution_error("Module data too large"));
             }
             Ok(data.to_vec())
         } else {
@@ -631,7 +631,7 @@ impl WrtdEngine {
 
     /// Execute a WebAssembly module or component
     pub fn execute_module(&mut self) -> Result<()> {
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Starting module execution";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Starting module execution");
 
         // Determine execution mode and module source with bounded allocations
         #[cfg(feature = "std")]
@@ -645,9 +645,9 @@ impl WrtdEngine {
 
         // Get module size for resource estimation
         #[cfg(feature = "std")]
-        let module_size = module_data.len);
+        let module_size = module_data.len();
         #[cfg(not(feature = "std"))]
-        let module_size = module_data.len);
+        let module_size = module_data.len();
 
         // Estimate resource usage
         let estimated_fuel = (module_size as u64) / 10; // Conservative estimate
@@ -655,15 +655,15 @@ impl WrtdEngine {
 
         // Check limits
         if estimated_fuel > self.config.max_fuel {
-            return Err(Error::runtime_execution_error("
-            ;
+            return Err(Error::runtime_execution_error("Estimated fuel exceeds maximum limit"));
         }
 
         if estimated_memory > self.config.max_memory {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::CAPACITY_EXCEEDED,
-                ";
+                "Estimated memory exceeds maximum limit",
+            ));
         }
 
         // Route execution based on binary type
@@ -675,7 +675,7 @@ impl WrtdEngine {
             }
             #[cfg(not(feature = "component-model"))]
             {
-                return Err(Error::runtime_error("Component model support not enabled";
+                return Err(Error::runtime_error("Component model support not enabled"));
             }
         } else {
             // Execute as traditional WebAssembly module
@@ -685,9 +685,9 @@ impl WrtdEngine {
         // Update statistics
         self.stats.modules_executed += 1;
         self.stats.fuel_consumed += estimated_fuel;
-        self.stats.peak_memory = self.stats.peak_memory.max(estimated_memory;
+        self.stats.peak_memory = self.stats.peak_memory.max(estimated_memory);
 
-        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Module execution completed successfully";
+        let _ = self.logger.handle_minimal_log(LogLevel::Info, "Module execution completed successfully");
         Ok(())
     }
 
@@ -775,36 +775,36 @@ impl SimpleArgs {
         while i < args.len() {
             match args[i].as_str() {
                 "--help" | "-h" => {
-                    println!("WebAssembly Runtime Daemon (wrtd)";
+                    println!("WebAssembly Runtime Daemon (wrtd)");
                     println!("Usage: wrtd [OPTIONS] <module.wasm>";
                     println!);
-                    println!("Options:";
-                    println!("  --function <name>     Function to execute (default: start)";
-                    println!("  --fuel <amount>       Maximum fuel limit";
-                    println!("  --memory <bytes>      Maximum memory limit";
-                    println!("  --no-std             Force no-std execution mode";
-                    println!("  --memory-profile     Enable memory profiling";
-                    println!("  --no-platform-opt    Disable platform optimizations";
+                    println!("Options:");
+                    println!("  --function <name>     Function to execute (default: start)");
+                    println!("  --fuel <amount>       Maximum fuel limit");
+                    println!("  --memory <bytes>      Maximum memory limit");
+                    println!("  --no-std             Force no-std execution mode");
+                    println!("  --memory-profile     Enable memory profiling");
+                    println!("  --no-platform-opt    Disable platform optimizations");
                     #[cfg(feature = "wasi")]
                     {
-                        println!("  --wasi               Enable WASI support";
-                        println!("  --wasi-version <v>   WASI version (preview2)";
-                        println!("  --wasi-fs <path>     Allow filesystem access to path";
-                        println!("  --wasi-env <var>     Expose environment variable to WASI";
-                        println!("  --wasi-arg <arg>     Pass argument to WASI program";
+                        println!("  --wasi               Enable WASI support");
+                        println!("  --wasi-version <v>   WASI version (preview2)");
+                        println!("  --wasi-fs <path>     Allow filesystem access to path");
+                        println!("  --wasi-env <var>     Expose environment variable to WASI");
+                        println!("  --wasi-arg <arg>     Pass argument to WASI program");
                     }
                     #[cfg(feature = "component-model")]
                     {
-                        println!("  --component          Enable component model support";
-                        println!("  --interface <name>   Register component interface";
+                        println!("  --component          Enable component model support");
+                        println!("  --interface <name>   Register component interface");
                     }
-                    println!("  --help               Show this help message";
-                    process::exit(0;
+                    println!("  --help               Show this help message");
+                    process::exit(0);
                 }
                 "--function" => {
                     i += 1;
                     if i < args.len() {
-                        result.function_name = Some(args[i].clone();
+                        result.function_name = Some(args[i].clone());
                     }
                 }
                 "--fuel" => {
@@ -846,21 +846,21 @@ impl SimpleArgs {
                 "--wasi-fs" => {
                     i += 1;
                     if i < args.len() {
-                        result.wasi_fs_paths.push(args[i].clone();
+                        result.wasi_fs_paths.push(args[i].clone());
                     }
                 }
                 #[cfg(feature = "wasi")]
                 "--wasi-env" => {
                     i += 1;
                     if i < args.len() {
-                        result.wasi_env_vars.push(args[i].clone();
+                        result.wasi_env_vars.push(args[i].clone());
                     }
                 }
                 #[cfg(feature = "wasi")]
                 "--wasi-arg" => {
                     i += 1;
                     if i < args.len() {
-                        result.wasi_args.push(args[i].clone();
+                        result.wasi_args.push(args[i].clone());
                     }
                 }
                 #[cfg(feature = "component-model")]
@@ -871,11 +871,11 @@ impl SimpleArgs {
                 "--interface" => {
                     i += 1;
                     if i < args.len() {
-                        result.component_interfaces.push(args[i].clone();
+                        result.component_interfaces.push(args[i].clone());
                     }
                 }
                 arg if !arg.starts_with("--") => {
-                    result.module_path = Some(arg.to_string();
+                    result.module_path = Some(arg.to_string());
                 }
                 _ => {} // Ignore unknown flags
             }
@@ -889,22 +889,22 @@ impl SimpleArgs {
 /// Main entry point
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
-    eprintln!("DEBUG: wrtd starting";
+    eprintln!("DEBUG: wrtd starting");
     
     // Parse arguments first to check for --help
     let args = SimpleArgs::parse()?;
     
-    eprintln!("DEBUG: args parsed";
+    eprintln!("DEBUG: args parsed");
     
-    println!("WebAssembly Runtime Daemon (wrtd)";
-    println!("===================================";
+    println!("WebAssembly Runtime Daemon (wrtd)");
+    println!("===================================");
     
     // Create configuration from arguments
-    let mut config = WrtdConfig::default);
+    let mut config = WrtdConfig::default();
     config.module_path = args.module_path;
     if let Some(_function_name) = args.function_name {
         // For now, we'll just use "start" as default since we need static lifetime
-        config.function_name = Some("start";
+        config.function_name = Some("start");
     }
     
     if let Some(fuel) = args.max_fuel {
@@ -928,16 +928,16 @@ fn main() -> Result<()> {
         }
         
         if config.enable_wasi {
-            let mut capabilities = WasiCapabilities::minimal);
+            let mut capabilities = WasiCapabilities::minimal();
             
             // Add filesystem access paths
             for path in &args.wasi_fs_paths {
-                capabilities.filesystem.add_allowed_path(path;
+                capabilities.filesystem.add_allowed_path(path);
             }
             
             // Configure environment variables
             for env_var in &args.wasi_env_vars {
-                capabilities.environment.add_allowed_var(env_var;
+                capabilities.environment.add_allowed_var(env_var);
             }
             
             // Enable args access if args are provided
@@ -950,12 +950,12 @@ fn main() -> Result<()> {
                 capabilities.environment.environ_access = true;
             }
             
-            config.wasi_capabilities = Some(capabilities;
+            config.wasi_capabilities = Some(capabilities);
             config.wasi_env_vars = args.wasi_env_vars.clone();
             config.wasi_args = args.wasi_args.clone();
             
-            println!("✓ WASI enabled:";
-            println!("  - Version: {:?}", config.wasi_version;
+            println!("✓ WASI enabled:");
+            println!("  - Version: {:?}", config.wasi_version);
             println!("  - Filesystem paths: {}", args.wasi_fs_paths.len);
             println!("  - Environment variables: {}", args.wasi_env_vars.len);
             println!("  - Program arguments: {}", args.wasi_args.len);
@@ -974,18 +974,18 @@ fn main() -> Result<()> {
     }
     
     if config.enable_memory_profiling {
-        println!("✓ Memory profiling enabled";
+        println!("✓ Memory profiling enabled");
     }
     
     if !config.enable_platform_optimizations {
-        println!("! Platform optimizations disabled";
+        println!("! Platform optimizations disabled");
     }
 
     // Check if we have a module to execute
     if config.module_path.is_none() {
-        println!("Error: No module specified";
-        println!("Use --help for usage information";
-        process::exit(1;
+        println!("Error: No module specified");
+        println!("Use --help for usage information");
+        process::exit(1);
     }
 
     // Create and run engine
@@ -993,33 +993,33 @@ fn main() -> Result<()> {
     
     match engine.execute_module() {
         Ok(()) => {
-            let stats = engine.stats);
-            println!("✓ Execution completed successfully";
-            println!("  Modules executed: {}", stats.modules_executed;
-            println!("  Components executed: {}", stats.components_executed;
-            println!("  Fuel consumed: {}", stats.fuel_consumed;
-            println!("  Peak memory: {} bytes", stats.peak_memory;
-            println!("  Host functions registered: {}", stats.host_functions_registered;
-            println!("  WASI functions called: {}", stats.wasi_functions_called;
-            println!("  Cross-component calls: {}", stats.cross_component_calls;
+            let stats = engine.stats();
+            println!("✓ Execution completed successfully");
+            println!("  Modules executed: {}", stats.modules_executed);
+            println!("  Components executed: {}", stats.components_executed);
+            println!("  Fuel consumed: {}", stats.fuel_consumed);
+            println!("  Peak memory: {} bytes", stats.peak_memory);
+            println!("  Host functions registered: {}", stats.host_functions_registered);
+            println!("  WASI functions called: {}", stats.wasi_functions_called);
+            println!("  Cross-component calls: {}", stats.cross_component_calls);
             
             // Display memory profiling if enabled
             if let Some(profiler) = engine.memory_profiler() {
-                println!("Memory Profiling:";
+                println!("Memory Profiling:");
                 println!("  Peak usage: {} bytes", profiler.peak_usage);
                 println!("  Current usage: {} bytes", profiler.current_usage);
             }
         }
         Err(e) => {
-            eprintln!("✗ Execution failed: {}", e;
-            process::exit(1;
+            eprintln!("✗ Execution failed: {}", e);
+            process::exit(1);
         }
     }
 
     // Complete memory system initialization
     #[cfg(feature = "std")]
     if let Err(e) = wrt_foundation::memory_init::init_wrt_memory() {
-        eprintln!("Warning: Failed to complete memory system: {}", e;
+        eprintln!("Warning: Failed to complete memory system: {}", e);
     }
     
     Ok(())
@@ -1042,7 +1042,7 @@ fn main() {
     if let Err(_) = wrt_foundation::memory_init::init_wrt_memory() { // Initialize with defaults
         // In no_std, we can't easily print errors, so we enter an error loop
         loop {
-            core::hint::spin_loop);
+            core::hint::spin_loop();
         }
     }
     
@@ -1053,9 +1053,9 @@ fn main() {
         0x01, 0x00, 0x00, 0x00, // Version 1
     ];
 
-    let mut config = WrtdConfig::default);
-    config.module_data = Some(DEMO_MODULE;
-    config.function_name = Some("start";
+    let mut config = WrtdConfig::default();
+    config.module_data = Some(DEMO_MODULE);
+    config.function_name = Some("start");
     config.max_fuel = 1000; // Conservative for embedded
     config.max_memory = 4096; // 4KB for embedded
 
@@ -1064,7 +1064,7 @@ fn main() {
         Err(_) => {
             // Engine creation failed, enter error loop
             loop {
-                core::hint::spin_loop);
+                core::hint::spin_loop();
             }
         }
     };
@@ -1074,13 +1074,13 @@ fn main() {
         // For embedded applications, this would typically trigger some error handling mechanism
         // For now, we just enter an infinite loop (panic-like behavior)
         loop {
-            core::hint::spin_loop);
+            core::hint::spin_loop();
         }
     }
 
     // Complete memory system initialization
     #[cfg(feature = "std")]
-    let _ = wrt_foundation::memory_init::init_wrt_memory);
+    let _ = wrt_foundation::memory_init::init_wrt_memory();
 }
 
 // Panic handler for no_std builds

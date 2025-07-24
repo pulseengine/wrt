@@ -300,7 +300,7 @@ impl CallbackRegistry {
     pub fn register_callback<T>(&mut self, callback_type: CallbackType, _callback: T) {
         // Binary std/no_std choice
         // This is a placeholder implementation
-        let _ = self.callbacks.insert(callback_type, CallbackData::default);
+        let _ = self.callbacks.insert(callback_type, CallbackData::default());
     }
 
     /// Get a callback
@@ -633,7 +633,7 @@ mod tests {
         // Fix the assertion to not rely on PartialEq for Error type
         match result {
             Ok(values) => {
-                assert_eq!(values.len(), 1;
+                assert_eq!(values.len(), 1);
                 assert!(matches!(values[0], Value::I32(42));
             },
             Err(_) => panic!("Expected successful function call"),
@@ -687,7 +687,7 @@ mod tests {
             BuiltinType::ResourceCreate,
             vec![],
         ;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(42)];
 
         // Now test with a built-in that's only in the host
@@ -713,7 +713,7 @@ mod tests {
         ;
 
         // Should work now
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(55)];
     }
 }

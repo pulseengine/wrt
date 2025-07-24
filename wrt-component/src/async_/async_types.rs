@@ -496,7 +496,7 @@ mod tests {
 
     #[test]
     fn test_stream_lifecycle() {
-        let mut stream: Stream<Value> = Stream::new(StreamHandle(1), ValType::U32).unwrap();
+        let mut stream: Stream<Value> = Stream::new(StreamHandle(1), ValType::U32).unwrap());
 
         assert!(stream.is_writable();
         assert!(!stream.is_readable())); // Empty buffer
@@ -518,7 +518,7 @@ mod tests {
         assert!(future.is_writable();
         assert!(!future.is_readable();
 
-        future.set_value(Value::String(BoundedString::from_str("hello").unwrap())).unwrap();
+        future.set_value(Value::String(BoundedString::from_str("hello").unwrap())).unwrap());
         assert!(future.is_readable();
         assert!(!future.is_writable();
         assert_eq!(future.state, FutureState::Ready;
@@ -541,7 +541,7 @@ mod tests {
         let error = ErrorContext::new(
             ErrorContextHandle(1),
             BoundedString::from_str("Test error").unwrap(),
-        ).unwrap();
+        ).unwrap());
 
         let debug_str = error.debug_string);
         assert!(debug_str.as_str().contains("Test error");
@@ -549,10 +549,10 @@ mod tests {
 
     #[test]
     fn test_waitable_set() {
-        let mut set = WaitableSet::new().unwrap();
+        let mut set = WaitableSet::new().unwrap());
 
-        let idx1 = set.add(Waitable::StreamReadable(StreamHandle(1))).unwrap();
-        let idx2 = set.add(Waitable::FutureReadable(FutureHandle(1))).unwrap();
+        let idx1 = set.add(Waitable::StreamReadable(StreamHandle(1))).unwrap());
+        let idx2 = set.add(Waitable::FutureReadable(FutureHandle(1))).unwrap());
 
         assert!(!set.has_ready();
 

@@ -47,9 +47,9 @@ mod foundation_examples {
         let mut stack: BoundedStack<&str, 5> = BoundedStack::new);
         
         // Push operations
-        stack.push("first").unwrap();
-        stack.push("second").unwrap();
-        stack.push("third").unwrap();
+        stack.push("first").unwrap());
+        stack.push("second").unwrap());
+        stack.push("third").unwrap());
         
         // Pop operations (LIFO)
         assert_eq!(stack.pop(), Some("third";
@@ -57,7 +57,7 @@ mod foundation_examples {
         
         // Peek without removing
         assert_eq!(stack.peek(), Some(&"first";
-        assert_eq!(stack.len(), 1;
+        assert_eq!(stack.len(), 1);
     }
 }
 

@@ -692,12 +692,12 @@ mod tests {
     #[test]
     fn test_task_registry_operations() {
         let mut registry = TaskRegistry::new);
-        assert_eq!(registry.task_count(), 0;
+        assert_eq!(registry.task_count(), 0);
 
         let task = Task::new);
         let task_id = task.id;
-        registry.register_task(task).unwrap();
-        assert_eq!(registry.task_count(), 1;
+        registry.register_task(task).unwrap());
+        assert_eq!(registry.task_count(), 1);
 
         let retrieved_task = registry.get_task(task_id;
         assert!(retrieved_task.is_some();
@@ -705,46 +705,46 @@ mod tests {
 
         let removed_task = registry.remove_task(task_id;
         assert!(removed_task.is_some();
-        assert_eq!(registry.task_count(), 0;
+        assert_eq!(registry.task_count(), 0);
     }
 
     #[test] 
     fn test_task_builtins() {
         // Initialize the registry
-        TaskBuiltins::initialize().unwrap();
+        TaskBuiltins::initialize().unwrap());
 
         // Test task creation and status
-        let task_id = TaskBuiltins::task_start().unwrap();
-        let status = TaskBuiltins::task_status(task_id).unwrap();
+        let task_id = TaskBuiltins::task_start().unwrap());
+        let status = TaskBuiltins::task_status(task_id).unwrap());
         assert_eq!(status, TaskStatus::Running;
 
         // Test task completion
         let return_value = TaskReturn::from_component_value(ComponentValue::I32(42;
-        TaskBuiltins::task_return(task_id, return_value).unwrap();
+        TaskBuiltins::task_return(task_id, return_value).unwrap());
         
-        let final_status = TaskBuiltins::task_status(task_id).unwrap();
+        let final_status = TaskBuiltins::task_status(task_id).unwrap());
         assert_eq!(final_status, TaskStatus::Completed;
 
         // Test task wait
-        let result = TaskBuiltins::task_wait(task_id).unwrap();
+        let result = TaskBuiltins::task_wait(task_id).unwrap());
         assert!(result.is_some();
     }
 
     #[test]
     fn test_task_metadata() {
-        TaskBuiltins::initialize().unwrap();
-        let task_id = TaskBuiltins::task_start().unwrap();
+        TaskBuiltins::initialize().unwrap());
+        let task_id = TaskBuiltins::task_start().unwrap());
 
         // Set metadata
-        TaskBuiltins::set_task_metadata(task_id, "test_key", ComponentValue::Bool(true)).unwrap();
+        TaskBuiltins::set_task_metadata(task_id, "test_key", ComponentValue::Bool(true)).unwrap());
 
         // Get metadata
-        let value = TaskBuiltins::get_task_metadata(task_id, "test_key").unwrap();
+        let value = TaskBuiltins::get_task_metadata(task_id, "test_key").unwrap());
         assert!(value.is_some();
         assert_eq!(value.unwrap(), ComponentValue::Bool(true;
 
         // Get non-existent metadata
-        let missing = TaskBuiltins::get_task_metadata(task_id, "missing_key").unwrap();
+        let missing = TaskBuiltins::get_task_metadata(task_id, "missing_key").unwrap());
         assert!(missing.is_none();
     }
 

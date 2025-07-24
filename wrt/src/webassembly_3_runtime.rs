@@ -206,7 +206,7 @@ impl WebAssembly3Runtime {
                 args,
             } => {
                 // Create new thread execution context
-                let thread_config = wrt_runtime::thread_manager::ThreadConfig::default);
+                let thread_config = wrt_runtime::thread_manager::ThreadConfig::default();
                 let thread_id = self.thread_manager.create_thread(thread_config)?;
 
                 // In real implementation, would spawn thread and execute function
@@ -288,15 +288,13 @@ impl WebAssembly3Runtime {
                 // Basic throw implementation
                 self.stats.throw_operations += 1;
                 // For now, return error to simulate exception
-                Err(Error::runtime_execution_error(
-                    "Exception thrown with tag {}",
-                ))
+                Err(Error::runtime_execution_error("Exception thrown with tag"))
             },
             ExceptionOperation::Rethrow { relative_depth } => {
                 // Basic rethrow implementation
                 self.stats.rethrow_operations += 1;
                 Err(Error::runtime_execution_error(
-                    "Exception rethrown at depth {}",
+                    "Exception rethrown at depth",
                 ))
             },
         }
@@ -461,10 +459,10 @@ pub fn webassembly3_atomic_cas(
                 align:  2,
             },
         },
-    ;
+    );
 
-    let threads_op = ThreadsOperation::Atomic(atomic_op;
-    let feature = WebAssembly3Feature::Threads(threads_op;
+    let threads_op = ThreadsOperation::Atomic(atomic_op);
+    let feature = WebAssembly3Feature::Threads(threads_op);
 
     let result = runtime.execute_feature(feature)?;
     match result {
@@ -483,7 +481,7 @@ pub fn webassembly3_spawn_thread(
         function_index,
         args,
     };
-    let feature = WebAssembly3Feature::Threads(threads_op;
+    let feature = WebAssembly3Feature::Threads(threads_op);
 
     let result = runtime.execute_feature(feature)?;
     match result {
@@ -504,7 +502,7 @@ pub fn webassembly3_tail_call(
         function_index,
         args,
     };
-    let feature = WebAssembly3Feature::TailCalls(tail_call_op;
+    let feature = WebAssembly3Feature::TailCalls(tail_call_op);
 
     runtime.execute_feature(feature)?;
     Ok(())
@@ -518,13 +516,13 @@ pub fn webassembly3_load_from_memory(
 ) -> Result<i32> {
     use wrt_instructions::multi_memory::MultiMemoryLoad;
 
-    let load_op = MultiMemoryLoad::i32_load(memory_index, 0, 2;
+    let load_op = MultiMemoryLoad::i32_load(memory_index, 0, 2);
     let multi_memory_op = MultiMemoryOperation::Load {
         memory_index,
         load_op,
         address: Value::I32(address as i32),
     };
-    let feature = WebAssembly3Feature::MultiMemory(multi_memory_op;
+    let feature = WebAssembly3Feature::MultiMemory(multi_memory_op);
 
     let result = runtime.execute_feature(feature)?;
     match result {
@@ -542,7 +540,7 @@ pub fn webassembly3_try_block(
         block_type: wrt_instructions::control_ops::ControlBlockType::Empty,
         instructions,
     };
-    let feature = WebAssembly3Feature::Exceptions(exception_op;
+    let feature = WebAssembly3Feature::Exceptions(exception_op);
 
     runtime.execute_feature(feature)?;
     Ok(())

@@ -189,7 +189,7 @@ mod tests {
         let _ = wrt_foundation::memory_init::MemoryInitializer::initialize);
         
         let result = wasi_cli_get_arguments(&mut (), vec![])?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         // Should return a list
         if let Value::List(_args) = &result[0] {
@@ -208,7 +208,7 @@ mod tests {
         let _ = wrt_foundation::memory_init::MemoryInitializer::initialize);
         
         let result = wasi_cli_get_environment(&mut (), vec![])?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         // Should return a list of tuples
         if let Value::List(env_vars) = &result[0] {
@@ -234,7 +234,7 @@ mod tests {
         let _ = wrt_foundation::memory_init::MemoryInitializer::initialize);
         
         let result = wasi_get_initial_cwd(&mut (), vec![])?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         // Should return an option
         if let Value::Option(cwd_opt) = &result[0] {

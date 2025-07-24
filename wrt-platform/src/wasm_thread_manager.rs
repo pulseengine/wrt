@@ -480,21 +480,21 @@ mod tests {
 
     #[test]
     fn test_wasm_thread_manager_creation() {
-        let config = ThreadPoolConfig::default);
-        let limits = ThreadingLimits::default);
+        let config = ThreadPoolConfig::default());
+        let limits = ThreadingLimits::default());
         let executor = create_test_executor);
 
         let manager = WasmThreadManager::new(config, limits, executor;
-        assert!(manager.is_ok();
+        assert!(manager.is_ok());
     }
 
     #[test]
     fn test_module_registration() {
-        let config = ThreadPoolConfig::default);
-        let limits = ThreadingLimits::default);
+        let config = ThreadPoolConfig::default());
+        let limits = ThreadingLimits::default());
         let executor = create_test_executor);
 
-        let manager = WasmThreadManager::new(config, limits, executor).unwrap();
+        let manager = WasmThreadManager::new(config, limits, executor).unwrap());
 
         let module = WasmModuleInfo {
             id: 1,
@@ -505,17 +505,17 @@ mod tests {
             default_priority: ThreadPriority::Normal,
         };
 
-        assert!(manager.register_module(module).is_ok();
-        assert!(manager.unregister_module(1).is_ok();
+        assert!(manager.register_module(module).is_ok());
+        assert!(manager.unregister_module(1).is_ok());
     }
 
     #[test]
     fn test_serialization() {
-        let config = ThreadPoolConfig::default);
-        let limits = ThreadingLimits::default);
+        let config = ThreadPoolConfig::default());
+        let limits = ThreadingLimits::default());
         let executor = create_test_executor);
 
-        let manager = WasmThreadManager::new(config, limits, executor).unwrap();
+        let manager = WasmThreadManager::new(config, limits, executor).unwrap());
 
         let values = vec![
             ComponentValue::U32(42),
@@ -523,8 +523,8 @@ mod tests {
             ComponentValue::String("hello".to_string()),
         ];
 
-        let serialized = manager.serialize_component_values(&values).unwrap();
-        let deserialized = manager.deserialize_component_values(&serialized).unwrap();
+        let serialized = manager.serialize_component_values(&values).unwrap());
+        let deserialized = manager.deserialize_component_values(&serialized).unwrap());
 
         assert_eq!(values.len(), deserialized.len);
         assert_eq!(values[0], deserialized[0];

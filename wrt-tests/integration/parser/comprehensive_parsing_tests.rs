@@ -241,7 +241,7 @@ mod comprehensive_tests {
                             sections.insert("data", reader.get_count);
                         }
                         Payload::StartSection { .. } => {
-                            sections.insert("start", 1;
+                            sections.insert("start", 1);
                         }
                         Payload::End => break,
                         _ => {}
@@ -274,7 +274,7 @@ mod comprehensive_tests {
     fn test_builtin_detection_in_complex_module() {
         let module = create_full_featured_module);
         
-        let builtins = parser::scan_for_builtins(&module).unwrap();
+        let builtins = parser::scan_for_builtins(&module).unwrap());
         
         // Should detect WASI builtin imports but not other imports
         assert_eq!(builtins.len(), 2;
@@ -373,7 +373,7 @@ mod validation_tests {
             (export "test" (func $test))
         )"#;
         
-        let module = wat::parse_str(wat).unwrap();
+        let module = wat::parse_str(wat).unwrap());
         
         // Parser should handle sections regardless of order
         let mut parser = Parser::new(&module;
@@ -411,7 +411,7 @@ mod validation_tests {
                 Ok(payload) => {
                     if let Payload::ImportSection(reader) = payload {
                         for import in reader {
-                            let import = import.unwrap();
+                            let import = import.unwrap());
                             imports.push((import.module.to_string(), import.name.to_string();
                         }
                     } else if let Payload::End = payload {
@@ -442,7 +442,7 @@ mod validation_tests {
                 Ok(payload) => {
                     if let Payload::ExportSection(reader) = payload {
                         for export in reader {
-                            let export = export.unwrap();
+                            let export = export.unwrap());
                             exports.push(export.name.to_string();
                         }
                     } else if let Payload::End = payload {
@@ -549,7 +549,7 @@ mod performance_tests {
         let start = Instant::now);
         
         for _ in 0..100 {
-            let _builtins = parser::scan_for_builtins(&module).unwrap();
+            let _builtins = parser::scan_for_builtins(&module).unwrap());
         }
         
         let duration = start.elapsed);
@@ -603,7 +603,7 @@ mod integration_tests {
         let module = create_full_featured_module);
         
         // Test with wrt-component parser
-        let component_builtins = parser::scan_for_builtins(&module).unwrap();
+        let component_builtins = parser::scan_for_builtins(&module).unwrap());
         
         // Test with wrt-decoder parser (count imports manually)
         let mut decoder_parser = Parser::new(&module;
@@ -614,7 +614,7 @@ mod integration_tests {
                 Ok(payload) => {
                     if let Payload::ImportSection(reader) = payload {
                         for import in reader {
-                            let import = import.unwrap();
+                            let import = import.unwrap());
                             if import.module == "wasi_builtin" {
                                 wasi_import_count += 1;
                             }

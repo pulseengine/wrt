@@ -1445,9 +1445,9 @@ mod tests {
             vec![ComponentComponentValue::Bool(true), ComponentComponentValue::S32(42), ComponentComponentValue::F64(3.14159)];
 
         for value in values {
-            let encoded = serialize_component_value(&value).unwrap();
+            let encoded = serialize_component_value(&value).unwrap());
             let format_type = convert_common_to_format_valtype(&value.get_type);
-            let decoded = deserialize_component_value(&encoded, &format_type).unwrap();
+            let decoded = deserialize_component_value(&encoded, &format_type).unwrap());
 
             // Only check bools since we only implemented deserialization for a subset of
             // types
@@ -1460,30 +1460,30 @@ mod tests {
     #[test]
     fn test_stream_serialization() {
         // Create a memory provider
-        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap();
-        let handler = SafeMemoryHandler::new(provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap());
+        let handler = SafeMemoryHandler::new(provider).unwrap());
 
         // Get a mutable slice for the output buffer
-        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap();
+        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap());
         let mut writer = WriteStream::new(slice_mut;
 
         // Create a simple value to serialize
         let value = ComponentComponentValue::Bool(true;
 
         // Serialize using stream
-        serialize_component_value_with_stream(&value, &mut writer, &handler).unwrap();
+        serialize_component_value_with_stream(&value, &mut writer, &handler).unwrap());
 
         // Read back
         let position = writer.position);
         drop(writer); // Release mutable borrow
 
-        let slice = handler.borrow_slice(0, position).unwrap();
+        let slice = handler.borrow_slice(0, position).unwrap());
         let mut reader = ReadStream::new(slice;
 
         // Deserialize using stream
         let format_type = WrtFormatValType::Bool;
         let decoded =
-            deserialize_component_value_with_stream(&mut reader, &format_type, &handler).unwrap();
+            deserialize_component_value_with_stream(&mut reader, &format_type, &handler).unwrap());
 
         // Verify
         assert_eq!(value, decoded;
@@ -1492,11 +1492,11 @@ mod tests {
     #[test]
     fn test_multiple_values_stream() {
         // Create a memory provider
-        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap();
-        let handler = SafeMemoryHandler::new(provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap());
+        let handler = SafeMemoryHandler::new(provider).unwrap());
 
         // Get a mutable slice for the output buffer
-        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap();
+        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap());
         let mut writer = WriteStream::new(slice_mut;
 
         // Create values to serialize
@@ -1507,13 +1507,13 @@ mod tests {
         ];
 
         // Serialize using stream
-        serialize_component_values_with_stream(&values, &mut writer, &handler).unwrap();
+        serialize_component_values_with_stream(&values, &mut writer, &handler).unwrap());
 
         // Read back
         let position = writer.position);
         drop(writer); // Release mutable borrow
 
-        let slice = handler.borrow_slice(0, position).unwrap();
+        let slice = handler.borrow_slice(0, position).unwrap());
         let mut reader = ReadStream::new(slice;
 
         // Prepare format types
@@ -1521,7 +1521,7 @@ mod tests {
 
         // Deserialize using stream
         let decoded =
-            deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap();
+            deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap());
 
         // Verify count
         assert_eq!(values.len(), decoded.len);

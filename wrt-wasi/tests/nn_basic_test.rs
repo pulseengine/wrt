@@ -14,14 +14,14 @@ use wrt_wasi::{
 #[test]
 fn test_nn_capability_creation() {
     // Test creating capabilities for different verification levels
-    let qm_cap = create_nn_capability(VerificationLevel::Standard).unwrap();
+    let qm_cap = create_nn_capability(VerificationLevel::Standard).unwrap());
     assert_eq!(qm_cap.verification_level(), VerificationLevel::Standard;
     assert!(qm_cap.allows_dynamic_loading();
     
-    let asil_a_cap = create_nn_capability(VerificationLevel::Sampling).unwrap();
+    let asil_a_cap = create_nn_capability(VerificationLevel::Sampling).unwrap());
     assert_eq!(asil_a_cap.verification_level(), VerificationLevel::Sampling;
     
-    let asil_b_cap = create_nn_capability(VerificationLevel::Continuous).unwrap();
+    let asil_b_cap = create_nn_capability(VerificationLevel::Continuous).unwrap());
     assert_eq!(asil_b_cap.verification_level(), VerificationLevel::Continuous;
     assert!(!asil_b_cap.allows_dynamic_loading();
 }
@@ -31,17 +31,17 @@ fn test_nn_initialization() {
     use wrt_wasi::nn::is_nn_available;
     
     // Test initializing the NN subsystem
-    let capability = create_nn_capability(VerificationLevel::Standard).unwrap();
+    let capability = create_nn_capability(VerificationLevel::Standard).unwrap());
     let result = if !is_nn_available() {
         initialize_nn(capability)
     } else {
         Ok(()) // Already initialized
     };
-    assert!(result.is_ok();
+    assert!(result.is_ok());
     
     // Verify we can get the capability back
     let retrieved_cap = get_nn_capability);
-    assert!(retrieved_cap.is_ok();
+    assert!(retrieved_cap.is_ok());
 }
 
 #[test]
@@ -51,7 +51,7 @@ fn test_graph_encoding_conversion() {
     // Test encoding conversions
     let encoding = GraphEncoding::ONNX;
     let wit_value = encoding.to_wit);
-    let converted = GraphEncoding::from_wit(wit_value).unwrap();
+    let converted = GraphEncoding::from_wit(wit_value).unwrap());
     assert_eq!(encoding, converted;
     
     // Test all encodings
@@ -63,7 +63,7 @@ fn test_graph_encoding_conversion() {
         GraphEncoding::TractNative,
     ] {
         let wit = enc.to_wit);
-        let back = GraphEncoding::from_wit(wit).unwrap();
+        let back = GraphEncoding::from_wit(wit).unwrap());
         assert_eq!(enc, back;
     }
 }
@@ -75,7 +75,7 @@ fn test_tensor_type_conversion() {
     // Test tensor type conversions
     let tensor_type = TensorType::F32;
     let wit_value = tensor_type.to_wit);
-    let converted = TensorType::from_wit(wit_value).unwrap();
+    let converted = TensorType::from_wit(wit_value).unwrap());
     assert_eq!(tensor_type, converted;
 }
 
@@ -85,8 +85,8 @@ fn test_nn_load_without_backend() {
     
     // Initialize NN first if not already initialized
     if !is_nn_available() {
-        let capability = create_nn_capability(VerificationLevel::Standard).unwrap();
-        initialize_nn(capability).unwrap();
+        let capability = create_nn_capability(VerificationLevel::Standard).unwrap());
+        initialize_nn(capability).unwrap());
     }
     
     // Try to load a model (will fail without backend initialized)
@@ -102,7 +102,7 @@ fn test_tensor_dimensions() {
     use wrt_wasi::nn::TensorDimensions;
     
     // Test creating tensor dimensions
-    let dims = TensorDimensions::new(&[1, 224, 224, 3]).unwrap();
+    let dims = TensorDimensions::new(&[1, 224, 224, 3]).unwrap());
     assert_eq!(dims.rank(), 4;
     assert_eq!(dims.num_elements(), 1 * 224 * 224 * 3;
     assert!(dims.is_valid();
@@ -113,8 +113,8 @@ fn test_tensor_dimensions() {
     assert!(result.is_err();
     
     // Test empty dimensions
-    let empty_dims = TensorDimensions::new(&[]).unwrap();
-    assert_eq!(empty_dims.rank(), 0;
+    let empty_dims = TensorDimensions::new(&[]).unwrap());
+    assert_eq!(empty_dims.rank(), 0);
 }
 
 #[test]
@@ -125,8 +125,8 @@ fn test_tensor_creation() {
     let capability = DynamicNNCapability::new);
     
     // Create a simple tensor
-    let dims = TensorDimensions::new(&[2, 3]).unwrap();
-    let tensor = Tensor::new(dims, TensorType::F32, &capability).unwrap();
+    let dims = TensorDimensions::new(&[2, 3]).unwrap());
+    let tensor = Tensor::new(dims, TensorType::F32, &capability).unwrap());
     
     assert_eq!(tensor.size_bytes(), 2 * 3 * 4); // 2x3 floats = 24 bytes
     assert_eq!(tensor.data_type(), TensorType::F32;
@@ -173,7 +173,7 @@ fn test_capability_limits() {
     use wrt_wasi::nn::capabilities::{BoundedNNCapability, NNOperation, ModelFormat};
     
     // Create bounded capability
-    let capability = BoundedNNCapability::new().unwrap();
+    let capability = BoundedNNCapability::new().unwrap());
     let _limits = capability.resource_limits);
     
     // Test model size limit
@@ -190,5 +190,5 @@ fn test_capability_limits() {
         format: ModelFormat::ONNX,
     };
     let result2 = capability.verify_operation(&small_load;
-    assert!(result2.is_ok();
+    assert!(result2.is_ok());
 }

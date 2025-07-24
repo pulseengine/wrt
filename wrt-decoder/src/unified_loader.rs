@@ -663,7 +663,7 @@ mod tests {
     fn test_detect_core_module() {
         // Simple core module header
         let module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        let info = load_wasm_unified(&module).unwrap();
+        let info = load_wasm_unified(&module).unwrap());
         assert_eq!(info.format_type, WasmFormat::CoreModule;
         assert!(info.is_core_module();
         assert!(!info.is_component();
@@ -684,8 +684,8 @@ mod tests {
     #[test]
     fn test_empty_module_info() {
         let module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        let info = load_wasm_unified(&module).unwrap();
-        let module_info = info.require_module_info().unwrap();
+        let info = load_wasm_unified(&module).unwrap());
+        let module_info = info.require_module_info().unwrap());
         assert!(module_info.imports.is_empty();
         assert!(module_info.exports.is_empty();
         assert!(module_info.start_function.is_none();

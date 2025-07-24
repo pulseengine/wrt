@@ -168,22 +168,22 @@ mod tests {
         // Test valid function type creation using slices from arrays
         let params: [CoreValueType; 2] = [CoreValueType::I32, CoreValueType::I64];
         let results: [CoreValueType; 1] = [CoreValueType::F32];
-        let provider = TinyProvider::default);
-        let func_type = func_type::create(provider.clone(), &params, &results).unwrap();
+        let provider = TinyProvider::default());
+        let func_type = func_type::create(provider.clone(), &params, &results).unwrap());
 
         assert_eq!(func_type.params(), &[CoreValueType::I32, CoreValueType::I64];
         assert_eq!(func_type.results(), &[CoreValueType::F32];
 
         // Verification should pass
-        assert!(func_type::verify(&func_type).is_ok();
+        assert!(func_type::verify(&func_type).is_ok());
 
         // Test creation with empty params and results
         let empty_params: [CoreValueType; 0] = [];
         let empty_results: [CoreValueType; 0] = [];
-        let func_type_empty = func_type::create(provider, &empty_params, &empty_results).unwrap();
+        let func_type_empty = func_type::create(provider, &empty_params, &empty_results).unwrap());
         assert_eq!(func_type_empty.params(), &[];
         assert_eq!(func_type_empty.results(), &[];
-        assert!(func_type::verify(&func_type_empty).is_ok();
+        assert!(func_type::verify(&func_type_empty).is_ok());
 
         // Example of a type that might exceed max (depending on
         // MAX_PARAMS_IN_FUNC_TYPE) This test might need adjustment

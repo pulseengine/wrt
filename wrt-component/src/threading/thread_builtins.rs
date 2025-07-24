@@ -31,7 +31,7 @@ pub struct ThreadBuiltins {
 impl ThreadBuiltins {
     /// Create new thread built-ins with default configuration
     pub fn new() -> Result<Self> {
-        let thread_config = ThreadConfig::default);
+        let thread_config = ThreadConfig::default());
         let thread_manager = ThreadManager::new(thread_config)?;
         let parallelism_info = ParallelismInfo::detect);
         
@@ -515,13 +515,13 @@ mod tests {
     
     #[test]
     fn test_thread_builtins_creation() {
-        let builtins = ThreadBuiltins::new().unwrap();
+        let builtins = ThreadBuiltins::new().unwrap());
         assert!(builtins.thread_available_parallelism() > 0);
     }
     
     #[test]
     fn test_thread_spawn_config() {
-        let config = ThreadSpawnConfig::default);
+        let config = ThreadSpawnConfig::default());
         assert!(config.auto_start);
         assert_eq!(config.priority, 50;
         assert!(config.stack_size.is_none();
@@ -530,7 +530,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_function_table_registration() {
-        let mut builtins = ThreadBuiltins::new().unwrap();
+        let mut builtins = ThreadBuiltins::new().unwrap());
         
         let func = ComponentFunction {
             base_index: 100,
@@ -541,13 +541,13 @@ mod tests {
             },
         };
         
-        let table_id = builtins.register_function_table(func).unwrap();
-        assert_eq!(table_id, 0;
+        let table_id = builtins.register_function_table(func).unwrap());
+        assert_eq!(table_id, 0);
     }
     
     #[test]
     fn test_thread_priority_validation() {
-        let mut builtins = ThreadBuiltins::new().unwrap();
+        let mut builtins = ThreadBuiltins::new().unwrap());
         
         // Test valid priority
         let result = builtins.thread_set_priority(0, 75;

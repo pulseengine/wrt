@@ -663,17 +663,17 @@ impl ResourceTable {
         match operation {
             FormatResourceOperation::Rep(rep) => {
                 // Representation operation - convert resource to its representation
-                let resource = self.resources.get(&handle).unwrap();
+                let resource = self.resources.get(&handle).unwrap());
                 Ok(ComponentValue::U32(handle))
             },
             FormatResourceOperation::Drop(drop) => {
                 // Drop operation - remove the resource from the table
-                let resource = self.resources.remove(&handle).unwrap();
+                let resource = self.resources.remove(&handle).unwrap());
                 Ok(ComponentValue::Void)
             },
             FormatResourceOperation::Destroy(destroy) => {
                 // Destroy operation - similar to drop but may perform cleanup
-                let resource = self.resources.remove(&handle).unwrap();
+                let resource = self.resources.remove(&handle).unwrap());
                 // Run any destroy callbacks here
                 Ok(ComponentValue::Void)
             },
@@ -849,37 +849,37 @@ mod tests {
 
     #[test]
     fn test_resource_creation() {
-        let mut table = ResourceTable::new().unwrap();
+        let mut table = ResourceTable::new().unwrap());
         let data = Arc::new(TestData { value: 42 };
 
-        let handle = table.create_resource(1, data).unwrap();
-        assert_eq!(handle, 1;
-        assert_eq!(table.resource_count(), 1;
+        let handle = table.create_resource(1, data).unwrap());
+        assert_eq!(handle, 1);
+        assert_eq!(table.resource_count(), 1);
 
-        let resource = table.get_resource(handle).unwrap();
-        let resource = resource.lock().unwrap();
-        assert_eq!(resource.type_idx, 1;
+        let resource = table.get_resource(handle).unwrap());
+        let resource = resource.lock().unwrap());
+        assert_eq!(resource.type_idx, 1);
 
-        let data = resource.data.downcast_ref::<TestData>().unwrap();
+        let data = resource.data.downcast_ref::<TestData>().unwrap());
         assert_eq!(data.value, 42;
     }
 
     #[test]
     fn test_resource_borrowing() {
-        let mut table = ResourceTable::new().unwrap();
+        let mut table = ResourceTable::new().unwrap());
         let data = Arc::new(TestData { value: 42 };
 
-        let handle = table.create_resource(1, data).unwrap();
-        let borrow_handle = table.borrow_resource(handle).unwrap();
+        let handle = table.create_resource(1, data).unwrap());
+        let borrow_handle = table.borrow_resource(handle).unwrap());
 
         assert_ne!(handle, borrow_handle;
         assert_eq!(table.resource_count(), 2;
 
-        let resource1 = table.get_resource(handle).unwrap();
-        let resource2 = table.get_resource(borrow_handle).unwrap();
+        let resource1 = table.get_resource(handle).unwrap());
+        let resource2 = table.get_resource(borrow_handle).unwrap());
 
-        let data1 = resource1.lock().unwrap().data.downcast_ref::<TestData>().unwrap();
-        let data2 = resource2.lock().unwrap().data.downcast_ref::<TestData>().unwrap();
+        let data1 = resource1.lock().unwrap().data.downcast_ref::<TestData>().unwrap());
+        let data2 = resource2.lock().unwrap().data.downcast_ref::<TestData>().unwrap());
 
         assert_eq!(data1.value, 42;
         assert_eq!(data2.value, 42;
@@ -887,27 +887,27 @@ mod tests {
 
     #[test]
     fn test_resource_dropping() {
-        let mut table = ResourceTable::new().unwrap();
+        let mut table = ResourceTable::new().unwrap());
         let data = Arc::new(TestData { value: 42 };
 
-        let handle = table.create_resource(1, data).unwrap();
-        assert_eq!(table.resource_count(), 1;
+        let handle = table.create_resource(1, data).unwrap());
+        assert_eq!(table.resource_count(), 1);
 
-        table.drop_resource(handle).unwrap();
-        assert_eq!(table.resource_count(), 0;
+        table.drop_resource(handle).unwrap());
+        assert_eq!(table.resource_count(), 0);
 
         assert!(table.get_resource(handle).is_err();
     }
 
     #[test]
     fn test_memory_strategy() {
-        let mut table = ResourceTable::new().unwrap();
+        let mut table = ResourceTable::new().unwrap());
         let data = Arc::new(TestData { value: 42 };
 
-        let handle = table.create_resource(1, data).unwrap();
+        let handle = table.create_resource(1, data).unwrap());
 
         // Default strategy is BoundedCopy
-        table.set_memory_strategy(handle, MemoryStrategy::ZeroCopy).unwrap();
+        table.set_memory_strategy(handle, MemoryStrategy::ZeroCopy).unwrap());
 
         // Invalid handle should fail
         assert!(table.set_memory_strategy(999, MemoryStrategy::ZeroCopy).is_err();
@@ -922,15 +922,15 @@ mod tests {
         let data2 = Arc::new(TestData { value: 2 };
         let data3 = Arc::new(TestData { value: 3 };
 
-        let handle1 = table.create_resource(1, data1).unwrap();
-        let handle2 = table.create_resource(1, data2).unwrap();
+        let handle1 = table.create_resource(1, data1).unwrap());
+        let handle2 = table.create_resource(1, data2).unwrap());
 
         // Third resource should fail due to limit
         assert!(table.create_resource(1, data3).is_err();
 
         // After dropping one, we should be able to create another
-        table.drop_resource(handle1).unwrap();
-        let handle3 = table.create_resource(1, data3).unwrap();
+        table.drop_resource(handle1).unwrap());
+        let handle3 = table.create_resource(1, data3).unwrap());
 
         assert_eq!(table.resource_count(), 2;
         assert_ne!(handle1, handle3;
@@ -938,19 +938,19 @@ mod tests {
 
     #[test]
     fn test_resource_interceptor() {
-        let mut table = ResourceTable::new().unwrap();
+        let mut table = ResourceTable::new().unwrap());
         let interceptor = Arc::new(TestInterceptor::new);
 
-        table.add_interceptor(interceptor.clone()).unwrap();
+        table.add_interceptor(interceptor.clone()).unwrap());
 
         let data = Arc::new(TestData { value: 42 };
-        let handle = table.create_resource(1, data).unwrap();
+        let handle = table.create_resource(1, data).unwrap());
 
         // Access the resource
-        let _resource = table.get_resource(handle).unwrap();
+        let _resource = table.get_resource(handle).unwrap());
 
         // Apply an operation
-        table.apply_operation(handle, FormatResourceOperation::Rep).unwrap();
+        table.apply_operation(handle, FormatResourceOperation::Rep).unwrap());
 
         // Check interceptor operations
         let operations = interceptor.get_operations);
@@ -963,12 +963,12 @@ mod tests {
     fn test_resource_interception() {
         let interceptor = Arc::new(TestInterceptor::new);
 
-        let mut table = ResourceTable::new().unwrap();
-        table.add_interceptor(interceptor.clone()).unwrap();
+        let mut table = ResourceTable::new().unwrap());
+        table.add_interceptor(interceptor.clone()).unwrap());
 
         // Create a resource
         let data = Arc::new(TestData { value: 42 };
-        let handle = table.create_resource(1, data).unwrap();
+        let handle = table.create_resource(1, data).unwrap());
 
         // Create a special resource with handle 42 (manually assign)
         let data = Arc::new(TestData { value: 99 };
@@ -986,11 +986,11 @@ mod tests {
         ;
 
         // Test regular operation
-        let result = table.apply_operation(handle, FormatResourceOperation::Rep).unwrap();
+        let result = table.apply_operation(handle, FormatResourceOperation::Rep).unwrap());
         assert!(matches!(result, ComponentValue::U32(_));
 
         // Test intercepted operation
-        let result = table.apply_operation(42, FormatResourceOperation::Rep).unwrap();
+        let result = table.apply_operation(42, FormatResourceOperation::Rep).unwrap());
         assert!(matches!(result, ComponentValue::U32(_));
 
         // Check that operations were recorded
@@ -1005,8 +1005,8 @@ mod tests {
     fn test_memory_strategy_selection() {
         let interceptor = Arc::new(TestInterceptor::new);
 
-        let mut table = ResourceTable::new().unwrap();
-        table.add_interceptor(interceptor.clone()).unwrap();
+        let mut table = ResourceTable::new().unwrap());
+        table.add_interceptor(interceptor.clone()).unwrap());
 
         // Create even and odd handle resources
         let even_handle = 2;

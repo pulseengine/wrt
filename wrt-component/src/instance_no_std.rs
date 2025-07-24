@@ -216,11 +216,11 @@ mod tests {
             .with_type(instance_type)
             .with_export(export)
             .build()
-            .unwrap();
+            .unwrap());
 
         // Check the instance
         assert_eq!(instance.name.as_str(), "math";
-        assert_eq!(instance.exports.len(), 1;
+        assert_eq!(instance.exports.len(), 1);
         assert_eq!(instance.get_export("add").unwrap().name, "add";
         assert!(instance.get_export("non_existent").is_none();
     }
@@ -234,20 +234,20 @@ mod tests {
             .with_name("instance1")
             .with_type(instance_type.clone())
             .build()
-            .unwrap();
+            .unwrap());
 
         let instance2 = InstanceValue::builder()
             .with_name("instance2")
             .with_type(instance_type)
             .build()
-            .unwrap();
+            .unwrap());
 
         // Create a collection and add the instances
-        let mut collection = InstanceCollection::new().unwrap();
+        let mut collection = InstanceCollection::new().unwrap());
         assert!(collection.is_empty();
 
-        collection.add_instance(instance1).unwrap();
-        collection.add_instance(instance2).unwrap();
+        collection.add_instance(instance1).unwrap());
+        collection.add_instance(instance2).unwrap());
 
         // Check the collection
         assert_eq!(collection.len(), 2;

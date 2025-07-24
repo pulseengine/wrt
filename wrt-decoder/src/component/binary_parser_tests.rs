@@ -97,9 +97,9 @@ mod tests {
         let mut parser = ComponentBinaryParser::new);
 
         let result = parser.parse(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let component = result.unwrap();
+        let component = result.unwrap());
         assert!(component.name.is_none();
         assert!(component.modules.is_empty();
         assert!(component.types.is_empty();
@@ -111,10 +111,10 @@ mod tests {
         let mut parser = ComponentBinaryParser::new);
 
         let result = parser.parse(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Custom sections should be parsed but ignored in basic implementation
-        let _component = result.unwrap();
+        let _component = result.unwrap());
     }
 
     // Error condition tests
@@ -191,19 +191,19 @@ mod tests {
         let mut minimal_parser =
             ComponentBinaryParser::with_validation_level(ValidationLevel::Minimal;
         let result1 = minimal_parser.parse(&binary;
-        assert!(result1.is_ok();
+        assert!(result1.is_ok());
 
         // Test standard validation
         let mut standard_parser =
             ComponentBinaryParser::with_validation_level(ValidationLevel::Standard;
         let result2 = standard_parser.parse(&binary;
-        assert!(result2.is_ok();
+        assert!(result2.is_ok());
 
         // Test strict validation
         let mut strict_parser =
             ComponentBinaryParser::with_validation_level(ValidationLevel::Strict;
         let result3 = strict_parser.parse(&binary;
-        assert!(result3.is_ok();
+        assert!(result3.is_ok());
     }
 
     // Convenience function tests
@@ -214,17 +214,17 @@ mod tests {
 
         // Test basic parsing function
         let result1 = parse_component_binary(&binary;
-        assert!(result1.is_ok();
+        assert!(result1.is_ok());
 
         // Test parsing with different validation levels
         let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal;
-        assert!(result2.is_ok();
+        assert!(result2.is_ok());
 
         let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Standard;
-        assert!(result3.is_ok();
+        assert!(result3.is_ok());
 
         let result4 = parse_component_binary_with_validation(&binary, ValidationLevel::Strict;
-        assert!(result4.is_ok();
+        assert!(result4.is_ok());
     }
 
     // Section ID tests
@@ -326,7 +326,7 @@ mod tests {
             version: 1,
             layer:   1,
         };
-        assert!(valid_header.validate().is_ok();
+        assert!(valid_header.validate().is_ok());
 
         // Invalid magic
         let invalid_magic_header = ComponentHeader {
@@ -367,7 +367,7 @@ mod tests {
         let result = parser.parse(&binary;
 
         // Should succeed but ignore unknown section
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -393,7 +393,7 @@ mod tests {
     fn test_std_compatibility() {
         let binary = create_minimal_component_binary);
         let result = parse_component_binary(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[cfg(feature = "std")]
@@ -401,7 +401,7 @@ mod tests {
     fn test_alloc_compatibility() {
         let binary = create_minimal_component_binary);
         let result = parse_component_binary(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[cfg(not(any(feature = "std",)))]
@@ -409,7 +409,7 @@ mod tests {
     fn test_no_std_compatibility() {
         let binary = create_minimal_component_binary);
         let result = parse_component_binary(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     // Performance and memory safety tests
@@ -428,7 +428,7 @@ mod tests {
 
         let mut parser = ComponentBinaryParser::new);
         let result = parser.parse(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -446,7 +446,7 @@ mod tests {
 
         let mut parser = ComponentBinaryParser::new);
         let result = parser.parse(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     // Regression tests for potential issues
@@ -461,7 +461,7 @@ mod tests {
 
         let mut parser = ComponentBinaryParser::new);
         let result = parser.parse(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -475,6 +475,6 @@ mod tests {
 
         let mut parser = ComponentBinaryParser::new);
         let result = parser.parse(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

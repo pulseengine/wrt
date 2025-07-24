@@ -45,14 +45,14 @@ fn test_host_resource_management() {
     let id = resource_manager.add_host_resource(test_value.clone();
 
     // Verify we can retrieve it
-    let retrieved = resource_manager.get_host_resource::<Arc<Mutex<i32>>>(id).unwrap();
+    let retrieved = resource_manager.get_host_resource::<Arc<Mutex<i32>>>(id).unwrap());
     assert_eq!(*retrieved.lock().unwrap(), 42;
 
     // Modify the value through the retrieved reference
     *retrieved.lock().unwrap() = 100;
 
     // Verify the value was changed
-    let retrieved_again = resource_manager.get_host_resource::<Arc<Mutex<i32>>>(id).unwrap();
+    let retrieved_again = resource_manager.get_host_resource::<Arc<Mutex<i32>>>(id).unwrap());
     assert_eq!(*retrieved_again.lock().unwrap(), 100;
 
     // Verify original reference reflects changes
@@ -190,9 +190,9 @@ fn test_memory_strategies() {
     let test_bytes = vec![1, 2, 3, 4, 5];
 
     let result = copy_strategy.process_memory(&test_bytes, ResourceOperation::Read;
-    assert!(result.is_ok();
+    assert!(result.is_ok());
 
-    let processed_bytes = result.unwrap();
+    let processed_bytes = result.unwrap());
     assert_eq!(&processed_bytes, &test_bytes;
 
     // Modifying the processed bytes shouldn't affect the original
@@ -204,9 +204,9 @@ fn test_memory_strategies() {
     let ref_strategy = MemoryStrategy::Reference;
 
     let result = ref_strategy.process_memory(&test_bytes, ResourceOperation::Read;
-    assert!(result.is_ok();
+    assert!(result.is_ok());
 
-    let processed_bytes = result.unwrap();
+    let processed_bytes = result.unwrap());
     assert_eq!(&processed_bytes, &test_bytes;
 }
 
@@ -225,16 +225,16 @@ fn test_memory_manager_integration() {
 
     // Read memory
     let result = memory_manager.get_memory(id, ResourceOperation::Read;
-    assert!(result.is_ok();
+    assert!(result.is_ok());
 
-    let memory = result.unwrap();
+    let memory = result.unwrap());
     assert_eq!(&memory, &data;
 
     // Modify and check that original is unchanged (with Copy strategy)
     let mut memory_copy = memory.clone();
     memory_copy[0] = 99;
 
-    let original = resource_manager.get_host_resource::<Vec<u8>>(id).unwrap();
+    let original = resource_manager.get_host_resource::<Vec<u8>>(id).unwrap());
     assert_eq!(original[0], 1); // Not modified
 
     // Now try with Reference strategy
@@ -243,17 +243,17 @@ fn test_memory_manager_integration() {
 
     // This should work the same for reads
     let result = ref_memory_manager.get_memory(id, ResourceOperation::Read;
-    assert!(result.is_ok();
+    assert!(result.is_ok());
 
     // But for writes, it should affect the original
     let result = ref_memory_manager.get_memory(id, ResourceOperation::Write;
-    assert!(result.is_ok();
+    assert!(result.is_ok());
 
-    let mut writable_memory = result.unwrap();
+    let mut writable_memory = result.unwrap());
     writable_memory[0] = 99;
 
     // Check if original is modified
-    let original = resource_manager.get_host_resource::<Vec<u8>>(id).unwrap();
+    let original = resource_manager.get_host_resource::<Vec<u8>>(id).unwrap());
     // Note: actual behavior depends on implementation; this test assumes
     // reference strategy allows direct writes
 }
@@ -322,11 +322,11 @@ fn test_thread_safety() {
         let rm = resource_manager.clone();
         let handle = thread::spawn(move || {
             let resource_value = format!("Resource from thread {}", i;
-            let mut manager = rm.lock().unwrap();
+            let mut manager = rm.lock().unwrap());
             let id = manager.add_host_resource(resource_value.clone();
 
             // Verify resource was added correctly
-            let retrieved = manager.get_host_resource::<String>(id).unwrap();
+            let retrieved = manager.get_host_resource::<String>(id).unwrap());
             assert_eq!(*retrieved, resource_value;
 
             id
@@ -339,7 +339,7 @@ fn test_thread_safety() {
     let ids: Vec<ResourceId> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
     // Verify all resources exist
-    let manager = resource_manager.lock().unwrap();
+    let manager = resource_manager.lock().unwrap());
     for id in ids {
         assert!(manager.has_resource(id);
     }
@@ -358,25 +358,25 @@ fn test_resource_system_integration() {
     let complex_id = resource_manager.add_host_resource(Box::new((String::from("name"), 42, true;
 
     // Register resources with memory manager
-    memory_manager.register_resource(string_id, &resource_manager).unwrap();
-    memory_manager.register_resource(vector_id, &resource_manager).unwrap();
+    memory_manager.register_resource(string_id, &resource_manager).unwrap());
+    memory_manager.register_resource(vector_id, &resource_manager).unwrap());
 
     // Access resources
-    let string_res = resource_manager.get_host_resource::<String>(string_id).unwrap();
+    let string_res = resource_manager.get_host_resource::<String>(string_id).unwrap());
     assert_eq!(*string_res, "text resource";
 
-    let vector_res = resource_manager.get_host_resource::<Vec<i32>>(vector_id).unwrap();
+    let vector_res = resource_manager.get_host_resource::<Vec<i32>>(vector_id).unwrap());
     assert_eq!(*vector_res, vec![1, 2, 3, 4, 5];
 
     let complex_res = resource_manager
         .get_host_resource::<Box<(String, i32, bool)>>(complex_id)
-        .unwrap();
+        .unwrap());
     assert_eq!(complex_res.0, "name";
     assert_eq!(complex_res.1, 42;
     assert_eq!(complex_res.2, true;
 
     // Access through memory manager
-    let vector_mem = memory_manager.get_memory(vector_id, ResourceOperation::Read).unwrap();
+    let vector_mem = memory_manager.get_memory(vector_id, ResourceOperation::Read).unwrap());
     // Memory representation would depend on the actual implementation
 
     // Clean up

@@ -183,7 +183,7 @@ impl Default for ImportValues {
                 #[cfg(not(feature = "std"))]
                 imports: {
                     // Use fallback provider only in default construction
-                    let provider = InstantiationProvider::default);
+                    let provider = InstantiationProvider::default());
                     BoundedVec::new(provider).unwrap()
                 },
             }
@@ -796,7 +796,7 @@ mod tests {
                 signature: WrtComponentType::Unit,
                 implementation: Box::new(|_args| Ok(Value::U32(42))),
             };
-            imports.add("test_func".to_string(), ImportValue::Function(func)).unwrap();
+            imports.add("test_func".to_string(), ImportValue::Function(func)).unwrap());
             assert!(imports.get("test_func").is_some();
             assert!(imports.get("unknown").is_none();
         }
@@ -807,8 +807,8 @@ mod tests {
                 signature: WrtComponentType::Unit,
                 implementation: |_args| Ok(Value::U32(42)),
             };
-            let name = BoundedString::from_str("test_func").unwrap();
-            imports.add(name, ImportValue::Function(func)).unwrap();
+            let name = BoundedString::from_str("test_func").unwrap());
+            imports.add(name, ImportValue::Function(func)).unwrap());
             assert!(imports.get("test_func").is_some();
             assert!(imports.get("unknown").is_none();
         }
@@ -817,8 +817,8 @@ mod tests {
     #[test]
     fn test_instantiation_context() {
         let mut context = InstantiationContext::new);
-        assert_eq!(context.next_instance_id(), 0;
-        assert_eq!(context.next_instance_id(), 1;
+        assert_eq!(context.next_instance_id(), 0);
+        assert_eq!(context.next_instance_id(), 1);
         assert_eq!(context.next_instance_id(), 2;
     }
 
@@ -833,7 +833,7 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let result = imports.add("test_value".to_string(), value_import;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
             
             let retrieved = imports.get("test_value";
             assert!(retrieved.is_some();
@@ -848,9 +848,9 @@ mod tests {
         
         #[cfg(not(feature = "std"))]
         {
-            let name = BoundedString::from_str("test_value").unwrap();
+            let name = BoundedString::from_str("test_value").unwrap());
             let result = imports.add(name, value_import;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
             
             let retrieved = imports.get("test_value";
             assert!(retrieved.is_some();
@@ -885,8 +885,8 @@ mod tests {
             }
             
             let func_index = context.execution_engine.register_host_function(test_host_func;
-            assert!(func_index.is_ok();
-            assert_eq!(func_index.unwrap(), 0;
+            assert!(func_index.is_ok());
+            assert_eq!(func_index.unwrap(), 0);
         }
         
         #[cfg(feature = "std")]
@@ -905,8 +905,8 @@ mod tests {
             }
             
             let func_index = context.execution_engine.register_host_function(Box::new(TestHostFunc;
-            assert!(func_index.is_ok();
-            assert_eq!(func_index.unwrap(), 0;
+            assert!(func_index.is_ok());
+            assert_eq!(func_index.unwrap(), 0);
         }
     }
 
@@ -917,13 +917,13 @@ mod tests {
         // Create a resource
         let resource_data = WrtComponentValue::String("test_resource".into();
         let handle = context.resource_manager.create_resource(1, resource_data;
-        assert!(handle.is_ok();
+        assert!(handle.is_ok());
         
-        let handle = handle.unwrap();
+        let handle = handle.unwrap());
         
         // Borrow the resource
         let borrowed = context.resource_manager.borrow_resource(handle;
-        assert!(borrowed.is_ok();
+        assert!(borrowed.is_ok());
         
         match borrowed.unwrap() {
             WrtComponentValue::String(s) => {
@@ -934,7 +934,7 @@ mod tests {
         
         // Drop the resource
         let drop_result = context.resource_manager.drop_resource(handle;
-        assert!(drop_result.is_ok();
+        assert!(drop_result.is_ok());
     }
 
     #[test]
@@ -946,8 +946,8 @@ mod tests {
         use crate::memory_layout;
         
         let bool_layout = memory_layout::calculate_layout(&ValType::Bool;
-        assert_eq!(bool_layout.size, 1;
-        assert_eq!(bool_layout.align, 1;
+        assert_eq!(bool_layout.size, 1);
+        assert_eq!(bool_layout.align, 1);
         
         let u32_layout = memory_layout::calculate_layout(&ValType::U32;
         assert_eq!(u32_layout.size, 4;
@@ -967,14 +967,14 @@ mod tests {
         // Test UTF-8 encoding (default)
         let test_string = "Hello, 世界!";
         let encoded = encode_string(test_string, StringEncoding::Utf8;
-        assert!(encoded.is_ok();
+        assert!(encoded.is_ok());
         
-        let encoded_bytes = encoded.unwrap();
+        let encoded_bytes = encoded.unwrap());
         assert_eq!(encoded_bytes, test_string.as_bytes);
         
         // Test UTF-16LE encoding  
         let encoded_utf16 = encode_string("Hello", StringEncoding::Utf16Le;
-        assert!(encoded_utf16.is_ok();
+        assert!(encoded_utf16.is_ok());
         
         // UTF-16LE encoding of "Hello" should be: H(0x48,0x00) e(0x65,0x00) l(0x6C,0x00) l(0x6C,0x00) o(0x6F,0x00)
         let expected_utf16 = vec![0x48, 0x00, 0x65, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x6F, 0x00];

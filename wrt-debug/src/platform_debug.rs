@@ -423,8 +423,8 @@ mod tests {
         let limits = PlatformDebugLimits::production);
 
         assert_eq!(limits.debug_level, DebugLevel::None;
-        assert_eq!(limits.max_debug_sections, 0;
-        assert_eq!(limits.max_breakpoints, 0;
+        assert_eq!(limits.max_debug_sections, 0);
+        assert_eq!(limits.max_breakpoints, 0);
         assert_eq!(limits.max_stack_traces, 1); // Minimal crash reporting
     }
 
@@ -435,29 +435,29 @@ mod tests {
 
         // Test memory allocation
         assert!(manager.can_allocate_debug_memory(1024);
-        assert!(manager.allocate_debug_memory(1024).is_ok();
+        assert!(manager.allocate_debug_memory(1024).is_ok());
         assert_eq!(manager.debug_memory_usage(), 1024;
 
         // Test breakpoint management
         assert!(manager.can_add_breakpoint();
-        assert!(manager.add_breakpoint().is_ok();
-        assert_eq!(manager.active_breakpoints, 1;
+        assert!(manager.add_breakpoint().is_ok());
+        assert_eq!(manager.active_breakpoints, 1);
 
         // Test section management
         assert!(manager.can_add_debug_section();
-        assert!(manager.add_debug_section().is_ok();
-        assert_eq!(manager.active_sections, 1;
+        assert!(manager.add_debug_section().is_ok());
+        assert_eq!(manager.active_sections, 1);
 
         // Test reset
         manager.reset);
-        assert_eq!(manager.debug_memory_usage(), 0;
-        assert_eq!(manager.active_breakpoints, 0;
-        assert_eq!(manager.active_sections, 0;
+        assert_eq!(manager.debug_memory_usage(), 0);
+        assert_eq!(manager.active_breakpoints, 0);
+        assert_eq!(manager.active_sections, 0);
     }
 
     #[test]
     fn test_config_builder() {
-        let platform_limits = ComprehensivePlatformLimits::default);
+        let platform_limits = ComprehensivePlatformLimits::default());
 
         let limits = PlatformDebugConfigBuilder::new()
             .with_debug_level(DebugLevel::FullDebug)

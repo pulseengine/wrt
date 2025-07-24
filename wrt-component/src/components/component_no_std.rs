@@ -1076,10 +1076,10 @@ mod tests {
             .with_export("export", ExternType::Function { params: Vec::new(), results: Vec::new() })
             .with_verification_level(VerificationLevel::Full)
             .build()
-            .unwrap();
+            .unwrap());
 
-        assert_eq!(component_type.imports.len(), 1;
-        assert_eq!(component_type.exports.len(), 1;
+        assert_eq!(component_type.imports.len(), 1);
+        assert_eq!(component_type.exports.len(), 1);
         assert_eq!(component_type.verification_level(), VerificationLevel::Full;
     }
 
@@ -1102,16 +1102,16 @@ mod tests {
             .with_import(import)
             .with_verification_level(VerificationLevel::Full)
             .build()
-            .unwrap();
+            .unwrap());
 
-        assert_eq!(component.exports.len(), 1;
-        assert_eq!(component.imports.len(), 1;
+        assert_eq!(component.exports.len(), 1);
+        assert_eq!(component.imports.len(), 1);
         assert_eq!(component.verification_level, VerificationLevel::Full;
     }
 
     #[test]
     fn test_component_operations() {
-        let mut component = Component::new().unwrap();
+        let mut component = Component::new().unwrap());
 
         // Add an export
         let export = Export {
@@ -1119,7 +1119,7 @@ mod tests {
             ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
             value: None,
         };
-        component.add_export(export).unwrap();
+        component.add_export(export).unwrap());
 
         // Add an import
         let import = Import {
@@ -1127,7 +1127,7 @@ mod tests {
             name: "name".to_string(),
             ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
         };
-        component.add_import(import).unwrap();
+        component.add_import(import).unwrap());
 
         // Test getters
         let found_export = component.get_export("export";
@@ -1145,7 +1145,7 @@ mod tests {
         let memory_type = MemoryType { minimum: 1, maximum: Some(2), shared: false };
 
         // Create a memory value
-        let mut memory_value = MemoryValue::new(memory_type).unwrap();
+        let mut memory_value = MemoryValue::new(memory_type).unwrap());
 
         // Set a debug name
         memory_value.set_debug_name("test_memory";
@@ -1155,17 +1155,17 @@ mod tests {
 
         // Write some data
         let data = b"Hello, world!";
-        memory_value.write(0, data).unwrap();
+        memory_value.write(0, data).unwrap());
 
         // Read the data back
-        let read_data = memory_value.read(0, data.len() as u32).unwrap();
+        let read_data = memory_value.read(0, data.len() as u32).unwrap());
 
         // Verify the data
         assert_eq!(read_data, data;
 
         // Grow the memory
-        let old_size = memory_value.grow(1).unwrap();
-        assert_eq!(old_size, 1;
+        let old_size = memory_value.grow(1).unwrap());
+        assert_eq!(old_size, 1);
 
         // Check the new size
         assert_eq!(memory_value.size(), 2;
@@ -1302,11 +1302,11 @@ impl Default for ValType {
 
 // Apply macro to all types that need traits
 // Note: These types don't need basic traits for now, commenting out to fix compilation
-// impl_basic_traits!(ComponentTypeDefinition, ComponentTypeDefinition::default);
-// impl_basic_traits!(ExternValue, ExternValue::default);
-// impl_basic_traits!(MemoryValue, MemoryValue::default);
-// impl_basic_traits!(TableValue, TableValue::default);
-// impl_basic_traits!(GlobalValue, GlobalValue::default);
+// impl_basic_traits!(ComponentTypeDefinition, ComponentTypeDefinition::default());
+// impl_basic_traits!(ExternValue, ExternValue::default());
+// impl_basic_traits!(MemoryValue, MemoryValue::default());
+// impl_basic_traits!(TableValue, TableValue::default());
+// impl_basic_traits!(GlobalValue, GlobalValue::default());
 
 // Try to implement traits for external types directly
 // This works only if the external types have the required traits

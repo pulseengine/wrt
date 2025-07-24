@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_options_default() {
-        let options = TestOptions::default);
+        let options = TestOptions::default());
         assert!(options.integration);
         assert!(options.doc_tests);
         assert!(!options.nocapture);

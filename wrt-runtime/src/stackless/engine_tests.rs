@@ -12,7 +12,7 @@ mod tests {
     fn test_engine_creation() {
         let engine = StacklessEngine::new);
         assert_eq!(engine.remaining_fuel(), None;
-        assert_eq!(engine.stats().instructions_executed, 0;
+        assert_eq!(engine.stats().instructions_executed, 0);
     }
     
     #[test]
@@ -25,7 +25,7 @@ mod tests {
         
         // Consume fuel
         let result = engine.consume_fuel(wrt_foundation::operations::Type::BoundedVecPush;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         // Fuel should be reduced
         assert!(engine.remaining_fuel().unwrap() < 1000);
@@ -36,14 +36,14 @@ mod tests {
         let mut engine = StacklessEngine::new);
         
         // Push values
-        assert!(engine.push_control_value(Value::I32(42)).is_ok();
-        assert!(engine.push_control_value(Value::I64(100)).is_ok();
+        assert!(engine.push_control_value(Value::I32(42)).is_ok());
+        assert!(engine.push_control_value(Value::I64(100)).is_ok());
         
         // Pop values
-        let val = engine.pop_control_value().unwrap();
+        let val = engine.pop_control_value().unwrap());
         assert_eq!(val, Value::I64(100;
         
-        let val = engine.pop_control_value().unwrap();
+        let val = engine.pop_control_value().unwrap());
         assert_eq!(val, Value::I32(42;
     }
     
@@ -61,13 +61,13 @@ mod tests {
         
         // Initialize locals
         let locals_count = 5;
-        assert!(engine.init_locals(locals_count).is_ok();
+        assert!(engine.init_locals(locals_count).is_ok());
         
         // Set local
-        assert!(engine.set_local(0, Value::I32(123)).is_ok();
+        assert!(engine.set_local(0, Value::I32(123)).is_ok());
         
         // Get local
-        let val = engine.get_local(0).unwrap();
+        let val = engine.get_local(0).unwrap());
         assert_eq!(val, Value::I32(123;
     }
     
@@ -76,7 +76,7 @@ mod tests {
         let mut engine = StacklessEngine::new);
         
         // Initialize with 3 locals
-        assert!(engine.init_locals(3).is_ok();
+        assert!(engine.init_locals(3).is_ok());
         
         // Access out of bounds should error
         assert!(engine.get_local(5).is_err();
@@ -91,11 +91,11 @@ mod tests {
         // Consume fuel multiple times
         for _ in 0..5 {
             let result = engine.consume_fuel(wrt_foundation::operations::Type::BoundedVecPush;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
         }
         
         // Fuel should be reduced
-        let remaining = engine.remaining_fuel().unwrap();
+        let remaining = engine.remaining_fuel().unwrap());
         assert!(remaining < 100);
         assert!(remaining > 0);
     }
@@ -105,8 +105,8 @@ mod tests {
         let mut engine = StacklessEngine::new);
         
         // Push some values to trigger stats
-        engine.push_control_value(Value::I32(1)).unwrap();
-        engine.push_control_value(Value::I32(2)).unwrap();
+        engine.push_control_value(Value::I32(1)).unwrap());
+        engine.push_control_value(Value::I32(2)).unwrap());
         
         // Update stats manually (normally done by instruction execution)
         engine.stats.increment_instructions(2;

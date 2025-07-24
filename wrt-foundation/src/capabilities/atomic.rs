@@ -277,7 +277,7 @@ mod tests {
         
         stats.record_alignment_failure);
         stats.record_bounds_violation);
-        assert_eq!(stats.successful_operations, 1;
+        assert_eq!(stats.successful_operations, 1);
         assert_eq!(stats.total_operations, 4;
     }
     

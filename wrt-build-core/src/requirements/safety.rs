@@ -1017,7 +1017,7 @@ mod tests {
         let (report, _diagnostics) = framework.generate_safety_report);
 
         assert_eq!(report.overall_compliance, 1.0); // 100% if no requirements
-        assert_eq!(report.test_summary.total_tests, 0;
+        assert_eq!(report.test_summary.total_tests, 0);
     }
 
     #[test]
@@ -1039,9 +1039,9 @@ mod tests {
         framework.add_requirement(req;
 
         let (compliance_result, _diagnostics) =
-            framework.verify_asil_compliance(AsilLevel::C).unwrap();
-        assert_eq!(compliance_result.total_requirements, 1;
-        assert_eq!(compliance_result.verified_requirements, 1;
+            framework.verify_asil_compliance(AsilLevel::C).unwrap());
+        assert_eq!(compliance_result.total_requirements, 1);
+        assert_eq!(compliance_result.verified_requirements, 1);
         assert_eq!(compliance_result.compliance_percentage, 100.0;
     }
 
@@ -1062,8 +1062,8 @@ mod tests {
         let _diagnostics = framework.record_test_result(test_result;
 
         let (report, _diagnostics) = framework.generate_safety_report);
-        assert_eq!(report.test_summary.total_tests, 1;
-        assert_eq!(report.test_summary.passed_tests, 1;
+        assert_eq!(report.test_summary.total_tests, 1);
+        assert_eq!(report.test_summary.passed_tests, 1);
     }
 
     #[test]

@@ -51,7 +51,7 @@ fn test_tract_context_stores_runnable() {
     // Load model and create context
     if let Ok(model) = backend.load_model(&onnx_model, GraphEncoding::ONNX) {
         let context_result = backend.create_context(&model;
-        assert!(context_result.is_ok();
+        assert!(context_result.is_ok());
 
         // The context should now have the runnable model stored
         // We can't directly check this due to privacy, but creating it should
@@ -62,7 +62,7 @@ fn test_tract_context_stores_runnable() {
 #[test]
 #[ignore = "Requires a valid ONNX model with proper structure"]
 fn test_tract_compute_with_stored_runnable() {
-    let capability = create_nn_capability(VerificationLevel::Standard).unwrap();
+    let capability = create_nn_capability(VerificationLevel::Standard).unwrap());
 
     // This test would verify that compute works with the stored runnable
     // In a real test, we'd load an actual ONNX model and run inference

@@ -26,7 +26,7 @@ fn test_model_size_limit_enforcement() {
         size: 5 * 1024 * 1024, // 5MB - should pass
         format: ModelFormat::ONNX,
     };
-    assert!(capability.verify_operation(&small_operation).is_ok();
+    assert!(capability.verify_operation(&small_operation).is_ok());
     
     // Test exceeding limits
     let large_operation = NNOperation::Load {
@@ -47,7 +47,7 @@ fn test_tensor_memory_limits() {
         size: 1024 * 1024, // 1MB
         dimensions: vec![32, 32, 32],
     };
-    assert!(capability.verify_operation(&small_tensor).is_ok();
+    assert!(capability.verify_operation(&small_tensor).is_ok());
     
     // Test exceeding tensor memory limits
     let large_tensor = NNOperation::SetInput {
@@ -61,7 +61,7 @@ fn test_tensor_memory_limits() {
 #[test]
 fn test_tensor_dimension_limits() {
     let dims_ok = vec![32, 32, 32, 32]; // 4D tensor - should be ok
-    assert!(TensorDimensions::new(&dims_ok).is_ok();
+    assert!(TensorDimensions::new(&dims_ok).is_ok());
     
     let dims_too_many = vec![10; 20]; // 20D tensor - should fail
     assert!(TensorDimensions::new(&dims_too_many).is_err();
@@ -76,7 +76,7 @@ fn test_tensor_dimension_limits() {
 /// Test resource tracking with bounded capability
 #[test]
 fn test_bounded_capability_resource_tracking() {
-    let capability = BoundedNNCapability::new().unwrap();
+    let capability = BoundedNNCapability::new().unwrap());
     let limits = capability.resource_limits);
     
     // Test model count limits
@@ -108,12 +108,12 @@ fn test_resource_tracker_prevents_exhaustion() {
         operations_per_minute: 100,
     };
     
-    let rate_limits = RateLimits::default);
+    let rate_limits = RateLimits::default());
     let tracker = ResourceTracker::new(limits, rate_limits;
     
     // Allocate up to the limit
-    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok();
-    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok();
+    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok());
+    assert!(tracker.allocate_model(5 * 1024 * 1024).is_ok());
     
     // Next allocation should fail (would exceed limit)
     assert!(tracker.allocate_model(1).is_err();
@@ -148,8 +148,8 @@ fn test_bounded_collections_usage() {
     use wrt_foundation::BoundedVec;
     
     // Test that we can create bounded collections with safe allocation
-    let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
-    let mut bounded_vec = BoundedVec::new(provider).unwrap();
+    let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap());
+    let mut bounded_vec = BoundedVec::new(provider).unwrap());
     
     // Test that bounded collections enforce limits
     for i in 0..100 {
@@ -186,7 +186,7 @@ fn test_resource_id_wraparound_protection() {
         
         // Clean up old IDs periodically
         if active_ids.len() > 5 {
-            let oldest = *active_ids.iter().next().unwrap();
+            let oldest = *active_ids.iter().next().unwrap());
             active_ids.remove(&oldest;
         }
     }
@@ -200,7 +200,7 @@ fn test_automatic_memory_cleanup() {
     {
         // Create resources in a scope
         let capability = DynamicNNCapability::new);
-        let _tensor_dims = TensorDimensions::new(&[32, 32, 32]).unwrap();
+        let _tensor_dims = TensorDimensions::new(&[32, 32, 32]).unwrap());
         
         // Use some memory
         let _operation = NNOperation::Load {
@@ -265,7 +265,7 @@ fn test_concurrent_resource_safety() {
     
     // Wait for all threads
     for handle in handles {
-        handle.join().unwrap();
+        handle.join().unwrap());
     }
     
     // If we reach here, concurrent access was safe

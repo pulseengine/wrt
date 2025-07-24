@@ -283,8 +283,8 @@ binary_hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 asil_level = "ASIL-D"
 "#;
 
-        let config = TomlResourceLimits::from_str(toml_str).unwrap();
-        assert_eq!(config.version, 1;
+        let config = TomlResourceLimits::from_str(toml_str).unwrap());
+        assert_eq!(config.version, 1);
         assert_eq!(
             config.execution.as_ref().unwrap().max_fuel_per_step,
             Some(1000000)
@@ -294,7 +294,7 @@ asil_level = "ASIL-D"
         assert!(config.resources.contains_key("network");
 
         // Test conversion to ResourceLimitsSection
-        let section = config.to_resource_limits_section().unwrap();
+        let section = config.to_resource_limits_section().unwrap());
         assert_eq!(section.max_fuel_per_step, Some(1000000;
         assert_eq!(section.max_memory_usage, Some(64 * 1024 * 1024;
         assert_eq!(section.qualified_asil_level(), Some("ASIL-D";

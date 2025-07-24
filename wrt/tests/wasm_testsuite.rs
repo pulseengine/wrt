@@ -28,12 +28,12 @@ fn verify_wasm_testsuite_access() {
     };
 
     // Check directory exists
-    let testsuite_dir = Path::new(&testsuite_path;
+    let testsuite_dir = Path::new(&testsuite_path);
     if !testsuite_dir.exists() {
         println!(
             "Warning: WebAssembly test suite directory not found at {:?}",
             testsuite_dir
-        ;
+        );
         return;
     }
 
@@ -51,7 +51,7 @@ fn verify_wasm_testsuite_access() {
 
     let mut found_files = 0;
     for file in wast_files {
-        let file_path = testsuite_dir.join(file;
+        let file_path = testsuite_dir.join(file);
         if file_path.exists() {
             println!("✅ Found {}", file);
             found_files += 1;
@@ -62,7 +62,7 @@ fn verify_wasm_testsuite_access() {
 
     // Get the commit hash if available
     if let Ok(commit) = std::env::var("WASM_TESTSUITE_COMMIT") {
-        println!("Test suite commit: {}", commit;
+        println!("Test suite commit: {}", commit);
     }
 
     // This test passes as long as we find at least one SIMD file
@@ -72,7 +72,7 @@ fn verify_wasm_testsuite_access() {
 /// Test that runs a simple SIMD module with basic operations
 #[test]
 fn test_basic_simd_operations() -> Result<()> {
-    println!("Running basic SIMD operations test";
+    println!("Running basic SIMD operations test");
 
     // WAT code with simple SIMD operations that only use splatting
     let wat_code = r#"

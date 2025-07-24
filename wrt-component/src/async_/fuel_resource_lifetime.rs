@@ -472,7 +472,7 @@ mod tests {
     
     #[test]
     fn test_resource_creation() {
-        let mut manager = ResourceLifetimeManager::new(1, 1000).unwrap();
+        let mut manager = ResourceLifetimeManager::new(1, 1000).unwrap());
         
         let handle = manager.create_resource(
             42u32,
@@ -481,32 +481,32 @@ mod tests {
             VerificationLevel::Basic,
         ;
         
-        assert!(handle.is_ok();
-        let handle = handle.unwrap();
-        assert_eq!(handle.0, 1;
+        assert!(handle.is_ok());
+        let handle = handle.unwrap());
+        assert_eq!(handle.0, 1);
     }
     
     #[test]
     fn test_resource_guard() {
-        let mut manager = ResourceLifetimeManager::new(1, 1000).unwrap();
+        let mut manager = ResourceLifetimeManager::new(1, 1000).unwrap());
         
         let handle = manager.create_resource(
             "test_data",
             None,
             "string_resource",
             VerificationLevel::Basic,
-        ).unwrap();
+        ).unwrap());
         
-        let resource = manager.get_resource::<&str>(handle).unwrap();
+        let resource = manager.get_resource::<&str>(handle).unwrap());
         
         {
-            let guard = ResourceGuard::new(resource.clone()).unwrap();
+            let guard = ResourceGuard::new(resource.clone()).unwrap());
             assert_eq!(*guard.get().unwrap(), "test_data";
             assert_eq!(resource.ref_count(), 2); // Original + guard
         }
         
         // Guard dropped, ref count should decrease
-        assert_eq!(resource.ref_count(), 1;
+        assert_eq!(resource.ref_count(), 1);
     }
     
     #[test]
@@ -522,10 +522,10 @@ mod tests {
             Some(1),
             "vec_resource",
             VerificationLevel::Basic,
-        ).unwrap();
+        ).unwrap());
         
         // Verify resource exists
-        assert!(manager.lock().unwrap().get_resource::<Vec<u32>>(handle).is_ok();
+        assert!(manager.lock().unwrap().get_resource::<Vec<u32>>(handle).is_ok());
         
         // Scope will clean up resources when dropped
     }
@@ -533,7 +533,7 @@ mod tests {
     #[test]
     #[ignore] // Temporarily ignore due to syntax issue
     fn test_fuel_budget_enforcement() {
-        let mut manager = ResourceLifetimeManager::new(1, 20).unwrap();
+        let mut manager = ResourceLifetimeManager::new(1, 20).unwrap());
         
         // First resource should succeed
         let result1 = manager.create_resource(
@@ -542,7 +542,7 @@ mod tests {
             "resource1",
             VerificationLevel::Basic,
         ;
-        assert!(result1.is_ok();
+        assert!(result1.is_ok());
         
         // Second resource should fail due to fuel budget
         let result2 = manager.create_resource(

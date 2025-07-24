@@ -29,7 +29,7 @@
 //! let component_binary = [0x00, 0x61, 0x73, 0x6D, 0x0A, 0x00, 0x01, 0x00]; // Magic + version
 //! if let Ok(()) = decode_no_alloc::verify_component_header(&component_binary) {
 //!     // Header is valid, now decode header information
-//!     let header = decode_no_alloc::decode_component_header(&component_binary).unwrap();
+//!     let header = decode_no_alloc::decode_component_header(&component_binary).unwrap());
 //!     // Work with component header information
 //! }
 //! ```
@@ -979,7 +979,7 @@ mod tests {
     #[test]
     fn test_verify_component_header_valid() {
         let result = verify_component_header(&MINIMAL_COMPONENT;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -1002,19 +1002,19 @@ mod tests {
     #[test]
     fn test_decode_component_header_minimal() {
         let result = decode_component_header_simple(&MINIMAL_COMPONENT;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let header = result.unwrap();
+        let header = result.unwrap());
         assert_eq!(header.size, 8;
-        assert_eq!(header.section_count, 0;
-        assert_eq!(header.types.len(), 0;
-        assert_eq!(header.exports.len(), 0;
-        assert_eq!(header.imports.len(), 0;
+        assert_eq!(header.section_count, 0);
+        assert_eq!(header.types.len(), 0);
+        assert_eq!(header.exports.len(), 0);
+        assert_eq!(header.imports.len(), 0);
     }
 
     #[test]
     fn test_validate_component_no_alloc() {
         let result = validate_component_no_alloc(&MINIMAL_COMPONENT, ComponentValidatorType::Basic;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

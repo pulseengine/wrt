@@ -56,150 +56,150 @@ impl ComparisonContext for DemoContext {
 
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
-    println!("=== WebAssembly Comparison Operations Demo ===\n";
+    println!("=== WebAssembly Comparison Operations Demo ===\n");
 
-    let mut context = DemoContext::new);
+    let mut context = DemoContext::new();
 
     // 1. Integer equality comparisons (i32)
-    println!("1. Integer Equality Comparisons (i32):";
+    println!("1. Integer Equality Comparisons (i32):");
 
     // i32.eq (equal)
     context.push_comparison_value(Value::I32(42))?;
     context.push_comparison_value(Value::I32(42))?;
-    println!("   Input: 42, 42";
+    println!("   Input: 42, 42");
     ComparisonOp::I32Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   42 == 42: {} (true)", result;
+        println!("   42 == 42: {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i32.ne (not equal)
     context.push_comparison_value(Value::I32(42))?;
     context.push_comparison_value(Value::I32(13))?;
-    println!("   Input: 42, 13";
+    println!("   Input: 42, 13");
     ComparisonOp::I32Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   42 != 13: {} (true)", result;
+        println!("   42 != 13: {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 2. Integer relational comparisons (signed)
-    println!("\n2. Integer Relational Comparisons (Signed):";
+    println!("\n2. Integer Relational Comparisons (Signed):");
 
     // i32.lt_s (less than, signed)
     context.push_comparison_value(Value::I32(-10))?;
     context.push_comparison_value(Value::I32(5))?;
-    println!("   Input: -10, 5";
+    println!("   Input: -10, 5");
     ComparisonOp::I32LtS.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   -10 < 5 (signed): {} (true)", result;
+        println!("   -10 < 5 (signed): {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i32.gt_s (greater than, signed)
     context.push_comparison_value(Value::I32(100))?;
     context.push_comparison_value(Value::I32(-5))?;
-    println!("   Input: 100, -5";
+    println!("   Input: 100, -5");
     ComparisonOp::I32GtS.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   100 > -5 (signed): {} (true)", result;
+        println!("   100 > -5 (signed): {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i32.le_s (less than or equal, signed)
     context.push_comparison_value(Value::I32(7))?;
     context.push_comparison_value(Value::I32(7))?;
-    println!("   Input: 7, 7";
+    println!("   Input: 7, 7");
     ComparisonOp::I32LeS.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   7 <= 7 (signed): {} (true)", result;
+        println!("   7 <= 7 (signed): {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i32.ge_s (greater than or equal, signed)
     context.push_comparison_value(Value::I32(10))?;
     context.push_comparison_value(Value::I32(7))?;
-    println!("   Input: 10, 7";
+    println!("   Input: 10, 7");
     ComparisonOp::I32GeS.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   10 >= 7 (signed): {} (true)", result;
+        println!("   10 >= 7 (signed): {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 3. Integer relational comparisons (unsigned)
-    println!("\n3. Integer Relational Comparisons (Unsigned):";
+    println!("\n3. Integer Relational Comparisons (Unsigned):");
 
     // i32.lt_u (less than, unsigned) - showing signed vs unsigned difference
     context.push_comparison_value(Value::I32(-1))?; // 0xFFFFFFFF as unsigned
     context.push_comparison_value(Value::I32(10))?;
-    println!("   Input: -1 (0xFFFFFFFF), 10";
+    println!("   Input: -1 (0xFFFFFFFF), 10");
     ComparisonOp::I32LtU.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!(
             "   -1 < 10 (unsigned): {} (false, -1 as unsigned is very large)",
             result
-        ;
+        );
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i32.gt_u (greater than, unsigned)
     context.push_comparison_value(Value::I32(-1))?;
     context.push_comparison_value(Value::I32(10))?;
-    println!("   Input: -1 (0xFFFFFFFF), 10";
+    println!("   Input: -1 (0xFFFFFFFF), 10");
     ComparisonOp::I32GtU.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!(
             "   -1 > 10 (unsigned): {} (true, -1 as unsigned is very large)",
             result
-        ;
+        );
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 4. 64-bit integer comparisons
-    println!("\n4. 64-bit Integer Comparisons:";
+    println!("\n4. 64-bit Integer Comparisons:");
 
     // i64.eq (equal)
     context.push_comparison_value(Value::I64(0x123456789ABCDEF0))?;
     context.push_comparison_value(Value::I64(0x123456789ABCDEF0))?;
-    println!("   Input: 0x123456789ABCDEF0, 0x123456789ABCDEF0";
+    println!("   Input: 0x123456789ABCDEF0, 0x123456789ABCDEF0");
     ComparisonOp::I64Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   Large i64 values equal: {} (true)", result;
+        println!("   Large i64 values equal: {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i64.lt_s (less than, signed)
     context.push_comparison_value(Value::I64(-9223372036854775808))?; // i64::MIN
     context.push_comparison_value(Value::I64(9223372036854775807))?; // i64::MAX
-    println!("   Input: i64::MIN, i64::MAX";
+    println!("   Input: i64::MIN, i64::MAX");
     ComparisonOp::I64LtS.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   i64::MIN < i64::MAX (signed): {} (true)", result;
+        println!("   i64::MIN < i64::MAX (signed): {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i64.gt_u (greater than, unsigned)
     context.push_comparison_value(Value::I64(-1))?; // Large unsigned value
     context.push_comparison_value(Value::I64(1000))?;
-    println!("   Input: -1 (large unsigned), 1000";
+    println!("   Input: -1 (large unsigned), 1000");
     ComparisonOp::I64GtU.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   -1 > 1000 (unsigned): {} (true)", result;
+        println!("   -1 > 1000 (unsigned): {} (true)", result);
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 5. Float comparisons (f32)
-    println!("\n5. Float Comparisons (f32):";
+    println!("\n5. Float Comparisons (f32):");
 
     // f32.eq (equal)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(3.14159)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(3.14159)))?;
-    println!("   Input: 3.14159, 3.14159";
+    println!("   Input: 3.14159, 3.14159");
     ComparisonOp::F32Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   3.14159 == 3.14159: {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // f32.lt (less than)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(2.718)))?;
@@ -209,7 +209,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   2.718 < 3.14159: {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // f32.ge (greater than or equal)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0)))?;
@@ -219,7 +219,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   5.0 >= 5.0: {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 6. Float comparisons (f64)
     println!("\n6. Float Comparisons (f64):";
@@ -232,7 +232,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   π != e: {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // f64.le (less than or equal)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(1.414213562373095)))?; // sqrt(2)
@@ -242,7 +242,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   sqrt(2) <= sqrt(3): {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 7. Test operations (eqz)
     println!("\n7. Test Operations (eqz - equals zero):";
@@ -254,7 +254,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   0 == 0: {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i32.eqz with non-zero
     context.push_comparison_value(Value::I32(42))?;
@@ -263,7 +263,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   42 == 0: {} (false)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i64.eqz with zero
     context.push_comparison_value(Value::I64(0))?;
@@ -272,7 +272,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   0i64 == 0: {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // i64.eqz with large non-zero
     context.push_comparison_value(Value::I64(0x123456789ABCDEF0))?;
@@ -281,7 +281,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   0x123456789ABCDEF0 == 0: {} (false)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 8. NaN handling in float comparisons
     println!("\n8. NaN Handling in Float Comparisons:";
@@ -294,7 +294,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   NaN == NaN: {} (false - WebAssembly spec)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // f32 NaN != anything (should be true)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
@@ -304,7 +304,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   NaN != 42.0: {} (true - WebAssembly spec)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // f32 NaN < anything (should be false)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
@@ -315,9 +315,9 @@ fn main() -> Result<()> {
         println!(
             "   NaN < 42.0: {} (false - NaN comparisons are always false)",
             result
-        ;
+        );
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // f64 NaN != NaN (should be true)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN)))?;
@@ -327,7 +327,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   NaN != NaN (f64): {} (true - WebAssembly spec)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 9. Special float values
     println!("\n9. Special Float Values:";
@@ -340,7 +340,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   -∞ < +∞: {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // Positive and negative zero
     context.push_comparison_value(Value::F64(FloatBits64::from_float(-0.0)))?;
@@ -350,7 +350,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   -0.0 == +0.0: {} (true - IEEE 754 spec)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // 10. Edge cases and overflow scenarios
     println!("\n10. Edge Cases:";
@@ -363,7 +363,7 @@ fn main() -> Result<()> {
     if let Some(Value::I32(result)) = context.peek() {
         println!("   i32::MAX > i32::MIN (signed): {} (true)", result;
     }
-    context.stack.clear);
+    context.stack.clear();
 
     // Same values as unsigned comparison
     context.push_comparison_value(Value::I32(i32::MAX))?;
@@ -374,7 +374,7 @@ fn main() -> Result<()> {
         println!(
             "   i32::MAX < i32::MIN (unsigned): {} (true - MIN as unsigned is 2^31)",
             result
-        ;
+        );
     }
 
     println!("\n=== Demo Complete ===";

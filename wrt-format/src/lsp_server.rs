@@ -667,7 +667,7 @@ mod tests {
 
     #[test]
     fn test_diagnostic_severity() {
-        assert_eq!(DiagnosticSeverity::Error as u8, 1;
+        assert_eq!(DiagnosticSeverity::Error as u8, 1);
         assert_eq!(DiagnosticSeverity::Warning as u8, 2;
         assert_eq!(DiagnosticSeverity::Information as u8, 3;
         assert_eq!(DiagnosticSeverity::Hint as u8, 4;

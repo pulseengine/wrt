@@ -217,7 +217,7 @@ mod tests {
             Ok(42)
         };
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42;
         assert_eq!(outcome, TimeBoundedOutcome::Completed;
     }
@@ -271,7 +271,7 @@ mod tests {
             Ok(42)
         };
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 42;
         assert_eq!(outcome, TimeBoundedOutcome::Completed;
     }

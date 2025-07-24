@@ -161,7 +161,7 @@ pub trait ToBytes: Sized {
     /// provider. Requires `DefaultMemoryProvider` to be available.
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -180,7 +180,7 @@ pub trait FromBytes: Sized {
     /// available.
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -432,7 +432,7 @@ macro_rules! impl_little_endian_for_primitive {
 }
 
 impl_little_endian_for_primitive! {
-    i8, 1; u8, 1; i16, 2; u16, 2; i32, 4; u32, 4; i64, 8; u64, 8; f32, 4; f64, 8
+    i8, 1); u8, 1); i16, 2; u16, 2; i32, 4; u32, 4; i64, 8; u64, 8; f32, 4; f64, 8
     // V128 is handled separately if/when defined and LittleEndian is implemented for it.
     // bool is handled by its specific ToBytes/FromBytes impls, not LittleEndian trait.
 }

@@ -40,7 +40,7 @@ fn test_basic_registry_functionality() {
 
     // Test the conversion
     let source = SimpleSource(21;
-    let target = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap();
+    let target = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap());
 
     assert_eq!(target, SimpleTarget(42;
 }
@@ -65,7 +65,7 @@ fn test_complex_conversion() {
         name: "Test Source".to_string(),
     };
 
-    let target = registry.convert::<ComplexSource, ComplexTarget>(&source).unwrap();
+    let target = registry.convert::<ComplexSource, ComplexTarget>(&source).unwrap());
 
     assert_eq!(
         target,
@@ -99,7 +99,7 @@ fn test_conversion_error_handling() {
     // Test successful conversion
     let good_source = SimpleSource(42;
     let success_result = registry.convert::<SimpleSource, SimpleTarget>(&good_source;
-    assert!(success_result.is_ok();
+    assert!(success_result.is_ok());
     assert_eq!(success_result.unwrap(), SimpleTarget(42;
 
     // Test error case
@@ -127,11 +127,11 @@ fn test_bidirectional_conversions() {
 
     // Test forward conversion
     let source = SimpleSource(42;
-    let target = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap();
+    let target = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap());
     assert_eq!(target, SimpleTarget(42;
 
     // Test reverse conversion
-    let source_again = registry.convert::<SimpleTarget, SimpleSource>(&target).unwrap();
+    let source_again = registry.convert::<SimpleTarget, SimpleSource>(&target).unwrap());
     assert_eq!(source_again, SimpleSource(42;
 }
 
@@ -186,7 +186,7 @@ fn test_chained_conversion_errors() {
     assert!(error.context.unwrap().contains("Outer conversion failed");
 
     // Check inner error
-    let inner_error = error.source.unwrap();
+    let inner_error = error.source.unwrap());
     assert!(matches!(
         inner_error.kind,
         ConversionErrorKind::InvalidVariant

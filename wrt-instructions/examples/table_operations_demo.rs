@@ -284,8 +284,8 @@ mod tests {
         let table0 = table_manager.add_table(funcref_table;
         let table1 = table_manager.add_table(externref_table;
         
-        assert_eq!(table0, 0;
-        assert_eq!(table1, 1;
+        assert_eq!(table0, 0);
+        assert_eq!(table1, 1);
         assert_eq!(table_manager.table_count(), 2;
         
         // Test operations on different tables
@@ -354,7 +354,7 @@ mod tests {
         }
         
         // Copy operation
-        let copy_op = TableCopy::new(0, 0;
+        let copy_op = TableCopy::new(0, 0);
         copy_op.execute(&mut table, &Value::I32(5), &Value::I32(2), &Value::I32(2))?;
         
         // Verify copy

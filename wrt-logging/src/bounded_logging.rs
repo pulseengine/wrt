@@ -1092,75 +1092,75 @@ mod tests {
     
     #[test]
     fn test_bounded_logging_manager_creation() {
-        let limits = BoundedLoggingLimits::default);
+        let limits = BoundedLoggingLimits::default());
         let manager = BoundedLoggingManager::new(limits;
-        assert!(manager.is_ok();
+        assert!(manager.is_ok());
         
-        let manager = manager.unwrap();
+        let manager = manager.unwrap());
         let stats = manager.get_statistics);
-        assert_eq!(stats.registered_loggers, 0;
-        assert_eq!(stats.total_log_entries, 0;
+        assert_eq!(stats.registered_loggers, 0);
+        assert_eq!(stats.total_log_entries, 0);
     }
     
     #[test]
     fn test_logger_registration() {
-        let limits = BoundedLoggingLimits::default);
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let limits = BoundedLoggingLimits::default());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Info,
-        ).unwrap();
+        ).unwrap());
         
-        assert_eq!(logger_id.0, 1;
+        assert_eq!(logger_id.0, 1);
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.registered_loggers, 1;
-        assert_eq!(stats.active_loggers, 1;
+        assert_eq!(stats.registered_loggers, 1);
+        assert_eq!(stats.active_loggers, 1);
     }
     
     #[test]
     fn test_log_message() {
-        let limits = BoundedLoggingLimits::default);
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let limits = BoundedLoggingLimits::default());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
         let result = manager.log(logger_id, LogLevel::Info, "Test message".to_string();
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.total_log_entries, 1;
-        assert_eq!(stats.total_messages, 1;
+        assert_eq!(stats.total_log_entries, 1);
+        assert_eq!(stats.total_messages, 1);
     }
     
     #[test]
     fn test_log_level_filtering() {
-        let limits = BoundedLoggingLimits::default);
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let limits = BoundedLoggingLimits::default());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Warn, // Only log Warn and Error
-        ).unwrap();
+        ).unwrap());
         
         // This should be ignored (Debug < Warning)
         let result = manager.log(logger_id, LogLevel::Debug, "Debug message".to_string();
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         // This should be logged (Warning >= Warning)
         let result = manager.log(logger_id, LogLevel::Warn, "Warning message".to_string();
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         let stats = manager.get_statistics);
         assert_eq!(stats.total_log_entries, 1); // Only the warning message
-        assert_eq!(stats.total_messages, 1;
+        assert_eq!(stats.total_messages, 1);
     }
     
     #[test]
@@ -1169,20 +1169,20 @@ mod tests {
             max_log_message_size: 10,
             ..BoundedLoggingLimits::default()
         };
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
         // This message is too long (20 chars > 10 limit)
         let result = manager.log(logger_id, LogLevel::Info, "This message is too long".to_string();
         assert!(result.is_err();
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.dropped_messages, 1;
+        assert_eq!(stats.dropped_messages, 1);
     }
     
     #[test]
@@ -1191,18 +1191,18 @@ mod tests {
             max_log_entries: 2,
             ..BoundedLoggingLimits::default()
         };
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
         // Add three messages (should only keep the last two)
-        manager.log(logger_id, LogLevel::Info, "Message 1".to_string()).unwrap();
-        manager.log(logger_id, LogLevel::Info, "Message 2".to_string()).unwrap();
-        manager.log(logger_id, LogLevel::Info, "Message 3".to_string()).unwrap();
+        manager.log(logger_id, LogLevel::Info, "Message 1".to_string()).unwrap());
+        manager.log(logger_id, LogLevel::Info, "Message 2".to_string()).unwrap());
+        manager.log(logger_id, LogLevel::Info, "Message 3".to_string()).unwrap());
         
         let entries = manager.get_log_entries);
         assert_eq!(entries.len(), 2;
@@ -1218,7 +1218,7 @@ mod tests {
             max_concurrent_loggers: 1,
             ..BoundedLoggingLimits::default()
         };
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         // First logger should succeed
         let result1 = manager.register_logger(
@@ -1226,7 +1226,7 @@ mod tests {
             "logger1".to_string(),
             LogLevel::Debug,
         ;
-        assert!(result1.is_ok();
+        assert!(result1.is_ok());
         
         // Second logger should fail
         let result2 = manager.register_logger(
@@ -1239,32 +1239,32 @@ mod tests {
     
     #[test]
     fn test_component_logger_removal() {
-        let limits = BoundedLoggingLimits::default);
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let limits = BoundedLoggingLimits::default());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         let logger1_id = manager.register_logger(
             ComponentLoggingId(1),
             "logger1".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
         let logger2_id = manager.register_logger(
             ComponentLoggingId(1),
             "logger2".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
         let logger3_id = manager.register_logger(
             ComponentLoggingId(2),
             "logger3".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
         let removed = manager.remove_component_loggers(ComponentLoggingId(1;
         assert_eq!(removed, 2;
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.registered_loggers, 1;
+        assert_eq!(stats.registered_loggers, 1);
         
         // Logger3 should still exist
         assert!(manager.get_logger(logger3_id).is_some();
@@ -1275,29 +1275,29 @@ mod tests {
     
     #[test]
     fn test_log_filtering_by_component() {
-        let limits = BoundedLoggingLimits::default);
-        let mut manager = BoundedLoggingManager::new(limits).unwrap();
+        let limits = BoundedLoggingLimits::default());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap());
         
         let logger1_id = manager.register_logger(
             ComponentLoggingId(1),
             "logger1".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
         let logger2_id = manager.register_logger(
             ComponentLoggingId(2),
             "logger2".to_string(),
             LogLevel::Debug,
-        ).unwrap();
+        ).unwrap());
         
-        manager.log(logger1_id, LogLevel::Info, "Message from component 1".to_string()).unwrap();
-        manager.log(logger2_id, LogLevel::Info, "Message from component 2".to_string()).unwrap();
-        manager.log(logger1_id, LogLevel::Error, "Error from component 1".to_string()).unwrap();
+        manager.log(logger1_id, LogLevel::Info, "Message from component 1".to_string()).unwrap());
+        manager.log(logger2_id, LogLevel::Info, "Message from component 2".to_string()).unwrap());
+        manager.log(logger1_id, LogLevel::Error, "Error from component 1".to_string()).unwrap());
         
         let component1_entries = manager.get_entries_by_component(ComponentLoggingId(1;
         let component2_entries = manager.get_entries_by_component(ComponentLoggingId(2;
         
         assert_eq!(component1_entries.len(), 2;
-        assert_eq!(component2_entries.len(), 1;
+        assert_eq!(component2_entries.len(), 1);
     }
 }

@@ -468,8 +468,8 @@ mod tests {
         assert_eq!(monitor.get_critical_violations(), 3;
         
         let report = monitor.get_safety_report);
-        assert_eq!(report.capability_violations, 1;
-        assert_eq!(report.budget_violations, 1;
+        assert_eq!(report.capability_violations, 1);
+        assert_eq!(report.budget_violations, 1);
     }
 
     #[test]
@@ -480,7 +480,7 @@ mod tests {
         
         with_safety_monitor(|monitor| {
             let report = monitor.get_safety_report);
-            assert_eq!(report.total_allocations, 1;
+            assert_eq!(report.total_allocations, 1);
         };
     }
 }

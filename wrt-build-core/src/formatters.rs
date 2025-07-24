@@ -246,7 +246,7 @@ impl OutputFormatter for HumanFormatter {
             files.sort);
 
             for file in files {
-                let diagnostics = grouped.get(file).unwrap();
+                let diagnostics = grouped.get(file).unwrap());
 
                 // File header
                 if self.use_colors {
@@ -560,7 +560,7 @@ mod tests {
         let output = formatter.format_collection(&collection;
 
         // Should be valid JSON
-        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap());
         assert!(parsed.is_object();
         assert!(parsed["diagnostics"].is_array();
         assert_eq!(parsed["diagnostics"].as_array().unwrap().len(), 2;
@@ -577,7 +577,7 @@ mod tests {
 
         // Each line should be valid JSON
         for line in lines {
-            serde_json::from_str::<serde_json::Value>(line).unwrap();
+            serde_json::from_str::<serde_json::Value>(line).unwrap());
         }
     }
 

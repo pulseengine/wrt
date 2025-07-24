@@ -42,7 +42,7 @@ pub fn execute_command(
     config: &BuildConfig,
     description: &str,
 ) -> BuildResult<std::process::Output> {
-    let cmd_str = format_command(cmd;
+    let cmd_str = format_command(cmd);
 
     if config.trace_commands || config.verbose {
         println!(
@@ -50,7 +50,7 @@ pub fn execute_command(
             "🔧".bright_blue(),
             description,
             cmd_str.bright_cyan()
-        ;
+        );
     }
 
     if config.dry_run {
@@ -58,20 +58,20 @@ pub fn execute_command(
             "{} DRY RUN - would execute: {}",
             "🔍".bright_yellow(),
             cmd_str
-        ;
+        );
         // Return fake successful output for dry run
         #[cfg(unix)]
-        let status = std::process::ExitStatus::from_raw(0;
+        let status = std::process::ExitStatus::from_raw(0);
         #[cfg(windows)]
-        let status = std::process::ExitStatus::from_raw(0;
+        let status = std::process::ExitStatus::from_raw(0);
         #[cfg(not(any(unix, windows)))]
-        compile_error!("Unsupported platform for dry run mode";
+        compile_error!("Unsupported platform for dry run mode");
 
         return Ok(std::process::Output {
             status,
             stdout: Vec::new(),
             stderr: Vec::new(),
-        };
+        });
     }
 
     cmd.output()
@@ -81,7 +81,7 @@ pub fn execute_command(
 /// Format a command for display
 #[cfg(feature = "std")]
 fn format_command(cmd: &Command) -> String {
-    let program = cmd.get_program().to_string_lossy);
+    let program = cmd.get_program().to_string_lossy();
     let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect();
 
     if args.is_empty() {
@@ -106,29 +106,29 @@ pub mod xtask_port {
         ;
 
         // Build with coverage flags
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.args(["test", "--no-run", "--workspace"])
             .env("RUSTFLAGS", "-C instrument-coverage")
-            .env("LLVM_PROFILE_FILE", "target/coverage/profile-%p-%m.profraw";
+            .env("LLVM_PROFILE_FILE", "target/coverage/profile-%p-%m.profraw");
 
         let output = super::execute_command(&mut cmd, config, "Building with coverage flags")?;
 
         if !output.status.success() {
-            return Err(BuildError::Build("Coverage build failed".to_string();
+            return Err(BuildError::Build("Coverage build failed".to_string()));
         }
 
         // Run tests with coverage
-        let mut test_cmd = Command::new("cargo";
+        let mut test_cmd = Command::new("cargo");
         test_cmd
             .args(["test", "--workspace"])
             .env("RUSTFLAGS", "-C instrument-coverage")
-            .env("LLVM_PROFILE_FILE", "target/coverage/profile-%p-%m.profraw";
+            .env("LLVM_PROFILE_FILE", "target/coverage/profile-%p-%m.profraw");
 
         let test_output =
             super::execute_command(&mut test_cmd, config, "Running tests with coverage")?;
 
         if !test_output.status.success() {
-            return Err(BuildError::Test("Coverage tests failed".to_string();
+            return Err(BuildError::Test("Coverage tests failed".to_string()));
         }
 
         println!("{} Coverage analysis completed", "✅".bright_green);
@@ -155,7 +155,7 @@ pub mod xtask_port {
         println!("{} Generating documentation...", "📚".bright_blue);
 
         // 1. Generate Rust API documentation
-        println!("  📖 Building Rust API documentation...";
+        println!("  📖 Building Rust API documentation...");
 
         // Build documentation for each package individually to avoid conflicts
         let packages = [
@@ -177,15 +177,15 @@ pub mod xtask_port {
             print!("    Building docs for {}... ", package;
             std::io::stdout().flush().ok();
 
-            let mut cmd = Command::new("cargo";
-            cmd.args(["doc", "--no-deps", "-p", package];
+            let mut cmd = Command::new("cargo");
+            cmd.args(["doc", "--no-deps", "-p", package]);
 
             if include_private {
-                cmd.arg("--document-private-items";
+                cmd.arg("--document-private-items");
             }
 
             if let Some(ref out_dir) = output_dir {
-                cmd.arg("--target-dir").arg(out_dir;
+                cmd.arg("--target-dir").arg(out_dir);
             }
 
             let output = cmd.output().map_err(|e| {
@@ -193,10 +193,10 @@ pub mod xtask_port {
             })?;
 
             if output.status.success() {
-                println!("✓";
+                println!("✓");
             } else {
-                println!("✗";
-                let stderr = String::from_utf8_lossy(&output.stderr;
+                println!("✗");
+                let stderr = String::from_utf8_lossy(&output.stderr);
                 eprintln!(
                     "      Error: {}",
                     stderr
@@ -211,26 +211,26 @@ pub mod xtask_port {
         }
 
         if any_failed {
-            println!("    ⚠️  Some packages failed to build docs, but continuing...";
+            println!("    ⚠️  Some packages failed to build docs, but continuing...");
         }
 
-        println!("    ✅ Rust API documentation generated";
+        println!("    ✅ Rust API documentation generated");
 
         // 2. Generate Sphinx documentation (if tools are available)
         if is_sphinx_available() {
-            println!("  📚 Building Sphinx documentation...";
+            println!("  📚 Building Sphinx documentation...");
 
             // Check if docs requirements are installed
             if !check_docs_requirements() {
-                println!("    ⚠️  Installing documentation dependencies...";
+                println!("    ⚠️  Installing documentation dependencies...");
                 install_docs_requirements()?;
             }
 
             generate_sphinx_docs_with_output(output_dir.as_ref())?;
-            println!("    ✅ Sphinx documentation generated";
+            println!("    ✅ Sphinx documentation generated");
         } else {
-            println!("    ⚠️  Sphinx not available, skipping comprehensive documentation";
-            println!("    💡 Run 'cargo-wrt setup --install' to install documentation tools";
+            println!("    ⚠️  Sphinx not available, skipping comprehensive documentation");
+            println!("    💡 Run 'cargo-wrt setup --install' to install documentation tools");
         }
 
         // 3. Open documentation if requested
@@ -294,7 +294,7 @@ pub mod xtask_port {
 
     /// Create virtual environment and install documentation requirements
     fn install_docs_requirements() -> BuildResult<()> {
-        println!("    📦 Setting up documentation virtual environment...";
+        println!("    📦 Setting up documentation virtual environment...");
 
         // 1. Create virtual environment
         let venv_cmd = Command::new("python3")
@@ -305,7 +305,7 @@ pub mod xtask_port {
             })?;
 
         if !venv_cmd.status.success() {
-            let stderr = String::from_utf8_lossy(&venv_cmd.stderr;
+            let stderr = String::from_utf8_lossy(&venv_cmd.stderr);
             return Err(BuildError::Tool(format!(
                 "Failed to create documentation virtual environment: {}",
                 stderr
@@ -325,14 +325,14 @@ pub mod xtask_port {
             .map_err(|e| BuildError::Tool(format!("Failed to install docs requirements: {}", e)))?;
 
         if !install_cmd.status.success() {
-            let stderr = String::from_utf8_lossy(&install_cmd.stderr;
+            let stderr = String::from_utf8_lossy(&install_cmd.stderr);
             return Err(BuildError::Tool(format!(
                 "Failed to install documentation dependencies in venv: {}",
                 stderr
             );
         }
 
-        println!("    ✅ Documentation environment ready";
+        println!("    ✅ Documentation environment ready");
         Ok(())
     }
 
@@ -352,7 +352,7 @@ pub mod xtask_port {
 
         // Determine output paths based on custom directory
         let (build_dir, doctrees_dir, html_dir) = if let Some(out_dir) = output_dir {
-            let base = PathBuf::from(out_dir;
+            let base = PathBuf::from(out_dir);
             (
                 base.join("sphinx"),
                 base.join("sphinx/doctrees"),
@@ -386,7 +386,7 @@ pub mod xtask_port {
             .map_err(|e| BuildError::Tool(format!("Failed to run sphinx-build: {}", e)))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(BuildError::Build(format!(
                 "Sphinx documentation generation failed: {}",
                 stderr
@@ -412,7 +412,7 @@ pub mod xtask_port {
                 };
 
                 let _ = Command::new(open_cmd).arg(docs_path).spawn);
-                println!("    🌐 Opened documentation at {}", docs_path;
+                println!("    🌐 Opened documentation at {}", docs_path);
                 break;
             }
         }
@@ -433,7 +433,7 @@ pub mod xtask_port {
         ];
 
         for crate_name in &no_std_crates {
-            let mut cmd = Command::new("cargo";
+            let mut cmd = Command::new("cargo");
             cmd.args([
                 "build",
                 "-p",
@@ -448,7 +448,7 @@ pub mod xtask_port {
                 .map_err(|e| BuildError::Tool(format!("Failed to build {}: {}", crate_name, e)))?;
 
             if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr;
+                let stderr = String::from_utf8_lossy(&output.stderr);
                 return Err(BuildError::Build(format!(
                     "no_std verification failed for {}: {}",
                     crate_name, stderr
@@ -471,7 +471,7 @@ pub mod xtask_port {
         println!("{} Running static analysis...", "🔍".bright_blue);
 
         // Run clippy with basic settings (avoid strict settings that might fail)
-        let mut clippy_cmd = Command::new("cargo";
+        let mut clippy_cmd = Command::new("cargo");
         clippy_cmd.args(["clippy", "--workspace", "--all-targets"];
 
         let clippy_output = clippy_cmd
@@ -479,9 +479,9 @@ pub mod xtask_port {
             .map_err(|e| BuildError::Tool(format!("Failed to run clippy: {}", e)))?;
 
         if !clippy_output.status.success() {
-            let stderr = String::from_utf8_lossy(&clippy_output.stderr;
+            let stderr = String::from_utf8_lossy(&clippy_output.stderr);
             if stderr.contains("not installed") || stderr.contains("not found") {
-                println!("  ⚠️ clippy not available, skipping clippy check";
+                println!("  ⚠️ clippy not available, skipping clippy check");
             } else {
                 return Err(BuildError::Verification(format!(
                     "Clippy checks failed: {}",
@@ -489,11 +489,11 @@ pub mod xtask_port {
                 );
             }
         } else {
-            println!("  ✅ Clippy checks passed";
+            println!("  ✅ Clippy checks passed");
         }
 
         // Check formatting
-        let mut fmt_cmd = Command::new("cargo";
+        let mut fmt_cmd = Command::new("cargo");
         fmt_cmd.args(["fmt", "--check"];
 
         let fmt_output = fmt_cmd
@@ -501,9 +501,9 @@ pub mod xtask_port {
             .map_err(|e| BuildError::Tool(format!("Failed to check formatting: {}", e)))?;
 
         if !fmt_output.status.success() {
-            let stderr = String::from_utf8_lossy(&fmt_output.stderr;
+            let stderr = String::from_utf8_lossy(&fmt_output.stderr);
             if stderr.contains("not installed") || stderr.contains("not found") {
-                println!("  ⚠️ cargo fmt not available, skipping format check";
+                println!("  ⚠️ cargo fmt not available, skipping format check");
             } else {
                 return Err(BuildError::Verification(format!(
                     "Code formatting check failed: {}",
@@ -511,7 +511,7 @@ pub mod xtask_port {
                 );
             }
         } else {
-            println!("  ✅ Format check passed";
+            println!("  ✅ Format check passed");
         }
 
         println!("{} Static analysis completed", "✅".bright_green);
@@ -523,7 +523,7 @@ pub mod xtask_port {
         println!("{} Running advanced test suite...", "🧪".bright_blue);
 
         // Run all tests with verbose output
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.args(["test", "--workspace", "--all-features", "--verbose"];
 
         let output = cmd
@@ -531,7 +531,7 @@ pub mod xtask_port {
             .map_err(|e| BuildError::Tool(format!("Failed to run advanced tests: {}", e)))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(BuildError::Test(format!(
                 "Advanced tests failed: {}",
                 stderr
@@ -540,7 +540,7 @@ pub mod xtask_port {
 
         // Run integration tests if they exist
         if std::path::Path::new("tests").exists() {
-            let mut integration_cmd = Command::new("cargo";
+            let mut integration_cmd = Command::new("cargo");
             integration_cmd.args(["test", "--test", "*", "--workspace"];
 
             let integration_output = integration_cmd
@@ -548,7 +548,7 @@ pub mod xtask_port {
                 .map_err(|e| BuildError::Tool(format!("Failed to run integration tests: {}", e)))?;
 
             if !integration_output.status.success() {
-                let stderr = String::from_utf8_lossy(&integration_output.stderr;
+                let stderr = String::from_utf8_lossy(&integration_output.stderr);
                 return Err(BuildError::Test(format!(
                     "Integration tests failed: {}",
                     stderr
@@ -575,9 +575,9 @@ pub mod xtask_port {
                 .count);
 
             if unsafe_count > 0 {
-                println!("  ⚠️ Found {} unsafe code blocks", unsafe_count;
+                println!("  ⚠️ Found {} unsafe code blocks", unsafe_count);
             } else {
-                println!("  ✓ No unsafe code found";
+                println!("  ✓ No unsafe code found");
             }
         }
 
@@ -592,9 +592,9 @@ pub mod xtask_port {
                 .count);
 
             if panic_count > 0 {
-                println!("  ⚠️ Found {} panic! macros", panic_count;
+                println!("  ⚠️ Found {} panic! macros", panic_count);
             } else {
-                println!("  ✓ No panic! macros found";
+                println!("  ✓ No panic! macros found");
             }
         }
 
@@ -609,7 +609,7 @@ pub mod xtask_port {
             "📚".bright_blue()
         ;
 
-        let temp_dir = std::env::temp_dir().join("wrt-docs";
+        let temp_dir = std::env::temp_dir().join("wrt-docs");
 
         // Clean and create fresh directory
         if temp_dir.exists() {
@@ -630,9 +630,9 @@ pub mod xtask_port {
 
         // Generate documentation for each version
         for version in &versions {
-            println!("\n  📖 Building documentation for version: {}", version;
+            println!("\n  📖 Building documentation for version: {}", version);
 
-            let version_dir = temp_dir.join(version;
+            let version_dir = temp_dir.join(version);
             std::fs::create_dir_all(&version_dir)
                 .map_err(|e| BuildError::Build(format!("Failed to create version dir: {}", e)))?;
 
@@ -648,7 +648,7 @@ pub mod xtask_port {
                 };
             } else {
                 // Checkout the version and build docs
-                println!("    Checking out {}...", version;
+                println!("    Checking out {}...", version);
 
                 let checkout_cmd =
                     Command::new("git").args(["checkout", version]).output().map_err(|e| {
@@ -656,7 +656,7 @@ pub mod xtask_port {
                     })?;
 
                 if !checkout_cmd.status.success() {
-                    eprintln!("    ⚠️ Failed to checkout {}, skipping...", version;
+                    eprintln!("    ⚠️ Failed to checkout {}, skipping...", version);
                     continue;
                 }
 
@@ -678,25 +678,25 @@ pub mod xtask_port {
                         };
                     },
                     Err(e) => {
-                        eprintln!("    ⚠️ Failed to build docs for {}: {}", version, e;
+                        eprintln!("    ⚠️ Failed to build docs for {}: {}", version, e);
                     },
                 }
             }
         }
 
         // Return to original branch
-        println!("\n  🔄 Returning to original branch: {}", current_branch;
+        println!("\n  🔄 Returning to original branch: {}", current_branch);
         let return_cmd = Command::new("git")
             .args(["checkout", &current_branch])
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to return to original branch: {}", e)))?;
 
         if !return_cmd.status.success() {
-            eprintln!("    ⚠️ Warning: Failed to return to original branch";
+            eprintln!("    ⚠️ Warning: Failed to return to original branch");
         }
 
         // Create switcher.json
-        let switcher_path = temp_dir.join("switcher.json";
+        let switcher_path = temp_dir.join("switcher.json");
         let switcher_content = serde_json::to_string_pretty(&switcher_entries)
             .map_err(|e| BuildError::Build(format!("Failed to serialize switcher.json: {}", e)))?;
         std::fs::write(&switcher_path, switcher_content)
@@ -705,20 +705,20 @@ pub mod xtask_port {
         // Copy root index.html if it exists
         let root_index_src = Path::new("docs/source/root_index.html";
         if root_index_src.exists() {
-            let root_index_dst = temp_dir.join("index.html";
+            let root_index_dst = temp_dir.join("index.html");
             std::fs::copy(root_index_src, root_index_dst)
                 .map_err(|e| BuildError::Build(format!("Failed to copy root index.html: {}", e)))?;
         }
 
         // Create local symlinks for each version's documentation
         for version in &versions {
-            let version_dir = temp_dir.join(version;
-            let version_rust_docs = version_dir.join("doc";
-            let version_sphinx_docs = version_dir.join("sphinx/html";
+            let version_dir = temp_dir.join(version);
+            let version_rust_docs = version_dir.join("doc");
+            let version_sphinx_docs = version_dir.join("sphinx/html");
 
             if version_rust_docs.exists() {
                 // Move Rust docs to version root
-                let rust_index = version_dir.join("rust-api";
+                let rust_index = version_dir.join("rust-api");
                 if rust_index.exists() {
                     std::fs::remove_dir_all(&rust_index).ok();
                 }
@@ -754,7 +754,7 @@ pub mod xtask_port {
             "   switcher.json created with {} versions",
             switcher_entries.len()
         ;
-        println!("\n   To serve locally, run:";
+        println!("\n   To serve locally, run:");
         println!(
             "   cd {} && python3 -m http.server 8080",
             temp_dir.display()
@@ -794,7 +794,7 @@ pub mod xtask_port {
                 description
             ;
 
-            let mut cmd = Command::new("cargo";
+            let mut cmd = Command::new("cargo");
             cmd.args(["build", "--bin", binary_name, "--features", feature];
 
             let output = cmd
@@ -802,14 +802,14 @@ pub mod xtask_port {
                 .map_err(|e| BuildError::Tool(format!("Failed to build {}: {}", binary_name, e)))?;
 
             if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr;
+                let stderr = String::from_utf8_lossy(&output.stderr);
                 return Err(BuildError::Build(format!(
                     "Failed to build {}: {}",
                     binary_name, stderr
                 );
             }
 
-            println!("    ✓ {} built successfully", binary_name;
+            println!("    ✓ {} built successfully", binary_name);
         }
 
         println!(
@@ -849,7 +849,7 @@ impl BuildSystem {
     /// Create a new build system instance
     pub fn new(workspace_root: PathBuf) -> BuildResult<Self> {
         let workspace = WorkspaceConfig::load(&workspace_root)?;
-        let config = BuildConfig::default);
+        let config = BuildConfig::default());
 
         Ok(Self { workspace, config })
     }
@@ -973,10 +973,10 @@ impl BuildSystem {
     ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now);
         let mut collection =
-            DiagnosticCollection::new(self.workspace.root.clone(), "check".to_string();
+            DiagnosticCollection::new(self.workspace.root.clone(), "check".to_string());
 
         // Run clippy with JSON output
-        let mut clippy_cmd = Command::new("cargo";
+        let mut clippy_cmd = Command::new("cargo");
         clippy_cmd
             .args([
                 "clippy",
@@ -1015,7 +1015,7 @@ impl BuildSystem {
         }
 
         // Check formatting
-        let mut fmt_cmd = Command::new("cargo";
+        let mut fmt_cmd = Command::new("cargo");
         fmt_cmd
             .args(["fmt", "--check", "--message-format=json"])
             .current_dir(&self.workspace.root;
@@ -1025,7 +1025,7 @@ impl BuildSystem {
             .map_err(|e| BuildError::Tool(format!("Failed to check formatting: {}", e)))?;
 
         if !fmt_output.status.success() {
-            let stderr = String::from_utf8_lossy(&fmt_output.stderr;
+            let stderr = String::from_utf8_lossy(&fmt_output.stderr);
             if stderr.contains("not installed") || stderr.contains("not found") {
                 collection.add_diagnostic(Diagnostic::new(
                     "<fmt>".to_string(),
@@ -1106,7 +1106,7 @@ impl BuildSystem {
 
         let req_path = requirements_file
             .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| self.workspace.root.join("requirements.toml";
+            .unwrap_or_else(|| self.workspace.root.join("requirements.toml");
 
         if !req_path.exists() {
             println!(
@@ -1114,7 +1114,7 @@ impl BuildSystem {
                 "⚠️".bright_yellow(),
                 req_path.display()
             ;
-            println!("  Use 'cargo-wrt init-requirements' to create a sample file";
+            println!("  Use 'cargo-wrt init-requirements' to create a sample file");
             return Ok();
         }
 
@@ -1127,7 +1127,7 @@ impl BuildSystem {
         let results = requirements.verify(&self.workspace.root)?;
 
         println!);
-        println!("📊 Requirements Summary:";
+        println!("📊 Requirements Summary:");
         println!("  Total requirements: {}", results.total_requirements;
         println!("  Verified requirements: {}", results.verified_requirements;
         println!(
@@ -1171,7 +1171,7 @@ impl BuildSystem {
 
         let req_path = path
             .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| self.workspace.root.join("requirements.toml";
+            .unwrap_or_else(|| self.workspace.root.join("requirements.toml");
 
         if req_path.exists() {
             return Err(BuildError::Verification(format!(
@@ -1199,26 +1199,26 @@ impl BuildSystem {
             println!("  {} Building crate: {}", "📦".bright_cyan(), crate_name;
         }
 
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.arg("build").current_dir(&self.workspace.root;
 
         // Add package selector
-        cmd.arg("-p").arg(crate_name;
+        cmd.arg("-p").arg(crate_name);
 
         // Add profile
         match self.config.profile {
             crate::config::BuildProfile::Release => {
-                cmd.arg("--release";
+                cmd.arg("--release");
             },
             crate::config::BuildProfile::Test => {
-                cmd.arg("--tests";
+                cmd.arg("--tests");
             },
             _ => {}, // Dev is default
         }
 
         // Add features
         if !self.config.features.is_empty() {
-            cmd.arg("--features").arg(self.config.features.join(",";
+            cmd.arg("--features").arg(self.config.features.join(","));
         }
 
         // Execute build
@@ -1227,7 +1227,7 @@ impl BuildSystem {
             .map_err(|e| BuildError::Tool(format!("Failed to execute cargo: {}", e)))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(BuildError::Build(format!(
                 "Cargo build failed for {}: {}",
                 crate_name, stderr
@@ -1246,28 +1246,28 @@ impl BuildSystem {
     ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now);
         let mut collection =
-            DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string();
+            DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string());
 
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.arg("build").arg("--message-format=json").current_dir(&self.workspace.root;
 
         // Add package selector
-        cmd.arg("-p").arg(package_name;
+        cmd.arg("-p").arg(package_name);
 
         // Add profile
         match self.config.profile {
             crate::config::BuildProfile::Release => {
-                cmd.arg("--release";
+                cmd.arg("--release");
             },
             crate::config::BuildProfile::Test => {
-                cmd.arg("--tests";
+                cmd.arg("--tests");
             },
             _ => {}, // Dev is default
         }
 
         // Add features if specified
         if !self.config.features.is_empty() {
-            cmd.arg("--features").arg(self.config.features.join(",";
+            cmd.arg("--features").arg(self.config.features.join(","));
         }
 
         let output = cmd
@@ -1320,9 +1320,9 @@ impl BuildSystem {
     pub fn build_all_with_diagnostics(&self) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now);
         let mut collection =
-            DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string();
+            DiagnosticCollection::new(self.workspace.root.clone(), "build".to_string());
 
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.arg("build")
             .arg("--workspace")
             .arg("--message-format=json")
@@ -1331,17 +1331,17 @@ impl BuildSystem {
         // Add profile
         match self.config.profile {
             crate::config::BuildProfile::Release => {
-                cmd.arg("--release";
+                cmd.arg("--release");
             },
             crate::config::BuildProfile::Test => {
-                cmd.arg("--tests";
+                cmd.arg("--tests");
             },
             _ => {}, // Dev is default
         }
 
         // Add features if specified
         if !self.config.features.is_empty() {
-            cmd.arg("--features").arg(self.config.features.join(",";
+            cmd.arg("--features").arg(self.config.features.join(","));
         }
 
         let output = cmd
@@ -1403,26 +1403,26 @@ impl BuildSystem {
         let start_time = std::time::Instant::now);
         let mut warnings = Vec::new);
 
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.arg("build").current_dir(&self.workspace.root;
 
         // Add package selector
-        cmd.arg("-p").arg(package_name;
+        cmd.arg("-p").arg(package_name);
 
         // Add profile
         match self.config.profile {
             crate::config::BuildProfile::Release => {
-                cmd.arg("--release";
+                cmd.arg("--release");
             },
             crate::config::BuildProfile::Test => {
-                cmd.arg("--tests";
+                cmd.arg("--tests");
             },
             _ => {}, // Dev is default
         }
 
         // Add features if specified
         if !self.config.features.is_empty() {
-            cmd.arg("--features").arg(self.config.features.join(",";
+            cmd.arg("--features").arg(self.config.features.join(","));
         }
 
         let output = cmd
@@ -1430,7 +1430,7 @@ impl BuildSystem {
             .map_err(|e| BuildError::Tool(format!("Failed to execute cargo build: {}", e)))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(BuildError::Build(format!(
                 "Cargo build failed for package {}: {}",
                 package_name, stderr
@@ -1438,7 +1438,7 @@ impl BuildSystem {
         }
 
         // Check for warnings in stdout
-        let stdout = String::from_utf8_lossy(&output.stdout;
+        let stdout = String::from_utf8_lossy(&output.stdout);
         if stdout.contains("warning:") {
             warnings.push(format!("Package {} has build warnings", package_name);
         }
@@ -1462,15 +1462,15 @@ impl BuildSystem {
         let start_time = std::time::Instant::now);
         let mut warnings = Vec::new);
 
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.arg("test").current_dir(&self.workspace.root;
 
         // Add package selector
-        cmd.arg("-p").arg(package_name;
+        cmd.arg("-p").arg(package_name);
 
         // Add features if specified
         if !self.config.features.is_empty() {
-            cmd.arg("--features").arg(self.config.features.join(",";
+            cmd.arg("--features").arg(self.config.features.join(","));
         }
 
         let output = cmd
@@ -1478,7 +1478,7 @@ impl BuildSystem {
             .map_err(|e| BuildError::Tool(format!("Failed to execute cargo test: {}", e)))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(BuildError::Test(format!(
                 "Cargo test failed for package {}: {}",
                 package_name, stderr
@@ -1486,7 +1486,7 @@ impl BuildSystem {
         }
 
         // Check for warnings in stdout
-        let stdout = String::from_utf8_lossy(&output.stdout;
+        let stdout = String::from_utf8_lossy(&output.stdout);
         if stdout.contains("warning:") {
             warnings.push(format!("Package {} has test warnings", package_name);
         }
@@ -1507,21 +1507,21 @@ impl BuildSystem {
             println!("  {} Running clippy checks...", "📎".bright_yellow);
         }
 
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.arg("clippy")
             .arg("--workspace")
             .arg("--all-targets")
             .current_dir(&self.workspace.root;
 
         if !self.config.features.is_empty() {
-            cmd.arg("--features").arg(self.config.features.join(",";
+            cmd.arg("--features").arg(self.config.features.join(","));
         }
 
         let output = cmd
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to execute clippy: {}", e)))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout;
+        let stdout = String::from_utf8_lossy(&output.stdout);
         let warnings = stdout
             .lines()
             .filter(|line| line.contains("warning:"))
@@ -1537,7 +1537,7 @@ impl BuildSystem {
             println!("  {} Checking code formatting...", "🎨".bright_magenta);
         }
 
-        let mut cmd = Command::new("cargo";
+        let mut cmd = Command::new("cargo");
         cmd.arg("fmt").arg("--check").current_dir(&self.workspace.root;
 
         let output = cmd
@@ -1545,9 +1545,9 @@ impl BuildSystem {
             .map_err(|e| BuildError::Tool(format!("Failed to execute cargo fmt: {}", e)))?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
             if stderr.contains("not installed") || stderr.contains("not found") {
-                println!("  ⚠️ cargo fmt not available, skipping format check";
+                println!("  ⚠️ cargo fmt not available, skipping format check");
                 return Ok();
             }
             return Err(BuildError::Tool(format!(
@@ -1651,31 +1651,31 @@ mod tests {
     #[test]
     fn test_build_system_creation() {
         // Use the actual workspace for testing
-        let workspace = crate::detect_workspace_root().unwrap();
+        let workspace = crate::detect_workspace_root().unwrap());
         let build_system = BuildSystem::new(workspace;
-        assert!(build_system.is_ok();
+        assert!(build_system.is_ok());
     }
 
     #[test]
     fn test_build_system_for_current_dir() {
         let build_system = BuildSystem::for_current_dir);
-        assert!(build_system.is_ok();
+        assert!(build_system.is_ok());
     }
 
     #[test]
     fn test_build_system_config_management() {
-        let workspace = crate::detect_workspace_root().unwrap();
-        let mut build_system = BuildSystem::new(workspace).unwrap();
+        let workspace = crate::detect_workspace_root().unwrap());
+        let mut build_system = BuildSystem::new(workspace).unwrap());
 
         // Test feature management
-        build_system.add_feature("test-feature".to_string();
+        build_system.add_feature("test-feature".to_string());
         assert!(build_system.config.features.contains(&"test-feature".to_string());
 
-        build_system.remove_feature("test-feature";
+        build_system.remove_feature("test-feature");
         assert!(!build_system.config.features.contains(&"test-feature".to_string());
 
         // Test verbose mode
-        build_system.set_verbose(true;
+        build_system.set_verbose(true);
         assert!(build_system.config.verbose);
     }
 
@@ -1690,6 +1690,6 @@ mod tests {
 
         assert!(results.is_success();
         assert_eq!(results.duration().as_millis(), 1000;
-        assert_eq!(results.warnings().len(), 1;
+        assert_eq!(results.warnings().len(), 1);
     }
 }

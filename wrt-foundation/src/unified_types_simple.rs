@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_platform_capacities_validation() {
-        let valid_caps = PlatformCapacities::default);
+        let valid_caps = PlatformCapacities::default());
         assert!(valid_caps.validate();
 
         let invalid_caps = PlatformCapacities {

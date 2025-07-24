@@ -620,18 +620,18 @@ mod tests {
 
     #[test]
     fn test_preemptive_scheduler_creation() {
-        let config = PreemptiveSchedulerConfig::default);
-        let scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
+        let config = PreemptiveSchedulerConfig::default());
+        let scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap());
         
         let stats = scheduler.get_statistics);
-        assert_eq!(stats.active_tasks.load(Ordering::Acquire), 0;
-        assert_eq!(stats.total_preemptions.load(Ordering::Acquire), 0;
+        assert_eq!(stats.active_tasks.load(Ordering::Acquire), 0);
+        assert_eq!(stats.total_preemptions.load(Ordering::Acquire), 0);
     }
 
     #[test]
     fn test_task_addition() {
-        let config = PreemptiveSchedulerConfig::default);
-        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
+        let config = PreemptiveSchedulerConfig::default());
+        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap());
         
         let result = scheduler.add_task(
             TaskId::new(1),
@@ -642,17 +642,17 @@ mod tests {
             true,
         ;
         
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         let stats = scheduler.get_statistics);
-        assert_eq!(stats.active_tasks.load(Ordering::Acquire), 1;
-        assert_eq!(stats.total_tasks_scheduled.load(Ordering::Acquire), 1;
+        assert_eq!(stats.active_tasks.load(Ordering::Acquire), 1);
+        assert_eq!(stats.total_tasks_scheduled.load(Ordering::Acquire), 1);
     }
 
     #[test]
     fn test_priority_scheduling() {
-        let config = PreemptiveSchedulerConfig::default);
-        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
+        let config = PreemptiveSchedulerConfig::default());
+        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap());
         
         // Add low priority task
         scheduler.add_task(
@@ -662,7 +662,7 @@ mod tests {
             5000,
             None,
             true,
-        ).unwrap();
+        ).unwrap());
         
         // Add high priority task
         scheduler.add_task(
@@ -672,10 +672,10 @@ mod tests {
             5000,
             None,
             true,
-        ).unwrap();
+        ).unwrap());
         
         // High priority task should be selected first
-        let next_task = scheduler.schedule_next_task().unwrap();
+        let next_task = scheduler.schedule_next_task().unwrap());
         assert_eq!(next_task, Some(TaskId::new(2);
     }
 
@@ -685,7 +685,7 @@ mod tests {
             default_fuel_quantum: 100,
             ..Default::default()
         };
-        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
+        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap());
         
         // Start a task
         scheduler.add_task(
@@ -695,16 +695,16 @@ mod tests {
             5000,
             None,
             true,
-        ).unwrap();
+        ).unwrap());
         
-        scheduler.schedule_next_task().unwrap();
+        scheduler.schedule_next_task().unwrap());
         
         // Simulate fuel consumption beyond quantum
         scheduler.update_task_state(
             TaskId::new(1),
             AsyncTaskState::Ready,
             150, // Exceeds quantum of 100
-        ).unwrap();
+        ).unwrap());
         
         // Task should be preempted
         let running_context = scheduler.current_task.as_ref);
@@ -712,7 +712,7 @@ mod tests {
             let should_preempt = scheduler.should_preempt_current_task(
                 context,
                 scheduler.current_fuel_time.load(Ordering::Acquire),
-            ).unwrap();
+            ).unwrap());
             assert!(should_preempt);
         }
     }
@@ -725,7 +725,7 @@ mod tests {
             max_priority_boost: 2,
             ..Default::default()
         };
-        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
+        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap());
         
         // Add low priority task
         scheduler.add_task(
@@ -735,14 +735,14 @@ mod tests {
             5000,
             None,
             true,
-        ).unwrap();
+        ).unwrap());
         
         // Simulate aging
         scheduler.current_fuel_time.store(1000, Ordering::Release;
-        scheduler.check_priority_aging(1000).unwrap();
+        scheduler.check_priority_aging(1000).unwrap());
         
         // Task priority should be boosted
-        let task_info = scheduler.get_task_info(TaskId::new(1)).unwrap();
+        let task_info = scheduler.get_task_info(TaskId::new(1)).unwrap());
         assert!(task_info.priority_boost > 0);
         assert!(task_info.effective_priority > Priority::Low);
     }

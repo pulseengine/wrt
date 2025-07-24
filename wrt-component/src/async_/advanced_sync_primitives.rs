@@ -891,10 +891,10 @@ mod tests {
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default);
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
-        ).unwrap();
+        ).unwrap());
         Arc::new(Mutex::new(bridge))
     }
 
@@ -904,21 +904,21 @@ mod tests {
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
-        sync_primitives.initialize_component_sync(component_id, None).unwrap();
+        sync_primitives.initialize_component_sync(component_id, None).unwrap());
         
         // Create mutex
-        let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap();
+        let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap());
         
         // Create semaphore
-        let semaphore_id = sync_primitives.create_async_semaphore(component_id, 3, true).unwrap();
+        let semaphore_id = sync_primitives.create_async_semaphore(component_id, 3, true).unwrap());
         
         // Create barrier
-        let barrier_id = sync_primitives.create_async_barrier(component_id, 2).unwrap();
+        let barrier_id = sync_primitives.create_async_barrier(component_id, 2).unwrap());
         
         let stats = sync_primitives.get_sync_statistics);
-        assert_eq!(stats.total_mutexes_created, 1;
-        assert_eq!(stats.total_semaphores_created, 1;
-        assert_eq!(stats.total_barriers_created, 1;
+        assert_eq!(stats.total_mutexes_created, 1);
+        assert_eq!(stats.total_semaphores_created, 1);
+        assert_eq!(stats.total_barriers_created, 1);
     }
 
     #[test]
@@ -927,26 +927,26 @@ mod tests {
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
-        sync_primitives.initialize_component_sync(component_id, None).unwrap();
+        sync_primitives.initialize_component_sync(component_id, None).unwrap());
         
-        let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap();
+        let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap());
         let task_id = TaskId::new(1;
         
         // Lock mutex
-        let result = sync_primitives.lock_async_mutex(mutex_id, task_id, component_id).unwrap();
+        let result = sync_primitives.lock_async_mutex(mutex_id, task_id, component_id).unwrap());
         assert_eq!(result, MutexLockResult::Acquired;
         
         // Try to lock again (should block)
         let task_id2 = TaskId::new(2;
-        let result2 = sync_primitives.lock_async_mutex(mutex_id, task_id2, component_id).unwrap();
+        let result2 = sync_primitives.lock_async_mutex(mutex_id, task_id2, component_id).unwrap());
         assert_eq!(result2, MutexLockResult::WouldBlock;
         
         // Unlock
-        sync_primitives.unlock_async_mutex(mutex_id, task_id).unwrap();
+        sync_primitives.unlock_async_mutex(mutex_id, task_id).unwrap());
         
         let stats = sync_primitives.get_sync_statistics);
         assert_eq!(stats.total_mutex_locks, 2;
-        assert_eq!(stats.total_mutex_unlocks, 1;
+        assert_eq!(stats.total_mutex_unlocks, 1);
     }
 
     #[test]
@@ -955,27 +955,27 @@ mod tests {
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
-        sync_primitives.initialize_component_sync(component_id, None).unwrap();
+        sync_primitives.initialize_component_sync(component_id, None).unwrap());
         
-        let semaphore_id = sync_primitives.create_async_semaphore(component_id, 2, false).unwrap();
+        let semaphore_id = sync_primitives.create_async_semaphore(component_id, 2, false).unwrap());
         let task_id = TaskId::new(1;
         
         // Acquire permits
-        let result1 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap();
+        let result1 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap());
         assert_eq!(result1, SemaphoreAcquireResult::Acquired;
         
-        let result2 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap();
+        let result2 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap());
         assert_eq!(result2, SemaphoreAcquireResult::Acquired;
         
         // Try to acquire when exhausted
-        let result3 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap();
+        let result3 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap());
         assert_eq!(result3, SemaphoreAcquireResult::WouldBlock;
         
         // Release permit
-        sync_primitives.release_semaphore(semaphore_id).unwrap();
+        sync_primitives.release_semaphore(semaphore_id).unwrap());
         
         let stats = sync_primitives.get_sync_statistics);
         assert_eq!(stats.total_semaphore_acquires, 2;
-        assert_eq!(stats.total_semaphore_releases, 1;
+        assert_eq!(stats.total_semaphore_releases, 1);
     }
 }

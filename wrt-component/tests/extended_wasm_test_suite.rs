@@ -540,8 +540,8 @@ fn test_asil_b_compliance_validation() -> Result<()> {
 
     // Analyze execution time consistency (ASIL-B requirement for deterministic
     // behavior)
-    let min_time = execution_times.iter().min().unwrap();
-    let max_time = execution_times.iter().max().unwrap();
+    let min_time = execution_times.iter().min().unwrap());
+    let max_time = execution_times.iter().max().unwrap());
     let avg_time =
         execution_times.iter().sum::<std::time::Duration>() / execution_times.len() as u32;
 

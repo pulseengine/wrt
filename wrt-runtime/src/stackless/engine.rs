@@ -269,7 +269,7 @@ impl StacklessStack {
     /// Creates a new `StacklessStack` with the given module.
     #[must_use]
     pub fn new(module: Arc<Module>, instance_idx: usize) -> Self {
-        let provider = DefaultMemoryProvider::default);
+        let provider = DefaultMemoryProvider::default());
         Self {
             values: BoundedVec::new(provider.clone()).unwrap(),
             labels: BoundedVec::new(provider).unwrap(),
@@ -304,14 +304,14 @@ impl Default for StacklessEngine {
 impl StacklessEngine {
     /// Creates a new stackless execution engine
     pub fn new() -> Self {
-        let provider = DefaultMemoryProvider::default);
+        let provider = DefaultMemoryProvider::default());
         
         // Create empty collections that will work for basic operations
         // The actual memory management will be handled by the capability system
-        let values = BoundedVec::default);
-        let labels = BoundedVec::default);
-        let operand_stack = BoundedVec::default);
-        let locals = BoundedVec::default);
+        let values = BoundedVec::default());
+        let labels = BoundedVec::default());
+        let operand_stack = BoundedVec::default());
+        let locals = BoundedVec::default());
         
         Self {
             exec_stack: StacklessStack {
@@ -3103,7 +3103,7 @@ impl StacklessEngine {
                             if let Some(func_type) = module.get_function_type(function.type_idx) {
                             
                             // Pop arguments from stack
-                            let provider = DefaultMemoryProvider::default);
+                            let provider = DefaultMemoryProvider::default());
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
@@ -3215,7 +3215,7 @@ impl StacklessEngine {
                             if let Some(func_type) = module.get_function_type(function.type_idx) {
                             
                             // Pop arguments from stack
-                            let provider = DefaultMemoryProvider::default);
+                            let provider = DefaultMemoryProvider::default());
                             let mut args = BoundedVec::new(provider)?;
                             for _ in 0..func_type.params.len() {
                                 let arg = self.exec_stack.values.pop()?.ok_or_else(|| {
@@ -3995,7 +3995,7 @@ impl ControlContext for StacklessEngine {
     /// Branch to a specific label
     fn branch(&mut self, target: BranchTarget) -> Result<()> {
         // Collect values to keep based on branch target arity
-        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
         
         // Get the label we're branching to
         if let Ok(label) = self.exec_stack.labels.get(target.label_idx as usize) {
@@ -4028,7 +4028,7 @@ impl ControlContext for StacklessEngine {
     /// Return from the current function
     fn return_function(&mut self) -> Result<()> {
         // Collect return values based on function signature
-        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
         
         // Get function type to determine return arity
         if let Some(current_module) = &self.current_module {
@@ -4063,7 +4063,7 @@ impl ControlContext for StacklessEngine {
         self.stats.function_calls += 1;
         
         // Collect arguments based on function signature
-        let mut args = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
+        let mut args = BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
         
         // Get function type to determine parameter arity
         if let Some(current_module) = &self.current_module {

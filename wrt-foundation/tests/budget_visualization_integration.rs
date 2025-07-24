@@ -33,7 +33,7 @@ mod visualization_integration_tests {
         let _provider3 = BudgetProvider::<{ 16 * 1024 }>::new(CrateId::Foundation)?;
 
         // Generate ASCII visualization
-        let config = VisualizationConfig::default);
+        let config = VisualizationConfig::default());
         let ascii_viz = BudgetVisualizer::generate_visualization(config)?;
 
         // Verify content
@@ -202,17 +202,17 @@ mod visualization_integration_tests {
 
         // Test quick functions
         let ascii_result = quick_ascii_dump);
-        assert!(ascii_result.is_ok();
+        assert!(ascii_result.is_ok());
         let ascii_content = ascii_result?;
         assert!(ascii_content.contains("WRT Memory Budget Visualization");
 
         let json_result = quick_json_dump);
-        assert!(json_result.is_ok();
+        assert!(json_result.is_ok());
         let json_content = json_result?;
         assert!(json_content.starts_with('{');
 
         let debug_result = quick_debug_dump);
-        assert!(debug_result.is_ok();
+        assert!(debug_result.is_ok());
         let debug_content = debug_result?;
         assert!(debug_content.contains("WRT MEMORY DEBUG DUMP");
 
@@ -323,7 +323,7 @@ mod visualization_integration_tests {
         let result = BudgetVisualizer::generate_visualization(config;
 
         // Should still work under pressure
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         let content = result?;
 
         // Should show high utilization
@@ -346,7 +346,7 @@ mod visualization_integration_tests {
             BoundedVec::<u8, 100, _>::new(provider)
         };
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Test print_memory_status! macro
         wrt_foundation::print_memory_status!("Test Status";
@@ -369,7 +369,7 @@ mod visualization_integration_tests {
         // Test without initializing memory system
         // This should handle errors gracefully
 
-        let config = VisualizationConfig::default);
+        let config = VisualizationConfig::default());
         let result = BudgetVisualizer::generate_visualization(config;
 
         // Should either succeed (if already initialized) or fail gracefully

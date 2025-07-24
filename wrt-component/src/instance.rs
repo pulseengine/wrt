@@ -74,7 +74,7 @@ mod tests {
         let instance = InstanceValue::new("math".to_string(), instance_type, vec![export];
 
         assert_eq!(instance.name, "math";
-        assert_eq!(instance.exports.len(), 1;
+        assert_eq!(instance.exports.len(), 1);
 
         let export = instance.get_export("add";
         assert!(export.is_some();

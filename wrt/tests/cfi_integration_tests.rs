@@ -18,10 +18,10 @@ use wrt::{
 
 #[test]
 fn test_cfi_configuration_creation() {
-    let config = CfiConfiguration::default);
-    assert_eq!(config.protection_level, CfiProtectionLevel::Hybrid;
-    assert_eq!(config.max_shadow_stack_depth, 1024;
-    assert_eq!(config.violation_policy, CfiViolationPolicy::ReturnError;
+    let config = CfiConfiguration::default();
+    assert_eq!(config.protection_level, CfiProtectionLevel::Hybrid);
+    assert_eq!(config.max_shadow_stack_depth, 1024);
+    assert_eq!(config.violation_policy, CfiViolationPolicy::ReturnError);
     assert!(config.enable_temporal_validation);
     assert!(config.hardware_features.auto_detect);
 }
@@ -42,10 +42,10 @@ fn test_cfi_custom_configuration() {
         },
     };
 
-    assert_eq!(config.protection_level, CfiProtectionLevel::Software;
-    assert_eq!(config.max_shadow_stack_depth, 2048;
-    assert_eq!(config.landing_pad_timeout_ns, Some(1_000_000;
-    assert_eq!(config.violation_policy, CfiViolationPolicy::LogAndContinue;
+    assert_eq!(config.protection_level, CfiProtectionLevel::Software);
+    assert_eq!(config.max_shadow_stack_depth, 2048);
+    assert_eq!(config.landing_pad_timeout_ns, Some(1_000_000));
+    assert_eq!(config.violation_policy, CfiViolationPolicy::LogAndContinue);
     assert!(!config.enable_temporal_validation);
     assert!(config.hardware_features.arm_bti);
     assert!(!config.hardware_features.riscv_cfi);
@@ -55,23 +55,23 @@ fn test_cfi_custom_configuration() {
 
 #[test]
 fn test_cfi_engine_creation() {
-    let config = CfiConfiguration::default);
-    let result = wrt::cfi_integration::CfiProtectedEngine::new(config;
+    let config = CfiConfiguration::default();
+    let result = wrt::cfi_integration::CfiProtectedEngine::new(config);
     assert!(result.is_ok(), "CFI engine creation should succeed");
 }
 
 #[test]
 fn test_cfi_engine_creation_with_default() {
-    let result = new_cfi_protected_engine);
+    let result = new_cfi_protected_engine();
     assert!(
         result.is_ok(),
         "CFI engine creation with defaults should succeed"
-    ;
+    );
 }
 
 #[test]
 fn test_cfi_hardware_features_default() {
-    let features = CfiHardwareFeatures::default);
+    let features = CfiHardwareFeatures::default();
     assert!(!features.arm_bti);
     assert!(!features.riscv_cfi);
     assert!(!features.x86_cet);
@@ -80,14 +80,14 @@ fn test_cfi_hardware_features_default() {
 
 #[test]
 fn test_cfi_statistics_initialization() {
-    let config = CfiConfiguration::default);
+    let config = CfiConfiguration::default();
     let engine = wrt::cfi_integration::CfiProtectedEngine::new(config).unwrap();
-    let stats = engine.statistics);
+    let stats = engine.statistics();
 
-    assert_eq!(stats.execution_metrics.modules_executed, 0;
-    assert_eq!(stats.metadata_stats.functions_analyzed, 0;
-    assert_eq!(stats.execution_metrics.total_violations, 0;
-    assert_eq!(stats.execution_metrics.total_validations, 0;
+    assert_eq!(stats.execution_metrics.modules_executed, 0);
+    assert_eq!(stats.metadata_stats.functions_analyzed, 0);
+    assert_eq!(stats.execution_metrics.total_violations, 0);
+    assert_eq!(stats.execution_metrics.total_validations, 0);
 }
 
 #[test]
@@ -95,14 +95,14 @@ fn test_simple_wasm_module_load() {
     let mut engine = new_cfi_protected_engine().unwrap();
 
     // Create a minimal valid WASM module
-    let wasm_binary = create_test_wasm_module);
+    let wasm_binary = create_test_wasm_module();
 
-    let result = engine.load_module_with_cfi(&wasm_binary;
+    let result = engine.load_module_with_cfi(&wasm_binary);
     // Note: This test may fail due to incomplete WASM binary
     // In a real implementation, we would use a properly formatted WASM module
     match result {
         Ok(protected_module) => {
-            assert!(!protected_module.cfi_metadata.functions.is_empty();
+            assert!(!protected_module.cfi_metadata.functions.is_empty());
         },
         Err(_) => {
             // Expected for our minimal test WASM module

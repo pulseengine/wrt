@@ -503,7 +503,7 @@ mod tests {
     fn test_error_handling_verification() {
         let registry = TestRegistry::global);
         let result = register_tests(registry;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(property_count(), 4;
     }
     

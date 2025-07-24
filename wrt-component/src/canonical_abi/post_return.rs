@@ -250,7 +250,7 @@ impl PostReturnContext {
 
         // Handle collected errors based on recovery mode
         if !errors.is_empty() && self.error_recovery == ErrorRecoveryMode::StopOnError {
-            let (resource_type, error) = errors.into_iter().next().unwrap();
+            let (resource_type, error) = errors.into_iter().next().unwrap());
             return Err(Error::runtime_execution_error(&format!("Post-return cleanup failed for {}: {}", resource_type, error);
         }
 
@@ -325,7 +325,7 @@ impl PostReturnContext {
 
     /// Reset statistics
     pub fn reset_stats(&mut self) {
-        self.stats = PostReturnStats::default);
+        self.stats = PostReturnStats::default());
     }
 
     /// Check if post-return is currently executing
@@ -424,16 +424,16 @@ mod tests {
 
     #[test]
     fn test_post_return_context_creation() {
-        let context = PostReturnContext::new().unwrap();
-        assert_eq!(context.pending_operations(), 0;
+        let context = PostReturnContext::new().unwrap());
+        assert_eq!(context.pending_operations(), 0);
         assert!(!context.is_executing();
-        assert_eq!(context.stats().operations_executed, 0;
+        assert_eq!(context.stats().operations_executed, 0);
     }
 
     #[test]
     fn test_cleanup_entry_creation() {
-        let entry = helpers::create_memory_cleanup(1, 0x1000, 4096).unwrap();
-        assert_eq!(entry.func_index, 1;
+        let entry = helpers::create_memory_cleanup(1, 0x1000, 4096).unwrap());
+        assert_eq!(entry.func_index, 1);
         assert_eq!(entry.priority, CleanupPriority::High;
         assert_eq!(entry.resource_type, ResourceType::Memory;
         
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_cleanup_priority_ordering() {
-        let mut context = PostReturnContext::new().unwrap();
+        let mut context = PostReturnContext::new().unwrap());
         
         let low_entry = PostReturnEntry {
             func_index: 1,
@@ -457,7 +457,7 @@ mod tests {
             args: vec![],
             #[cfg(not(feature = "std"))]
             args: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
                 BoundedVec::new(provider).unwrap()
             },
             priority: CleanupPriority::Low,
@@ -470,7 +470,7 @@ mod tests {
             args: vec![],
             #[cfg(not(feature = "std"))]
             args: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
                 BoundedVec::new(provider).unwrap()
             },
             priority: CleanupPriority::High,
@@ -478,8 +478,8 @@ mod tests {
         };
         
         // Add low priority first, then high priority
-        context.add_cleanup(low_entry).unwrap();
-        context.add_cleanup(high_entry).unwrap();
+        context.add_cleanup(low_entry).unwrap());
+        context.add_cleanup(high_entry).unwrap());
         
         assert_eq!(context.pending_operations(), 2;
         

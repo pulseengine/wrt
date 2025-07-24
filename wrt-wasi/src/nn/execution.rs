@@ -539,14 +539,14 @@ mod tests {
     
     #[test]
     fn test_execution_stats() {
-        let mut stats = ExecutionStats::default);
-        assert_eq!(stats.inference_count, 0;
+        let mut stats = ExecutionStats::default());
+        assert_eq!(stats.inference_count, 0);
         
         stats.inference_count += 1;
         stats.total_time_us += 1000;
         stats.peak_memory_bytes = 1024;
         
-        assert_eq!(stats.inference_count, 1;
+        assert_eq!(stats.inference_count, 1);
         assert_eq!(stats.total_time_us, 1000;
         assert_eq!(stats.peak_memory_bytes, 1024;
     }

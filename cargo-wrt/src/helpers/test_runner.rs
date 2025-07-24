@@ -99,15 +99,15 @@ impl TestRunner {
     /// Create new test runner
     pub fn new(config: TestConfig) -> Self {
         let output = OutputManager::new(config.output_format.clone())
-            .with_color(!matches!(config.output_format, OutputFormat::Json;
+            .with_color(!matches!(config.output_format, OutputFormat::Json));
 
         Self { config, output }
     }
 
     /// Run tests for the current ASIL configuration
     pub fn run(&self) -> Result<TestSummary> {
-        let start = Instant::now);
-        let mut results = Vec::new);
+        let start = Instant::now();
+        let mut results = Vec::new();
 
         // Get test packages based on ASIL level
         let packages = self.get_test_packages()?;
@@ -116,7 +116,7 @@ impl TestRunner {
             "Running tests for ASIL-{} configuration ({} packages)",
             self.config.asil_level,
             packages.len()
-        ;
+        ));
 
         // Run tests for each package
         for package in packages {
@@ -125,7 +125,7 @@ impl TestRunner {
         }
 
         // Generate summary
-        let summary = TestSummary::from_results(&results, start.elapsed);
+        let summary = TestSummary::from_results(&results, start.elapsed());
 
         // Output results
         self.output_results(&summary)?;
@@ -152,24 +152,24 @@ impl TestRunner {
                     ]
                     .iter()
                     .map(|s| s.to_string()),
-                ;
+                );
             },
             AsilLevel::B => {
                 // ASIL-B excludes experimental features
                 packages.extend(
                     ["wrt-decoder", "wrt-runtime", "wrt-platform"].iter().map(|s| s.to_string()),
-                ;
+                );
             },
             AsilLevel::D => {
                 // ASIL-D only core safety-critical packages
-                packages.extend(["wrt-platform", "wrt-sync"].iter().map(|s| s.to_string();
+                packages.extend(["wrt-platform", "wrt-sync"].iter().map(|s| s.to_string()));
             },
             _ => {}, // Other ASIL levels not used in simplified system
         }
 
         // Apply filter if provided
         if let Some(filter) = &self.config.filter {
-            packages.retain(|p| p.contains(filter;
+            packages.retain(|p| p.contains(filter));
         }
 
         Ok(packages)
@@ -177,7 +177,7 @@ impl TestRunner {
 
     /// Run tests for a specific package
     fn run_package_tests(&self, package: &str) -> Result<TestResult> {
-        let start = Instant::now);
+        let start = Instant::now();
 
         // Check if package should be skipped for no_std
         if self.config.no_std_only && self.requires_std(package) {
@@ -189,38 +189,38 @@ impl TestRunner {
                 error:       None,
                 skipped:     true,
                 skip_reason: Some("Requires std".to_string()),
-            };
+            });
         }
 
         // Build test command
-        let mut cmd = Command::new("cargo";
-        cmd.arg("test").arg("-p").arg(package).arg("--").arg("--quiet";
+        let mut cmd = Command::new("cargo");
+        cmd.arg("test").arg("-p").arg(package).arg("--").arg("--quiet");
 
         // Add test threads if specified
         if let Some(threads) = self.config.test_threads {
-            cmd.arg("--test-threads").arg(threads.to_string();
+            cmd.arg("--test-threads").arg(threads.to_string());
         }
 
         // Add no_std feature if needed
         if self.config.no_std_only {
-            cmd.arg("--no-default-features";
+            cmd.arg("--no-default-features");
         }
 
         // Add ASIL-specific features
-        let asil_features = self.get_asil_features);
+        let asil_features = self.get_asil_features();
         if !asil_features.is_empty() {
-            cmd.arg("--features").arg(asil_features.join(",";
+            cmd.arg("--features").arg(asil_features.join(","));
         }
 
         // Execute tests
         if self.config.verbose {
-            self.output.debug(&format!("Running: {:?}", cmd;
+            self.output.debug(&format!("Running: {:?}", cmd));
         }
 
         let output = cmd.output().context(format!("Failed to run tests for {}", package))?;
 
-        let duration = start.elapsed);
-        let success = output.status.success);
+        let duration = start.elapsed();
+        let success = output.status.success();
 
         let error = if !success {
             Some(String::from_utf8_lossy(&output.stderr).to_string())
@@ -257,13 +257,13 @@ impl TestRunner {
     fn output_results(&self, summary: &TestSummary) -> Result<()> {
         match self.config.output_format {
             OutputFormat::Json => {
-                println!("{}", serde_json::to_string_pretty(summary)?;
+                println!("{}", serde_json::to_string_pretty(summary)?);
             },
             OutputFormat::Human => {
-                self.output_human_results(summary;
+                self.output_human_results(summary);
             },
             _ => {
-                self.output_human_results(summary;
+                self.output_human_results(summary);
             },
         }
         Ok(())
@@ -272,7 +272,7 @@ impl TestRunner {
     /// Output human-readable results
     fn output_human_results(&self, summary: &TestSummary) {
         println!("\n{}", "Test Results".bold);
-        println!("{}", "=".repeat(50;
+        println!("{}", "=".repeat(50));
 
         // Summary stats
         println!(
@@ -282,18 +282,18 @@ impl TestRunner {
             summary.failed.to_string().red(),
             summary.skipped.to_string().yellow(),
             summary.duration.as_secs_f64()
-        ;
+        );
 
         // Failed tests details
         if summary.failed > 0 {
             println!("\n{}", "Failed Tests:".red().bold);
             for (package, error) in &summary.failures {
-                println!("  {} {}", "❌".red(), package.red);
+                println!("  {} {}", "❌".red(), package.red());
                 if let Some(err) = error {
                     // Show first few lines of error
                     let lines: Vec<&str> = err.lines().take(3).collect();
                     for line in lines {
-                        println!("     {}", line.dimmed);
+                        println!("     {}", line.dimmed());
                     }
                 }
             }
@@ -345,12 +345,12 @@ impl TestSummary {
                 summary.skipped_tests.insert(
                     result.package.clone(),
                     result.skip_reason.clone().unwrap_or_default(),
-                ;
+                );
             } else if result.success {
                 summary.passed += 1;
             } else {
                 summary.failed += 1;
-                summary.failures.insert(result.package.clone(), result.error.clone();
+                summary.failures.insert(result.package.clone(), result.error.clone());
             }
         }
 
@@ -365,11 +365,11 @@ impl TestSummary {
 
 /// Run tests with given configuration
 pub fn run_tests(args: &GlobalArgs, config: TestConfig) -> Result<()> {
-    let runner = TestRunner::new(config;
+    let runner = TestRunner::new(config);
     let summary = runner.run()?;
 
     if !summary.all_passed() {
-        anyhow::bail!("{} tests failed", summary.failed;
+        anyhow::bail!("{} tests failed", summary.failed);
     }
 
     Ok(())

@@ -478,8 +478,8 @@ mod tests {
     fn test_generic_ha_monitor() {
         let mut monitor = GenericHaMonitor::new);
         
-        let entity_id = monitor.create_entity("test").unwrap();
-        assert_eq!(entity_id.0, 1;
+        let entity_id = monitor.create_entity("test").unwrap());
+        assert_eq!(entity_id.0, 1);
 
         monitor.add_condition(
             entity_id,
@@ -488,15 +488,15 @@ mod tests {
                 tolerance: 3,
             },
             vec![RecoveryAction::Restart],
-        ).unwrap();
+        ).unwrap());
 
-        monitor.start_monitoring(entity_id).unwrap();
+        monitor.start_monitoring(entity_id).unwrap());
         
         // Send heartbeat
-        monitor.heartbeat(entity_id).unwrap();
+        monitor.heartbeat(entity_id).unwrap());
         
         // Check health
-        let health = monitor.get_health(entity_id).unwrap();
+        let health = monitor.get_health(entity_id).unwrap());
         assert_eq!(health, HealthStatus::Healthy;
     }
 }

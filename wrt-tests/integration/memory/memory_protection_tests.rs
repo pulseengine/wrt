@@ -36,13 +36,13 @@ mod bounds_checking_tests {
         let page_size = 65536; // 64KB
         
         // Test valid writes at different positions
-        assert!(memory.write(0, &test_data).is_ok();
-        assert!(memory.write(100, &test_data).is_ok();
-        assert!(memory.write(page_size - test_data.len(), &test_data).is_ok();
+        assert!(memory.write(0, &test_data).is_ok());
+        assert!(memory.write(100, &test_data).is_ok());
+        assert!(memory.write(page_size - test_data.len(), &test_data).is_ok());
         
         // Test boundary condition - exactly at page boundary
         let boundary_write = memory.write(page_size - 1, &[42];
-        assert!(boundary_write.is_ok();
+        assert!(boundary_write.is_ok());
         
         // Test out-of-bounds writes
         assert!(memory.write(page_size, &test_data).is_err();
@@ -63,7 +63,7 @@ mod bounds_checking_tests {
         let page_size = 65536;
         
         // Test initial bounds
-        assert!(memory.write(page_size - test_data.len(), &test_data).is_ok();
+        assert!(memory.write(page_size - test_data.len(), &test_data).is_ok());
         assert!(memory.write(page_size, &test_data).is_err();
         
         // Grow memory by 1 page
@@ -71,7 +71,7 @@ mod bounds_checking_tests {
         
         // Test new bounds
         assert!(memory.write(page_size, &test_data).is_ok())); // Now valid
-        assert!(memory.write(page_size * 2 - test_data.len(), &test_data).is_ok();
+        assert!(memory.write(page_size * 2 - test_data.len(), &test_data).is_ok());
         assert!(memory.write(page_size * 2, &test_data).is_err())); // Still out of bounds
         
         Ok(())
@@ -83,9 +83,9 @@ mod bounds_checking_tests {
         let slice = SafeSlice::new(&data)?;
         
         // Test valid subslice operations
-        assert!(slice.subslice(0, 5).is_ok();
-        assert!(slice.subslice(5, 5).is_ok();
-        assert!(slice.subslice(9, 1).is_ok();
+        assert!(slice.subslice(0, 5).is_ok());
+        assert!(slice.subslice(5, 5).is_ok());
+        assert!(slice.subslice(9, 1).is_ok());
         
         // Test boundary conditions
         assert!(slice.subslice(0, 10).is_ok())); // Exact size
@@ -115,8 +115,8 @@ mod bounds_checking_tests {
             let slice = SafeSlice::with_verification_level(&data, *level)?;
             
             // Valid operations should work at all levels
-            assert!(slice.subslice(0, 100).is_ok();
-            assert!(slice.subslice(500, 200).is_ok();
+            assert!(slice.subslice(0, 100).is_ok());
+            assert!(slice.subslice(500, 200).is_ok());
             
             // Invalid operations should fail at all levels
             assert!(slice.subslice(0, 2000).is_err();
@@ -383,7 +383,7 @@ mod access_control_tests {
             let slice = SafeSlice::with_verification_level(&data, *level)?;
             
             // All levels should enforce basic bounds checking
-            assert!(slice.subslice(0, 100).is_ok();
+            assert!(slice.subslice(0, 100).is_ok());
             assert!(slice.subslice(0, 2000).is_err();
             
             // Verify the verification level is set correctly
@@ -401,9 +401,9 @@ mod access_control_tests {
             let provider = StdMemoryProvider::new(data;
             
             // Test valid access patterns
-            assert!(provider.verify_access(0, 100).is_ok();
-            assert!(provider.verify_access(500, 200).is_ok();
-            assert!(provider.verify_access(1023, 1).is_ok();
+            assert!(provider.verify_access(0, 100).is_ok());
+            assert!(provider.verify_access(500, 200).is_ok());
+            assert!(provider.verify_access(1023, 1).is_ok());
             
             // Test invalid access patterns
             assert!(provider.verify_access(0, 2000).is_err();
@@ -416,9 +416,9 @@ mod access_control_tests {
             let provider = NoStdMemoryProvider::<1024>::new);
             
             // Test valid access patterns
-            assert!(provider.verify_access(0, 100).is_ok();
-            assert!(provider.verify_access(500, 200).is_ok();
-            assert!(provider.verify_access(1023, 1).is_ok();
+            assert!(provider.verify_access(0, 100).is_ok());
+            assert!(provider.verify_access(500, 200).is_ok());
+            assert!(provider.verify_access(1023, 1).is_ok());
             
             // Test invalid access patterns
             assert!(provider.verify_access(0, 2000).is_err();
@@ -437,8 +437,8 @@ mod access_control_tests {
         let test_data = vec![42u8; 100];
         
         // Test valid operations
-        assert!(handler.write(memory_id, 0, &test_data).is_ok();
-        assert!(handler.write(memory_id, 500, &test_data).is_ok();
+        assert!(handler.write(memory_id, 0, &test_data).is_ok());
+        assert!(handler.write(memory_id, 500, &test_data).is_ok());
         assert!(handler.write(memory_id, 924, &test_data).is_ok())); // Exactly fits
         
         // Test invalid operations
@@ -448,9 +448,9 @@ mod access_control_tests {
         let mut buffer = vec![0u8; 100];
         
         // Test valid reads
-        assert!(handler.read(memory_id, 0, &mut buffer).is_ok();
-        assert!(handler.read(memory_id, 500, &mut buffer).is_ok();
-        assert!(handler.read(memory_id, 924, &mut buffer).is_ok();
+        assert!(handler.read(memory_id, 0, &mut buffer).is_ok());
+        assert!(handler.read(memory_id, 500, &mut buffer).is_ok());
+        assert!(handler.read(memory_id, 924, &mut buffer).is_ok());
         
         // Test invalid reads
         assert!(handler.read(memory_id, 925, &mut buffer).is_err();

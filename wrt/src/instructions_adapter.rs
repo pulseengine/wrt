@@ -153,7 +153,7 @@ impl<'a> ExecutionContext for WrtExecutionContextAdapter<'a> {
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value> {
         let value = self.pop_value()?;
         if value.value_type() != expected_type {
-            return Err(Error::runtime_execution_error("Expected {:?}, got {:?}";
+            return Err(Error::runtime_execution_error("Expected {:?}, got {:?}"));
         }
         Ok(value)
     }
@@ -187,7 +187,7 @@ impl<'a> ExecutionContext for WrtExecutionContextAdapter<'a> {
 impl<'a> SimdContext for WrtExecutionContextAdapter<'a> {
     fn execute_simd_op(&mut self, op: SimdOp, inputs: &[Value]) -> Result<Value> {
         // Use the comprehensive SIMD implementation
-        let provider = self.simd_runtime.provider);
+        let provider = self.simd_runtime.provider();
         simd_runtime_impl::execute_simd_operation(op, inputs, provider.as_ref())
     }
 }
@@ -290,7 +290,7 @@ where
     T: wrt_instructions::InstructionExecutable<WrtExecutionContextAdapter<'a>>,
 {
     // Create an adapter for the execution context
-    let mut context_adapter = WrtExecutionContextAdapter::new(stack, frame, engine;
+    let mut context_adapter = WrtExecutionContextAdapter::new(stack, frame, engine);
 
     // Execute the instruction
     instruction.execute(&mut context_adapter).map_err(|e| Error::from(e))

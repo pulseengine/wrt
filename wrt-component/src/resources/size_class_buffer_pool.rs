@@ -261,7 +261,7 @@ mod tests {
 
         // Should not be kept because it's too large
         let stats = pool.stats);
-        assert_eq!(stats.total_buffers, 0;
+        assert_eq!(stats.total_buffers, 0);
     }
 
     #[test]
@@ -282,6 +282,6 @@ mod tests {
 
         // Check stats after reset
         let stats_after = pool.stats);
-        assert_eq!(stats_after.total_buffers, 0;
+        assert_eq!(stats_after.total_buffers, 0);
     }
 }

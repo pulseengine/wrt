@@ -210,8 +210,8 @@ impl CapabilityAwareEngine {
     pub fn with_context_and_preset(context: MemoryCapabilityContext, preset: EnginePreset) -> Result<Self> {
         // Use simple NoStdProvider directly for internal structures to avoid recursion
         // These are internal engine data structures and don't need full capability checking
-        let modules_provider = BaseRuntimeProvider::default);
-        let instances_provider = BaseRuntimeProvider::default);
+        let modules_provider = BaseRuntimeProvider::default());
+        let instances_provider = BaseRuntimeProvider::default());
 
         // Initialize host integration based on preset
         let (host_registry, host_manager) = Self::create_host_integration(&preset)?;

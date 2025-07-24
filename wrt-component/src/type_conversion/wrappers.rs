@@ -487,7 +487,7 @@ mod tests {
 
         // Test the actual conversion
         let source = TestSource(42;
-        let result = registry.convert::<TestSource, TestTarget>(&source).unwrap();
+        let result = registry.convert::<TestSource, TestTarget>(&source).unwrap());
         assert_eq!(result, TestTarget(42;
     }
 }

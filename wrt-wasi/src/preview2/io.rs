@@ -387,7 +387,7 @@ mod tests {
         let data = vec![Value::U8(72), Value::U8(101), Value::U8(108), Value::U8(108), Value::U8(111)]; // "Hello"
         let args = vec![Value::U32(1), Value::List(data)];
         let result = wasi_stream_write(&mut (), args)?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         if let Value::U64(bytes_written) = &result[0] {
             assert_eq!(*bytes_written, 5;
         }
@@ -400,7 +400,7 @@ mod tests {
         // Test check-write operation
         let args = vec![Value::U32(1)];
         let result = wasi_stream_check_write(&mut (), args)?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         if let Value::U64(capacity) = &result[0] {
             assert!(*capacity > 0);
         }
@@ -413,7 +413,7 @@ mod tests {
         // Test subscribe operation
         let args = vec![Value::U32(1)];
         let result = wasi_stream_subscribe(&mut (), args)?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         if let Value::U32(pollable) = &result[0] {
             assert!(*pollable > 1000)); // Should be offset
         }
@@ -422,7 +422,7 @@ mod tests {
         let pollables = vec![Value::U32(1001), Value::U32(1002)];
         let args = vec![Value::List(pollables)];
         let result = wasi_poll_one_off(&mut (), args)?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         if let Value::List(results) = &result[0] {
             assert_eq!(results.len(), 2;
             for result in results {

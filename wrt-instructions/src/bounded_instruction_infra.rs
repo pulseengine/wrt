@@ -66,13 +66,13 @@ pub fn new_instruction_vec<T>() -> WrtResult<BoundedInstructionVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded branch table targets vector
 pub fn new_br_table_targets() -> WrtResult<BoundedBrTableTargets> {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     BoundedVec::new(provider)
 }
 
@@ -81,7 +81,7 @@ pub fn new_basic_block_vec<T>() -> WrtResult<BoundedBasicBlockVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     BoundedVec::new(provider)
 }
 
@@ -90,7 +90,7 @@ pub fn new_local_vec<T>() -> WrtResult<BoundedLocalVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     BoundedVec::new(provider)
 }
 
@@ -99,7 +99,7 @@ pub fn new_stack_vec<T>() -> WrtResult<BoundedStackVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     BoundedVec::new(provider)
 }
 
@@ -108,7 +108,7 @@ pub fn new_control_frame_vec<T>() -> WrtResult<BoundedControlFrameVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     BoundedVec::new(provider)
 }
 
@@ -117,18 +117,18 @@ pub fn new_cfg_edge_vec<T>() -> WrtResult<BoundedCfgEdgeVec<T>>
 where
     T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
 {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded label string
 pub fn new_label_string() -> WrtResult<BoundedLabelString> {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded label string from str
 pub fn bounded_label_from_str(s: &str) -> WrtResult<BoundedLabelString> {
-    let provider = InstructionProvider::default);
+    let provider = InstructionProvider::default());
     Ok(BoundedString::from_str(s, provider)?)
 }

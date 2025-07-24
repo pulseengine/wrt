@@ -97,7 +97,7 @@ mod tests {
         let id = resource_manager.add_host_resource(vec![1, 2, 3, 4, 5];
 
         // Register with memory manager
-        memory_manager.register_resource(id, &resource_manager).unwrap();
+        memory_manager.register_resource(id, &resource_manager).unwrap());
 
         // Check strategy
         assert_eq!(memory_manager.get_strategy(id), Some(MemoryStrategy::Copy;

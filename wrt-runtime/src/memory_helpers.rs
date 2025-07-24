@@ -548,7 +548,7 @@ mod tests {
         let arc_memory = Arc::new(memory;
 
         // Test basic properties
-        assert_eq!(arc_memory.size(), 1;
+        assert_eq!(arc_memory.size(), 1);
         assert_eq!(arc_memory.size_in_bytes(), 65536;
         assert_eq!(arc_memory.debug_name(), None;
 
@@ -558,20 +558,20 @@ mod tests {
         // Test reading initial zero data
         let initial_data = arc_memory.read_bytes_safe(0, 3)?;
         assert_eq!(initial_data.len(), 3;
-        assert_eq!(initial_data.get(0)?, 0;
-        assert_eq!(initial_data.get(1)?, 0;
-        assert_eq!(initial_data.get(2)?, 0;
+        assert_eq!(initial_data.get(0)?, 0);
+        assert_eq!(initial_data.get(1)?, 0);
+        assert_eq!(initial_data.get(2)?, 0);
 
         // Calling write_bytes should return Ok result even though it doesn't modify
         // original
-        assert!(arc_memory.write_all(0, &[1, 2, 3]).is_ok();
+        assert!(arc_memory.write_all(0, &[1, 2, 3]).is_ok());
 
         // Test memory growth also returns success
         let old_size = arc_memory.grow(1)?;
-        assert_eq!(old_size, 1;
+        assert_eq!(old_size, 1);
 
         // But size remains unchanged on the original Arc
-        assert_eq!(arc_memory.size(), 1;
+        assert_eq!(arc_memory.size(), 1);
 
         Ok(())
     }
@@ -600,7 +600,7 @@ mod tests {
 
         // Test zero-length read
         let empty_data = arc_memory.read_bytes_safe(0, 0)?;
-        assert_eq!(empty_data.len(), 0;
+        assert_eq!(empty_data.len(), 0);
 
         // Test out of bounds read (should return error)
         let result = arc_memory.read_bytes_safe(65536, 10;
@@ -643,14 +643,14 @@ mod tests {
     fn test_write_via_callback() -> Result<()> {
         let memory_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
-        let memory = Arc::new(Memory::new(memory_type).unwrap();
+        let memory = Arc::new(Memory::new(memory_type).unwrap());
         let test_data = [1, 2, 3, 4, 5];
 
         // Write data
-        memory.write_via_callback(0, &test_data).unwrap();
+        memory.write_via_callback(0, &test_data).unwrap());
 
         // Read it back to verify
-        let buffer = memory.buffer().unwrap();
+        let buffer = memory.buffer().unwrap());
         for (i, &byte) in test_data.iter().enumerate() {
             assert_eq!(buffer[i], byte;
         }
@@ -661,11 +661,11 @@ mod tests {
     fn test_grow_via_callback() -> Result<()> {
         let memory_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
-        let memory = Arc::new(Memory::new(memory_type).unwrap();
+        let memory = Arc::new(Memory::new(memory_type).unwrap());
         let initial_size = memory.size);
 
         // Grow memory
-        let previous_size = memory.grow_via_callback(1).unwrap();
+        let previous_size = memory.grow_via_callback(1).unwrap());
 
         // Verify growth
         assert_eq!(previous_size, initial_size;

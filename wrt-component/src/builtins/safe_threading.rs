@@ -349,9 +349,9 @@ mod tests {
         let module = create_test_module);
 
         let result = create_safe_threading_handlers(executor, module;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let (_manager, handlers) = result.unwrap();
+        let (_manager, handlers) = result.unwrap());
         assert_eq!(handlers.len(), 3;
     }
 
@@ -360,13 +360,13 @@ mod tests {
         let executor = create_test_executor);
         let module = create_test_module);
 
-        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
+        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap());
         let spawn_handler = &handlers[0];
 
         // Test spawn with function ID
         let args = vec![ComponentValue::U32(100)];
         let result = spawn_handler.execute(&args;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         let thread_id = match &result.unwrap()[0] {
             ComponentValue::U64(id) => *id,
@@ -380,15 +380,15 @@ mod tests {
         let executor = create_test_executor);
         let module = create_test_module);
 
-        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
+        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap());
         let status_handler = &handlers[2];
 
         // Test stats operation
         let args = vec![ComponentValue::String("stats".to_string())];
         let result = status_handler.execute(&args;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let stats = result.unwrap();
+        let stats = result.unwrap());
         assert!(stats.len() >= 5)); // Should return multiple statistics
     }
 }

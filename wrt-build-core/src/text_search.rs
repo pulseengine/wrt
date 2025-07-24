@@ -421,7 +421,7 @@ mod tests {
 
     #[test]
     fn test_search_options_default() {
-        let options = SearchOptions::default);
+        let options = SearchOptions::default());
         assert!(options.recursive);
         assert!(options.case_sensitive);
         assert_eq!(options.include_patterns, vec!["*.rs"];
@@ -463,7 +463,7 @@ fn main() {
     }
     // unsafe comment
     panic!("error";
-    let x = some_option.unwrap();
+    let x = some_option.unwrap());
 }
 "#,
         )?;
@@ -476,11 +476,11 @@ fn main() {
 
         // Test panic search
         let panic_matches = searcher.search_panic_usage(temp_dir.path())?;
-        assert_eq!(count_production_matches(&panic_matches), 1;
+        assert_eq!(count_production_matches(&panic_matches), 1);
 
         // Test unwrap search
         let unwrap_matches = searcher.search_unwrap_usage(temp_dir.path())?;
-        assert_eq!(count_production_matches(&unwrap_matches), 1;
+        assert_eq!(count_production_matches(&unwrap_matches), 1);
 
         Ok(())
     }

@@ -328,7 +328,7 @@ mod tests {
 
         // Test the conversion
         let source = TestSourceType(21;
-        let target = registry.convert::<TestSourceType, TestTargetType>(&source).unwrap();
+        let target = registry.convert::<TestSourceType, TestTargetType>(&source).unwrap());
 
         assert_eq!(target, TestTargetType(42;
     }
@@ -384,7 +384,7 @@ mod tests {
 
         // Test successful conversion
         let good_source = TestSourceType(42;
-        assert!(registry.convert::<TestSourceType, TestTargetType>(&good_source).is_ok();
+        assert!(registry.convert::<TestSourceType, TestTargetType>(&good_source).is_ok());
 
         // Test failed conversion
         let bad_source = TestSourceType(-1;
@@ -408,11 +408,11 @@ mod tests {
 
         // Test primitive types
         let bool_type = FormatValType::Bool;
-        let result = registry.convert::<FormatValType, TypesValType>(&bool_type).unwrap();
+        let result = registry.convert::<FormatValType, TypesValType>(&bool_type).unwrap());
         assert!(matches!(result, TypesValType::Bool);
 
         let s32_type = FormatValType::S32;
-        let result = registry.convert::<FormatValType, TypesValType>(&s32_type).unwrap();
+        let result = registry.convert::<FormatValType, TypesValType>(&s32_type).unwrap());
         assert!(matches!(result, TypesValType::S32);
     }
 
@@ -425,11 +425,11 @@ mod tests {
 
         // Test primitive types
         let bool_type = TypesValType::Bool;
-        let result = registry.convert::<TypesValType, FormatValType>(&bool_type).unwrap();
+        let result = registry.convert::<TypesValType, FormatValType>(&bool_type).unwrap());
         assert!(matches!(result, FormatValType::Bool);
 
         let s32_type = TypesValType::S32;
-        let result = registry.convert::<TypesValType, FormatValType>(&s32_type).unwrap();
+        let result = registry.convert::<TypesValType, FormatValType>(&s32_type).unwrap());
         assert!(matches!(result, FormatValType::S32);
     }
 
@@ -454,7 +454,7 @@ mod tests {
 
         // Test the conversion
         let source = SimpleSource(21;
-        let result = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap();
+        let result = registry.convert::<SimpleSource, SimpleTarget>(&source).unwrap());
         assert_eq!(result, SimpleTarget(42;
     }
 }

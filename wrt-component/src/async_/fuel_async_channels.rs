@@ -718,11 +718,11 @@ mod tests {
             TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
         ;
         
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         let stats = manager.get_global_stats);
-        assert_eq!(stats.total_channels_created.load(Ordering::Acquire), 1;
-        assert_eq!(stats.active_channels.load(Ordering::Acquire), 1;
+        assert_eq!(stats.total_channels_created.load(Ordering::Acquire), 1);
+        assert_eq!(stats.active_channels.load(Ordering::Acquire), 1);
     }
 
     #[test]
@@ -734,15 +734,15 @@ mod tests {
             false, // no priority inheritance
             TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
             TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap();
+        ).unwrap());
         
         // Send a message
         let send_result = sender.try_send(42;
-        assert!(send_result.is_ok();
+        assert!(send_result.is_ok());
         
         // Receive the message
         let receive_result = receiver.try_receive);
-        assert!(receive_result.is_ok();
+        assert!(receive_result.is_ok());
         assert_eq!(receive_result.unwrap(), 42;
     }
 
@@ -755,11 +755,11 @@ mod tests {
             false,
             TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
             TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap();
+        ).unwrap());
         
         // Fill the channel
-        assert!(sender.try_send(1).is_ok();
-        assert!(sender.try_send(2).is_ok();
+        assert!(sender.try_send(1).is_ok());
+        assert!(sender.try_send(2).is_ok());
         
         // Third send should fail with WouldBlock
         let result = sender.try_send(3;
@@ -775,10 +775,10 @@ mod tests {
             false,
             TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
             TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap();
+        ).unwrap());
         
         // Close the channel
-        manager.close_channel(sender.channel_id).unwrap();
+        manager.close_channel(sender.channel_id).unwrap());
         
         // Operations should now fail with Closed
         let send_result = sender.try_send(42;

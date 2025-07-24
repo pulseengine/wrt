@@ -358,7 +358,7 @@ impl MatrixVerifier {
 
         // Build test
         print!("  Building... ";
-        std::io::stdout().flush().unwrap();
+        std::io::stdout().flush().unwrap());
 
         let mut build_cmd = Command::new("cargo";
         build_cmd.arg("build").arg("-p").arg(&config.package;
@@ -386,7 +386,7 @@ impl MatrixVerifier {
 
         // Test execution
         print!("  Testing... ";
-        std::io::stdout().flush().unwrap();
+        std::io::stdout().flush().unwrap());
 
         let mut test_cmd = Command::new("cargo";
         test_cmd.arg("test").arg("-p").arg(&config.package;
@@ -427,7 +427,7 @@ impl MatrixVerifier {
         let asil_check_passed = if matches!(config.asil_level, AsilLevel::AsilC | AsilLevel::AsilD)
         {
             print!("  ASIL compliance check... ";
-            std::io::stdout().flush().unwrap();
+            std::io::stdout().flush().unwrap());
 
             let check_result = self.check_asil_compliance(&config.package, &config.features;
             match check_result {

@@ -314,7 +314,7 @@ mod tests {
     
     #[test]
     fn test_platform_capacities() {
-        let default_caps = PlatformCapacities::default);
+        let default_caps = PlatformCapacities::default());
         assert_eq!(default_caps.small_capacity, 64;
         assert_eq!(default_caps.medium_capacity, 1024;
         assert_eq!(default_caps.large_capacity, 65536;
@@ -330,9 +330,9 @@ mod tests {
     #[test]
     fn test_platform_memory_adapter() {
         let adapter = PlatformMemoryAdapter::<DefaultRuntimeProvider>::new(1024 * 1024;
-        assert!(adapter.is_ok();
+        assert!(adapter.is_ok());
         
-        let adapter = adapter.unwrap();
+        let adapter = adapter.unwrap());
         assert_eq!(adapter.total_memory(), 1024 * 1024;
         assert_eq!(adapter.available_memory(), 1024 * 1024;
     }

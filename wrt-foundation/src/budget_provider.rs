@@ -57,7 +57,7 @@ impl BudgetProvider {
         use crate::capabilities::DynamicMemoryCapability;
         use crate::verification::VerificationLevel;
 
-        let provider = NoStdProvider::<N>::default);
+        let provider = NoStdProvider::<N>::default());
         let capability =
             Box::new(DynamicMemoryCapability::new(N, crate_id, VerificationLevel::Standard;
 

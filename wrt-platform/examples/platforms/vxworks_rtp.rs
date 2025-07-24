@@ -122,7 +122,7 @@ fn example_rtp_threading() {
     println!("✓ Configured RTP thread with POSIX threading";
     println!("  Stack size: {} bytes", thread_config.stack_size;
     println!("  Floating point: enabled";
-    println!("  Thread name: {}", thread_config.name.as_ref().unwrap();
+    println!("  Thread name: {}", thread_config.name.as_ref().unwrap());
     
     // In a real implementation, you would spawn the thread here
     println!("  (Thread spawning would use pthread_create)";

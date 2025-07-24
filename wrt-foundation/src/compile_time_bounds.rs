@@ -307,10 +307,10 @@ mod tests {
 
     #[test]
     fn test_safe_managed_alloc_validated() {
-        crate::memory_init::MemoryInitializer::initialize().unwrap();
+        crate::memory_init::MemoryInitializer::initialize().unwrap());
 
         let result = safe_managed_alloc_validated!(4096, CrateId::Foundation;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[cfg(debug_assertions)]

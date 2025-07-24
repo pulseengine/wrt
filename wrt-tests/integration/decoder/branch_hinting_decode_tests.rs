@@ -20,7 +20,7 @@ fn test_decode_br_on_null() -> Result<()> {
     // Verify correct instruction was parsed
     match instruction {
         Instruction::BrOnNull(label) => {
-            assert_eq!(label, 0;
+            assert_eq!(label, 0);
         }
         _ => panic!("Expected BrOnNull instruction, got {:?}", instruction),
     }
@@ -72,7 +72,7 @@ fn test_decode_ref_is_null() -> Result<()> {
     }
     
     // Verify correct number of bytes consumed
-    assert_eq!(consumed, 1;
+    assert_eq!(consumed, 1);
     
     Ok(())
 }
@@ -94,7 +94,7 @@ fn test_decode_ref_as_non_null() -> Result<()> {
     }
     
     // Verify correct number of bytes consumed
-    assert_eq!(consumed, 1;
+    assert_eq!(consumed, 1);
     
     Ok(())
 }
@@ -116,7 +116,7 @@ fn test_decode_ref_eq() -> Result<()> {
     }
     
     // Verify correct number of bytes consumed
-    assert_eq!(consumed, 1;
+    assert_eq!(consumed, 1);
     
     Ok(())
 }
@@ -159,7 +159,7 @@ fn test_decode_return_call_indirect() -> Result<()> {
     match instruction {
         Instruction::ReturnCallIndirect(type_idx, table_idx) => {
             assert_eq!(type_idx, 3;
-            assert_eq!(table_idx, 0;
+            assert_eq!(table_idx, 0);
         }
         _ => panic!("Expected ReturnCallIndirect instruction, got {:?}", instruction),
     }

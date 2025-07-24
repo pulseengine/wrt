@@ -49,7 +49,7 @@ pub fn verify_atomic_compare_and_swap() {
     let memory_size = any_memory_size(MAX_VERIFICATION_MEMORY;
     
     // Create memory provider (simplified for verification)
-    let provider = NoStdProvider::<1024>::default);
+    let provider = NoStdProvider::<1024>::default());
     
     // Generate arbitrary values for testing (simplified verification)
     let value1: u32 = kani::any);
@@ -74,7 +74,7 @@ pub fn verify_atomic_compare_and_swap() {
 #[cfg(kani)]
 pub fn verify_atomic_fetch_and_add() {
     let memory_size = any_memory_size(MAX_VERIFICATION_MEMORY;
-    let provider = NoStdProvider::<1024>::default);
+    let provider = NoStdProvider::<1024>::default());
     
     // Generate arbitrary values
     let initial_value: u32 = kani::any);
@@ -151,7 +151,7 @@ pub fn verify_rwlock_concurrent_reads() {
 #[cfg(kani)]
 pub fn verify_memory_ordering() {
     let memory_size = any_memory_size(MAX_VERIFICATION_MEMORY;
-    let provider = NoStdProvider::<1024>::default);
+    let provider = NoStdProvider::<1024>::default());
     
     // Simulate ordering verification
     if memory_size >= 8 {
@@ -213,7 +213,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     // Register simplified test versions of the concurrency proofs
     registry.register_test("atomic_cas_basic", || {
         // Basic memory consistency test
-        let provider = NoStdProvider::<1024>::default);
+        let provider = NoStdProvider::<1024>::default());
         
         // Test basic provider properties
         assert!(provider.capacity() > 0);
@@ -231,7 +231,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("atomic_fetch_add_basic", || {
         // Basic arithmetic consistency test
-        let provider = NoStdProvider::<1024>::default);
+        let provider = NoStdProvider::<1024>::default());
         
         assert!(provider.capacity() > 0);
         
@@ -280,7 +280,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("memory_ordering_basic", || {
         // Basic memory consistency test
-        let provider = NoStdProvider::<1024>::default);
+        let provider = NoStdProvider::<1024>::default());
         
         assert!(provider.capacity() > 0);
         
@@ -368,13 +368,13 @@ mod tests {
     fn test_concurrency_verification() {
         let registry = TestRegistry::global);
         let result = register_tests(registry;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(property_count(), 6;
     }
     
     #[test]
     fn test_atomic_operations() {
-        let provider = NoStdProvider::<1024>::default);
+        let provider = NoStdProvider::<1024>::default());
         
         // Test basic provider operations
         assert!(provider.capacity() > 0);

@@ -338,22 +338,22 @@ mod tests {
 
         assert_eq!(sub_budget.available(), 1024;
 
-        sub_budget.try_allocate(512).unwrap();
+        sub_budget.try_allocate(512).unwrap());
         assert_eq!(sub_budget.current_allocation(), 512;
         assert_eq!(sub_budget.available(), 512;
 
-        sub_budget.deallocate(256).unwrap();
+        sub_budget.deallocate(256).unwrap());
         assert_eq!(sub_budget.current_allocation(), 256;
     }
 
     #[test]
     fn test_hierarchical_budget() {
-        crate::memory_init::MemoryInitializer::initialize().unwrap();
+        crate::memory_init::MemoryInitializer::initialize().unwrap());
 
         let mut budget = HierarchicalBudget::<4>::new(CrateId::Component, 4096;
 
-        let idx1 = budget.add_sub_budget("critical", 1024, MemoryPriority::Critical).unwrap();
-        let idx2 = budget.add_sub_budget("normal", 2048, MemoryPriority::Normal).unwrap();
+        let idx1 = budget.add_sub_budget("critical", 1024, MemoryPriority::Critical).unwrap());
+        let idx2 = budget.add_sub_budget("normal", 2048, MemoryPriority::Normal).unwrap());
 
         let stats = budget.get_statistics);
         assert_eq!(stats.sub_budget_count, 2;

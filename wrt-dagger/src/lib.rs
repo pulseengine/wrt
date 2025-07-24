@@ -21,7 +21,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> anyhow::Result<()> {
-//!     let config = ContainerConfig::default);
+//!     let config = ContainerConfig::default());
 //!     let pipeline = DaggerPipeline::new(config).await?;
 //!
 //!     // Run cargo-wrt build in container
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn test_container_config_default() {
-        let config = ContainerConfig::default);
+        let config = ContainerConfig::default());
         assert_eq!(config.base_image, "ubuntu:22.04";
         assert_eq!(config.rust_version, "1.86.0";
         assert!(!config.system_packages.is_empty();
@@ -332,16 +332,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_pipeline_creation() {
-        let config = ContainerConfig::default);
+        let config = ContainerConfig::default());
         let result = DaggerPipeline::new(config).await;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_utils_pipelines() {
         // These should not fail to create (even if Dagger is not available)
-        assert!(utils::ci_pipeline().await.is_ok();
-        assert!(utils::dev_pipeline().await.is_ok();
-        assert!(utils::safety_pipeline().await.is_ok();
+        assert!(utils::ci_pipeline().await.is_ok());
+        assert!(utils::dev_pipeline().await.is_ok());
+        assert!(utils::safety_pipeline().await.is_ok());
     }
 }

@@ -290,7 +290,7 @@ mod tests {
 
     #[test]
     fn test_memory_operation_builder() {
-        let operation = MemoryOperationBuilder::new().read(100, 50).build().unwrap();
+        let operation = MemoryOperationBuilder::new().read(100, 50).build().unwrap());
 
         match operation {
             MemoryOperation::Read { offset, len } => {
@@ -317,8 +317,8 @@ mod tests {
         let read_op = MemoryOperation::Read { offset: 0, len: 100 };
         stats.record_operation(&read_op;
 
-        assert_eq!(stats.total_operations, 1;
-        assert_eq!(stats.read_operations, 1;
+        assert_eq!(stats.total_operations, 1);
+        assert_eq!(stats.read_operations, 1);
         assert_eq!(stats.violation_rate(), 0.0;
 
         stats.record_violation);

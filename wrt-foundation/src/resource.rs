@@ -623,7 +623,7 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_type_serialization() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::SmallProvider::default);
+        let provider = crate::memory_sizing::SmallProvider::default());
         
         // Test primitive resource type
         let primitive = ResourceType::<crate::memory_sizing::SmallProvider>::Primitive(ValueType::I32;
@@ -631,11 +631,11 @@ mod kani_proofs {
         // Serialize
         let mut buffer = [0u8; 256];
         let mut write_stream = WriteStream::new(&mut buffer[..];
-        primitive.to_bytes_with_provider(&mut write_stream, &provider).unwrap();
+        primitive.to_bytes_with_provider(&mut write_stream, &provider).unwrap());
         
         // Deserialize
         let mut read_stream = ReadStream::new(&buffer[..write_stream.position()];
-        let deserialized = ResourceType::from_bytes_with_provider(&mut read_stream, &provider).unwrap();
+        let deserialized = ResourceType::from_bytes_with_provider(&mut read_stream, &provider).unwrap());
         
         // Should be equal
         assert_eq!(primitive, deserialized;
@@ -661,16 +661,16 @@ mod kani_proofs {
     fn verify_resource_bounds_checking() {
         const MAX_RESOURCES: usize = 16;
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::MediumProvider::default);
+        let provider = crate::memory_sizing::MediumProvider::default());
         
         // Create a resource collection with bounded capacity
         let mut resources: BoundedVec<ResourceId, MAX_RESOURCES, _> = 
-            BoundedVec::new(provider).unwrap();
+            BoundedVec::new(provider).unwrap());
         
         // Fill to capacity
         for i in 0..MAX_RESOURCES {
             let id = ResourceId(i as u64;
-            assert!(resources.push(id).is_ok();
+            assert!(resources.push(id).is_ok());
         }
         
         // Should be at capacity
@@ -689,16 +689,16 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_access_safety() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::SmallProvider::default);
+        let provider = crate::memory_sizing::SmallProvider::default());
         let mut resources: BoundedVec<ResourceHandle, 8, _> = 
-            BoundedVec::new(provider).unwrap();
+            BoundedVec::new(provider).unwrap());
         
         // Add some resources
         let handle1 = ResourceHandle::new);
         let handle2 = ResourceHandle::new);
         
-        resources.push(handle1).unwrap();
-        resources.push(handle2).unwrap();
+        resources.push(handle1).unwrap());
+        resources.push(handle2).unwrap());
         
         // Valid access
         assert!(resources.get(0).unwrap().is_some();
@@ -709,9 +709,9 @@ mod kani_proofs {
         assert!(resources.get(100).unwrap().is_none();
         
         // Remove a resource
-        let removed = resources.pop().unwrap();
+        let removed = resources.pop().unwrap());
         assert!(removed.is_some();
-        assert_eq!(resources.len(), 1;
+        assert_eq!(resources.len(), 1);
         
         // Access patterns should still be safe
         assert!(resources.get(0).unwrap().is_some();

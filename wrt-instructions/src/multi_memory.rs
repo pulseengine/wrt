@@ -566,7 +566,7 @@ mod tests {
             
             // Extend data if necessary
             if end > self.data.len() {
-                self.data.resize(end, 0;
+                self.data.resize(end, 0);
             }
             
             // Copy bytes
@@ -584,7 +584,7 @@ mod tests {
             
             // Extend data if necessary
             if end > self.data.len() {
-                self.data.resize(end, 0;
+                self.data.resize(end, 0);
             }
             
             // Fill with value
@@ -606,7 +606,7 @@ mod tests {
             // Extend data if necessary
             let max_end = core::cmp::max(dest_start + copy_size, src_start + copy_size;
             if max_end > self.data.len() {
-                self.data.resize(max_end, 0;
+                self.data.resize(max_end, 0);
             }
             
             // Use Vec's copy_within for safe overlapping copy
@@ -627,7 +627,7 @@ mod tests {
         fn grow(&mut self, pages: u32) -> Result<u32> {
             let additional_bytes = pages as usize * 65536;
             let old_size = self.data.len);
-            self.data.resize(old_size + additional_bytes, 0;
+            self.data.resize(old_size + additional_bytes, 0);
             Ok((old_size / 65536) as u32)
         }
     }
@@ -637,11 +637,11 @@ mod tests {
         let mut memory = MockMemory::new);
         
         // Write test data
-        memory.write_bytes(0, &[0x42, 0x43, 0x44, 0x45]).unwrap();
+        memory.write_bytes(0, &[0x42, 0x43, 0x44, 0x45]).unwrap());
         
         // Test i32 load from memory 0
         let load_op = MultiMemoryLoad::i32_load(0, 0, 4;
-        let result = load_op.execute_with_memory(&memory, &Value::I32(0)).unwrap();
+        let result = load_op.execute_with_memory(&memory, &Value::I32(0)).unwrap());
         
         // Verify result (little-endian)
         assert_eq!(result, Value::I32(0x45444342u32 as i32;
@@ -653,10 +653,10 @@ mod tests {
         
         // Test i32 store to memory 1
         let store_op = MultiMemoryStore::i32_store(1, 0, 4;
-        store_op.execute_with_memory(&mut memory, &Value::I32(0), &Value::I32(0x12345678)).unwrap();
+        store_op.execute_with_memory(&mut memory, &Value::I32(0), &Value::I32(0x12345678)).unwrap());
         
         // Verify stored data
-        let data = memory.read_bytes(0, 4).unwrap();
+        let data = memory.read_bytes(0, 4).unwrap());
         #[cfg(feature = "std")]
         assert_eq!(data, vec![0x78, 0x56, 0x34, 0x12]); // little-endian
     }
@@ -667,16 +667,16 @@ mod tests {
         
         // Test size (should be 0 pages initially)
         let size_op = MultiMemorySize::new(0;
-        let size = size_op.execute(&memory).unwrap();
+        let size = size_op.execute(&memory).unwrap());
         assert_eq!(size, Value::I32(0;
         
         // Test grow
         let grow_op = MultiMemoryGrow::new(0;
-        let old_size = grow_op.execute(&mut memory, &Value::I32(1)).unwrap();
+        let old_size = grow_op.execute(&mut memory, &Value::I32(1)).unwrap());
         assert_eq!(old_size, Value::I32(0;
         
         // Test size after grow
-        let new_size = size_op.execute(&memory).unwrap();
+        let new_size = size_op.execute(&memory).unwrap());
         assert_eq!(new_size, Value::I32(1;
     }
 
@@ -688,18 +688,18 @@ mod tests {
         let bulk_ops = MultiMemoryBulk::new(0;
         
         // Test fill
-        bulk_ops.fill(&mut memory, &Value::I32(10), &Value::I32(0xAB), &Value::I32(5)).unwrap();
+        bulk_ops.fill(&mut memory, &Value::I32(10), &Value::I32(0xAB), &Value::I32(5)).unwrap());
         
         // Verify fill
-        let data = memory.read_bytes(10, 5).unwrap();
+        let data = memory.read_bytes(10, 5).unwrap());
         #[cfg(feature = "std")]
         assert_eq!(data, vec![0xAB; 5];
         
         // Test copy
-        bulk_ops.copy(&mut memory, &Value::I32(20), &Value::I32(10), &Value::I32(5)).unwrap();
+        bulk_ops.copy(&mut memory, &Value::I32(20), &Value::I32(10), &Value::I32(5)).unwrap());
         
         // Verify copy
-        let copied_data = memory.read_bytes(20, 5).unwrap();
+        let copied_data = memory.read_bytes(20, 5).unwrap());
         #[cfg(feature = "std")]
         assert_eq!(copied_data, vec![0xAB; 5];
     }
@@ -709,7 +709,7 @@ mod tests {
         let mut dest_memory = MockMemory::new);
         let src_memory = MockMemory::new);
         
-        let cross_copy = MultiMemoryCrossCopy::new(0, 1;
+        let cross_copy = MultiMemoryCrossCopy::new(0, 1);
         
         // This is a placeholder test since actual implementation requires
         // more complex memory management
@@ -721,6 +721,6 @@ mod tests {
             &Value::I32(4)
         ;
         
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

@@ -1068,8 +1068,8 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_function".to_string() };
         let extern_value = ExternValue::Function(func_value;
 
-        assert!(runtime.register_function("test_function".to_string(), extern_value).is_ok();
-        assert_eq!(runtime.functions.len(), 1;
+        assert!(runtime.register_function("test_function".to_string(), extern_value).is_ok());
+        assert_eq!(runtime.functions.len(), 1);
         assert!(runtime.functions.contains_key("test_function");
     }
 
@@ -1104,7 +1104,7 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
         let extern_value = ExternValue::Function(func_value;
 
-        runtime.register_function("test_func".to_string(), extern_value).unwrap();
+        runtime.register_function("test_func".to_string(), extern_value).unwrap());
 
         // Call with wrong number of arguments
         let args = vec![Value::I32(1)]; // Only one argument
@@ -1133,7 +1133,7 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
         let extern_value = ExternValue::Function(func_value;
 
-        runtime.register_function("test_func".to_string(), extern_value).unwrap();
+        runtime.register_function("test_func".to_string(), extern_value).unwrap());
 
         // Call with wrong argument types
         let args = vec![Value::I32(1), Value::F32(2.0)]; // Second arg is F32
@@ -1162,7 +1162,7 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
         let extern_value = ExternValue::Function(func_value;
 
-        runtime.register_function("test_func".to_string(), extern_value).unwrap();
+        runtime.register_function("test_func".to_string(), extern_value).unwrap());
 
         // Call with correct arguments
         let args = vec![Value::I32(1), Value::I32(2)];

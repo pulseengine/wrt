@@ -658,7 +658,7 @@ mod tests {
     use crate::runtime_stubs::{ComponentId, InstanceId};
     
     fn create_test_manager() -> BoundedResourceManager {
-        let limits = ResourceLimits::default);
+        let limits = ResourceLimits::default());
         let safety_context = SafetyContext::new(AsilLevel::QM;
         BoundedResourceManager::new(limits, safety_context).unwrap()
     }
@@ -668,9 +668,9 @@ mod tests {
         let manager = create_test_manager);
         let stats = manager.get_statistics);
         
-        assert_eq!(stats.registered_types, 0;
-        assert_eq!(stats.active_resources, 0;
-        assert_eq!(stats.total_resources, 0;
+        assert_eq!(stats.registered_types, 0);
+        assert_eq!(stats.active_resources, 0);
+        assert_eq!(stats.total_resources, 0);
     }
     
     #[test]
@@ -682,12 +682,12 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap();
+        ).unwrap());
         
-        assert_eq!(type_id.0, 1;
+        assert_eq!(type_id.0, 1);
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.registered_types, 1;
+        assert_eq!(stats.registered_types, 1);
     }
     
     #[test]
@@ -700,15 +700,15 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap();
+        ).unwrap());
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, instance_id).unwrap();
+        let handle = manager.create_resource(type_id, data, instance_id).unwrap());
         
         assert!(manager.get_resource(handle).is_some();
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.active_resources, 1;
+        assert_eq!(stats.active_resources, 1);
         assert_eq!(stats.memory_used, 100;
     }
     
@@ -723,18 +723,18 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap();
+        ).unwrap());
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, source_instance).unwrap();
+        let handle = manager.create_resource(type_id, data, source_instance).unwrap());
         
-        manager.transfer_ownership(handle, target_instance).unwrap();
+        manager.transfer_ownership(handle, target_instance).unwrap());
         
-        let resource = manager.get_resource(handle).unwrap();
+        let resource = manager.get_resource(handle).unwrap());
         assert_eq!(resource.instance_id, target_instance;
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.cross_component_shares, 1;
+        assert_eq!(stats.cross_component_shares, 1);
     }
     
     #[test]
@@ -748,18 +748,18 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap();
+        ).unwrap());
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, source_instance).unwrap();
+        let handle = manager.create_resource(type_id, data, source_instance).unwrap());
         
-        let borrowed_handle = manager.borrow_resource(handle, target_instance).unwrap();
+        let borrowed_handle = manager.borrow_resource(handle, target_instance).unwrap());
         
         assert!(manager.get_resource(handle).is_some();
         assert!(manager.get_resource(borrowed_handle).is_some();
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.cross_component_shares, 1;
+        assert_eq!(stats.cross_component_shares, 1);
     }
     
     #[test]
@@ -772,15 +772,15 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap();
+        ).unwrap());
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, instance_id).unwrap();
+        let handle = manager.create_resource(type_id, data, instance_id).unwrap());
         
-        manager.cleanup_instance(instance_id).unwrap();
+        manager.cleanup_instance(instance_id).unwrap());
         
         let stats = manager.get_statistics);
-        assert_eq!(stats.active_resources, 0;
+        assert_eq!(stats.active_resources, 0);
     }
     
     #[test]
@@ -793,7 +793,7 @@ mod tests {
             max_cross_component_shares: 1,
         };
         let safety_context = SafetyContext::new(AsilLevel::QM;
-        let mut manager = BoundedResourceManager::new(limits, safety_context).unwrap();
+        let mut manager = BoundedResourceManager::new(limits, safety_context).unwrap());
         
         // Register one type should succeed
         let type_id = manager.register_resource_type(
@@ -801,7 +801,7 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap();
+        ).unwrap());
         
         // Registering a second type should fail
         let result = manager.register_resource_type(

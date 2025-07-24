@@ -372,7 +372,7 @@ impl ComponentLoader {
 
     /// Convert parsed component to runtime component
     pub fn to_runtime_component(&self, parsed: &ParsedComponent) -> WrtResult<Component> {
-        let mut component = Component::new(WrtComponentType::default);
+        let mut component = Component::new(WrtComponentType::default());
 
         // Convert types
         for component_type in &parsed.types {
@@ -634,13 +634,13 @@ mod tests {
     #[test]
     fn test_parsed_component_creation() {
         let mut component = ParsedComponent::new().expect("Failed to create ParsedComponent");
-        assert_eq!(component.types.len(), 0;
-        assert_eq!(component.imports.len(), 0;
-        assert_eq!(component.exports.len(), 0;
+        assert_eq!(component.types.len(), 0);
+        assert_eq!(component.imports.len(), 0);
+        assert_eq!(component.exports.len(), 0);
 
         // Test adding components
-        assert!(component.add_type(ComponentType::Unit).is_ok();
-        assert_eq!(component.types.len(), 1;
+        assert!(component.add_type(ComponentType::Unit).is_ok());
+        assert_eq!(component.types.len(), 1);
     }
 
     #[test]
@@ -659,7 +659,7 @@ mod tests {
 
     #[test]
     fn test_canonical_options_default() {
-        let options = CanonicalOptions::default);
+        let options = CanonicalOptions::default());
         assert_eq!(options.string_encoding, Some(StringEncoding::Utf8;
         assert_eq!(options.memory, None;
         assert_eq!(options.realloc, None;
@@ -686,9 +686,9 @@ mod tests {
         // Create minimal valid component binary (simplified)
         let binary = b"\x00asm\x0d\x00\x01\x00"; // Magic + version
         let result = loader.parse_component(binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let parsed = result.unwrap();
+        let parsed = result.unwrap());
         assert!(parsed.types.len() > 0);
     }
 }

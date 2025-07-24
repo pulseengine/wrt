@@ -503,7 +503,7 @@ pub mod verification {
         kani::assume(value <= 0xFFFF;
 
         let encoded = super::binary::with_alloc::write_leb128_u32(value;
-        let (decoded, _) = super::binary::read_leb128_u32(&encoded, 0).unwrap();
+        let (decoded, _) = super::binary::read_leb128_u32(&encoded, 0).unwrap());
 
         assert_eq!(value, decoded;
     }
@@ -609,7 +609,7 @@ pub mod no_std_demo {
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )?;
-        let _module = Module::<NoStdProvider<1024>>::default);
+        let _module = Module::<NoStdProvider<1024>>::default());
 
         // Binary std/no_std choice
         Ok(())

@@ -28,8 +28,8 @@ mod tests {
         let instance = engine.instantiate(module).unwrap();
 
         let result = engine.execute(instance, "add", &[Value::I32(2), Value::I32(3)]).unwrap();
-        assert_eq!(result.len(), 1;
-        assert_eq!(result[0], Value::I32(5;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], Value::I32(5));
     }
 
     #[test]
@@ -51,8 +51,8 @@ mod tests {
         let instance = engine.instantiate(module).unwrap();
 
         let result = engine.execute(instance, "get_answer", &[]).unwrap();
-        assert_eq!(result.len(), 1;
-        assert_eq!(result[0], Value::I32(42;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], Value::I32(42));
     }
 
     #[test]
@@ -80,7 +80,7 @@ mod tests {
 
         // Start function should have run during instantiation
         let result = engine.execute(instance, "is_initialized", &[]).unwrap();
-        assert_eq!(result[0], Value::I32(1;
+        assert_eq!(result[0], Value::I32(1));
     }
 
     #[test]
@@ -99,18 +99,18 @@ mod tests {
             0x01, 0x00, 0x00, 0x00, // Version
         ];
         // Pad with zeros to make it large
-        large_module.resize(large_size, 0;
+        large_module.resize(large_size, 0);
 
-        let result = engine.load_module(&large_module;
+        let result = engine.load_module(&large_module);
 
         // Should fail due to capability constraints
-        assert!(result.is_err();
-        let err = result.unwrap_err);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
         assert!(
             err.to_string().contains("capability")
                 || err.to_string().contains("Allocate")
                 || err.to_string().contains("size")
-        ;
+        );
     }
 
     #[test]
@@ -139,8 +139,8 @@ mod tests {
         let result1 = engine.execute(instance1, "identity", &[Value::I32(10)]).unwrap();
         let result2 = engine.execute(instance2, "identity", &[Value::I32(20)]).unwrap();
 
-        assert_eq!(result1[0], Value::I32(10;
-        assert_eq!(result2[0], Value::I32(20;
+        assert_eq!(result1[0], Value::I32(10));
+        assert_eq!(result2[0], Value::I32(20));
     }
 
     #[test]
@@ -161,8 +161,8 @@ mod tests {
         let instance = engine.instantiate(module).unwrap();
 
         // Try to call non-existent function
-        let result = engine.execute(instance, "bar", &[];
-        assert!(result.is_err();
-        assert!(result.unwrap_err().to_string().contains("not found");
+        let result = engine.execute(instance, "bar", &[]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
     }
 }

@@ -262,7 +262,7 @@ mod tests {
             .with_verification_level(VerificationLevel::Full)
             .build);
 
-        assert_eq!(resource.type_idx, 1;
+        assert_eq!(resource.type_idx, 1);
         assert_eq!(resource.name, Some("test-resource".to_string();
         assert_eq!(strategy, MemoryStrategy::ZeroCopy;
         assert_eq!(level, VerificationLevel::Full;
@@ -280,8 +280,8 @@ mod tests {
 
         // Create a resource to test the table was built correctly
         let data = Arc::new("test".to_string();
-        let handle = table.create_resource(1, data).unwrap();
-        assert_eq!(handle, 1;
+        let handle = table.create_resource(1, data).unwrap());
+        assert_eq!(handle, 1);
     }
 
     #[test]

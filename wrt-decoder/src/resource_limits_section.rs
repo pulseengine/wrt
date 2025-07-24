@@ -151,7 +151,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     for ResourceTypeLimit<P>
 {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         Self {
             max_handles:               None,
             max_memory:                None,
@@ -256,7 +256,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
 {
     fn default() -> Self {
         // Use safe default provider construction for ASIL-D
-        let provider = P::default);
+        let provider = P::default());
         Self {
             version:                   RESOURCE_LIMITS_VERSION,
             max_fuel_per_step:         None,
@@ -371,7 +371,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         }
 
         // Create bounded string for resource type name using a default provider
-        let provider = P::default);
+        let provider = P::default());
         let resource_name = BoundedString::from_str(resource_type, provider)
             .map_err(|_| Error::parse_error("Failed to create resource name "))?;
 
@@ -633,7 +633,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         }
 
         // TODO: Update for bounded types
-        let provider = P::default);
+        let provider = P::default());
         let mut resource_type_limits = BoundedMap::new(provider.clone()).map_err(|_| {
             Error::new(
                 ErrorCategory::Memory,
@@ -1017,7 +1017,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         }
 
         // TODO: Update for bounded types
-        let provider = P::default);
+        let provider = P::default());
         let mut custom_limits = BoundedMap::new(provider.clone()).map_err(|_| {
             Error::new(
                 ErrorCategory::Memory,
@@ -1162,7 +1162,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
             ;
         }
 
-        let provider = P::default);
+        let provider = P::default());
         let bounded_name = BoundedString::from_str(name, provider).map_err(|_| {
             Error::parse_error("Failed to create bounded string for custom limit name")
         })?;
@@ -1220,7 +1220,7 @@ mod tests {
         .expect("ASIL config creation should succeed");
 
         assert!(limits.is_complete_for_asil_d();
-        assert!(limits.validate_asil_d_compliance().is_ok();
+        assert!(limits.validate_asil_d_compliance().is_ok());
         assert_eq!(limits.qualified_asil_level(), Some("ASIL-D ";
         Ok(())
     }
@@ -1310,7 +1310,7 @@ mod tests {
         // Note: encode/decode will need to be updated for bounded types
         // For now, just test the creation and validation
         assert!(original.is_complete_for_asil_d();
-        assert!(original.validate_asil_d_compliance().is_ok();
+        assert!(original.validate_asil_d_compliance().is_ok());
         Ok(())
     }
 

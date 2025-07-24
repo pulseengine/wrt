@@ -165,7 +165,7 @@ impl ComponentAsyncBridge {
 
     /// Poll async tasks and advance execution
     pub fn poll_async_tasks(&mut self) -> Result<PollResult, Error> {
-        let mut result = PollResult::default);
+        let mut result = PollResult::default());
 
         // Poll the fuel executor
         let tasks_polled = {
@@ -340,8 +340,8 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
         
-        let bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap();
-        assert_eq!(bridge.component_limits.len(), 0;
+        let bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap());
+        assert_eq!(bridge.component_limits.len(), 0);
     }
 
     #[test]
@@ -349,13 +349,13 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
         
-        let mut bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap();
+        let mut bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap());
         
         let component_id = ComponentInstanceId::new(1;
-        bridge.register_component(component_id, 10, 10000, Priority::Normal).unwrap();
+        bridge.register_component(component_id, 10, 10000, Priority::Normal).unwrap());
         
-        let stats = bridge.get_component_stats(component_id).unwrap();
-        assert_eq!(stats.active_tasks, 0;
+        let stats = bridge.get_component_stats(component_id).unwrap());
+        assert_eq!(stats.active_tasks, 0);
         assert_eq!(stats.max_tasks, 10;
         assert_eq!(stats.fuel_budget, 10000;
     }

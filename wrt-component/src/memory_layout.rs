@@ -402,8 +402,8 @@ mod tests {
 
     #[test]
     fn test_primitive_layouts() {
-        assert_eq!(calculate_layout(&FormatValType::Bool), MemoryLayout::new(1, 1;
-        assert_eq!(calculate_layout(&FormatValType::U8), MemoryLayout::new(1, 1;
+        assert_eq!(calculate_layout(&FormatValType::Bool), MemoryLayout::new(1, 1);
+        assert_eq!(calculate_layout(&FormatValType::U8), MemoryLayout::new(1, 1);
         assert_eq!(calculate_layout(&FormatValType::U16), MemoryLayout::new(2, 2;
         assert_eq!(calculate_layout(&FormatValType::U32), MemoryLayout::new(4, 4;
         assert_eq!(calculate_layout(&FormatValType::U64), MemoryLayout::new(8, 8;
@@ -427,7 +427,7 @@ mod tests {
 
     #[test]
     fn test_alignment() {
-        assert_eq!(align_to(0, 4), 0;
+        assert_eq!(align_to(0, 4), 0);
         assert_eq!(align_to(1, 4), 4;
         assert_eq!(align_to(3, 4), 4;
         assert_eq!(align_to(4, 4), 4;
@@ -436,8 +436,8 @@ mod tests {
 
     #[test]
     fn test_discriminant_size() {
-        assert_eq!(discriminant_size(2), 1;
-        assert_eq!(discriminant_size(256), 1;
+        assert_eq!(discriminant_size(2), 1);
+        assert_eq!(discriminant_size(256), 1);
         assert_eq!(discriminant_size(257), 2;
         assert_eq!(discriminant_size(65536), 2;
         assert_eq!(discriminant_size(65537), 4;

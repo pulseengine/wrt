@@ -171,7 +171,7 @@ mod tests {
     fn benchmark_async_task_throughput() {
         let mut bridge = create_test_bridge);
         let component_id = ComponentInstanceId::new(1;
-        bridge.initialize_component_async(component_id, None).unwrap();
+        bridge.initialize_component_async(component_id, None).unwrap());
 
         let measurement = Arc::new(PerformanceMeasurement::new);
         
@@ -193,7 +193,7 @@ mod tests {
                 },
                 ComponentAsyncTaskType::AsyncFunction,
                 Priority::Normal,
-            ).unwrap();
+            ).unwrap());
             
             task_ids.push(task_id);
         }
@@ -203,7 +203,7 @@ mod tests {
         let mut completed_tasks = 0;
         
         for round in 0..10000 {
-            let result = bridge.poll_async_tasks().unwrap();
+            let result = bridge.poll_async_tasks().unwrap());
             completed_tasks += result.tasks_completed;
             
             if completed_tasks >= NUM_TASKS {
@@ -238,12 +238,12 @@ mod tests {
         let mut channels = OptimizedAsyncChannels::new(bridge.clone(), None;
         
         let component_id = ComponentInstanceId::new(1;
-        channels.initialize_component_channels(component_id, None).unwrap();
+        channels.initialize_component_channels(component_id, None).unwrap());
 
         let (sender, receiver) = channels.create_channel(
             component_id,
             ChannelType::Bounded(1024),
-        ).unwrap();
+        ).unwrap());
 
         let measurement = Arc::new(PerformanceMeasurement::new);
         const NUM_MESSAGES: u32 = 10000;
@@ -259,7 +259,7 @@ mod tests {
                 component_id,
                 ComponentValue::U32(i),
                 None,
-            ).unwrap();
+            ).unwrap());
             
             measurement.record_operation(op_start;
             
@@ -309,10 +309,10 @@ mod tests {
         let mut sync_primitives = AdvancedSyncPrimitives::new(bridge.clone(), None;
         
         let component_id = ComponentInstanceId::new(1;
-        sync_primitives.initialize_component_sync(component_id, None).unwrap();
+        sync_primitives.initialize_component_sync(component_id, None).unwrap());
 
         // Create mutex for contention testing
-        let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap();
+        let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap());
         
         let measurement = Arc::new(PerformanceMeasurement::new);
         const NUM_CONTENTIONS: u32 = 1000;
@@ -327,7 +327,7 @@ mod tests {
                 mutex_id,
                 task_id,
                 component_id,
-            ).unwrap();
+            ).unwrap());
             
             if result == MutexLockResult::Acquired {
                 measurement.record_operation(op_start;
@@ -356,7 +356,7 @@ mod tests {
         let mut timers = TimerIntegration::new(bridge.clone(), None;
         
         let component_id = ComponentInstanceId::new(1;
-        timers.initialize_component_timers(component_id, None).unwrap();
+        timers.initialize_component_timers(component_id, None).unwrap());
 
         let measurement = Arc::new(PerformanceMeasurement::new);
         const NUM_TIMERS: u32 = 100;
@@ -369,7 +369,7 @@ mod tests {
                 component_id,
                 TimerType::Oneshot,
                 TIMER_DURATION,
-            ).unwrap();
+            ).unwrap());
             timer_ids.push(timer_id);
         }
 
@@ -380,7 +380,7 @@ mod tests {
             let step_start = PerformanceMeasurement::get_time);
             
             timers.advance_time(10); // 10ms steps
-            let result = timers.process_timers().unwrap();
+            let result = timers.process_timers().unwrap());
             
             if result.fired_timers.len() > 0 {
                 measurement.record_operation(step_start;
@@ -421,8 +421,8 @@ mod tests {
 
         // Initialize all components
         for &component_id in &components {
-            let mut bridge_guard = bridge.lock().unwrap();
-            bridge_guard.initialize_component_async(component_id, None).unwrap();
+            let mut bridge_guard = bridge.lock().unwrap());
+            bridge_guard.initialize_component_async(component_id, None).unwrap());
         }
 
         let measurement = Arc::new(PerformanceMeasurement::new);
@@ -431,7 +431,7 @@ mod tests {
         // Spawn tasks across all components
         for &component_id in &components {
             for task_num in 0..TASKS_PER_COMPONENT {
-                let mut bridge_guard = bridge.lock().unwrap();
+                let mut bridge_guard = bridge.lock().unwrap());
                 let _ = bridge_guard.spawn_async_task(
                     component_id,
                     Some(task_num),
@@ -443,7 +443,7 @@ mod tests {
                     },
                     ComponentAsyncTaskType::AsyncFunction,
                     Priority::Normal,
-                ).unwrap();
+                ).unwrap());
                 
                 total_tasks += 1;
             }
@@ -455,8 +455,8 @@ mod tests {
         let mut max_rounds = 50000; // Prevent infinite loops
 
         while completed_tasks < total_tasks && max_rounds > 0 {
-            let mut bridge_guard = bridge.lock().unwrap();
-            let result = bridge_guard.poll_async_tasks().unwrap();
+            let mut bridge_guard = bridge.lock().unwrap());
+            let result = bridge_guard.poll_async_tasks().unwrap());
             completed_tasks += result.tasks_completed;
             max_rounds -= 1;
         }
@@ -470,7 +470,7 @@ mod tests {
 
         // Check final system state
         let final_stats = {
-            let bridge_guard = bridge.lock().unwrap();
+            let bridge_guard = bridge.lock().unwrap());
             bridge_guard.get_bridge_statistics()
         };
 
@@ -497,12 +497,12 @@ mod tests {
         
         // Initialize all subsystems
         {
-            let mut bridge_guard = bridge.lock().unwrap();
-            bridge_guard.initialize_component_async(component_id, None).unwrap();
+            let mut bridge_guard = bridge.lock().unwrap());
+            bridge_guard.initialize_component_async(component_id, None).unwrap());
         }
-        channels.initialize_component_channels(component_id, None).unwrap();
-        timers.initialize_component_timers(component_id, None).unwrap();
-        sync_primitives.initialize_component_sync(component_id, None).unwrap();
+        channels.initialize_component_channels(component_id, None).unwrap());
+        timers.initialize_component_timers(component_id, None).unwrap());
+        sync_primitives.initialize_component_sync(component_id, None).unwrap());
 
         // Create many primitives to test memory usage
         const NUM_PRIMITIVES: u32 = 100;
@@ -566,13 +566,13 @@ mod tests {
         
         let component_id = ComponentInstanceId::new(1;
         {
-            let mut bridge_guard = bridge.lock().unwrap();
-            bridge_guard.initialize_component_async(component_id, None).unwrap();
+            let mut bridge_guard = bridge.lock().unwrap());
+            bridge_guard.initialize_component_async(component_id, None).unwrap());
         }
 
         // Measure fuel consumption for various operations
         let initial_stats = {
-            let bridge_guard = bridge.lock().unwrap();
+            let bridge_guard = bridge.lock().unwrap());
             bridge_guard.get_bridge_statistics()
         };
 
@@ -583,7 +583,7 @@ mod tests {
         for i in 0..NUM_OPERATIONS {
             let op_start = PerformanceMeasurement::get_time);
             
-            let mut bridge_guard = bridge.lock().unwrap();
+            let mut bridge_guard = bridge.lock().unwrap());
             let _ = bridge_guard.spawn_async_task(
                 component_id,
                 Some(i),
@@ -602,12 +602,12 @@ mod tests {
 
         // Poll to execute tasks
         for _ in 0..5000 {
-            let mut bridge_guard = bridge.lock().unwrap();
+            let mut bridge_guard = bridge.lock().unwrap());
             let _ = bridge_guard.poll_async_tasks);
         }
 
         let final_stats = {
-            let bridge_guard = bridge.lock().unwrap();
+            let bridge_guard = bridge.lock().unwrap());
             bridge_guard.get_bridge_statistics()
         };
 

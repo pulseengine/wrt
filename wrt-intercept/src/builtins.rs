@@ -364,12 +364,12 @@ mod tests {
             ComponentValue::F64(4.56),
         ];
 
-        let serialized_bytes = BuiltinSerialization::serialize(&values).unwrap();
+        let serialized_bytes = BuiltinSerialization::serialize(&values).unwrap());
 
         let types = vec![ValType::S32, ValType::S64, ValType::F32, ValType::F64];
 
         let deserialized_values =
-            BuiltinSerialization::deserialize(&serialized_bytes, &types).unwrap();
+            BuiltinSerialization::deserialize(&serialized_bytes, &types).unwrap());
 
         assert_eq!(deserialized_values.len(), values.len);
         assert_eq!(deserialized_values[0], values[0];

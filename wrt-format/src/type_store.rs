@@ -146,32 +146,32 @@ mod tests {
     
     #[test]
     fn test_type_store_basic() {
-        let provider = DefaultMemoryProvider::default);
-        let mut store = TypeStore::new(provider.clone()).unwrap();
+        let provider = DefaultMemoryProvider::default());
+        let mut store = TypeStore::new(provider.clone()).unwrap());
         
         // Store a simple type
         let i32_type = ValType::S32;
-        let i32_ref = store.intern(i32_type.clone()).unwrap();
+        let i32_ref = store.intern(i32_type.clone()).unwrap());
         
         // Should get the same reference for the same type
-        let i32_ref2 = store.intern(i32_type.clone()).unwrap();
+        let i32_ref2 = store.intern(i32_type.clone()).unwrap());
         assert_eq!(i32_ref.0, i32_ref2.0;
         
         // Should be able to retrieve it
-        let retrieved = store.get(i32_ref).unwrap();
+        let retrieved = store.get(i32_ref).unwrap());
         assert_eq!(retrieved, &i32_type;
     }
     
     #[test]
     fn test_type_builder() {
-        let provider = DefaultMemoryProvider::default);
-        let mut store = TypeStore::new(provider.clone()).unwrap();
+        let provider = DefaultMemoryProvider::default());
+        let mut store = TypeStore::new(provider.clone()).unwrap());
         let mut builder = TypeBuilder::new(&mut store, provider;
         
         // Build a list of i32
-        let list_type = builder.list(ValType::S32).unwrap();
+        let list_type = builder.list(ValType::S32).unwrap());
         if let ValType::List(elem_ref) = &list_type {
-            let elem_type = store.get(*elem_ref).unwrap();
+            let elem_type = store.get(*elem_ref).unwrap());
             assert_eq!(elem_type, &ValType::S32;
         } else {
             panic!("Expected List type";

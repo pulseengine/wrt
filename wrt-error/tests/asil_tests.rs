@@ -99,7 +99,7 @@ fn test_safety_monitor() {
     use wrt_error::SafetyMonitor;
 
     let monitor = SafetyMonitor::new);
-    assert_eq!(monitor.error_count(), 0;
+    assert_eq!(monitor.error_count(), 0);
 
     // Record some errors
     let error1 = Error::runtime_execution_error(
@@ -115,7 +115,7 @@ fn test_safety_monitor() {
 
     // Reset monitor
     monitor.reset);
-    assert_eq!(monitor.error_count(), 0;
+    assert_eq!(monitor.error_count(), 0);
 }
 
 #[test]

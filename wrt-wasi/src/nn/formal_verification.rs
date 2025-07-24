@@ -56,7 +56,7 @@ fn verify_resource_id_no_wraparound() {
             ;
         } else if !active_ids.is_empty() {
             // Deallocate random ID
-            let id_to_remove = *active_ids.iter().next().unwrap();
+            let id_to_remove = *active_ids.iter().next().unwrap());
             active_ids.remove(&id_to_remove;
         }
     }
@@ -119,7 +119,7 @@ fn verify_capability_consistency() {
     let model_size: usize = kani::any);
     kani::assume(model_size > 0 && model_size <= 500 * 1024 * 1024;
     
-    let capability = BoundedNNCapability::new().unwrap();
+    let capability = BoundedNNCapability::new().unwrap());
     let operation = NNOperation::Load {
         size: model_size,
         format: ModelFormat::ONNX,

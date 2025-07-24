@@ -47,15 +47,15 @@
 //! let mem_type = MemoryType {
 //!     limits: Limits { min: 1, max: Some(2) },
 //! };
-//! let mut memory = Memory::new(mem_type).unwrap();
+//! let mut memory = Memory::new(mem_type).unwrap());
 //!
 //! // Store a value
 //! let store = MemoryStore::i32(0, 4); // offset 0, 4-byte aligned
-//! store.execute(&mut memory, &Value::I32(0), &Value::I32(42)).unwrap();
+//! store.execute(&mut memory, &Value::I32(0), &Value::I32(42)).unwrap());
 //!
 //! // Load a value
 //! let load = MemoryLoad::i32(0, 4); // offset 0, 4-byte aligned
-//! let result = load.execute(&memory, &Value::I32(0)).unwrap();
+//! let result = load.execute(&memory, &Value::I32(0)).unwrap());
 //! assert_eq!(result, Value::I32(42;
 //! ```
 
@@ -1325,7 +1325,7 @@ mod tests {
         #[cfg(feature = "std")]
         fn grow(&mut self, bytes: usize) -> Result<()> {
             let new_size = self.data.len() + bytes;
-            self.data.resize(new_size, 0;
+            self.data.resize(new_size, 0);
             Ok(())
         }
 
@@ -1434,126 +1434,126 @@ mod tests {
 
     #[test]
     fn test_memory_load() {
-        let mut memory = MockMemory::new(65_536).unwrap();
+        let mut memory = MockMemory::new(65_536).unwrap());
 
         // Store some test values
-        memory.write_bytes(0, &[42, 0, 0, 0]).unwrap(); // i32 = 42
-        memory.write_bytes(4, &[0, 1, 0, 0, 0, 0, 0, 0]).unwrap(); // i64 = 256
-        memory.write_bytes(12, &[0, 0, 0x40, 0x40]).unwrap(); // f32 = 3.0
-        memory.write_bytes(16, &[0, 0, 0, 0, 0, 0, 0x08, 0x40]).unwrap(); // f64 = 3.0
-        memory.write_bytes(24, &[0xFF]).unwrap(); // i8 = -1 (signed)
-        memory.write_bytes(25, &[0xFF, 0xFF]).unwrap(); // i16 = -1 (signed)
+        memory.write_bytes(0, &[42, 0, 0, 0]).unwrap()); // i32 = 42
+        memory.write_bytes(4, &[0, 1, 0, 0, 0, 0, 0, 0]).unwrap()); // i64 = 256
+        memory.write_bytes(12, &[0, 0, 0x40, 0x40]).unwrap()); // f32 = 3.0
+        memory.write_bytes(16, &[0, 0, 0, 0, 0, 0, 0x08, 0x40]).unwrap()); // f64 = 3.0
+        memory.write_bytes(24, &[0xFF]).unwrap()); // i8 = -1 (signed)
+        memory.write_bytes(25, &[0xFF, 0xFF]).unwrap()); // i16 = -1 (signed)
 
         // Test i32.load
         let load = MemoryLoad::i32(0, 4;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(42;
 
         // Test i64.load
         let load = MemoryLoad::i64(4, 8;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I64(256;
 
         // Test f32.load
         let load = MemoryLoad::f32(12, 4;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::F32(3.0;
 
         // Test f64.load
         let load = MemoryLoad::f64(16, 8;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::F64(3.0;
 
         // Test i32.load8_s
         let load = MemoryLoad::i32_load8(24, 1, true;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(-1;
 
         // Test i32.load8_u
         let load = MemoryLoad::i32_load8(24, 1, false;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(255;
 
         // Test i32.load16_s
         let load = MemoryLoad::i32_load16(25, 2, true;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(-1;
 
         // Test i32.load16_u
         let load = MemoryLoad::i32_load16(25, 2, false;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(65_535;
 
         // Test effective address calculation with offset
         let load = MemoryLoad::i32(4, 4;
-        let result = load.execute(&memory, &Value::I32(4)).unwrap();
+        let result = load.execute(&memory, &Value::I32(4)).unwrap());
         assert_eq!(result, Value::I32(256;
     }
 
     #[test]
     fn test_memory_store() {
-        let mut memory = MockMemory::new(65_536).unwrap();
+        let mut memory = MockMemory::new(65_536).unwrap());
 
         // Test i32.store
         let store = MemoryStore::i32(0, 4;
-        store.execute(&mut memory, &Value::I32(0), &Value::I32(42)).unwrap();
+        store.execute(&mut memory, &Value::I32(0), &Value::I32(42)).unwrap());
 
         let load = MemoryLoad::i32(0, 4;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(42;
 
         // Test i64.store
         let store = MemoryStore::i64(8, 8;
-        store.execute(&mut memory, &Value::I32(0), &Value::I64(0x0102030405060708)).unwrap();
+        store.execute(&mut memory, &Value::I32(0), &Value::I64(0x0102030405060708)).unwrap());
 
         let load = MemoryLoad::i64(8, 8;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I64(0x0102030405060708;
 
         // Test f32.store
         let store = MemoryStore::f32(16, 4;
-        store.execute(&mut memory, &Value::I32(0), &Value::F32(3.14159)).unwrap();
+        store.execute(&mut memory, &Value::I32(0), &Value::F32(3.14159)).unwrap());
 
         let load = MemoryLoad::f32(16, 4;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::F32(3.14159;
 
         // Test f64.store
         let store = MemoryStore::f64(24, 8;
-        store.execute(&mut memory, &Value::I32(0), &Value::F64(2.71828)).unwrap();
+        store.execute(&mut memory, &Value::I32(0), &Value::F64(2.71828)).unwrap());
 
         let load = MemoryLoad::f64(24, 8;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::F64(2.71828;
 
         // Test i32.store8
-        let store = MemoryStore::i32_store8(32, 1;
-        store.execute(&mut memory, &Value::I32(0), &Value::I32(0xFF)).unwrap();
+        let store = MemoryStore::i32_store8(32, 1);
+        store.execute(&mut memory, &Value::I32(0), &Value::I32(0xFF)).unwrap());
 
         let load = MemoryLoad::i32_load8(32, 1, false;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(0xFF;
 
         // Test i32.store16
-        let store = MemoryStore::i32_store16(33, 1;
-        store.execute(&mut memory, &Value::I32(0), &Value::I32(0xABCD)).unwrap();
+        let store = MemoryStore::i32_store16(33, 1);
+        store.execute(&mut memory, &Value::I32(0), &Value::I32(0xABCD)).unwrap());
 
         let load = MemoryLoad::i32_load16(33, 1, false;
-        let result = load.execute(&memory, &Value::I32(0)).unwrap();
+        let result = load.execute(&memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(0xABCD;
 
         // Test effective address calculation with offset
         let store = MemoryStore::i32(4, 4;
-        store.execute(&mut memory, &Value::I32(4), &Value::I32(0xDEADBEEF)).unwrap();
+        store.execute(&mut memory, &Value::I32(4), &Value::I32(0xDEADBEEF)).unwrap());
 
         let load = MemoryLoad::i32(4, 4;
-        let result = load.execute(&memory, &Value::I32(4)).unwrap();
+        let result = load.execute(&memory, &Value::I32(4)).unwrap());
         assert_eq!(result, Value::I32(0xDEADBEEF;
     }
 
     #[test]
     fn test_memory_access_errors() {
-        let mut memory = MockMemory::new(100).unwrap();
+        let mut memory = MockMemory::new(100).unwrap());
 
         // Out of bounds access
         let load = MemoryLoad::i32(100, 4;
@@ -1599,17 +1599,17 @@ mod tests {
                 
                 let mut seg1 = wrt_foundation::BoundedVec::new);
                 for &b in &[1, 2, 3, 4, 5] {
-                    seg1.push(b).unwrap();
+                    seg1.push(b).unwrap());
                 }
-                segments.push(Some(seg1)).unwrap();
+                segments.push(Some(seg1)).unwrap());
                 
                 let mut seg2 = wrt_foundation::BoundedVec::new);
                 for &b in &[0xAA, 0xBB, 0xCC, 0xDD] {
-                    seg2.push(b).unwrap();
+                    seg2.push(b).unwrap());
                 }
-                segments.push(Some(seg2)).unwrap();
+                segments.push(Some(seg2)).unwrap());
                 
-                segments.push(None).unwrap(); // Dropped segment
+                segments.push(None).unwrap()); // Dropped segment
                 
                 Self { segments }
             }
@@ -1659,16 +1659,16 @@ mod tests {
 
     #[test]
     fn test_memory_fill() {
-        let mut memory = MockMemory::new(1024).unwrap();
+        let mut memory = MockMemory::new(1024).unwrap());
         let fill_op = MemoryFill::new(0;
 
         // Fill 10 bytes with value 0x42 starting at offset 100
         fill_op
             .execute(&mut memory, &Value::I32(100), &Value::I32(0x42), &Value::I32(10))
-            .unwrap();
+            .unwrap());
 
         // Verify the fill worked
-        let data = memory.read_bytes(100, 10).unwrap();
+        let data = memory.read_bytes(100, 10).unwrap());
         assert_eq!(data.len(), 10;
         #[cfg(feature = "std")]
         assert!(data.iter().all(|&b| b == 0x42);
@@ -1680,20 +1680,20 @@ mod tests {
 
     #[test]
     fn test_memory_copy() {
-        let mut memory = MockMemory::new(1024).unwrap();
+        let mut memory = MockMemory::new(1024).unwrap());
         
         // Set up source data
-        memory.write_bytes(0, &[1, 2, 3, 4, 5]).unwrap();
+        memory.write_bytes(0, &[1, 2, 3, 4, 5]).unwrap());
         
-        let copy_op = MemoryCopy::new(0, 0;
+        let copy_op = MemoryCopy::new(0, 0);
 
         // Copy 5 bytes from offset 0 to offset 100
         copy_op
             .execute(&mut memory, &Value::I32(100), &Value::I32(0), &Value::I32(5))
-            .unwrap();
+            .unwrap());
 
         // Verify the copy worked
-        let data = memory.read_bytes(100, 5).unwrap();
+        let data = memory.read_bytes(100, 5).unwrap());
         #[cfg(feature = "std")]
         {
             let expected = [1, 2, 3, 4, 5];
@@ -1710,20 +1710,20 @@ mod tests {
 
     #[test]
     fn test_memory_copy_overlapping() {
-        let mut memory = MockMemory::new(1024).unwrap();
+        let mut memory = MockMemory::new(1024).unwrap());
         
         // Set up source data
-        memory.write_bytes(0, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
+        memory.write_bytes(0, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap());
         
-        let copy_op = MemoryCopy::new(0, 0;
+        let copy_op = MemoryCopy::new(0, 0);
 
         // Copy overlapping: copy 5 bytes from offset 0 to offset 2
         copy_op
             .execute(&mut memory, &Value::I32(2), &Value::I32(0), &Value::I32(5))
-            .unwrap();
+            .unwrap());
 
         // Verify overlapping copy worked correctly
-        let data = memory.read_bytes(0, 8).unwrap();
+        let data = memory.read_bytes(0, 8).unwrap());
         #[cfg(feature = "std")]
         {
             let expected = [1, 2, 1, 2, 3, 4, 5, 8];
@@ -1740,9 +1740,9 @@ mod tests {
 
     #[test]
     fn test_memory_init() {
-        let mut memory = MockMemory::new(1024).unwrap();
+        let mut memory = MockMemory::new(1024).unwrap());
         let data_segments = MockDataSegments::new);
-        let init_op = MemoryInit::new(0, 0;
+        let init_op = MemoryInit::new(0, 0);
 
         // Copy 3 bytes from data segment 0 (starting at offset 1) to memory at offset 100
         init_op
@@ -1753,10 +1753,10 @@ mod tests {
                 &Value::I32(1),
                 &Value::I32(3),
             )
-            .unwrap();
+            .unwrap());
 
         // Verify the init worked (should copy bytes [2, 3, 4] from segment [1, 2, 3, 4, 5])
-        let data = memory.read_bytes(100, 3).unwrap();
+        let data = memory.read_bytes(100, 3).unwrap());
         #[cfg(feature = "std")]
         {
             let expected = [2, 3, 4];
@@ -1780,7 +1780,7 @@ mod tests {
         assert!(data_segments.get_data_segment(0).unwrap().is_some();
 
         // Drop segment 0
-        drop_op.execute(&mut data_segments).unwrap();
+        drop_op.execute(&mut data_segments).unwrap());
 
         // Verify segment 0 is now dropped
         assert!(data_segments.get_data_segment(0).unwrap().is_none();
@@ -1788,13 +1788,13 @@ mod tests {
 
     #[test]
     fn test_memory_init_dropped_segment() {
-        let mut memory = MockMemory::new(1024).unwrap();
+        let mut memory = MockMemory::new(1024).unwrap());
         let mut data_segments = MockDataSegments::new);
         
         // Drop segment 0 first
-        data_segments.drop_data_segment(0).unwrap();
+        data_segments.drop_data_segment(0).unwrap());
         
-        let init_op = MemoryInit::new(0, 0;
+        let init_op = MemoryInit::new(0, 0);
 
         // Try to init from dropped segment - should fail
         let result = init_op.execute(
@@ -1809,7 +1809,7 @@ mod tests {
 
     #[test]
     fn test_bulk_memory_bounds_checking() {
-        let mut memory = MockMemory::new(100).unwrap();
+        let mut memory = MockMemory::new(100).unwrap());
         
         // Test memory.fill out of bounds
         let fill_op = MemoryFill::new(0;
@@ -1817,7 +1817,7 @@ mod tests {
         assert!(result.is_err();
 
         // Test memory.copy out of bounds
-        let copy_op = MemoryCopy::new(0, 0;
+        let copy_op = MemoryCopy::new(0, 0);
         let result = copy_op.execute(&mut memory, &Value::I32(95), &Value::I32(0), &Value::I32(10;
         assert!(result.is_err();
     }
@@ -1825,37 +1825,37 @@ mod tests {
     #[test]
     fn test_memory_size() {
         // Create memory with 2 pages (128 KiB)
-        let memory = MockMemory::new(2 * 65_536).unwrap();
+        let memory = MockMemory::new(2 * 65_536).unwrap());
         let size_op = MemorySize::new(0;
         
-        let result = size_op.execute(&memory).unwrap();
+        let result = size_op.execute(&memory).unwrap());
         assert_eq!(result, Value::I32(2;
         
         // Test with partial page
-        let memory = MockMemory::new(65_536 + 100).unwrap(); // 1 page + 100 bytes
-        let result = size_op.execute(&memory).unwrap();
+        let memory = MockMemory::new(65_536 + 100).unwrap()); // 1 page + 100 bytes
+        let result = size_op.execute(&memory).unwrap());
         assert_eq!(result, Value::I32(1)); // Should return 1 (partial pages are truncated)
     }
 
     #[test]
     fn test_memory_grow() {
         // Create memory with 1 page (64 KiB)
-        let mut memory = MockMemory::new(65_536).unwrap();
+        let mut memory = MockMemory::new(65_536).unwrap());
         let grow_op = MemoryGrow::new(0;
         
         // Grow by 2 pages
-        let result = grow_op.execute(&mut memory, &Value::I32(2)).unwrap();
+        let result = grow_op.execute(&mut memory, &Value::I32(2)).unwrap());
         assert_eq!(result, Value::I32(1)); // Previous size was 1 page
         
         // Check new size
         assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65_536;
         
         // Test grow with 0 pages (should succeed)
-        let result = grow_op.execute(&mut memory, &Value::I32(0)).unwrap();
+        let result = grow_op.execute(&mut memory, &Value::I32(0)).unwrap());
         assert_eq!(result, Value::I32(3)); // Previous size was 3 pages
         
         // Test grow with negative pages (should fail)
-        let result = grow_op.execute(&mut memory, &Value::I32(-1)).unwrap();
+        let result = grow_op.execute(&mut memory, &Value::I32(-1)).unwrap());
         assert_eq!(result, Value::I32(-1)); // Growth failed
     }
 
@@ -1921,7 +1921,7 @@ mod tests {
         
         // Execute memory.size
         let op = MemoryOp::Size(MemorySize::new(0;
-        op.execute(&mut ctx).unwrap();
+        op.execute(&mut ctx).unwrap());
         
         // Should push 2 (pages) onto stack
         assert_eq!(ctx.pop_value().unwrap(), Value::I32(2;
@@ -1932,11 +1932,11 @@ mod tests {
         let mut ctx = MockMemoryContext::new(65_536); // 1 page
         
         // Push delta (2 pages)
-        ctx.push_value(Value::I32(2)).unwrap();
+        ctx.push_value(Value::I32(2)).unwrap());
         
         // Execute memory.grow
         let op = MemoryOp::Grow(MemoryGrow::new(0;
-        op.execute(&mut ctx).unwrap();
+        op.execute(&mut ctx).unwrap());
         
         // Should push previous size (1 page) onto stack
         assert_eq!(ctx.pop_value().unwrap(), Value::I32(1;
@@ -1950,16 +1950,16 @@ mod tests {
         let mut ctx = MockMemoryContext::new(1024;
         
         // Push arguments: dest=100, value=0x42, size=10
-        ctx.push_value(Value::I32(100)).unwrap(); // dest
-        ctx.push_value(Value::I32(0x42)).unwrap(); // value
-        ctx.push_value(Value::I32(10)).unwrap(); // size
+        ctx.push_value(Value::I32(100)).unwrap()); // dest
+        ctx.push_value(Value::I32(0x42)).unwrap()); // value
+        ctx.push_value(Value::I32(10)).unwrap()); // size
         
         // Execute memory.fill
         let op = MemoryOp::Fill(MemoryFill::new(0;
-        op.execute(&mut ctx).unwrap();
+        op.execute(&mut ctx).unwrap());
         
         // Verify memory was filled
-        let data = ctx.memory.read_bytes(100, 10).unwrap();
+        let data = ctx.memory.read_bytes(100, 10).unwrap());
         #[cfg(feature = "std")]
         assert!(data.iter().all(|&b| b == 0x42);
         #[cfg(not(feature = "std"))]
@@ -1973,19 +1973,19 @@ mod tests {
         let mut ctx = MockMemoryContext::new(1024;
         
         // Initialize source data
-        ctx.memory.write_bytes(200, &[1, 2, 3, 4, 5]).unwrap();
+        ctx.memory.write_bytes(200, &[1, 2, 3, 4, 5]).unwrap());
         
         // Push arguments: dest=100, src=200, size=5
-        ctx.push_value(Value::I32(100)).unwrap(); // dest
-        ctx.push_value(Value::I32(200)).unwrap(); // src
-        ctx.push_value(Value::I32(5)).unwrap(); // size
+        ctx.push_value(Value::I32(100)).unwrap()); // dest
+        ctx.push_value(Value::I32(200)).unwrap()); // src
+        ctx.push_value(Value::I32(5)).unwrap()); // size
         
         // Execute memory.copy
-        let op = MemoryOp::Copy(MemoryCopy::new(0, 0;
-        op.execute(&mut ctx).unwrap();
+        let op = MemoryOp::Copy(MemoryCopy::new(0, 0);
+        op.execute(&mut ctx).unwrap());
         
         // Verify memory was copied
-        let data = ctx.memory.read_bytes(100, 5).unwrap();
+        let data = ctx.memory.read_bytes(100, 5).unwrap());
         #[cfg(feature = "std")]
         assert_eq!(data, vec![1, 2, 3, 4, 5];
         #[cfg(not(feature = "std"))]

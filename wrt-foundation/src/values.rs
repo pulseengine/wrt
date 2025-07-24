@@ -90,7 +90,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> De
     for StructRef<P>
 {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         Self::new(0, provider).expect("Default StructRef creation failed")
     }
 }
@@ -162,7 +162,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> De
     for ArrayRef<P>
 {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         Self::new(0, provider).expect("Default ArrayRef creation failed")
     }
 }
@@ -1116,22 +1116,22 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_little_endian_conversion() {
         let val_i32 = Value::I32(0x1234_5678;
-        let bytes_i32 = val_i32.to_le_bytes().unwrap();
+        let bytes_i32 = val_i32.to_le_bytes().unwrap());
         assert_eq!(bytes_i32, vec![0x78, 0x56, 0x34, 0x12];
-        let recovered_i32 = Value::from_le_bytes(&bytes_i32, &ValueType::I32).unwrap();
+        let recovered_i32 = Value::from_le_bytes(&bytes_i32, &ValueType::I32).unwrap());
         assert_eq!(val_i32, recovered_i32;
 
         let bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
         let val_v128 = Value::V128(V128::new(bytes;
-        let bytes_v128 = val_v128.to_le_bytes().unwrap();
+        let bytes_v128 = val_v128.to_le_bytes().unwrap());
         assert_eq!(bytes_v128, bytes.to_vec);
-        let recovered_v128 = Value::from_le_bytes(&bytes_v128, &ValueType::V128).unwrap();
+        let recovered_v128 = Value::from_le_bytes(&bytes_v128, &ValueType::V128).unwrap());
         assert_eq!(val_v128, recovered_v128;
 
         let val_i16x8 = Value::I16x8(V128::new(bytes;
-        let bytes_i16x8 = val_i16x8.to_le_bytes().unwrap();
+        let bytes_i16x8 = val_i16x8.to_le_bytes().unwrap());
         assert_eq!(bytes_i16x8, bytes.to_vec);
-        let recovered_i16x8 = Value::from_le_bytes(&bytes_i16x8, &ValueType::I16x8).unwrap();
+        let recovered_i16x8 = Value::from_le_bytes(&bytes_i16x8, &ValueType::I16x8).unwrap());
         assert_eq!(val_i16x8, recovered_i16x8;
 
         assert!(Value::from_le_bytes(&[1, 2], &ValueType::I32).is_err();

@@ -184,7 +184,7 @@ where
 
         if self.item_serialized_size == 0 {
             // ZST handling
-            let item = T::default);
+            let item = T::default());
 
             if self.verification_level >= VerificationLevel::Full {
                 self.recalculate_checksum);
@@ -1565,21 +1565,21 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut a = BoundedBitSet::<8>::new);
-    /// a.set(0).unwrap();
-    /// a.set(2).unwrap();
-    /// a.set(4).unwrap();
+    /// a.set(0).unwrap());
+    /// a.set(2).unwrap());
+    /// a.set(4).unwrap());
     ///
     /// let mut b = BoundedBitSet::<8>::new);
-    /// b.set(0).unwrap();
-    /// b.set(1).unwrap();
-    /// b.set(4).unwrap();
+    /// b.set(0).unwrap());
+    /// b.set(1).unwrap());
+    /// b.set(4).unwrap());
     ///
     /// a.bitand_with(&b;
     ///
-    /// assert!(a.contains(0).unwrap();
-    /// assert!(!a.contains(1).unwrap();
-    /// assert!(!a.contains(2).unwrap();
-    /// assert!(a.contains(4).unwrap();
+    /// assert!(a.contains(0).unwrap());
+    /// assert!(!a.contains(1).unwrap());
+    /// assert!(!a.contains(2).unwrap());
+    /// assert!(a.contains(4).unwrap());
     /// ```
     pub fn bitand_with(&mut self, other: &Self) {
         let mut new_count = 0;
@@ -1617,18 +1617,18 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut a = BoundedBitSet::<8>::new);
-    /// a.set(0).unwrap();
-    /// a.set(2).unwrap();
+    /// a.set(0).unwrap());
+    /// a.set(2).unwrap());
     ///
     /// let mut b = BoundedBitSet::<8>::new);
-    /// b.set(1).unwrap();
-    /// b.set(2).unwrap();
+    /// b.set(1).unwrap());
+    /// b.set(2).unwrap());
     ///
     /// a.bitor_with(&b;
     ///
-    /// assert!(a.contains(0).unwrap();
-    /// assert!(a.contains(1).unwrap();
-    /// assert!(a.contains(2).unwrap();
+    /// assert!(a.contains(0).unwrap());
+    /// assert!(a.contains(1).unwrap());
+    /// assert!(a.contains(2).unwrap());
     /// ```
     pub fn bitor_with(&mut self, other: &Self) {
         let mut new_count = 0;
@@ -1666,18 +1666,18 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut a = BoundedBitSet::<8>::new);
-    /// a.set(0).unwrap();
-    /// a.set(2).unwrap();
+    /// a.set(0).unwrap());
+    /// a.set(2).unwrap());
     ///
     /// let mut b = BoundedBitSet::<8>::new);
-    /// b.set(1).unwrap();
-    /// b.set(2).unwrap();
+    /// b.set(1).unwrap());
+    /// b.set(2).unwrap());
     ///
     /// a.bitxor_with(&b;
     ///
-    /// assert!(a.contains(0).unwrap();
-    /// assert!(a.contains(1).unwrap();
-    /// assert!(!a.contains(2).unwrap();
+    /// assert!(a.contains(0).unwrap());
+    /// assert!(a.contains(1).unwrap());
+    /// assert!(!a.contains(2).unwrap());
     /// ```
     pub fn bitxor_with(&mut self, other: &Self) {
         let mut new_count = 0;
@@ -1715,19 +1715,19 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<8>::new);
-    /// bitset.set(1).unwrap();
-    /// bitset.set(3).unwrap();
+    /// bitset.set(1).unwrap());
+    /// bitset.set(3).unwrap());
     ///
     /// bitset.bitnot(feature = "std";
     ///
-    /// assert!(bitset.contains(0).unwrap();
-    /// assert!(!bitset.contains(1).unwrap();
-    /// assert!(bitset.contains(2).unwrap();
-    /// assert!(!bitset.contains(3).unwrap();
-    /// assert!(bitset.contains(4).unwrap();
-    /// assert!(bitset.contains(5).unwrap();
-    /// assert!(bitset.contains(6).unwrap();
-    /// assert!(bitset.contains(7).unwrap();
+    /// assert!(bitset.contains(0).unwrap());
+    /// assert!(!bitset.contains(1).unwrap());
+    /// assert!(bitset.contains(2).unwrap());
+    /// assert!(!bitset.contains(3).unwrap());
+    /// assert!(bitset.contains(4).unwrap());
+    /// assert!(bitset.contains(5).unwrap());
+    /// assert!(bitset.contains(6).unwrap());
+    /// assert!(bitset.contains(7).unwrap());
     /// ```
     pub fn bitnot(&mut self) {
         record_global_operation(OperationType::CollectionWrite, self.verification_level;
@@ -1770,10 +1770,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// let mut bitset = BoundedBitSet::<100>::new);
     /// assert_eq!(bitset.first_set_bit(), None;
     ///
-    /// bitset.set(42).unwrap();
+    /// bitset.set(42).unwrap());
     /// assert_eq!(bitset.first_set_bit(), Some(42;
     ///
-    /// bitset.set(10).unwrap();
+    /// bitset.set(10).unwrap());
     /// assert_eq!(bitset.first_set_bit(), Some(10)); // Returns the lowest index
     /// ```
     pub fn first_set_bit(&self) -> Option<usize> {
@@ -1804,9 +1804,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap();
-    /// bitset.set(20).unwrap();
-    /// bitset.set(30).unwrap();
+    /// bitset.set(10).unwrap());
+    /// bitset.set(20).unwrap());
+    /// bitset.set(30).unwrap());
     ///
     /// assert_eq!(bitset.next_set_bit(0), Some(10;
     /// assert_eq!(bitset.next_set_bit(10), Some(10;
@@ -1864,10 +1864,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// bitset.set_all(); // Set all bits to 1
     /// assert_eq!(bitset.first_clear_bit(), None;
     ///
-    /// bitset.clear(42).unwrap();
+    /// bitset.clear(42).unwrap());
     /// assert_eq!(bitset.first_clear_bit(), Some(42;
     ///
-    /// bitset.clear(10).unwrap();
+    /// bitset.clear(10).unwrap());
     /// assert_eq!(bitset.first_clear_bit(), Some(10)); // Returns the lowest index
     /// ```
     pub fn first_clear_bit(&self) -> Option<usize> {
@@ -1900,9 +1900,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     ///
     /// let mut bitset = BoundedBitSet::<100>::new);
     /// bitset.set_all(); // Set all bits to 1
-    /// bitset.clear(10).unwrap();
-    /// bitset.clear(20).unwrap();
-    /// bitset.clear(30).unwrap();
+    /// bitset.clear(10).unwrap());
+    /// bitset.clear(20).unwrap());
+    /// bitset.clear(30).unwrap());
     ///
     /// assert_eq!(bitset.next_clear_bit(0), Some(10;
     /// assert_eq!(bitset.next_clear_bit(10), Some(10;
@@ -1925,9 +1925,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// let indices = [10, 20, 30, 20]; // Note: 20 appears twice
     ///
     /// assert_eq!(bitset.set_multiple(&indices).unwrap(), 3); // Only 3 bits were newly set
-    /// assert!(bitset.contains(10).unwrap();
-    /// assert!(bitset.contains(20).unwrap();
-    /// assert!(bitset.contains(30).unwrap();
+    /// assert!(bitset.contains(10).unwrap());
+    /// assert!(bitset.contains(20).unwrap());
+    /// assert!(bitset.contains(30).unwrap());
     /// ```
     pub fn set_multiple(&mut self, indices: &[usize]) -> Result<usize, BoundedError> {
         record_global_operation(OperationType::CollectionWrite, self.verification_level;
@@ -2001,9 +2001,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// let indices = [10, 20, 30, 20]; // Note: 20 appears twice
     ///
     /// assert_eq!(bitset.clear_multiple(&indices).unwrap(), 3); // Only 3 bits were newly cleared
-    /// assert!(!bitset.contains(10).unwrap();
-    /// assert!(!bitset.contains(20).unwrap();
-    /// assert!(!bitset.contains(30).unwrap();
+    /// assert!(!bitset.contains(10).unwrap());
+    /// assert!(!bitset.contains(20).unwrap());
+    /// assert!(!bitset.contains(30).unwrap());
     /// ```
     pub fn clear_multiple(&mut self, indices: &[usize]) -> Result<usize, BoundedError> {
         record_global_operation(OperationType::CollectionWrite, self.verification_level;
@@ -2082,10 +2082,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     ///
     /// // Verify state
     /// for i in 10..15 {
-    ///     assert!(bitset.contains(i).unwrap();
+    ///     assert!(bitset.contains(i).unwrap());
     /// }
     /// for i in 15..26 {
-    ///     assert!(!bitset.contains(i).unwrap();
+    ///     assert!(!bitset.contains(i).unwrap());
     /// }
     /// ```
     pub fn set_range(
@@ -2186,9 +2186,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap();
-    /// bitset.set(20).unwrap();
-    /// bitset.set(30).unwrap();
+    /// bitset.set(10).unwrap());
+    /// bitset.set(20).unwrap());
+    /// bitset.set(30).unwrap());
     ///
     /// assert_eq!(bitset.lowest_set_bit_in_range(0, 100).unwrap(), Some(10;
     /// assert_eq!(bitset.lowest_set_bit_in_range(15, 35).unwrap(), Some(20;
@@ -2237,9 +2237,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap();
-    /// bitset.set(20).unwrap();
-    /// bitset.set(30).unwrap();
+    /// bitset.set(10).unwrap());
+    /// bitset.set(20).unwrap());
+    /// bitset.set(30).unwrap());
     ///
     /// assert_eq!(bitset.highest_set_bit_in_range(0, 100).unwrap(), Some(30;
     /// assert_eq!(bitset.highest_set_bit_in_range(15, 25).unwrap(), Some(20;
@@ -2323,11 +2323,11 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// let mut bitset = BoundedBitSet::<100>::new);
     /// assert_eq!(bitset.trailing_zeros(), 100); // All bits are 0
     ///
-    /// bitset.set(10).unwrap();
+    /// bitset.set(10).unwrap());
     /// assert_eq!(bitset.trailing_zeros(), 10;
     ///
-    /// bitset.set(0).unwrap();
-    /// assert_eq!(bitset.trailing_zeros(), 0;
+    /// bitset.set(0).unwrap());
+    /// assert_eq!(bitset.trailing_zeros(), 0);
     /// ```
     pub fn trailing_zeros(&self) -> usize {
         record_global_operation(OperationType::CollectionRead, self.verification_level;
@@ -2367,11 +2367,11 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// let mut bitset = BoundedBitSet::<100>::new);
     /// assert_eq!(bitset.leading_zeros(), 100); // All bits are 0
     ///
-    /// bitset.set(50).unwrap();
+    /// bitset.set(50).unwrap());
     /// assert_eq!(bitset.leading_zeros(), 49); // Bits 51-99 are unset
     ///
-    /// bitset.set(99).unwrap();
-    /// assert_eq!(bitset.leading_zeros(), 0;
+    /// bitset.set(99).unwrap());
+    /// assert_eq!(bitset.leading_zeros(), 0);
     /// ```
     pub fn leading_zeros(&self) -> usize {
         record_global_operation(OperationType::CollectionRead, self.verification_level;
@@ -2419,10 +2419,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(0).unwrap();
-    /// bitset.set(1).unwrap();
-    /// bitset.set(4).unwrap();
-    /// bitset.set(5).unwrap();
+    /// bitset.set(0).unwrap());
+    /// bitset.set(1).unwrap());
+    /// bitset.set(4).unwrap());
+    /// bitset.set(5).unwrap());
     ///
     /// assert_eq!(bitset.find_clear_sequence(2).unwrap(), Some(2)); // Bits 2-3 are clear
     /// assert_eq!(bitset.find_clear_sequence(3).unwrap(), Some(6)); // Bits 6-8 are clear
@@ -2485,9 +2485,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<8>::new);
-    /// bitset.set(1).unwrap();
-    /// bitset.set(3).unwrap();
-    /// bitset.set(5).unwrap();
+    /// bitset.set(1).unwrap());
+    /// bitset.set(3).unwrap());
+    /// bitset.set(5).unwrap());
     ///
     /// // Bits 1, 3, and 5 are set (indexed from 0)
     /// assert_eq!(bitset.to_binary_string(), "00000000 00000000 00000000 00101010";
@@ -2556,14 +2556,14 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap();
-    /// bitset.set(20).unwrap();
-    /// bitset.set(30).unwrap();
+    /// bitset.set(10).unwrap());
+    /// bitset.set(20).unwrap());
+    /// bitset.set(30).unwrap());
     ///
     /// assert_eq!(bitset.count_bits_in_range(0, 100).unwrap(), 3;
-    /// assert_eq!(bitset.count_bits_in_range(0, 15).unwrap(), 1;
-    /// assert_eq!(bitset.count_bits_in_range(15, 25).unwrap(), 1;
-    /// assert_eq!(bitset.count_bits_in_range(31, 100).unwrap(), 0;
+    /// assert_eq!(bitset.count_bits_in_range(0, 15).unwrap(), 1);
+    /// assert_eq!(bitset.count_bits_in_range(15, 25).unwrap(), 1);
+    /// assert_eq!(bitset.count_bits_in_range(31, 100).unwrap(), 0);
     /// ```
     pub fn count_bits_in_range(
         &self,
@@ -2632,12 +2632,12 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut a = BoundedBitSet::<100>::new);
-    /// a.set(10).unwrap();
-    /// a.set(20).unwrap();
+    /// a.set(10).unwrap());
+    /// a.set(20).unwrap());
     ///
     /// let b = a.clone_bitset);
-    /// assert!(b.contains(10).unwrap();
-    /// assert!(b.contains(20).unwrap();
+    /// assert!(b.contains(10).unwrap());
+    /// assert!(b.contains(20).unwrap());
     /// ```
     pub fn clone_bitset(&self) -> Self {
         let mut clone = Self::with_verification_level(self.verification_level;
@@ -2660,13 +2660,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut a = BoundedBitSet::<100>::new);
-    /// a.set(10).unwrap();
-    /// a.set(20).unwrap();
+    /// a.set(10).unwrap());
+    /// a.set(20).unwrap());
     ///
     /// let mut b = BoundedBitSet::<100>::new);
-    /// b.set(10).unwrap();
-    /// b.set(20).unwrap();
-    /// b.set(30).unwrap();
+    /// b.set(10).unwrap());
+    /// b.set(20).unwrap());
+    /// b.set(30).unwrap());
     ///
     /// assert!(a.is_subset_of(&b);
     /// assert!(!b.is_subset_of(&a);
@@ -2697,9 +2697,9 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap();
-    /// bitset.set(20).unwrap();
-    /// bitset.set(30).unwrap();
+    /// bitset.set(10).unwrap());
+    /// bitset.set(20).unwrap());
+    /// bitset.set(30).unwrap());
     ///
     /// let indices: Vec<usize> = bitset.iter_ones().collect();
     /// assert_eq!(indices, vec![10, 20, 30];
@@ -2716,8 +2716,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// use wrt_foundation::BoundedBitSet;
     ///
     /// let mut bitset = BoundedBitSet::<5>::new);
-    /// bitset.set(1).unwrap();
-    /// bitset.set(3).unwrap();
+    /// bitset.set(1).unwrap());
+    /// bitset.set(3).unwrap());
     ///
     /// let indices: Vec<usize> = bitset.iter_zeros().collect();
     /// assert_eq!(indices, vec![0, 2, 4];
@@ -2990,7 +2990,7 @@ impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3063,7 +3063,7 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3088,12 +3088,12 @@ mod tests {
     #[test]
     fn test_bounded_queue() {
         init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-        let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+        let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap());
 
         // Test enqueue
         for i in 0..5 {
-            queue.enqueue(i).unwrap();
+            queue.enqueue(i).unwrap());
         }
 
         // Test full queue
@@ -3111,15 +3111,15 @@ mod tests {
 
         // Test wrap-around behavior
         for i in 0..3 {
-            queue.enqueue(i).unwrap();
+            queue.enqueue(i).unwrap());
         }
 
         assert_eq!(queue.dequeue().unwrap(), Some(0;
         assert_eq!(queue.dequeue().unwrap(), Some(1;
 
-        queue.enqueue(3).unwrap();
-        queue.enqueue(4).unwrap();
-        queue.enqueue(5).unwrap();
+        queue.enqueue(3).unwrap());
+        queue.enqueue(4).unwrap());
+        queue.enqueue(5).unwrap());
 
         assert_eq!(queue.dequeue().unwrap(), Some(2;
         assert_eq!(queue.dequeue().unwrap(), Some(3;
@@ -3132,8 +3132,8 @@ mod tests {
     #[test]
     fn test_bounded_map() {
         init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-        let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+        let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap());
 
         // Test insert
         assert_eq!(map.insert(1, 10).unwrap(), None;
@@ -3159,11 +3159,11 @@ mod tests {
         assert_eq!(map.get(&2).unwrap(), None;
 
         // Test contains_key
-        assert!(map.contains_key(&1).unwrap();
-        assert!(!map.contains_key(&2).unwrap();
+        assert!(map.contains_key(&1).unwrap());
+        assert!(!map.contains_key(&2).unwrap());
 
         // Test clear
-        map.clear().unwrap();
+        map.clear().unwrap());
         assert!(map.is_empty();
     }
 
@@ -3171,33 +3171,33 @@ mod tests {
     #[test]
     fn test_bounded_set() {
         init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-        let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+        let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap());
 
         // Test insert
-        assert!(set.insert(1).unwrap();
-        assert!(set.insert(2).unwrap();
-        assert!(set.insert(3).unwrap();
+        assert!(set.insert(1).unwrap());
+        assert!(set.insert(2).unwrap());
+        assert!(set.insert(3).unwrap());
 
         // Test full set
         assert!(set.is_full();
         assert_eq!(set.insert(4).unwrap_err().kind, BoundedErrorKind::CapacityExceeded;
 
         // Test contains
-        assert!(set.contains(&1).unwrap();
-        assert!(set.contains(&2).unwrap();
-        assert!(set.contains(&3).unwrap();
-        assert!(!set.contains(&4).unwrap();
+        assert!(set.contains(&1).unwrap());
+        assert!(set.contains(&2).unwrap());
+        assert!(set.contains(&3).unwrap());
+        assert!(!set.contains(&4).unwrap());
 
         // Test insert duplicate (no effect)
-        assert!(!set.insert(1).unwrap();
+        assert!(!set.insert(1).unwrap());
 
         // Test remove
-        assert!(set.remove(&2).unwrap();
-        assert!(!set.contains(&2).unwrap();
+        assert!(set.remove(&2).unwrap());
+        assert!(!set.contains(&2).unwrap());
 
         // Test clear
-        set.clear().unwrap();
+        set.clear().unwrap());
         assert!(set.is_empty();
     }
 
@@ -3205,17 +3205,17 @@ mod tests {
     #[test]
     fn test_bounded_deque() {
         init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-        let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+        let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap());
 
         // Test push_back
         for i in 0..3 {
-            deque.push_back(i).unwrap();
+            deque.push_back(i).unwrap());
         }
 
         // Test push_front
-        deque.push_front(10).unwrap();
-        deque.push_front(20).unwrap();
+        deque.push_front(10).unwrap());
+        deque.push_front(20).unwrap());
 
         // Test full deque
         assert!(deque.is_full();
@@ -3239,9 +3239,9 @@ mod tests {
         assert_eq!(deque.pop_back().unwrap(), None;
 
         // Test clear
-        deque.push_back(1).unwrap();
-        deque.push_back(2).unwrap();
-        deque.clear().unwrap();
+        deque.push_back(1).unwrap());
+        deque.push_back(2).unwrap());
+        deque.clear().unwrap());
         assert!(deque.is_empty();
     }
 
@@ -3252,32 +3252,32 @@ mod tests {
         let mut bit_set = BoundedBitSet::<100>::new);
 
         // Test set
-        assert!(bit_set.set(10).unwrap();
-        assert!(bit_set.set(50).unwrap();
-        assert!(bit_set.set(99).unwrap();
+        assert!(bit_set.set(10).unwrap());
+        assert!(bit_set.set(50).unwrap());
+        assert!(bit_set.set(99).unwrap());
 
         // Test set already set bit (no effect)
-        assert!(!bit_set.set(10).unwrap();
+        assert!(!bit_set.set(10).unwrap());
 
         // Test contains
-        assert!(bit_set.contains(10).unwrap();
-        assert!(bit_set.contains(50).unwrap();
-        assert!(bit_set.contains(99).unwrap();
-        assert!(!bit_set.contains(20).unwrap();
+        assert!(bit_set.contains(10).unwrap());
+        assert!(bit_set.contains(50).unwrap());
+        assert!(bit_set.contains(99).unwrap());
+        assert!(!bit_set.contains(20).unwrap());
 
         // Test clear
-        assert!(bit_set.clear(50).unwrap();
-        assert!(!bit_set.contains(50).unwrap();
+        assert!(bit_set.clear(50).unwrap());
+        assert!(!bit_set.contains(50).unwrap());
 
         // Test clear already cleared bit (no effect)
-        assert!(!bit_set.clear(50).unwrap();
+        assert!(!bit_set.clear(50).unwrap());
 
         // Test toggle
         assert!(!bit_set.toggle(50).unwrap())); // Now set
-        assert!(bit_set.contains(50).unwrap();
+        assert!(bit_set.contains(50).unwrap());
 
         assert!(bit_set.toggle(50).unwrap())); // Now cleared
-        assert!(!bit_set.contains(50).unwrap();
+        assert!(!bit_set.contains(50).unwrap());
 
         // Test set_all and clear_all
         bit_set.set_all);
@@ -3285,7 +3285,7 @@ mod tests {
         assert!(bit_set.is_full();
 
         bit_set.clear_all);
-        assert_eq!(bit_set.len(), 0;
+        assert_eq!(bit_set.len(), 0);
         assert!(bit_set.is_empty();
 
         // Test out of bounds access

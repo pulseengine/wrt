@@ -29,7 +29,7 @@
 //! let wasm_binary = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00]; // Magic + version
 //! if let Ok(()) = decoder_no_alloc::verify_wasm_header(&wasm_binary) {
 //!     // Header is valid
-//!     let header = decoder_no_alloc::decode_module_header_simple(&wasm_binary).unwrap();
+//!     let header = decoder_no_alloc::decode_module_header_simple(&wasm_binary).unwrap());
 //!     // Use header information
 //! }
 //! ```
@@ -199,7 +199,7 @@ pub fn create_memory_provider(
     }
 
     // Create a no_std provider with the maximum module size
-    let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default);
+    let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default());
 
     // Write the bytes to the provider
     use wrt_foundation::safe_memory::Provider;
@@ -723,7 +723,7 @@ mod tests {
     #[test]
     fn test_verify_wasm_header_valid() {
         let result = verify_wasm_header(&MINIMAL_MODULE;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -743,12 +743,12 @@ mod tests {
     #[test]
     fn test_decode_module_header_minimal() {
         let result = decode_module_header_simple(&MINIMAL_MODULE;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let header = result.unwrap();
-        assert_eq!(header.version, 1;
+        let header = result.unwrap());
+        assert_eq!(header.version, 1);
         assert_eq!(header.size, 8;
-        assert_eq!(header.section_count, 0;
+        assert_eq!(header.section_count, 0);
     }
 
     #[test]
@@ -761,6 +761,6 @@ mod tests {
     #[test]
     fn test_validate_module_no_alloc() {
         let result = validate_module_no_alloc(&MINIMAL_MODULE, ValidatorType::Basic;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

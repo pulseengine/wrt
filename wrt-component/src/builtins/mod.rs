@@ -274,7 +274,7 @@ impl BuiltinRegistry {
         let builtin_type = handler.builtin_type);
         if self.handlers.iter().any(|h| h.builtin_type() == builtin_type) {
             // Replace the existing handler
-            let idx = self.handlers.iter().position(|h| h.builtin_type() == builtin_type).unwrap();
+            let idx = self.handlers.iter().position(|h| h.builtin_type() == builtin_type).unwrap());
             self.handlers[idx] = handler;
         } else {
             // Add a new handler
@@ -438,7 +438,7 @@ mod tests {
         let result = registry.call(BuiltinType::ResourceCreate, &args;
 
         // Verify result
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), args;
 
         // Call an unsupported built-in
@@ -469,7 +469,7 @@ mod tests {
         let result = cloned.call(BuiltinType::ResourceCreate, &args;
 
         // Verify result
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), args;
     }
 
@@ -493,29 +493,29 @@ mod tests {
         assert!(registry.supports_builtin(BuiltinType::AsyncWait);
 
         // Test creating an async value
-        let result = registry.call(BuiltinType::AsyncNew, &[]).unwrap();
-        assert_eq!(result.len(), 1;
+        let result = registry.call(BuiltinType::AsyncNew, &[]).unwrap());
+        assert_eq!(result.len(), 1);
 
         match &result[0] {
             WrtComponentValue::U32(id) => {
                 // Test polling it (should be pending)
                 let poll_result =
-                    registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap();
+                    registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap());
                 assert_eq!(poll_result, vec![WrtComponentValue::U32(0)];
 
                 // Complete the async value
                 let store = registry.async_store);
-                let mut async_store = store.lock().unwrap();
-                async_store.set_result(*id, vec![WrtComponentValue::U32(42)]).unwrap();
+                let mut async_store = store.lock().unwrap());
+                async_store.set_result(*id, vec![WrtComponentValue::U32(42)]).unwrap());
 
                 // Test polling again (should be ready)
                 let poll_result =
-                    registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap();
+                    registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap());
                 assert_eq!(poll_result, vec![WrtComponentValue::U32(1)];
 
                 // Test getting the result
                 let get_result =
-                    registry.call(BuiltinType::AsyncGet, &[WrtComponentValue::U32(*id)]).unwrap();
+                    registry.call(BuiltinType::AsyncGet, &[WrtComponentValue::U32(*id)]).unwrap());
                 assert_eq!(get_result, vec![WrtComponentValue::U32(42)];
             }
             _ => panic!("Expected U32 result"),

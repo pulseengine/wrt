@@ -650,30 +650,30 @@ mod tests {
         let mut manager = ResourceLifecycleManager::new);
 
         // Register a type
-        manager.register_type(1, "TestResource", None).unwrap();
+        manager.register_type(1, "TestResource", None).unwrap());
 
         // Create a resource
-        let handle = manager.create_resource(1, 100, None).unwrap();
+        let handle = manager.create_resource(1, 100, None).unwrap());
         assert_ne!(handle, INVALID_HANDLE;
 
         // Verify resource exists
-        let resource = manager.get_resource(handle).unwrap();
-        assert_eq!(resource.resource_type.type_idx, 1;
+        let resource = manager.get_resource(handle).unwrap());
+        assert_eq!(resource.resource_type.type_idx, 1);
         assert_eq!(resource.metadata.owner, 100;
 
         // Borrow the resource
-        manager.borrow_resource(handle, 200, false).unwrap();
-        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 1;
+        manager.borrow_resource(handle, 200, false).unwrap());
+        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 1);
 
         // Try to drop with active borrow (should fail)
         assert!(manager.drop_resource(handle).is_err();
 
         // Release borrow
-        manager.release_borrow(handle, 200).unwrap();
-        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 0;
+        manager.release_borrow(handle, 200).unwrap());
+        assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 0);
 
         // Drop resource
-        manager.drop_resource(handle).unwrap();
+        manager.drop_resource(handle).unwrap());
 
         // Verify resource is gone
         assert!(manager.get_resource(handle).is_err();
@@ -684,11 +684,11 @@ mod tests {
         let mut manager = ResourceLifecycleManager::new);
 
         // Register and create
-        manager.register_type(1, "TestResource", None).unwrap();
-        let handle = manager.create_resource(1, 100, None).unwrap();
+        manager.register_type(1, "TestResource", None).unwrap());
+        let handle = manager.create_resource(1, 100, None).unwrap());
 
         // Transfer ownership
-        manager.transfer_ownership(handle, 100, 200).unwrap();
+        manager.transfer_ownership(handle, 100, 200).unwrap());
         assert_eq!(manager.get_resource(handle).unwrap().metadata.owner, 200;
 
         // Try to transfer from wrong owner (should fail)
@@ -700,23 +700,23 @@ mod tests {
         let mut manager = ResourceLifecycleManager::new);
 
         // Register and create
-        manager.register_type(1, "TestResource", None).unwrap();
-        let handle = manager.create_resource(1, 100, None).unwrap();
+        manager.register_type(1, "TestResource", None).unwrap());
+        let handle = manager.create_resource(1, 100, None).unwrap());
 
         // Multiple immutable borrows should work
-        manager.borrow_resource(handle, 200, false).unwrap();
-        manager.borrow_resource(handle, 300, false).unwrap();
+        manager.borrow_resource(handle, 200, false).unwrap());
+        manager.borrow_resource(handle, 300, false).unwrap());
         assert_eq!(manager.get_resource(handle).unwrap().borrow_count, 2;
 
         // Mutable borrow with existing borrows should fail
         assert!(manager.borrow_resource(handle, 400, true).is_err();
 
         // Release all borrows
-        manager.release_borrow(handle, 200).unwrap();
-        manager.release_borrow(handle, 300).unwrap();
+        manager.release_borrow(handle, 200).unwrap());
+        manager.release_borrow(handle, 300).unwrap());
 
         // Now mutable borrow should work
-        manager.borrow_resource(handle, 400, true).unwrap();
+        manager.borrow_resource(handle, 400, true).unwrap());
 
         // Another borrow should fail
         assert!(manager.borrow_resource(handle, 500, false).is_err();
@@ -725,17 +725,17 @@ mod tests {
     #[test]
     fn test_resource_guard() {
         let mut manager = ResourceLifecycleManager::new);
-        manager.register_type(1, "TestResource", None).unwrap();
+        manager.register_type(1, "TestResource", None).unwrap());
 
         {
-            let handle = manager.create_resource(1, 100, None).unwrap();
+            let handle = manager.create_resource(1, 100, None).unwrap());
             let _guard = ResourceGuard::new_own(&mut manager, handle;
             // Resource will be dropped when guard goes out of scope
         }
 
         // Verify metrics
-        assert_eq!(manager.get_metrics().total_created, 1;
-        assert_eq!(manager.get_metrics().total_destroyed, 1;
-        assert_eq!(manager.get_metrics().active_count, 0;
+        assert_eq!(manager.get_metrics().total_created, 1);
+        assert_eq!(manager.get_metrics().total_destroyed, 1);
+        assert_eq!(manager.get_metrics().active_count, 0);
     }
 }

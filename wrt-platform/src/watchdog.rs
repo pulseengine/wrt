@@ -351,23 +351,23 @@ mod tests {
         };
 
         let watchdog = SoftwareWatchdog::new(config;
-        watchdog.start().unwrap();
+        watchdog.start().unwrap());
 
         // Watch a task
         let handle = watchdog
             .watch_task("test_task", None, WatchdogAction::Log)
-            .unwrap();
+            .unwrap());
 
         // Send heartbeats
         for _ in 0..5 {
             std::thread::sleep(Duration::from_millis(50;
-            handle.heartbeat().unwrap();
+            handle.heartbeat().unwrap());
         }
 
         // Cancel the task
-        handle.cancel().unwrap();
+        handle.cancel().unwrap());
 
-        watchdog.stop().unwrap();
+        watchdog.stop().unwrap());
     }
 
     #[test]
@@ -380,7 +380,7 @@ mod tests {
         };
 
         let watchdog = SoftwareWatchdog::new(config;
-        watchdog.start().unwrap();
+        watchdog.start().unwrap());
 
         // Watch a task with kill action
         let _handle = watchdog
@@ -389,20 +389,20 @@ mod tests {
                 Some(Duration::from_millis(50)),
                 WatchdogAction::Kill,
             )
-            .unwrap();
+            .unwrap());
 
         // Don't send heartbeats, let it timeout
         std::thread::sleep(Duration::from_millis(100;
 
         // Task should have timed out (verified through logs)
         
-        watchdog.stop().unwrap();
+        watchdog.stop().unwrap());
     }
 
     #[test]
     fn test_watchdog_integration() {
-        let watchdog = SoftwareWatchdog::new(WatchdogConfig::default);
-        watchdog.start().unwrap();
+        let watchdog = SoftwareWatchdog::new(WatchdogConfig::default());
+        watchdog.start().unwrap());
 
         // Test function watching
         let result = watchdog
@@ -414,10 +414,10 @@ mod tests {
                 }
                 Ok::<_, Error>(42)
             })
-            .unwrap();
+            .unwrap());
 
         assert_eq!(result, 42;
 
-        watchdog.stop().unwrap();
+        watchdog.stop().unwrap());
     }
 }

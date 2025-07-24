@@ -396,7 +396,7 @@ where
     /// Create a new unified component runtime with default limits
     #[cfg(not(feature = "comprehensive-limits"))]
     pub fn new_default() -> core::result::Result<Self, wrt_error::Error> {
-        let memory_budget = ComponentMemoryBudget::default);
+        let memory_budget = ComponentMemoryBudget::default());
         let global_memory_adapter = PlatformMemoryAdapter::new(64 * 1024 * 1024)
             .map_err(|_| Error::memory_error("Failed to create memory adapter"))?; // 64MB default
         
@@ -603,7 +603,7 @@ mod tests {
     
     #[test]
     fn test_component_memory_budget() {
-        let budget = ComponentMemoryBudget::default);
+        let budget = ComponentMemoryBudget::default());
         
         assert!(budget.total_memory > 0);
         assert!(budget.available_component_memory <= budget.total_memory);
@@ -637,10 +637,10 @@ mod tests {
     #[test]
     fn test_unified_component_runtime_creation() {
         let runtime = UnifiedComponentRuntime::<DefaultRuntimeProvider>::new_default);
-        assert!(runtime.is_ok();
+        assert!(runtime.is_ok());
         
-        let runtime = runtime.unwrap();
-        assert_eq!(runtime.instance_count(), 0;
+        let runtime = runtime.unwrap());
+        assert_eq!(runtime.instance_count(), 0);
         assert!(runtime.can_instantiate_component(1024);
     }
 }

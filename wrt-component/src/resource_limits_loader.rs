@@ -221,20 +221,20 @@ mod tests {
         wasm.extend_from_slice(section_data;
         
         // Test finding the section
-        let result = find_custom_section(&wasm, "test.section").unwrap();
+        let result = find_custom_section(&wasm, "test.section").unwrap());
         assert!(result.is_some();
         assert_eq!(result.unwrap(), section_data;
         
         // Test finding non-existent section
-        let result = find_custom_section(&wasm, "non.existent").unwrap();
+        let result = find_custom_section(&wasm, "non.existent").unwrap());
         assert!(result.is_none();
     }
     
     #[test]
     fn test_leb128_parsing() {
         // Test simple values
-        assert_eq!(read_leb128_u32(&[0x00]).unwrap(), (0, 1;
-        assert_eq!(read_leb128_u32(&[0x7F]).unwrap(), (127, 1;
+        assert_eq!(read_leb128_u32(&[0x00]).unwrap(), (0, 1);
+        assert_eq!(read_leb128_u32(&[0x7F]).unwrap(), (127, 1);
         assert_eq!(read_leb128_u32(&[0x80, 0x01]).unwrap(), (128, 2;
         assert_eq!(read_leb128_u32(&[0x80, 0x80, 0x01]).unwrap(), (16384, 3;
     }

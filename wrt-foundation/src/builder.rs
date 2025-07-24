@@ -564,7 +564,7 @@ mod tests {
         let builder = BoundedBuilder::<u32, 10, NoStdProvider<1024>>::new()
             .with_verification_level(VerificationLevel::Full;
 
-        let stack = builder.build_stack().unwrap();
+        let stack = builder.build_stack().unwrap());
         assert_eq!(stack.verification_level(), VerificationLevel::Full;
         assert_eq!(stack.capacity(), 10;
     }
@@ -575,7 +575,7 @@ mod tests {
             .with_content("test")
             .with_truncation(true;
 
-        let string = builder.build_string().unwrap();
+        let string = builder.build_string().unwrap());
         assert_eq!(string.as_str().unwrap(), "test";
     }
 
@@ -584,7 +584,7 @@ mod tests {
     fn test_resource_type_builder() {
         // Test Record type
         let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new);
-        let resource_type = builder.as_record(vec!["field1", "field2"]).unwrap().build().unwrap();
+        let resource_type = builder.as_record(vec!["field1", "field2"]).unwrap().build().unwrap());
 
         match resource_type {
             ResourceType::Record(fields) => {
@@ -597,12 +597,12 @@ mod tests {
 
         // Test Aggregate type
         let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new);
-        let resource_type = builder.as_aggregate(vec![1, 2, 3]).build().unwrap();
+        let resource_type = builder.as_aggregate(vec![1, 2, 3]).build().unwrap());
 
         match resource_type {
             ResourceType::Aggregate(ids) => {
                 assert_eq!(ids.len(), 3;
-                assert_eq!(ids[0], 1;
+                assert_eq!(ids[0], 1);
                 assert_eq!(ids[1], 2;
                 assert_eq!(ids[2], 3;
             }
@@ -618,7 +618,7 @@ mod tests {
             .as_record(vec!["field1", "field2"])
             .unwrap()
             .build()
-            .unwrap();
+            .unwrap());
 
         // Now create a resource item
         let builder = ResourceItemBuilder::<NoStdProvider<1024>>::new()
@@ -626,7 +626,7 @@ mod tests {
             .with_type(resource_type)
             .with_name("test_resource";
 
-        let resource_item = builder.build().unwrap();
+        let resource_item = builder.build().unwrap());
 
         assert_eq!(resource_item.id, 42;
         assert_eq!(resource_item.name.unwrap().as_str().unwrap(), "test_resource";

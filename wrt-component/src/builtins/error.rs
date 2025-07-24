@@ -207,7 +207,7 @@ impl BuiltinHandler for ErrorTraceHandler {
         };
 
         // Add trace to the error context
-        let mut store = self.store.lock().unwrap();
+        let mut store = self.store.lock().unwrap());
         let error_context = store.get_error_mut(error_id).ok_or_else(|| {
             Error::resource_not_found("Error occurred")
         })?;
@@ -243,17 +243,17 @@ mod tests {
         // Get the error context
         let error = store.get_error(id).expect("Error context should exist");
         assert_eq!(error.message(), "Test error";
-        assert_eq!(error.trace().len(), 0;
+        assert_eq!(error.trace().len(), 0);
 
         // Add a trace entry
         store.get_error_mut(id).unwrap().add_trace("Trace 1";
-        let error = store.get_error(id).unwrap();
-        assert_eq!(error.trace().len(), 1;
+        let error = store.get_error(id).unwrap());
+        assert_eq!(error.trace().len(), 1);
         assert_eq!(error.trace()[0], "Trace 1";
 
         // Add metadata
         store.get_error_mut(id).unwrap().add_metadata("key", "value";
-        let error = store.get_error(id).unwrap();
+        let error = store.get_error(id).unwrap());
         assert_eq!(error.get_metadata("key").unwrap(), "value";
 
         // Drop the error context
@@ -269,7 +269,7 @@ mod tests {
         // Test with valid arguments
         let args = vec![ComponentValue::String("Test error".to_string())];
         let result = handler.execute(&args).expect("Handler should succeed");
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         let id = match result[0] {
             ComponentValue::U64(id) => id,
             _ => panic!("Expected U64 result"),
@@ -297,11 +297,11 @@ mod tests {
         // Test with valid arguments
         let args = vec![ComponentValue::U64(id), ComponentValue::String("Trace entry".to_string())];
         let result = handler.execute(&args).expect("Handler should succeed");
-        assert_eq!(result.len(), 0;
+        assert_eq!(result.len(), 0);
 
         // Verify the trace was added
         let error = store.lock().unwrap().get_error(id).expect("Error context should exist");
-        assert_eq!(error.trace().len(), 1;
+        assert_eq!(error.trace().len(), 1);
         assert_eq!(error.trace()[0], "Trace entry";
 
         // Test with invalid error ID

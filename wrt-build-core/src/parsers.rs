@@ -1311,9 +1311,9 @@ mod tests {
         let json_message = r#"{"reason":"compiler-message","package_id":"test-package","message":{"message":"cannot find value `x` in this scope","code":{"code":"E0425","explanation":null},"level":"error","spans":[{"file_name":"/workspace/src/main.rs","byte_start":100,"byte_end":101,"line_start":10,"line_end":10,"column_start":5,"column_end":6,"is_primary":true,"text":[],"label":"not found in this scope","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":null}}"#;
 
         let parser = CargoOutputParser::new("/workspace";
-        let diagnostics = parser.parse_output(json_message, "", Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output(json_message, "", Path::new("/workspace")).unwrap());
 
-        assert_eq!(diagnostics.len(), 1;
+        assert_eq!(diagnostics.len(), 1);
         let diagnostic = &diagnostics[0];
 
         assert_eq!(diagnostic.file, "src/main.rs";
@@ -1332,9 +1332,9 @@ mod tests {
         let parser = GenericOutputParser::new("test-tool".to_string(), "/workspace";
         let stderr = "file.rs:10:5: error: something went wrong";
 
-        let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap());
 
-        assert_eq!(diagnostics.len(), 1;
+        assert_eq!(diagnostics.len(), 1);
         let diagnostic = &diagnostics[0];
 
         assert_eq!(diagnostic.file, "file.rs";
@@ -1348,7 +1348,7 @@ mod tests {
         let parser = KaniOutputParser::new("/workspace";
         let output = "VERIFICATION:- FAILED\nassertion failed: x > 0";
 
-        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap());
 
         assert_eq!(diagnostics.len(), 2;
         assert_eq!(diagnostics[0].severity, Severity::Error;
@@ -1369,7 +1369,7 @@ backtrace:
    at /workspace/src/main.rs:10:5
    at /workspace/src/lib.rs:20:10"#;
 
-        let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output("", stderr, Path::new("/workspace")).unwrap());
 
         assert!(!diagnostics.is_empty();
         let diag = &diagnostics[0];
@@ -1403,9 +1403,9 @@ backtrace:
             }
         }"#;
 
-        let diagnostics = parser.parse_output(json_output, "", Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output(json_output, "", Path::new("/workspace")).unwrap());
 
-        assert_eq!(diagnostics.len(), 1;
+        assert_eq!(diagnostics.len(), 1);
         let diag = &diagnostics[0];
         assert_eq!(diag.severity, Severity::Warning;
         assert_eq!(diag.source, "cargo-audit";
@@ -1422,7 +1422,7 @@ backtrace:
     
 2 vulnerabilities found"#;
 
-        let diagnostics = parser.parse_output(text_output, "", Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output(text_output, "", Path::new("/workspace")).unwrap());
 
         assert!(diagnostics.len() >= 2);
         assert!(diagnostics.iter().any(|d| d.code == Some("RUSTSEC-2021-0139".to_string()));
@@ -1443,7 +1443,7 @@ backtrace:
 warning: missing code example in documentation
   --> /workspace/src/lib.rs:20:1"#;
 
-        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap());
 
         assert_eq!(diagnostics.len(), 2;
         assert_eq!(diagnostics[0].severity, Severity::Error;
@@ -1463,7 +1463,7 @@ src/main.rs: 85.00%
 src/lib.rs: 45.00%
   Uncovered Lines: 10-15, 20, 25-30"#;
 
-        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap();
+        let diagnostics = parser.parse_output(output, "", Path::new("/workspace")).unwrap());
 
         // Should have overall coverage warning, file warning, and uncovered lines
         assert!(diagnostics.len() > 3);

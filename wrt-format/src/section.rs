@@ -480,7 +480,7 @@ mod tests {
         let section = CustomSection::new("test-section".to_string(), test_data.clone();
 
         // Serialize
-        let binary = section.to_binary().unwrap();
+        let binary = section.to_binary().unwrap());
 
         // Check that the binary data contains the section name
         let name_bytes = "test-section".as_bytes);
@@ -514,10 +514,10 @@ mod tests {
         let section = CustomSection::new("test-section".to_string(), test_data;
 
         // Create a safe slice
-        let safe_slice = SafeSlice::new(&section.data).unwrap();
+        let safe_slice = SafeSlice::new(&section.data).unwrap());
 
         // Get the data
-        let data = safe_slice.data().unwrap();
+        let data = safe_slice.data().unwrap());
 
         // Check it matches our test data
         assert_eq!(data, &[1, 2, 3, 4];
@@ -533,7 +533,7 @@ mod tests {
         assert_eq!(header_bytes[0], ComponentSectionType::CoreModule as u8;
 
         // Parse the header
-        let (header, _) = parse_component_section_header(&header_bytes, 0).unwrap();
+        let (header, _) = parse_component_section_header(&header_bytes, 0).unwrap());
 
         // Check the parsed values match what we wrote
         assert_eq!(header.section_type, ComponentSectionType::CoreModule;
@@ -549,7 +549,7 @@ mod tests {
             format_component_section(ComponentSectionType::CoreModule, || section_content.clone();
 
         // Parse the section header
-        let (header, content_pos) = parse_component_section_header(&section_bytes, 0).unwrap();
+        let (header, content_pos) = parse_component_section_header(&section_bytes, 0).unwrap());
 
         // Check the header values
         assert_eq!(header.section_type, ComponentSectionType::CoreModule;
@@ -575,7 +575,7 @@ mod tests {
         header_bytes.push(42); // 42 fits in one byte for LEB128
 
         // Parse should fail
-        let result = parse_component_section_header(&header_bytes, 0;
+        let result = parse_component_section_header(&header_bytes, 0);
         assert!(result.is_err();
     }
 }

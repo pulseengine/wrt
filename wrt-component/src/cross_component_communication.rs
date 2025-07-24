@@ -841,7 +841,7 @@ mod tests {
     #[test]
     fn test_communication_strategy_creation() {
         let strategy = ComponentCommunicationStrategy::new);
-        assert_eq!(strategy.stats.function_calls_intercepted, 0;
+        assert_eq!(strategy.stats.function_calls_intercepted, 0);
         assert!(strategy.config.enable_security);
     }
 
@@ -852,7 +852,7 @@ mod tests {
         let routing_info = strategy.parse_component_call("math_component::add";
         assert!(routing_info.is_some();
         
-        let info = routing_info.unwrap();
+        let info = routing_info.unwrap());
         assert_eq!(info.target_component, "math_component";
         assert_eq!(info.function_name, "add";
     }
@@ -879,7 +879,7 @@ mod tests {
         };
         
         let result = strategy.validate_security_policy(&routing_info;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -892,9 +892,9 @@ mod tests {
         ];
         
         let result = strategy.marshal_call_parameters(&args;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
-        let marshaling_result = result.unwrap();
+        let marshaling_result = result.unwrap());
         assert!(marshaling_result.success);
         assert_eq!(marshaling_result.metadata.original_count, 2;
     }
@@ -905,7 +905,7 @@ mod tests {
         
         let value = wrt_foundation::values::Value::I32(123;
         let result = strategy.convert_value_to_component_value(&value;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         match result.unwrap() {
             ComponentValue::S32(v) => assert_eq!(v, 123),
@@ -924,7 +924,7 @@ mod tests {
         ];
         
         let size = strategy.calculate_marshaled_size(&values;
-        assert!(size.is_ok();
+        assert!(size.is_ok());
         assert!(size.unwrap() > 0);
     }
 
@@ -932,7 +932,7 @@ mod tests {
     fn test_instance_registration() {
         let mut strategy = ComponentCommunicationStrategy::new);
         
-        strategy.register_instance(1, "math_component".to_string()).unwrap();
+        strategy.register_instance(1, "math_component".to_string()).unwrap());
         assert!(strategy.instance_registry.contains_key(&1);
         assert_eq!(strategy.instance_registry.get(&1), Some(&"math_component".to_string();
     }
@@ -955,7 +955,7 @@ mod tests {
 
     #[test]
     fn test_security_policy_defaults() {
-        let policy = ComponentSecurityPolicy::default);
+        let policy = ComponentSecurityPolicy::default());
         assert!(policy.allowed_targets.is_empty();
         assert!(policy.allowed_functions.is_empty();
         assert!(!policy.allow_resource_transfer);

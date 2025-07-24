@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn test_grant_region_creation() {
         let mut buffer = [0u8; 4096];
-        let ptr = NonNull::new(buffer.as_mut_ptr()).unwrap();
+        let ptr = NonNull::new(buffer.as_mut_ptr()).unwrap());
         let region = GrantRegion::new(ptr, 4096, syscall::PROT_READ | syscall::PROT_WRITE;
 
         assert_eq!(region.size, 4096;
@@ -447,7 +447,7 @@ mod tests {
     #[test]
     fn test_grant_region_allocation() {
         let mut buffer = [0u8; 4096];
-        let ptr = NonNull::new(buffer.as_mut_ptr()).unwrap();
+        let ptr = NonNull::new(buffer.as_mut_ptr()).unwrap());
         let mut region = GrantRegion::new(ptr, 4096, syscall::PROT_READ | syscall::PROT_WRITE;
 
         let allocated_ptr = region.allocate(1024;
@@ -484,9 +484,9 @@ mod tests {
             .with_static_buffer(unsafe { &mut BUFFER })
             .build);
 
-        assert!(result.is_ok();
-        let allocator = result.unwrap();
-        assert_eq!(allocator.grant_regions_count, 1;
+        assert!(result.is_ok());
+        let allocator = result.unwrap());
+        assert_eq!(allocator.grant_regions_count, 1);
         assert!(allocator.grant_regions[0].is_some();
         assert_eq!(allocator.grant_regions[0].as_ref().unwrap().size, WASM_PAGE_SIZE;
     }

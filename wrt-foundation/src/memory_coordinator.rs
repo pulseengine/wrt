@@ -304,14 +304,14 @@ mod tests {
             .add_crate_budget(TestCrate::App, 2048)
             .total_budget(4096;
 
-        builder.build(&coordinator).unwrap();
+        builder.build(&coordinator).unwrap());
 
         // Test allocation
-        let alloc_id = coordinator.register_allocation(TestCrate::Core, 256).unwrap();
+        let alloc_id = coordinator.register_allocation(TestCrate::Core, 256).unwrap());
         assert_eq!(coordinator.get_crate_allocation(TestCrate::Core), 256;
 
         // Return allocation
-        coordinator.return_allocation(TestCrate::Core, alloc_id, 256).unwrap();
-        assert_eq!(coordinator.get_crate_allocation(TestCrate::Core), 0;
+        coordinator.return_allocation(TestCrate::Core, alloc_id, 256).unwrap());
+        assert_eq!(coordinator.get_crate_allocation(TestCrate::Core), 0);
     }
 }

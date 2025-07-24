@@ -41,7 +41,7 @@ mod tests {
         
         // Fill it with values
         for i in 0..5 {
-            assert!(vec.push(i).is_ok();
+            assert!(vec.push(i).is_ok());
         }
         
         // Test operations
@@ -53,7 +53,7 @@ mod tests {
         
         // Test full capacity
         for i in 5..10 {
-            assert!(vec.push(i).is_ok();
+            assert!(vec.push(i).is_ok());
         }
         
         // Test overflow prevention
@@ -66,9 +66,9 @@ mod tests {
         let mut stack = BoundedStack::<u32, 5>::new);
         
         // Push values
-        assert!(stack.push(1).is_ok();
-        assert!(stack.push(2).is_ok();
-        assert!(stack.push(3).is_ok();
+        assert!(stack.push(1).is_ok());
+        assert!(stack.push(2).is_ok());
+        assert!(stack.push(3).is_ok());
         
         // Test LIFO behavior
         assert_eq!(stack.pop(), Some(3;
@@ -76,9 +76,9 @@ mod tests {
         assert_eq!(stack.top(), Some(&1;
         
         // Test overflow prevention
-        stack.push(2).unwrap();
-        stack.push(3).unwrap();
-        stack.push(4).unwrap();
+        stack.push(2).unwrap());
+        stack.push(3).unwrap());
+        stack.push(4).unwrap());
         assert!(stack.push(5).is_err();
     }
     
@@ -102,7 +102,7 @@ mod tests {
         
         // Test operations
         assert_eq!(slice.len(), 5;
-        assert_eq!(slice.read_u8(0).unwrap(), 1;
+        assert_eq!(slice.read_u8(0).unwrap(), 1);
         assert_eq!(slice.read_u8(4).unwrap(), 5;
         
         // Test bounds checking
@@ -203,17 +203,17 @@ mod tests {
         let mut stack = SafeStack::<u32, 5>::new);
         
         // Test stack operations
-        assert!(stack.push(1).is_ok();
-        assert!(stack.push(2).is_ok();
+        assert!(stack.push(1).is_ok());
+        assert!(stack.push(2).is_ok());
         
         assert_eq!(stack.pop(), Some(2;
         assert_eq!(stack.peek(), Some(&1;
         
         // Fill to capacity
-        stack.push(2).unwrap();
-        stack.push(3).unwrap();
-        stack.push(4).unwrap();
-        stack.push(5).unwrap();
+        stack.push(2).unwrap());
+        stack.push(3).unwrap());
+        stack.push(4).unwrap());
+        stack.push(5).unwrap());
         
         // Test overflow protection
         assert!(stack.push(6).is_err();

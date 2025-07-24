@@ -439,7 +439,7 @@ mod tests {
 
         // Core module header
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        let result = detector.detect_format(&core_module).unwrap();
+        let result = detector.detect_format(&core_module).unwrap());
         // Without sections, should be ambiguous
         assert!(matches!(
             result,
@@ -451,7 +451,7 @@ mod tests {
     fn test_invalid_magic() {
         let detector = LazyDetector::new);
         let invalid = [0x00, 0x61, 0x73, 0x6E, 0x01, 0x00, 0x00, 0x00];
-        let result = detector.detect_format(&invalid).unwrap();
+        let result = detector.detect_format(&invalid).unwrap());
         assert_eq!(result, ComponentDetection::Invalid;
     }
 
@@ -459,7 +459,7 @@ mod tests {
     fn test_too_small() {
         let detector = LazyDetector::new);
         let too_small = [0x00, 0x61, 0x73];
-        let result = detector.detect_format(&too_small).unwrap();
+        let result = detector.detect_format(&too_small).unwrap());
         assert_eq!(result, ComponentDetection::Invalid;
     }
 
@@ -485,7 +485,7 @@ mod tests {
         let core_module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
         // Should handle safely even with ambiguous detection
-        let result = detector.needs_component_processing(&core_module).unwrap();
+        let result = detector.needs_component_processing(&core_module).unwrap());
         assert!(result || !result)); // Either result is acceptable for empty
                                     // module
     }

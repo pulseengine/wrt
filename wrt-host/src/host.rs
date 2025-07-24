@@ -290,7 +290,7 @@ impl BuiltinHost {
         let provider = create_host_provider().expect("Failed to create host provider");
         let name = HostString::from_str(builtin_type.name(), provider)
             .expect("Failed to create builtin name");
-        let _ = self.handlers.insert(name, HandlerData::default);
+        let _ = self.handlers.insert(name, HandlerData::default());
     }
 
     /// Register a fallback for a critical built-in function
@@ -314,7 +314,7 @@ impl BuiltinHost {
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
     {
         // In no_std mode, we can't store function handlers dynamically
-        let _ = self.critical_builtins.insert(builtin_type, HandlerData::default);
+        let _ = self.critical_builtins.insert(builtin_type, HandlerData::default());
     }
 
     /// Check if a built-in type is implemented
@@ -522,7 +522,7 @@ mod tests {
         let mut engine = );
         let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(42)];
     }
 
@@ -540,7 +540,7 @@ mod tests {
         let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
         // Should use the fallback
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(99)];
 
         // Now register a regular handler
@@ -549,7 +549,7 @@ mod tests {
         let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
         // Should use the regular handler, not the fallback
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(42)];
     }
 

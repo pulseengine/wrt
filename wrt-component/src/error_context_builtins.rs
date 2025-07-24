@@ -752,8 +752,8 @@ mod tests {
         assert_eq!(ErrorSeverity::Error.as_str(), "error";
         assert_eq!(ErrorSeverity::Critical.as_str(), "critical";
 
-        assert_eq!(ErrorSeverity::Info.as_u32(), 0;
-        assert_eq!(ErrorSeverity::Warning.as_u32(), 1;
+        assert_eq!(ErrorSeverity::Info.as_u32(), 0);
+        assert_eq!(ErrorSeverity::Warning.as_u32(), 1);
         assert_eq!(ErrorSeverity::Error.as_u32(), 2;
         assert_eq!(ErrorSeverity::Critical.as_u32(), 3;
 
@@ -777,7 +777,7 @@ mod tests {
         #[cfg(not(any(feature = "std", )))]
         {
             let frame = StackFrame::new("test_function").unwrap()
-                .with_location("test.rs", 42, 10).unwrap();
+                .with_location("test.rs", 42, 10).unwrap());
             assert_eq!(frame.function_name(), "test_function";
             assert_eq!(frame.file_name(), Some("test.rs";
             assert_eq!(frame.line_number, Some(42;
@@ -792,15 +792,15 @@ mod tests {
             let context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error;
             assert_eq!(context.debug_message(), "Test error";
             assert_eq!(context.severity, ErrorSeverity::Error;
-            assert_eq!(context.stack_frame_count(), 0;
+            assert_eq!(context.stack_frame_count(), 0);
         }
 
         #[cfg(not(any(feature = "std", )))]
         {
-            let context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
+            let context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap());
             assert_eq!(context.debug_message(), "Test error";
             assert_eq!(context.severity, ErrorSeverity::Error;
-            assert_eq!(context.stack_frame_count(), 0;
+            assert_eq!(context.stack_frame_count(), 0);
         }
     }
 
@@ -819,9 +819,9 @@ mod tests {
 
         #[cfg(not(any(feature = "std", )))]
         {
-            let mut context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
-            context.set_metadata("key1", ComponentValue::I32(42)).unwrap();
-            context.set_metadata("key2", ComponentValue::Bool(true)).unwrap();
+            let mut context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap());
+            context.set_metadata("key1", ComponentValue::I32(42)).unwrap());
+            context.set_metadata("key2", ComponentValue::Bool(true)).unwrap());
 
             assert_eq!(context.get_metadata("key1"), Some(&ComponentValue::I32(42);
             assert_eq!(context.get_metadata("key2"), Some(&ComponentValue::Bool(true);
@@ -852,17 +852,17 @@ mod tests {
 
         #[cfg(not(any(feature = "std", )))]
         {
-            let mut context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
+            let mut context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap());
             let frame1 = StackFrame::new("function1").unwrap()
-                .with_location("file1.rs", 10, 5).unwrap();
+                .with_location("file1.rs", 10, 5).unwrap());
             let frame2 = StackFrame::new("function2").unwrap()
-                .with_location("file2.rs", 20, 15).unwrap();
+                .with_location("file2.rs", 20, 15).unwrap());
 
-            context.add_stack_frame(frame1).unwrap();
-            context.add_stack_frame(frame2).unwrap();
+            context.add_stack_frame(frame1).unwrap());
+            context.add_stack_frame(frame2).unwrap());
 
             assert_eq!(context.stack_frame_count(), 2;
-            let trace = context.format_stack_trace().unwrap();
+            let trace = context.format_stack_trace().unwrap());
             assert!(trace.as_str().contains("function1");
             assert!(trace.as_str().contains("function2");
         }
@@ -871,16 +871,16 @@ mod tests {
     #[test]
     fn test_error_context_registry() {
         let mut registry = ErrorContextRegistry::new);
-        assert_eq!(registry.context_count(), 0;
+        assert_eq!(registry.context_count(), 0);
 
         #[cfg(feature = "std")]
         let context = ErrorContextImpl::new("Test error".to_string(), ErrorSeverity::Error;
         #[cfg(not(any(feature = "std", )))]
-        let context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap();
+        let context = ErrorContextImpl::new("Test error", ErrorSeverity::Error).unwrap());
 
         let context_id = context.id;
-        registry.register_context(context).unwrap();
-        assert_eq!(registry.context_count(), 1;
+        registry.register_context(context).unwrap());
+        assert_eq!(registry.context_count(), 1);
 
         let retrieved_context = registry.get_context(context_id;
         assert!(retrieved_context.is_some();
@@ -888,35 +888,35 @@ mod tests {
 
         let removed_context = registry.remove_context(context_id;
         assert!(removed_context.is_some();
-        assert_eq!(registry.context_count(), 0;
+        assert_eq!(registry.context_count(), 0);
     }
 
     #[test]
     fn test_error_context_builtins() {
         // Initialize the registry
-        ErrorContextBuiltins::initialize().unwrap();
+        ErrorContextBuiltins::initialize().unwrap());
 
         // Create a new error context
         #[cfg(feature = "std")]
         let context_id = ErrorContextBuiltins::error_context_new(
             "Test error message".to_string(), 
             ErrorSeverity::Error
-        ).unwrap();
+        ).unwrap());
         #[cfg(not(any(feature = "std", )))]
         let context_id = ErrorContextBuiltins::error_context_new(
             "Test error message", 
             ErrorSeverity::Error
-        ).unwrap();
+        ).unwrap());
 
         // Test getting debug message
-        let debug_msg = ErrorContextBuiltins::error_context_debug_message(context_id).unwrap();
+        let debug_msg = ErrorContextBuiltins::error_context_debug_message(context_id).unwrap());
         #[cfg(feature = "std")]
         assert_eq!(debug_msg, "Test error message";
         #[cfg(not(any(feature = "std", )))]
         assert_eq!(debug_msg.as_str(), "Test error message";
 
         // Test getting severity
-        let severity = ErrorContextBuiltins::error_context_severity(context_id).unwrap();
+        let severity = ErrorContextBuiltins::error_context_severity(context_id).unwrap());
         assert_eq!(severity, ErrorSeverity::Error;
 
         // Test setting metadata
@@ -925,16 +925,16 @@ mod tests {
             context_id,
             "test_key".to_string(),
             ComponentValue::I32(123)
-        ).unwrap();
+        ).unwrap());
         #[cfg(not(any(feature = "std", )))]
         ErrorContextBuiltins::error_context_set_metadata(
             context_id,
             "test_key",
             ComponentValue::I32(123)
-        ).unwrap();
+        ).unwrap());
 
         // Test getting metadata
-        let metadata = ErrorContextBuiltins::error_context_get_metadata(context_id, "test_key").unwrap();
+        let metadata = ErrorContextBuiltins::error_context_get_metadata(context_id, "test_key").unwrap());
         assert_eq!(metadata, Some(ComponentValue::I32(123;
 
         // Test adding stack frame
@@ -945,7 +945,7 @@ mod tests {
             Some("test.rs".to_string()),
             Some(42),
             Some(10)
-        ).unwrap();
+        ).unwrap());
         #[cfg(not(any(feature = "std", )))]
         ErrorContextBuiltins::error_context_add_stack_frame(
             context_id,
@@ -953,30 +953,30 @@ mod tests {
             Some("test.rs"),
             Some(42),
             Some(10)
-        ).unwrap();
+        ).unwrap());
 
         // Test getting stack trace
-        let stack_trace = ErrorContextBuiltins::error_context_stack_trace(context_id).unwrap();
+        let stack_trace = ErrorContextBuiltins::error_context_stack_trace(context_id).unwrap());
         #[cfg(feature = "std")]
         assert!(stack_trace.contains("test_function");
         #[cfg(not(any(feature = "std", )))]
         assert!(stack_trace.as_str().contains("test_function");
 
         // Test dropping context
-        ErrorContextBuiltins::error_context_drop(context_id).unwrap();
+        ErrorContextBuiltins::error_context_drop(context_id).unwrap());
     }
 
     #[test]
     fn test_error_context_helpers() {
-        ErrorContextBuiltins::initialize().unwrap();
+        ErrorContextBuiltins::initialize().unwrap());
 
         // Test creating simple error context
         #[cfg(feature = "std")]
-        let simple_id = error_context_helpers::create_simple("Simple error".to_string()).unwrap();
+        let simple_id = error_context_helpers::create_simple("Simple error".to_string()).unwrap());
         #[cfg(not(any(feature = "std", )))]
-        let simple_id = error_context_helpers::create_simple("Simple error").unwrap();
+        let simple_id = error_context_helpers::create_simple("Simple error").unwrap());
 
-        let severity = ErrorContextBuiltins::error_context_severity(simple_id).unwrap();
+        let severity = ErrorContextBuiltins::error_context_severity(simple_id).unwrap());
         assert_eq!(severity, ErrorSeverity::Error;
 
         // Test creating error context with stack trace
@@ -986,16 +986,16 @@ mod tests {
             "main".to_string(),
             Some("main.rs".to_string()),
             Some(10)
-        ).unwrap();
+        ).unwrap());
         #[cfg(not(any(feature = "std", )))]
         let trace_id = error_context_helpers::create_with_stack_trace(
             "Error with trace",
             "main",
             Some("main.rs"),
             Some(10)
-        ).unwrap();
+        ).unwrap());
 
-        let stack_trace = ErrorContextBuiltins::error_context_stack_trace(trace_id).unwrap();
+        let stack_trace = ErrorContextBuiltins::error_context_stack_trace(trace_id).unwrap());
         #[cfg(feature = "std")]
         assert!(stack_trace.contains("main");
         #[cfg(not(any(feature = "std", )))]

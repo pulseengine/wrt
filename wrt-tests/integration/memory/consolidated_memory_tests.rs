@@ -164,7 +164,7 @@ mod foundation_memory_tests {
         let data = create_test_data);
         let slice_res = SafeSlice::new(&data;
         assert!(slice_res.is_ok(), "Slice creation failed");
-        let slice = slice_res.unwrap();
+        let slice = slice_res.unwrap());
 
         // Verify data access works
         assert_eq!(slice.data().unwrap(), &data;
@@ -187,11 +187,11 @@ mod foundation_memory_tests {
     #[test]
     fn test_safe_slice_bounds_checking() {
         let data = create_test_data);
-        let slice = SafeSlice::new(&data).unwrap();
+        let slice = SafeSlice::new(&data).unwrap());
 
         // Test valid access
         let subslice = slice.subslice(2, 5;
-        assert!(subslice.is_ok();
+        assert!(subslice.is_ok());
         assert_eq!(subslice.unwrap().data().unwrap(), &data[2..7];
 
         // Test invalid access
@@ -206,7 +206,7 @@ mod foundation_memory_tests {
         let provider = StdMemoryProvider::new(data.clone();
 
         // Test borrow_slice
-        let slice = provider.borrow_slice(0, 5).unwrap();
+        let slice = provider.borrow_slice(0, 5).unwrap());
         assert_eq!(slice, &data[..5];
 
         // Test with different verification levels
@@ -224,18 +224,18 @@ mod foundation_memory_tests {
         let provider = NoStdMemoryProvider::<64>::new);
 
         // Binary std/no_std choice
-        let memory_id = provider.allocate(32).unwrap();
+        let memory_id = provider.allocate(32).unwrap());
         
         // Test write/read
         let test_data = [1, 2, 3, 4, 5];
-        provider.write(memory_id, 0, &test_data).unwrap();
+        provider.write(memory_id, 0, &test_data).unwrap());
         
         let mut buffer = [0; 5];
-        provider.read(memory_id, 0, &mut buffer).unwrap();
+        provider.read(memory_id, 0, &mut buffer).unwrap());
         assert_eq!(buffer, test_data;
         
         // Clean up
-        provider.deallocate(memory_id).unwrap();
+        provider.deallocate(memory_id).unwrap());
     }
 
     #[test]
@@ -246,7 +246,7 @@ mod foundation_memory_tests {
 
         // Push values
         for &value in &test_values {
-            stack.push(value).unwrap();
+            stack.push(value).unwrap());
         }
 
         assert_eq!(stack.len(), test_values.len);
@@ -254,15 +254,15 @@ mod foundation_memory_tests {
 
         // Pop values (should be in reverse order)
         for &expected in test_values.iter().rev() {
-            let value = stack.pop().unwrap();
+            let value = stack.pop().unwrap());
             assert_eq!(value, Some(expected;
         }
 
-        assert_eq!(stack.len(), 0;
+        assert_eq!(stack.len(), 0);
         assert!(stack.is_empty();
 
         // Pop from empty stack
-        let empty_pop = stack.pop().unwrap();
+        let empty_pop = stack.pop().unwrap());
         assert_eq!(empty_pop, None;
     }
 
@@ -274,7 +274,7 @@ mod foundation_memory_tests {
             stack.push(42)?;
             assert_eq!(stack.verification_level(), level;
             
-            let value = stack.pop()?.unwrap();
+            let value = stack.pop()?.unwrap());
             assert_eq!(value, 42;
             
             Ok(())
@@ -316,12 +316,12 @@ mod runtime_memory_tests {
         let test_data = create_test_data);
         
         // Test valid write
-        assert!(memory.write(0, &test_data[..5]).is_ok();
+        assert!(memory.write(0, &test_data[..5]).is_ok());
         
         // Test write at boundary
         let page_size = 65536; // 64KB
         let boundary_write = memory.write(page_size - 5, &test_data[..5];
-        assert!(boundary_write.is_ok();
+        assert!(boundary_write.is_ok());
         
         // Test out-of-bounds write
         let oob_write = memory.write(page_size, &test_data;
@@ -604,10 +604,10 @@ mod memory_error_tests {
         assert!(error_result.is_err();
         
         // Verify memory is still usable after error
-        assert!(memory.write(0, &test_data[..5]).is_ok();
+        assert!(memory.write(0, &test_data[..5]).is_ok());
         
         let mut buffer = [0; 5];
-        assert!(memory.read(0, &mut buffer).is_ok();
+        assert!(memory.read(0, &mut buffer).is_ok());
         assert_eq!(buffer, test_data[..5];
         
         Ok(())
@@ -625,7 +625,7 @@ mod memory_error_tests {
         assert!(error_result.is_err();
         
         // Verify table is still usable after error
-        assert!(table.set(5, func_value.clone()).is_ok();
+        assert!(table.set(5, func_value.clone()).is_ok());
         assert_eq!(table.get(5)?, func_value;
         
         Ok(())
@@ -643,10 +643,10 @@ mod memory_error_tests {
         let memory_id = handler.allocate(1024)?;
         let test_data = vec![42u8; 1024];
         
-        assert!(handler.write(memory_id, 0, &test_data).is_ok();
+        assert!(handler.write(memory_id, 0, &test_data).is_ok());
         
         let mut buffer = vec![0u8; 1024];
-        assert!(handler.read(memory_id, 0, &mut buffer).is_ok();
+        assert!(handler.read(memory_id, 0, &mut buffer).is_ok());
         assert_eq!(buffer, test_data;
         
         handler.deallocate(memory_id)?;

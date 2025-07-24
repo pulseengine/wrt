@@ -750,7 +750,7 @@ mod tests {
     #[test]
     fn test_atomic_execution_stats() {
         let stats = AtomicExecutionStats::new);
-        assert_eq!(stats.total_operations, 0;
+        assert_eq!(stats.total_operations, 0);
         assert_eq!(stats.throughput(), 0.0;
         assert!(!stats.is_healthy();
     }
@@ -764,9 +764,9 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_atomic_context_creation() -> Result<(), wrt_error::Error> {
-        let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap();
+        let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap());
         let mut memory = result_vec![0u8; 1024]?;
         let context = AtomicMemoryContext::new(memory.as_mut_ptr(), memory.len(), thread_manager;
-        assert!(context.is_ok();
+        assert!(context.is_ok());
     }
 }

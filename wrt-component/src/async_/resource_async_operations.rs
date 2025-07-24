@@ -643,7 +643,7 @@ mod tests {
         // Would need proper ABI support for full test
         // let abi_support = AsyncCanonicalAbiSupport::new(bridge;
         // let resource_ops = ResourceAsyncOperations::new(abi_support;
-        // assert_eq!(resource_ops.active_operations.len(), 0;
+        // assert_eq!(resource_ops.active_operations.len(), 0);
     }
 
     #[test]
@@ -661,7 +661,7 @@ mod tests {
 
     #[test]
     fn test_resource_state_transitions() {
-        assert_eq!(ResourceState::Creating as u8, 0;
+        assert_eq!(ResourceState::Creating as u8, 0);
         assert_ne!(ResourceState::Active, ResourceState::Dropped;
     }
 }

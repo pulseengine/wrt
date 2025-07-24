@@ -568,7 +568,7 @@ mod tests {
         };
         
         let executor = ASILExecutorFactory::create_executor(asil_d;
-        assert_eq!(executor.get_priority(asil_d), 0;
+        assert_eq!(executor.get_priority(asil_d), 0);
     }
 
     #[test]
@@ -586,6 +586,6 @@ mod tests {
         };
         
         let executor = ASILExecutorFactory::create_executor_with_config(asil_d, config;
-        assert_eq!(executor.get_priority(asil_d), 0;
+        assert_eq!(executor.get_priority(asil_d), 0);
     }
 }

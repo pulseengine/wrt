@@ -472,27 +472,27 @@ mod tests {
         let mut context = MockComparisonContext::new);
 
         // Test i32.eq (equal)
-        context.push_comparison_value(Value::I32(5)).unwrap();
-        context.push_comparison_value(Value::I32(5)).unwrap();
-        ComparisonOp::I32Eq.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(5)).unwrap());
+        context.push_comparison_value(Value::I32(5)).unwrap());
+        ComparisonOp::I32Eq.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i32.eq (not equal)
-        context.push_comparison_value(Value::I32(5)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32Eq.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(5)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32Eq.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
 
         // Test i32.ne (not equal)
-        context.push_comparison_value(Value::I32(5)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32Ne.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(5)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32Ne.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i32.ne (equal)
-        context.push_comparison_value(Value::I32(5)).unwrap();
-        context.push_comparison_value(Value::I32(5)).unwrap();
-        ComparisonOp::I32Ne.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(5)).unwrap());
+        context.push_comparison_value(Value::I32(5)).unwrap());
+        ComparisonOp::I32Ne.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
     }
 
@@ -501,27 +501,27 @@ mod tests {
         let mut context = MockComparisonContext::new);
 
         // Test i32.lt_s (less than, signed)
-        context.push_comparison_value(Value::I32(-5)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32LtS.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(-5)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32LtS.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i32.gt_s (greater than, signed)
-        context.push_comparison_value(Value::I32(10)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32GtS.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(10)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32GtS.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i32.le_s (less than or equal, signed)
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32LeS.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32LeS.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i32.ge_s (greater than or equal, signed)
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32GeS.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32GeS.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
     }
 
@@ -531,21 +531,21 @@ mod tests {
 
         // Test i32.lt_u (less than, unsigned)
         // Note: -1 as unsigned is 0xFFFFFFFF, which is larger than 7
-        context.push_comparison_value(Value::I32(-1)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32LtU.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(-1)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32LtU.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
 
         // Test i32.gt_u (greater than, unsigned)
-        context.push_comparison_value(Value::I32(-1)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32GtU.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(-1)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32GtU.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test with positive numbers
-        context.push_comparison_value(Value::I32(5)).unwrap();
-        context.push_comparison_value(Value::I32(7)).unwrap();
-        ComparisonOp::I32LtU.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(5)).unwrap());
+        context.push_comparison_value(Value::I32(7)).unwrap());
+        ComparisonOp::I32LtU.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
     }
 
@@ -554,27 +554,27 @@ mod tests {
         let mut context = MockComparisonContext::new);
 
         // Test i64.eq (equal)
-        context.push_comparison_value(Value::I64(0x123456789ABCDEF0)).unwrap();
-        context.push_comparison_value(Value::I64(0x123456789ABCDEF0)).unwrap();
-        ComparisonOp::I64Eq.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I64(0x123456789ABCDEF0)).unwrap());
+        context.push_comparison_value(Value::I64(0x123456789ABCDEF0)).unwrap());
+        ComparisonOp::I64Eq.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i64.ne (not equal)
-        context.push_comparison_value(Value::I64(5)).unwrap();
-        context.push_comparison_value(Value::I64(7)).unwrap();
-        ComparisonOp::I64Ne.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I64(5)).unwrap());
+        context.push_comparison_value(Value::I64(7)).unwrap());
+        ComparisonOp::I64Ne.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i64.lt_s (less than, signed)
-        context.push_comparison_value(Value::I64(-1000)).unwrap();
-        context.push_comparison_value(Value::I64(1000)).unwrap();
-        ComparisonOp::I64LtS.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I64(-1000)).unwrap());
+        context.push_comparison_value(Value::I64(1000)).unwrap());
+        ComparisonOp::I64LtS.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i64.gt_u (greater than, unsigned)
-        context.push_comparison_value(Value::I64(-1)).unwrap(); // Large unsigned value
-        context.push_comparison_value(Value::I64(1000)).unwrap();
-        ComparisonOp::I64GtU.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I64(-1)).unwrap()); // Large unsigned value
+        context.push_comparison_value(Value::I64(1000)).unwrap());
+        ComparisonOp::I64GtU.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
     }
 
@@ -583,39 +583,39 @@ mod tests {
         let mut context = MockComparisonContext::new);
 
         // Test f32.eq (equal)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap();
-        ComparisonOp::F32Eq.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap());
+        ComparisonOp::F32Eq.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test f32.ne (not equal)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap();
-        ComparisonOp::F32Ne.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap());
+        ComparisonOp::F32Ne.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test f32.lt (less than)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(3.14))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap();
-        ComparisonOp::F32Lt.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(3.14))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap());
+        ComparisonOp::F32Lt.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test f32.gt (greater than)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(10.0))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap();
-        ComparisonOp::F32Gt.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(10.0))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap());
+        ComparisonOp::F32Gt.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test f32.le (less than or equal)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap();
-        ComparisonOp::F32Le.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap());
+        ComparisonOp::F32Le.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test f32.ge (greater than or equal)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap();
-        ComparisonOp::F32Ge.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(7.0))).unwrap());
+        ComparisonOp::F32Ge.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
     }
 
@@ -624,15 +624,15 @@ mod tests {
         let mut context = MockComparisonContext::new);
 
         // Test f64.eq (equal)
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793))).unwrap();
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793))).unwrap();
-        ComparisonOp::F64Eq.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793))).unwrap());
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793))).unwrap());
+        ComparisonOp::F64Eq.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test f64.lt (less than)
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(2.718281828459045))).unwrap();
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793))).unwrap();
-        ComparisonOp::F64Lt.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(2.718281828459045))).unwrap());
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793))).unwrap());
+        ComparisonOp::F64Lt.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
     }
 
@@ -641,23 +641,23 @@ mod tests {
         let mut context = MockComparisonContext::new);
 
         // Test i32.eqz with zero
-        context.push_comparison_value(Value::I32(0)).unwrap();
-        ComparisonOp::I32Eqz.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(0)).unwrap());
+        ComparisonOp::I32Eqz.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i32.eqz with non-zero
-        context.push_comparison_value(Value::I32(42)).unwrap();
-        ComparisonOp::I32Eqz.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I32(42)).unwrap());
+        ComparisonOp::I32Eqz.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
 
         // Test i64.eqz with zero
-        context.push_comparison_value(Value::I64(0)).unwrap();
-        ComparisonOp::I64Eqz.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I64(0)).unwrap());
+        ComparisonOp::I64Eqz.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test i64.eqz with non-zero
-        context.push_comparison_value(Value::I64(-100)).unwrap();
-        ComparisonOp::I64Eqz.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::I64(-100)).unwrap());
+        ComparisonOp::I64Eqz.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
     }
 
@@ -666,33 +666,33 @@ mod tests {
         let mut context = MockComparisonContext::new);
 
         // Test f32 NaN equality (should be false)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap();
-        ComparisonOp::F32Eq.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap());
+        ComparisonOp::F32Eq.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
 
         // Test f32 NaN inequality (should be true)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap();
-        ComparisonOp::F32Ne.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap());
+        ComparisonOp::F32Ne.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
 
         // Test f32 NaN less than (should be false)
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap();
-        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap();
-        ComparisonOp::F32Lt.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN))).unwrap());
+        context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0))).unwrap());
+        ComparisonOp::F32Lt.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
 
         // Test f64 NaN equality (should be false)
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN))).unwrap();
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN))).unwrap();
-        ComparisonOp::F64Eq.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN))).unwrap());
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN))).unwrap());
+        ComparisonOp::F64Eq.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(0;
 
         // Test f64 NaN inequality (should be true)
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN))).unwrap();
-        context.push_comparison_value(Value::F64(FloatBits64::from_float(42.0))).unwrap();
-        ComparisonOp::F64Ne.execute(&mut context).unwrap();
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN))).unwrap());
+        context.push_comparison_value(Value::F64(FloatBits64::from_float(42.0))).unwrap());
+        ComparisonOp::F64Ne.execute(&mut context).unwrap());
         assert_eq!(context.pop_comparison_value().unwrap(), Value::I32(1;
     }
 }

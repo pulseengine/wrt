@@ -10,16 +10,16 @@ mod tests {
     #[test]
     fn test_execution_stats_creation() {
         let stats = ExecutionStats::new);
-        assert_eq!(stats.instructions_executed, 0;
-        assert_eq!(stats.memory_usage, 0;
-        assert_eq!(stats.max_stack_depth, 0;
-        assert_eq!(stats.function_calls, 0;
-        assert_eq!(stats.memory_reads, 0;
-        assert_eq!(stats.memory_writes, 0;
-        assert_eq!(stats.execution_time_us, 0;
-        assert_eq!(stats.gas_used, 0;
-        assert_eq!(stats.gas_limit, 0;
-        assert_eq!(stats.simd_operations_executed, 0;
+        assert_eq!(stats.instructions_executed, 0);
+        assert_eq!(stats.memory_usage, 0);
+        assert_eq!(stats.max_stack_depth, 0);
+        assert_eq!(stats.function_calls, 0);
+        assert_eq!(stats.memory_reads, 0);
+        assert_eq!(stats.memory_writes, 0);
+        assert_eq!(stats.execution_time_us, 0);
+        assert_eq!(stats.gas_used, 0);
+        assert_eq!(stats.gas_limit, 0);
+        assert_eq!(stats.simd_operations_executed, 0);
     }
 
     #[test]
@@ -35,9 +35,9 @@ mod tests {
         stats.reset);
         
         // Verify all values are zero
-        assert_eq!(stats.instructions_executed, 0;
-        assert_eq!(stats.memory_usage, 0;
-        assert_eq!(stats.max_stack_depth, 0;
+        assert_eq!(stats.instructions_executed, 0);
+        assert_eq!(stats.memory_usage, 0);
+        assert_eq!(stats.max_stack_depth, 0);
     }
 
     #[test]
@@ -101,7 +101,7 @@ mod tests {
         let mut stats = ExecutionStats::new);
         
         stats.increment_function_calls(1;
-        assert_eq!(stats.function_calls, 1;
+        assert_eq!(stats.function_calls, 1);
         
         stats.increment_function_calls(5;
         assert_eq!(stats.function_calls, 6;
@@ -146,10 +146,10 @@ mod tests {
         stats.gas_limit = 1000;
         
         // Normal consumption
-        assert!(stats.consume_gas(100).is_ok();
+        assert!(stats.consume_gas(100).is_ok());
         assert_eq!(stats.gas_used, 100;
         
-        assert!(stats.consume_gas(200).is_ok();
+        assert!(stats.consume_gas(200).is_ok());
         assert_eq!(stats.gas_used, 300;
     }
 

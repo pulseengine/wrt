@@ -38,7 +38,7 @@ mod tests {
         let result: Result<i32> = Err(Error::runtime_error("Runtime error";
         assert!(result.is_err();
 
-        let error = result.err().unwrap();
+        let error = result.err().unwrap());
         assert!(error.is_runtime_error();
     }
 

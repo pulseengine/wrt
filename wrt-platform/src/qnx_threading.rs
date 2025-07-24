@@ -493,7 +493,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut pool = QnxThreadPool::new(config).unwrap();
+        let mut pool = QnxThreadPool::new(config).unwrap());
 
         // Set a test executor
         pool.set_executor(|task| {
@@ -513,22 +513,22 @@ mod tests {
             deadline: None,
         };
 
-        let handle = pool.spawn_wasm_thread(task).unwrap();
+        let handle = pool.spawn_wasm_thread(task).unwrap());
         
         // Join and verify result
-        let result = handle.join().unwrap();
+        let result = handle.join().unwrap());
         assert_eq!(result, vec![1, 2, 3, 4];
 
         // Check stats
         let stats = pool.get_stats);
-        assert_eq!(stats.total_spawned, 1;
+        assert_eq!(stats.total_spawned, 1);
     }
 
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_thread_pool_with_cpu_affinity() {
-        let config = ThreadPoolConfig::default);
-        let mut pool = QnxThreadPool::new(config).unwrap();
+        let config = ThreadPoolConfig::default());
+        let mut pool = QnxThreadPool::new(config).unwrap());
 
         pool.set_executor(|_| Ok(vec![];
 
@@ -548,7 +548,7 @@ mod tests {
             deadline: None,
         };
 
-        let handle = pool.spawn_wasm_thread(task).unwrap();
-        let _ = handle.join().unwrap();
+        let handle = pool.spawn_wasm_thread(task).unwrap());
+        let _ = handle.join().unwrap());
     }
 }

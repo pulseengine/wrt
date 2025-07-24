@@ -85,16 +85,16 @@ mod tests {
     #[test]
     fn test_convert_empty_locals() {
         let locals = Vec::new);
-        let result = convert_locals_to_bounded(&locals).unwrap();
-        assert_eq!(result.len(), 0;
+        let result = convert_locals_to_bounded(&locals).unwrap());
+        assert_eq!(result.len(), 0);
     }
     
     #[test] 
     fn test_convert_single_type_group() {
         let locals = vec![ValueType::I32, ValueType::I32, ValueType::I32];
-        let result = convert_locals_to_bounded(&locals).unwrap();
+        let result = convert_locals_to_bounded(&locals).unwrap());
         
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         assert_eq!(result[0].count, 3;
         assert_eq!(result[0].value_type, ValueType::I32;
     }
@@ -106,17 +106,17 @@ mod tests {
             ValueType::F64, 
             ValueType::I32
         ];
-        let result = convert_locals_to_bounded(&locals).unwrap();
+        let result = convert_locals_to_bounded(&locals).unwrap());
         
         assert_eq!(result.len(), 3;
         
         assert_eq!(result[0].count, 2;
         assert_eq!(result[0].value_type, ValueType::I32;
         
-        assert_eq!(result[1].count, 1;
+        assert_eq!(result[1].count, 1);
         assert_eq!(result[1].value_type, ValueType::F64;
         
-        assert_eq!(result[2].count, 1;
+        assert_eq!(result[2].count, 1);
         assert_eq!(result[2].value_type, ValueType::I32;
     }
     
@@ -128,8 +128,8 @@ mod tests {
             ValueType::I64
         ];
         
-        let bounded = convert_locals_to_bounded(&original).unwrap();
-        let expanded = expand_locals_to_flat(&bounded).unwrap();
+        let bounded = convert_locals_to_bounded(&original).unwrap());
+        let expanded = expand_locals_to_flat(&bounded).unwrap());
         
         assert_eq!(original, expanded;
     }

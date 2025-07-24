@@ -38,46 +38,46 @@ fn hex_dump(data: &[u8], offset: usize, len: usize) {
 
     for (i, bytes) in chunk.chunks(16).enumerate() {
         let addr = offset + i * 16;
-        print!("{:08x}:  ", addr;
+        print!("{:08x}:  ", addr);
 
         // Print hex values
         for (j, byte) in bytes.iter().enumerate() {
-            print!("{:02x} ", byte;
+            print!("{:02x} ", byte);
             if j == 7 {
-                print!(" ";
+                print!(" ");
             }
         }
 
         // Padding for last row if needed
         for _ in bytes.len()..16 {
-            print!("   ";
+            print!("   ");
         }
         if bytes.len() <= 8 {
             print!(" ";
         }
 
         // Print ASCII representation
-        print!(" |";
+        print!(" |");
         for byte in bytes {
             if *byte >= 32 && *byte <= 126 {
-                print!("{}", *byte as char;
+                print!("{}", *byte as char);
             } else {
-                print!(".";
+                print!(".");
             }
         }
         for _ in bytes.len()..16 {
             print!(" ";
         }
-        println!("|";
+        println!("|");
     }
 }
 
 /// Analyzes a WebAssembly module to extract information.
 fn analyze_module(binary: &[u8]) -> Result<()> {
-    println!("\n=== Module Analysis ===";
+    println!("\n=== Module Analysis ===");
 
     if !is_valid_module(binary) {
-        println!("Not a valid WebAssembly module";
+        println!("Not a valid WebAssembly module");
         return Ok();
     }
 
@@ -123,7 +123,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
         // Analyze custom section
         if section_id == 0 {
             let (name, bytes_read) = binary::read_string(binary, offset)?;
-            println!("  Name: \"{}\"", name;
+            println!("  Name: \"{}\"", name);
 
             if name == "name" {
                 // Name section: extract function names, etc.
@@ -141,7 +141,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
             let (count, bytes_read) = binary::read_leb128_u32(binary, import_offset)?;
             import_offset += bytes_read;
 
-            println!("  Imports: {}", count;
+            println!("  Imports: {}", count);
 
             for i in 0..count {
                 if import_offset >= section_end {
@@ -218,7 +218,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
                     },
                 }
 
-                println!("    Import {}: {}.{} ({})", i, module, name, kind_name;
+                println!("    Import {}: {}.{} ({})", i, module, name, kind_name);
             }
         }
 
@@ -228,7 +228,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
             let (count, bytes_read) = binary::read_leb128_u32(binary, export_offset)?;
             export_offset += bytes_read;
 
-            println!("  Exports: {}", count;
+            println!("  Exports: {}", count);
 
             for i in 0..count {
                 if export_offset >= section_end {
@@ -252,7 +252,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
                     _ => "Unknown",
                 };
 
-                println!("    Export {}: {} ({} {})", i, name, kind_name, idx;
+                println!("    Export {}: {} ({} {})", i, name, kind_name, idx);
             }
         }
 
@@ -265,7 +265,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
 /// Parses and displays information from the name section of a WebAssembly
 /// module.
 fn parse_name_section(module: &Module) -> Result<()> {
-    println!("\n=== Name Section Analysis ===";
+    println!("\n=== Name Section Analysis ===");
 
     let mut found_name_section = false;
 
@@ -302,7 +302,7 @@ fn parse_name_section(module: &Module) -> Result<()> {
                     0 => {
                         // Module name
                         let (name, _) = binary::read_string(data, offset)?;
-                        println!("Module name: {}", name;
+                        println!("Module name: {}", name);
                     },
                     1 => {
                         // Function names
@@ -438,14 +438,14 @@ fn analyze_memory_usage(module: &Module) -> Result<()> {
 
         // Print a short preview of the data content
         if !data.data.is_empty() {
-            let preview_len = std::cmp::min(16, data.data.len);
+            let preview_len = std::cmp::min(16, data.data.len());
             let preview = &data.data[0..preview_len];
 
-            print!("    data (first {} bytes): ", preview_len;
+            print!("    data (first {} bytes): ", preview_len);
             for byte in preview {
-                print!("{:02x} ", byte;
+                print!("{:02x} ", byte);
             }
-            println!);
+            println!();
 
             // Try to interpret as ASCII if it looks like text
             if preview.iter().all(|&b| b >= 32 && b <= 126) {
@@ -536,15 +536,15 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
         "Magic bytes: {:02x} {:02x} {:02x} {:02x}",
         magic[0], magic[1], magic[2], magic[3]
     ;
-    println!("Version: {}", version;
+    println!("Version: {}", version);
 
     // Identify binary type
     if magic == b"\0asm" {
-        println!("File type: WebAssembly Module";
+        println!("File type: WebAssembly Module");
     } else if magic == b"\0age" {
-        println!("File type: WebAssembly Component";
+        println!("File type: WebAssembly Component");
     } else {
-        println!("File type: Unknown (not a valid WebAssembly binary)";
+        println!("File type: Unknown (not a valid WebAssembly binary)");
         return Ok();
     }
 
@@ -611,7 +611,7 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
     }
 
     // Print section counts
-    println!("\nSection counts:";
+    println!("\nSection counts:");
     let section_names =
         if magic == b"\0asm" { &module_section_names } else { &component_section_names };
 
@@ -622,7 +622,7 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
             "Unknown"
         };
 
-        println!("  Section {}: {} (count: {})", id, name, count;
+        println!("  Section {}: {} (count: {})", id, name, count);
     }
 
     Ok(())
@@ -632,18 +632,18 @@ fn main() -> Result<()> {
     // Get the file path from command-line argument
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        println!("Usage: {} <path-to-wasm-file>", args[0];
+        println!("Usage: {} <path-to-wasm-file>", args[0]);
         return Ok();
     }
 
     let path = &args[1];
-    println!("Loading file: {}", path;
+    println!("Loading file: {}", path);
 
     // Read the file
     let binary = fs::read(Path::new(path))?;
 
     // Print hexdump of the file header
-    println!("\n=== File Header Hexdump ===";
+    println!("\n=== File Header Hexdump ===");
     hex_dump(&binary, 0, 64;
 
     // Analyze binary format using wrt-format

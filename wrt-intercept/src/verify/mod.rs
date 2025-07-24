@@ -73,7 +73,7 @@ pub mod proofs {
             Ok(vec![Value::I64(20)])
         };
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     /// Verify that the interceptor passes through arguments when not modified
@@ -91,7 +91,7 @@ pub mod proofs {
             Ok(vec![Value::I64(20)])
         };
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     /// Verify that multiple strategies are applied in order
@@ -113,7 +113,7 @@ pub mod proofs {
             Ok(vec![Value::I64(20)])
         };
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     /// Verify that the interceptor passes errors through

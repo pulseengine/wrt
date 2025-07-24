@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_qm_preset() {
-        let context = qm().unwrap();
+        let context = qm().unwrap());
         
         // Verify QM capabilities are registered
         assert!(context.has_capability(CrateId::Runtime);
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_asil_a_preset() {
-        let context = asil_a().unwrap();
+        let context = asil_a().unwrap());
         
         // Verify ASIL-A capabilities are registered
         assert!(context.has_capability(CrateId::Runtime);
@@ -231,7 +231,7 @@ mod tests {
 
     #[test]
     fn test_asil_b_preset() {
-        let context = asil_b().unwrap();
+        let context = asil_b().unwrap());
         
         // Verify ASIL-B capabilities are registered  
         assert!(context.has_capability(CrateId::Runtime);
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_asil_c_preset() {
-        let context = asil_c().unwrap();
+        let context = asil_c().unwrap());
         
         // Verify ASIL-C capabilities are registered
         assert!(context.has_capability(CrateId::Runtime);
@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_asil_d_preset() {
-        let context = asil_d().unwrap();
+        let context = asil_d().unwrap());
         
         // Verify ASIL-D capabilities are registered
         assert!(context.has_capability(CrateId::Runtime);
@@ -262,27 +262,27 @@ mod tests {
         let qm_runtime = QM_BUDGETS.iter()
             .find(|(id, _)| *id == CrateId::Runtime)
             .map(|(_, size)| *size)
-            .unwrap();
+            .unwrap());
             
         let asil_a_runtime = ASIL_A_STATIC_SIZES.iter()
             .find(|(id, _)| *id == CrateId::Runtime)
             .map(|(_, size)| *size)
-            .unwrap();
+            .unwrap());
             
         let asil_b_runtime = ASIL_B_VERIFIED_SIZES.iter()
             .find(|(id, _)| *id == CrateId::Runtime)  
             .map(|(_, size)| *size)
-            .unwrap();
+            .unwrap());
             
         let asil_c_runtime = ASIL_C_STRICT_SIZES.iter()
             .find(|(id, _)| *id == CrateId::Runtime)
             .map(|(_, size)| *size)
-            .unwrap();
+            .unwrap());
             
         let asil_d_runtime = ASIL_D_DETERMINISTIC_SIZES.iter()
             .find(|(id, _)| *id == CrateId::Runtime)
             .map(|(_, size)| *size)
-            .unwrap();
+            .unwrap());
         
         // Verify decreasing order of allocations
         assert!(qm_runtime > asil_a_runtime);

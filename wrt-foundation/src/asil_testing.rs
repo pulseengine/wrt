@@ -256,7 +256,7 @@ pub fn get_test_statistics() -> TestStatistics {
     #[cfg(any(feature = "std", feature = "alloc"))]
     {
         let tests = get_asil_tests);
-        let mut stats = TestStatistics::default);
+        let mut stats = TestStatistics::default());
 
         for test in tests {
             stats.total_count += 1;
@@ -285,7 +285,7 @@ pub fn get_test_statistics() -> TestStatistics {
     #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
     {
         let tests = get_asil_tests);
-        let mut stats = TestStatistics::default);
+        let mut stats = TestStatistics::default());
 
         for test_opt in tests.iter() {
             if let Some(test) = test_opt {
@@ -470,7 +470,7 @@ mod tests {
         register_asil_test(metadata.clone();
         let tests = get_asil_tests);
 
-        assert_eq!(tests.len(), 1;
+        assert_eq!(tests.len(), 1);
         assert_eq!(tests[0], metadata;
     }
 
@@ -506,9 +506,9 @@ mod tests {
         let asil_d_tests = get_tests_by_asil(AsilLevel::AsilD;
         let safety_tests = get_tests_by_category(TestCategory::Safety;
 
-        assert_eq!(asil_c_tests.len(), 1;
-        assert_eq!(asil_d_tests.len(), 1;
-        assert_eq!(safety_tests.len(), 1;
+        assert_eq!(asil_c_tests.len(), 1);
+        assert_eq!(asil_d_tests.len(), 1);
+        assert_eq!(safety_tests.len(), 1);
         assert_eq!(safety_tests[0].requirement_id, "REQ_D_001";
     }
 

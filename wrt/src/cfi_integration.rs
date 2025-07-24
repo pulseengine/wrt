@@ -350,7 +350,7 @@ impl CfiProtectedEngine {
     fn build_protection_config(
         config: &CfiConfiguration,
     ) -> Result<wrt_instructions::CfiControlFlowProtection> {
-        let mut protection = wrt_instructions::CfiControlFlowProtection::default);
+        let mut protection = wrt_instructions::CfiControlFlowProtection::default());
 
         // Configure hardware features based on auto-detection and explicit settings
         if config.hardware_features.auto_detect {
@@ -369,7 +369,7 @@ impl CfiProtectedEngine {
 
     /// Detect available hardware CFI features
     fn detect_hardware_features() -> Result<wrt_instructions::CfiHardwareConfig> {
-        let mut config = wrt_instructions::CfiHardwareConfig::default);
+        let mut config = wrt_instructions::CfiHardwareConfig::default());
 
         // Detect ARM BTI
         #[cfg(target_arch = "aarch64")]
@@ -448,7 +448,7 @@ impl CfiProtectedEngine {
 
     /// Reset all CFI statistics
     pub fn reset_statistics(&mut self) {
-        self.execution_stats = CfiEngineStatistics::default);
+        self.execution_stats = CfiEngineStatistics::default());
     }
 }
 
@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_cfi_configuration_default() {
-        let config = CfiConfiguration::default);
+        let config = CfiConfiguration::default());
         assert_eq!(
             config.protection_level,
             wrt_instructions::CfiProtectionLevel::Hybrid
@@ -523,21 +523,21 @@ mod tests {
 
     #[test]
     fn test_cfi_engine_creation() {
-        let config = CfiConfiguration::default);
+        let config = CfiConfiguration::default());
         let result = CfiProtectedEngine::new(config;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
     fn test_hardware_feature_detection() {
         let config = CfiProtectedEngine::detect_hardware_features);
-        assert!(config.is_ok();
+        assert!(config.is_ok());
     }
 
     #[test]
     fn test_cfi_statistics_default() {
-        let stats = CfiEngineStatistics::default);
-        assert_eq!(stats.execution_metrics.modules_executed, 0;
-        assert_eq!(stats.metadata_stats.functions_analyzed, 0;
+        let stats = CfiEngineStatistics::default());
+        assert_eq!(stats.execution_metrics.modules_executed, 0);
+        assert_eq!(stats.metadata_stats.functions_analyzed, 0);
     }
 }

@@ -207,8 +207,8 @@ impl Import {
 
 impl Default for Import {
     fn default() -> Self {
-        let provider1 = create_runtime_provider().unwrap();
-        let provider2 = create_runtime_provider().unwrap();
+        let provider1 = create_runtime_provider().unwrap());
+        let provider2 = create_runtime_provider().unwrap());
         Self {
             module: wrt_foundation::bounded::BoundedString::from_str_truncate("", provider1).unwrap(),
             name: wrt_foundation::bounded::BoundedString::from_str_truncate("", provider2).unwrap(),
@@ -277,7 +277,7 @@ pub struct Function {
 
 impl Default for Function {
     fn default() -> Self {
-        let provider = create_runtime_provider().unwrap();
+        let provider = create_runtime_provider().unwrap());
         Self {
             type_idx: 0,
             locals: BoundedLocalsVec::new(provider).unwrap(),
@@ -942,7 +942,7 @@ impl Module {
             // Convert body to WrtExpr
             // For now, just use the default empty expression
             // TODO: Properly convert the instruction sequence
-            let runtime_body = WrtExpr::default);
+            let runtime_body = WrtExpr::default());
             
             runtime_module.functions.push(Function {
                 type_idx,

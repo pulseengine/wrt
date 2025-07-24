@@ -315,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_fuzz_options() {
-        let options = FuzzOptions::default);
+        let options = FuzzOptions::default());
         assert_eq!(options.duration, 60;
         assert_eq!(options.workers, 4;
         assert!(options.targets.is_empty();
@@ -332,7 +332,7 @@ mod tests {
         };
 
         assert!(results.success);
-        assert_eq!(results.targets_run.len(), 1;
+        assert_eq!(results.targets_run.len(), 1);
         assert!(results.crashed_targets.is_empty();
     }
 }

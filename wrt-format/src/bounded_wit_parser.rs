@@ -264,7 +264,7 @@ impl BoundedWitParser {
         limits.validate()?;
 
         let mut input_buffer = alloc::vec::Vec::new);
-        input_buffer.resize(limits.max_input_buffer, 0;
+        input_buffer.resize(limits.max_input_buffer, 0);
 
         let mut worlds = alloc::vec::Vec::new);
         worlds.resize(limits.max_worlds, None;
@@ -716,13 +716,13 @@ mod tests {
 
     #[test]
     fn test_bounded_wit_parser_creation() {
-        let limits = WitParsingLimits::default);
+        let limits = WitParsingLimits::default());
         let parser = BoundedWitParser::new(limits;
-        assert!(parser.is_ok();
+        assert!(parser.is_ok());
 
-        let parser = parser.unwrap();
-        assert_eq!(parser.world_count(), 0;
-        assert_eq!(parser.interface_count(), 0;
+        let parser = parser.unwrap());
+        assert_eq!(parser.world_count(), 0);
+        assert_eq!(parser.interface_count(), 0);
     }
 
     #[test]
@@ -739,9 +739,9 @@ mod tests {
         let wit_source = b"world test-world { }";
         let result = parse_wit_embedded(wit_source;
 
-        assert!(result.is_ok();
-        let parse_result = result.unwrap();
-        assert_eq!(parse_result.worlds.len(), 1;
+        assert!(result.is_ok());
+        let parse_result = result.unwrap());
+        assert_eq!(parse_result.worlds.len(), 1);
         assert_eq!(parse_result.worlds[0].name.as_str().unwrap(), "test-world";
     }
 
@@ -752,7 +752,7 @@ mod tests {
             ..WitParsingLimits::default()
         };
 
-        let mut parser = BoundedWitParser::new(limits).unwrap();
+        let mut parser = BoundedWitParser::new(limits).unwrap());
         let large_input = b"world very-long-world-name-that-exceeds-limit { }";
 
         let result = parser.parse_wit(large_input;
@@ -766,16 +766,16 @@ mod tests {
             ..WitParsingLimits::default()
         };
 
-        let mut parser = BoundedWitParser::new(limits).unwrap();
+        let mut parser = BoundedWitParser::new(limits).unwrap());
         let wit_source = b"world verylongname { }";
 
         let result = parser.parse_wit(wit_source;
         // Should parse but with warnings
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let parse_result = result.unwrap();
+        let parse_result = result.unwrap());
         // The long identifier should be rejected
-        assert_eq!(parse_result.worlds.len(), 0;
+        assert_eq!(parse_result.worlds.len(), 0);
     }
 
     #[test]
@@ -785,13 +785,13 @@ mod tests {
             ..WitParsingLimits::default()
         };
 
-        let mut parser = BoundedWitParser::new(limits).unwrap();
+        let mut parser = BoundedWitParser::new(limits).unwrap());
         let wit_source = b"world world1 { } world world2 { }";
 
         let result = parser.parse_wit(wit_source;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let parse_result = result.unwrap();
+        let parse_result = result.unwrap());
         assert_eq!(parse_result.worlds.len(), 1); // Only first world should be parsed
         assert!(!parse_result.metadata.warnings.is_empty())); // Should have
                                                              // warnings
@@ -802,9 +802,9 @@ mod tests {
         let wit_source = b"// This is a comment\nworld test { }\n// Another comment";
         let result = parse_wit_embedded(wit_source;
 
-        assert!(result.is_ok();
-        let parse_result = result.unwrap();
-        assert_eq!(parse_result.worlds.len(), 1;
+        assert!(result.is_ok());
+        let parse_result = result.unwrap());
+        assert_eq!(parse_result.worlds.len(), 1);
     }
 
     #[test]

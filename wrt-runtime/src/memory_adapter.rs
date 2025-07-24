@@ -245,7 +245,7 @@ impl SafeMemoryAdapter {
         };
         
         #[cfg(not(feature = "std"))]
-        let provider = StdMemoryProvider::default);
+        let provider = StdMemoryProvider::default());
 
         // Return a Memory adapter
         let adapter = SafeMemoryAdapter { memory: arc_memory, provider };

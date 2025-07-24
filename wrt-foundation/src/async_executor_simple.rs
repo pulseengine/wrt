@@ -96,7 +96,7 @@ mod tests {
             42
         }
 
-        let result = with_async(test_future()).unwrap();
+        let result = with_async(test_future()).unwrap());
         assert_eq!(result, 42;
     }
 }

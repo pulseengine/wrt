@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_default_build_config() {
-        let config = BuildConfig::default);
+        let config = BuildConfig::default());
         assert!(!config.verbose);
         assert_eq!(config.jobs, -1;
         assert!(matches!(config.profile, BuildProfile::Dev);
@@ -214,7 +214,7 @@ members = [
 ]
         "#;
 
-        let members = WorkspaceConfig::parse_workspace_members(content).unwrap();
+        let members = WorkspaceConfig::parse_workspace_members(content).unwrap());
         assert_eq!(members, vec!["wrt", "wrt-runtime", "wrt-component"];
     }
 }

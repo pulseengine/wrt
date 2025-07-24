@@ -52,7 +52,7 @@ fn example_stream(
     component_id: ComponentInstanceId,
 ) {
     // Create a stream - this is NOT a Rust Stream!
-    let stream_handle = async_abi.stream_new(ValType::String).unwrap();
+    let stream_handle = async_abi.stream_new(ValType::String).unwrap());
     println!("Created stream with handle: {:?}", stream_handle;
 
     // Write values to the stream
@@ -87,8 +87,8 @@ fn example_stream(
     }
 
     // Close the stream
-    async_abi.stream_close_writable(stream_handle).unwrap();
-    async_abi.stream_close_readable(stream_handle).unwrap();
+    async_abi.stream_close_writable(stream_handle).unwrap());
+    async_abi.stream_close_readable(stream_handle).unwrap());
     println!("  Stream closed";
 }
 
@@ -98,7 +98,7 @@ fn example_future(
     component_id: ComponentInstanceId,
 ) {
     // Create a future - this is NOT a Rust Future!
-    let future_handle = async_abi.future_new(ValType::I32).unwrap();
+    let future_handle = async_abi.future_new(ValType::I32).unwrap());
     println!("Created future with handle: {:?}", future_handle;
 
     // Check if future is ready (it shouldn't be yet)
@@ -110,7 +110,7 @@ fn example_future(
 
     // Complete the future with a value
     let result = ComponentValue::I32(42;
-    async_abi.future_write(future_handle, result.clone()).unwrap();
+    async_abi.future_write(future_handle, result.clone()).unwrap());
     println!("  Completed future with value: {:?}", result;
 
     // Now read the completed future
@@ -121,18 +121,18 @@ fn example_future(
     }
 
     // Close the future
-    async_abi.future_close_writable(future_handle).unwrap();
-    async_abi.future_close_readable(future_handle).unwrap();
+    async_abi.future_close_writable(future_handle).unwrap());
+    async_abi.future_close_readable(future_handle).unwrap());
     println!("  Future closed";
 }
 
 fn example_task_async(task_manager: &mut TaskManager, component_id: ComponentInstanceId) {
     // Create a task - Component Model's unit of async execution
-    let task_id = task_manager.create_task(component_id, "async-operation").unwrap();
+    let task_id = task_manager.create_task(component_id, "async-operation").unwrap());
     println!("Created task with ID: {:?}", task_id;
 
     // Start the task
-    task_manager.start_task(task_id).unwrap();
+    task_manager.start_task(task_id).unwrap());
     println!("  Task started";
 
     // Simulate task execution steps
@@ -153,7 +153,7 @@ fn example_task_async(task_manager: &mut TaskManager, component_id: ComponentIns
     }
 
     // Clean up
-    task_manager.cleanup_task(task_id).unwrap();
+    task_manager.cleanup_task(task_id).unwrap());
     println!("  Task cleaned up";
 }
 
@@ -179,7 +179,7 @@ fn manual_async_example() {
                 // Simulate async completion
                 if i == 1 {
                     // Complete the second future
-                    future.set_value(i as i32 * 10).unwrap();
+                    future.set_value(i as i32 * 10).unwrap());
                     println!("Future {} completed with value {}", i, i * 10;
                     completed += 1;
                 }

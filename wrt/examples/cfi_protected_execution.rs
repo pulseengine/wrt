@@ -25,26 +25,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=============================================");
 
     // Example 1: Simple CFI execution with default settings
-    println!("\n1. Executing with default CFI protection...";
+    println!("\n1. Executing with default CFI protection...");
 
-    let simple_wasm = create_simple_wasm_module);
+    let simple_wasm = create_simple_wasm_module();
     match execute_with_cfi_protection(&simple_wasm, "main") {
         Ok(result) => {
-            println!("✓ CFI execution successful!";
-            println!("  Function executed: {}", result.function_index;
+            println!("✓ CFI execution successful!");
+            println!("  Function executed: {}", result.function_index);
             println!(
                 "  Instructions protected: {}",
                 result.instruction_results.len()
-            ;
-            println!("  CFI violations detected: {}", result.violations_detected;
+            );
+            println!("  CFI violations detected: {}", result.violations_detected);
         },
         Err(e) => {
-            println!("✗ CFI execution failed: {}", e;
+            println!("✗ CFI execution failed: {}", e);
         },
     }
 
     // Example 2: Custom CFI configuration with hardware features
-    println!("\n2. Executing with custom CFI configuration...";
+    println!("\n2. Executing with custom CFI configuration...");
 
     let custom_config = CfiConfiguration {
         protection_level:           CfiProtectionLevel::Hardware,
@@ -60,113 +60,113 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     };
 
-    let complex_wasm = create_complex_wasm_module);
+    let complex_wasm = create_complex_wasm_module();
     match wrt::execute_with_cfi_config(&complex_wasm, "fibonacci", custom_config) {
         Ok(result) => {
-            println!("✓ Custom CFI execution successful!";
-            println!("  Function executed: {}", result.function_index;
+            println!("✓ Custom CFI execution successful!");
+            println!("  Function executed: {}", result.function_index);
             println!(
                 "  Instructions protected: {}",
                 result.instruction_results.len()
-            ;
-            println!("  CFI violations detected: {}", result.violations_detected;
+            );
+            println!("  CFI violations detected: {}", result.violations_detected);
         },
         Err(e) => {
-            println!("✗ Custom CFI execution failed: {}", e;
+            println!("✗ Custom CFI execution failed: {}", e);
         },
     }
 
     // Example 3: CFI engine with persistent state
-    println!("\n3. Using persistent CFI engine...";
+    println!("\n3. Using persistent CFI engine...");
 
     match new_cfi_protected_engine() {
         Ok(mut engine) => {
-            println!("✓ CFI engine created successfully!";
+            println!("✓ CFI engine created successfully!");
 
             // Load module with CFI metadata generation
             match engine.load_module_with_cfi(&simple_wasm) {
                 Ok(protected_module) => {
-                    println!("✓ Module loaded with CFI protection!";
+                    println!("✓ Module loaded with CFI protection!");
                     println!(
                         "  Functions with CFI metadata: {}",
                         protected_module.cfi_metadata.functions.len()
-                    ;
+                    );
 
                     // Execute the module
                     match engine.execute_module(&protected_module, "main") {
                         Ok(result) => {
-                            println!("✓ Module executed with CFI protection!";
-                            println!("  CFI violations: {}", result.violations_detected;
+                            println!("✓ Module executed with CFI protection!");
+                            println!("  CFI violations: {}", result.violations_detected);
                         },
                         Err(e) => {
-                            println!("✗ Module execution failed: {}", e;
+                            println!("✗ Module execution failed: {}", e);
                         },
                     }
 
                     // Print CFI statistics
-                    let stats = engine.statistics);
-                    println!("\nCFI Execution Statistics:";
+                    let stats = engine.statistics();
+                    println!("\nCFI Execution Statistics:");
                     println!(
                         "  Modules executed: {}",
                         stats.execution_metrics.modules_executed
-                    ;
+                    );
                     println!(
                         "  Functions analyzed: {}",
                         stats.metadata_stats.functions_analyzed
-                    ;
+                    );
                     println!(
                         "  Instructions protected: {}",
                         stats.runtime_stats.instructions_protected
-                    ;
+                    );
                     println!(
                         "  Total violations: {}",
                         stats.execution_metrics.total_violations
-                    ;
+                    );
                     println!(
                         "  Total validations: {}",
                         stats.execution_metrics.total_validations
-                    ;
+                    );
                     println!(
                         "  Average CFI overhead: {:.2}%",
                         stats.execution_metrics.avg_cfi_overhead_percent
-                    ;
+                    );
                 },
                 Err(e) => {
-                    println!("✗ Module loading failed: {}", e;
+                    println!("✗ Module loading failed: {}", e);
                 },
             }
         },
         Err(e) => {
-            println!("✗ CFI engine creation failed: {}", e;
+            println!("✗ CFI engine creation failed: {}", e);
         },
     }
 
     // Example 4: Demonstrate CFI violation detection
-    println!("\n4. Demonstrating CFI violation detection...";
+    println!("\n4. Demonstrating CFI violation detection...");
 
     let malicious_config = CfiConfiguration {
         violation_policy: CfiViolationPolicy::ReturnError,
         ..Default::default()
     };
 
-    let malicious_wasm = create_malicious_wasm_module);
+    let malicious_wasm = create_malicious_wasm_module();
     match wrt::execute_with_cfi_config(&malicious_wasm, "exploit_attempt", malicious_config) {
         Ok(result) => {
             if result.violations_detected > 0 {
                 println!(
                     "✓ CFI successfully detected {} violations!",
                     result.violations_detected
-                ;
+                );
             } else {
-                println!("⚠ No violations detected (module may be benign)";
+                println!("⚠ No violations detected (module may be benign)");
             }
         },
         Err(e) => {
-            println!("✓ CFI successfully blocked execution: {}", e;
+            println!("✓ CFI successfully blocked execution: {}", e);
         },
     }
 
-    println!("\nCFI-Protected WebAssembly execution examples completed!";
+    println!("\nCFI-Protected WebAssembly execution examples completed!");
     Ok(())
 }
 

@@ -86,7 +86,7 @@ impl Default for CfiControlFlowProtection {
 impl CfiControlFlowProtection {
     /// Create CFI protection with specific level
     pub fn new_with_level(level: CfiProtectionLevel) -> Self {
-        let mut config = Self::default);
+        let mut config = Self::default());
         config.protection_level = level;
         
         // Adjust software config based on protection level
@@ -1749,7 +1749,7 @@ mod tests {
 
     #[test]
     fn test_cfi_control_flow_protection_default() {
-        let protection = CfiControlFlowProtection::default);
+        let protection = CfiControlFlowProtection::default());
         assert!(protection.enabled);
         assert_eq!(protection.protection_level, CfiProtectionLevel::Enhanced;
         assert!(protection.software_config.shadow_stack_enabled);
@@ -1757,39 +1757,39 @@ mod tests {
 
     #[test]
     fn test_cfi_execution_context_default() {
-        let context = CfiExecutionContext::default);
-        assert_eq!(context.current_function, 0;
-        assert_eq!(context.current_instruction, 0;
+        let context = CfiExecutionContext::default());
+        assert_eq!(context.current_function, 0);
+        assert_eq!(context.current_instruction, 0);
         assert!(context.shadow_stack.is_empty();
-        assert_eq!(context.violation_count, 0;
+        assert_eq!(context.violation_count, 0);
     }
 
     #[test]
     fn test_default_cfi_ops_call_indirect() {
         let ops = DefaultCfiControlFlowOps;
-        let protection = CfiControlFlowProtection::default);
-        let mut context = CfiExecutionContext::default);
+        let protection = CfiControlFlowProtection::default());
+        let mut context = CfiExecutionContext::default());
 
         let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let protected_target = result.unwrap();
+        let protected_target = result.unwrap());
         assert_eq!(protected_target.protection.target_type, CfiTargetType::IndirectCall;
         assert!(protected_target.protection.landing_pad.is_some();
-        assert_eq!(context.metrics.indirect_calls_protected, 1;
+        assert_eq!(context.metrics.indirect_calls_protected, 1);
     }
 
     #[test]
     fn test_cfi_disabled() {
         let ops = DefaultCfiControlFlowOps;
-        let mut protection = CfiControlFlowProtection::default);
+        let mut protection = CfiControlFlowProtection::default());
         protection.enabled = false;
-        let mut context = CfiExecutionContext::default);
+        let mut context = CfiExecutionContext::default());
 
         let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let protected_target = result.unwrap();
+        let protected_target = result.unwrap());
         assert!(protected_target.protection.landing_pad.is_none();
         assert!(matches!(
             protected_target.protection.shadow_stack_requirement,
@@ -1799,7 +1799,7 @@ mod tests {
 
     #[test]
     fn test_software_cfi_config_default() {
-        let config = SoftwareCfiConfig::default);
+        let config = SoftwareCfiConfig::default());
         assert!(config.shadow_stack_enabled);
         assert_eq!(config.max_shadow_stack_depth, 1024;
         assert!(config.landing_pad_simulation);

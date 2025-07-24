@@ -1711,9 +1711,9 @@ impl<P: Provider> SafeMemoryHandler<P> {
     /// # use wrt_foundation::safe_memory::{SafeMemoryHandler, NoStdProvider};
     /// # use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
     /// #
-    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+    /// # let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
     /// # let handler = SafeMemoryHandler::new(provider;
-    /// let data = handler.to_vec().unwrap();
+    /// let data = handler.to_vec().unwrap());
     /// assert!(data.is_empty())); // Empty handler has no data
     /// ```
     #[cfg(feature = "std")]
@@ -1874,21 +1874,21 @@ mod tests {
     #[test]
     fn test_safe_memory_handler_copy_within() {
         // Create a NoStdProvider with capacity 50
-        let mut provider = crate::safe_managed_alloc!(50, crate::budget_aware_provider::CrateId::Foundation).unwrap();
+        let mut provider = crate::safe_managed_alloc!(50, crate::budget_aware_provider::CrateId::Foundation).unwrap());
 
         // Set initial data "Hello, World!"
         let test_data = b"Hello, World!";
-        provider.set_data(test_data).unwrap();
+        provider.set_data(test_data).unwrap());
 
         // Create handler
         let mut handler = SafeMemoryHandler::new(provider;
 
         // Test copy_within - copy "World" (from position 7, length 5) to position 0
-        handler.copy_within(7, 0, 5).unwrap();
+        handler.copy_within(7, 0, 5).unwrap());
 
         // Verify the result by reading the first 13 bytes
-        let slice = handler.get_slice(0, 13).unwrap();
-        let data = slice.data().unwrap();
+        let slice = handler.get_slice(0, 13).unwrap());
+        let data = slice.data().unwrap());
 
         // The data should now be "World, World!"
         // (first 5 bytes replaced with "World" from position 7)
@@ -1899,19 +1899,19 @@ mod tests {
     #[test]
     fn test_safe_memory_handler_copy_within_overlapping() {
         // Test overlapping copy operation
-        let mut provider = crate::safe_managed_alloc!(20, crate::budget_aware_provider::CrateId::Foundation).unwrap();
+        let mut provider = crate::safe_managed_alloc!(20, crate::budget_aware_provider::CrateId::Foundation).unwrap());
 
         // Set data "ABCDEFGHIJ"
         let test_data = b"ABCDEFGHIJ";
-        provider.set_data(test_data).unwrap();
+        provider.set_data(test_data).unwrap());
 
         let mut handler = SafeMemoryHandler::new(provider;
 
         // Copy 3 bytes from position 2 to position 4 (overlapping region)
-        handler.copy_within(2, 4, 3).unwrap();
+        handler.copy_within(2, 4, 3).unwrap());
 
-        let slice = handler.get_slice(0, 10).unwrap();
-        let data = slice.data().unwrap();
+        let slice = handler.get_slice(0, 10).unwrap());
+        let data = slice.data().unwrap());
 
         // Result should be "ABCDCDEFIJ" (CDE copied to position 4, overwriting EFG)
         assert_eq!(data, b"ABCDCDEHIJ", "overlapping copy_within should work correctly";
@@ -1919,8 +1919,8 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_copy_within_bounds_check() {
-        let mut provider = crate::safe_managed_alloc!(10, crate::budget_aware_provider::CrateId::Foundation).unwrap();
-        provider.set_data(b"123456789").unwrap();
+        let mut provider = crate::safe_managed_alloc!(10, crate::budget_aware_provider::CrateId::Foundation).unwrap());
+        provider.set_data(b"123456789").unwrap());
 
         let mut handler = SafeMemoryHandler::new(provider;
 
@@ -1935,16 +1935,16 @@ mod tests {
 
     #[test]
     fn test_safe_memory_handler_copy_within_zero_length() {
-        let mut provider = crate::safe_managed_alloc!(10, crate::budget_aware_provider::CrateId::Foundation).unwrap();
-        provider.set_data(b"ABCDEFG").unwrap();
+        let mut provider = crate::safe_managed_alloc!(10, crate::budget_aware_provider::CrateId::Foundation).unwrap());
+        provider.set_data(b"ABCDEFG").unwrap());
 
         let mut handler = SafeMemoryHandler::new(provider;
 
         // Copy zero bytes should succeed and not change anything
-        handler.copy_within(0, 5, 0).unwrap();
+        handler.copy_within(0, 5, 0).unwrap());
 
-        let slice = handler.get_slice(0, 7).unwrap();
-        let data = slice.data().unwrap();
+        let slice = handler.get_slice(0, 7).unwrap());
+        let data = slice.data().unwrap());
 
         assert_eq!(data, b"ABCDEFG", "zero-length copy should not change data";
     }

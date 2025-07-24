@@ -173,6 +173,6 @@ mod tests {
 
         // Check stats again
         let stats_after = pool.stats);
-        assert_eq!(stats_after.total_buffers, 0;
+        assert_eq!(stats_after.total_buffers, 0);
     }
 }

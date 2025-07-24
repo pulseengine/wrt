@@ -287,8 +287,8 @@ pub struct ComponentInstantiator {
 impl ComponentInstantiator {
     /// Create a new component instantiator
     pub fn new() -> Self {
-        let instances_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default);
-        let core_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default);
+        let instances_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+        let core_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
         
         Self {
             context: InstantiationContext {
@@ -315,7 +315,7 @@ impl ComponentInstantiator {
         let handle = self.context.next_instance_handle;
         self.context.next_instance_handle += 1;
         
-        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default);
+        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
         let result = InstantiationResult {
             handle,
             exports: HashMap::new(exports_provider).unwrap_or_default(),
@@ -323,7 +323,7 @@ impl ComponentInstantiator {
         
         self.context.instances.insert(handle, result;
         
-        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default);
+        let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
         Ok(InstantiationResult {
             handle,
             exports: HashMap::new(exports_provider).unwrap_or_default(),
@@ -342,7 +342,7 @@ impl ComponentInstantiator {
         // Direct assignment since types already match
         let core_exports = imports;
         
-        let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default);
+        let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
         Ok(CoreModuleInstance {
             module_idx: 0,
             imports: HashMap::new(imports_provider).unwrap_or_default(), // Core module imports are empty for now
@@ -389,8 +389,8 @@ impl CoreModuleInstantiator {
                 let instance_id = self.next_instance_id;
                 self.next_instance_id += 1;
                 
-                let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default);
-                let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default);
+                let imports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
+                let exports_provider = create_runtime_provider().unwrap_or_else(|_| RuntimeProvider::default());
                 
                 let core_instance = CoreModuleInstance {
                     module_idx: *module_idx,

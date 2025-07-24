@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use wrt_foundation::verification::VerificationLevel;
     
     // Create wrtd configuration
-    let mut config = WrtdConfig::default);
+    let mut config = WrtdConfig::default());
     config.enable_wasi = true;
     config.engine_mode = EngineMode::Interpreter;
     
@@ -115,15 +115,15 @@ mod tests {
         use wrt_wasi::nn::capabilities::create_nn_capability;
         
         // Test QM level
-        let qm_cap = create_nn_capability(VerificationLevel::Standard).unwrap();
+        let qm_cap = create_nn_capability(VerificationLevel::Standard).unwrap());
         assert!(qm_cap.allows_dynamic_loading();
         
         // Test ASIL-A level
-        let asil_a_cap = create_nn_capability(VerificationLevel::Sampling).unwrap();
+        let asil_a_cap = create_nn_capability(VerificationLevel::Sampling).unwrap());
         assert!(asil_a_cap.allows_dynamic_loading();
         
         // Test ASIL-B level
-        let asil_b_cap = create_nn_capability(VerificationLevel::Continuous).unwrap();
+        let asil_b_cap = create_nn_capability(VerificationLevel::Continuous).unwrap());
         assert!(!asil_b_cap.allows_dynamic_loading();
     }
 }

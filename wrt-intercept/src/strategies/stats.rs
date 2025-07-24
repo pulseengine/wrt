@@ -401,13 +401,13 @@ mod tests {
         let args = vec![Value::I32(42)];
 
         // First call (success)
-        strategy.before_call(source, target, function, &args).unwrap();
+        strategy.before_call(source, target, function, &args).unwrap());
         thread::sleep(Duration::from_millis(10)); // Simulate some work
         let result = Ok(vec![Value::I64(123)];
-        strategy.after_call(source, target, function, &args, result).unwrap();
+        strategy.after_call(source, target, function, &args, result).unwrap());
 
         // Second call (error)
-        strategy.before_call(source, target, function, &args).unwrap();
+        strategy.before_call(source, target, function, &args).unwrap());
         thread::sleep(Duration::from_millis(5)); // Simulate some work
         let result = Err(wrt_error::Error::runtime_error("Test error";
         let _ = strategy.after_call(source, target, function, &args, result;
@@ -417,10 +417,10 @@ mod tests {
         let stats = strategy.get_all_stats);
         assert!(stats.contains_key(&key);
 
-        let func_stats = stats.get(&key).unwrap();
+        let func_stats = stats.get(&key).unwrap());
         assert_eq!(func_stats.call_count, 2;
-        assert_eq!(func_stats.success_count, 1;
-        assert_eq!(func_stats.error_count, 1;
+        assert_eq!(func_stats.success_count, 1);
+        assert_eq!(func_stats.error_count, 1);
         assert!(func_stats.total_time_ms > 0.0);
         assert!(func_stats.min_time_ms.unwrap() > 0.0);
         assert!(func_stats.max_time_ms.unwrap() > 0.0);
@@ -439,16 +439,16 @@ mod tests {
         let args = vec![Value::I32(42)];
 
         // Make a call
-        strategy.before_call(source, target, function, &args).unwrap();
+        strategy.before_call(source, target, function, &args).unwrap());
         let result = Ok(vec![Value::I64(123)];
-        strategy.after_call(source, target, function, &args, result).unwrap();
+        strategy.after_call(source, target, function, &args, result).unwrap());
 
         // Check statistics - timing should not be tracked
         let key = StatisticsStrategy::function_key(source, target, function;
         let stats = strategy.get_all_stats);
-        let func_stats = stats.get(&key).unwrap();
-        assert_eq!(func_stats.call_count, 1;
-        assert_eq!(func_stats.success_count, 1;
+        let func_stats = stats.get(&key).unwrap());
+        assert_eq!(func_stats.call_count, 1);
+        assert_eq!(func_stats.success_count, 1);
         assert_eq!(func_stats.total_time_ms, 0.0;
         assert!(func_stats.min_time_ms.is_none();
         assert!(func_stats.max_time_ms.is_none();
@@ -465,15 +465,15 @@ mod tests {
         let function = "test_function";
         let args = vec![Value::I32(42)];
 
-        strategy.before_call(source, target, function, &args).unwrap();
+        strategy.before_call(source, target, function, &args).unwrap());
         let result = Ok(vec![Value::I64(123)];
-        strategy.after_call(source, target, function, &args, result).unwrap();
+        strategy.after_call(source, target, function, &args, result).unwrap());
 
         // Verify we have stats
-        assert_eq!(strategy.get_all_stats().len(), 1;
+        assert_eq!(strategy.get_all_stats().len(), 1);
 
         // Reset and verify
         strategy.reset);
-        assert_eq!(strategy.get_all_stats().len(), 0;
+        assert_eq!(strategy.get_all_stats().len(), 0);
     }
 }

@@ -583,7 +583,7 @@ impl BlastZoneManager {
         let containment_policy = {
             #[cfg(feature = "std")]
             {
-                let zone = self.zones.get_mut(&zone_id).unwrap();
+                let zone = self.zones.get_mut(&zone_id).unwrap());
                 let should_contain = zone.record_failure(component_id, reason, timestamp;
                 if should_contain {
                     zone.config.containment_policy
@@ -774,18 +774,18 @@ mod tests {
             .with_isolation_level(IsolationLevel::Memory)
             .with_failure_threshold(5;
 
-        let zone = BlastZone::new(config).unwrap();
+        let zone = BlastZone::new(config).unwrap());
         assert_eq!(zone.health(), ZoneHealth::Healthy;
-        assert_eq!(zone.component_count(), 0;
+        assert_eq!(zone.component_count(), 0);
     }
 
     #[test]
     fn test_component_assignment() {
         let config = BlastZoneConfig::new(1, "test-zone";
-        let mut zone = BlastZone::new(config).unwrap();
+        let mut zone = BlastZone::new(config).unwrap());
 
-        zone.add_component(100).unwrap();
-        zone.add_component(101).unwrap();
+        zone.add_component(100).unwrap());
+        zone.add_component(101).unwrap());
 
         assert_eq!(zone.component_count(), 2;
         assert!(zone.contains_component(100);
@@ -797,7 +797,7 @@ mod tests {
     fn test_failure_handling() {
         let config = BlastZoneConfig::new(1, "test-zone")
             .with_failure_threshold(2;
-        let mut zone = BlastZone::new(config).unwrap();
+        let mut zone = BlastZone::new(config).unwrap());
 
         // First failure - should not trigger containment
         let should_contain = zone.record_failure(100, "test error", 1000;
@@ -814,47 +814,47 @@ mod tests {
     fn test_resource_usage() {
         let config = BlastZoneConfig::new(1, "test-zone")
             .with_memory_budget(1000;
-        let mut zone = BlastZone::new(config).unwrap();
+        let mut zone = BlastZone::new(config).unwrap());
 
         // Add memory usage within budget
-        zone.update_resource_usage(500, 5).unwrap();
+        zone.update_resource_usage(500, 5).unwrap());
         assert_eq!(zone.memory_utilization(), 0.5;
 
         // Try to exceed budget
-        let result = zone.update_resource_usage(600, 0;
+        let result = zone.update_resource_usage(600, 0);
         assert!(result.is_err();
 
         // Decrease usage
-        zone.update_resource_usage(-200, -2).unwrap();
+        zone.update_resource_usage(-200, -2).unwrap());
         assert_eq!(zone.memory_utilization(), 0.3;
     }
 
     #[test]
     fn test_blast_zone_manager() {
-        let mut manager = BlastZoneManager::new().unwrap();
+        let mut manager = BlastZoneManager::new().unwrap());
 
         // Create zones
         let config1 = BlastZoneConfig::new(1, "zone1";
         let config2 = BlastZoneConfig::new(2, "zone2";
 
-        manager.create_zone(config1).unwrap();
-        manager.create_zone(config2).unwrap();
+        manager.create_zone(config1).unwrap());
+        manager.create_zone(config2).unwrap());
 
         // Assign components
-        manager.assign_component(100, 1).unwrap();
-        manager.assign_component(101, 2).unwrap();
+        manager.assign_component(100, 1).unwrap());
+        manager.assign_component(101, 2).unwrap());
 
         assert_eq!(manager.get_component_zone(100), Some(1;
         assert_eq!(manager.get_component_zone(101), Some(2;
 
         // Test failure handling
-        let policy = manager.handle_failure(100, "test failure", 1000).unwrap();
+        let policy = manager.handle_failure(100, "test failure", 1000).unwrap());
         assert_eq!(policy, ContainmentPolicy::TerminateComponent;
     }
 
     #[test]
     fn test_isolation_policy() {
-        let mut manager = BlastZoneManager::new().unwrap();
+        let mut manager = BlastZoneManager::new().unwrap());
 
         // Create zones with different isolation levels
         let config1 = BlastZoneConfig::new(1, "secure-zone")
@@ -862,8 +862,8 @@ mod tests {
         let config2 = BlastZoneConfig::new(2, "normal-zone")
             .with_isolation_level(IsolationLevel::Resource;
 
-        manager.create_zone(config1).unwrap();
-        manager.create_zone(config2).unwrap();
+        manager.create_zone(config1).unwrap());
+        manager.create_zone(config2).unwrap());
 
         // Add policy to restrict interaction
         let policy = IsolationPolicy {
@@ -882,7 +882,7 @@ mod tests {
             allow_resource_sharing: false,
         };
 
-        manager.add_policy(policy).unwrap();
+        manager.add_policy(policy).unwrap());
 
         // Check interactions
         assert!(!manager.is_interaction_allowed(2, 1))); // Should be denied by policy
@@ -893,7 +893,7 @@ mod tests {
     fn test_zone_recovery() {
         let config = BlastZoneConfig::new(1, "test-zone")
             .with_recovery_strategy(RecoveryStrategy::RestartComponent;
-        let mut zone = BlastZone::new(config).unwrap();
+        let mut zone = BlastZone::new(config).unwrap());
 
         // Simulate failure
         zone.record_failure(100, "test error", 1000;
@@ -903,7 +903,7 @@ mod tests {
         assert_eq!(zone.health(), ZoneHealth::Failed;
 
         // Attempt recovery
-        let recovered = zone.attempt_recovery().unwrap();
+        let recovered = zone.attempt_recovery().unwrap());
         assert!(recovered);
         assert_eq!(zone.health(), ZoneHealth::Healthy;
     }

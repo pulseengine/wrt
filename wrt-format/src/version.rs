@@ -129,7 +129,7 @@ impl Clone for VersionInfo {
 impl VersionInfo {
     /// Create a new VersionInfo from the binary version field
     pub fn from_version_bytes(version_bytes: [u8); 4]) -> Self {
-        let mut info = VersionInfo::default);
+        let mut info = VersionInfo::default());
 
         // First two bytes are the version, next two are the layer
         let version = [version_bytes[0], version_bytes[1]];

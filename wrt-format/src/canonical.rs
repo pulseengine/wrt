@@ -508,8 +508,8 @@ mod tests {
         type TestProvider = wrt_foundation::NoStdProvider<1024>;
 
         let bool_layout = calculate_layout::<TestProvider>(&ValType::Bool;
-        assert_eq!(bool_layout.size, 1;
-        assert_eq!(bool_layout.alignment, 1;
+        assert_eq!(bool_layout.size, 1);
+        assert_eq!(bool_layout.alignment, 1);
 
         let i32_layout = calculate_layout::<TestProvider>(&ValType::S32;
         assert_eq!(i32_layout.size, 4;
@@ -585,7 +585,7 @@ mod tests {
         // (i32)
         //
         // if let CanonicalLayoutDetails::Variant { tag_size, cases } =
-        // &layout.details { assert_eq!(*tag_size, 1;
+        // &layout.details { assert_eq!(*tag_size, 1);
         // assert_eq!(cases.len(), 3;
         // } else {
         // panic!("Expected Variant layout details";
@@ -688,7 +688,7 @@ mod tests {
     #[test]
     fn test_align_up_function() {
         // Test the align_up utility function
-        assert_eq!(align_up(0, 4), 0;
+        assert_eq!(align_up(0, 4), 0);
         assert_eq!(align_up(1, 4), 4;
         assert_eq!(align_up(4, 4), 4;
         assert_eq!(align_up(5, 4), 8;

@@ -390,8 +390,8 @@ mod tests {
         assert_eq!(hints.function_index, 5;
         assert!(hints.is_empty();
 
-        hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
-        hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap();
+        hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap());
+        hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap());
 
         assert_eq!(hints.len(), 2;
         assert!(!hints.is_empty();
@@ -408,13 +408,13 @@ mod tests {
         assert!(section.is_empty();
 
         let mut func_hints = FunctionBranchHints::new(0;
-        func_hints.add_hint(5, BranchHintValue::LikelyTrue).unwrap();
-        func_hints.add_hint(15, BranchHintValue::LikelyFalse).unwrap();
-        section.add_function_hints(func_hints).unwrap();
+        func_hints.add_hint(5, BranchHintValue::LikelyTrue).unwrap());
+        func_hints.add_hint(15, BranchHintValue::LikelyFalse).unwrap());
+        section.add_function_hints(func_hints).unwrap());
 
         let mut func_hints = FunctionBranchHints::new(2;
-        func_hints.add_hint(25, BranchHintValue::LikelyTrue).unwrap();
-        section.add_function_hints(func_hints).unwrap();
+        func_hints.add_hint(25, BranchHintValue::LikelyTrue).unwrap());
+        section.add_function_hints(func_hints).unwrap());
 
         assert_eq!(section.function_count(), 2;
         assert_eq!(section.total_hint_count(), 3;
@@ -433,19 +433,19 @@ mod tests {
         let mut section = BranchHintSection::new);
 
         let mut func0_hints = FunctionBranchHints::new(0;
-        func0_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
-        func0_hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap();
-        section.add_function_hints(func0_hints).unwrap();
+        func0_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap());
+        func0_hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap());
+        section.add_function_hints(func0_hints).unwrap());
 
         let mut func2_hints = FunctionBranchHints::new(2;
-        func2_hints.add_hint(30, BranchHintValue::LikelyTrue).unwrap();
-        section.add_function_hints(func2_hints).unwrap();
+        func2_hints.add_hint(30, BranchHintValue::LikelyTrue).unwrap());
+        section.add_function_hints(func2_hints).unwrap());
 
         // Encode to binary
-        let encoded = encode_branch_hint_section(&section).unwrap();
+        let encoded = encode_branch_hint_section(&section).unwrap());
 
         // Parse back from binary
-        let parsed = parse_branch_hint_section(&encoded).unwrap();
+        let parsed = parse_branch_hint_section(&encoded).unwrap());
 
         // Verify round-trip
         assert_eq!(parsed.function_count(), 2;
@@ -459,11 +459,11 @@ mod tests {
     fn test_parse_empty_section() {
         // Empty section: just function count = 0
         let data = &[0x00];
-        let section = parse_branch_hint_section(data).unwrap();
+        let section = parse_branch_hint_section(data).unwrap());
 
         assert!(section.is_empty();
-        assert_eq!(section.function_count(), 0;
-        assert_eq!(section.total_hint_count(), 0;
+        assert_eq!(section.function_count(), 0);
+        assert_eq!(section.total_hint_count(), 0);
     }
 
     #[cfg(feature = "std")]

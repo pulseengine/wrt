@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_engine_statistics() {
-        let mut stats = EngineStatistics::default);
+        let mut stats = EngineStatistics::default());
         stats.modules_loaded = 5;
         stats.functions_executed = 100;
         

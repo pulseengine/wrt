@@ -741,7 +741,7 @@ impl SafetyContext {
     /// let ctx = SafetyContext::new(AsilLevel::AsilB;
     ///
     /// // This succeeds - upgrading to higher safety level
-    /// assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilC).is_ok();
+    /// assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilC).is_ok());
     ///
     /// // This fails - cannot downgrade below compile-time level
     /// assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilA).is_err();
@@ -1490,7 +1490,7 @@ mod tests {
         let ctx = SafetyContext::new(AsilLevel::AsilC;
         assert_eq!(ctx.compile_time_asil, AsilLevel::AsilC;
         assert_eq!(ctx.effective_asil(), AsilLevel::AsilC;
-        assert_eq!(ctx.violation_count(), 0;
+        assert_eq!(ctx.violation_count(), 0);
     }
 
     #[test]
@@ -1498,7 +1498,7 @@ mod tests {
         let ctx = SafetyContext::new(AsilLevel::AsilB;
 
         // Should be able to upgrade
-        assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilD).is_ok();
+        assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilD).is_ok());
         assert_eq!(ctx.effective_asil(), AsilLevel::AsilD;
 
         // Should not be able to downgrade below compile-time level
@@ -1510,12 +1510,12 @@ mod tests {
     fn test_safety_context_violations() {
         let ctx = SafetyContext::new(AsilLevel::AsilA;
 
-        assert_eq!(ctx.violation_count(), 0;
+        assert_eq!(ctx.violation_count(), 0);
         assert!(ctx.is_safe();
 
         let count1 = ctx.record_violation);
-        assert_eq!(count1, 1;
-        assert_eq!(ctx.violation_count(), 1;
+        assert_eq!(count1, 1);
+        assert_eq!(ctx.violation_count(), 1);
 
         let count2 = ctx.record_violation);
         assert_eq!(count2, 2;
@@ -1609,13 +1609,13 @@ mod tests {
     #[test]
     fn test_safety_standard_severity_scores() {
         // Test ASIL mapping
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::QM).severity_score().value(), 0;
+        assert_eq!(SafetyStandard::Iso26262(AsilLevel::QM).severity_score().value(), 0);
         assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilA).severity_score().value(), 250;
         assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilC).severity_score().value(), 750;
         assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilD).severity_score().value(), 1000;
 
         // Test DAL mapping
-        assert_eq!(SafetyStandard::Do178c(DalLevel::DalE).severity_score().value(), 0;
+        assert_eq!(SafetyStandard::Do178c(DalLevel::DalE).severity_score().value(), 0);
         assert_eq!(SafetyStandard::Do178c(DalLevel::DalA).severity_score().value(), 1000;
 
         // Test SIL mapping
@@ -1628,7 +1628,7 @@ mod tests {
         let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC;
 
         // Convert to DAL
-        let dal_equivalent = asil_c.convert_to(SafetyStandardType::Do178c).unwrap();
+        let dal_equivalent = asil_c.convert_to(SafetyStandardType::Do178c).unwrap());
         if let SafetyStandard::Do178c(level) = dal_equivalent {
             assert_eq!(level, DalLevel::DalB); // 750 severity maps to DAL-B
         } else {
@@ -1636,7 +1636,7 @@ mod tests {
         }
 
         // Convert to SIL
-        let sil_equivalent = asil_c.convert_to(SafetyStandardType::Iec61508).unwrap();
+        let sil_equivalent = asil_c.convert_to(SafetyStandardType::Iec61508).unwrap());
         if let SafetyStandard::Iec61508(level) = sil_equivalent {
             assert_eq!(level, SilLevel::Sil3); // 750 severity maps to SIL-3
         } else {
@@ -1663,7 +1663,7 @@ mod tests {
         let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilC;
         assert_eq!(ctx.primary_standard(), SafetyStandard::Iso26262(AsilLevel::AsilC;
         assert_eq!(ctx.effective_severity().value(), 750;
-        assert_eq!(ctx.violation_count(), 0;
+        assert_eq!(ctx.violation_count(), 0);
     }
 
     #[test]
@@ -1701,12 +1701,12 @@ mod tests {
     fn test_universal_safety_context_violations() {
         let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilB;
 
-        assert_eq!(ctx.violation_count(), 0;
+        assert_eq!(ctx.violation_count(), 0);
         assert!(ctx.is_safe();
 
         let count1 = ctx.record_violation);
-        assert_eq!(count1, 1;
-        assert_eq!(ctx.violation_count(), 1;
+        assert_eq!(count1, 1);
+        assert_eq!(ctx.violation_count(), 1);
     }
 
     #[test]
@@ -1719,9 +1719,9 @@ mod tests {
 
     #[test]
     fn test_severity_score_creation() {
-        assert!(SeverityScore::new(0).is_ok();
-        assert!(SeverityScore::new(500).is_ok();
-        assert!(SeverityScore::new(1000).is_ok();
+        assert!(SeverityScore::new(0).is_ok());
+        assert!(SeverityScore::new(500).is_ok());
+        assert!(SeverityScore::new(1000).is_ok());
         assert!(SeverityScore::new(1001).is_err();
     }
 

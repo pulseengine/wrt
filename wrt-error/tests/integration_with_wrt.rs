@@ -31,15 +31,15 @@ mod tests {
     #[test]
     fn test_result_operations() {
         let result: Result<()> = Ok();
-        assert!(result.is_ok();
-        result.unwrap(); // Should not panic
+        assert!(result.is_ok());
+        result.unwrap()); // Should not panic
 
         let error_result: Result<()> = Err(Error::runtime_error("Test error";
         assert!(error_result.is_err();
         // Binary std/no_std choice
         // Binary std/no_std choice
         // #[cfg(feature = "std")]
-        // let _ = std::format!("{}", error_result.as_ref().err().unwrap();
+        // let _ = std::format!("{}", error_result.as_ref().err().unwrap());
     }
 
     #[cfg(all(feature = "std"))]

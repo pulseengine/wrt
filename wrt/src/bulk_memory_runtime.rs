@@ -115,13 +115,13 @@ pub fn execute_bulk_memory_operation(
 /// Validate input count for bulk memory operation
 #[inline]
 fn validate_input_count(op: &BulkMemoryOp, inputs: &[Value]) -> Result<()> {
-    let expected = op.input_count);
-    let actual = inputs.len);
+    let expected = op.input_count();
+    let actual = inputs.len();
 
     if actual != expected {
         return Err(Error::runtime_execution_error(
             "Bulk memory operation {:?} expects {} inputs, got {}",
-        ;
+        ));
     }
 
     Ok(())
@@ -130,19 +130,19 @@ fn validate_input_count(op: &BulkMemoryOp, inputs: &[Value]) -> Result<()> {
 /// Validate bulk memory operation result
 #[inline]
 fn validate_bulk_memory_result(op: &BulkMemoryOp, result: &Option<Value>) -> Result<()> {
-    let expects_result = op.produces_result);
-    let has_result = result.is_some);
+    let expects_result = op.produces_result();
+    let has_result = result.is_some();
 
     if expects_result && !has_result {
         return Err(Error::runtime_execution_error(
             "Bulk memory operation {:?} should produce a result but didn't",
-        ;
+        ));
     }
 
     if !expects_result && has_result {
         return Err(Error::runtime_execution_error(
             "Bulk memory operation {:?} should not produce a result but did",
-        ;
+        ));
     }
 
     // Validate result type for operations that produce values
@@ -244,7 +244,7 @@ fn execute_memory_fill(
     if inputs.len() != 3 {
         return Err(Error::validation_error(
             "memory.fill requires exactly 3 inputs: dest, value, size",
-        ;
+        ));
     }
 
     fill_op.execute(memory, &inputs[0], &inputs[1], &inputs[2])
@@ -260,7 +260,7 @@ fn execute_memory_copy(
     if inputs.len() != 3 {
         return Err(Error::validation_error(
             "memory.copy requires exactly 3 inputs: dest, src, size",
-        ;
+        ));
     }
 
     copy_op.execute(memory, &inputs[0], &inputs[1], &inputs[2])
@@ -277,7 +277,7 @@ fn execute_memory_init(
     if inputs.len() != 3 {
         return Err(Error::validation_error(
             "memory.init requires exactly 3 inputs: dest, src, size",
-        ;
+        ));
     }
 
     init_op.execute(memory, data_segments, &inputs[0], &inputs[1], &inputs[2])
@@ -306,7 +306,7 @@ fn execute_memory_grow(
     if inputs.len() != 1 {
         return Err(Error::validation_error(
             "memory.grow requires exactly 1 input: delta_pages",
-        ;
+        ));
     }
 
     grow_op.execute(memory, &inputs[0])
@@ -409,7 +409,7 @@ pub fn memory_init(
 
 /// High-level data drop operation
 pub fn data_drop(data_segments: &mut dyn DataSegmentOperations, data_index: u32) -> Result<()> {
-    let drop_op = DataDrop::new(data_index;
+    let drop_op = DataDrop::new(data_index);
 
     let provider = AssilCompliantBulkMemoryProvider;
     execute_bulk_memory_operation(

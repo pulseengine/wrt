@@ -68,18 +68,18 @@
 //! };
 //!
 //! // Create a new memory instance
-//! let mut memory = Memory::new(mem_type).unwrap();
+//! let mut memory = Memory::new(mem_type).unwrap());
 //!
 //! // Write data to memory
-//! memory.write(0, &[1, 2, 3, 4]).unwrap();
+//! memory.write(0, &[1, 2, 3, 4]).unwrap());
 //!
 //! // Read data from memory
 //! let mut buffer = [0; 4];
-//! memory.read(0, &mut buffer).unwrap();
+//! memory.read(0, &mut buffer).unwrap());
 //! assert_eq!(buffer, [1, 2, 3, 4];
 //!
 //! // Grow memory by 1 page
-//! let old_size = memory.grow(1).unwrap();
+//! let old_size = memory.grow(1).unwrap());
 //! assert_eq!(old_size, 1); // Previous size was 1 page
 //! ```
 
@@ -300,13 +300,13 @@ impl Clone for Memory {
             #[cfg(feature = "std")]
             {
                 // Use LargeMemoryProvider for consistency with struct definition
-                let new_provider = LargeMemoryProvider::default);
+                let new_provider = LargeMemoryProvider::default());
                 SafeMemoryHandler::new(new_provider)
             }
             #[cfg(not(feature = "std"))]
             {
                 // Use LargeMemoryProvider for consistency with struct definition
-                let new_provider = LargeMemoryProvider::default);
+                let new_provider = LargeMemoryProvider::default());
                 SafeMemoryHandler::new(new_provider)
             }
         };
@@ -451,13 +451,13 @@ impl Memory {
         // Create memory provider based on available features
         #[cfg(feature = "std")]
         let data_handler = {
-            let provider = LargeMemoryProvider::default);
+            let provider = LargeMemoryProvider::default());
             SafeMemoryHandler::new(provider)
         };
 
         #[cfg(not(feature = "std"))]
         let data_handler = {
-            let provider = LargeMemoryProvider::default);
+            let provider = LargeMemoryProvider::default());
             SafeMemoryHandler::new(provider)
         };
 
@@ -864,7 +864,7 @@ impl Memory {
         }
 
         let offset_usize = wasm_offset_to_usize(offset)?;
-        self.increment_access_count(offset_usize, 1;
+        self.increment_access_count(offset_usize, 1);
 
         // Use SafeMemoryHandler to get a safe slice
         let slice = self.data.get_slice(offset_usize, 1)?;
@@ -892,7 +892,7 @@ impl Memory {
         }
 
         let offset_usize = wasm_offset_to_usize(offset)?;
-        self.increment_access_count(offset_usize, 1;
+        self.increment_access_count(offset_usize, 1);
 
         // This is a simpler case - just write a single byte
         // using the write method which handles all the safety checks

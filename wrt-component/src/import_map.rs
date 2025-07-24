@@ -62,7 +62,7 @@ impl ImportMap {
     pub fn to_safe_memory(&self) -> SafeImportMap {
         let mut result = SafeImportMap::new);
         for (name, import) in &self.imports {
-            result.add(name, import.clone()).unwrap();
+            result.add(name, import.clone()).unwrap());
         }
         result
     }

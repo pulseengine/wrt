@@ -59,7 +59,7 @@ mod tests {
         let func_type = FuncType::new(params, results;
         
         assert_eq!(func_type.params().len(), 2;
-        assert_eq!(func_type.results().len(), 1;
+        assert_eq!(func_type.results().len(), 1);
     }
     
     #[test]
@@ -76,14 +76,14 @@ mod tests {
     fn test_bounded_container_integration() {
         // Test BoundedVec from wrt-foundation
         let mut vec = BoundedVec::<u32, 5>::new);
-        assert!(vec.push(1).is_ok();
-        assert!(vec.push(2).is_ok();
+        assert!(vec.push(1).is_ok());
+        assert!(vec.push(2).is_ok());
         assert_eq!(vec.len(), 2;
         
         // Test BoundedStack from wrt-foundation
         let mut stack = BoundedStack::<u32, 5>::new);
-        assert!(stack.push(1).is_ok();
-        assert!(stack.push(2).is_ok();
+        assert!(stack.push(1).is_ok());
+        assert!(stack.push(2).is_ok());
         assert_eq!(stack.pop(), Some(2;
     }
     
@@ -101,7 +101,7 @@ mod tests {
         ;
         
         assert_eq!(error.category(), ErrorCategory::Core;
-        assert_eq!(error.code(), 1;
+        assert_eq!(error.code(), 1);
     }
     
     #[test]
@@ -117,10 +117,10 @@ mod tests {
         
         // Write and read memory
         let data = [1, 2, 3, 4];
-        assert!(memory.write(100, &data).is_ok();
+        assert!(memory.write(100, &data).is_ok());
         
         let mut buffer = [0; 4];
-        assert!(memory.read(100, &mut buffer).is_ok();
+        assert!(memory.read(100, &mut buffer).is_ok());
         
         assert_eq!(buffer, data;
     }
@@ -136,7 +136,7 @@ mod tests {
             },
         };
         
-        assert_eq!(table.size(), 1;
+        assert_eq!(table.size(), 1);
     }
     
     #[test]
@@ -148,24 +148,24 @@ mod tests {
                 mutable: true,
             },
             Value::I32(42),
-        ).unwrap();
+        ).unwrap());
         
         assert_eq!(global.get(), Value::I32(42;
         
         // Test mutability
-        assert!(global.set(Value::I32(100)).is_ok();
+        assert!(global.set(Value::I32(100)).is_ok());
         assert_eq!(global.get(), Value::I32(100;
     }
     
     #[test]
     fn test_module_integration() {
         // Test Module 
-        let module = new_module().unwrap();
+        let module = new_module().unwrap());
         assert!(module.exports().is_empty();
         
         // Create a new engine
         let engine = new_engine);
-        assert!(engine.validate_module(&module).is_ok();
+        assert!(engine.validate_module(&module).is_ok());
     }
     
     #[test]
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn test_comprehensive_integration() {
         // Create module
-        let module = new_module().unwrap();
+        let module = new_module().unwrap());
         
         // Create memory
         let memory = new_memory(wrt::MemoryType {
@@ -218,13 +218,13 @@ mod tests {
                 mutable: true,
             },
             Value::I32(42),
-        ).unwrap();
+        ).unwrap());
         
         // Create engine
         let engine = new_engine);
         
         // Validate the module
-        assert!(engine.validate_module(&module).is_ok();
+        assert!(engine.validate_module(&module).is_ok());
         
         // Test serialization if enabled
         #[cfg(feature = ")]
@@ -232,11 +232,11 @@ mod tests {
             use wrt::serialization::{serialize_module, deserialize_module};
             
             // Serialize and deserialize the module
-            let serialized = serialize_module(&module).unwrap();
-            let deserialized = deserialize_module(&serialized).unwrap();
+            let serialized = serialize_module(&module).unwrap());
+            let deserialized = deserialize_module(&serialized).unwrap());
             
             // Validate the deserialized module
-            assert!(engine.validate_module(&deserialized).is_ok();
+            assert!(engine.validate_module(&deserialized).is_ok());
         }
     }
 } 

@@ -184,46 +184,46 @@ mod tests {
 
     #[test]
     fn test_registry_creation() {
-        let registry = ComponentRegistry::new().unwrap();
-        assert_eq!(registry.len(), 0;
+        let registry = ComponentRegistry::new().unwrap());
+        assert_eq!(registry.len(), 0);
         assert!(registry.is_empty();
     }
 
     #[test]
     fn test_registry_registration() {
         let component = create_test_component);
-        let mut registry = ComponentRegistry::new().unwrap();
+        let mut registry = ComponentRegistry::new().unwrap());
 
         // Register a component
-        registry.register("test", component).unwrap();
-        assert_eq!(registry.len(), 1;
+        registry.register("test", component).unwrap());
+        assert_eq!(registry.len(), 1);
         assert!(registry.contains("test");
 
         // Get the component - in no_std we can't compare pointers since we're
         // storing by value rather than references
-        let _retrieved = registry.get("test").unwrap();
+        let _retrieved = registry.get("test").unwrap());
     }
 
     #[test]
     fn test_registry_removal() {
         let component = create_test_component);
-        let mut registry = ComponentRegistry::new().unwrap();
+        let mut registry = ComponentRegistry::new().unwrap());
 
         // Register and then remove
-        registry.register("test", component).unwrap();
-        let _removed = registry.remove("test").unwrap();
-        assert_eq!(registry.len(), 0;
+        registry.register("test", component).unwrap());
+        let _removed = registry.remove("test").unwrap());
+        assert_eq!(registry.len(), 0);
         assert!(!registry.contains("test");
     }
 
     #[test]
     fn test_registry_capacity_limit() {
-        let mut registry = ComponentRegistry::new().unwrap();
+        let mut registry = ComponentRegistry::new().unwrap());
 
         // Fill the registry to capacity
         for i in 0..MAX_COMPONENTS {
             let component = create_test_component);
-            registry.register(&format!("component_{}", i), component).unwrap();
+            registry.register(&format!("component_{}", i), component).unwrap());
         }
 
         // Try to add one more - should fail
@@ -233,15 +233,15 @@ mod tests {
 
     #[test]
     fn test_registry_names() {
-        let mut registry = ComponentRegistry::new().unwrap();
+        let mut registry = ComponentRegistry::new().unwrap());
 
         // Register multiple components
-        registry.register("test1", create_test_component()).unwrap();
-        registry.register("test2", create_test_component()).unwrap();
-        registry.register("test3", create_test_component()).unwrap();
+        registry.register("test1", create_test_component()).unwrap());
+        registry.register("test2", create_test_component()).unwrap());
+        registry.register("test3", create_test_component()).unwrap());
 
         // Get the names
-        let names = registry.names().unwrap();
+        let names = registry.names().unwrap());
         assert_eq!(names.len(), 3;
         assert!(names.contains(&"test1".to_string());
         assert!(names.contains(&"test2".to_string());
@@ -252,18 +252,18 @@ mod tests {
     fn test_registry_replace() {
         let component1 = create_test_component);
         let component2 = create_test_component);
-        let mut registry = ComponentRegistry::new().unwrap();
+        let mut registry = ComponentRegistry::new().unwrap());
 
         // Register a component
-        registry.register("test", component1).unwrap();
+        registry.register("test", component1).unwrap());
 
         // Replace it with another
-        registry.register("test", component2).unwrap();
+        registry.register("test", component2).unwrap());
 
         // Verify the replacement worked - we can only verify that the
         // component still exists since we can't compare by value
         assert!(registry.contains("test");
-        assert_eq!(registry.len(), 1;
+        assert_eq!(registry.len(), 1);
     }
 }
 

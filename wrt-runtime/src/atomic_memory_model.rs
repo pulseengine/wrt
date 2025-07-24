@@ -715,13 +715,13 @@ mod tests {
     #[test]
     fn test_memory_model_stats() {
         let stats = MemoryModelStats::new);
-        assert_eq!(stats.total_operations, 0;
-        assert_eq!(stats.total_execution_time, 0;
+        assert_eq!(stats.total_operations, 0);
+        assert_eq!(stats.total_execution_time, 0);
     }
     
     #[test]
     fn test_consistency_validation_result() {
-        let result = ConsistencyValidationResult::new().unwrap();
+        let result = ConsistencyValidationResult::new().unwrap());
         assert!(result.is_consistent);
         assert!(result.data_races.is_empty();
     }
@@ -729,7 +729,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_atomic_memory_model_creation() {
-        let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap();
+        let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap());
         let mut memory = vec![0u8; 1024];
         let model = AtomicMemoryModel::new(
             memory.as_mut_ptr(),
@@ -737,6 +737,6 @@ mod tests {
             thread_manager,
             MemoryOrderingPolicy::default()
         ;
-        assert!(model.is_ok();
+        assert!(model.is_ok());
     }
 }

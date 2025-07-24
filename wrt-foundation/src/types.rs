@@ -301,7 +301,7 @@ impl ToBytes for ValueType {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -317,7 +317,7 @@ impl FromBytes for ValueType {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -369,7 +369,7 @@ impl ToBytes for RefType {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -385,7 +385,7 @@ impl FromBytes for RefType {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -462,7 +462,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> De
     for FuncType<P>
 {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         // This expect is problematic for safety if P::default() or BoundedVec::new can
         // fail. For now, to proceed with compilation, but this needs review.
         let params = BoundedVec::new(provider.clone())
@@ -506,7 +506,7 @@ impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -541,7 +541,7 @@ impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -578,7 +578,7 @@ impl ToBytes for MemArg {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -596,7 +596,7 @@ impl FromBytes for MemArg {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -2101,7 +2101,7 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -2157,7 +2157,7 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -2191,7 +2191,7 @@ impl ToBytes for LocalEntry {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let provider = DefaultMemoryProvider::default);
+        let provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &provider)
     }
 }
@@ -2208,7 +2208,7 @@ impl FromBytes for LocalEntry {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let provider = DefaultMemoryProvider::default);
+        let provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &provider)
     }
 }
@@ -2275,7 +2275,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
     where
         P: Default, // Ensure P can be defaulted for this convenience function
     {
-        let provider = P::default);
+        let provider = P::default());
         let name = WasmName::from_str_truncate(name_str, provider.clone()).map_err(|_| {
             Error::runtime_execution_error("Failed to create WasmName from string")
         })?;
@@ -2328,7 +2328,7 @@ impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + 
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let provider = DefaultMemoryProvider::default);
+        let provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &provider)
     }
 }
@@ -2354,7 +2354,7 @@ impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + 
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let provider = DefaultMemoryProvider::default);
+        let provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &provider)
     }
 }
@@ -3154,7 +3154,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> De
     for Module<P>
 {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         Self::new(provider)
     }
 }
@@ -3315,7 +3315,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> De
     for StructType<P>
 {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         Self::new(provider, false).expect("Default StructType creation failed")
     }
 }
@@ -3478,7 +3478,7 @@ impl ToBytes for FieldType {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3502,7 +3502,7 @@ impl FromBytes for FieldType {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3528,7 +3528,7 @@ impl ToBytes for StorageType {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3555,7 +3555,7 @@ impl FromBytes for StorageType {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3573,7 +3573,7 @@ impl ToBytes for ArrayType {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3597,7 +3597,7 @@ impl FromBytes for ArrayType {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3617,7 +3617,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> To
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3645,7 +3645,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Fr
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default);
+        let default_provider = DefaultMemoryProvider::default());
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }

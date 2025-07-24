@@ -220,7 +220,7 @@ mod tests {
         let checksum2 = checksum2_val;
 
         // Same checksums should validate
-        assert!(validate_checksum(checksum1, checksum1, "test_same").is_ok();
+        assert!(validate_checksum(checksum1, checksum1, "test_same").is_ok());
 
         // Different checksums should fail
         let err_result = validate_checksum(checksum1, checksum2, "test_diff";

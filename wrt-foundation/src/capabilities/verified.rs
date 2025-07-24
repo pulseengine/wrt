@@ -619,7 +619,7 @@ mod tests {
     fn test_verified_capability_creation() {
         let proofs = create_test_proofs);
         let capability =
-            VerifiedMemoryCapability::<1024>::new(CrateId::Foundation, proofs, true).unwrap();
+            VerifiedMemoryCapability::<1024>::new(CrateId::Foundation, proofs, true).unwrap());
 
         assert_eq!(capability.max_allocation_size(), 1024;
         assert_eq!(capability.verification_level(), VerificationLevel::Redundant;
@@ -639,10 +639,10 @@ mod tests {
     fn test_verified_allocation_bounds() {
         let proofs = create_test_proofs);
         let capability =
-            VerifiedMemoryCapability::<100>::new(CrateId::Foundation, proofs, true).unwrap();
+            VerifiedMemoryCapability::<100>::new(CrateId::Foundation, proofs, true).unwrap());
 
         let valid_op = MemoryOperation::Allocate { size: 50 };
-        assert!(capability.verify_access(&valid_op).is_ok();
+        assert!(capability.verify_access(&valid_op).is_ok());
 
         let invalid_op = MemoryOperation::Allocate { size: 200 };
         assert!(capability.verify_access(&invalid_op).is_err();
@@ -652,7 +652,7 @@ mod tests {
     fn test_delegation_not_allowed() {
         let proofs = create_test_proofs);
         let capability =
-            VerifiedMemoryCapability::<1000>::new(CrateId::Foundation, proofs, true).unwrap();
+            VerifiedMemoryCapability::<1000>::new(CrateId::Foundation, proofs, true).unwrap());
 
         let subset = CapabilityMask::read_only);
         assert!(capability.delegate(subset).is_err();

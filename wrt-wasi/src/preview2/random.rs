@@ -296,7 +296,7 @@ mod tests {
         // Test small request
         let args = vec![Value::U64(16)];
         let result = wasi_get_random_bytes(&mut (), args)?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         if let Value::List(bytes) = &result[0] {
             assert_eq!(bytes.len(), 16;
@@ -320,7 +320,7 @@ mod tests {
         // Test medium request
         let args = vec![Value::U64(1024)];
         let result = wasi_get_insecure_random_bytes(&mut (), args)?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         if let Value::List(bytes) = &result[0] {
             assert_eq!(bytes.len(), 1024;
@@ -343,7 +343,7 @@ mod tests {
     #[test]
     fn test_wasi_get_random_u64() -> Result<()> {
         let result = wasi_get_random_u64(&mut (), vec![])?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         if let Value::U64(value) = &result[0] {
             // Value should be non-zero (very unlikely to be 0 with proper random)

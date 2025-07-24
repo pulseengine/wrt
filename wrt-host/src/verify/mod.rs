@@ -26,8 +26,8 @@ fn verify_cloneable_fn() {
     let result2 = f2.call(&mut *target, vec![];
 
     // Both should succeed
-    assert!(result1.is_ok();
-    assert!(result2.is_ok();
+    assert!(result1.is_ok());
+    assert!(result2.is_ok());
 }
 
 #[cfg(kani)]

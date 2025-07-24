@@ -11,9 +11,9 @@ mod doc_review_tests {
         let path = Path::new("docs/conversion_audit.md";
         assert!(path.exists(), "conversion_audit.md document not found");
         
-        let mut file = File::open(path).unwrap();
+        let mut file = File::open(path).unwrap());
         let mut contents = String::new);
-        file.read_to_string(&mut contents).unwrap();
+        file.read_to_string(&mut contents).unwrap());
         
         assert!(contents.contains("WebAssembly Runtime Type Conversion System Audit"), 
             "Audit document does not contain expected content";
@@ -24,9 +24,9 @@ mod doc_review_tests {
         let path = Path::new("docs/conversion_architecture.md";
         assert!(path.exists(), "conversion_architecture.md document not found");
         
-        let mut file = File::open(path).unwrap();
+        let mut file = File::open(path).unwrap());
         let mut contents = String::new);
-        file.read_to_string(&mut contents).unwrap();
+        file.read_to_string(&mut contents).unwrap());
         
         assert!(contents.contains("WebAssembly Runtime Type Conversion System Architecture"), 
             "Architecture document does not contain expected content";
@@ -37,9 +37,9 @@ mod doc_review_tests {
         let path = Path::new("docs/conversion_review_complete.md";
         assert!(path.exists(), "conversion_review_complete.md document not found");
         
-        let mut file = File::open(path).unwrap();
+        let mut file = File::open(path).unwrap());
         let mut contents = String::new);
-        file.read_to_string(&mut contents).unwrap();
+        file.read_to_string(&mut contents).unwrap());
         
         assert!(contents.contains("Conversion Documentation Review Completion"), 
             "Review completion document does not contain expected content";
@@ -52,12 +52,12 @@ mod doc_review_tests {
         // Read audit document
         let mut audit_contents = String::new);
         File::open("docs/conversion_audit.md").unwrap()
-            .read_to_string(&mut audit_contents).unwrap();
+            .read_to_string(&mut audit_contents).unwrap());
             
         // Read architecture document
         let mut arch_contents = String::new);
         File::open("docs/conversion_architecture.md").unwrap()
-            .read_to_string(&mut arch_contents).unwrap();
+            .read_to_string(&mut arch_contents).unwrap());
             
         // Verify key issues are addressed
         let issues_addressed = [

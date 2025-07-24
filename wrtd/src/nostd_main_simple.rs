@@ -98,7 +98,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 /// Entry point for no-std mode
 fn main() -> Result<(), u8> {
-    let config = NoStdConfig::default);
+    let config = NoStdConfig::default());
     let mut runtime = NoStdRuntime::new(config;
     
     // Simulate execution with minimal WASM module

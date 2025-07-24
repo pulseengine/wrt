@@ -85,7 +85,7 @@ mod factory {
         /// Create a new runtime type factory
         pub fn new() -> Self {
             let provider = crate::safe_managed_alloc!(BUFFER_SIZE, crate::budget_aware_provider::CrateId::Foundation)
-                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default);
+                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default());
             Self { provider }
         }
 
@@ -154,7 +154,7 @@ mod factory {
         /// Create a new component type factory
         pub fn new() -> Self {
             let provider = crate::safe_managed_alloc!(BUFFER_SIZE, crate::budget_aware_provider::CrateId::Foundation)
-                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default);
+                .unwrap_or_else(|_| NoStdProvider::<BUFFER_SIZE>::default());
             Self { provider }
         }
 
@@ -311,7 +311,7 @@ mod factory {
         #[test]
         fn test_bounded_string_creation() {
             let factory = RuntimeTypeFactory::<1024>::new);
-            let bounded_str = factory.create_bounded_string::<64>("test").unwrap();
+            let bounded_str = factory.create_bounded_string::<64>("test").unwrap());
             assert_eq!(bounded_str.as_str().unwrap(), "test";
         }
 

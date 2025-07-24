@@ -3,7 +3,7 @@
 
 // Mock the dependencies that are failing
 mod mock_deps {
-    pub type NoStdProvider = );
+    pub type NoStdProvider = ();
 
     pub struct BoundedVec<T, const N: usize, P> {
         _phantom: std::marker::PhantomData<(T, P)>,
@@ -117,7 +117,7 @@ mod tests {
     fn test_runtime_api_compiles() {
         // Just verify types exist and can be used
         let _action = runtime_api_test::DebugAction::Continue;
-        assert!(matches!(_action, runtime_api_test::DebugAction::Continue);
+        assert!(matches!(_action, runtime_api_test::DebugAction::Continue));
     }
 
     struct MockState;
@@ -151,11 +151,11 @@ mod tests {
     fn test_trait_implementation() {
         use runtime_api_test::RuntimeState;
         let state = MockState;
-        assert_eq!(state.pc(), 0;
+        assert_eq!(state.pc(), 0);
     }
 }
 
 fn main() {
-    println!("wrt-debug runtime features compile successfully!";
-    println!("The build failures are in dependencies, not our code.";
+    println!("wrt-debug runtime features compile successfully!");
+    println!("The build failures are in dependencies, not our code.");
 }

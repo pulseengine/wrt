@@ -824,7 +824,7 @@ impl UnifiedExecutionAgent {
         self.core_state.operand_stack.clear);
         self.core_state.state = UnifiedExecutionState::Ready;
         self.core_state.current_context = None;
-        self.statistics = UnifiedExecutionStatistics::default);
+        self.statistics = UnifiedExecutionStatistics::default());
         
         #[cfg(feature = "async")]
         {
@@ -948,7 +948,7 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to UnifiedExecutionAgent
-impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default);
+impl_basic_traits!(UnifiedExecutionAgent, UnifiedExecutionAgent::default());
 
 #[cfg(test)]
 mod tests {
@@ -956,42 +956,42 @@ mod tests {
 
     #[test]
     fn test_unified_agent_creation() {
-        let agent = UnifiedExecutionAgent::new_default().unwrap();
+        let agent = UnifiedExecutionAgent::new_default().unwrap());
         assert_eq!(agent.state(), UnifiedExecutionState::Ready;
-        assert_eq!(agent.call_stack_depth(), 0;
+        assert_eq!(agent.call_stack_depth(), 0);
     }
 
     #[test]
     fn test_synchronous_execution() {
-        let mut agent = UnifiedExecutionAgent::new_default().unwrap();
+        let mut agent = UnifiedExecutionAgent::new_default().unwrap());
         let args = [Value::U32(42), Value::Bool(true)];
         
         let result = agent.call_function(1, 2, &args;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(agent.state(), UnifiedExecutionState::Completed;
-        assert_eq!(agent.statistics().function_calls, 1;
+        assert_eq!(agent.statistics().function_calls, 1);
     }
 
     #[test]
     fn test_stackless_execution() {
-        let mut agent = UnifiedExecutionAgent::new_stackless().unwrap();
+        let mut agent = UnifiedExecutionAgent::new_stackless().unwrap());
         let args = [Value::U32(100)];
         
         let result = agent.call_function(1, 5, &args;
-        assert!(result.is_ok();
-        assert_eq!(agent.statistics().stackless_frames, 1;
+        assert!(result.is_ok());
+        assert_eq!(agent.statistics().stackless_frames, 1);
     }
 
     #[cfg(feature = "async")]
     #[test]
     fn test_async_execution() {
-        let mut agent = UnifiedExecutionAgent::new_async().unwrap();
+        let mut agent = UnifiedExecutionAgent::new_async().unwrap());
         let args = [Value::F32(3.14)];
         
         let result = agent.call_function(2, 3, &args;
-        assert!(result.is_ok();
-        assert_eq!(agent.statistics().async_executions_started, 1;
-        assert_eq!(agent.statistics().async_executions_completed, 1;
+        assert!(result.is_ok());
+        assert_eq!(agent.statistics().async_executions_started, 1);
+        assert_eq!(agent.statistics().async_executions_completed, 1);
     }
 
     #[test]
@@ -1001,29 +1001,29 @@ mod tests {
             stackless_enabled: true,
             cfi_enabled: false,
         };
-        let mut agent = UnifiedExecutionAgent::new_hybrid(flags).unwrap();
+        let mut agent = UnifiedExecutionAgent::new_hybrid(flags).unwrap());
         let args = [Value::S64(-100)];
         
         let result = agent.call_function(1, 1, &args;
-        assert!(result.is_ok();
-        assert_eq!(agent.statistics().stackless_frames, 1;
+        assert!(result.is_ok());
+        assert_eq!(agent.statistics().stackless_frames, 1);
     }
 
     #[test]
     fn test_agent_reset() {
-        let mut agent = UnifiedExecutionAgent::new_default().unwrap();
+        let mut agent = UnifiedExecutionAgent::new_default().unwrap());
         
         // Execute something first
         let args = [Value::U32(42)];
         let _ = agent.call_function(1, 2, &args;
         
         // Verify state changed
-        assert_eq!(agent.statistics().function_calls, 1;
+        assert_eq!(agent.statistics().function_calls, 1);
         
         // Reset and verify clean state
         agent.reset);
         assert_eq!(agent.state(), UnifiedExecutionState::Ready;
-        assert_eq!(agent.call_stack_depth(), 0;
-        assert_eq!(agent.statistics().function_calls, 0;
+        assert_eq!(agent.call_stack_depth(), 0);
+        assert_eq!(agent.statistics().function_calls, 0);
     }
 }

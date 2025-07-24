@@ -290,37 +290,37 @@ mod tests {
     
     #[test]
     fn test_validated_bounded_vec() {
-        MemoryInitializer::initialize().unwrap();
+        MemoryInitializer::initialize().unwrap());
         
-        let mut vec = validated_vec!(100, u32, CrateId::Foundation).unwrap();
+        let mut vec = validated_vec!(100, u32, CrateId::Foundation).unwrap());
         
-        assert_eq!(vec.len(), 0;
+        assert_eq!(vec.len(), 0);
         assert_eq!(vec.capacity(), 100;
         assert_eq!(vec.validated_capacity(), 100;
         assert_eq!(vec.validated_element_size(), 4;
         assert_eq!(vec.validated_total_memory(), 400;
         
         // Test operations
-        vec.push(42).unwrap();
-        assert_eq!(vec.len(), 1;
+        vec.push(42).unwrap());
+        assert_eq!(vec.len(), 1);
         assert_eq!(vec.get(0), Some(&42;
     }
     
     #[test]
     fn test_validated_bounded_string() {
-        MemoryInitializer::initialize().unwrap();
+        MemoryInitializer::initialize().unwrap());
         
-        let string = validated_string!(256, CrateId::Foundation).unwrap();
-        assert_eq!(string.inner().len(), 0;
+        let string = validated_string!(256, CrateId::Foundation).unwrap());
+        assert_eq!(string.inner().len(), 0);
     }
     
     #[test]
     fn test_compile_time_validation() {
         // These should compile without issues due to compile-time validation
-        MemoryInitializer::initialize().unwrap();
+        MemoryInitializer::initialize().unwrap());
         
-        let _small_vec = validated_vec!(10, u8, CrateId::Foundation).unwrap();
-        let _medium_vec = validated_vec!(1000, u32, CrateId::Component).unwrap();
-        let _string = validated_string!(128, CrateId::Foundation).unwrap();
+        let _small_vec = validated_vec!(10, u8, CrateId::Foundation).unwrap());
+        let _medium_vec = validated_vec!(1000, u32, CrateId::Component).unwrap());
+        let _string = validated_string!(128, CrateId::Foundation).unwrap());
     }
 }

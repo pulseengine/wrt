@@ -547,7 +547,7 @@ mod tests {
     #[test]
     fn namespace_from_str_works() {
         let provider = StdProvider::new(Vec::new()); // Example provider
-        let ns = Namespace::from_str("wasi:filesystem/types", provider).unwrap();
+        let ns = Namespace::from_str("wasi:filesystem/types", provider).unwrap());
         assert_eq!(ns.elements.len(), 3;
         assert_eq!(ns.elements.get(0).unwrap().as_str().unwrap(), "wasi";
         assert_eq!(ns.elements.get(1).unwrap().as_str().unwrap(), "filesystem";
@@ -557,7 +557,7 @@ mod tests {
     #[test]
     fn namespace_from_str_empty_parts() {
         let provider = StdProvider::new(Vec::new);
-        let ns = Namespace::from_str("foo::bar", provider).unwrap(); // Handles empty part
+        let ns = Namespace::from_str("foo::bar", provider).unwrap()); // Handles empty part
         assert_eq!(ns.elements.len(), 2;
         assert_eq!(ns.elements.get(0).unwrap().as_str().unwrap(), "foo";
         assert_eq!(ns.elements.get(1).unwrap().as_str().unwrap(), "bar";

@@ -108,7 +108,7 @@ mod tests {
         let store = builder.build);
         
         // Test retrieving values
-        let retrieved = store.get_string(string_id).unwrap();
+        let retrieved = store.get_string(string_id).unwrap());
         assert_eq!(retrieved, "hello world";
     }
     
@@ -132,13 +132,13 @@ mod tests {
         // Test resource creation
         let resource_id = resource_manager.create_resource(
             wrt_foundation::resource::ResourceType::new(1)
-        ).unwrap();
+        ).unwrap());
         
         // Verify resource exists
         assert!(resource_manager.has_resource(&resource_id);
         
         // Test dropping resource
-        resource_manager.drop_resource(&resource_id).unwrap();
+        resource_manager.drop_resource(&resource_id).unwrap());
         assert!(!resource_manager.has_resource(&resource_id);
     }
     
@@ -148,8 +148,8 @@ mod tests {
         let mut vec = BoundedVec::<String, 5>::new);
         
         // Add strings to it
-        assert!(vec.push("string1".to_string()).is_ok();
-        assert!(vec.push("string2".to_string()).is_ok();
+        assert!(vec.push("string1".to_string()).is_ok());
+        assert!(vec.push("string2".to_string()).is_ok());
         
         // Verify contents
         assert_eq!(vec.len(), 2;
@@ -175,9 +175,9 @@ mod tests {
         let mut pool = BufferPool::new);
         
         // Allocate multiple buffers of different sizes
-        let buffer1 = pool.allocate(100).unwrap();
-        let buffer2 = pool.allocate(200).unwrap();
-        let buffer3 = pool.allocate(300).unwrap();
+        let buffer1 = pool.allocate(100).unwrap());
+        let buffer2 = pool.allocate(200).unwrap());
+        let buffer3 = pool.allocate(300).unwrap());
         
         // Verify buffer sizes
         assert_eq!(buffer1.len(), 100;

@@ -65,8 +65,8 @@ pub trait PureExecutionContext {
 /// use wrt_foundation::values::Value;
 ///
 /// let mut context = ExecutionContext::new);
-/// context.push_value(Value::I32(42)).unwrap();
-/// let value = context.pop_value().unwrap();
+/// context.push_value(Value::I32(42)).unwrap());
+/// let value = context.pop_value().unwrap());
 /// assert_eq!(value, Value::I32(42;
 /// ```
 pub struct ExecutionContext {
@@ -276,10 +276,10 @@ mod tests {
         let mut context = TestExecutionContext::new);
 
         // Test pushing and popping values
-        PureExecutionContext::push_value(&mut context, Value::I32(42)).unwrap();
+        PureExecutionContext::push_value(&mut context, Value::I32(42)).unwrap());
         assert_eq!(context.stack(), &[Value::I32(42)];
 
-        let value = PureExecutionContext::pop_value(&mut context).unwrap();
+        let value = PureExecutionContext::pop_value(&mut context).unwrap());
         assert_eq!(value, Value::I32(42;
         assert!(context.stack().is_empty();
 
@@ -287,12 +287,12 @@ mod tests {
         assert!(PureExecutionContext::pop_value(&mut context).is_err();
 
         // Test pop_value_expected
-        PureExecutionContext::push_value(&mut context, Value::I32(42)).unwrap();
-        let value = context.pop_value_expected(ValueType::I32).unwrap();
+        PureExecutionContext::push_value(&mut context, Value::I32(42)).unwrap());
+        let value = context.pop_value_expected(ValueType::I32).unwrap());
         assert_eq!(value, Value::I32(42;
 
         // Test pop_value_expected with type mismatch
-        PureExecutionContext::push_value(&mut context, Value::I32(42)).unwrap();
+        PureExecutionContext::push_value(&mut context, Value::I32(42)).unwrap());
         assert!(context.pop_value_expected(ValueType::I64).is_err();
     }
 }

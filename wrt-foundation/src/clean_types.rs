@@ -503,7 +503,7 @@ mod types {
             let func_type =
                 FuncType { params: vec![ValType::S32, ValType::S32], results: vec![ValType::S32] };
             assert_eq!(func_type.params.len(), 2;
-            assert_eq!(func_type.results.len(), 1;
+            assert_eq!(func_type.results.len(), 1);
         }
     }
 }

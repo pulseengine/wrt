@@ -281,7 +281,7 @@ impl DiagnosticCache {
     pub fn clear(&mut self) {
         self.entries.clear);
         self.metadata.total_files = 0;
-        self.metadata.stats = CacheStats::default);
+        self.metadata.stats = CacheStats::default());
         self.metadata.updated_at = SystemTime::now);
     }
 
@@ -606,12 +606,12 @@ mod tests {
 
     #[test]
     fn test_cache_creation() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().unwrap());
         let cache = DiagnosticCache::new(temp_dir.path().to_path_buf);
 
         assert_eq!(cache.version, DiagnosticCache::VERSION;
-        assert_eq!(cache.entries.len(), 0;
-        assert_eq!(cache.metadata.total_files, 0;
+        assert_eq!(cache.entries.len(), 0);
+        assert_eq!(cache.metadata.total_files, 0);
     }
 
     #[test]
@@ -674,10 +674,10 @@ mod tests {
 
         let diff = manager.compute_diff(&current_diagnostics;
 
-        assert_eq!(diff.summary.unchanged_count, 1;
-        assert_eq!(diff.summary.changed_count, 1;
-        assert_eq!(diff.summary.new_count, 1;
-        assert_eq!(diff.summary.removed_count, 0;
+        assert_eq!(diff.summary.unchanged_count, 1);
+        assert_eq!(diff.summary.changed_count, 1);
+        assert_eq!(diff.summary.new_count, 1);
+        assert_eq!(diff.summary.removed_count, 0);
 
         // Test diff-only output
         let diff_diagnostics = manager.get_diff_diagnostics(&current_diagnostics;
@@ -697,8 +697,8 @@ mod tests {
 
         // Test stats
         let stats = manager.stats);
-        assert_eq!(stats.hits, 0;
-        assert_eq!(stats.misses, 0;
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 0);
 
         Ok(())
     }

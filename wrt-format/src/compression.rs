@@ -309,7 +309,7 @@ mod tests {
 
         // Test for a zero-length RLE sequence with zero count
         let zero_count = vec![0, 0, 42]; // RLE sequence: [0x00, count=0, value=42]
-        let result = rle_decode(&zero_count).unwrap();
+        let result = rle_decode(&zero_count).unwrap());
         assert_eq!(result, vec![]); // Should decode to empty array since count
                                     // is 0
     }

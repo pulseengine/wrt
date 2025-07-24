@@ -368,7 +368,7 @@ impl AsyncResourceCleanupManager {
 
     /// Reset all statistics
     pub fn reset_stats(&mut self) {
-        self.stats = AsyncCleanupStats::default);
+        self.stats = AsyncCleanupStats::default());
     }
 
     /// Remove all cleanup entries for an instance
@@ -573,13 +573,13 @@ mod tests {
 
     #[test]
     fn test_cleanup_manager_creation() {
-        let manager = AsyncResourceCleanupManager::new().unwrap();
-        assert_eq!(manager.get_stats().total_created, 0;
+        let manager = AsyncResourceCleanupManager::new().unwrap());
+        assert_eq!(manager.get_stats().total_created, 0);
     }
 
     #[test]
     fn test_register_stream_cleanup() {
-        let mut manager = AsyncResourceCleanupManager::new().unwrap();
+        let mut manager = AsyncResourceCleanupManager::new().unwrap());
         let instance_id = ComponentInstanceId(1;
         let handle = StreamHandle(42;
         
@@ -595,15 +595,15 @@ mod tests {
             cleanup_data,
             10,
             false,
-        ).unwrap();
+        ).unwrap());
 
-        assert_eq!(cleanup_id, 1;
-        assert_eq!(manager.get_stats().total_created, 1;
+        assert_eq!(cleanup_id, 1);
+        assert_eq!(manager.get_stats().total_created, 1);
     }
 
     #[test]
     fn test_execute_cleanups() {
-        let mut manager = AsyncResourceCleanupManager::new().unwrap();
+        let mut manager = AsyncResourceCleanupManager::new().unwrap());
         let instance_id = ComponentInstanceId(1;
         
         // Register multiple cleanups
@@ -624,7 +624,7 @@ mod tests {
             stream_data,
             10,
             false,
-        ).unwrap();
+        ).unwrap());
 
         manager.register_cleanup(
             instance_id,
@@ -632,9 +632,9 @@ mod tests {
             future_data,
             20, // Higher priority
             false,
-        ).unwrap();
+        ).unwrap());
 
-        let results = manager.execute_cleanups(instance_id).unwrap();
+        let results = manager.execute_cleanups(instance_id).unwrap());
         assert_eq!(results.len(), 2;
         
         // Check that both cleanups succeeded
@@ -643,13 +643,13 @@ mod tests {
         }
 
         assert_eq!(manager.get_stats().total_executed, 2;
-        assert_eq!(manager.get_stats().stream_cleanups, 1;
-        assert_eq!(manager.get_stats().future_cleanups, 1;
+        assert_eq!(manager.get_stats().stream_cleanups, 1);
+        assert_eq!(manager.get_stats().future_cleanups, 1);
     }
 
     #[test]
     fn test_cleanup_priority_ordering() {
-        let mut manager = AsyncResourceCleanupManager::new().unwrap();
+        let mut manager = AsyncResourceCleanupManager::new().unwrap());
         let instance_id = ComponentInstanceId(1;
         
         // Register cleanups with different priorities
@@ -663,7 +663,7 @@ mod tests {
             },
             5, // Lower priority
             false,
-        ).unwrap();
+        ).unwrap());
 
         manager.register_cleanup(
             instance_id,
@@ -674,9 +674,9 @@ mod tests {
             },
             15, // Higher priority
             false,
-        ).unwrap();
+        ).unwrap());
 
-        let results = manager.execute_cleanups(instance_id).unwrap();
+        let results = manager.execute_cleanups(instance_id).unwrap());
         assert_eq!(results.len(), 2;
         
         // All should succeed regardless of order
@@ -687,7 +687,7 @@ mod tests {
 
     #[test]
     fn test_clear_instance() {
-        let mut manager = AsyncResourceCleanupManager::new().unwrap();
+        let mut manager = AsyncResourceCleanupManager::new().unwrap());
         let instance_id = ComponentInstanceId(1;
         
         manager.register_cleanup(
@@ -700,14 +700,14 @@ mod tests {
             },
             10,
             false,
-        ).unwrap();
+        ).unwrap());
 
-        assert_eq!(manager.get_stats().total_created, 1;
+        assert_eq!(manager.get_stats().total_created, 1);
         
-        manager.clear_instance(instance_id).unwrap();
+        manager.clear_instance(instance_id).unwrap());
         
-        let results = manager.execute_cleanups(instance_id).unwrap();
-        assert_eq!(results.len(), 0;
+        let results = manager.execute_cleanups(instance_id).unwrap());
+        assert_eq!(results.len(), 0);
     }
 
     #[test]
@@ -720,7 +720,7 @@ mod tests {
 
     #[test]
     fn test_stats_tracking() {
-        let mut manager = AsyncResourceCleanupManager::new().unwrap();
+        let mut manager = AsyncResourceCleanupManager::new().unwrap());
         let instance_id = ComponentInstanceId(1;
         
         // Register different types of cleanups
@@ -734,7 +734,7 @@ mod tests {
             },
             10,
             false,
-        ).unwrap();
+        ).unwrap());
 
         manager.register_cleanup(
             instance_id,
@@ -745,17 +745,17 @@ mod tests {
             },
             10,
             false,
-        ).unwrap();
+        ).unwrap());
 
         let stats_before = manager.get_stats().clone();
         assert_eq!(stats_before.total_created, 2;
-        assert_eq!(stats_before.total_executed, 0;
+        assert_eq!(stats_before.total_executed, 0);
 
-        manager.execute_cleanups(instance_id).unwrap();
+        manager.execute_cleanups(instance_id).unwrap());
 
         let stats_after = manager.get_stats);
         assert_eq!(stats_after.total_executed, 2;
-        assert_eq!(stats_after.stream_cleanups, 1;
-        assert_eq!(stats_after.future_cleanups, 1;
+        assert_eq!(stats_after.stream_cleanups, 1);
+        assert_eq!(stats_after.future_cleanups, 1);
     }
 }

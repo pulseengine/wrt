@@ -312,7 +312,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
 #[cfg(not(any(feature = "std")))]
 impl<P: MemoryProvider + Clone + Default + Eq> Default for StreamingParser<P> {
     fn default() -> Self {
-        let provider = P::default);
+        let provider = P::default());
         Self::new(provider).unwrap_or_else(|_| panic!("Failed to create default StreamingParser"))
     }
 }
@@ -470,30 +470,30 @@ mod tests {
 
     #[test]
     fn test_streaming_parser_creation() {
-        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Format).unwrap();
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Format).unwrap());
         let parser = StreamingParser::new(provider;
-        assert!(parser.is_ok();
+        assert!(parser.is_ok());
 
-        let parser = parser.unwrap();
+        let parser = parser.unwrap());
         assert_eq!(parser.state(), ParserState::Magic;
-        assert_eq!(parser.bytes_processed(), 0;
+        assert_eq!(parser.bytes_processed(), 0);
     }
 
     #[test]
     fn test_magic_bytes_processing() {
-        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Format).unwrap();
-        let mut parser = StreamingParser::new(provider).unwrap();
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Format).unwrap());
+        let mut parser = StreamingParser::new(provider).unwrap());
 
         // Process magic bytes
         let result = parser.process_chunk(&WASM_MAGIC;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(parser.state(), ParserState::Version;
     }
 
     #[test]
     fn test_section_parser_creation() {
-        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Format).unwrap();
+        let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Format).unwrap());
         let parser = SectionParser::new(provider;
-        assert!(parser.is_ok();
+        assert!(parser.is_ok());
     }
 }

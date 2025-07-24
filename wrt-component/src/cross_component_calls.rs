@@ -689,7 +689,7 @@ impl CrossComponentCallManager {
             }
             
             if !found {
-                let mut new_stats = CallStats::default);
+                let mut new_stats = CallStats::default());
                 new_stats.call_count = 1;
                 new_stats.avg_duration_ns = duration_ns;
                 new_stats.last_call_time = self.get_current_time);
@@ -938,14 +938,14 @@ mod tests {
 
     #[test]
     fn test_call_manager_creation() {
-        let manager = CrossComponentCallManager::new().unwrap();
-        assert_eq!(manager.call_depth(), 0;
-        assert_eq!(manager.targets.len(), 0;
+        let manager = CrossComponentCallManager::new().unwrap());
+        assert_eq!(manager.call_depth(), 0);
+        assert_eq!(manager.targets.len(), 0);
     }
 
     #[test]
     fn test_register_target() {
-        let mut manager = CrossComponentCallManager::new().unwrap();
+        let mut manager = CrossComponentCallManager::new().unwrap());
 
         let target = CallTarget::new(
             1,
@@ -955,18 +955,18 @@ mod tests {
             ResourceTransferPolicy::None,
         ;
 
-        let target_id = manager.register_target(target).unwrap();
-        assert_eq!(target_id, 0;
-        assert_eq!(manager.targets.len(), 1;
+        let target_id = manager.register_target(target).unwrap());
+        assert_eq!(target_id, 0);
+        assert_eq!(manager.targets.len(), 1);
     }
 
     #[test]
     fn test_call_permissions() {
-        let perms = CallPermissions::default);
+        let perms = CallPermissions::default());
         assert!(perms.allowed);
         assert!(!perms.allow_resource_transfer);
         assert!(!perms.allow_memory_access);
-        assert_eq!(perms.max_frequency, 0;
+        assert_eq!(perms.max_frequency, 0);
     }
 
     #[test]
@@ -987,14 +987,14 @@ mod tests {
             ResourceTransferPolicy::Borrow,
         ;
 
-        assert_eq!(target.target_instance, 1;
-        assert_eq!(target.function_index, 0;
+        assert_eq!(target.target_instance, 1);
+        assert_eq!(target.function_index, 0);
         assert_eq!(target.resource_policy, ResourceTransferPolicy::Borrow;
     }
 
     #[test]
     fn test_is_call_allowed() {
-        let mut manager = CrossComponentCallManager::new().unwrap();
+        let mut manager = CrossComponentCallManager::new().unwrap());
 
         // No targets registered - should not be allowed
         assert!(!manager.is_call_allowed(0, 1);
@@ -1007,7 +1007,7 @@ mod tests {
             CallPermissions::default(),
             ResourceTransferPolicy::None,
         ;
-        manager.register_target(target).unwrap();
+        manager.register_target(target).unwrap());
 
         // Now should be allowed
         assert!(manager.is_call_allowed(0, 1);
@@ -1015,7 +1015,7 @@ mod tests {
 
     #[test]
     fn test_call_caching() {
-        let mut manager = CrossComponentCallManager::new().unwrap();
+        let mut manager = CrossComponentCallManager::new().unwrap());
 
         // Test call stats update
         manager.update_call_stats(0, 1, "test_func", 12345, 500;
@@ -1030,7 +1030,7 @@ mod tests {
                 function_name: "test_func".to_string(),
                 signature_hash: 12345,
             };
-            let stats = manager.call_frequency.get(&key).unwrap();
+            let stats = manager.call_frequency.get(&key).unwrap());
             assert_eq!(stats.call_count, 2;
             assert_eq!(stats.avg_duration_ns, 550); // (500 + 600) / 2
         }
@@ -1038,11 +1038,11 @@ mod tests {
 
     #[test]
     fn test_pending_transfers() {
-        let mut manager = CrossComponentCallManager::new().unwrap();
+        let mut manager = CrossComponentCallManager::new().unwrap());
 
         // Add some pending transfers
-        manager.add_pending_transfer(100, 0, 1, ResourceTransferType::Move).unwrap();
-        manager.add_pending_transfer(101, 0, 1, ResourceTransferType::Borrow).unwrap();
+        manager.add_pending_transfer(100, 0, 1, ResourceTransferType::Move).unwrap());
+        manager.add_pending_transfer(101, 0, 1, ResourceTransferType::Borrow).unwrap());
 
         #[cfg(feature = "std")]
         {
@@ -1051,17 +1051,17 @@ mod tests {
 
         // Flush them
         let result = manager.flush_pending_transfers);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         #[cfg(feature = "std")]
         {
-            assert_eq!(manager.pending_transfers.len(), 0;
+            assert_eq!(manager.pending_transfers.len(), 0);
         }
     }
 
     #[test]
     fn test_signature_hash() {
-        let manager = CrossComponentCallManager::new().unwrap();
+        let manager = CrossComponentCallManager::new().unwrap());
 
         // Test that different types have different hashes
         let hash1 = manager.calculate_signature_hash(&WrtComponentType::U32;

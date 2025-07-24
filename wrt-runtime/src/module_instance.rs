@@ -347,7 +347,7 @@ impl ReferenceOperations for ModuleInstance {
 impl Default for ModuleInstance {
     fn default() -> Self {
         // Create a default module instance with a default module
-        let default_module = Module::default);
+        let default_module = Module::default());
         // Default implementation must succeed for basic functionality
         // Use minimal memory allocation that should always work
         match Self::new(default_module, 0) {
@@ -567,7 +567,7 @@ impl FromBytes for ModuleInstance {
         // Create a default module instance with empty collections
         // This is a simplified implementation - in a real scenario, 
         // you'd need to reconstruct the actual module
-        let default_module = Module::default);
+        let default_module = Module::default());
         
         // Create the instance using the new method
         Self::new(default_module, instance_id)

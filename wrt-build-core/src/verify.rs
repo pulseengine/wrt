@@ -845,7 +845,7 @@ mod tests {
 
     #[test]
     fn test_verification_options() {
-        let options = VerificationOptions::default);
+        let options = VerificationOptions::default());
         assert!(options.kani);
         assert!(options.memory_safety);
     }

@@ -902,9 +902,9 @@ mod tests {
     #[test]
     fn test_documentation_verification_framework_creation() {
         let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
-        let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
+        let (result, _diagnostics) = framework.verify_all_documentation().unwrap());
 
-        assert_eq!(result.total_requirements, 0;
+        assert_eq!(result.total_requirements, 0);
         assert_eq!(result.compliance_percentage, 100.0;
         assert!(result.is_certification_ready);
     }
@@ -923,10 +923,10 @@ mod tests {
 
         framework.add_requirement(requirement;
 
-        let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
+        let (result, _diagnostics) = framework.verify_all_documentation().unwrap());
 
-        assert_eq!(result.total_requirements, 1;
-        assert_eq!(result.compliant_requirements, 0;
+        assert_eq!(result.total_requirements, 1);
+        assert_eq!(result.compliant_requirements, 0);
         assert!(!result.violations.is_empty();
         assert!(!result.is_certification_ready);
     }
@@ -966,10 +966,10 @@ mod tests {
 
         framework.add_requirement(requirement;
 
-        let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
+        let (result, _diagnostics) = framework.verify_all_documentation().unwrap());
 
-        assert_eq!(result.total_requirements, 1;
-        assert_eq!(result.compliant_requirements, 1;
+        assert_eq!(result.total_requirements, 1);
+        assert_eq!(result.compliant_requirements, 1);
         assert_eq!(result.compliance_percentage, 100.0;
         assert!(result.is_certification_ready);
     }
@@ -980,9 +980,9 @@ mod tests {
         let (report, _diagnostics) = framework.generate_report);
 
         assert_eq!(report.overall_compliance, 100.0;
-        assert_eq!(report.total_requirements, 0;
-        assert_eq!(report.total_violations, 0;
-        assert_eq!(report.critical_violations, 0;
+        assert_eq!(report.total_requirements, 0);
+        assert_eq!(report.total_violations, 0);
+        assert_eq!(report.critical_violations, 0);
     }
 
     #[test]

@@ -155,12 +155,12 @@ mod tests {
         let component1 = ComponentInstanceId::new(1;
         let component2 = ComponentInstanceId::new(2;
         
-        harness.initialize_component(component1).unwrap();
-        harness.initialize_component(component2).unwrap();
+        harness.initialize_component(component1).unwrap());
+        harness.initialize_component(component2).unwrap());
 
         // Test cross-component async operations
         {
-            let mut bridge = harness.bridge.lock().unwrap();
+            let mut bridge = harness.bridge.lock().unwrap());
             
             // Spawn tasks in both components
             let task1 = bridge.spawn_async_task(
@@ -176,7 +176,7 @@ mod tests {
                 },
                 ComponentAsyncTaskType::AsyncFunction,
                 Priority::Normal,
-            ).unwrap();
+            ).unwrap());
 
             let task2 = bridge.spawn_async_task(
                 component2,
@@ -191,11 +191,11 @@ mod tests {
                 },
                 ComponentAsyncTaskType::AsyncFunction,
                 Priority::High,
-            ).unwrap();
+            ).unwrap());
 
             // Poll until completion
             for _ in 0..20 {
-                let result = bridge.poll_async_tasks().unwrap();
+                let result = bridge.poll_async_tasks().unwrap());
                 if result.tasks_completed >= 2 {
                     break;
                 }
@@ -211,13 +211,13 @@ mod tests {
     fn test_async_combinators_with_channels() {
         let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
-        harness.initialize_component(component_id).unwrap();
+        harness.initialize_component(component_id).unwrap());
 
         // Create channel for communication
         let (sender, receiver) = harness.channels.create_channel(
             component_id,
             ChannelType::Bounded(8),
-        ).unwrap();
+        ).unwrap());
 
         // Create futures that use channels
         let send_future = async move {
@@ -246,47 +246,47 @@ mod tests {
                 Box::pin(send_future),
                 Box::pin(recv_future),
             ],
-        ).unwrap();
+        ).unwrap());
 
         // Poll combinator
         for _ in 0..50 {
-            let result = harness.combinators.poll_combinators().unwrap();
+            let result = harness.combinators.poll_combinators().unwrap());
             if result.completed_combinators > 0 {
                 break;
             }
         }
 
         let stats = harness.combinators.get_combinator_statistics);
-        assert_eq!(stats.total_joins, 1;
+        assert_eq!(stats.total_joins, 1);
     }
 
     #[test]
     fn test_timer_with_sync_primitives() {
         let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
-        harness.initialize_component(component_id).unwrap();
+        harness.initialize_component(component_id).unwrap());
 
         // Create mutex and semaphore
-        let mutex_id = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
-        let semaphore_id = harness.sync_primitives.create_async_semaphore(component_id, 2, true).unwrap();
+        let mutex_id = harness.sync_primitives.create_async_mutex(component_id, false).unwrap());
+        let semaphore_id = harness.sync_primitives.create_async_semaphore(component_id, 2, true).unwrap());
 
         // Create timers
         let timer1 = harness.timers.create_timer(
             component_id,
             TimerType::Oneshot,
             100,
-        ).unwrap();
+        ).unwrap());
 
         let timer2 = harness.timers.create_timer(
             component_id,
             TimerType::Interval(50),
             50,
-        ).unwrap();
+        ).unwrap());
 
         // Simulate time passage and process timers
         for step in 0..10 {
             harness.timers.advance_time(20;
-            let timer_result = harness.timers.process_timers().unwrap();
+            let timer_result = harness.timers.process_timers().unwrap());
             
             if step == 2 { // Around 60ms
                 // Timer should have fired, test sync operations
@@ -296,14 +296,14 @@ mod tests {
                     mutex_id, 
                     task_id, 
                     component_id
-                ).unwrap();
+                ).unwrap());
                 assert_eq!(mutex_result, MutexLockResult::Acquired;
 
                 let sem_result = harness.sync_primitives.acquire_semaphore(
                     semaphore_id,
                     task_id,
                     component_id,
-                ).unwrap();
+                ).unwrap());
                 assert_eq!(sem_result, SemaphoreAcquireResult::Acquired;
             }
         }
@@ -312,15 +312,15 @@ mod tests {
         assert!(timer_stats.total_timers_created >= 2);
 
         let sync_stats = harness.sync_primitives.get_sync_statistics);
-        assert_eq!(sync_stats.total_mutexes_created, 1;
-        assert_eq!(sync_stats.total_semaphores_created, 1;
+        assert_eq!(sync_stats.total_mutexes_created, 1);
+        assert_eq!(sync_stats.total_semaphores_created, 1);
     }
 
     #[test]
     fn test_resource_operations_with_combinators() {
         let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
-        harness.initialize_component(component_id).unwrap();
+        harness.initialize_component(component_id).unwrap());
 
         // Create multiple async resource operations
         let resource_type = ResourceType::new("TestResource".to_string();
@@ -330,14 +330,14 @@ mod tests {
             resource_type.clone(),
             vec![ComponentValue::U32(100)],
             None,
-        ).unwrap();
+        ).unwrap());
 
         let create_op2 = harness.resource_ops.async_create_resource(
             component_id,
             resource_type.clone(),
             vec![ComponentValue::U32(200)],
             None,
-        ).unwrap();
+        ).unwrap());
 
         // Create delay futures that simulate resource operations
         let resource_future1 = create_delay_future(100, ComponentValue::U32(1;
@@ -347,12 +347,12 @@ mod tests {
         let race_id = harness.combinators.race(
             component_id,
             vec![resource_future1, resource_future2],
-        ).unwrap();
+        ).unwrap());
 
         // Poll everything
         for _ in 0..30 {
             let _ = harness.resource_ops.poll_resource_operations);
-            let combinator_result = harness.combinators.poll_combinators().unwrap();
+            let combinator_result = harness.combinators.poll_combinators().unwrap());
             
             if combinator_result.completed_combinators > 0 {
                 break;
@@ -363,7 +363,7 @@ mod tests {
         assert_eq!(resource_stats.total_creates, 2;
 
         let combinator_stats = harness.combinators.get_combinator_statistics);
-        assert_eq!(combinator_stats.total_races, 1;
+        assert_eq!(combinator_stats.total_races, 1);
     }
 
     #[test]
@@ -376,7 +376,7 @@ mod tests {
             .collect();
 
         for &component_id in &components {
-            harness.initialize_component(component_id).unwrap();
+            harness.initialize_component(component_id).unwrap());
         }
 
         // Create resources and operations in each component
@@ -399,7 +399,7 @@ mod tests {
             let _ = harness.sync_primitives.create_async_semaphore(component_id, 3, true;
 
             // Create async tasks
-            let mut bridge = harness.bridge.lock().unwrap();
+            let mut bridge = harness.bridge.lock().unwrap());
             let _ = bridge.spawn_async_task(
                 component_id,
                 Some(i as u32),
@@ -420,7 +420,7 @@ mod tests {
         for round in 0..100 {
             // Poll all subsystems
             {
-                let mut bridge = harness.bridge.lock().unwrap();
+                let mut bridge = harness.bridge.lock().unwrap());
                 let _ = bridge.poll_async_tasks);
             }
             
@@ -433,7 +433,7 @@ mod tests {
 
             // Verify component isolation
             let bridge_stats = {
-                let bridge = harness.bridge.lock().unwrap();
+                let bridge = harness.bridge.lock().unwrap());
                 bridge.get_bridge_statistics()
             };
             
@@ -453,7 +453,7 @@ mod tests {
 
         // Final verification - all components should still be active
         let final_bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap();
+            let bridge = harness.bridge.lock().unwrap());
             bridge.get_bridge_statistics()
         };
         assert_eq!(final_bridge_stats.active_components, 5;
@@ -463,7 +463,7 @@ mod tests {
     fn test_error_propagation_and_recovery() {
         let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
-        harness.initialize_component(component_id).unwrap();
+        harness.initialize_component(component_id).unwrap());
 
         // Test various error conditions
         
@@ -504,11 +504,11 @@ mod tests {
         let (sender, receiver) = harness.channels.create_channel(
             component_id,
             ChannelType::Oneshot,
-        ).unwrap();
+        ).unwrap());
         
         // Close the channel
         let channel_id = sender.channel_id;
-        harness.channels.close_channel(channel_id).unwrap();
+        harness.channels.close_channel(channel_id).unwrap());
         
         // Try to send on closed channel should handle gracefully
         let send_result = harness.channels.send_message(
@@ -516,28 +516,28 @@ mod tests {
             component_id,
             ComponentValue::U32(42),
             None,
-        ).unwrap();
+        ).unwrap());
         
         // Should indicate channel is closed
         assert_eq!(send_result, crate::async_::optimized_async_channels::SendResult::Closed;
 
         // System should still be functional after errors
         let bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap();
+            let bridge = harness.bridge.lock().unwrap());
             bridge.get_bridge_statistics()
         };
-        assert_eq!(bridge_stats.active_components, 1;
+        assert_eq!(bridge_stats.active_components, 1);
     }
 
     #[test]
     fn test_fuel_consumption_and_limits() {
         let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
-        harness.initialize_component(component_id).unwrap();
+        harness.initialize_component(component_id).unwrap());
 
         // Track initial fuel state
         let initial_bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap();
+            let bridge = harness.bridge.lock().unwrap());
             bridge.get_bridge_statistics()
         };
 
@@ -548,7 +548,7 @@ mod tests {
             component_id,
             TimerType::Oneshot,
             100,
-        ).unwrap();
+        ).unwrap());
         
         harness.timers.advance_time(150;
         let _ = harness.timers.process_timers);
@@ -557,7 +557,7 @@ mod tests {
         let (sender, receiver) = harness.channels.create_channel(
             component_id,
             ChannelType::Bounded(4),
-        ).unwrap();
+        ).unwrap());
 
         for i in 0..4 {
             let _ = harness.channels.send_message(
@@ -576,7 +576,7 @@ mod tests {
         }
 
         // 3. Sync primitive operations
-        let mutex_id = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
+        let mutex_id = harness.sync_primitives.create_async_mutex(component_id, false).unwrap());
         let task_id = crate::threading::task_manager::TaskId::new(1;
         
         let _ = harness.sync_primitives.lock_async_mutex(mutex_id, task_id, component_id;
@@ -605,7 +605,7 @@ mod tests {
 
         // Bridge should show increased fuel consumption
         let final_bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap();
+            let bridge = harness.bridge.lock().unwrap());
             bridge.get_bridge_statistics()
         };
         
@@ -616,17 +616,17 @@ mod tests {
     fn test_concurrent_primitive_usage() {
         let mut harness = AsyncSystemTestHarness::new);
         let component_id = ComponentInstanceId::new(1;
-        harness.initialize_component(component_id).unwrap();
+        harness.initialize_component(component_id).unwrap());
 
         // Create primitives that will be used concurrently
-        let mutex_id = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
-        let semaphore_id = harness.sync_primitives.create_async_semaphore(component_id, 3, true).unwrap();
-        let barrier_id = harness.sync_primitives.create_async_barrier(component_id, 3).unwrap();
+        let mutex_id = harness.sync_primitives.create_async_mutex(component_id, false).unwrap());
+        let semaphore_id = harness.sync_primitives.create_async_semaphore(component_id, 3, true).unwrap());
+        let barrier_id = harness.sync_primitives.create_async_barrier(component_id, 3).unwrap());
 
         let (sender, receiver) = harness.channels.create_channel(
             component_id,
             ChannelType::Bounded(16),
-        ).unwrap();
+        ).unwrap());
 
         // Simulate concurrent access from multiple tasks
         let task_ids: Vec<_> = (1..=5).map(|i| crate::threading::task_manager::TaskId::new(i)).collect();
@@ -638,7 +638,7 @@ mod tests {
                 mutex_id,
                 task_id,
                 component_id,
-            ).unwrap();
+            ).unwrap());
             mutex_results.push(result);
         }
 
@@ -646,7 +646,7 @@ mod tests {
         let acquired_count = mutex_results.iter()
             .filter(|&&r| r == MutexLockResult::Acquired)
             .count);
-        assert_eq!(acquired_count, 1;
+        assert_eq!(acquired_count, 1);
 
         // Test concurrent semaphore access
         let mut sem_results = Vec::new);
@@ -655,7 +655,7 @@ mod tests {
                 semaphore_id,
                 task_id,
                 component_id,
-            ).unwrap();
+            ).unwrap());
             sem_results.push(result);
         }
 
@@ -673,7 +673,7 @@ mod tests {
                 component_id,
                 ComponentValue::U32(i),
                 None,
-            ).unwrap();
+            ).unwrap());
             
             // Should eventually succeed or indicate backpressure
             assert!(matches!(result, 

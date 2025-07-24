@@ -48,7 +48,7 @@ mod integration_tests {
     #[test]
     fn test_component_lifecycle_integration() {
         // Create component registry
-        let mut components = new_component_vec::<MockComponent>().unwrap();
+        let mut components = new_component_vec::<MockComponent>().unwrap());
 
         // Create mock component
         let component = MockComponent {
@@ -59,12 +59,12 @@ mod integration_tests {
         };
 
         // Add to registry
-        assert!(components.try_push(component).is_ok();
+        assert!(components.try_push(component).is_ok());
 
         // Verify component management
-        assert_eq!(components.len(), 1;
+        assert_eq!(components.len(), 1);
         let comp = &components[0];
-        assert_eq!(comp.id, 1;
+        assert_eq!(comp.id, 1);
         assert_eq!(comp.name, "test_component";
     }
 
@@ -87,7 +87,7 @@ mod integration_tests {
         assert!(!handles.is_empty();
 
         // Verify canonical operations work with resources
-        let options = CanonicalOptions::default);
+        let options = CanonicalOptions::default());
 
         // Test resource handle encoding/decoding would happen here
         // In real implementation, would use canonical ABI methods
@@ -119,8 +119,8 @@ mod integration_tests {
         let call_manager = CrossComponentCallManager::new);
 
         // Register components
-        assert!(call_manager.register_component(component1).is_ok();
-        assert!(call_manager.register_component(component2).is_ok();
+        assert!(call_manager.register_component(component1).is_ok());
+        assert!(call_manager.register_component(component2).is_ok());
 
         // Test call limits
         let mut successful_calls = 0;
@@ -163,27 +163,27 @@ mod integration_tests {
             .expect("Failed to create resource");
 
         // Component 2 borrows resource
-        assert!(lifecycle_manager.borrow_resource(handle).is_ok();
+        assert!(lifecycle_manager.borrow_resource(handle).is_ok());
 
         // Verify resource state
-        let resource = lifecycle_manager.get_resource(handle).unwrap();
+        let resource = lifecycle_manager.get_resource(handle).unwrap());
         assert_eq!(resource.state, ResourceState::Borrowed;
-        assert_eq!(resource.borrow_count, 1;
+        assert_eq!(resource.borrow_count, 1);
 
         // Multiple borrows should be allowed
-        assert!(lifecycle_manager.borrow_resource(handle).is_ok();
+        assert!(lifecycle_manager.borrow_resource(handle).is_ok());
         assert_eq!(
             lifecycle_manager.get_resource(handle).unwrap().borrow_count,
             2
         ;
 
         // Release borrows
-        assert!(lifecycle_manager.release_borrow(handle).is_ok();
-        assert!(lifecycle_manager.release_borrow(handle).is_ok();
+        assert!(lifecycle_manager.release_borrow(handle).is_ok());
+        assert!(lifecycle_manager.release_borrow(handle).is_ok());
 
         // Transfer ownership
-        assert!(lifecycle_manager.transfer_ownership(handle, 2).is_ok();
-        let resource = lifecycle_manager.get_resource(handle).unwrap();
+        assert!(lifecycle_manager.transfer_ownership(handle, 2).is_ok());
+        let resource = lifecycle_manager.get_resource(handle).unwrap());
         assert_eq!(resource.metadata.owner, 2;
     }
 
@@ -213,12 +213,12 @@ mod integration_tests {
         for (idx, comp) in components.iter_mut().enumerate() {
             // Add types
             for j in 0..20 {
-                comp.types.try_insert(j, format!("type_{}_{}", idx, j)).unwrap();
+                comp.types.try_insert(j, format!("type_{}_{}", idx, j)).unwrap());
             }
 
             // Add resources
             for j in 0..30 {
-                comp.resources.try_push(j).unwrap();
+                comp.resources.try_push(j).unwrap());
             }
         }
 
@@ -251,9 +251,9 @@ mod integration_tests {
         };
 
         // Link components
-        assert!(linker.register_component(provider).is_ok();
-        assert!(linker.register_component(consumer).is_ok();
-        assert!(linker.link(1, 2).is_ok();
+        assert!(linker.register_component(provider).is_ok());
+        assert!(linker.register_component(consumer).is_ok());
+        assert!(linker.link(1, 2).is_ok());
 
         // Verify linking established
         assert!(linker.is_linked(1, 2);
@@ -323,14 +323,14 @@ mod integration_tests {
 
         impl TestStrategy {
             fn allocate(&self, size: usize) -> WrtResult<u32> {
-                let mut allocs = self.allocations.lock().unwrap();
+                let mut allocs = self.allocations.lock().unwrap());
                 let handle = allocs.len() as u32;
                 allocs.try_push(size as u32)?;
                 Ok(handle)
             }
 
             fn deallocate(&self, handle: u32) -> WrtResult<()> {
-                let allocs = self.allocations.lock().unwrap();
+                let allocs = self.allocations.lock().unwrap());
                 if (handle as usize) < allocs.len() {
                     Ok(()
                 } else {
@@ -339,7 +339,7 @@ mod integration_tests {
             }
 
             fn verify(&self, handle: u32) -> WrtResult<()> {
-                let allocs = self.allocations.lock().unwrap();
+                let allocs = self.allocations.lock().unwrap());
                 if (handle as usize) < allocs.len() {
                     Ok(()
                 } else {
@@ -364,12 +364,12 @@ mod integration_tests {
 
         // Verify all handles
         for handle in &handles {
-            assert!(strategy.verify(*handle).is_ok();
+            assert!(strategy.verify(*handle).is_ok());
         }
 
         // Deallocate all
         for handle in &handles {
-            assert!(strategy.deallocate(*handle).is_ok();
+            assert!(strategy.deallocate(*handle).is_ok());
         }
     }
 }
@@ -449,7 +449,7 @@ impl CrossComponentCallManager {
     }
 
     fn register_component(&self, component: MockComponent) -> WrtResult<()> {
-        let mut components = self.components.lock().unwrap();
+        let mut components = self.components.lock().unwrap());
         components.try_push(component)
     }
 
@@ -460,7 +460,7 @@ impl CrossComponentCallManager {
         function: &str,
         args: &[u8],
     ) -> WrtResult<()> {
-        let mut stack = self.call_stack.lock().unwrap();
+        let mut stack = self.call_stack.lock().unwrap());
 
         let frame = CallFrame {
             caller_id,
@@ -492,19 +492,19 @@ mod safety_critical_integration {
         // This test exercises all safety-critical features together
 
         // 1. Memory budget enforcement
-        let components = new_component_vec::<MockComponent>().unwrap();
+        let components = new_component_vec::<MockComponent>().unwrap());
         assert_eq!(components.capacity(), MAX_COMPONENT_INSTANCES;
 
         // 2. Resource limits
-        let resources = new_resource_vec::<u32>().unwrap();
+        let resources = new_resource_vec::<u32>().unwrap());
         assert_eq!(resources.capacity(), MAX_RESOURCE_HANDLES;
 
         // 3. Call stack limits
-        let call_stack = new_call_stack::<u32>().unwrap();
+        let call_stack = new_call_stack::<u32>().unwrap());
         assert_eq!(call_stack.capacity(), MAX_CALL_STACK_DEPTH;
 
         // 4. No panic guarantees - all operations return Result
-        let mut test_components = new_component_vec::<MockComponent>().unwrap();
+        let mut test_components = new_component_vec::<MockComponent>().unwrap());
         let overflow_test = test_components.try_push(MockComponent {
             id: 0,
             name: "test".to_string(),

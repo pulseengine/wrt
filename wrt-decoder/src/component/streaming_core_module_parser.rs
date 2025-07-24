@@ -305,11 +305,11 @@ mod tests {
     fn test_empty_section() {
         let data = &[0u8]; // Zero modules
 
-        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
+        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap());
 
-        let result = parser.parse().unwrap();
-        assert_eq!(result.module_count(), 0;
-        assert_eq!(result.bytes_consumed(), 1;
+        let result = parser.parse().unwrap());
+        assert_eq!(result.module_count(), 0);
+        assert_eq!(result.bytes_consumed(), 1);
         assert!(result.is_empty();
     }
 
@@ -328,7 +328,7 @@ mod tests {
         data.push(count as u8);
 
         let mut parser =
-            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
+            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap());
 
         assert!(parser.parse().is_err();
     }
@@ -348,7 +348,7 @@ mod tests {
         data.push(size as u8);
 
         let mut parser =
-            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
+            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap());
 
         assert!(parser.parse().is_err();
     }
@@ -357,14 +357,14 @@ mod tests {
     fn test_parser_offset_tracking() {
         let data = &[0u8]; // Zero modules
 
-        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
+        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap());
 
-        assert_eq!(parser.offset(), 0;
-        assert_eq!(parser.remaining(), 1;
+        assert_eq!(parser.offset(), 0);
+        assert_eq!(parser.remaining(), 1);
 
-        let result = parser.parse().unwrap();
-        assert_eq!(parser.offset(), 1;
-        assert_eq!(parser.remaining(), 0;
-        assert_eq!(result.bytes_consumed(), 1;
+        let result = parser.parse().unwrap());
+        assert_eq!(parser.offset(), 1);
+        assert_eq!(parser.remaining(), 0);
+        assert_eq!(result.bytes_consumed(), 1);
     }
 }

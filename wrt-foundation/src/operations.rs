@@ -741,19 +741,19 @@ mod tests {
         counter.record_operation(Type::CollectionPush, vl_full;
 
         let summary = counter.get_summary);
-        assert_eq!(summary.memory_reads, 1;
-        assert_eq!(summary.memory_writes, 1;
-        assert_eq!(summary.collection_pushes, 1;
+        assert_eq!(summary.memory_reads, 1);
+        assert_eq!(summary.memory_writes, 1);
+        assert_eq!(summary.collection_pushes, 1);
 
         let expected_fuel = Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap()
             + Type::fuel_cost_for_operation(Type::MemoryWrite, vl_full).unwrap()
-            + Type::fuel_cost_for_operation(Type::CollectionPush, vl_full).unwrap();
+            + Type::fuel_cost_for_operation(Type::CollectionPush, vl_full).unwrap());
         assert_eq!(summary.fuel_consumed, expected_fuel;
 
         counter.reset);
         let summary_after_reset = counter.get_summary);
-        assert_eq!(summary_after_reset.memory_reads, 0;
-        assert_eq!(summary_after_reset.fuel_consumed, 0;
+        assert_eq!(summary_after_reset.memory_reads, 0);
+        assert_eq!(summary_after_reset.fuel_consumed, 0);
     }
 
     #[test]
@@ -772,26 +772,26 @@ mod tests {
 
         let expected_fuel = Type::fuel_cost_for_operation(Type::MemoryRead, vl_off).unwrap()
             + Type::fuel_cost_for_operation(Type::MemoryRead, vl_sampling).unwrap()
-            + Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap();
+            + Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap());
         assert_eq!(summary.fuel_consumed, expected_fuel;
     }
 
     #[test]
     fn test_global_counter() {
-        reset_global_operations);
+        reset_global_operations();
         let vl_full = VerificationLevel::Full;
 
         record_global_operation(Type::FunctionCall, vl_full); // Was Standard
         record_global_operation(Type::CollectionValidate, vl_full); // Was Standard
 
         let summary = global_operation_summary);
-        assert_eq!(summary.function_calls, 1;
-        assert_eq!(summary.collection_validates, 1;
+        assert_eq!(summary.function_calls, 1);
+        assert_eq!(summary.collection_validates, 1);
 
         let fuel = global_fuel_consumed);
         assert_eq!(fuel, summary.fuel_consumed;
 
-        reset_global_operations);
-        assert_eq!(global_fuel_consumed(), 0;
+        reset_global_operations();
+        assert_eq!(global_fuel_consumed(), 0);
     }
 }

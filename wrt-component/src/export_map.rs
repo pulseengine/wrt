@@ -59,7 +59,7 @@ pub struct SafeExportMap {
 impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     /// Create a new empty export map
     pub fn new() -> Result<Self> {
-        let provider = P::default);
+        let provider = P::default());
         let exports = BoundedMap::new(provider)?;
         Ok(Self { exports })
     }

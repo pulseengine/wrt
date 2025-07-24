@@ -52,33 +52,33 @@ fn test_memory_optimization_configurations() {
 #[test]
 fn test_bounded_collections_with_standard_provider() {
     // Create a standard provider using safe_managed_alloc
-    let provider = safe_managed_alloc!(4096, CrateId::Test).unwrap();
+    let provider = safe_managed_alloc!(4096, CrateId::Test).unwrap());
     
     // Test BoundedQueue
-    let mut queue = BoundedQueue::<u32, 100, _>::new(provider.clone()).unwrap();
+    let mut queue = BoundedQueue::<u32, 100, _>::new(provider.clone()).unwrap());
     
     // Benchmark adding 50 items
     let enqueue_duration = benchmark_operations("BoundedQueue enqueue", || {
         for i in 0..50 {
-            queue.enqueue(i).unwrap();
+            queue.enqueue(i).unwrap());
         }
     };
     
     // Benchmark removing 25 items
     let dequeue_duration = benchmark_operations("BoundedQueue dequeue", || {
         for _ in 0..25 {
-            queue.dequeue().unwrap();
+            queue.dequeue().unwrap());
         }
     };
     
     // Test BoundedMap
-    let provider2 = safe_managed_alloc!(8192, CrateId::Test).unwrap();
-    let mut map = BoundedMap::<u32, u32, 100, _>::new(provider2).unwrap();
+    let provider2 = safe_managed_alloc!(8192, CrateId::Test).unwrap());
+    let mut map = BoundedMap::<u32, u32, 100, _>::new(provider2).unwrap());
     
     // Benchmark adding 50 items
     let insert_duration = benchmark_operations("BoundedMap insert", || {
         for i in 0..50 {
-            map.insert(i, i * 2).unwrap();
+            map.insert(i, i * 2).unwrap());
         }
     };
     
@@ -116,13 +116,13 @@ fn test_bounded_vec_with_different_sizes() {
     let sizes = [1024, 2048, 4096, 8192];
     
     for size in &sizes {
-        let provider = safe_managed_alloc!(*size, CrateId::Test).unwrap();
-        let mut vec = BoundedVec::<u8, 1024, _>::new(provider).unwrap();
+        let provider = safe_managed_alloc!(*size, CrateId::Test).unwrap());
+        let mut vec = BoundedVec::<u8, 1024, _>::new(provider).unwrap());
         
         // Fill with test data
         let fill_duration = benchmark_operations(&format!("BoundedVec fill (size {})", size), || {
             for i in 0..100 {
-                vec.push(i as u8).unwrap();
+                vec.push(i as u8).unwrap());
             }
         };
         

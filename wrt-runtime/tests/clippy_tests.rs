@@ -23,7 +23,7 @@ mod tests {
     fn test_capability_engine_clippy_clean() {
         // This test ensures the code compiles with strict clippy rules
         let engine = CapabilityAwareEngine::with_preset(EnginePreset::QM;
-        assert!(engine.is_ok();
+        assert!(engine.is_ok());
 
         if let Ok(engine) = engine {
             // Verify we can access the capability context
@@ -55,7 +55,7 @@ mod tests {
 
         for preset in presets {
             let result = CapabilityAwareEngine::with_preset(preset;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
         }
     }
 }

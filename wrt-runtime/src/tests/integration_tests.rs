@@ -37,7 +37,7 @@ mod tests {
         let result = instance.execute_function("hello", &[])?;
 
         // Check the result
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
 
         // Get the first value directly instead of using indexing
         let value = result.get(0)?;
@@ -101,7 +101,7 @@ mod tests {
         let result = instance.execute_function("add", &[Value::I32(3), Value::I32(4)])?;
 
         // Check the result
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
 
         // Get the first value directly instead of using indexing
         let value = result.get(0)?;

@@ -252,14 +252,14 @@ mod tests {
 
     #[test]
     fn test_bounded_component_creation() {
-        let provider = TestProvider::default);
+        let provider = TestProvider::default());
         let component = BoundedComponent::new(provider;
-        assert!(component.is_ok();
+        assert!(component.is_ok());
 
-        let component = component.unwrap();
-        assert_eq!(component.type_count(), 0;
-        assert_eq!(component.import_count(), 0;
-        assert_eq!(component.export_count(), 0;
+        let component = component.unwrap());
+        assert_eq!(component.type_count(), 0);
+        assert_eq!(component.import_count(), 0);
+        assert_eq!(component.export_count(), 0);
     }
 
     #[test]
@@ -282,7 +282,7 @@ mod tests {
         ;
 
         assert_eq!(FUNC_TYPE.0.len(), 2;
-        assert_eq!(FUNC_TYPE.1.len(), 1;
+        assert_eq!(FUNC_TYPE.1.len(), 1);
         assert_eq!(FUNC_TYPE.0[0], CoreValueType::I32;
         assert_eq!(FUNC_TYPE.1[0], CoreValueType::I64;
     }

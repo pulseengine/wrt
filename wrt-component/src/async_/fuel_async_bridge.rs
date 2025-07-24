@@ -479,11 +479,11 @@ mod tests {
         let bridge = FuelAsyncBridge::new(
             AsyncBridgeConfig::default(),
             VerificationLevel::Standard,
-        ).unwrap();
+        ).unwrap());
 
         let stats = bridge.get_bridge_statistics);
-        assert_eq!(stats.total_bridges, 0;
-        assert_eq!(stats.active_bridges, 0;
+        assert_eq!(stats.total_bridges, 0);
+        assert_eq!(stats.active_bridges, 0);
     }
 
     #[test]
@@ -511,7 +511,7 @@ mod tests {
         let mut bridge = FuelAsyncBridge::new(
             AsyncBridgeConfig::default(),
             VerificationLevel::Standard,
-        ).unwrap();
+        ).unwrap());
 
         // This would work with an actual async runtime
         // let result: Result<u32, _> = bridge.execute_async_function(
@@ -522,6 +522,6 @@ mod tests {
         
         // For now, just test that the bridge was created successfully
         let stats = bridge.get_bridge_statistics);
-        assert_eq!(stats.total_bridges, 0;
+        assert_eq!(stats.total_bridges, 0);
     }
 }

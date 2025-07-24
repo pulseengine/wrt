@@ -353,7 +353,7 @@ mod tests {
 
         // Test clear
         map.clear()?;
-        assert_eq!(map.len(), 0;
+        assert_eq!(map.len(), 0);
         assert!(map.is_empty();
         assert_eq!(map.get(&1)?, None;
         Ok(())

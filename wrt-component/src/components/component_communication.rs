@@ -477,7 +477,7 @@ impl CallRouter {
         let marshaled_parameters = self.marshal_parameters(&context, source_instance, target_instance)?;
 
         // Update call state
-        let mut context = self.active_calls.get_mut(&context.call_id).unwrap();
+        let mut context = self.active_calls.get_mut(&context.call_id).unwrap());
         context.state = CallState::Executing;
 
         // Execute the target function
@@ -488,7 +488,7 @@ impl CallRouter {
         ;
 
         // Update call state and statistics based on result
-        let context = self.active_calls.get_mut(&context.call_id).unwrap();
+        let context = self.active_calls.get_mut(&context.call_id).unwrap());
         match &result {
             Ok(_) => {
                 context.state = CallState::Completed;
@@ -633,7 +633,7 @@ impl CallStack {
             return Err(Error::runtime_execution_error("Call stack is empty";
         }
 
-        let frame = self.frames.pop().unwrap();
+        let frame = self.frames.pop().unwrap());
         self.current_depth -= 1;
         Ok(frame)
     }
@@ -805,8 +805,8 @@ mod tests {
     #[test]
     fn test_call_router_creation() {
         let router = CallRouter::new);
-        assert_eq!(router.stats.total_calls, 0;
-        assert_eq!(router.get_call_stack_depth(), 0;
+        assert_eq!(router.stats.total_calls, 0);
+        assert_eq!(router.get_call_stack_depth(), 0);
     }
 
     #[test]
@@ -820,18 +820,18 @@ mod tests {
             vec![ComponentType::S32],
         ;
         
-        assert!(context.is_ok();
-        let context = context.unwrap();
-        assert_eq!(context.source_instance, 1;
+        assert!(context.is_ok());
+        let context = context.unwrap());
+        assert_eq!(context.source_instance, 1);
         assert_eq!(context.target_instance, 2;
         assert_eq!(context.target_function, "test_function";
-        assert_eq!(context.parameters.len(), 1;
+        assert_eq!(context.parameters.len(), 1);
     }
 
     #[test]
     fn test_call_stack_operations() {
         let mut stack = CallStack::new(5;
-        assert_eq!(stack.depth(), 0;
+        assert_eq!(stack.depth(), 0);
 
         let frame = CallFrame {
             call_id: 1,
@@ -841,21 +841,21 @@ mod tests {
             created_at: 0,
         };
 
-        stack.push_frame(frame).unwrap();
-        assert_eq!(stack.depth(), 1;
+        stack.push_frame(frame).unwrap());
+        assert_eq!(stack.depth(), 1);
 
-        let popped = stack.pop_frame().unwrap();
-        assert_eq!(popped.call_id, 1;
-        assert_eq!(stack.depth(), 0;
+        let popped = stack.pop_frame().unwrap());
+        assert_eq!(popped.call_id, 1);
+        assert_eq!(stack.depth(), 0);
     }
 
     #[test]
     fn test_parameter_bridge_creation() {
-        let source_context = create_memory_context(1, 1024, MemoryProtectionFlags::default);
-        let target_context = create_memory_context(2, 2048, MemoryProtectionFlags::default);
+        let source_context = create_memory_context(1, 1024, MemoryProtectionFlags::default());
+        let target_context = create_memory_context(2, 2048, MemoryProtectionFlags::default());
         let bridge = create_parameter_bridge(source_context, target_context;
         
-        assert_eq!(bridge.source_memory_context.instance_id, 1;
+        assert_eq!(bridge.source_memory_context.instance_id, 1);
         assert_eq!(bridge.target_memory_context.instance_id, 2;
     }
 
@@ -876,7 +876,7 @@ mod tests {
 
     #[test]
     fn test_call_statistics() {
-        let mut stats = CallStatistics::default);
+        let mut stats = CallStatistics::default());
         stats.total_calls = 10;
         stats.successful_calls = 8;
         stats.failed_calls = 2;
@@ -1021,12 +1021,12 @@ impl Default for ResourceTransferType {
 }
 
 // Apply macro to all types that need traits
-impl_basic_traits!(CallContext, CallContext::default);
-impl_basic_traits!(CallFrame, CallFrame::default);
-impl_basic_traits!(CallMetadata, CallMetadata::default);
-impl_basic_traits!(MemoryContext, MemoryContext::default);
-impl_basic_traits!(MemoryProtectionFlags, MemoryProtectionFlags::default);
-impl_basic_traits!(ResourceTransfer, ResourceTransfer::default);
+impl_basic_traits!(CallContext, CallContext::default());
+impl_basic_traits!(CallFrame, CallFrame::default());
+impl_basic_traits!(CallMetadata, CallMetadata::default());
+impl_basic_traits!(MemoryContext, MemoryContext::default());
+impl_basic_traits!(MemoryProtectionFlags, MemoryProtectionFlags::default());
+impl_basic_traits!(ResourceTransfer, ResourceTransfer::default());
 
 // Additional Default implementations
 impl Default for CallRouterConfig {
@@ -1070,6 +1070,6 @@ impl Default for StringEncoding {
 }
 
 // Apply traits to additional types
-impl_basic_traits!(CallRouterConfig, CallRouterConfig::default);
-impl_basic_traits!(MarshalingConfig, MarshalingConfig::default);
-impl_basic_traits!(ResourceTransferPolicy, ResourceTransferPolicy::default);
+impl_basic_traits!(CallRouterConfig, CallRouterConfig::default());
+impl_basic_traits!(MarshalingConfig, MarshalingConfig::default());
+impl_basic_traits!(ResourceTransferPolicy, ResourceTransferPolicy::default());

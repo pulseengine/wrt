@@ -376,7 +376,7 @@ mod tests {
         let instance_id = ComponentInstanceId(1;
         let options = CanonicalOptions::new(0, instance_id;
 
-        assert_eq!(options.memory, 0;
+        assert_eq!(options.memory, 0);
         assert_eq!(options.instance_id, instance_id;
         assert!(!options.has_realloc();
         assert!(!options.has_post_return();
@@ -404,7 +404,7 @@ mod tests {
             .with_string_encoding(StringEncoding::Utf16Le)
             .build);
 
-        assert_eq!(options.memory, 0;
+        assert_eq!(options.memory, 0);
         assert_eq!(options.realloc, Some(42;
         assert_eq!(options.post_return, Some(43;
         assert_eq!(options.string_encoding, StringEncoding::Utf16Le;

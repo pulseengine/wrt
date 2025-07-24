@@ -706,7 +706,7 @@ mod tests {
 
     #[test]
     fn test_version_compatibility_check() {
-        let config = ToolVersionConfig::default);
+        let config = ToolVersionConfig::default());
 
         // Test exact version requirement
         if let Some(kani_version) = config.get_tool_version("kani") {
@@ -730,7 +730,7 @@ mod tests {
 
     #[test]
     fn test_config_serialization() {
-        let config = ToolVersionConfig::default);
+        let config = ToolVersionConfig::default());
         let toml_str = config.to_toml().expect("Should serialize to TOML");
         let loaded_config =
             ToolVersionConfig::from_toml(&toml_str).expect("Should deserialize from TOML");

@@ -48,7 +48,7 @@ fn test_adapter_comprehensive<T: MemoryAdapter>(adapter: &T) -> Result<()> {
     assert_eq!(adapter.byte_size()?, size;
     
     // Test bounds checking
-    let bounds_result = adapter.load(size, 1;
+    let bounds_result = adapter.load(size, 1);
     assert!(bounds_result.is_err(), "Should fail for out-of-bounds access");
     
     Ok(())
@@ -64,12 +64,12 @@ fn test_adapter_error_handling<T: MemoryAdapter>(adapter: &T) -> Result<()> {
     assert!(oob_store.is_err(), "Should fail for out-of-bounds store");
     
     // Test out-of-bounds load
-    let oob_load = adapter.load(size, 1;
+    let oob_load = adapter.load(size, 1);
     assert!(oob_load.is_err(), "Should fail for out-of-bounds load");
     
     // Test zero-length operations (should succeed)
-    assert!(adapter.store(0, &[]).is_ok();
-    assert!(adapter.load(0, 0).is_ok();
+    assert!(adapter.store(0, &[]).is_ok());
+    assert!(adapter.load(0, 0).is_ok());
     
     Ok(())
 }
@@ -303,8 +303,8 @@ mod adapter_comparison_tests {
         assert!(default_error.is_err();
         
         // Both should fail consistently for out-of-bounds loads
-        let safe_load_error = safe_adapter.load(size, 1;
-        let default_load_error = default_adapter.load(size, 1;
+        let safe_load_error = safe_adapter.load(size, 1);
+        let default_load_error = default_adapter.load(size, 1);
         
         assert!(safe_load_error.is_err();
         assert!(default_load_error.is_err();

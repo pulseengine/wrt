@@ -381,7 +381,7 @@ impl ComponentLinker {
             )),
         )];
 
-        let metadata = ComponentMetadata::default);
+        let metadata = ComponentMetadata::default());
 
         Ok((exports, imports, metadata))
     }
@@ -615,9 +615,9 @@ mod tests {
     #[test]
     fn test_linker_creation() {
         let linker = ComponentLinker::new);
-        assert_eq!(linker.components.len(), 0;
-        assert_eq!(linker.instances.len(), 0;
-        assert_eq!(linker.next_instance_id, 1;
+        assert_eq!(linker.components.len(), 0);
+        assert_eq!(linker.instances.len(), 0);
+        assert_eq!(linker.next_instance_id, 1);
     }
 
     #[test]
@@ -626,9 +626,9 @@ mod tests {
         let binary = vec![0x00, 0x61, 0x73, 0x6d]; // "wasm" magic
 
         let result = linker.add_component("test_component".to_string(), &binary;
-        assert!(result.is_ok();
-        assert_eq!(linker.components.len(), 1;
-        assert_eq!(linker.stats.components_registered, 1;
+        assert!(result.is_ok());
+        assert_eq!(linker.components.len(), 1);
+        assert_eq!(linker.stats.components_registered, 1);
     }
 
     #[test]
@@ -636,12 +636,12 @@ mod tests {
         let mut linker = ComponentLinker::new);
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
-        linker.add_component("test_component".to_string(), &binary).unwrap();
-        assert_eq!(linker.components.len(), 1;
+        linker.add_component("test_component".to_string(), &binary).unwrap());
+        assert_eq!(linker.components.len(), 1);
 
         let result = linker.remove_component(&"test_component".to_string();
-        assert!(result.is_ok();
-        assert_eq!(linker.components.len(), 0;
+        assert!(result.is_ok());
+        assert_eq!(linker.components.len(), 0);
     }
 
     #[test]
@@ -649,35 +649,35 @@ mod tests {
         let mut graph = LinkGraph::new);
 
         // Add components
-        graph.add_component("comp1".to_string()).unwrap();
-        graph.add_component("comp2".to_string()).unwrap();
+        graph.add_component("comp1".to_string()).unwrap());
+        graph.add_component("comp2".to_string()).unwrap());
         assert_eq!(graph.nodes.len(), 2;
 
         // Remove component
-        graph.remove_component(&"comp1".to_string()).unwrap();
-        assert_eq!(graph.nodes.len(), 1;
+        graph.remove_component(&"comp1".to_string()).unwrap());
+        assert_eq!(graph.nodes.len(), 1);
         assert_eq!(graph.nodes[0].component_id, "comp2";
     }
 
     #[test]
     fn test_topological_sort_empty() {
         let graph = LinkGraph::new);
-        let result = graph.topological_sort().unwrap();
+        let result = graph.topological_sort().unwrap());
         assert!(result.is_empty();
     }
 
     #[test]
     fn test_topological_sort_single() {
         let mut graph = LinkGraph::new);
-        graph.add_component("comp1".to_string()).unwrap();
+        graph.add_component("comp1".to_string()).unwrap());
 
-        let result = graph.topological_sort().unwrap();
+        let result = graph.topological_sort().unwrap());
         assert_eq!(result, vec!["comp1".to_string()];
     }
 
     #[test]
     fn test_linker_config_default() {
-        let config = LinkerConfig::default);
+        let config = LinkerConfig::default());
         assert!(config.strict_typing);
         assert!(!config.allow_hot_swap);
         assert_eq!(config.max_instance_memory, 64 * 1024 * 1024;
@@ -690,11 +690,11 @@ mod tests {
         let mut linker = ComponentLinker::new);
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
-        linker.add_component("test".to_string(), &binary).unwrap();
+        linker.add_component("test".to_string(), &binary).unwrap());
 
         let stats = linker.get_stats);
-        assert_eq!(stats.components_registered, 1;
-        assert_eq!(stats.instances_created, 0;
+        assert_eq!(stats.components_registered, 1);
+        assert_eq!(stats.instances_created, 0);
     }
 }
 
@@ -770,5 +770,5 @@ impl Default for GraphNode {
     }
 }
 
-impl_basic_traits!(GraphEdge, GraphEdge::default);
-impl_basic_traits!(GraphNode, GraphNode::default);
+impl_basic_traits!(GraphEdge, GraphEdge::default());
+impl_basic_traits!(GraphNode, GraphNode::default());

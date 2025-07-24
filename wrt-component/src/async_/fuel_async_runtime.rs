@@ -559,13 +559,13 @@ mod tests {
     
     #[test]
     fn test_runtime_creation() {
-        let config = RuntimeConfig::default);
+        let config = RuntimeConfig::default());
         let runtime = FuelAsyncRuntime::new(config;
-        assert!(runtime.is_ok();
+        assert!(runtime.is_ok());
         
-        let runtime = runtime.unwrap();
+        let runtime = runtime.unwrap());
         assert_eq!(runtime.state(), RuntimeState::Initializing;
-        assert_eq!(runtime.stats().total_spawned, 0;
+        assert_eq!(runtime.stats().total_spawned, 0);
     }
     
     #[test]
@@ -579,9 +579,9 @@ mod tests {
         };
         
         let runtime = FuelAsyncRuntime::new(config;
-        assert!(runtime.is_ok();
+        assert!(runtime.is_ok());
         
-        let runtime = runtime.unwrap();
+        let runtime = runtime.unwrap());
         assert_eq!(runtime.global_fuel_budget, 500_000;
         assert_eq!(runtime.verification_level, VerificationLevel::Full;
     }
@@ -589,9 +589,9 @@ mod tests {
     #[test]
     fn test_simple_executor() {
         let executor = SimpleAsyncExecutor::new);
-        assert!(executor.is_ok();
+        assert!(executor.is_ok());
         
-        let executor = executor.unwrap();
+        let executor = executor.unwrap());
         assert_eq!(executor.runtime.state(), RuntimeState::Initializing;
     }
 }

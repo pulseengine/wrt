@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_verification_tool_options() {
-        let options = VerificationToolOptions::default);
+        let options = VerificationToolOptions::default());
         assert!(options.check_test_files);
         assert!(options.check_docs);
         assert!(!options.audit_docs);

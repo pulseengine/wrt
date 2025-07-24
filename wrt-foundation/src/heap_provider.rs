@@ -46,7 +46,7 @@ impl HeapProvider {
         let mut data = Vec::new);
         data.try_reserve_exact(capacity)
             .map_err(|_| Error::memory_error("Failed to allocate heap memory"))?;
-        data.resize(capacity, 0;
+        data.resize(capacity, 0);
         
         Ok(Self {
             data,

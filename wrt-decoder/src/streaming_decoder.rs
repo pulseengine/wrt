@@ -44,7 +44,7 @@ impl<'a> StreamingDecoder<'a> {
     /// Create a new streaming decoder (std version)
     #[cfg(feature = "std")]
     pub fn new(binary: &'a [u8]) -> Result<Self> {
-        let module = WrtModule::default);
+        let module = WrtModule::default());
 
         Ok(Self {
             binary,
@@ -61,7 +61,7 @@ impl<'a> StreamingDecoder<'a> {
             8192,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
         )?;
-        let module = WrtModule::default);
+        let module = WrtModule::default());
 
         Ok(Self {
             binary,

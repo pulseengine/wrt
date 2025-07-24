@@ -566,7 +566,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut pool = LinuxThreadPool::new(config).unwrap();
+        let mut pool = LinuxThreadPool::new(config).unwrap());
 
         // Set a test executor
         pool.set_executor(|task| Ok(task.args;
@@ -583,22 +583,22 @@ mod tests {
             deadline: None,
         };
 
-        let handle = pool.spawn_wasm_thread(task).unwrap();
+        let handle = pool.spawn_wasm_thread(task).unwrap());
 
         // Join and verify result
-        let result = handle.join().unwrap();
+        let result = handle.join().unwrap());
         assert_eq!(result, vec![1, 2, 3, 4];
 
         // Check stats
         let stats = pool.get_stats);
-        assert_eq!(stats.total_spawned, 1;
+        assert_eq!(stats.total_spawned, 1);
     }
 
     #[test]
     #[cfg(target_os = "linux")]
     fn test_linux_thread_pool_with_cpu_affinity() {
-        let config = ThreadPoolConfig::default);
-        let mut pool = LinuxThreadPool::new(config).unwrap();
+        let config = ThreadPoolConfig::default());
+        let mut pool = LinuxThreadPool::new(config).unwrap());
 
         pool.set_executor(|_| Ok(vec![];
 
@@ -617,7 +617,7 @@ mod tests {
             deadline: Some(Duration::from_millis(100)),
         };
 
-        let handle = pool.spawn_wasm_thread(task).unwrap();
-        let _ = handle.join().unwrap();
+        let handle = pool.spawn_wasm_thread(task).unwrap());
+        let _ = handle.join().unwrap());
     }
 }

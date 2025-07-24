@@ -474,11 +474,11 @@ mod tests {
         let mut manager = CacheManager::new(1024 * 1024;
         let binary = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
-        let cache1 = manager.get_cache(&binary).unwrap();
+        let cache1 = manager.get_cache(&binary).unwrap());
         assert_eq!(cache1.format_type, WasmFormat::CoreModule;
 
         // Should return same cache for same binary
-        let cache2 = manager.get_cache(&binary).unwrap();
+        let cache2 = manager.get_cache(&binary).unwrap());
         assert_eq!(cache2.format_type, WasmFormat::CoreModule;
     }
 

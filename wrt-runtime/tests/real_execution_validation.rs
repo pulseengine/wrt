@@ -142,7 +142,7 @@ fn test_multiple_function_calls() -> Result<()> {
         let args = vec![Value::I32(a), Value::I32(b)];
         let results = engine.execute(0, 0, args)?;
         
-        assert_eq!(results.len(), 1;
+        assert_eq!(results.len(), 1);
         if let Value::I32(result) = &results[0] {
             assert_eq!(*result, expected, "{} + {} should equal {}", a, b, expected;
         } else {
@@ -163,7 +163,7 @@ fn test_capability_based_memory_allocation() -> Result<()> {
     // Test bounded collection creation with capability
     let mut test_vec = wrt_foundation::bounded::BoundedVec::<i32, 10, _>::new(provider)?;
     test_vec.push(42)?;
-    assert_eq!(test_vec.len(), 1;
+    assert_eq!(test_vec.len(), 1);
     assert_eq!(test_vec.get(0)?, 42;
     
     println!("✓ Capability-based memory allocation working";
@@ -193,7 +193,7 @@ fn test_instruction_dispatch_coverage() -> Result<()> {
     let args = vec![Value::I32(7), Value::I32(11)];
     let results = engine.execute(0, 0, args)?;
     
-    assert_eq!(results.len(), 1;
+    assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 18;
         println!("✓ Instruction dispatch successful: 7 + 11 = {}", result;

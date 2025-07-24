@@ -320,7 +320,7 @@ mod tests {
             .build);
 
         #[cfg(target_os = "vxworks")]
-        assert!(allocator.is_ok();
+        assert!(allocator.is_ok());
         
         #[cfg(not(target_os = "vxworks"))]
         assert!(allocator.is_err();

@@ -58,7 +58,7 @@ use crate::{
 
 /// A unique identifier for a resource instance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceId(pub u32;
+pub struct ResourceId(pub u32);
 
 /// A resource type with metadata
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -231,7 +231,7 @@ impl ResourceTable {
         resource_type: ResourceType,
         data: Arc<dyn ResourceData>,
     ) -> ResourceId {
-        let id = ResourceId(self.next_id;
+        let id = ResourceId(self.next_id);
         self.next_id += 1;
 
         let resource = Resource {
@@ -242,11 +242,11 @@ impl ResourceTable {
         };
 
         // Find an empty slot or add to the end
-        let index = self.resources.iter().position(std::option::Option::is_none;
+        let index = self.resources.iter().position(std::option::Option::is_none);
         if let Some(index) = index {
-            self.resources[index] = Some(resource;
+            self.resources[index] = Some(resource);
         } else {
-            self.resources.push(Some(resource);
+            self.resources.push(Some(resource));
         }
 
         id
@@ -256,7 +256,7 @@ impl ResourceTable {
     pub fn get(&self, id: ResourceId) -> Result<&Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into();
+            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into());
         }
 
         if let Some(ref resource) = self.resources[index] {
@@ -270,7 +270,7 @@ impl ResourceTable {
     pub fn get_mut(&mut self, id: ResourceId) -> Result<&mut Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into();
+            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into());
         }
 
         if let Some(ref mut resource) = self.resources[index] {
@@ -291,7 +291,7 @@ impl ResourceTable {
     pub fn drop_ref(&mut self, id: ResourceId) -> Result<()> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into();
+            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into());
         }
 
         let drop_resource = {
@@ -342,75 +342,75 @@ mod tests {
 
     #[test]
     fn test_resource_allocation() {
-        let mut table = ResourceTable::new);
-        let resource_type = create_test_resource_type);
+        let mut table = ResourceTable::new();
+        let resource_type = create_test_resource_type();
 
-        let data = Arc::new(SimpleResourceData { value: 42 };
-        let id = table.allocate(resource_type.clone(), data.clone();
+        let data = Arc::new(SimpleResourceData { value: 42 });
+        let id = table.allocate(resource_type.clone(), data.clone());
 
-        assert_eq!(id.0, 1;
-        assert_eq!(table.count(), 1;
+        assert_eq!(id.0, 1);
+        assert_eq!(table.count(), 1);
 
         let resource = table.get(id).unwrap();
-        assert_eq!(resource.id.0, 1;
-        assert_eq!(resource.resource_type.name, "test:resource";
-        assert_eq!(resource.ref_count, 1;
+        assert_eq!(resource.id.0, 1);
+        assert_eq!(resource.resource_type.name, "test:resource");
+        assert_eq!(resource.ref_count, 1);
     }
 
     #[test]
     fn test_resource_reference_counting() -> Result<()> {
-        let mut table = ResourceTable::new);
-        let resource_type = create_test_resource_type);
+        let mut table = ResourceTable::new();
+        let resource_type = create_test_resource_type();
 
-        let data = Arc::new(SimpleResourceData { value: 42 };
-        let id = table.allocate(resource_type, data;
+        let data = Arc::new(SimpleResourceData { value: 42 });
+        let id = table.allocate(resource_type, data);
 
         // Add references
         table.add_ref(id)?;
         table.add_ref(id)?;
 
         let resource = table.get(id)?;
-        assert_eq!(resource.ref_count, 3;
+        assert_eq!(resource.ref_count, 3);
 
         // Drop references
         table.drop_ref(id)?;
         table.drop_ref(id)?;
 
         let resource = table.get(id)?;
-        assert_eq!(resource.ref_count, 1;
+        assert_eq!(resource.ref_count, 1);
 
         // Final drop should remove the resource
         table.drop_ref(id)?;
-        assert_eq!(table.count(), 0;
+        assert_eq!(table.count(), 0);
 
         // Resource should no longer be accessible
-        assert!(table.get(id).is_err();
+        assert!(table.get(id).is_err());
 
         Ok(())
     }
 
     #[test]
     fn test_multiple_resources() {
-        let mut table = ResourceTable::new);
-        let resource_type = create_test_resource_type);
+        let mut table = ResourceTable::new();
+        let resource_type = create_test_resource_type();
 
-        let data1 = Arc::new(SimpleResourceData { value: 42 };
-        let id1 = table.allocate(resource_type.clone(), data1;
+        let data1 = Arc::new(SimpleResourceData { value: 42 });
+        let id1 = table.allocate(resource_type.clone(), data1);
 
-        let data2 = Arc::new(SimpleResourceData { value: 84 };
-        let id2 = table.allocate(resource_type.clone(), data2;
+        let data2 = Arc::new(SimpleResourceData { value: 84 });
+        let id2 = table.allocate(resource_type.clone(), data2);
 
-        assert_eq!(id1.0, 1;
-        assert_eq!(id2.0, 2;
-        assert_eq!(table.count(), 2;
+        assert_eq!(id1.0, 1);
+        assert_eq!(id2.0, 2);
+        assert_eq!(table.count(), 2);
 
         // Resources should have correct data
         let resource1 = table.get(id1).unwrap();
         let data1 = resource1.data.as_any().downcast_ref::<SimpleResourceData>().unwrap();
-        assert_eq!(data1.value, 42;
+        assert_eq!(data1.value, 42);
 
         let resource2 = table.get(id2).unwrap();
         let data2 = resource2.data.as_any().downcast_ref::<SimpleResourceData>().unwrap();
-        assert_eq!(data2.value, 84;
+        assert_eq!(data2.value, 84);
     }
 }

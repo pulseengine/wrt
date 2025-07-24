@@ -625,7 +625,7 @@ mod tests {
     
     #[test]
     fn test_thread_config_default() {
-        let config = ThreadConfig::default);
+        let config = ThreadConfig::default());
         assert_eq!(config.max_threads, 128;
         assert_eq!(config.default_stack_size, 1024 * 1024;
         assert!(config.enable_tls);
@@ -634,7 +634,7 @@ mod tests {
     #[test]
     fn test_thread_info_creation() {
         let info = ThreadInfo::new(1, 42, 1024 * 1024, 50, None;
-        assert_eq!(info.thread_id, 1;
+        assert_eq!(info.thread_id, 1);
         assert_eq!(info.function_index, 42;
         assert_eq!(info.state, ThreadState::Ready;
         assert!(info.is_active();
@@ -643,23 +643,23 @@ mod tests {
     
     #[test]
     fn test_thread_manager_creation() {
-        let config = ThreadConfig::default);
-        let manager = ThreadManager::new(config).unwrap();
-        assert_eq!(manager.thread_count(), 0;
-        assert_eq!(manager.active_thread_count(), 0;
+        let config = ThreadConfig::default());
+        let manager = ThreadManager::new(config).unwrap());
+        assert_eq!(manager.thread_count(), 0);
+        assert_eq!(manager.active_thread_count(), 0);
     }
     
     #[cfg(feature = "std")]
     #[test]
     fn test_thread_spawning() {
-        let mut manager = ThreadManager::default);
+        let mut manager = ThreadManager::default());
         
-        let thread_id = manager.spawn_thread(42, Some(2 * 1024 * 1024), None).unwrap();
-        assert_eq!(thread_id, 1;
-        assert_eq!(manager.thread_count(), 1;
-        assert_eq!(manager.active_thread_count(), 1;
+        let thread_id = manager.spawn_thread(42, Some(2 * 1024 * 1024), None).unwrap());
+        assert_eq!(thread_id, 1);
+        assert_eq!(manager.thread_count(), 1);
+        assert_eq!(manager.active_thread_count(), 1);
         
-        let info = manager.get_thread_info(thread_id).unwrap();
+        let info = manager.get_thread_info(thread_id).unwrap());
         assert_eq!(info.function_index, 42;
         assert_eq!(info.stack_size, 2 * 1024 * 1024;
     }
@@ -672,9 +672,9 @@ mod tests {
         stats.record_atomic_operation);
         stats.update_memory_usage(1024;
         
-        assert_eq!(stats.instructions_executed, 1;
-        assert_eq!(stats.function_calls, 1;
-        assert_eq!(stats.atomic_operations, 1;
+        assert_eq!(stats.instructions_executed, 1);
+        assert_eq!(stats.function_calls, 1);
+        assert_eq!(stats.atomic_operations, 1);
         assert_eq!(stats.peak_memory_usage, 1024;
     }
     

@@ -493,12 +493,12 @@ mod tests {
 
     #[test]
     fn test_waitable_registry() {
-        let mut registry = WaitableRegistry::new().unwrap();
+        let mut registry = WaitableRegistry::new().unwrap());
         let future_handle = FutureHandle(42;
         
-        assert!(!registry.is_future_ready(future_handle).unwrap();
+        assert!(!registry.is_future_ready(future_handle).unwrap());
         
-        registry.mark_future_ready(future_handle).unwrap();
-        assert!(registry.is_future_ready(future_handle).unwrap();
+        registry.mark_future_ready(future_handle).unwrap());
+        assert!(registry.is_future_ready(future_handle).unwrap());
     }
 }

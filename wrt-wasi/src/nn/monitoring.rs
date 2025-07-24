@@ -681,7 +681,7 @@ mod tests {
         assert_eq!(entry.level, LogLevel::Warning;
         assert_eq!(entry.component, "wasi-nn";
         assert_eq!(entry.correlation_id, Some("req_123".to_string();
-        assert_eq!(entry.context.len(), 1;
+        assert_eq!(entry.context.len(), 1);
     }
     
     #[test]
@@ -715,8 +715,8 @@ mod tests {
         logger.log(entry;
         
         let stats = logger.get_stats);
-        assert_eq!(stats.total_operations, 1;
-        assert_eq!(stats.total_errors, 1;
+        assert_eq!(stats.total_operations, 1);
+        assert_eq!(stats.total_errors, 1);
         assert_eq!(stats.error_rate, 100.0;
     }
 }

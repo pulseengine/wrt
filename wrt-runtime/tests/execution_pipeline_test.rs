@@ -49,7 +49,7 @@ fn test_pipeline_with_const_function() -> Result<()> {
     let results = engine.execute(instance_handle, "get42", &[])?;
     
     // Verify the result
-    assert_eq!(results.len(), 1;
+    assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 42;
         println!("✅ Constant function test passed: got {}", result;
@@ -76,7 +76,7 @@ fn test_pipeline_with_add_function() -> Result<()> {
     let results = engine.execute(instance_handle, "add", &args)?;
     
     // Verify the result
-    assert_eq!(results.len(), 1;
+    assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 42;
         println!("✅ Add function test passed: 10 + 32 = {}", result;
@@ -99,7 +99,7 @@ fn test_pipeline_across_asil_levels() -> Result<()> {
         
         let results = engine.execute(instance_handle, "get42", &[])?;
         
-        assert_eq!(results.len(), 1;
+        assert_eq!(results.len(), 1);
         if let Value::I32(result) = &results[0] {
             assert_eq!(*result, 42;
         } else {

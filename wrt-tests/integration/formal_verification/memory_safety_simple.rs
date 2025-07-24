@@ -40,14 +40,14 @@ pub fn verify_bounded_vec_capacity_limits() {
     
     // Create a provider with fixed size
     let provider = safe_managed_alloc!(8192, CrateId::Component)
-        .unwrap_or_else(|_| NoStdProvider::<8192>::default);
+        .unwrap_or_else(|_| NoStdProvider::<8192>::default());
     
     // Test BoundedVec with the requested capacity (clamped to max)
     const MAX_ELEMENTS: usize = 256;
     match BoundedVec::<u32, MAX_ELEMENTS, _>::new(provider) {
         Ok(mut vec) => {
             // Verify initial state
-            assert_eq!(vec.len(), 0;
+            assert_eq!(vec.len(), 0);
             assert!(vec.capacity() <= MAX_ELEMENTS);
             
             // Try to add elements up to the requested amount
@@ -89,9 +89,9 @@ pub fn verify_bounded_vec_capacity_limits() {
 pub fn verify_buffer_isolation() {
     // Create two independent providers
     let provider_a = safe_managed_alloc!(4096, CrateId::Component)
-        .unwrap_or_else(|_| NoStdProvider::<4096>::default);
+        .unwrap_or_else(|_| NoStdProvider::<4096>::default());
     let provider_b = safe_managed_alloc!(4096, CrateId::Component)
-        .unwrap_or_else(|_| NoStdProvider::<4096>::default);
+        .unwrap_or_else(|_| NoStdProvider::<4096>::default());
     
     // Create bounded vectors with each provider
     if let (Ok(mut vec_a), Ok(mut vec_b)) = (
@@ -127,13 +127,13 @@ pub fn verify_buffer_isolation() {
 pub fn verify_allocation_error_handling() {
     // Use a very small provider to force allocation failures
     let small_provider = safe_managed_alloc!(128, CrateId::Component)
-        .unwrap_or_else(|_| NoStdProvider::<128>::default);
+        .unwrap_or_else(|_| NoStdProvider::<128>::default());
     
     // Try to create a large bounded vector that might fail
     match BoundedVec::<u64, 32, _>::new(small_provider) {
         Ok(mut vec) => {
             // If creation succeeded, verify normal operation
-            assert_eq!(vec.len(), 0;
+            assert_eq!(vec.len(), 0);
             assert!(vec.capacity() <= 32);
             
             // Try to fill the vector completely
@@ -168,7 +168,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
         let vec = BoundedVec::<u8, 16, _>::new(provider)?;
         
-        assert_eq!(vec.len(), 0;
+        assert_eq!(vec.len(), 0);
         assert!(vec.capacity() <= 16);
         Ok(())
     })?;
@@ -180,15 +180,15 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
         let vec_a = BoundedVec::<u32, 8, _>::new(provider_a)?;
         let vec_b = BoundedVec::<u32, 8, _>::new(provider_b)?;
         
-        assert_eq!(vec_a.len(), 0;
-        assert_eq!(vec_b.len(), 0;
+        assert_eq!(vec_a.len(), 0);
+        assert_eq!(vec_b.len(), 0);
         Ok(())
     })?;
     
     registry.register_test("allocation_error_basic", || {
         // Test with very constrained provider
         let small_provider = safe_managed_alloc!(64, CrateId::Component)
-            .unwrap_or_else(|_| NoStdProvider::<64>::default);
+            .unwrap_or_else(|_| NoStdProvider::<64>::default());
         
         // This might succeed or fail - both are acceptable
         let _result = BoundedVec::<u64, 16, _>::new(small_provider;
@@ -240,7 +240,7 @@ mod tests {
     fn test_simple_memory_verification() {
         let registry = TestRegistry::global);
         let result = register_tests(registry;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(property_count(), 3;
     }
     
@@ -248,12 +248,12 @@ mod tests {
     fn test_bounded_vec_creation() {
         use wrt_foundation::{budget_aware_provider::CrateId, safe_managed_alloc, safe_memory::NoStdProvider};
         let provider = safe_managed_alloc!(1024, CrateId::Component)
-            .unwrap_or_else(|_| NoStdProvider::<1024>::default);
+            .unwrap_or_else(|_| NoStdProvider::<1024>::default());
         let vec = BoundedVec::<u32, 16, _>::new(provider;
-        assert!(vec.is_ok();
+        assert!(vec.is_ok());
         
         if let Ok(v) = vec {
-            assert_eq!(v.len(), 0;
+            assert_eq!(v.len(), 0);
             assert!(v.capacity() <= 16);
         }
     }

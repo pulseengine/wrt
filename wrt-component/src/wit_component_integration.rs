@@ -617,9 +617,9 @@ mod tests {
         };
         
         let context = WitComponentContext::new(doc;
-        assert_eq!(context.interfaces().len(), 0;
-        assert_eq!(context.types().len(), 0;
-        assert_eq!(context.functions().len(), 0;
+        assert_eq!(context.interfaces().len(), 0);
+        assert_eq!(context.types().len(), 0);
+        assert_eq!(context.functions().len(), 0);
     }
     
     #[test]
@@ -653,7 +653,7 @@ mod tests {
     
     #[test]
     fn test_component_config() {
-        let config = ComponentConfig::default);
+        let config = ComponentConfig::default());
         assert!(config.debug_info);
         assert!(!config.optimize);
         assert_eq!(config.memory_limit, Some(1024 * 1024;

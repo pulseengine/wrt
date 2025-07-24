@@ -105,21 +105,21 @@ mod basic_wat_tests {
     #[test]
     fn test_simple_wat_parsing() {
         let wat = create_simple_wat_module);
-        let wasm = wat_to_wasm(wat).unwrap();
+        let wasm = wat_to_wasm(wat).unwrap());
         
         // Test that we can parse the generated WASM
         let mut parser = Parser::new(&wasm;
         let result = parser.parse);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
     fn test_wat_with_imports_parsing() {
         let wat = create_wat_module_with_imports);
-        let wasm = wat_to_wasm(wat).unwrap();
+        let wasm = wat_to_wasm(wat).unwrap());
         
         // Test that builtin scanning works with WAT-generated modules
-        let builtins = parser::scan_for_builtins(&wasm).unwrap();
+        let builtins = parser::scan_for_builtins(&wasm).unwrap());
         assert_eq!(builtins.len(), 2;
         assert!(builtins.contains(&"resource.create".to_string());
         assert!(builtins.contains(&"resource.drop".to_string());
@@ -128,7 +128,7 @@ mod basic_wat_tests {
     #[test]
     fn test_wat_with_memory_parsing() {
         let wat = create_wat_module_with_memory);
-        let wasm = wat_to_wasm(wat).unwrap();
+        let wasm = wat_to_wasm(wat).unwrap());
         
         // Test that memory sections are parsed correctly
         let mut parser = Parser::new(&wasm;
@@ -153,7 +153,7 @@ mod basic_wat_tests {
     #[test]
     fn test_complex_wat_parsing() {
         let wat = create_complex_wat_module);
-        let wasm = wat_to_wasm(wat).unwrap();
+        let wasm = wat_to_wasm(wat).unwrap());
         
         // Test that all sections are parsed correctly
         let mut parser = Parser::new(&wasm;
@@ -240,7 +240,7 @@ mod wat_error_tests {
         )"#;
         
         // WAT parsing should succeed, but the module should indicate the import
-        let wasm = wat_to_wasm(wat_with_undefined).unwrap();
+        let wasm = wat_to_wasm(wat_with_undefined).unwrap());
         
         let mut parser = Parser::new(&wasm;
         let mut found_import = false;
@@ -250,7 +250,7 @@ mod wat_error_tests {
                 Ok(payload) => {
                     if let wrt_decoder::Payload::ImportSection(reader) = payload {
                         for import in reader {
-                            let import = import.unwrap();
+                            let import = import.unwrap());
                             if import.module == "undefined_module" {
                                 found_import = true;
                             }
@@ -289,8 +289,8 @@ mod wat_integration_tests {
             )
         )"#;
         
-        let wasm = wat_to_wasm(wat).unwrap();
-        let builtins = parser::scan_for_builtins(&wasm).unwrap();
+        let wasm = wat_to_wasm(wat).unwrap());
+        let builtins = parser::scan_for_builtins(&wasm).unwrap());
         
         // Should only detect WASI builtin imports, not other imports
         assert_eq!(builtins.len(), 2;
@@ -317,7 +317,7 @@ mod wat_integration_tests {
             (global (export "counter") (mut i32) (i32.const 0))
         )"#;
         
-        let wasm = wat_to_wasm(wat).unwrap();
+        let wasm = wat_to_wasm(wat).unwrap());
         
         let mut parser = Parser::new(&wasm;
         let mut exports_found = Vec::new);
@@ -327,7 +327,7 @@ mod wat_integration_tests {
                 Ok(payload) => {
                     if let wrt_decoder::Payload::ExportSection(reader) = payload {
                         for export in reader {
-                            let export = export.unwrap();
+                            let export = export.unwrap());
                             exports_found.push(export.name.to_string();
                         }
                     } else if let wrt_decoder::Payload::End = payload {
@@ -349,10 +349,10 @@ mod wat_integration_tests {
     fn test_wat_cross_crate_compatibility() {
         // Test that WAT modules work consistently across different parser implementations
         let wat = create_wat_module_with_imports);
-        let wasm = wat_to_wasm(wat).unwrap();
+        let wasm = wat_to_wasm(wat).unwrap());
         
         // Test with wrt-component parser
-        let component_builtins = parser::scan_for_builtins(&wasm).unwrap();
+        let component_builtins = parser::scan_for_builtins(&wasm).unwrap());
         
         // Test with wrt-decoder parser
         let mut decoder_parser = Parser::new(&wasm;
@@ -394,7 +394,7 @@ mod wat_performance_tests {
         let start = Instant::now);
         
         for _ in 0..100 {
-            let _wasm = wat_to_wasm(wat).unwrap();
+            let _wasm = wat_to_wasm(wat).unwrap());
         }
         
         let duration = start.elapsed);
@@ -419,7 +419,7 @@ mod wat_performance_tests {
         wat.push_str(")";
         
         let start = Instant::now);
-        let wasm = wat_to_wasm(&wat).unwrap();
+        let wasm = wat_to_wasm(&wat).unwrap());
         let wat_duration = start.elapsed);
         
         let start = Instant::now);

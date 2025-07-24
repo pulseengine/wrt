@@ -220,18 +220,18 @@ mod tests {
 
         // Create a string resource
         let data = Box::new("test".to_string();
-        let handle = manager.create_resource(1, data).unwrap();
+        let handle = manager.create_resource(1, data).unwrap());
 
         // Verify it exists
-        let result = manager.has_resource(ResourceId(handle)).unwrap();
+        let result = manager.has_resource(ResourceId(handle)).unwrap());
         assert!(result);
 
         // Get the resource
-        let resource = manager.get_resource(handle).unwrap();
-        let guard = resource.lock().unwrap();
+        let resource = manager.get_resource(handle).unwrap());
+        let guard = resource.lock().unwrap());
 
         // Verify type index
-        assert_eq!(guard.type_idx, 1;
+        assert_eq!(guard.type_idx, 1);
     }
 
     #[test]
@@ -241,11 +241,11 @@ mod tests {
 
         // Create a named resource
         let data = Box::new(42i32;
-        let handle = manager.create_named_resource(1, data, "answer").unwrap();
+        let handle = manager.create_named_resource(1, data, "answer").unwrap());
 
         // Get the resource and check the name
-        let resource = manager.get_resource(handle).unwrap();
-        let guard = resource.lock().unwrap();
+        let resource = manager.get_resource(handle).unwrap());
+        let guard = resource.lock().unwrap());
 
         assert_eq!(guard.name, Some("answer".to_string();
     }
@@ -257,17 +257,17 @@ mod tests {
 
         // Add a resource
         let data = Box::new(42i32;
-        let handle = manager.create_resource(1, data).unwrap();
+        let handle = manager.create_resource(1, data).unwrap());
 
         // Verify it exists
-        let exists = manager.has_resource(ResourceId(handle)).unwrap();
+        let exists = manager.has_resource(ResourceId(handle)).unwrap());
         assert!(exists);
 
         // Drop it
-        manager.drop_resource(handle).unwrap();
+        manager.drop_resource(handle).unwrap());
 
         // Verify it's gone
-        let exists = manager.has_resource(ResourceId(handle)).unwrap();
+        let exists = manager.has_resource(ResourceId(handle)).unwrap());
         assert!(!exists);
     }
 
@@ -277,18 +277,18 @@ mod tests {
         let manager = ResourceManager::new(&table;
 
         // Create an arena
-        let mut arena = manager.create_arena().unwrap();
+        let mut arena = manager.create_arena().unwrap());
 
         // Add a resource through the arena
-        let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap();
+        let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap());
 
         // Verify it exists
-        assert!(manager.has_resource(ResourceId(handle)).unwrap();
+        assert!(manager.has_resource(ResourceId(handle)).unwrap());
 
         // Release arena
-        arena.release_all().unwrap();
+        arena.release_all().unwrap());
 
         // Verify resource is gone
-        assert!(!manager.has_resource(ResourceId(handle)).unwrap();
+        assert!(!manager.has_resource(ResourceId(handle)).unwrap());
     }
 }

@@ -444,7 +444,7 @@ mod tests {
 
         // Should succeed now
         let result = builder.build);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -456,7 +456,7 @@ mod tests {
 
         // Should succeed because we manually marked ResourceCreate as implemented
         let result = builder.build);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[cfg(feature = "std")]
@@ -526,7 +526,7 @@ mod tests {
         // Test calling the built-in
         let mut engine = );
         let result = builtin_host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(42)];
     }
 
@@ -544,7 +544,7 @@ mod tests {
         // Test calling the built-in (should use fallback)
         let mut engine = );
         let result = builtin_host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(99)];
     }
 
@@ -617,7 +617,7 @@ mod tests {
         let result = builtin_host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
 
         // The interceptor should have bypassed the handler and returned 777
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(777)];
     }
 }

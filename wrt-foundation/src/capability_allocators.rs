@@ -215,7 +215,7 @@ mod tests {
         let _ = context.register_dynamic_capability(CrateId::Runtime, 1024;
         
         let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime;
-        assert!(boxed_value.is_ok();
+        assert!(boxed_value.is_ok());
         assert_eq!(*boxed_value.unwrap(), 42;
     }
     
@@ -231,9 +231,9 @@ mod tests {
         let _ = context.register_dynamic_capability(CrateId::Runtime, 1024;
         
         let vec_result = CapabilityVec::<u32>::new(&context, CrateId::Runtime, 10;
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
         
-        let vec = vec_result.unwrap();
+        let vec = vec_result.unwrap());
         assert_eq!(vec.capacity(), 10;
     }
     

@@ -606,13 +606,13 @@ mod tests {
     #[test]
     fn test_wast_engine_creation() {
         let engine = WastEngine::new);
-        assert!(engine.is_ok();
+        assert!(engine.is_ok());
     }
 
     #[test]
     fn test_value_conversion() {
         let wast_arg = WastArg::Core(WastArgCore::I32(42;
-        let wrt_value = convert_wast_arg_to_value(&wast_arg).unwrap();
+        let wrt_value = convert_wast_arg_to_value(&wast_arg).unwrap());
         assert_eq!(wrt_value, Value::I32(42;
     }
 

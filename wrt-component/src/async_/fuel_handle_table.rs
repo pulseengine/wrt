@@ -455,22 +455,22 @@ mod tests {
     
     #[test]
     fn test_handle_allocation() {
-        let mut table = FuelHandleTable::new(1, 10, 1000, VerificationLevel::Basic).unwrap();
+        let mut table = FuelHandleTable::new(1, 10, 1000, VerificationLevel::Basic).unwrap());
         
-        let handle = table.allocate("test_data").unwrap();
-        assert_eq!(handle.index, 0;
-        assert_eq!(handle.generation, 1;
+        let handle = table.allocate("test_data").unwrap());
+        assert_eq!(handle.index, 0);
+        assert_eq!(handle.generation, 1);
         
-        let data = table.lookup(handle).unwrap();
+        let data = table.lookup(handle).unwrap());
         assert_eq!(*data, "test_data";
     }
     
     #[test]
     fn test_handle_deallocation() {
-        let mut table = FuelHandleTable::new(1, 10, 1000, VerificationLevel::Basic).unwrap();
+        let mut table = FuelHandleTable::new(1, 10, 1000, VerificationLevel::Basic).unwrap());
         
-        let handle = table.allocate(42).unwrap();
-        let data = table.deallocate(handle).unwrap();
+        let handle = table.allocate(42).unwrap());
+        let data = table.deallocate(handle).unwrap());
         assert_eq!(data, 42;
         
         // Should fail to look up deallocated handle
@@ -479,12 +479,12 @@ mod tests {
     
     #[test]
     fn test_generation_validation() {
-        let mut table = FuelHandleTable::new(1, 10, 1000, VerificationLevel::Basic).unwrap();
+        let mut table = FuelHandleTable::new(1, 10, 1000, VerificationLevel::Basic).unwrap());
         
-        let handle1 = table.allocate(1).unwrap();
-        table.deallocate(handle1).unwrap();
+        let handle1 = table.allocate(1).unwrap());
+        table.deallocate(handle1).unwrap());
         
-        let handle2 = table.allocate(2).unwrap();
+        let handle2 = table.allocate(2).unwrap());
         assert_eq!(handle2.index, handle1.index); // Reused index
         assert_ne!(handle2.generation, handle1.generation); // Different generation
         
@@ -497,17 +497,17 @@ mod tests {
     
     #[test]
     fn test_handle_table_manager() {
-        let mut manager = HandleTableManager::new(10000).unwrap();
+        let mut manager = HandleTableManager::new(10000).unwrap());
         
-        let table_id = manager.create_table::<String>(5, VerificationLevel::Basic).unwrap();
+        let table_id = manager.create_table::<String>(5, VerificationLevel::Basic).unwrap());
         
         {
-            let table = manager.get_table_mut::<String>(table_id).unwrap();
-            let handle = table.allocate("test".to_string()).unwrap();
+            let table = manager.get_table_mut::<String>(table_id).unwrap());
+            let handle = table.allocate("test".to_string()).unwrap());
             assert_eq!(table.lookup(handle).unwrap(), "test";
         }
         
-        assert!(manager.drop_table(table_id).is_ok();
+        assert!(manager.drop_table(table_id).is_ok());
         assert!(manager.get_table::<String>(table_id).is_err();
     }
 }

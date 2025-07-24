@@ -207,13 +207,13 @@ mod tests {
             GenericMemoryCoordinator::new);
 
         // Initialize
-        COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap();
+        COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap());
 
         // Create factory
         let factory = create_budget_factory!(TestFactory, &COORDINATOR;
 
         // Create provider
-        let guard = factory.create_provider(256, TestCrateId(0)).unwrap();
+        let guard = factory.create_provider(256, TestCrateId(0)).unwrap());
         assert_eq!(guard.size(), 256;
     }
 }

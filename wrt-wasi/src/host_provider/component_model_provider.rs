@@ -268,7 +268,7 @@ impl ComponentModelProvider {
     #[cfg(feature = "std")]
     fn build_host_functions(&mut self) -> Result<&Vec<HostFunction>> {
         if self.cached_functions.is_some() {
-            return Ok(self.cached_functions.as_ref().unwrap();
+            return Ok(self.cached_functions.as_ref().unwrap());
         }
         
         let mut functions = Vec::with_capacity(0;

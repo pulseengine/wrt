@@ -251,7 +251,7 @@ fn test_execute_start_with_interceptor_pass_through() {
     let component = MockComponentBuilder::new().build);
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::PassThrough;
 
-    let mut options = ComponentOptions::default);
+    let mut options = ComponentOptions::default());
     options.interceptor = Some(interceptor.clone();
 
     let mut component = component;
@@ -284,7 +284,7 @@ fn test_execute_start_with_interceptor_error() {
     let component = MockComponentBuilder::new().build);
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::ThrowError;
 
-    let mut options = ComponentOptions::default);
+    let mut options = ComponentOptions::default());
     options.interceptor = Some(interceptor.clone();
 
     let mut component = component;
@@ -314,7 +314,7 @@ fn test_execute_start_with_interceptor_handle_call() {
     let component = MockComponentBuilder::new().build);
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::HandleCall;
 
-    let mut options = ComponentOptions::default);
+    let mut options = ComponentOptions::default());
     options.interceptor = Some(interceptor.clone();
 
     let mut component = component;
@@ -339,9 +339,9 @@ fn test_execute_start_with_interceptor_handle_call() {
 fn test_memory_strategy_selection() {
     // Test that the interceptor's memory strategy is respected
     let component = MockComponentBuilder::new().build);
-    let interceptor = Arc::new(TestInterceptor::default);
+    let interceptor = Arc::new(TestInterceptor::default());
 
-    let mut options = ComponentOptions::default);
+    let mut options = ComponentOptions::default());
     options.interceptor = Some(interceptor;
 
     let mut component = component;
@@ -351,7 +351,7 @@ fn test_memory_strategy_selection() {
     // In a real implementation, the memory strategy would be applied during
     // execution
     let result = component.execute_start);
-    assert!(result.is_ok();
+    assert!(result.is_ok());
 }
 
 // Integration-style test that verifies the whole workflow
@@ -363,7 +363,7 @@ fn test_integration_workflow() {
     // Set an interceptor that modifies args and results
     let interceptor = Arc::new(TestInterceptor::new(InterceptMode::ModifyArgs;
 
-    let mut options = ComponentOptions::default);
+    let mut options = ComponentOptions::default());
     options.execution_timeout = Some(Duration::from_secs(5;
     options.interceptor = Some(interceptor.clone();
 

@@ -331,7 +331,7 @@ mod tests {
 
         // Test allowed function
         let result = strategy.before_call("source", "target", "allowed_function", &[];
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Test denied function
         let result = strategy.before_call("source", "target", "denied_function", &[];
@@ -354,7 +354,7 @@ mod tests {
 
         // Test allowed function
         let result = strategy.before_call("source", "target", "allowed_function", &[];
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Test denied function
         let result = strategy.before_call("source", "target", "denied_function", &[];
@@ -373,7 +373,7 @@ mod tests {
 
         // Test allowed source
         let result = strategy.before_call("source", "target", "any_function", &[];
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Test denied source
         let result = strategy.before_call("other_source", "target", "any_function", &[];
@@ -399,7 +399,7 @@ mod tests {
 
         // Test allowed function
         let result = strategy.before_call("source", "target", "allowed_function", &[];
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Test denied function
         let result = strategy.before_call("source", "target", "denied_function", &[];

@@ -696,13 +696,13 @@ mod tests {
     
     #[test]
     fn test_encoding_conversion() {
-        assert_eq!(GraphEncoding::ONNX.to_wit(), 0;
+        assert_eq!(GraphEncoding::ONNX.to_wit(), 0);
         assert_eq!(GraphEncoding::from_wit(0).unwrap(), GraphEncoding::ONNX;
     }
     
     #[test]
     fn test_tensor_type_conversion() {
-        assert_eq!(TensorType::F32.to_wit(), 1;
+        assert_eq!(TensorType::F32.to_wit(), 1);
         assert_eq!(TensorType::from_wit(1).unwrap(), TensorType::F32;
     }
 }

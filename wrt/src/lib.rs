@@ -79,7 +79,7 @@ extern crate alloc;
 //     loop {
 //         // Use spin_loop hint for power efficiency and better behavior
 //         // in virtualized environments
-//         core::hint::spin_loop);
+//         core::hint::spin_loop();
 //     }
 // }
 
@@ -89,7 +89,7 @@ extern crate alloc;
 macro_rules! debug_println {
     ($($arg:tt)*) => {
         if cfg!(debug_assertions) {
-            println!($($arg)*;
+            println!($($arg)*);
         }
     };
 }

@@ -40,8 +40,8 @@ fn test_allocation_size_limits() {
 #[test]
 fn test_safety_aware_allocation_enforcement() {
     // Initialize memory system first
-    init_wrt_memory().unwrap();
-    init_crate_memory(CrateId::Wasi).unwrap();
+    init_wrt_memory().unwrap());
+    init_crate_memory(CrateId::Wasi).unwrap());
     
     // Try to allocate within limits
     let small_alloc = safe_managed_alloc!(1024, WASI_CRATE_ID;
@@ -74,7 +74,7 @@ fn test_safety_aware_allocation_enforcement() {
 #[test]
 fn test_capability_defaults_by_safety_level() {
     // Test that default capabilities change based on safety level
-    let provider = WasiProviderBuilder::new().build().unwrap();
+    let provider = WasiProviderBuilder::new().build().unwrap());
     let caps = provider.capabilities);
     
     match wasi_safety_level() {
@@ -107,7 +107,7 @@ fn test_safety_level_override() {
     let provider_minimal = WasiProviderBuilder::new()
         .with_safety_level("maximum-safety")
         .build()
-        .unwrap();
+        .unwrap());
     
     let caps_minimal = provider_minimal.capabilities);
     assert!(!caps_minimal.filesystem.read_access);
@@ -115,7 +115,7 @@ fn test_safety_level_override() {
     let provider_sandbox = WasiProviderBuilder::new()
         .with_safety_level("bounded-collections")
         .build()
-        .unwrap();
+        .unwrap());
     
     let caps_sandbox = provider_sandbox.capabilities);
     assert!(caps_sandbox.filesystem.read_access);
@@ -127,7 +127,7 @@ fn test_bounded_collections_in_capabilities() {
     use wrt_wasi::WasiFileSystemCapabilities;
     
     // Test that bounded collections properly limit capacity
-    let mut fs_caps = WasiFileSystemCapabilities::minimal().unwrap();
+    let mut fs_caps = WasiFileSystemCapabilities::minimal().unwrap());
     
     // Should be able to add up to MAX_FILESYSTEM_PATHS (32)
     for i in 0..32 {
@@ -148,7 +148,7 @@ fn test_asil_d_specific_enforcement() {
     assert_eq!(wasi_max_allocation_size(), 16384;
     
     // ASIL-D should get minimal capabilities by default
-    let provider = WasiProviderBuilder::new().build().unwrap();
+    let provider = WasiProviderBuilder::new().build().unwrap());
     let caps = provider.capabilities);
     assert!(!caps.filesystem.read_access);
     assert!(!caps.io.stdout_access);
@@ -162,7 +162,7 @@ fn test_qm_specific_enforcement() {
     assert_eq!(wasi_max_allocation_size(), usize::MAX;
     
     // QM should get full capabilities by default
-    let provider = WasiProviderBuilder::new().build().unwrap();
+    let provider = WasiProviderBuilder::new().build().unwrap());
     let caps = provider.capabilities);
     assert!(caps.filesystem.read_access);
     assert!(caps.filesystem.write_access);

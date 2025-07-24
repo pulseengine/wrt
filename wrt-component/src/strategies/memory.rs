@@ -298,12 +298,12 @@ pub fn create_memory_strategy(
     same_runtime: bool,
 ) -> Box<dyn MemoryOptimizationStrategy> {
     // Try strategies in order of performance (fastest to slowest)
-    let zero_copy = ZeroCopyStrategy::default);
+    let zero_copy = ZeroCopyStrategy::default());
     if zero_copy.is_appropriate_for(source_trust_level, destination_trust_level, same_runtime) {
         return Box::new(zero_copy;
     }
 
-    let bounded_copy = BoundedCopyStrategy::default);
+    let bounded_copy = BoundedCopyStrategy::default());
     if bounded_copy.is_appropriate_for(source_trust_level, destination_trust_level, same_runtime) {
         return Box::new(bounded_copy;
     }
@@ -318,13 +318,13 @@ mod tests {
 
     #[test]
     fn test_zero_copy_strategy() {
-        let strategy = ZeroCopyStrategy::default);
+        let strategy = ZeroCopyStrategy::default());
         let source = vec![1, 2, 3, 4, 5];
         let mut dest = vec![0; 5];
 
         // Test valid copy
         let result = strategy.copy_memory(&source, &mut dest, 0, 5;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(dest, vec![1, 2, 3, 4, 5];
 
         // Test out of bounds
@@ -340,13 +340,13 @@ mod tests {
 
     #[test]
     fn test_bounded_copy_strategy() {
-        let strategy = BoundedCopyStrategy::default);
+        let strategy = BoundedCopyStrategy::default());
         let source = vec![1, 2, 3, 4, 5];
         let mut dest = vec![0; 5];
 
         // Test valid copy
         let result = strategy.copy_memory(&source, &mut dest, 0, 5;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(dest, vec![1, 2, 3, 4, 5];
 
         // Test out of bounds
@@ -362,13 +362,13 @@ mod tests {
 
     #[test]
     fn test_full_isolation_strategy() {
-        let strategy = FullIsolationStrategy::default);
+        let strategy = FullIsolationStrategy::default());
         let source = vec![1, 2, 3, 4, 5];
         let mut dest = vec![0; 5];
 
         // Test valid copy
         let result = strategy.copy_memory(&source, &mut dest, 0, 5;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(dest, vec![1, 2, 3, 4, 5];
 
         // Test out of bounds

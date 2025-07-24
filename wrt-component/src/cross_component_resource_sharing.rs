@@ -794,7 +794,7 @@ impl CrossComponentResourceSharingManager {
                     resource: Some(handle),
                 })?;
 
-            let mut shared_with_vec = BoundedVec::new(safe_managed_alloc!(65536, CrateId::Component)?).unwrap();
+            let mut shared_with_vec = BoundedVec::new(safe_managed_alloc!(65536, CrateId::Component)?).unwrap());
             shared_with_vec.push(shared_with).map_err(|_| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceLimitExceeded,
                 message: "Failed to create shared_with list".to_string(),
@@ -803,7 +803,7 @@ impl CrossComponentResourceSharingManager {
                 resource: Some(handle),
             })?;
 
-            let mut agreements_vec = BoundedVec::new(safe_managed_alloc!(65536, CrateId::Component)?).unwrap();
+            let mut agreements_vec = BoundedVec::new(safe_managed_alloc!(65536, CrateId::Component)?).unwrap());
             agreements_vec.push(agreement_id).map_err(|_| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceLimitExceeded,
                 message: "Failed to create agreements list".to_string(),
@@ -996,7 +996,7 @@ mod tests {
 
     #[test]
     fn test_sharing_manager_creation() {
-        let manager = CrossComponentResourceSharingManager::new().unwrap();
+        let manager = CrossComponentResourceSharingManager::new().unwrap());
         assert!(manager.enforce_policies.load(Ordering::Acquire);
     }
 
@@ -1008,15 +1008,15 @@ mod tests {
 
     #[test]
     fn test_sharing_statistics() {
-        let stats = SharingStatistics::default);
-        assert_eq!(stats.total_agreements, 0;
-        assert_eq!(stats.active_agreements, 0;
-        assert_eq!(stats.total_shared_resources, 0;
+        let stats = SharingStatistics::default());
+        assert_eq!(stats.total_agreements, 0);
+        assert_eq!(stats.active_agreements, 0);
+        assert_eq!(stats.total_shared_resources, 0);
     }
 
     #[test]
     fn test_basic_policy_creation() {
-        let policy = create_basic_sharing_policy("test-policy").unwrap();
+        let policy = create_basic_sharing_policy("test-policy").unwrap());
         assert_eq!(policy.name, "test-policy";
         assert!(matches!(policy.applies_to, PolicyScope::Global);
         assert!(policy.enabled);

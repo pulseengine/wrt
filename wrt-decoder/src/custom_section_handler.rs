@@ -285,13 +285,13 @@ mod tests {
         // Create test branch hint data
         let mut section = BranchHintSection::new);
         let mut func_hints = FunctionBranchHints::new(0;
-        func_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
-        section.add_function_hints(func_hints).unwrap();
+        func_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap());
+        section.add_function_hints(func_hints).unwrap());
 
-        let encoded = crate::branch_hint_section::encode_branch_hint_section(&section).unwrap();
+        let encoded = crate::branch_hint_section::encode_branch_hint_section(&section).unwrap());
 
         // Add branch hint section
-        handler.add_section(BRANCH_HINT_SECTION_NAME, &encoded).unwrap();
+        handler.add_section(BRANCH_HINT_SECTION_NAME, &encoded).unwrap());
 
         // Verify it's accessible
         assert!(handler.has_branch_hints();
@@ -303,7 +303,7 @@ mod tests {
         assert_eq!(handler.get_branch_hint(1, 10), None;
 
         // Add unknown section
-        handler.add_section("unknown", &[1, 2, 3, 4]).unwrap();
+        handler.add_section("unknown", &[1, 2, 3, 4]).unwrap());
 
         assert_eq!(handler.section_count(), 2;
         let names = handler.section_names);
@@ -320,7 +320,7 @@ mod tests {
         section_data.extend_from_slice(name.as_bytes);
         section_data.extend_from_slice(&[1, 2, 3, 4]); // test data
 
-        let (extracted_name, data) = extract_custom_section(&section_data).unwrap();
+        let (extracted_name, data) = extract_custom_section(&section_data).unwrap());
         assert_eq!(extracted_name, "test";
         assert_eq!(data, &[1, 2, 3, 4];
     }

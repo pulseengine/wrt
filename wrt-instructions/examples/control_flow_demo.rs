@@ -234,7 +234,7 @@ fn main() -> Result<()> {
     
     // Test CallIndirect with negative function index
     context.push_control_value(Value::I32(-1))?;
-    let invalid_call = CallIndirect::new(0, 1;
+    let invalid_call = CallIndirect::new(0, 1);
     match invalid_call.execute(&mut context) {
         Ok(_) => println!("   Unexpected success with negative function index"),
         Err(e) => println!("   Expected error with negative function index: {}", e),
@@ -242,7 +242,7 @@ fn main() -> Result<()> {
     
     // Test type validation
     context.push_control_value(Value::F32(FloatBits32::from_float(3.14)))?; // Wrong type
-    let type_error_call = CallIndirect::new(0, 1;
+    let type_error_call = CallIndirect::new(0, 1);
     match type_error_call.execute(&mut context) {
         Ok(_) => println!("   Unexpected success with wrong type"),
         Err(e) => println!("   Expected type error: {}", e),

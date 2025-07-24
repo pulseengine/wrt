@@ -128,14 +128,14 @@ fn test_cursor_functionality() {
     let mut cursor = DwarfCursor::new(test_data;
 
     // Basic cursor operations
-    assert_eq!(cursor.position(), 0;
+    assert_eq!(cursor.position(), 0);
     assert_eq!(cursor.remaining(), 8;
     assert!(!cursor.is_at_end();
 
     // Read some data
     let byte1 = cursor.read_u8().expect("Should read byte");
     assert_eq!(byte1, 0x01;
-    assert_eq!(cursor.position(), 1;
+    assert_eq!(cursor.position(), 1);
 
     let byte2 = cursor.read_u8().expect("Should read byte");
     assert_eq!(byte2, 0x02;
@@ -172,7 +172,7 @@ fn test_error_handling() {
     let mut debug_info = DwarfDebugInfo::new(&[];
 
     // Should handle empty module gracefully
-    debug_info.add_section(".debug_line", 0, 0;
+    debug_info.add_section(".debug_line", 0, 0);
     assert!(!debug_info.has_debug_info() || debug_info.has_debug_info();
 
     #[cfg(feature = "line-info")]

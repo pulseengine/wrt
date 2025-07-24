@@ -20,7 +20,7 @@ mod bounded_vec_tests {
     fn test_bounded_vec_creation_and_capacity() -> Result<()> {
         let vec = BoundedVec::<i32, 10>::new);
         
-        assert_eq!(vec.len(), 0;
+        assert_eq!(vec.len(), 0);
         assert_eq!(vec.capacity(), 10;
         assert!(vec.is_empty();
         assert!(!vec.is_full();
@@ -34,7 +34,7 @@ mod bounded_vec_tests {
         
         // Push elements within capacity
         for i in 0..5 {
-            assert!(vec.push(i).is_ok();
+            assert!(vec.push(i).is_ok());
             assert_eq!(vec.len(), i + 1;
         }
         
@@ -65,7 +65,7 @@ mod bounded_vec_tests {
         assert_eq!(vec.pop()?, None); // Empty
         
         assert!(vec.is_empty();
-        assert_eq!(vec.len(), 0;
+        assert_eq!(vec.len(), 0);
         
         Ok(())
     }
@@ -140,7 +140,7 @@ mod bounded_vec_tests {
         
         // Test clear
         vec.clear);
-        assert_eq!(vec.len(), 0;
+        assert_eq!(vec.len(), 0);
         assert!(vec.is_empty();
         
         Ok(())
@@ -158,7 +158,7 @@ mod bounded_stack_tests {
     fn test_bounded_stack_creation() -> Result<()> {
         let stack = BoundedStack::<i32, 10>::new);
         
-        assert_eq!(stack.len(), 0;
+        assert_eq!(stack.len(), 0);
         assert_eq!(stack.capacity(), 10;
         assert!(stack.is_empty();
         assert!(!stack.is_full();
@@ -172,7 +172,7 @@ mod bounded_stack_tests {
         
         // Push elements
         for i in 0..5 {
-            assert!(stack.push(i).is_ok();
+            assert!(stack.push(i).is_ok());
             assert_eq!(stack.len(), i + 1;
         }
         
@@ -274,7 +274,7 @@ mod bounded_queue_tests {
     fn test_bounded_queue_creation() -> Result<()> {
         let queue = BoundedQueue::<i32, 10>::new);
         
-        assert_eq!(queue.len(), 0;
+        assert_eq!(queue.len(), 0);
         assert_eq!(queue.capacity(), 10;
         assert!(queue.is_empty();
         assert!(!queue.is_full();
@@ -288,7 +288,7 @@ mod bounded_queue_tests {
         
         // Enqueue elements
         for i in 0..5 {
-            assert!(queue.enqueue(i).is_ok();
+            assert!(queue.enqueue(i).is_ok());
             assert_eq!(queue.len(), i + 1;
         }
         
@@ -557,7 +557,7 @@ mod collection_error_tests {
             std::thread::spawn(move || -> Result<()> {
                 for i in 0..10 {
                     let value = thread_id * 10 + i;
-                    let mut vec_guard = vec_clone.lock().unwrap();
+                    let mut vec_guard = vec_clone.lock().unwrap());
                     if !vec_guard.is_full() {
                         vec_guard.push(value)?;
                     }
@@ -572,7 +572,7 @@ mod collection_error_tests {
         }
         
         // Verify final state
-        let final_vec = vec.lock().unwrap();
+        let final_vec = vec.lock().unwrap());
         assert!(final_vec.len() <= 100)); // Should not exceed capacity
         
         Ok(())

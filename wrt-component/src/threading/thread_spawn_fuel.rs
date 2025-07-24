@@ -479,7 +479,7 @@ mod tests {
             FuelTrackedThreadContext::new(ThreadId::new(1), ComponentInstanceId::new(1), 1000;
 
         assert_eq!(context.get_remaining_fuel(), 1000;
-        assert_eq!(context.get_consumed_fuel(), 0;
+        assert_eq!(context.get_consumed_fuel(), 0);
         assert!(!context.fuel_exhausted.load(Ordering::Acquire);
     }
 
@@ -488,12 +488,12 @@ mod tests {
         let context =
             FuelTrackedThreadContext::new(ThreadId::new(1), ComponentInstanceId::new(1), 1000;
 
-        assert!(context.consume_fuel(100).is_ok();
+        assert!(context.consume_fuel(100).is_ok());
         assert_eq!(context.get_remaining_fuel(), 900;
         assert_eq!(context.get_consumed_fuel(), 100;
 
-        assert!(context.consume_fuel(900).is_ok();
-        assert_eq!(context.get_remaining_fuel(), 0;
+        assert!(context.consume_fuel(900).is_ok());
+        assert_eq!(context.get_remaining_fuel(), 0);
 
         assert!(context.consume_fuel(1).is_err();
         assert!(context.fuel_exhausted.load(Ordering::Acquire);

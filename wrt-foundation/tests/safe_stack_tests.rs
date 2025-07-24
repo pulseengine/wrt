@@ -77,26 +77,26 @@ fn test_safe_stack_creation_and_basic_ops() {
     let mut stack = BoundedStack::<TestValue, CAPACITY_ELEMENTS, StdMemoryProvider>::new(
         StdMemoryProvider::new(vec![0u8); REQUIRED_BYTES]), // Initialize with sized Vec
     )
-    .unwrap();
+    .unwrap());
 
     let value1 = TestValue { id: 1, data: 100 };
-    stack.push(value1.clone()).unwrap();
+    stack.push(value1.clone()).unwrap());
     let value2 = TestValue { id: 2, data: 200 };
-    stack.push(value2.clone()).unwrap();
+    stack.push(value2.clone()).unwrap());
     let value3 = TestValue { id: 3, data: 300 };
-    stack.push(value3.clone()).unwrap();
+    stack.push(value3.clone()).unwrap());
 
     assert_eq!(stack.len(), 3;
     assert!(!stack.is_empty();
 
-    let popped3 = stack.pop().unwrap();
+    let popped3 = stack.pop().unwrap());
     assert_eq!(popped3, Some(value3;
 
-    let popped2 = stack.pop().unwrap();
+    let popped2 = stack.pop().unwrap());
     assert_eq!(popped2, Some(value2;
 
     assert_eq!(stack.peek().expect("Peek failed on stack"), value1.clone();
-    assert_eq!(stack.len(), 1;
+    assert_eq!(stack.len(), 1);
 
     while stack.pop().unwrap().is_some() {}
     assert!(stack.is_empty();
@@ -112,25 +112,25 @@ fn test_safe_stack_verification_levels_push_pop() {
     let mut stack_none = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(StdMemoryProvider::new(
         vec![0u8; REQUIRED_BYTES_PER_STACK],
     ))
-    .unwrap();
+    .unwrap());
     stack_none.set_verification_level(VerificationLevel::Off;
 
     let mut stack_sampling = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(
         StdMemoryProvider::new(vec![0u8); REQUIRED_BYTES_PER_STACK]),
     )
-    .unwrap();
+    .unwrap());
     stack_sampling.set_verification_level(VerificationLevel::default()); // Sampling
 
     let mut stack_full = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(StdMemoryProvider::new(
         vec![0u8; REQUIRED_BYTES_PER_STACK],
     ))
-    .unwrap();
+    .unwrap());
     stack_full.set_verification_level(VerificationLevel::Full;
 
     for i in 0..CAPACITY_ELEMENTS as u32 {
-        stack_none.push(i).unwrap();
-        stack_sampling.push(i).unwrap();
-        stack_full.push(i).unwrap();
+        stack_none.push(i).unwrap());
+        stack_sampling.push(i).unwrap());
+        stack_full.push(i).unwrap());
     }
 
     for i in (0..CAPACITY_ELEMENTS as u32).rev() {
@@ -154,20 +154,20 @@ fn test_safe_stack_capacity_and_errors() {
     let mut stack = BoundedStack::<u32, CAPACITY_ELEMENTS, StdMemoryProvider>::new(
         StdMemoryProvider::new(vec![0u8); REQUIRED_BYTES]),
     )
-    .unwrap();
+    .unwrap());
 
     assert!(stack.pop().unwrap().is_none();
     assert!(stack.peek().is_none();
 
     for i in 0..CAPACITY_ELEMENTS as u32 {
-        stack.push(i).unwrap();
+        stack.push(i).unwrap());
     }
     assert_eq!(stack.len(), CAPACITY_ELEMENTS;
     assert!(stack.is_full();
     assert!(stack.push(CAPACITY_ELEMENTS as u32).is_err();
 
     for _ in 0..CAPACITY_ELEMENTS {
-        stack.pop().unwrap();
+        stack.pop().unwrap());
     }
     assert!(stack.is_empty();
 }
@@ -182,25 +182,25 @@ fn test_safe_stack_integrity_mixed_ops_levels() {
     let mut stack_none = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(StdMemoryProvider::new(
         vec![0u8; REQUIRED_BYTES_PER_STACK],
     ))
-    .unwrap();
+    .unwrap());
     stack_none.set_verification_level(VerificationLevel::Off;
 
     let mut stack_sampling = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(
         StdMemoryProvider::new(vec![0u8); REQUIRED_BYTES_PER_STACK]),
     )
-    .unwrap();
-    stack_sampling.set_verification_level(VerificationLevel::default);
+    .unwrap());
+    stack_sampling.set_verification_level(VerificationLevel::default());
 
     let mut stack_full = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(StdMemoryProvider::new(
         vec![0u8; REQUIRED_BYTES_PER_STACK],
     ))
-    .unwrap();
+    .unwrap());
     stack_full.set_verification_level(VerificationLevel::Full;
 
     for i in 0..10_u32 {
-        stack_none.push(i).unwrap();
-        stack_sampling.push(i).unwrap();
-        stack_full.push(i).unwrap();
+        stack_none.push(i).unwrap());
+        stack_sampling.push(i).unwrap());
+        stack_full.push(i).unwrap());
     }
     assert_eq!(stack_none.len(), 10;
     assert_eq!(stack_sampling.len(), 10;
@@ -212,9 +212,9 @@ fn test_safe_stack_integrity_mixed_ops_levels() {
     assert_eq!(stack_none.len(), 9;
 
     for i in 9..CAPACITY_ELEMENTS as u32 {
-        stack_none.push(i).unwrap();
-        stack_sampling.push(i).unwrap();
-        stack_full.push(i).unwrap();
+        stack_none.push(i).unwrap());
+        stack_sampling.push(i).unwrap());
+        stack_full.push(i).unwrap());
     }
     assert!(stack_full.is_full();
     assert!(stack_full.push(CAPACITY_ELEMENTS as u32).is_err();
@@ -241,11 +241,11 @@ fn test_safe_stack_checksum_logic() {
     let mut stack = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(StdMemoryProvider::new(
         vec![0u8; REQUIRED_BYTES_PER_STACK],
     ))
-    .unwrap();
+    .unwrap());
     stack.set_verification_level(VerificationLevel::Off;
 
     for i in 0..CAPACITY_ELEMENTS as u32 {
-        stack.push(i).unwrap();
+        stack.push(i).unwrap());
     }
     let checksum_off = stack.checksum);
 
@@ -261,14 +261,14 @@ fn test_safe_stack_checksum_logic() {
     }
 
     if CAPACITY_ELEMENTS > 0 {
-        stack.pop().unwrap();
+        stack.pop().unwrap());
         let checksum_after_pop = stack.checksum);
         assert_ne!(
             checksum_on_initial, checksum_after_pop,
             "Checksum should change after pop if stack was not empty"
         ;
 
-        stack.push(100).unwrap();
+        stack.push(100).unwrap());
         let checksum_after_push = stack.checksum);
         assert_ne!(
             checksum_after_pop, checksum_after_push,
@@ -283,7 +283,7 @@ fn test_safe_stack_checksum_logic() {
     let mut empty_stack_verified = BoundedStack::<u32, CAPACITY_ELEMENTS, _>::new(
         StdMemoryProvider::new(vec![0u8); REQUIRED_BYTES_PER_STACK]),
     )
-    .unwrap();
+    .unwrap());
     empty_stack_verified.set_verification_level(VerificationLevel::Full;
     assert_eq!(
         checksum_empty_verified,

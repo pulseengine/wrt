@@ -242,12 +242,12 @@ impl Value {
                 if let Ok(provider) = safe_managed_alloc!(1024, CrateId::Wasi) {
                     BoundedString::from_str("", provider).unwrap_or_else(|_| {
                         // Fallback to default provider for empty string
-                        let fallback_provider = WasiProvider::default);
+                        let fallback_provider = WasiProvider::default());
                         BoundedString::from_str("", fallback_provider).unwrap()
                     })
                 } else {
                     // If allocation fails, use default provider
-                    let fallback_provider = WasiProvider::default);
+                    let fallback_provider = WasiProvider::default());
                     BoundedString::from_str("", fallback_provider).unwrap()
                 }
             }

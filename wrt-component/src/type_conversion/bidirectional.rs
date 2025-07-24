@@ -20,10 +20,10 @@
 //!     results: vec![FormatValType<ComponentProvider>::S32],
 //! };
 //!
-//! let runtime_func = format_to_runtime_extern_type(&format_func).unwrap();
+//! let runtime_func = format_to_runtime_extern_type(&format_func).unwrap());
 //!
 //! // Convert back to format type
-//! let format_func_again = runtime_to_format_extern_type(&runtime_func).unwrap();
+//! let format_func_again = runtime_to_format_extern_type(&runtime_func).unwrap());
 //! ```
 
 // Explicitly import the types we need to avoid confusion
@@ -146,7 +146,7 @@ fn convert_types_to_format_valtype(types_val_type: &WrtTypesValType) -> FormatVa
 /// use wrt_foundation::types::ValueType;
 ///
 /// let i32_type = ValueType::I32;
-/// let format_type = value_type_to_format_val_type(&i32_type).unwrap();
+/// let format_type = value_type_to_format_val_type(&i32_type).unwrap());
 /// assert!(matches!(format_type, wrt_format::component::ValType::S32);
 /// ```
 pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType<ComponentProvider>> {
@@ -180,7 +180,7 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
 /// use wrt_format::component::ValType;
 ///
 /// let s32_type = ValType::S32;
-/// let core_type = format_val_type_to_value_type(&s32_type).unwrap();
+/// let core_type = format_val_type_to_value_type(&s32_type).unwrap());
 /// assert!(matches!(core_type, wrt_foundation::types::ValueType::I32);
 /// ```
 pub fn format_val_type_to_value_type(format_val_type: &FormatValType<ComponentProvider>) -> Result<ValueType> {
@@ -207,7 +207,7 @@ pub fn format_val_type_to_value_type(format_val_type: &FormatValType<ComponentPr
 /// use wrt_foundation::component_value::ValType;
 ///
 /// let s32_type = ValType::S32;
-/// let core_type = types_valtype_to_valuetype(&s32_type).unwrap();
+/// let core_type = types_valtype_to_valuetype(&s32_type).unwrap());
 /// assert!(matches!(core_type, wrt_foundation::types::ValueType::I32);
 /// ```
 pub fn types_valtype_to_valuetype(types_val_type: &WrtTypesValType) -> Result<ValueType> {
@@ -406,7 +406,7 @@ pub fn types_valtype_to_format_valtype(types_val_type: &WrtTypesValType) -> Form
 ///     results: vec![FormatValType<ComponentProvider>::S32],
 /// };
 ///
-/// let runtime_func = format_to_runtime_extern_type(&format_func).unwrap();
+/// let runtime_func = format_to_runtime_extern_type(&format_func).unwrap());
 /// ```
 pub fn format_to_runtime_extern_type(
     format_extern_type: &FormatExternType,
@@ -503,7 +503,7 @@ pub fn format_to_runtime_extern_type(
 /// };
 ///
 /// let runtime_func = WrtExternType::Function(func_type;
-/// let format_func = runtime_to_format_extern_type(&runtime_func).unwrap();
+/// let format_func = runtime_to_format_extern_type(&runtime_func).unwrap());
 /// ```
 pub fn runtime_to_format_extern_type(
     types_extern_type: &TypesWrtExternType,
@@ -698,7 +698,7 @@ impl IntoFormatType<FormatValType<ComponentProvider>> for WrtTypesValType {
 /// use wrt_format::component::ConstValue;
 ///
 /// let s32_val = ConstValue::S32(42;
-/// let runtime_val = format_constvalue_to_types_componentvalue(&s32_val).unwrap();
+/// let runtime_val = format_constvalue_to_types_componentvalue(&s32_val).unwrap());
 /// assert!(matches!(runtime_val, wrt_foundation::component_value::WrtComponentValue::S32(42);
 /// ```
 pub fn format_constvalue_to_types_componentvalue(
@@ -743,7 +743,7 @@ pub fn format_constvalue_to_types_componentvalue(
 /// use wrt_foundation::component_value::WrtComponentValue;
 ///
 /// let s32_val = WrtComponentValue::S32(42;
-/// let format_val = types_componentvalue_to_format_constvalue(&s32_val).unwrap();
+/// let format_val = types_componentvalue_to_format_constvalue(&s32_val).unwrap());
 /// assert!(matches!(format_val, wrt_format::component::ConstValue::S32(42);
 /// ```
 pub fn types_componentvalue_to_format_constvalue(

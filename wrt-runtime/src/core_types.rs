@@ -60,7 +60,7 @@ impl FromBytes for CallFrame {
         reader.read_exact(&mut ip_bytes)?;
         let instruction_pointer = u32::from_le_bytes(ip_bytes;
         
-        let provider_clone = RuntimeProvider::default);
+        let provider_clone = RuntimeProvider::default());
         let locals = BoundedVec::new(provider_clone)?;
         
         Ok(CallFrame {
@@ -154,7 +154,7 @@ pub struct ExecutionContext {
 impl ExecutionContext {
     /// Create a new execution context
     pub fn new() -> Result<Self> {
-        let provider = RuntimeProvider::default);
+        let provider = RuntimeProvider::default());
         Ok(ExecutionContext {
             value_stack: BoundedVec::new(provider.clone())?,
             call_stack: BoundedVec::new(provider)?,

@@ -362,38 +362,38 @@ mod tests {
 
     #[test]
     fn test_capability_context_creation() {
-        let context = MemoryCapabilityContext::default);
-        assert_eq!(context.capability_count(), 0;
+        let context = MemoryCapabilityContext::default());
+        assert_eq!(context.capability_count(), 0);
         assert!(!context.has_capability(CrateId::Foundation);
     }
 
     #[test]
     fn test_dynamic_capability_registration() {
-        let mut context = MemoryCapabilityContext::default);
+        let mut context = MemoryCapabilityContext::default());
 
-        assert!(context.register_dynamic_capability(CrateId::Foundation, 1024).is_ok();
+        assert!(context.register_dynamic_capability(CrateId::Foundation, 1024).is_ok());
         assert!(context.has_capability(CrateId::Foundation);
-        assert_eq!(context.capability_count(), 1;
+        assert_eq!(context.capability_count(), 1);
     }
 
     #[test]
     fn test_static_capability_registration() {
-        let mut context = MemoryCapabilityContext::default);
+        let mut context = MemoryCapabilityContext::default());
 
-        assert!(context.register_static_capability::<4096>(CrateId::Runtime).is_ok();
+        assert!(context.register_static_capability::<4096>(CrateId::Runtime).is_ok());
         assert!(context.has_capability(CrateId::Runtime);
 
-        let capability = context.get_capability(CrateId::Runtime).unwrap();
+        let capability = context.get_capability(CrateId::Runtime).unwrap());
         assert_eq!(capability.max_allocation_size(), 4096;
     }
 
     #[test]
     fn test_operation_verification() {
-        let mut context = MemoryCapabilityContext::default);
-        context.register_dynamic_capability(CrateId::Foundation, 1000).unwrap();
+        let mut context = MemoryCapabilityContext::default());
+        context.register_dynamic_capability(CrateId::Foundation, 1000).unwrap());
 
         let valid_op = MemoryOperation::Allocate { size: 500 };
-        assert!(context.verify_operation(CrateId::Foundation, &valid_op).is_ok();
+        assert!(context.verify_operation(CrateId::Foundation, &valid_op).is_ok());
 
         let invalid_op = MemoryOperation::Allocate { size: 2000 };
         assert!(context.verify_operation(CrateId::Foundation, &invalid_op).is_err();
@@ -401,13 +401,13 @@ mod tests {
 
     #[test]
     fn test_capability_guarded_provider() {
-        let mut context = MemoryCapabilityContext::default);
-        context.register_dynamic_capability(CrateId::Foundation, 8192).unwrap();
+        let mut context = MemoryCapabilityContext::default());
+        context.register_dynamic_capability(CrateId::Foundation, 8192).unwrap());
 
         let provider = context.create_provider::<4096>(CrateId::Foundation;
-        assert!(provider.is_ok();
+        assert!(provider.is_ok());
 
-        let provider = provider.unwrap();
+        let provider = provider.unwrap());
         assert_eq!(provider.size(), 4096;
     }
 

@@ -1496,8 +1496,8 @@ interface types {
 }
 "#;
         
-        let result = parser.parse_document(source, 0;
-        assert!(result.is_ok();
+        let result = parser.parse_document(source, 0);
+        assert!(result.is_ok());
     }
     
     #[test]
@@ -1511,12 +1511,12 @@ interface environment {
 }
 "#;
         
-        let result = parser.parse_document(source, 0;
-        assert!(result.is_ok();
+        let result = parser.parse_document(source, 0);
+        assert!(result.is_ok());
         
-        let doc = result.unwrap();
+        let doc = result.unwrap());
         assert!(doc.package.is_some();
-        let pkg = doc.package.unwrap();
+        let pkg = doc.package.unwrap());
         assert_eq!(pkg.namespace.name.as_str().unwrap(), "wasi";
         assert_eq!(pkg.name.name.as_str().unwrap(), "cli";
     }
@@ -1534,7 +1534,7 @@ interface files {
 }
 "#;
         
-        let result = parser.parse_document(source, 0;
-        assert!(result.is_ok();
+        let result = parser.parse_document(source, 0);
+        assert!(result.is_ok());
     }
 }

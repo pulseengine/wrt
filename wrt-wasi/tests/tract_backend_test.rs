@@ -41,8 +41,8 @@ fn test_tract_tensor_creation() {
     let backend = TractBackend::new(capability;
 
     // Create a simple tensor
-    let dims = TensorDimensions::new(&[10, 10]).unwrap();
-    let tensor = backend.create_tensor(dims, TensorType::F32).unwrap();
+    let dims = TensorDimensions::new(&[10, 10]).unwrap());
+    let tensor = backend.create_tensor(dims, TensorType::F32).unwrap());
 
     assert_eq!(tensor.size_bytes(), 400); // 10*10*4
 }
@@ -58,7 +58,7 @@ fn test_tract_backend_provider() {
     // Test backend creation
     let capability = DynamicNNCapability::new);
     let backend = provider.create_backend(&capability;
-    assert!(backend.is_ok();
+    assert!(backend.is_ok());
 }
 
 #[test]

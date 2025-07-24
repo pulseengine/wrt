@@ -51,7 +51,7 @@ pub mod kani_verification {
         let extracted_state = extract_state_section(&state_bytes;
 
         // Verify we can extract what we created
-        assert!(extracted_state.is_ok();
+        assert!(extracted_state.is_ok());
     }
 
     /// Verify memory limits validation
@@ -68,7 +68,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     pub fn verify_feature_detection() {
         // Create version info for standard binary
-        let info = VersionInfo::default);
+        let info = VersionInfo::default());
 
         // Check core feature availability
         let core_available = is_feature_available(&info, ComponentModelFeature::Core;

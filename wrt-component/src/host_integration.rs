@@ -720,13 +720,13 @@ mod tests {
     #[test]
     fn test_host_integration_manager_creation() {
         let manager = HostIntegrationManager::new);
-        assert_eq!(manager.host_functions.len(), 0;
-        assert_eq!(manager.event_handlers.len(), 0;
+        assert_eq!(manager.host_functions.len(), 0);
+        assert_eq!(manager.event_handlers.len(), 0);
     }
 
     #[test]
     fn test_security_policy_default() {
-        let policy = SecurityPolicy::default);
+        let policy = SecurityPolicy::default());
         assert!(!policy.allow_arbitrary_host_calls);
         assert_eq!(policy.max_memory_per_component, 64 * 1024 * 1024;
         assert_eq!(policy.max_execution_time_ms, 5000;
@@ -735,7 +735,7 @@ mod tests {
 
     #[test]
     fn test_host_function_permissions_default() {
-        let perms = HostFunctionPermissions::default);
+        let perms = HostFunctionPermissions::default());
         assert!(!perms.allow_host_resources);
         assert!(!perms.allow_memory_access);
         assert!(!perms.allow_resource_creation);
@@ -744,7 +744,7 @@ mod tests {
 
     #[test]
     fn test_host_resource_permissions_default() {
-        let perms = HostResourcePermissions::default);
+        let perms = HostResourcePermissions::default());
         assert!(perms.read);
         assert!(!perms.write);
         assert!(!perms.execute);
@@ -775,6 +775,6 @@ mod tests {
     #[test]
     fn test_host_resource_manager() {
         let manager = HostResourceManager::new);
-        assert_eq!(manager.resource_count(), 0;
+        assert_eq!(manager.resource_count(), 0);
     }
 }

@@ -1045,7 +1045,7 @@ impl CfiExecutionEngine {
     /// Reset CFI state (for testing or recovery)
     pub fn reset_cfi_state(&mut self) -> Result<()> {
         self.cfi_context = CfiExecutionContext::new()?;
-        self.statistics = CfiEngineStatistics::default);
+        self.statistics = CfiEngineStatistics::default());
         Ok(())
     }
 }
@@ -1147,17 +1147,17 @@ mod tests {
 
     #[test]
     fn test_cfi_engine_creation() {
-        let protection = CfiControlFlowProtection::default);
+        let protection = CfiControlFlowProtection::default());
         let engine = CfiExecutionEngine::new(protection).expect("Ok");
 
         assert_eq!(engine.violation_policy, CfiViolationPolicy::ReturnError;
-        assert_eq!(engine.statistics.instructions_protected, 0;
-        assert_eq!(engine.cfi_context.violation_count, 0;
+        assert_eq!(engine.statistics.instructions_protected, 0);
+        assert_eq!(engine.cfi_context.violation_count, 0);
     }
 
     #[test]
     fn test_cfi_engine_with_policy() {
-        let protection = CfiControlFlowProtection::default);
+        let protection = CfiControlFlowProtection::default());
         let policy = CfiViolationPolicy::LogAndContinue;
         let engine = CfiExecutionEngine::new_with_policy(protection, policy).expect("Ok");
 
@@ -1166,15 +1166,15 @@ mod tests {
 
     #[test]
     fn test_cfi_statistics_default() {
-        let stats = CfiEngineStatistics::default);
-        assert_eq!(stats.instructions_protected, 0;
-        assert_eq!(stats.violations_detected, 0;
-        assert_eq!(stats.peak_shadow_stack_depth, 0;
+        let stats = CfiEngineStatistics::default());
+        assert_eq!(stats.instructions_protected, 0);
+        assert_eq!(stats.violations_detected, 0);
+        assert_eq!(stats.peak_shadow_stack_depth, 0);
     }
 
     #[test]
     fn test_cfi_violation_handling() {
-        let protection = CfiControlFlowProtection::default);
+        let protection = CfiControlFlowProtection::default());
         let mut engine =
             CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue).expect("Ok");
 
@@ -1182,7 +1182,7 @@ mod tests {
         engine.handle_cfi_violation(CfiViolationType::ShadowStackMismatch;
 
         assert_eq!(engine.statistics.violations_detected, initial_violations + 1;
-        assert_eq!(engine.cfi_context.violation_count, 1;
+        assert_eq!(engine.cfi_context.violation_count, 1);
     }
 
     // TODO: Fix smart quote issue in test_cfi_context_update test

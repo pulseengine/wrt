@@ -26,7 +26,7 @@ mod complete_debug_tests {
         let params = ParameterList::new);
 
         // Verify parameter list functionality
-        assert_eq!(params.count(), 0;
+        assert_eq!(params.count(), 0);
         assert!(!params.is_variadic();
 
         // Test parameter display
@@ -36,7 +36,7 @@ mod complete_debug_tests {
                 output.push_str(s;
                 Ok(())
             })
-            .unwrap();
+            .unwrap());
         assert_eq!(output, "()";
     }
 
@@ -71,7 +71,7 @@ mod complete_debug_tests {
             depth:           0,
         };
 
-        inlined.add(func).unwrap();
+        inlined.add(func).unwrap());
 
         // Test PC lookup
         assert!(inlined.has_inlined_at(0x2050);
@@ -79,7 +79,7 @@ mod complete_debug_tests {
 
         // Test finding multiple inlined functions
         let found: Vec<_> = inlined.find_at_pc(0x2050).collect();
-        assert_eq!(found.len(), 1;
+        assert_eq!(found.len(), 1);
         assert_eq!(found[0].call_line, 42;
     }
 
@@ -92,11 +92,11 @@ mod complete_debug_tests {
         let string_data = b"\0src\0tests\0lib.rs\0test.rs\0";
         let string_table = StringTable::new(string_data;
 
-        let src_dir = string_table.get_string(1).unwrap();
-        let tests_dir = string_table.get_string(5).unwrap();
+        let src_dir = string_table.get_string(1).unwrap());
+        let tests_dir = string_table.get_string(5).unwrap());
 
-        file_table.add_directory(src_dir).unwrap();
-        file_table.add_directory(tests_dir).unwrap();
+        file_table.add_directory(src_dir).unwrap());
+        file_table.add_directory(tests_dir).unwrap());
 
         // Add files
         let lib_rs = FileEntry {
@@ -113,15 +113,15 @@ mod complete_debug_tests {
             size:      0,
         };
 
-        file_table.add_file(lib_rs).unwrap();
-        file_table.add_file(test_rs).unwrap();
+        file_table.add_file(lib_rs).unwrap());
+        file_table.add_file(test_rs).unwrap());
 
         // Test full path resolution
-        let path1 = file_table.get_full_path(1).unwrap();
+        let path1 = file_table.get_full_path(1).unwrap());
         assert_eq!(path1.filename(), "lib.rs";
         assert_eq!(path1.directory.as_ref().unwrap().as_str(), "src";
 
-        let path2 = file_table.get_full_path(2).unwrap();
+        let path2 = file_table.get_full_path(2).unwrap());
         assert_eq!(path2.filename(), "test.rs";
         assert_eq!(path2.directory.as_ref().unwrap().as_str(), "tests";
     }
@@ -143,7 +143,7 @@ mod complete_debug_tests {
         let string_data = b"\0src\0main.rs\0";
         let string_table = StringTable::new(string_data;
 
-        file_table.add_directory(string_table.get_string(1).unwrap()).unwrap();
+        file_table.add_directory(string_table.get_string(1).unwrap()).unwrap());
 
         let main_rs = FileEntry {
             path:      string_table.get_string(5).unwrap(),
@@ -151,7 +151,7 @@ mod complete_debug_tests {
             mod_time:  0,
             size:      0,
         };
-        file_table.add_file(main_rs).unwrap();
+        file_table.add_file(main_rs).unwrap());
 
         // Test location formatting
         let mut output = String::new);
@@ -161,7 +161,7 @@ mod complete_debug_tests {
                 output.push_str(s;
                 Ok(())
             })
-            .unwrap();
+            .unwrap());
 
         assert_eq!(output, "src/main.rs:42:8";
     }
@@ -189,8 +189,8 @@ mod complete_debug_tests {
             depth:     0,
         };
 
-        trace.push_frame(frame).unwrap();
-        assert_eq!(trace.depth(), 1;
+        trace.push_frame(frame).unwrap());
+        assert_eq!(trace.depth(), 1);
     }
 
     #[test]
@@ -231,8 +231,8 @@ mod complete_debug_tests {
             is_variadic: false,
         };
 
-        params.add_parameter(param1).unwrap();
-        params.add_parameter(param2).unwrap();
+        params.add_parameter(param1).unwrap());
+        params.add_parameter(param2).unwrap());
 
         // Verify parameter access
         assert_eq!(params.count(), 2;
@@ -269,8 +269,8 @@ mod complete_debug_tests {
             depth:           1,
         };
 
-        inlined.add(func1).unwrap();
-        inlined.add(func2).unwrap();
+        inlined.add(func1).unwrap());
+        inlined.add(func2).unwrap());
 
         // PC 0x2100 should find both functions
         let found: Vec<_> = inlined.find_at_pc(0x2100).collect();

@@ -46,8 +46,8 @@ mod proofs {
                 assert!(coordinator.get_total_allocation() == size1 + size2);
 
                 // Return allocations
-                coordinator.return_allocation(CrateId::Foundation, id1, size1).unwrap();
-                coordinator.return_allocation(CrateId::Component, id2, size2).unwrap();
+                coordinator.return_allocation(CrateId::Foundation, id1, size1).unwrap());
+                coordinator.return_allocation(CrateId::Component, id2, size2).unwrap());
 
                 assert!(coordinator.get_total_allocation() == 0);
             }
@@ -139,7 +139,7 @@ fn memory_coordinator_harness() {
             assert!(coordinator.get_total_allocation() >= alloc_size);
 
             // Property: Deallocation works
-            coordinator.return_allocation(CrateId::Foundation, id, alloc_size).unwrap();
+            coordinator.return_allocation(CrateId::Foundation, id, alloc_size).unwrap());
             assert!(coordinator.get_total_allocation() == 0);
         }
     }

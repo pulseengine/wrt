@@ -224,7 +224,7 @@ impl ThreadManager {
     /// The result of the thread execution
     pub fn join(&self, thread_id: ThreadId) -> Result<Vec<ComponentValue>> {
         // Find the thread
-        let mut threads = self.threads.write().unwrap();
+        let mut threads = self.threads.write().unwrap());
         let thread = threads.get_mut(&thread_id).ok_or_else(|| {
             Error::component_not_found("Thread not found")
         })?;
@@ -232,7 +232,7 @@ impl ThreadManager {
         // Check if thread is already joined
         if thread.handle.is_none() {
             // Check state to see if it completed or had an error
-            let state = *thread.state.read().unwrap();
+            let state = *thread.state.read().unwrap());
 
             match state {
                 ThreadState::Completed => {
@@ -289,13 +289,13 @@ impl ThreadManager {
     /// `true` if the thread has completed, `false` if it's still running
     pub fn is_thread_completed(&self, thread_id: ThreadId) -> Result<bool> {
         // Find the thread
-        let threads = self.threads.read().unwrap();
+        let threads = self.threads.read().unwrap());
         let thread = threads.get(&thread_id).ok_or_else(|| {
             Error::component_not_found("Component not found")
         })?;
 
         // Check the state
-        let state = *thread.state.read().unwrap();
+        let state = *thread.state.read().unwrap());
         Ok(state != ThreadState::Running)
     }
 
@@ -357,12 +357,12 @@ impl ThreadManager {
         data: Option<Vec<ComponentValue>>,
     ) -> Result<Option<Vec<ComponentValue>>> {
         // Find the sync primitive
-        let primitives = self.sync_primitives.read().unwrap();
+        let primitives = self.sync_primitives.read().unwrap());
 
         match primitives.get(&sync_id) {
             Some(SyncPrimitive::Mutex { lock }) => {
                 // Lock the mutex
-                let mut guard = lock.lock().unwrap();
+                let mut guard = lock.lock().unwrap());
 
                 // Swap the data
                 let previous = guard.take);
@@ -393,16 +393,16 @@ impl ThreadManager {
         predicate: Box<dyn Fn(&Option<Vec<ComponentValue>>) -> bool + Send>,
     ) -> Result<Option<Vec<ComponentValue>>> {
         // Find the sync primitive
-        let primitives = self.sync_primitives.read().unwrap();
+        let primitives = self.sync_primitives.read().unwrap());
 
         match primitives.get(&sync_id) {
             Some(SyncPrimitive::CondVar { lock, cvar }) => {
                 // Lock the mutex
-                let mut guard = lock.lock().unwrap();
+                let mut guard = lock.lock().unwrap());
 
                 // Wait until the predicate is satisfied
                 while !predicate(&guard) {
-                    guard = cvar.wait(guard).unwrap();
+                    guard = cvar.wait(guard).unwrap());
                 }
 
                 // Return the data
@@ -429,12 +429,12 @@ impl ThreadManager {
         data: Option<Vec<ComponentValue>>,
     ) -> Result<Option<Vec<ComponentValue>>> {
         // Find the sync primitive
-        let primitives = self.sync_primitives.read().unwrap();
+        let primitives = self.sync_primitives.read().unwrap());
 
         match primitives.get(&sync_id) {
             Some(SyncPrimitive::CondVar { lock, cvar }) => {
                 // Lock the mutex
-                let mut guard = lock.lock().unwrap();
+                let mut guard = lock.lock().unwrap());
 
                 // Swap the data
                 let previous = guard.take);
@@ -461,12 +461,12 @@ impl ThreadManager {
     /// The data in the read-write lock, if any
     pub fn read_rwlock(&self, sync_id: SyncId) -> Result<Option<Vec<ComponentValue>>> {
         // Find the sync primitive
-        let primitives = self.sync_primitives.read().unwrap();
+        let primitives = self.sync_primitives.read().unwrap());
 
         match primitives.get(&sync_id) {
             Some(SyncPrimitive::RwLock { lock }) => {
                 // Acquire a read lock
-                let guard = lock.read().unwrap();
+                let guard = lock.read().unwrap());
 
                 // Return a clone of the data
                 Ok(guard.clone())
@@ -492,12 +492,12 @@ impl ThreadManager {
         data: Option<Vec<ComponentValue>>,
     ) -> Result<Option<Vec<ComponentValue>>> {
         // Find the sync primitive
-        let primitives = self.sync_primitives.read().unwrap();
+        let primitives = self.sync_primitives.read().unwrap());
 
         match primitives.get(&sync_id) {
             Some(SyncPrimitive::RwLock { lock }) => {
                 // Acquire a write lock
-                let mut guard = lock.write().unwrap();
+                let mut guard = lock.write().unwrap());
 
                 // Swap the data
                 let previous = guard.take);
@@ -877,10 +877,10 @@ mod tests {
         // Spawn a thread
         let thread_id = manager
             .spawn(1, vec![ComponentValue::String("Hello".to_string())], test_executor)
-            .unwrap();
+            .unwrap());
 
         // Join it
-        let result = manager.join(thread_id).unwrap();
+        let result = manager.join(thread_id).unwrap());
 
         // Verify result
         assert_eq!(result, vec![ComponentValue::String("Hello".to_string())];
@@ -891,19 +891,19 @@ mod tests {
         let manager = ThreadManager::new);
 
         // Spawn a thread that sleeps
-        let thread_id = manager.spawn(2, vec![ComponentValue::U32(50)], test_executor).unwrap();
+        let thread_id = manager.spawn(2, vec![ComponentValue::U32(50)], test_executor).unwrap());
 
         // Check if it's completed (should be running)
-        assert!(!manager.is_thread_completed(thread_id).unwrap();
+        assert!(!manager.is_thread_completed(thread_id).unwrap());
 
         // Sleep a bit longer than the thread
         sleep(Duration::from_millis(100;
 
         // Now it should be completed
-        assert!(manager.is_thread_completed(thread_id).unwrap();
+        assert!(manager.is_thread_completed(thread_id).unwrap());
 
         // Join it
-        let result = manager.join(thread_id).unwrap();
+        let result = manager.join(thread_id).unwrap());
 
         // Verify result
         assert_eq!(
@@ -917,7 +917,7 @@ mod tests {
         let manager = ThreadManager::new);
 
         // Spawn a thread that returns an error
-        let thread_id = manager.spawn(3, vec![], test_executor).unwrap();
+        let thread_id = manager.spawn(3, vec![], test_executor).unwrap());
 
         // Wait for it to complete
         sleep(Duration::from_millis(10;
@@ -940,8 +940,8 @@ mod tests {
             ComponentValue::String("Test".to_string()), // Function argument
         ];
 
-        let result = handler.execute(&args).unwrap();
-        assert_eq!(result.len(), 1;
+        let result = handler.execute(&args).unwrap());
+        assert_eq!(result.len(), 1);
 
         let thread_id = match result[0] {
             ComponentValue::U64(id) => id,
@@ -949,7 +949,7 @@ mod tests {
         };
 
         // Join the thread
-        let join_result = thread_manager.join(thread_id).unwrap();
+        let join_result = thread_manager.join(thread_id).unwrap());
         assert_eq!(join_result, vec![ComponentValue::String("Test".to_string())];
 
         // Test with invalid arguments
@@ -969,13 +969,13 @@ mod tests {
         // Spawn a thread
         let thread_id = thread_manager
             .spawn(1, vec![ComponentValue::String("Test".to_string())], executor)
-            .unwrap();
+            .unwrap());
 
         // Create a join handler
         let handler = ThreadingJoinHandler::new(thread_manager;
 
         // Test joining the thread
-        let result = handler.execute(&[ComponentValue::U64(thread_id)]).unwrap();
+        let result = handler.execute(&[ComponentValue::U64(thread_id)]).unwrap());
         assert_eq!(result, vec![ComponentValue::String("Test".to_string())];
 
         // Test with invalid arguments
@@ -994,8 +994,8 @@ mod tests {
 
         // Test creating a mutex
         let result =
-            handler.execute(&[ComponentValue::String("create-mutex".to_string())]).unwrap();
-        assert_eq!(result.len(), 1;
+            handler.execute(&[ComponentValue::String("create-mutex".to_string())]).unwrap());
+        assert_eq!(result.len(), 1);
 
         let mutex_id = match result[0] {
             ComponentValue::U64(id) => id,
@@ -1009,10 +1009,10 @@ mod tests {
                 ComponentValue::U64(mutex_id),
                 ComponentValue::String("data".to_string()),
             ])
-            .unwrap();
+            .unwrap());
 
         // First lock should return empty result
-        assert_eq!(result.len(), 0;
+        assert_eq!(result.len(), 0);
 
         // Test locking again (should return previous data)
         let result = handler
@@ -1021,13 +1021,13 @@ mod tests {
                 ComponentValue::U64(mutex_id),
                 ComponentValue::String("new-data".to_string()),
             ])
-            .unwrap();
+            .unwrap());
 
         assert_eq!(result, vec![ComponentValue::String("data".to_string())];
 
         // Test creating a condvar
         let result =
-            handler.execute(&[ComponentValue::String("create-condvar".to_string())]).unwrap();
+            handler.execute(&[ComponentValue::String("create-condvar".to_string())]).unwrap());
         let condvar_id = match result[0] {
             ComponentValue::U64(id) => id,
             _ => panic!("Expected U64 result"),
@@ -1040,11 +1040,11 @@ mod tests {
                 ComponentValue::U64(condvar_id),
                 ComponentValue::String("signal-data".to_string()),
             ])
-            .unwrap();
+            .unwrap());
 
         // Test creating an rwlock
         let result =
-            handler.execute(&[ComponentValue::String("create-rwlock".to_string())]).unwrap();
+            handler.execute(&[ComponentValue::String("create-rwlock".to_string())]).unwrap());
         let rwlock_id = match result[0] {
             ComponentValue::U64(id) => id,
             _ => panic!("Expected U64 result"),
@@ -1057,7 +1057,7 @@ mod tests {
                 ComponentValue::U64(rwlock_id),
                 ComponentValue::String("rwlock-data".to_string()),
             ])
-            .unwrap();
+            .unwrap());
 
         // Test reading from the rwlock
         let result = handler
@@ -1065,7 +1065,7 @@ mod tests {
                 ComponentValue::String("read-rwlock".to_string()),
                 ComponentValue::U64(rwlock_id),
             ])
-            .unwrap();
+            .unwrap());
 
         assert_eq!(result, vec![ComponentValue::String("rwlock-data".to_string())];
 

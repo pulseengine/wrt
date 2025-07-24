@@ -66,8 +66,8 @@ mod enforcement_scenario_tests {
 
         assert!(runtime_stats.current_allocation >= 1024);
         assert!(component_stats.current_allocation >= 1024);
-        assert_eq!(runtime_stats.allocation_count, 1;
-        assert_eq!(component_stats.allocation_count, 1;
+        assert_eq!(runtime_stats.allocation_count, 1);
+        assert_eq!(component_stats.allocation_count, 1);
 
         Ok(())
     }

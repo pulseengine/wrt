@@ -53,7 +53,7 @@ mod validation {
             budget < 600 * 1024,
             "Resource budget exceeds 600KB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -66,7 +66,7 @@ mod validation {
             budget < 1536 * 1024,
             "Execution budget exceeds 1.5MB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -80,7 +80,7 @@ mod validation {
             total <= TOTAL_BUDGET,
             "Total budget exceeds 2MB: {}KB",
             total / 1024
-        ;
+        );
     }
 }
 

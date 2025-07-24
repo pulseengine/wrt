@@ -233,8 +233,8 @@ mod tests {
     #[test]
     fn test_framework_creation() {
         let framework = TestingFramework::new);
-        assert_eq!(framework.test_cases.len(), 0;
-        assert_eq!(framework.results.len(), 0;
+        assert_eq!(framework.test_cases.len(), 0);
+        assert_eq!(framework.results.len(), 0);
     }
 
     #[test]

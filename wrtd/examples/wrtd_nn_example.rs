@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use wrt_foundation::verification::VerificationLevel;
     
     // Create wrtd configuration
-    let mut config = WrtdConfig::default);
+    let mut config = WrtdConfig::default());
     config.enable_wasi = true;
     config.engine_mode = EngineMode::Interpreter;
     
@@ -99,8 +99,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(not(all(feature = "std", feature = "wasi", feature = "wasi-nn")))]
 fn main() {
-    eprintln!("This example requires features: std, wasi, wasi-nn";
-    std::process::exit(1;
+    eprintln!("This example requires features: std, wasi, wasi-nn");
+    std::process::exit(1);
 }
 
 /// Example of creating a simple NN inference module
@@ -116,14 +116,14 @@ mod tests {
         
         // Test QM level
         let qm_cap = create_nn_capability(VerificationLevel::Standard).unwrap();
-        assert!(qm_cap.allows_dynamic_loading();
+        assert!(qm_cap.allows_dynamic_loading());
         
         // Test ASIL-A level
-        let asil_a_cap = create_nn_capability(VerificationLevel::Sampling).unwrap();
+        let asil_a_cap = create_nn_capability(VerificationLevel::Sampling).unwrap());
         assert!(asil_a_cap.allows_dynamic_loading();
         
         // Test ASIL-B level
         let asil_b_cap = create_nn_capability(VerificationLevel::Continuous).unwrap();
-        assert!(!asil_b_cap.allows_dynamic_loading();
+        assert!(!asil_b_cap.allows_dynamic_loading());
     }
 }

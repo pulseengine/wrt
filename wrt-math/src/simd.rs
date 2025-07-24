@@ -436,7 +436,7 @@ mod tests {
         let simd_ops = SimdOperations::new();
         let a = [1u8; 16];
         let b = [2u8; 16];
-        let result = simd_ops.i8x16_add(&a, &b).unwrap();
+        let result = simd_ops.i8x16_add(&a, &b).unwrap());
         
         // All elements should be 3
         for &byte in &result {
@@ -449,7 +449,7 @@ mod tests {
         let simd_ops = SimdOperations::new();
         let a = [0xFFu8; 16];
         let b = [0xF0u8; 16];
-        let result = simd_ops.v128_and(&a, &b).unwrap();
+        let result = simd_ops.v128_and(&a, &b).unwrap());
         
         // All elements should be 0xF0
         for &byte in &result {

@@ -48,7 +48,7 @@ pub mod rust_async_bridge {
         type Output = core::result::Result<T, String>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            let future = self.wasm_future.lock().unwrap();
+            let future = self.wasm_future.lock().unwrap());
 
             match future.state {
                 FutureState::Ready => {
@@ -203,7 +203,7 @@ mod tests {
         assert!(matches!(result, PollResult::Pending);
 
         // Complete the future
-        wasm_future.set_value(42).unwrap();
+        wasm_future.set_value(42).unwrap());
 
         // Poll again
         let result = poll_future(&mut wasm_future, &mut task_manager;

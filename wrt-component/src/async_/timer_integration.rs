@@ -208,7 +208,7 @@ impl TimerIntegration {
         bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
         config: Option<TimerConfiguration>,
     ) -> Self {
-        let provider = safe_managed_alloc!(8192, CrateId::Component).unwrap();
+        let provider = safe_managed_alloc!(8192, CrateId::Component).unwrap());
         
         Self {
             bridge,
@@ -397,7 +397,7 @@ impl TimerIntegration {
                 break; // No more expired timers
             }
 
-            let timer_entry = self.timer_queue.pop().unwrap();
+            let timer_entry = self.timer_queue.pop().unwrap());
             let timer_id = timer_entry.timer_id;
 
             if let Some(timer) = self.timers.get_mut(&timer_id) {
@@ -670,10 +670,10 @@ mod tests {
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default);
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
-        ).unwrap();
+        ).unwrap());
         Arc::new(Mutex::new(bridge))
     }
 
@@ -683,15 +683,15 @@ mod tests {
         let mut timers = TimerIntegration::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
-        timers.initialize_component_timers(component_id, None).unwrap();
+        timers.initialize_component_timers(component_id, None).unwrap());
         
         let timer_id = timers.create_timer(
             component_id,
             TimerType::Oneshot,
             1000,
-        ).unwrap();
+        ).unwrap());
         
-        let status = timers.get_timer_status(timer_id).unwrap();
+        let status = timers.get_timer_status(timer_id).unwrap());
         assert_eq!(status.component_id, component_id;
         assert_eq!(status.timer_type, TimerType::Oneshot;
     }
@@ -702,8 +702,8 @@ mod tests {
         let timers = TimerIntegration::new(bridge, None;
         
         let stats = timers.get_timer_statistics);
-        assert_eq!(stats.total_timers_created, 0;
-        assert_eq!(stats.active_timers, 0;
+        assert_eq!(stats.total_timers_created, 0);
+        assert_eq!(stats.active_timers, 0);
     }
 
     #[test]
@@ -726,18 +726,18 @@ mod tests {
         let mut timers = TimerIntegration::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
-        timers.initialize_component_timers(component_id, None).unwrap();
+        timers.initialize_component_timers(component_id, None).unwrap());
         
         let timer_id = timers.create_timer(
             component_id,
             TimerType::Oneshot,
             5000,
-        ).unwrap();
+        ).unwrap());
         
-        let cancelled = timers.cancel_timer(timer_id).unwrap();
+        let cancelled = timers.cancel_timer(timer_id).unwrap());
         assert!(cancelled);
         
-        let status = timers.get_timer_status(timer_id).unwrap();
+        let status = timers.get_timer_status(timer_id).unwrap());
         assert!(status.cancelled);
     }
 }

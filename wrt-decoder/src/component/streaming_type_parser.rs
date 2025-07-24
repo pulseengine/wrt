@@ -1293,11 +1293,11 @@ mod tests {
     fn test_empty_section() {
         let data = &[0u8]; // Zero types
 
-        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap();
+        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap());
 
-        let result = parser.parse().unwrap();
-        assert_eq!(result.type_count(), 0;
-        assert_eq!(result.bytes_consumed(), 1;
+        let result = parser.parse().unwrap());
+        assert_eq!(result.type_count(), 0);
+        assert_eq!(result.bytes_consumed(), 1);
         assert!(result.is_empty();
     }
 
@@ -1317,17 +1317,17 @@ mod tests {
         let mut count = type_count;
         while count >= 0x80 {
             #[cfg(not(feature = "std"))]
-            data.push((count & 0x7F) as u8 | 0x80).unwrap();
+            data.push((count & 0x7F) as u8 | 0x80).unwrap());
             #[cfg(feature = "std")]
             data.push((count & 0x7F) as u8 | 0x80;
             count >>= 7;
         }
         #[cfg(not(feature = "std"))]
-        data.push(count as u8).unwrap();
+        data.push(count as u8).unwrap());
         #[cfg(feature = "std")]
         data.push(count as u8);
 
-        let mut parser = StreamingTypeParser::new(&data, VerificationLevel::Standard).unwrap();
+        let mut parser = StreamingTypeParser::new(&data, VerificationLevel::Standard).unwrap());
 
         assert!(parser.parse().is_err();
         Ok(())
@@ -1339,27 +1339,27 @@ mod tests {
         // but requires complex binary construction
         let data = &[0u8]; // Zero types for now
 
-        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap();
+        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap());
 
         // Set recursion depth to maximum
         parser.recursion_depth = MAX_TYPE_RECURSION_DEPTH;
 
         // This should not crash due to recursion protection
-        assert!(parser.parse().is_ok();
+        assert!(parser.parse().is_ok());
     }
 
     #[test]
     fn test_parser_offset_tracking() {
         let data = &[0u8]; // Zero types
 
-        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap();
+        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap());
 
-        assert_eq!(parser.offset(), 0;
-        assert_eq!(parser.remaining(), 1;
+        assert_eq!(parser.offset(), 0);
+        assert_eq!(parser.remaining(), 1);
 
-        let result = parser.parse().unwrap();
-        assert_eq!(parser.offset(), 1;
-        assert_eq!(parser.remaining(), 0;
-        assert_eq!(result.bytes_consumed(), 1;
+        let result = parser.parse().unwrap());
+        assert_eq!(parser.offset(), 1);
+        assert_eq!(parser.remaining(), 0);
+        assert_eq!(result.bytes_consumed(), 1);
     }
 }

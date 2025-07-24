@@ -379,12 +379,12 @@ mod tests {
         // Test before_call
         let args = vec![Value::I32(42), Value::I64(123)];
         let result = strategy.before_call("source", "target", "function", &args;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), args;
 
         // Check log entry
-        let logs = sink.logs.lock().unwrap();
-        assert_eq!(logs.len(), 1;
+        let logs = sink.logs.lock().unwrap());
+        assert_eq!(logs.len(), 1);
         assert!(logs[0].contains("CALL: source->target::function");
         assert!(logs[0].contains("I32(42)");
         assert!(logs[0].contains("I64(123)");
@@ -399,12 +399,12 @@ mod tests {
         let args = vec![Value::I32(42)];
         let result = Ok(vec![Value::I64(123)];
         let after_result = strategy.after_call("source", "target", "function", &args, result;
-        assert!(after_result.is_ok();
+        assert!(after_result.is_ok());
         assert_eq!(after_result.unwrap(), vec![Value::I64(123)];
 
         // Check log entry
-        let logs = sink.logs.lock().unwrap();
-        assert_eq!(logs.len(), 1;
+        let logs = sink.logs.lock().unwrap());
+        assert_eq!(logs.len(), 1);
         assert!(logs[0].contains("RETURN: source->target::function");
         assert!(logs[0].contains("I64(123)");
     }
@@ -426,8 +426,8 @@ mod tests {
         let _ = strategy.before_call("source", "target", "function", &args;
 
         // Check log entry - should not contain args
-        let logs = sink.logs.lock().unwrap();
-        assert_eq!(logs.len(), 1;
+        let logs = sink.logs.lock().unwrap());
+        assert_eq!(logs.len(), 1);
         assert!(logs[0].contains("CALL: source->target::function");
         assert!(!logs[0].contains("I32(42)");
         assert!(!logs[0].contains("I64(123)");

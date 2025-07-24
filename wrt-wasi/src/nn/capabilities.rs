@@ -589,8 +589,8 @@ impl DynamicNNCapability {
     
     /// Create with resource tracking enabled
     pub fn with_tracking() -> Self {
-        let limits = NNResourceLimits::default);
-        let rate_limits = RateLimits::default);
+        let limits = NNResourceLimits::default());
+        let rate_limits = RateLimits::default());
         let tracker = ResourceTracker::new(limits.clone(), rate_limits;
         
         Self {
@@ -955,12 +955,12 @@ mod tests {
             size: 50 * 1024 * 1024, 
             format: ModelFormat::ONNX 
         };
-        assert!(cap.verify_operation(&load_op).is_ok();
+        assert!(cap.verify_operation(&load_op).is_ok());
     }
     
     #[test]
     fn test_bounded_capability() {
-        let cap = BoundedNNCapability::new().unwrap();
+        let cap = BoundedNNCapability::new().unwrap());
         assert_eq!(cap.verification_level(), VerificationLevel::Sampling;
         
         // Should reject oversized models
@@ -973,7 +973,7 @@ mod tests {
     
     #[test]
     fn test_static_capability() {
-        let cap = StaticNNCapability::new(&[]).unwrap();
+        let cap = StaticNNCapability::new(&[]).unwrap());
         assert_eq!(cap.verification_level(), VerificationLevel::Continuous;
         assert!(!cap.allows_dynamic_loading();
         
@@ -993,7 +993,7 @@ mod tests {
         let approved_hash3 = [0xCCu8; 32];
         
         // Create capability with approved hashes
-        let cap = StaticNNCapability::new(&[approved_hash1, approved_hash2, approved_hash3]).unwrap();
+        let cap = StaticNNCapability::new(&[approved_hash1, approved_hash2, approved_hash3]).unwrap());
         
         // Test approved models
         assert!(cap.is_model_approved(&approved_hash1);

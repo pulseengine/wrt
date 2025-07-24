@@ -364,7 +364,7 @@ mod tests {
     #[test]
     fn test_wit_component_builder_creation() {
         let builder = WitComponentBuilder::new);
-        assert_eq!(builder.wit_type_mappings.len(), 0;
+        assert_eq!(builder.wit_type_mappings.len(), 0);
     }
 
     #[test]
@@ -372,10 +372,10 @@ mod tests {
         let mut builder = WitComponentBuilder::new);
         let type_id = TypeId(1;
 
-        assert!(builder.register_wit_type("my-type", type_id).is_ok();
+        assert!(builder.register_wit_type("my-type", type_id).is_ok());
         assert!(builder
             .wit_type_mappings
-            .contains_key(&BoundedString::from_str("my-type").unwrap();
+            .contains_key(&BoundedString::from_str("my-type").unwrap());
     }
 
     #[test]
@@ -391,12 +391,12 @@ mod tests {
         "#;
 
         let result = builder.parse_world_from_source(source, instance_id;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let interface = result.unwrap();
+        let interface = result.unwrap());
         assert_eq!(interface.name.as_str(), "test-world";
-        assert_eq!(interface.imports.len(), 1;
-        assert_eq!(interface.exports.len(), 1;
+        assert_eq!(interface.imports.len(), 1);
+        assert_eq!(interface.exports.len(), 1);
     }
 
     #[test]
@@ -412,9 +412,9 @@ mod tests {
         "#;
 
         let result = builder.parse_interface_from_source(source, instance_id;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let interface = result.unwrap();
+        let interface = result.unwrap());
         assert_eq!(interface.name.as_str(), "async-test";
         assert_eq!(interface.async_exports.len(), 2;
 
@@ -431,7 +431,7 @@ mod tests {
         let type1 = TypeId(1;
         let type2 = TypeId(2;
 
-        assert!(builder.add_type_constraint(type1, type2, BoundKind::Sub).is_ok();
+        assert!(builder.add_type_constraint(type1, type2, BoundKind::Sub).is_ok());
 
         let result = builder.type_registry.check_type_bound_simple(type1, type2, BoundKind::Sub;
         assert!(result);

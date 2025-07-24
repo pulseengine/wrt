@@ -250,41 +250,41 @@ mod tests {
     
     #[test]
     fn test_atomic_coordinator_creation() {
-        let config = ThreadPoolConfig::default);
-        let limits = ThreadingLimits::default);
+        let config = ThreadPoolConfig::default());
+        let limits = ThreadingLimits::default());
         let executor = create_test_executor);
         
-        let base_manager = Arc::new(WasmThreadManager::new(config, limits, executor).unwrap();
+        let base_manager = Arc::new(WasmThreadManager::new(config, limits, executor).unwrap());
         let coordinator = AtomicCoordinator::new(base_manager;
-        assert!(coordinator.is_ok();
+        assert!(coordinator.is_ok());
     }
     
     #[test]
     fn test_atomic_aware_thread_manager() {
-        let config = ThreadPoolConfig::default);
-        let limits = ThreadingLimits::default);
+        let config = ThreadPoolConfig::default());
+        let limits = ThreadingLimits::default());
         let executor = create_test_executor);
         
         let manager = AtomicAwareThreadManager::new(config, limits, executor;
-        assert!(manager.is_ok();
+        assert!(manager.is_ok());
     }
     
     #[test]
     fn test_atomic_operations() {
-        let config = ThreadPoolConfig::default);
-        let limits = ThreadingLimits::default);
+        let config = ThreadPoolConfig::default());
+        let limits = ThreadingLimits::default());
         let executor = create_test_executor);
         
-        let manager = AtomicAwareThreadManager::new(config, limits, executor).unwrap();
+        let manager = AtomicAwareThreadManager::new(config, limits, executor).unwrap());
         
         // Test atomic notify (no waiters)
-        let result = manager.execute_atomic_notify(0x1000, 1;
-        assert!(result.is_ok();
+        let result = manager.execute_atomic_notify(0x1000, 1);
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 0); // No waiters
         
         // Test atomic wait with immediate timeout
         let result = manager.execute_atomic_wait(0x1000, 42, Some(1_000_000)); // 1ms timeout
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         // Result should be 2 (timeout) since no other thread is modifying the value
     }
 }

@@ -124,13 +124,13 @@ mod tests {
             let provider = safe_managed_alloc!(512, CrateId::Runtime)?;
             
             // Test basic creation
-            let op = LogOperation::new(LogLevel::Info, "test message", provider.clone()).unwrap();
+            let op = LogOperation::new(LogLevel::Info, "test message", provider.clone()).unwrap());
             assert_eq!(op.level, LogLevel::Info;
             assert_eq!(op.message.as_str().unwrap(), "test message";
             assert!(op.component_id.is_none();
 
             // Test with component ID
-            let op = LogOperation::with_component(LogLevel::Debug, "test message", "component-1", provider.clone()).unwrap();
+            let op = LogOperation::with_component(LogLevel::Debug, "test message", "component-1", provider.clone()).unwrap());
             assert_eq!(op.level, LogLevel::Debug;
             assert_eq!(op.message.as_str().unwrap(), "test message";
             assert_eq!(op.component_id.as_ref().map(|s| s.as_str().unwrap()), Some("component-1";

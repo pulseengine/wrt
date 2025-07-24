@@ -85,13 +85,13 @@ mod tests {
         // Test that the internal allocator system works
         let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 100> = WrtVec::new);
 
-        assert!(vec.push(1).is_ok();
-        assert!(vec.push(2).is_ok();
+        assert!(vec.push(1).is_ok());
+        assert!(vec.push(2).is_ok());
         assert_eq!(vec.len(), 2;
 
         // Test zero-cost deref
         vec.sort);
-        assert_eq!(vec[0], 1;
+        assert_eq!(vec[0], 1);
         assert_eq!(vec[1], 2;
     }
 
@@ -99,8 +99,8 @@ mod tests {
     fn test_capacity_enforcement() {
         let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 2> = WrtVec::new);
 
-        assert!(vec.push(1).is_ok();
-        assert!(vec.push(2).is_ok();
+        assert!(vec.push(1).is_ok());
+        assert!(vec.push(2).is_ok());
         assert_eq!(vec.push(3), Err(CapacityError::Exceeded;
     }
 }

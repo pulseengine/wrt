@@ -125,10 +125,10 @@ mod tests {
         let builder = ComponentValueStoreBuilder::<SmallProvider>::new);
 
         // Build the store
-        let store = builder.build().unwrap();
+        let store = builder.build().unwrap());
 
         // Verify the store has been properly initialized
-        assert_eq!(store.get_provider().verification_level(), VerificationLevel::default);
+        assert_eq!(store.get_provider().verification_level(), VerificationLevel::default());
     }
 
     #[test]
@@ -143,7 +143,7 @@ mod tests {
             .with_initial_types_capacity(50;
 
         // Build the store
-        let store = builder.build().unwrap();
+        let store = builder.build().unwrap());
 
         // Verify the store has been properly initialized with our settings
         assert_eq!(store.get_provider().verification_level(), VerificationLevel::Full;

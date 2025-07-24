@@ -46,8 +46,8 @@ fn test_allocation_limits() {
 #[test]
 fn test_safety_aware_allocation() {
     // Initialize memory system first
-    init_wrt_memory().unwrap();
-    init_crate_memory(CrateId::Wasi).unwrap();
+    init_wrt_memory().unwrap());
+    init_crate_memory(CrateId::Wasi).unwrap());
     
     // Small allocation should always work
     let small_result = safe_managed_alloc!(1024, CrateId::Wasi;

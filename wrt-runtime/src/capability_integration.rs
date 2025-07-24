@@ -43,6 +43,6 @@ mod tests {
     #[test]
     fn test_simple_capability_provider() {
         let provider = create_simple_capability_provider(1024 * 1024;
-        assert!(provider.is_ok();
+        assert!(provider.is_ok());
     }
 }

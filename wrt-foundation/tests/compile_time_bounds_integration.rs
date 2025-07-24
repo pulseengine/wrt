@@ -25,19 +25,19 @@ fn test_valid_compile_time_allocations() {
 /// Test the enhanced safe_managed_alloc with validation
 #[test]
 fn test_safe_managed_alloc_validated() {
-    MemoryInitializer::initialize().unwrap();
+    MemoryInitializer::initialize().unwrap());
 
     // Small allocation
     let result1 = safe_managed_alloc_validated!(4096, CrateId::Foundation;
-    assert!(result1.is_ok();
+    assert!(result1.is_ok());
 
     // Medium allocation
     let result2 = safe_managed_alloc_validated!(64 * 1024, CrateId::Component;
-    assert!(result2.is_ok();
+    assert!(result2.is_ok());
 
     // Large allocation within budget
     let result3 = safe_managed_alloc_validated!(256 * 1024, CrateId::Runtime;
-    assert!(result3.is_ok();
+    assert!(result3.is_ok());
 }
 
 /// Test memory layout validation
@@ -137,47 +137,47 @@ fn test_runtime_verification() {
 /// Test bounds validation with realistic component usage
 #[test]
 fn test_realistic_component_usage() {
-    MemoryInitializer::initialize().unwrap();
+    MemoryInitializer::initialize().unwrap());
 
     // Simulate a realistic component with multiple allocations
 
     // Component instance data
     validate_allocation!(4096, CrateId::Component;
-    let _instance_data = safe_managed_alloc_validated!(4096, CrateId::Component).unwrap();
+    let _instance_data = safe_managed_alloc_validated!(4096, CrateId::Component).unwrap());
 
     // Resource tables
     validate_allocation!(16384, CrateId::Component;
-    let _resource_tables = safe_managed_alloc_validated!(16384, CrateId::Component).unwrap();
+    let _resource_tables = safe_managed_alloc_validated!(16384, CrateId::Component).unwrap());
 
     // Import/export tables
     validate_allocation!(8192, CrateId::Component;
-    let _import_exports = safe_managed_alloc_validated!(8192, CrateId::Component).unwrap();
+    let _import_exports = safe_managed_alloc_validated!(8192, CrateId::Component).unwrap());
 
     // Type information
     validate_allocation!(32768, CrateId::Component;
-    let _type_info = safe_managed_alloc_validated!(32768, CrateId::Component).unwrap();
+    let _type_info = safe_managed_alloc_validated!(32768, CrateId::Component).unwrap());
 }
 
 /// Test bounds validation across different crates
 #[test]
 fn test_multi_crate_validation() {
-    MemoryInitializer::initialize().unwrap();
+    MemoryInitializer::initialize().unwrap());
 
     // Foundation crate allocations
     validate_allocation!(8192, CrateId::Foundation;
-    let _foundation = safe_managed_alloc_validated!(8192, CrateId::Foundation).unwrap();
+    let _foundation = safe_managed_alloc_validated!(8192, CrateId::Foundation).unwrap());
 
     // Runtime crate allocations
     validate_allocation!(131072, CrateId::Runtime;
-    let _runtime = safe_managed_alloc_validated!(131072, CrateId::Runtime).unwrap();
+    let _runtime = safe_managed_alloc_validated!(131072, CrateId::Runtime).unwrap());
 
     // Component crate allocations
     validate_allocation!(65536, CrateId::Component;
-    let _component = safe_managed_alloc_validated!(65536, CrateId::Component).unwrap();
+    let _component = safe_managed_alloc_validated!(65536, CrateId::Component).unwrap());
 
     // Platform crate allocations
     validate_allocation!(16384, CrateId::Platform;
-    let _platform = safe_managed_alloc_validated!(16384, CrateId::Platform).unwrap();
+    let _platform = safe_managed_alloc_validated!(16384, CrateId::Platform).unwrap());
 }
 
 /// Test edge cases for bounds validation
@@ -207,13 +207,13 @@ fn test_edge_cases() {
 fn test_no_runtime_overhead() {
     use std::time::Instant;
 
-    MemoryInitializer::initialize().unwrap();
+    MemoryInitializer::initialize().unwrap());
 
     let start = Instant::now);
 
     // Perform multiple validated allocations
     for _ in 0..100 {
-        let _allocation = safe_managed_alloc_validated!(4096, CrateId::Foundation).unwrap();
+        let _allocation = safe_managed_alloc_validated!(4096, CrateId::Foundation).unwrap());
     }
 
     let duration = start.elapsed);
@@ -225,27 +225,27 @@ fn test_no_runtime_overhead() {
 /// Integration test with realistic WASM component instantiation scenario
 #[test]
 fn test_wasm_component_instantiation_bounds() {
-    MemoryInitializer::initialize().unwrap();
+    MemoryInitializer::initialize().unwrap());
 
     // Simulate component instantiation with bounds validation
 
     // 1. Component metadata
     validate_allocation!(2048, CrateId::Component;
-    let _metadata = safe_managed_alloc_validated!(2048, CrateId::Component).unwrap();
+    let _metadata = safe_managed_alloc_validated!(2048, CrateId::Component).unwrap());
 
     // 2. Memory for imports/exports
     validate_allocation!(8192, CrateId::Component;
-    let _imports_exports = safe_managed_alloc_validated!(8192, CrateId::Component).unwrap();
+    let _imports_exports = safe_managed_alloc_validated!(8192, CrateId::Component).unwrap());
 
     // 3. Resource tables with bounds
     let _resource_validator = CollectionBoundsValidator::<1024, 64>::validate);
     validate_allocation!(65536, CrateId::Component;
-    let _resources = safe_managed_alloc_validated!(65536, CrateId::Component).unwrap();
+    let _resources = safe_managed_alloc_validated!(65536, CrateId::Component).unwrap());
 
     // 4. Runtime execution context
     let _stack_validator = StackBoundsValidator::<8192>::validate);
     validate_allocation!(32768, CrateId::Runtime;
-    let _execution_context = safe_managed_alloc_validated!(32768, CrateId::Runtime).unwrap();
+    let _execution_context = safe_managed_alloc_validated!(32768, CrateId::Runtime).unwrap());
 
     // All allocations should succeed and be within bounds
 }

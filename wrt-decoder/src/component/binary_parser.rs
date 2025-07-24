@@ -644,7 +644,7 @@ mod component_binary_parser {
                 version: COMPONENT_VERSION,
                 layer:   COMPONENT_LAYER,
             };
-            assert!(valid_header.validate().is_ok();
+            assert!(valid_header.validate().is_ok());
 
             let invalid_magic = ComponentHeader {
                 magic:   [0x00, 0x00, 0x00, 0x00],
@@ -702,8 +702,8 @@ mod component_binary_parser {
             binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes()); // Layer
 
             let result = parser.parse(&binary;
-            assert!(result.is_ok();
-            let component = result.unwrap();
+            assert!(result.is_ok());
+            let component = result.unwrap());
             assert!(component.name.is_none();
         }
 
@@ -717,14 +717,14 @@ mod component_binary_parser {
 
             // Test basic parsing function
             let result1 = parse_component_binary(&binary;
-            assert!(result1.is_ok();
+            assert!(result1.is_ok());
 
             // Test parsing with validation level
             let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal;
-            assert!(result2.is_ok();
+            assert!(result2.is_ok());
 
             let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Full;
-            assert!(result3.is_ok();
+            assert!(result3.is_ok());
         }
     }
 } // end of component_binary_parser module

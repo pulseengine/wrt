@@ -254,12 +254,12 @@ fn test_format_to_runtime_extern_type() {
         results: vec![FormatValType::S32],
     };
 
-    let runtime_func = format_to_runtime_extern_type(&format_func).unwrap();
+    let runtime_func = format_to_runtime_extern_type(&format_func).unwrap());
 
     match runtime_func {
         TypesExternType::Function(func_type) => {
-            assert_eq!(func_type.params.len(), 1;
-            assert_eq!(func_type.results.len(), 1;
+            assert_eq!(func_type.params.len(), 1);
+            assert_eq!(func_type.results.len(), 1);
         },
         _ => panic!("Expected Function type, got {:?}", runtime_func),
     }
@@ -275,11 +275,11 @@ fn test_format_to_runtime_extern_type() {
         )],
     };
 
-    let runtime_instance = format_to_runtime_extern_type(&format_instance).unwrap();
+    let runtime_instance = format_to_runtime_extern_type(&format_instance).unwrap());
 
     match runtime_instance {
         TypesExternType::Instance(instance_type) => {
-            assert_eq!(instance_type.exports.len(), 1;
+            assert_eq!(instance_type.exports.len(), 1);
         },
         _ => panic!("Expected Instance type, got {:?}", runtime_instance),
     }
@@ -290,7 +290,7 @@ fn test_format_to_runtime_extern_type() {
         nullable: false,
     };
 
-    let runtime_resource = format_to_runtime_extern_type(&resource_extern_type).unwrap();
+    let runtime_resource = format_to_runtime_extern_type(&resource_extern_type).unwrap());
 
     match runtime_resource {
         TypesExternType::Resource(resource_type) => {
@@ -317,16 +317,16 @@ fn test_extern_type_roundtrip() {
     let extern_type = TypesExternType::Function(func_type;
 
     // Convert to format type
-    let format_type = runtime_to_format_extern_type(&extern_type).unwrap();
+    let format_type = runtime_to_format_extern_type(&extern_type).unwrap());
 
     // Convert back to runtime type
-    let roundtrip_type = format_to_runtime_extern_type(&format_type).unwrap();
+    let roundtrip_type = format_to_runtime_extern_type(&format_type).unwrap());
 
     // Verify the structure is preserved
     match roundtrip_type {
         TypesExternType::Function(func_type) => {
             assert_eq!(func_type.params.len(), 2;
-            assert_eq!(func_type.results.len(), 1;
+            assert_eq!(func_type.results.len(), 1);
             assert_eq!(func_type.params[0], ValueType::I32;
             assert_eq!(func_type.params[1], ValueType::I64;
             assert_eq!(func_type.results[0], ValueType::F32;
@@ -354,9 +354,9 @@ fn test_common_conversion_utilities() {
     let func_type = TypesFuncType::new(vec![ValueType::I32, ValueType::I64], vec![ValueType::F32];
     let extern_type = TypesExternType::Function(func_type;
 
-    let extracted_func_type = extern_type_to_func_type(&extern_type).unwrap();
+    let extracted_func_type = extern_type_to_func_type(&extern_type).unwrap());
     assert_eq!(extracted_func_type.params.len(), 2;
-    assert_eq!(extracted_func_type.results.len(), 1;
+    assert_eq!(extracted_func_type.results.len(), 1);
 }
 
 /// Test IntoRuntimeType and IntoFormatType traits
@@ -369,14 +369,14 @@ fn test_conversion_traits() {
     };
 
     let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type);
-    assert!(runtime_func.is_ok();
+    assert!(runtime_func.is_ok());
 
     // Test IntoFormatType for TypesExternType
     let func_type = TypesFuncType::new(vec![ValueType::I32], vec![ValueType::F32];
     let extern_type = TypesExternType::Function(func_type;
 
     let format_type: Result<FormatExternType, _> = extern_type.into_format_type);
-    assert!(format_type.is_ok();
+    assert!(format_type.is_ok());
 }
 
 /// Test error handling in conversion functions

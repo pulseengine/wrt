@@ -499,15 +499,15 @@ mod tests {
 
         // Test activation
         let result = partition.activate);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Test restoration
         let result = partition.restore_parent);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Clean up (handled by Drop, but can be done manually)
         let result = partition.destroy);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -535,7 +535,7 @@ mod tests {
 
             // Manually deactivate
             let result = guard.deactivate);
-            assert!(result.is_ok();
+            assert!(result.is_ok());
         }
     }
 
@@ -565,6 +565,6 @@ mod tests {
             Ok(())
         };
 
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

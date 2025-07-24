@@ -235,7 +235,7 @@ impl NameMap {
         #[cfg(feature = "std")]
         let entries = std::vec::Vec::new);
         #[cfg(not(feature = "std"))]
-        let entries = wrt_foundation::BoundedVec::default);
+        let entries = wrt_foundation::BoundedVec::default());
 
         Self { entries }
     }
@@ -386,7 +386,7 @@ pub struct ComponentNameSection {
 
 /// Parse a WebAssembly Component Model name section
 pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection> {
-    let mut name_section = ComponentNameSection::default);
+    let mut name_section = ComponentNameSection::default());
     let mut offset = 0;
 
     while offset < data.len() {
@@ -1020,7 +1020,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip_component_name() {
-        let mut name_section = ComponentNameSection::default);
+        let mut name_section = ComponentNameSection::default());
         #[cfg(feature = "std")]
         {
             name_section.component_name = Some("test_component".to_string();
@@ -1036,8 +1036,8 @@ mod tests {
             }
         }
 
-        let bytes = generate_component_name_section(&name_section).unwrap();
-        let parsed = parse_component_name_section(&bytes).unwrap();
+        let bytes = generate_component_name_section(&name_section).unwrap());
+        let parsed = parse_component_name_section(&bytes).unwrap());
 
         #[cfg(feature = "std")]
         assert_eq!(parsed.component_name, Some("test_component".to_string();
@@ -1051,7 +1051,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip_sort_names() {
-        let mut name_section = ComponentNameSection::default);
+        let mut name_section = ComponentNameSection::default());
 
         let mut name_map = NameMap::new);
         #[cfg(feature = "std")]
@@ -1084,23 +1084,23 @@ mod tests {
             let _ = name_section.sort_names.push((SortIdentifier::Function, name_map);
         }
 
-        let bytes = generate_component_name_section(&name_section).unwrap();
-        let parsed = parse_component_name_section(&bytes).unwrap();
+        let bytes = generate_component_name_section(&name_section).unwrap());
+        let parsed = parse_component_name_section(&bytes).unwrap());
 
-        assert_eq!(parsed.sort_names.len(), 1;
+        assert_eq!(parsed.sort_names.len(), 1);
         assert!(matches!(parsed.sort_names[0].0, SortIdentifier::Function);
         assert_eq!(parsed.sort_names[0].1.entries.len(), 2;
-        assert_eq!(parsed.sort_names[0].1.entries[0].index, 0;
+        assert_eq!(parsed.sort_names[0].1.entries[0].index, 0);
         #[cfg(feature = "std")]
         {
             assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0";
-            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1;
+            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
             assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1";
         }
         #[cfg(not(feature = "std"))]
         {
             assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0";
-            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1;
+            assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
             assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1";
         }
     }

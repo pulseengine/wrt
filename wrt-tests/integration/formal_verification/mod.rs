@@ -414,9 +414,9 @@ mod tests {
         let stats = runner.get_stats);
         
         // Initially no properties should be registered
-        assert_eq!(stats.verified_properties, 0;
-        assert_eq!(stats.failed_properties, 0;
-        assert_eq!(stats.skipped_properties, 0;
+        assert_eq!(stats.verified_properties, 0);
+        assert_eq!(stats.failed_properties, 0);
+        assert_eq!(stats.skipped_properties, 0);
     }
     
     #[test]

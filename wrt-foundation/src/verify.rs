@@ -133,7 +133,7 @@ pub mod kani_verification {
     pub fn verify_bounded_collections_memory_safety() {
         // Use DefaultNoStdProvider for verification
         #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::default);
+        let memory_provider = DefaultNoStdProvider::default());
         let handler = SafeMemoryHandler::new(memory_provider;
 
         // Generate constrained capacity for verification
@@ -189,8 +189,8 @@ pub mod kani_verification {
         kani::assume(size > 0 && size <= 256); // Constrained for verification
 
         #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::default);
-        memory_provider.resize(size).unwrap();
+        let mut memory_provider = DefaultNoStdProvider::default());
+        memory_provider.resize(size).unwrap());
 
         // Verify access within bounds
         let access_count: usize = kani::any);
@@ -226,7 +226,7 @@ pub mod kani_verification {
     pub fn verify_atomic_memory_operations() {
         // Create AtomicMemoryOps with a DefaultNoStdProvider
         #[allow(deprecated)]
-        let memory_provider = DefaultNoStdProvider::default);
+        let memory_provider = DefaultNoStdProvider::default());
         let handler = SafeMemoryHandler::new(memory_provider;
         let atomic_mem_ops = AtomicMemoryOps::new(handler;
 
@@ -242,7 +242,7 @@ pub mod kani_verification {
         let read_result = atomic_mem_ops.atomic_read(offset, test_data.len);
         assert!(read_result.is_ok(), "Atomic read should succeed");
 
-        let read_data = read_result.unwrap();
+        let read_data = read_result.unwrap());
         assert_eq!(read_data.len(), test_data.len(), "Read data length should match";
 
         // Verify integrity
@@ -326,7 +326,7 @@ pub mod kani_verification {
         // Verify safe addition
         let add_result = a.checked_add(b;
         if add_result.is_some() {
-            let sum = add_result.unwrap();
+            let sum = add_result.unwrap());
             assert!(sum >= a && sum >= b, "Sum should be greater than or equal to operands");
         }
 
@@ -334,14 +334,14 @@ pub mod kani_verification {
         if a >= b {
             let sub_result = a.checked_sub(b;
             assert!(sub_result.is_some(), "Subtraction should succeed when a >= b");
-            let diff = sub_result.unwrap();
+            let diff = sub_result.unwrap());
             assert!(diff <= a, "Difference should be less than or equal to minuend");
         }
 
         // Verify safe multiplication
         let mul_result = a.checked_mul(b;
         if mul_result.is_some() {
-            let product = mul_result.unwrap();
+            let product = mul_result.unwrap());
             if a > 0 && b > 0 {
                 assert!(
                     product >= a && product >= b,
@@ -359,8 +359,8 @@ pub mod kani_verification {
         kani::assume(buffer_size > 0 && buffer_size <= 64;
 
         #[allow(deprecated)]
-        let mut memory_provider = DefaultNoStdProvider::default);
-        memory_provider.resize(buffer_size).unwrap();
+        let mut memory_provider = DefaultNoStdProvider::default());
+        memory_provider.resize(buffer_size).unwrap());
 
         // Test valid accesses
         let valid_index: usize = kani::any);

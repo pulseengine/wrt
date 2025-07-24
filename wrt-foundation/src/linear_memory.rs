@@ -523,7 +523,7 @@ mod kani_proofs {
         
         // Simulate valid memory allocation
         let mut memory = vec![0u8; size];
-        let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap();
+        let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap());
         
         // This should never panic or create invalid slices
         let result = safe_slice_from_verified_bounds(base_ptr, offset, len;
@@ -544,7 +544,7 @@ mod kani_proofs {
         
         // Simulate valid memory allocation
         let mut memory = vec![0u8; size];
-        let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap();
+        let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap());
         
         // This should never panic or create invalid slices
         let result = safe_slice_mut_from_verified_bounds(base_ptr, offset, len;

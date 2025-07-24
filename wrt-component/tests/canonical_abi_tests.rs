@@ -19,86 +19,86 @@ use wrt_foundation::values::{
 /// Tests for encoding/decoding simple primitive types
 #[test]
 fn test_encode_decode_primitives() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Test i32
     let i32_value = ComponentValue::I32(42;
-    let encoded = abi.encode(&i32_value).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::I32).unwrap();
+    let encoded = abi.encode(&i32_value).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::I32).unwrap());
     assert_eq!(decoded, i32_value;
 
     // Test i64
     let i64_value = ComponentValue::I64(9223372036854775807;
-    let encoded = abi.encode(&i64_value).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::I64).unwrap();
+    let encoded = abi.encode(&i64_value).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::I64).unwrap());
     assert_eq!(decoded, i64_value;
 
     // Test f32
     let f32_value = ComponentValue::F32(3.14;
-    let encoded = abi.encode(&f32_value).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::F32).unwrap();
+    let encoded = abi.encode(&f32_value).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::F32).unwrap());
     assert_eq!(decoded, f32_value;
 
     // Test f64
     let f64_value = ComponentValue::F64(2.71828;
-    let encoded = abi.encode(&f64_value).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::F64).unwrap();
+    let encoded = abi.encode(&f64_value).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::F64).unwrap());
     assert_eq!(decoded, f64_value;
 
     // Test bool (true)
     let bool_true = ComponentValue::Bool(true;
-    let encoded = abi.encode(&bool_true).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::Bool).unwrap();
+    let encoded = abi.encode(&bool_true).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::Bool).unwrap());
     assert_eq!(decoded, bool_true;
 
     // Test bool (false)
     let bool_false = ComponentValue::Bool(false;
-    let encoded = abi.encode(&bool_false).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::Bool).unwrap();
+    let encoded = abi.encode(&bool_false).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::Bool).unwrap());
     assert_eq!(decoded, bool_false;
 }
 
 /// Tests for encoding/decoding string values
 #[test]
 fn test_encode_decode_strings() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Empty string
     let empty_string = ComponentValue::String("".to_string();
-    let encoded = abi.encode(&empty_string).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
+    let encoded = abi.encode(&empty_string).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap());
     assert_eq!(decoded, empty_string;
 
     // ASCII string
     let ascii_string = ComponentValue::String("Hello, world!".to_string();
-    let encoded = abi.encode(&ascii_string).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
+    let encoded = abi.encode(&ascii_string).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap());
     assert_eq!(decoded, ascii_string;
 
     // Unicode string
     let unicode_string = ComponentValue::String("こんにちは世界".to_string();
-    let encoded = abi.encode(&unicode_string).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
+    let encoded = abi.encode(&unicode_string).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap());
     assert_eq!(decoded, unicode_string;
 
     // Long string
     let long_string = ComponentValue::String("a".repeat(1000;
-    let encoded = abi.encode(&long_string).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap();
+    let encoded = abi.encode(&long_string).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, ValueType::String).unwrap());
     assert_eq!(decoded, long_string;
 }
 
 /// Tests for encoding/decoding lists
 #[test]
 fn test_encode_decode_lists() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Empty list
     let empty_list = ComponentValue::List(vec![];
-    let encoded = abi.encode(&empty_list).unwrap();
+    let encoded = abi.encode(&empty_list).unwrap());
     let decoded = abi
         .decode::<ComponentValue>(&encoded, ValueType::List(Box::new(ValueType::I32)))
-        .unwrap();
+        .unwrap());
     assert_eq!(decoded, empty_list;
 
     // List of i32
@@ -107,10 +107,10 @@ fn test_encode_decode_lists() {
         ComponentValue::I32(2),
         ComponentValue::I32(3),
     ];
-    let encoded = abi.encode(&i32_list).unwrap();
+    let encoded = abi.encode(&i32_list).unwrap());
     let decoded = abi
         .decode::<ComponentValue>(&encoded, ValueType::List(Box::new(ValueType::I32)))
-        .unwrap();
+        .unwrap());
     assert_eq!(decoded, i32_list;
 
     // Nested list
@@ -119,15 +119,15 @@ fn test_encode_decode_lists() {
         ComponentValue::List(vec![ComponentValue::I32(3), ComponentValue::I32(4)]),
     ];
     let list_type = ValueType::List(Box::new(ValueType::List(Box::new(ValueType::I32));
-    let encoded = abi.encode(&nested_list).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, list_type).unwrap();
+    let encoded = abi.encode(&nested_list).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, list_type).unwrap());
     assert_eq!(decoded, nested_list;
 }
 
 /// Tests for encoding/decoding records
 #[test]
 fn test_encode_decode_records() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Simple record
     let record = ComponentValue::Record(vec![
@@ -139,8 +139,8 @@ fn test_encode_decode_records() {
     // Define record type
     let record_type = ValueType::Record(vec![ValueType::String, ValueType::I32, ValueType::Bool];
 
-    let encoded = abi.encode(&record).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, record_type).unwrap();
+    let encoded = abi.encode(&record).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, record_type).unwrap());
     assert_eq!(decoded, record;
 
     // Nested record
@@ -160,15 +160,15 @@ fn test_encode_decode_records() {
         ValueType::Bool,
     ];
 
-    let encoded = abi.encode(&nested_record).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, nested_record_type).unwrap();
+    let encoded = abi.encode(&nested_record).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, nested_record_type).unwrap());
     assert_eq!(decoded, nested_record;
 }
 
 /// Tests for encoding/decoding variants
 #[test]
 fn test_encode_decode_variants() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Simple variant
     let variant = ComponentValue::Variant {
@@ -183,8 +183,8 @@ fn test_encode_decode_variants() {
         ValueType::Bool,   // case 2
     ];
 
-    let encoded = abi.encode(&variant).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, variant_type.clone()).unwrap();
+    let encoded = abi.encode(&variant).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, variant_type.clone()).unwrap());
     assert_eq!(decoded, variant;
 
     // Another case
@@ -193,8 +193,8 @@ fn test_encode_decode_variants() {
         value: Box::new(ComponentValue::Bool(true)),
     };
 
-    let encoded = abi.encode(&variant2).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, variant_type.clone()).unwrap();
+    let encoded = abi.encode(&variant2).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, variant_type.clone()).unwrap());
     assert_eq!(decoded, variant2;
 
     // Empty variant case
@@ -203,15 +203,15 @@ fn test_encode_decode_variants() {
         value: Box::new(ComponentValue::I32(404)),
     };
 
-    let encoded = abi.encode(&variant0).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, variant_type).unwrap();
+    let encoded = abi.encode(&variant0).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, variant_type).unwrap());
     assert_eq!(decoded, variant0;
 }
 
 /// Tests for encoding/decoding tuples
 #[test]
 fn test_encode_decode_tuples() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Simple tuple (i32, string)
     let tuple = ComponentValue::Tuple(vec![
@@ -222,16 +222,16 @@ fn test_encode_decode_tuples() {
     // Define tuple type
     let tuple_type = ValueType::Tuple(vec![ValueType::I32, ValueType::String];
 
-    let encoded = abi.encode(&tuple).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, tuple_type).unwrap();
+    let encoded = abi.encode(&tuple).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, tuple_type).unwrap());
     assert_eq!(decoded, tuple;
 
     // Empty tuple
     let empty_tuple = ComponentValue::Tuple(vec![];
     let empty_tuple_type = ValueType::Tuple(vec![];
 
-    let encoded = abi.encode(&empty_tuple).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, empty_tuple_type).unwrap();
+    let encoded = abi.encode(&empty_tuple).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, empty_tuple_type).unwrap());
     assert_eq!(decoded, empty_tuple;
 
     // Nested tuple
@@ -249,29 +249,29 @@ fn test_encode_decode_tuples() {
         ValueType::Tuple(vec![ValueType::String, ValueType::Bool]),
     ];
 
-    let encoded = abi.encode(&nested_tuple).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, nested_tuple_type).unwrap();
+    let encoded = abi.encode(&nested_tuple).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, nested_tuple_type).unwrap());
     assert_eq!(decoded, nested_tuple;
 }
 
 /// Tests for encoding/decoding options
 #[test]
 fn test_encode_decode_options() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Some value
     let some_value = ComponentValue::Option(Some(Box::new(ComponentValue::I32(42));
     let option_type = ValueType::Option(Box::new(ValueType::I32;
 
-    let encoded = abi.encode(&some_value).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, option_type.clone()).unwrap();
+    let encoded = abi.encode(&some_value).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, option_type.clone()).unwrap());
     assert_eq!(decoded, some_value;
 
     // None value
     let none_value = ComponentValue::Option(None;
 
-    let encoded = abi.encode(&none_value).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, option_type).unwrap();
+    let encoded = abi.encode(&none_value).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, option_type).unwrap());
     assert_eq!(decoded, none_value;
 
     // Option containing a complex type
@@ -283,15 +283,15 @@ fn test_encode_decode_options() {
     let complex_option_type =
         ValueType::Option(Box::new(ValueType::List(Box::new(ValueType::String));
 
-    let encoded = abi.encode(&complex_option).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, complex_option_type).unwrap();
+    let encoded = abi.encode(&complex_option).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, complex_option_type).unwrap());
     assert_eq!(decoded, complex_option;
 }
 
 /// Tests for encoding/decoding results
 #[test]
 fn test_encode_decode_results() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Ok result
     let ok_result = ComponentValue::Result {
@@ -304,8 +304,8 @@ fn test_encode_decode_results() {
         err: Box::new(ValueType::I32),
     };
 
-    let encoded = abi.encode(&ok_result).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, result_type.clone()).unwrap();
+    let encoded = abi.encode(&ok_result).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, result_type.clone()).unwrap());
     assert_eq!(decoded, ok_result;
 
     // Err result
@@ -314,8 +314,8 @@ fn test_encode_decode_results() {
         value: Box::new(ComponentValue::I32(404)),
     };
 
-    let encoded = abi.encode(&err_result).unwrap();
-    let decoded = abi.decode::<ComponentValue>(&encoded, result_type).unwrap();
+    let encoded = abi.encode(&err_result).unwrap());
+    let decoded = abi.decode::<ComponentValue>(&encoded, result_type).unwrap());
     assert_eq!(decoded, err_result;
 }
 
@@ -330,10 +330,10 @@ fn test_resource_handling() {
 
     // Encode a resource
     let resource_value = ComponentValue::Resource { id: 42 };
-    let encoded = abi.encode_resource(&resource_value, 42).unwrap();
+    let encoded = abi.encode_resource(&resource_value, 42).unwrap());
 
     // Decode the resource
-    let decoded = abi.decode_resource::<ComponentValue>(&encoded, 42).unwrap();
+    let decoded = abi.decode_resource::<ComponentValue>(&encoded, 42).unwrap());
     assert_eq!(decoded, resource_value;
 
     // Test invalid resource ID
@@ -344,11 +344,11 @@ fn test_resource_handling() {
 /// Tests for handling errors
 #[test]
 fn test_error_handling() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Attempt to decode with wrong type
     let i32_value = ComponentValue::I32(42;
-    let encoded = abi.encode(&i32_value).unwrap();
+    let encoded = abi.encode(&i32_value).unwrap());
     let result = abi.decode::<ComponentValue>(&encoded, ValueType::F32;
     assert!(result.is_err(), "Should fail with type mismatch");
 
@@ -380,7 +380,7 @@ fn test_memory_limits() {
 
     // String within limits
     let short_string = ComponentValue::String("short".to_string();
-    assert!(abi.encode(&short_string).is_ok();
+    assert!(abi.encode(&short_string).is_ok());
 
     // String exceeding limits
     let long_string = ComponentValue::String("this string is too long".to_string();
@@ -388,7 +388,7 @@ fn test_memory_limits() {
 
     // List within limits
     let short_list = ComponentValue::List(vec![ComponentValue::I32(1), ComponentValue::I32(2)];
-    assert!(abi.encode(&short_list).is_ok();
+    assert!(abi.encode(&short_list).is_ok());
 
     // List exceeding limits
     let long_list = ComponentValue::List(vec![
@@ -405,36 +405,36 @@ fn test_memory_limits() {
 /// Tests conversions from/to Rust native types
 #[test]
 fn test_rust_native_conversions() {
-    let abi = CanonicalABI::default);
+    let abi = CanonicalABI::default());
 
     // Convert from Rust i32
     let rust_i32: i32 = 42;
     let component_i32 = ComponentValue::from(rust_i32;
-    let encoded = abi.encode(&component_i32).unwrap();
-    let decoded = abi.decode::<i32>(&encoded, ValueType::I32).unwrap();
+    let encoded = abi.encode(&component_i32).unwrap());
+    let decoded = abi.decode::<i32>(&encoded, ValueType::I32).unwrap());
     assert_eq!(decoded, rust_i32;
 
     // Convert from Rust String
     let rust_string = "Hello, world!".to_string();
     let component_string = ComponentValue::from(rust_string.clone();
-    let encoded = abi.encode(&component_string).unwrap();
-    let decoded = abi.decode::<String>(&encoded, ValueType::String).unwrap();
+    let encoded = abi.encode(&component_string).unwrap());
+    let decoded = abi.decode::<String>(&encoded, ValueType::String).unwrap());
     assert_eq!(decoded, rust_string;
 
     // Convert from Rust bool
     let rust_bool = true;
     let component_bool = ComponentValue::from(rust_bool;
-    let encoded = abi.encode(&component_bool).unwrap();
-    let decoded = abi.decode::<bool>(&encoded, ValueType::Bool).unwrap();
+    let encoded = abi.encode(&component_bool).unwrap());
+    let decoded = abi.decode::<bool>(&encoded, ValueType::Bool).unwrap());
     assert_eq!(decoded, rust_bool;
 
     // Convert from Rust Vec
     let rust_vec = vec![1, 2, 3];
     let component_vec = ComponentValue::from_vec(rust_vec.clone();
-    let encoded = abi.encode(&component_vec).unwrap();
+    let encoded = abi.encode(&component_vec).unwrap());
     let decoded = abi
         .decode_vec::<i32>(&encoded, ValueType::List(Box::new(ValueType::I32)))
-        .unwrap();
+        .unwrap());
     assert_eq!(decoded, rust_vec;
 
     // Convert from Rust tuple
@@ -445,8 +445,8 @@ fn test_rust_native_conversions() {
     ;
 
     let tuple_type = ValueType::Tuple(vec![ValueType::I32, ValueType::String];
-    let encoded = abi.encode(&component_tuple).unwrap();
-    let decoded = abi.decode_tuple::<(i32, String)>(&encoded, tuple_type).unwrap();
+    let encoded = abi.encode(&component_tuple).unwrap());
+    let decoded = abi.decode_tuple::<(i32, String)>(&encoded, tuple_type).unwrap());
     assert_eq!(decoded, rust_tuple;
 }
 
@@ -784,12 +784,12 @@ fn test_extern_type_conversion() {
         results: vec![FormatValType::S32],
     };
 
-    let runtime_func = format_to_runtime_extern_type(&format_func).unwrap();
+    let runtime_func = format_to_runtime_extern_type(&format_func).unwrap());
 
     match runtime_func {
         TypesExternType::Function(func_type) => {
-            assert_eq!(func_type.params.len(), 1;
-            assert_eq!(func_type.results.len(), 1;
+            assert_eq!(func_type.params.len(), 1);
+            assert_eq!(func_type.results.len(), 1);
         },
         _ => panic!("Expected Function type, got {:?}", runtime_func),
     }
@@ -802,16 +802,16 @@ fn test_extern_type_conversion() {
     let extern_type = TypesExternType::Function(func_type;
 
     // Convert to format type
-    let format_type = runtime_to_format_extern_type(&extern_type).unwrap();
+    let format_type = runtime_to_format_extern_type(&extern_type).unwrap());
 
     // Convert back to runtime type
-    let roundtrip_type = format_to_runtime_extern_type(&format_type).unwrap();
+    let roundtrip_type = format_to_runtime_extern_type(&format_type).unwrap());
 
     // Verify the structure is preserved
     match roundtrip_type {
         TypesExternType::Function(func_type) => {
             assert_eq!(func_type.params.len(), 2;
-            assert_eq!(func_type.results.len(), 1;
+            assert_eq!(func_type.results.len(), 1);
             assert_eq!(func_type.params[0], ValueType::I32;
             assert_eq!(func_type.params[1], ValueType::I64;
             assert_eq!(func_type.results[0], ValueType::F32;
@@ -825,7 +825,7 @@ fn test_extern_type_conversion() {
         nullable: false,
     };
 
-    let runtime_resource = format_to_runtime_extern_type(&resource_extern_type).unwrap();
+    let runtime_resource = format_to_runtime_extern_type(&resource_extern_type).unwrap());
 
     match runtime_resource {
         TypesExternType::Resource(resource_type) => {
@@ -864,12 +864,12 @@ fn test_conversion_traits() {
     };
 
     let runtime_func: Result<TypesExternType, _> = format_func.clone().into_runtime_type);
-    assert!(runtime_func.is_ok();
+    assert!(runtime_func.is_ok());
 
     // Test IntoFormatType for TypesExternType
     let func_type = TypesFuncType::new(vec![ValueType::I32], vec![ValueType::F32];
     let extern_type = TypesExternType::Function(func_type;
 
     let format_type: Result<FormatExternType, _> = extern_type.into_format_type);
-    assert!(format_type.is_ok();
+    assert!(format_type.is_ok());
 }

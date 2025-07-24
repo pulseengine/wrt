@@ -231,7 +231,7 @@ impl ModuleArena {
 
         // Ensure buffer has enough actual length
         if self.buffer.len() < self.offset + size {
-            self.buffer.resize(self.offset + size, 0;
+            self.buffer.resize(self.offset + size, 0);
         }
 
         let slice = &mut self.buffer[self.offset..self.offset + size];

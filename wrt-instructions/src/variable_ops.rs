@@ -158,21 +158,21 @@ mod tests {
         let mut context = MockVariableContext::new);
 
         // Set up initial values
-        context.set_local(0, Value::I32(42)).unwrap();
-        context.set_local(1, Value::I64(100)).unwrap();
+        context.set_local(0, Value::I32(42)).unwrap());
+        context.set_local(1, Value::I64(100)).unwrap());
 
         // Test local.get
-        VariableOp::LocalGet(0).execute(&mut context).unwrap();
+        VariableOp::LocalGet(0).execute(&mut context).unwrap());
         assert_eq!(context.pop_value().unwrap(), Value::I32(42;
 
         // Test local.set
-        context.push_value(Value::I32(123)).unwrap();
-        VariableOp::LocalSet(0).execute(&mut context).unwrap();
+        context.push_value(Value::I32(123)).unwrap());
+        VariableOp::LocalSet(0).execute(&mut context).unwrap());
         assert_eq!(context.get_local(0).unwrap(), Value::I32(123;
 
         // Test local.tee
-        context.push_value(Value::I32(999)).unwrap();
-        VariableOp::LocalTee(0).execute(&mut context).unwrap();
+        context.push_value(Value::I32(999)).unwrap());
+        VariableOp::LocalTee(0).execute(&mut context).unwrap());
         assert_eq!(context.get_local(0).unwrap(), Value::I32(999;
         assert_eq!(context.pop_value().unwrap(), Value::I32(999;
     }
@@ -182,16 +182,16 @@ mod tests {
         let mut context = MockVariableContext::new);
 
         // Set up initial values
-        context.set_global(0, Value::I32(42)).unwrap();
-        context.set_global(1, Value::I64(100)).unwrap();
+        context.set_global(0, Value::I32(42)).unwrap());
+        context.set_global(1, Value::I64(100)).unwrap());
 
         // Test global.get
-        VariableOp::GlobalGet(0).execute(&mut context).unwrap();
+        VariableOp::GlobalGet(0).execute(&mut context).unwrap());
         assert_eq!(context.pop_value().unwrap(), Value::I32(42;
 
         // Test global.set
-        context.push_value(Value::I32(123)).unwrap();
-        VariableOp::GlobalSet(0).execute(&mut context).unwrap();
+        context.push_value(Value::I32(123)).unwrap());
+        VariableOp::GlobalSet(0).execute(&mut context).unwrap());
         assert_eq!(context.get_global(0).unwrap(), Value::I32(123;
     }
 

@@ -28,8 +28,8 @@ fn test_basic_instantiation() -> TestResult {
     let instance = component.instantiate(&mut context)?;
     
     assert_eq!(instance.component.name, "test_component";
-    assert_eq!(instance.imports.len(), 0;
-    assert_eq!(instance.exports.len(), 0;
+    assert_eq!(instance.imports.len(), 0);
+    assert_eq!(instance.exports.len(), 0);
     
     TestResult::success()
 }

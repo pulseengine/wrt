@@ -466,12 +466,12 @@ mod tests {
     
     #[test]
     fn test_cleanup_context() {
-        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap();
+        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap());
         
         // Register various resources
-        assert!(context.register_resource(ResourceHandle(1)).is_ok();
-        assert!(context.register_stream(1).is_ok();
-        assert!(context.register_handle(1, GenerationalHandle::new(0, 1)).is_ok();
+        assert!(context.register_resource(ResourceHandle(1)).is_ok());
+        assert!(context.register_stream(1).is_ok());
+        assert!(context.register_handle(1, GenerationalHandle::new(0, 1)).is_ok());
         
         // Should have 3 callbacks
         assert_eq!(context.callbacks.len(), 3;
@@ -479,7 +479,7 @@ mod tests {
     
     #[test]
     fn test_callback_priority() {
-        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap();
+        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap());
         
         // Register callbacks with different priorities
         context.register_callback(CleanupCallback::new(
@@ -487,21 +487,21 @@ mod tests {
             10,
             1,
             false,
-        )).unwrap();
+        )).unwrap());
         
         context.register_callback(CleanupCallback::new(
             CleanupAction::Custom("high".to_string()),
             100,
             1,
             false,
-        )).unwrap();
+        )).unwrap());
         
         context.register_callback(CleanupCallback::new(
             CleanupAction::Custom("medium".to_string()),
             50,
             1,
             false,
-        )).unwrap();
+        )).unwrap());
         
         // Verify priority order (highest first)
         assert_eq!(context.callbacks[0].priority, 100;
@@ -511,25 +511,25 @@ mod tests {
     
     #[test]
     fn test_global_cleanup_manager() {
-        let mut manager = GlobalCleanupManager::new(10000).unwrap();
+        let mut manager = GlobalCleanupManager::new(10000).unwrap());
         
         // Register task
-        assert!(manager.register_task(1, 1, VerificationLevel::Basic).is_ok();
+        assert!(manager.register_task(1, 1, VerificationLevel::Basic).is_ok());
         
         // Get context and register resources
         {
-            let context = manager.get_context_mut(1).unwrap();
-            context.register_resource(ResourceHandle(1)).unwrap();
+            let context = manager.get_context_mut(1).unwrap());
+            context.register_resource(ResourceHandle(1)).unwrap());
         }
         
         // Cancel task
-        let errors = manager.cancel_task(1).unwrap();
+        let errors = manager.cancel_task(1).unwrap());
         assert!(errors.is_empty();
         
         // Stats should show cleanup
         let stats = manager.stats);
-        assert_eq!(stats.total_cleanups, 1;
-        assert_eq!(stats.failed_cleanups, 0;
+        assert_eq!(stats.total_cleanups, 1);
+        assert_eq!(stats.failed_cleanups, 0);
     }
     
     #[test]
@@ -539,7 +539,7 @@ mod tests {
         ;
         
         // Register task
-        manager.lock().unwrap().register_task(1, 1, VerificationLevel::Basic).unwrap();
+        manager.lock().unwrap().register_task(1, 1, VerificationLevel::Basic).unwrap());
         
         {
             let _guard = TaskCleanupGuard::new(1, manager.clone();
@@ -548,6 +548,6 @@ mod tests {
         
         // Task should be cleaned up
         let stats = manager.lock().unwrap().stats);
-        assert_eq!(stats.total_cleanups, 1;
+        assert_eq!(stats.total_cleanups, 1);
     }
 }

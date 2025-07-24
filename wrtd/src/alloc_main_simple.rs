@@ -100,7 +100,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 /// Binary std/no_std choice
 fn main() {
-    let config = AllocConfig::default);
+    let config = AllocConfig::default());
     let mut runtime = AllocRuntime::new(config;
     
     // Simulate execution with fake WASM module

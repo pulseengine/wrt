@@ -148,22 +148,22 @@ mod tests {
     fn test_value_type_conversion() {
         // Test basic primitive types
         let s32_val = FormatValType::S32;
-        let i32_val = format_val_type_to_value_type(&s32_val).unwrap();
+        let i32_val = format_val_type_to_value_type(&s32_val).unwrap());
         assert_eq!(i32_val, ValueType::I32;
 
         let f64_val = FormatValType::F64;
-        let f64_runtime = format_val_type_to_value_type(&f64_val).unwrap();
+        let f64_runtime = format_val_type_to_value_type(&f64_val).unwrap());
         assert_eq!(f64_runtime, ValueType::F64;
 
         // Test complex types (all map to ExternRef)
         let string_val = FormatValType::String;
-        let string_runtime = format_val_type_to_value_type(&string_val).unwrap();
+        let string_runtime = format_val_type_to_value_type(&string_val).unwrap());
         assert_eq!(string_runtime, ValueType::ExternRef;
 
         // Test roundtrip conversion for basic types
         let i32_val = ValueType::I32;
-        let format_val = value_type_to_format_val_type(&i32_val).unwrap();
-        let roundtrip = format_val_type_to_value_type(&format_val).unwrap();
+        let format_val = value_type_to_format_val_type(&i32_val).unwrap());
+        let roundtrip = format_val_type_to_value_type(&format_val).unwrap());
         assert_eq!(i32_val, roundtrip;
     }
 }

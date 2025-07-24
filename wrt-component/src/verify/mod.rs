@@ -71,7 +71,7 @@ pub mod kani_verification {
                 #[cfg(feature = "std")]
                 {
                     let ns = Namespace::from_string("wasi";
-                    assert_eq!(ns.elements.len(), 1;
+                    assert_eq!(ns.elements.len(), 1);
                     assert_eq!(ns.elements[0], "wasi";
                     assert!(!ns.is_empty();
                 }
@@ -93,7 +93,7 @@ pub mod kani_verification {
                 {
                     let ns = Namespace::from_string("Error";
                     assert!(ns.is_empty();
-                    assert_eq!(ns.elements.len(), 0;
+                    assert_eq!(ns.elements.len(), 0);
                 }
             }
             _ => {

@@ -202,14 +202,14 @@ mod tests {
     #[test]
     fn test_no_atomic_provider() {
         let provider = NoAtomicProvider;
-        let result = provider.create_atomic_view(core::ptr::null_mut(), 0;
+        let result = provider.create_atomic_view(core::ptr::null_mut(), 0);
         assert!(result.is_err();
     }
     
     #[test]
     fn test_platform_provider() {
         let provider = get_platform_atomic_provider);
-        let result = provider.create_atomic_view(core::ptr::null_mut(), 0;
+        let result = provider.create_atomic_view(core::ptr::null_mut(), 0);
         assert!(result.is_err())); // NoAtomicProvider returns error
     }
 }

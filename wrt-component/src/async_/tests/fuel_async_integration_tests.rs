@@ -35,7 +35,7 @@ mod tests {
     /// Test basic async task execution with fuel tracking
     #[test]
     fn test_basic_async_execution() {
-        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Basic).unwrap();
+        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Basic).unwrap());
         
         // Create a simple async task
         let task_id = executor.spawn_async_task(
@@ -43,14 +43,14 @@ mod tests {
             1000, // fuel_budget
             VerificationLevel::Basic,
             ExecutionContext::new(ASILExecutionMode::A { error_detection: true }),
-        ).unwrap();
+        ).unwrap());
         
         // Poll the task
         let result = executor.poll_task(task_id;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         // Verify fuel consumption
-        let fuel_consumed = executor.get_task_fuel_consumed(task_id).unwrap();
+        let fuel_consumed = executor.get_task_fuel_consumed(task_id).unwrap());
         assert!(fuel_consumed > 0);
     }
 
@@ -64,22 +64,22 @@ mod tests {
             max_fuel_per_slice: 100,
         };
         
-        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Full).unwrap();
+        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Full).unwrap());
         
         // Create deterministic task
         let mut context = ExecutionContext::new(asil_mode;
         context.current_function_index = 42;
         context.function_params = vec![wrt_foundation::Value::I32(10)];
         
-        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Full, context).unwrap();
+        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Full, context).unwrap());
         
         // Execute in deterministic steps
         for _ in 0..5 {
             let result = executor.poll_task(task_id;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
             
             // Verify deterministic fuel consumption
-            let fuel = executor.get_task_fuel_consumed(task_id).unwrap();
+            let fuel = executor.get_task_fuel_consumed(task_id).unwrap());
             assert!(fuel <= asil_mode.max_fuel_per_slice() * 5);
         }
     }
@@ -87,7 +87,7 @@ mod tests {
     /// Test yield point creation and restoration
     #[test]
     fn test_yield_point_suspension_resumption() {
-        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Standard).unwrap();
+        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Standard).unwrap());
         
         // Create task with explicit yield points
         let mut context = ExecutionContext::new(ASILExecutionMode::B {
@@ -100,19 +100,19 @@ mod tests {
             100, // instruction_pointer
             YieldType::ExplicitYield,
             Some(ResumptionCondition::Manual),
-        ).unwrap();
+        ).unwrap());
         
-        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Standard, context).unwrap();
+        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Standard, context).unwrap());
         
         // Poll should yield
         let result = executor.poll_task(task_id;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         
         // Get task and verify yield state
-        let task = executor.get_task(task_id).unwrap();
+        let task = executor.get_task(task_id).unwrap());
         assert!(task.execution_context.last_yield_point.is_some();
         
-        let yield_point = task.execution_context.last_yield_point.as_ref().unwrap();
+        let yield_point = task.execution_context.last_yield_point.as_ref().unwrap());
         assert_eq!(yield_point.instruction_pointer, 100;
         assert!(matches!(yield_point.yield_type, YieldType::ExplicitYield);
     }
@@ -120,21 +120,21 @@ mod tests {
     /// Test async resource waiting
     #[test]
     fn test_async_resource_wait() {
-        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Basic).unwrap();
+        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Basic).unwrap());
         
         let mut context = ExecutionContext::new(ASILExecutionMode::A { error_detection: true };
         
         // Create async yield point waiting for resource
         let resource_id = 12345;
-        context.create_async_yield_point(200, resource_id).unwrap();
+        context.create_async_yield_point(200, resource_id).unwrap());
         
-        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Basic, context).unwrap();
+        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Basic, context).unwrap());
         
         // Poll - should yield waiting for resource
-        executor.poll_task(task_id).unwrap();
+        executor.poll_task(task_id).unwrap());
         
-        let task = executor.get_task(task_id).unwrap();
-        let yield_point = task.execution_context.last_yield_point.as_ref().unwrap();
+        let task = executor.get_task(task_id).unwrap());
+        let yield_point = task.execution_context.last_yield_point.as_ref().unwrap());
         
         assert!(matches!(yield_point.yield_type, YieldType::AsyncWait { resource_id: 12345 });
         assert!(matches!(
@@ -146,7 +146,7 @@ mod tests {
     /// Test fuel exhaustion and recovery
     #[test]
     fn test_fuel_exhaustion_recovery() {
-        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Standard).unwrap();
+        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Standard).unwrap());
         
         // Create task with small fuel budget
         let task_id = executor.spawn_async_task(
@@ -157,7 +157,7 @@ mod tests {
                 strict_resource_limits: true,
                 max_execution_slice_ms: 5,
             }),
-        ).unwrap();
+        ).unwrap());
         
         // Poll until fuel exhausted
         for _ in 0..10 {
@@ -165,16 +165,16 @@ mod tests {
         }
         
         // Check if task is fuel exhausted
-        let task = executor.get_task(task_id).unwrap();
+        let task = executor.get_task(task_id).unwrap());
         let fuel_consumed = task.fuel_consumed.load(core::sync::atomic::Ordering::Acquire;
         assert!(fuel_consumed >= 50);
         
         // Refuel the task
-        executor.refuel_task(task_id, 100).unwrap();
+        executor.refuel_task(task_id, 100).unwrap());
         
         // Should be able to continue execution
         let result = executor.poll_task(task_id;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     /// Test runtime integration with multiple tasks
@@ -188,11 +188,11 @@ mod tests {
             enable_cleanup: true,
         };
         
-        let mut runtime = FuelAsyncRuntime::new(config).unwrap();
+        let mut runtime = FuelAsyncRuntime::new(config).unwrap());
         
         // Create mock component
         let component = Arc::new(ComponentInstance::new);
-        runtime.register_component(1, component.clone()).unwrap();
+        runtime.register_component(1, component.clone()).unwrap());
         
         // Spawn multiple tasks
         let task_ids: Vec<TaskId> = (0..5).map(|i| {
@@ -213,7 +213,7 @@ mod tests {
             if !runtime.has_active_tasks().unwrap() {
                 break;
             }
-            runtime.poll_tasks().unwrap();
+            runtime.poll_tasks().unwrap());
         }
         
         let end_fuel = global_fuel_consumed);
@@ -236,7 +236,7 @@ mod tests {
             resource_isolation: true,
         };
         
-        let mut executor = FuelAsyncExecutor::new(20000, VerificationLevel::Full).unwrap();
+        let mut executor = FuelAsyncExecutor::new(20000, VerificationLevel::Full).unwrap());
         
         // Create isolated tasks
         let task1 = executor.spawn_async_task(
@@ -244,22 +244,22 @@ mod tests {
             5000,
             VerificationLevel::Full,
             ExecutionContext::new(asil_mode),
-        ).unwrap();
+        ).unwrap());
         
         let task2 = executor.spawn_async_task(
             2,
             5000,
             VerificationLevel::Full,
             ExecutionContext::new(asil_mode),
-        ).unwrap();
+        ).unwrap());
         
         // Execute both tasks
-        executor.poll_task(task1).unwrap();
-        executor.poll_task(task2).unwrap();
+        executor.poll_task(task1).unwrap());
+        executor.poll_task(task2).unwrap());
         
         // Verify isolation - fuel consumption should be independent
-        let fuel1 = executor.get_task_fuel_consumed(task1).unwrap();
-        let fuel2 = executor.get_task_fuel_consumed(task2).unwrap();
+        let fuel1 = executor.get_task_fuel_consumed(task1).unwrap());
+        let fuel2 = executor.get_task_fuel_consumed(task2).unwrap());
         
         // Each task should have consumed some fuel independently
         assert!(fuel1 > 0);
@@ -276,9 +276,9 @@ mod tests {
         let mut manager = FuelPreemptionManager::new(
             10000,
             PreemptionPolicy::PriorityBased { min_priority_delta: 10 },
-        ).unwrap();
+        ).unwrap());
         
-        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Standard).unwrap();
+        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Standard).unwrap());
         
         // Create low priority task
         let low_priority_task = executor.spawn_async_task(
@@ -286,7 +286,7 @@ mod tests {
             5000,
             VerificationLevel::Standard,
             ExecutionContext::new(ASILExecutionMode::A { error_detection: true }),
-        ).unwrap();
+        ).unwrap());
         
         // Create high priority task
         let mut high_priority_context = ExecutionContext::new(ASILExecutionMode::B {
@@ -300,14 +300,14 @@ mod tests {
             5000,
             VerificationLevel::Standard,
             high_priority_context,
-        ).unwrap();
+        ).unwrap());
         
         // Check preemption decision
         let decision = manager.evaluate_preemption(
             low_priority_task,
             high_priority_task,
             &executor,
-        ).unwrap();
+        ).unwrap());
         
         // High priority task should preempt low priority
         assert!(matches!(decision, crate::async_::fuel_preemption_support::PreemptionDecision::Preempt { .. });
@@ -316,7 +316,7 @@ mod tests {
     /// Test yield point restoration after suspension
     #[test]
     fn test_yield_point_full_restoration() {
-        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Full).unwrap();
+        let mut executor = FuelAsyncExecutor::new(10000, VerificationLevel::Full).unwrap());
         
         let mut context = ExecutionContext::new(ASILExecutionMode::D {
             deterministic_execution: true,
@@ -334,13 +334,13 @@ mod tests {
         context.stack_depth = 3;
         
         // Create ASIL yield point
-        context.create_asil_yield_point(300, "Deterministic checkpoint".to_string()).unwrap();
+        context.create_asil_yield_point(300, "Deterministic checkpoint".to_string()).unwrap());
         
-        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Full, context).unwrap();
+        let task_id = executor.spawn_async_task(1, 1000, VerificationLevel::Full, context).unwrap());
         
         // Get the yield point
-        let task = executor.get_task(task_id).unwrap();
-        let yield_point = task.execution_context.last_yield_point.as_ref().unwrap();
+        let task = executor.get_task(task_id).unwrap());
+        let yield_point = task.execution_context.last_yield_point.as_ref().unwrap());
         
         // Verify yield point has complete state
         assert_eq!(yield_point.instruction_pointer, 300;
@@ -356,7 +356,7 @@ mod tests {
             max_fuel_per_slice: 100,
         };
         
-        new_context.restore_from_yield_point(yield_point).unwrap();
+        new_context.restore_from_yield_point(yield_point).unwrap());
         
         // Verify restoration
         assert_eq!(new_context.current_function_index, 300); // Instruction pointer becomes function index in restoration
@@ -374,11 +374,11 @@ mod tests {
             enable_cleanup: true,
         };
         
-        let mut runtime = FuelAsyncRuntime::new(config).unwrap();
+        let mut runtime = FuelAsyncRuntime::new(config).unwrap());
         
         // Register component
         let component = Arc::new(ComponentInstance::new);
-        runtime.register_component(1, component).unwrap();
+        runtime.register_component(1, component).unwrap());
         
         // Spawn tasks that would share resources
         let task_ids: Vec<TaskId> = (0..10).map(|i| {
@@ -403,7 +403,7 @@ mod tests {
         // Execute with limited fuel to force interleaving
         let mut polls = 0;
         while runtime.has_active_tasks().unwrap() && polls < 50 {
-            runtime.poll_tasks().unwrap();
+            runtime.poll_tasks().unwrap());
             polls += 1;
         }
         

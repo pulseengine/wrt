@@ -46,11 +46,11 @@ mod backend_basic_tests {
         let capability = capabilities::DynamicNNCapability::new);
         let tract_backend = tract_backend::TractBackend::new(capability;
         
-        let dims = TensorDimensions::new(&[10, 10]).unwrap();
+        let dims = TensorDimensions::new(&[10, 10]).unwrap());
         let tensor_result = tract_backend.create_tensor(dims, TensorType::F32;
         
-        assert!(tensor_result.is_ok();
-        let tensor = tensor_result.unwrap();
+        assert!(tensor_result.is_ok());
+        let tensor = tensor_result.unwrap());
         assert_eq!(tensor.size_bytes(), 400); // 10*10*4
         assert!(tensor.is_contiguous();
     }
@@ -60,8 +60,8 @@ mod backend_basic_tests {
         let capability = capabilities::DynamicNNCapability::new);
         let tract_backend = tract_backend::TractBackend::new(capability;
         
-        let dims = TensorDimensions::new(&[5, 5]).unwrap();
-        let tensor = tract_backend.create_tensor(dims.clone(), TensorType::F32).unwrap();
+        let dims = TensorDimensions::new(&[5, 5]).unwrap());
+        let tensor = tract_backend.create_tensor(dims.clone(), TensorType::F32).unwrap());
         
         // Test TensorCapability trait methods
         assert_eq!(tensor.dimensions().as_slice(), dims.as_slice);
@@ -70,7 +70,7 @@ mod backend_basic_tests {
         
         // Test data read/write
         let mut buffer = vec![0u8; 100];
-        assert!(tensor.read_data(&mut buffer).is_ok();
+        assert!(tensor.read_data(&mut buffer).is_ok());
         assert!(buffer.iter().all(|&b| b == 0))); // Initially zero
     }
 }
@@ -98,7 +98,7 @@ mod model_loading_tests {
 
     #[test]
     fn test_model_size_validation() {
-        let capability = capabilities::BoundedNNCapability::new().unwrap(); // 50MB limit
+        let capability = capabilities::BoundedNNCapability::new().unwrap()); // 50MB limit
         let tract_backend = tract_backend::TractBackend::new(capability;
         
         // Test oversized model data
@@ -120,7 +120,7 @@ mod model_loading_tests {
     fn test_model_approval_checking() {
         // Test ASIL-B model approval
         let approved_hash = [0x12u8; 32];
-        let capability = capabilities::StaticNNCapability::new(&[approved_hash]).unwrap();
+        let capability = capabilities::StaticNNCapability::new(&[approved_hash]).unwrap());
         let tract_backend = tract_backend::TractBackend::new(capability;
         
         // Create data that would produce the approved hash
@@ -204,18 +204,18 @@ mod execution_tests {
 
     #[test]
     fn test_execution_stats() {
-        let mut stats = execution::ExecutionStats::default);
+        let mut stats = execution::ExecutionStats::default());
         
-        assert_eq!(stats.inference_count, 0;
-        assert_eq!(stats.total_time_us, 0;
-        assert_eq!(stats.peak_memory_bytes, 0;
+        assert_eq!(stats.inference_count, 0);
+        assert_eq!(stats.total_time_us, 0);
+        assert_eq!(stats.peak_memory_bytes, 0);
         
         // Simulate updating stats
         stats.inference_count += 1;
         stats.total_time_us += 1000;
         stats.peak_memory_bytes = 1024;
         
-        assert_eq!(stats.inference_count, 1;
+        assert_eq!(stats.inference_count, 1);
         assert_eq!(stats.total_time_us, 1000;
         assert_eq!(stats.peak_memory_bytes, 1024;
         
@@ -250,16 +250,16 @@ mod store_tests {
 
     #[test]
     fn test_graph_store_operations() {
-        let mut store = graph::GraphStore::new().unwrap();
+        let mut store = graph::GraphStore::new().unwrap());
         
         // Test initial state
-        assert_eq!(store.count(), 0;
+        assert_eq!(store.count(), 0);
         assert!(!store.is_full();
         
         // Test ID generation
         let id1 = store.next_id);
         let id2 = store.next_id);
-        assert_eq!(id1, 1;
+        assert_eq!(id1, 1);
         assert_eq!(id2, 2;
         
         // Test wraparound protection
@@ -268,12 +268,12 @@ mod store_tests {
 
     #[test]
     fn test_context_store_operations() {
-        let mut store = execution::ContextStore::new().unwrap();
+        let mut store = execution::ContextStore::new().unwrap());
         
         // Test ID generation
         let id1 = store.next_id);
         let id2 = store.next_id);
-        assert_eq!(id1, 1;
+        assert_eq!(id1, 1);
         assert_eq!(id2, 2;
         
         // Test wraparound protection
@@ -285,7 +285,7 @@ mod store_tests {
         // Test that stores respect their maximum capacity
         // This is now enforced by the Vec length checks rather than BoundedVec
         
-        let store = graph::GraphStore::new().unwrap();
+        let store = graph::GraphStore::new().unwrap());
         assert!(!store.is_full())); // Should not be full initially
         
         // Note: Testing actual capacity limits would require creating many graphs,
@@ -309,15 +309,15 @@ mod concurrency_tests {
             let cap = Arc::clone(&capability);
             thread::spawn(move || {
                 // Each thread performs some operations
-                let dims = TensorDimensions::new(&[10, 10]).unwrap();
+                let dims = TensorDimensions::new(&[10, 10]).unwrap());
                 let tensor_result = Tensor::new(dims, TensorType::F32, cap.as_ref);
-                assert!(tensor_result.is_ok();
+                assert!(tensor_result.is_ok());
                 
                 let op = capabilities::NNOperation::Load {
                     size: 1024 * i, // Different sizes per thread
                     format: capabilities::ModelFormat::ONNX,
                 };
-                assert!(cap.verify_operation(&op).is_ok();
+                assert!(cap.verify_operation(&op).is_ok());
                 
                 i * 42 // Return some value
             })
@@ -325,7 +325,7 @@ mod concurrency_tests {
         
         // Wait for all threads to complete
         for handle in handles {
-            let result = handle.join().unwrap();
+            let result = handle.join().unwrap());
             assert!(result < 500)); // All should complete successfully
         }
     }
@@ -346,7 +346,7 @@ mod concurrency_tests {
         
         let mut hashes = Vec::new);
         for handle in handles {
-            hashes.push(handle.join().unwrap();
+            hashes.push(handle.join().unwrap());
         }
         
         // All hashes should be identical (deterministic)
@@ -360,7 +360,7 @@ mod concurrency_tests {
     fn test_model_approval_thread_safety() {
         // Test that model approval checking is thread-safe
         let approved_hash = [0x33u8; 32];
-        let capability = Arc::new(capabilities::StaticNNCapability::new(&[approved_hash]).unwrap();
+        let capability = Arc::new(capabilities::StaticNNCapability::new(&[approved_hash]).unwrap());
         
         let handles: Vec<_> = (0..10).map(|i| {
             let cap = Arc::clone(&capability);
@@ -374,7 +374,7 @@ mod concurrency_tests {
         }).collect();
         
         for handle in handles {
-            let (i, is_approved) = handle.join().unwrap();
+            let (i, is_approved) = handle.join().unwrap());
             if i == 0x33 {
                 assert!(is_approved)); // Should match the approved hash
             } else {
@@ -407,7 +407,7 @@ mod error_handling_tests {
         let capability = capabilities::DynamicNNCapability::new);
         
         // Test dimensions that would cause size overflow
-        let huge_dims = TensorDimensions::new(&[u32::MAX / 2, u32::MAX / 2]).unwrap();
+        let huge_dims = TensorDimensions::new(&[u32::MAX / 2, u32::MAX / 2]).unwrap());
         let tensor_result = Tensor::new(huge_dims, TensorType::F32, &capability;
         
         // Should fail due to size calculation overflow or resource limits
@@ -419,7 +419,7 @@ mod error_handling_tests {
         // Test that each capability level properly enforces its limits
         
         // ASIL-B with very restrictive custom limits
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         let limits = asil_b_cap.resource_limits);
         
         // Test tensor that exceeds limits
@@ -428,7 +428,7 @@ mod error_handling_tests {
         let side_length = (num_elements as f64).sqrt() as u32;
         
         if side_length > 0 {
-            let large_dims = TensorDimensions::new(&[side_length, side_length]).unwrap();
+            let large_dims = TensorDimensions::new(&[side_length, side_length]).unwrap());
             let tensor_result = Tensor::new(large_dims, TensorType::F32, &asil_b_cap;
             assert!(tensor_result.is_err();
         }

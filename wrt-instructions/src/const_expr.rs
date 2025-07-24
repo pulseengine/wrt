@@ -438,40 +438,40 @@ mod tests {
     #[test]
     fn test_simple_const_expr() {
         let mut expr = ConstExprSequence::new);
-        expr.push(ConstExpr::I32Const(42)).unwrap();
-        expr.push(ConstExpr::End).unwrap();
+        expr.push(ConstExpr::I32Const(42)).unwrap());
+        expr.push(ConstExpr::End).unwrap());
         
         let context = TestConstExprContext {
             globals: Vec::new(),
             func_count: 0,
         };
         
-        let result = expr.evaluate(&context).unwrap();
+        let result = expr.evaluate(&context).unwrap());
         assert_eq!(result, Value::I32(42;
     }
     
     #[test]
     fn test_arithmetic_const_expr() {
         let mut expr = ConstExprSequence::new);
-        expr.push(ConstExpr::I32Const(10)).unwrap();
-        expr.push(ConstExpr::I32Const(32)).unwrap();
-        expr.push(ConstExpr::I32Add).unwrap();
-        expr.push(ConstExpr::End).unwrap();
+        expr.push(ConstExpr::I32Const(10)).unwrap());
+        expr.push(ConstExpr::I32Const(32)).unwrap());
+        expr.push(ConstExpr::I32Add).unwrap());
+        expr.push(ConstExpr::End).unwrap());
         
         let context = TestConstExprContext {
             globals: Vec::new(),
             func_count: 0,
         };
         
-        let result = expr.evaluate(&context).unwrap();
+        let result = expr.evaluate(&context).unwrap());
         assert_eq!(result, Value::I32(42;
     }
     
     #[test]
     fn test_global_get_const_expr() {
         let mut expr = ConstExprSequence::new);
-        expr.push(ConstExpr::GlobalGet(0)).unwrap();
-        expr.push(ConstExpr::End).unwrap();
+        expr.push(ConstExpr::GlobalGet(0)).unwrap());
+        expr.push(ConstExpr::End).unwrap());
         
         let context = TestConstExprContext {
             globals: {
@@ -482,7 +482,7 @@ mod tests {
             func_count: 0,
         };
         
-        let result = expr.evaluate(&context).unwrap();
+        let result = expr.evaluate(&context).unwrap());
         assert_eq!(result, Value::I32(100;
     }
 }

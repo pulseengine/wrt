@@ -175,10 +175,10 @@ mod tests {
     #[test]
     fn test_demo_functions() {
         // Test that all demo functions work without panicking
-        assert!(demo_basic_parsing().is_ok();
-        assert!(demo_validation_levels().is_ok();
-        assert!(demo_parser_api().is_ok();
-        assert!(demo_cross_environment_compatibility().is_ok();
+        assert!(demo_basic_parsing().is_ok());
+        assert!(demo_validation_levels().is_ok());
+        assert!(demo_parser_api().is_ok());
+        assert!(demo_cross_environment_compatibility().is_ok());
 
         // Error handling demo doesn't return Result, so just call it
         demo_error_handling);

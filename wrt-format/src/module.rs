@@ -128,7 +128,7 @@ impl wrt_foundation::traits::FromBytes for Function {
         stream.read_exact(&mut code_len_bytes)?;
         let code_len = u32::from_le_bytes(code_len_bytes) as usize;
         let mut code = alloc::vec::Vec::with_capacity(code_len;
-        code.resize(code_len, 0;
+        code.resize(code_len, 0);
         stream.read_exact(&mut code)?;
 
         Ok(Function { type_idx, locals, code })

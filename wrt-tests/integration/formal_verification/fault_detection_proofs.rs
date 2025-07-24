@@ -692,18 +692,18 @@ mod tests {
     fn test_fault_detection_verification() {
         let registry = TestRegistry::global);
         let result = register_tests(registry;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(property_count(), 4;
     }
     
     #[test]
     fn test_capacity_enforcement() {
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-        let mut vec = BoundedVec::<u8, 8, _>::new(provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+        let mut vec = BoundedVec::<u8, 8, _>::new(provider).unwrap());
         
         // Fill to capacity
         for i in 0..8 {
-            assert!(vec.push(i).is_ok();
+            assert!(vec.push(i).is_ok());
         }
         
         // Verify overflow protection

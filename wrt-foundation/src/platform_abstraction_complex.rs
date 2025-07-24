@@ -339,7 +339,7 @@ pub struct StdPlatform {
 #[cfg(feature = "std")]
 impl StdPlatform {
     pub fn new() -> Self {
-        let limits = PlatformLimits::default);
+        let limits = PlatformLimits::default());
         Self {
             safety_context: SafetyContext::new(limits.asil_level),
             limits,

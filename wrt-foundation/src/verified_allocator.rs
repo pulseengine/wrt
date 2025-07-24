@@ -265,24 +265,24 @@ mod tests {
     fn test_basic_allocation() {
         let allocator = VerifiedAllocator::new(1024;
         
-        let alloc1 = allocator.allocate(512).unwrap();
+        let alloc1 = allocator.allocate(512).unwrap());
         assert_eq!(allocator.allocated.load(Ordering::Acquire), 512;
         
-        let alloc2 = allocator.allocate(256).unwrap();
+        let alloc2 = allocator.allocate(256).unwrap());
         assert_eq!(allocator.allocated.load(Ordering::Acquire), 768;
         
         drop(alloc1;
         assert_eq!(allocator.allocated.load(Ordering::Acquire), 256;
         
         drop(alloc2;
-        assert_eq!(allocator.allocated.load(Ordering::Acquire), 0;
+        assert_eq!(allocator.allocated.load(Ordering::Acquire), 0);
     }
     
     #[test]
     fn test_budget_enforcement() {
         let allocator = VerifiedAllocator::new(1024;
         
-        let _alloc1 = allocator.allocate(1024).unwrap();
+        let _alloc1 = allocator.allocate(1024).unwrap());
         let result = allocator.allocate(1;
         assert!(result.is_err();
     }

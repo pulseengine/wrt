@@ -547,22 +547,22 @@ mod tests {
     fn test_bridge_creation() {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = BridgeConfiguration::default);
+        let config = BridgeConfiguration::default());
         
-        let bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
-        assert_eq!(bridge.async_contexts.len(), 0;
+        let bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap());
+        assert_eq!(bridge.async_contexts.len(), 0);
     }
 
     #[test]
     fn test_component_initialization() {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = BridgeConfiguration::default);
+        let config = BridgeConfiguration::default());
         
-        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
+        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap());
         
         let component_id = ComponentInstanceId::new(1;
-        bridge.initialize_component_async(component_id, None).unwrap();
+        bridge.initialize_component_async(component_id, None).unwrap());
         
         assert!(bridge.async_contexts.contains_key(&component_id);
     }
@@ -571,12 +571,12 @@ mod tests {
     fn test_async_task_spawning() {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = BridgeConfiguration::default);
+        let config = BridgeConfiguration::default());
         
-        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
+        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap());
         
         let component_id = ComponentInstanceId::new(1;
-        bridge.initialize_component_async(component_id, None).unwrap();
+        bridge.initialize_component_async(component_id, None).unwrap());
         
         let task_id = bridge.spawn_async_task(
             component_id,
@@ -584,7 +584,7 @@ mod tests {
             async { Ok(vec![]) },
             ComponentAsyncTaskType::AsyncFunction,
             Priority::Normal,
-        ).unwrap();
+        ).unwrap());
         
         assert!(bridge.async_tasks.contains_key(&task_id);
         assert!(bridge.task_mapping.contains_key(&task_id);
@@ -594,35 +594,35 @@ mod tests {
     fn test_future_handle_creation() {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = BridgeConfiguration::default);
+        let config = BridgeConfiguration::default());
         
-        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
+        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap());
         
         let component_id = ComponentInstanceId::new(1;
-        bridge.initialize_component_async(component_id, None).unwrap();
+        bridge.initialize_component_async(component_id, None).unwrap());
         
         // Would need proper Future implementation for real test
         // let future = Box::new(/* future implementation */;
-        // let handle = bridge.create_future_handle(component_id, future).unwrap();
+        // let handle = bridge.create_future_handle(component_id, future).unwrap());
         
         let stats = bridge.get_bridge_statistics);
-        assert_eq!(stats.active_components, 1;
+        assert_eq!(stats.active_components, 1);
     }
 
     #[test]
     fn test_component_suspension() {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = BridgeConfiguration::default);
+        let config = BridgeConfiguration::default());
         
-        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
+        let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap());
         
         let component_id = ComponentInstanceId::new(1;
-        bridge.initialize_component_async(component_id, None).unwrap();
+        bridge.initialize_component_async(component_id, None).unwrap());
         
-        bridge.suspend_component_async(component_id).unwrap();
+        bridge.suspend_component_async(component_id).unwrap());
         
-        let context = bridge.async_contexts.get(&component_id).unwrap();
+        let context = bridge.async_contexts.get(&component_id).unwrap());
         assert_eq!(context.async_state, ComponentAsyncState::Suspended;
     }
 }

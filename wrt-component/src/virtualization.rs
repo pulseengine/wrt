@@ -761,44 +761,44 @@ mod tests {
 
     #[test]
     fn test_virtualization_manager_creation() {
-        let manager = VirtualizationManager::new().unwrap();
+        let manager = VirtualizationManager::new().unwrap());
         assert!(manager.is_virtualization_enabled();
     }
 
     #[test]
     fn test_virtual_component_creation() {
-        let mut manager = VirtualizationManager::new().unwrap();
+        let mut manager = VirtualizationManager::new().unwrap());
         let result =
             manager.create_virtual_component("test-component", None, IsolationLevel::Basic;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
     fn test_capability_granting() {
-        let mut manager = VirtualizationManager::new().unwrap();
+        let mut manager = VirtualizationManager::new().unwrap());
         let instance_id = manager
             .create_virtual_component("test-component", None, IsolationLevel::Basic)
-            .unwrap();
+            .unwrap());
 
         let capability = create_memory_capability(1024;
         let result = manager.grant_capability(instance_id, capability.clone(), None, true;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert!(manager.check_capability(instance_id, &capability);
     }
 
     #[test]
     fn test_virtual_memory_allocation() {
-        let mut manager = VirtualizationManager::new().unwrap();
+        let mut manager = VirtualizationManager::new().unwrap());
         let instance_id = manager
             .create_virtual_component("test-component", None, IsolationLevel::Strong)
-            .unwrap();
+            .unwrap());
 
         let capability = create_memory_capability(2048;
-        manager.grant_capability(instance_id, capability, None, true).unwrap();
+        manager.grant_capability(instance_id, capability, None, true).unwrap());
 
         let permissions = MemoryPermissions { read: true, write: true, execute: false };
 
         let result = manager.allocate_virtual_memory(instance_id, 1024, permissions;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

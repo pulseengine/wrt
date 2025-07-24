@@ -100,7 +100,7 @@ fn test_tail_call_type_validation() -> Result<()> {
     };
     
     // Should succeed - same return types
-    assert!(validation::validate_tail_call(&func1, &func2).is_ok();
+    assert!(validation::validate_tail_call(&func1, &func2).is_ok());
     
     // Test with different return types
     let func3 = FuncType {
@@ -123,7 +123,7 @@ fn test_tail_call_type_validation() -> Result<()> {
     };
     
     // Should succeed - same return types
-    assert!(validation::validate_tail_call(&func4, &func5).is_ok();
+    assert!(validation::validate_tail_call(&func4, &func5).is_ok());
     
     Ok(())
 }

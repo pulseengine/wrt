@@ -158,11 +158,11 @@ mod tests {
 
         // Create first table
         let table1 = pool.create_table);
-        assert!(table1.is_ok();
+        assert!(table1.is_ok());
 
         // Create second table
         let table2 = pool.create_table);
-        assert!(table2.is_ok();
+        assert!(table2.is_ok());
 
         // Third table should fail (exceeds limit)
         let table3 = pool.create_table);
@@ -178,21 +178,21 @@ mod tests {
     #[test]
     fn test_budget_integration_verification() {
         let result = verify_budget_integration);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert!(result.unwrap(), "Budget integration verification failed");
     }
 
     #[test]
     fn test_component_isolation() {
-        let mut pool1 = BudgetAwareResourceTablePool::new(CrateId::Component, 1;
-        let mut pool2 = BudgetAwareResourceTablePool::new(CrateId::Runtime, 1;
+        let mut pool1 = BudgetAwareResourceTablePool::new(CrateId::Component, 1);
+        let mut pool2 = BudgetAwareResourceTablePool::new(CrateId::Runtime, 1);
 
         // Each component should be able to create its own tables
         let table1 = pool1.create_table);
         let table2 = pool2.create_table);
 
-        assert!(table1.is_ok();
-        assert!(table2.is_ok();
+        assert!(table1.is_ok());
+        assert!(table2.is_ok());
 
         // Verify isolation in statistics
         let stats1 = pool1.get_usage_stats);

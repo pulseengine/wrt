@@ -213,7 +213,7 @@ pub fn debug_track_allocation(crate_id: CrateId, size: usize, purpose: &str) {
         let tracker = DEBUG_TRACKER.get_or_init(|| Mutex::new(HashMap::new();
         if let Ok(mut map) = tracker.lock() {
             let key = format!("{}:{}", crate_id.name(), purpose;
-            let (count, total) = map.entry(key).or_insert((0, 0;
+            let (count, total) = map.entry(key).or_insert((0, 0);
             *count += 1;
             *total += size;
         }

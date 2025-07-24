@@ -62,23 +62,23 @@ fn bench_module_loading(c: &mut Criterion) {
     if let Ok(wasm_bytes) = fs::read("test_add.wasm") {
         group.bench_function("decode_module", |b| {
             b.iter(|| {
-                let decoded = decode_module(black_box(&wasm_bytes)).unwrap();
+                let decoded = decode_module(black_box(&wasm_bytes)).unwrap());
                 black_box(decoded)
             };
         };
 
         group.bench_function("convert_to_runtime", |b| {
-            let decoded = decode_module(&wasm_bytes).unwrap();
+            let decoded = decode_module(&wasm_bytes).unwrap());
             b.iter(|| {
-                let runtime_module = Module::from_wrt_module(black_box(&decoded)).unwrap();
+                let runtime_module = Module::from_wrt_module(black_box(&decoded)).unwrap());
                 black_box(runtime_module)
             };
         };
 
         group.bench_function("full_module_loading", |b| {
             b.iter(|| {
-                let decoded = decode_module(black_box(&wasm_bytes)).unwrap();
-                let runtime_module = Module::from_wrt_module(&decoded).unwrap();
+                let decoded = decode_module(black_box(&wasm_bytes)).unwrap());
+                let runtime_module = Module::from_wrt_module(&decoded).unwrap());
                 black_box(runtime_module)
             };
         };
@@ -131,22 +131,22 @@ fn bench_single_execution(c: &mut Criterion) {
         group.bench_function("engine_instantiation", |b| {
             b.iter(|| {
                 let mut engine = StacklessEngine::new);
-                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
                 let instance_arc = Arc::new(instance;
-                let instance_idx = engine.set_current_module(instance_arc).unwrap();
+                let instance_idx = engine.set_current_module(instance_arc).unwrap());
                 black_box(instance_idx)
             };
         };
 
         group.bench_function("simple_add_execution", |b| {
             let mut engine = StacklessEngine::new);
-            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
             let instance_arc = Arc::new(instance;
-            let instance_idx = engine.set_current_module(instance_arc).unwrap();
+            let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
             b.iter(|| {
                 let args = create_test_args(black_box(42), black_box(24;
-                let results = engine.execute(instance_idx, 0, args).unwrap();
+                let results = engine.execute(instance_idx, 0, args).unwrap());
                 black_box(results)
             };
         };
@@ -154,12 +154,12 @@ fn bench_single_execution(c: &mut Criterion) {
         group.bench_function("execution_with_setup", |b| {
             b.iter(|| {
                 let mut engine = StacklessEngine::new);
-                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
                 let instance_arc = Arc::new(instance;
-                let instance_idx = engine.set_current_module(instance_arc).unwrap();
+                let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
                 let args = create_test_args(black_box(10), black_box(32;
-                let results = engine.execute(instance_idx, 0, args).unwrap();
+                let results = engine.execute(instance_idx, 0, args).unwrap());
                 black_box(results)
             };
         };
@@ -174,9 +174,9 @@ fn bench_repeated_execution(c: &mut Criterion) {
 
     if let Ok(runtime_module) = load_test_module() {
         let mut engine = StacklessEngine::new);
-        let instance = ModuleInstance::new(runtime_module, 0).unwrap();
+        let instance = ModuleInstance::new(runtime_module, 0).unwrap());
         let instance_arc = Arc::new(instance;
-        let instance_idx = engine.set_current_module(instance_arc).unwrap();
+        let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
         for &iterations in &[SMALL_ITERATION, MEDIUM_ITERATION, LARGE_ITERATION] {
             group.bench_with_input(
@@ -187,7 +187,7 @@ fn bench_repeated_execution(c: &mut Criterion) {
                         let mut results_sum = 0;
                         for i in 0..iterations {
                             let args = create_test_args(i as i32, (i * 2) as i32;
-                            let results = engine.execute(instance_idx, 0, args).unwrap();
+                            let results = engine.execute(instance_idx, 0, args).unwrap());
                             if let Some(Value::I32(result)) = results.get(0) {
                                 results_sum += result;
                             }
@@ -209,15 +209,15 @@ fn bench_execution_determinism(c: &mut Criterion) {
 
     if let Ok(runtime_module) = load_test_module() {
         let mut engine = StacklessEngine::new);
-        let instance = ModuleInstance::new(runtime_module, 0).unwrap();
+        let instance = ModuleInstance::new(runtime_module, 0).unwrap());
         let instance_arc = Arc::new(instance;
-        let instance_idx = engine.set_current_module(instance_arc).unwrap();
+        let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
         group.bench_function("deterministic_execution", |b| {
             b.iter(|| {
                 // Use same inputs for deterministic testing
                 let args = create_test_args(123, 456;
-                let results = engine.execute(instance_idx, 0, args).unwrap();
+                let results = engine.execute(instance_idx, 0, args).unwrap());
                 black_box(results)
             };
         };
@@ -227,7 +227,7 @@ fn bench_execution_determinism(c: &mut Criterion) {
             b.iter(|| {
                 counter += 1;
                 let args = create_test_args(counter % 1000, (counter * 7) % 1000;
-                let results = engine.execute(instance_idx, 0, args).unwrap();
+                let results = engine.execute(instance_idx, 0, args).unwrap());
                 black_box(results)
             };
         };
@@ -243,13 +243,13 @@ fn bench_memory_patterns(c: &mut Criterion) {
     if let Ok(runtime_module) = load_test_module() {
         group.bench_function("module_instance_creation", |b| {
             b.iter(|| {
-                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
                 black_box(instance)
             };
         };
 
         group.bench_function("arc_wrapping", |b| {
-            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
             b.iter(|| {
                 let instance_arc = Arc::new(instance.clone();
                 black_box(instance_arc)
@@ -257,12 +257,12 @@ fn bench_memory_patterns(c: &mut Criterion) {
         };
 
         group.bench_function("engine_module_setting", |b| {
-            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
             let instance_arc = Arc::new(instance;
 
             b.iter(|| {
                 let mut engine = StacklessEngine::new);
-                let instance_idx = engine.set_current_module(instance_arc.clone()).unwrap();
+                let instance_idx = engine.set_current_module(instance_arc.clone()).unwrap());
                 black_box(instance_idx)
             };
         };
@@ -277,9 +277,9 @@ fn bench_asil_compliance_overhead(c: &mut Criterion) {
 
     if let Ok(runtime_module) = load_test_module() {
         let mut engine = StacklessEngine::new);
-        let instance = ModuleInstance::new(runtime_module, 0).unwrap();
+        let instance = ModuleInstance::new(runtime_module, 0).unwrap());
         let instance_arc = Arc::new(instance;
-        let instance_idx = engine.set_current_module(instance_arc).unwrap();
+        let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
         // Test bounds checking overhead
         group.bench_function("bounds_checked_access", |b| {
@@ -352,14 +352,14 @@ fn bench_execution_vs_simulation(c: &mut Criterion) {
     // Real execution benchmark (what we have now)
     if let Ok(runtime_module) = load_test_module() {
         let mut engine = StacklessEngine::new);
-        let instance = ModuleInstance::new(runtime_module, 0).unwrap();
+        let instance = ModuleInstance::new(runtime_module, 0).unwrap());
         let instance_arc = Arc::new(instance;
-        let instance_idx = engine.set_current_module(instance_arc).unwrap();
+        let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
         group.bench_function("real_execution_add", |b| {
             b.iter(|| {
                 let args = create_test_args(black_box(42), black_box(24;
-                let results = engine.execute(instance_idx, 0, args).unwrap();
+                let results = engine.execute(instance_idx, 0, args).unwrap());
                 black_box(results)
             };
         };
@@ -377,15 +377,15 @@ fn bench_comprehensive_execution_suite(c: &mut Criterion) {
             b.iter(|| {
                 // Complete execution pipeline from engine creation to result
                 let mut engine = StacklessEngine::new);
-                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+                let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
                 let instance_arc = Arc::new(instance;
-                let instance_idx = engine.set_current_module(instance_arc).unwrap();
+                let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
                 // Execute multiple operations
                 let mut total_result = 0;
                 for i in 0..10 {
                     let args = create_test_args(i, i * 2;
-                    let results = engine.execute(instance_idx, 0, args).unwrap();
+                    let results = engine.execute(instance_idx, 0, args).unwrap());
                     if let Some(Value::I32(result)) = results.get(0) {
                         total_result += result;
                     }
@@ -397,9 +397,9 @@ fn bench_comprehensive_execution_suite(c: &mut Criterion) {
 
         group.bench_function("production_workload_simulation", |b| {
             let mut engine = StacklessEngine::new);
-            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap();
+            let instance = ModuleInstance::new(runtime_module.clone(), 0).unwrap());
             let instance_arc = Arc::new(instance;
-            let instance_idx = engine.set_current_module(instance_arc).unwrap();
+            let instance_idx = engine.set_current_module(instance_arc).unwrap());
 
             b.iter(|| {
                 // Simulate production workload patterns
@@ -408,7 +408,7 @@ fn bench_comprehensive_execution_suite(c: &mut Criterion) {
                 let mut results_sum = 0;
                 for (a, b) in test_cases.iter() {
                     let args = create_test_args(*a, *b;
-                    let results = engine.execute(instance_idx, 0, args).unwrap();
+                    let results = engine.execute(instance_idx, 0, args).unwrap());
                     if let Some(Value::I32(result)) = results.get(0) {
                         results_sum += result;
                     }

@@ -244,7 +244,7 @@ pub fn generate_component_name_section(
 /// Parse a component name section from binary data
 #[cfg(feature = "std")]
 pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection> {
-    let mut result = ComponentNameSection::default);
+    let mut result = ComponentNameSection::default());
     let mut pos = 0;
 
     while pos < data.len() {

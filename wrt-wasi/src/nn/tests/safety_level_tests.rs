@@ -17,7 +17,7 @@ mod qm_tests {
             size: 90 * 1024 * 1024, // 90MB - within 100MB default
             format: capabilities::ModelFormat::ONNX,
         };
-        assert!(qm_cap.verify_operation(&large_load_op).is_ok();
+        assert!(qm_cap.verify_operation(&large_load_op).is_ok());
     }
 
     #[test]
@@ -38,11 +38,11 @@ mod qm_tests {
         let qm_cap = capabilities::DynamicNNCapability::new);
         
         // Test large but reasonable tensor
-        let large_dims = TensorDimensions::new(&[100, 100, 10]).unwrap(); // 4MB tensor
+        let large_dims = TensorDimensions::new(&[100, 100, 10]).unwrap()); // 4MB tensor
         let tensor_result = Tensor::new(large_dims, TensorType::F32, &qm_cap;
-        assert!(tensor_result.is_ok();
+        assert!(tensor_result.is_ok());
         
-        let tensor = tensor_result.unwrap();
+        let tensor = tensor_result.unwrap());
         assert_eq!(tensor.size_bytes(), 4_000_000); // 100*100*10*4
         assert_eq!(tensor.capability_level(), capabilities::VerificationLevel::Standard;
     }
@@ -69,7 +69,7 @@ mod asil_a_tests {
 
     #[test]
     fn test_asil_a_bounded_limits() {
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
         assert_eq!(asil_a_cap.verification_level(), capabilities::VerificationLevel::Sampling;
         
         // ASIL-A has 50MB model limit
@@ -84,7 +84,7 @@ mod asil_a_tests {
 
     #[test]
     fn test_asil_a_format_restrictions() {
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
         let formats = asil_a_cap.allowed_formats);
         
         // ASIL-A only allows well-tested formats
@@ -99,7 +99,7 @@ mod asil_a_tests {
 
     #[test]
     fn test_asil_a_size_enforcement() {
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
         
         // Test model size enforcement
         let oversized_load = capabilities::NNOperation::Load {
@@ -113,36 +113,36 @@ mod asil_a_tests {
             size: 40 * 1024 * 1024, // 40MB - within 50MB limit
             format: capabilities::ModelFormat::ONNX,
         };
-        assert!(asil_a_cap.verify_operation(&acceptable_load).is_ok();
+        assert!(asil_a_cap.verify_operation(&acceptable_load).is_ok());
     }
 
     #[test]
     fn test_asil_a_tensor_limits() {
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
         
         // Test tensor memory enforcement (20MB limit)
-        let large_dims = TensorDimensions::new(&[1000, 1000, 6]).unwrap(); // 24MB tensor
+        let large_dims = TensorDimensions::new(&[1000, 1000, 6]).unwrap()); // 24MB tensor
         let large_tensor_result = Tensor::new(large_dims, TensorType::F32, &asil_a_cap;
         assert!(large_tensor_result.is_err())); // Should exceed 20MB limit
         
         // Test acceptable tensor
-        let ok_dims = TensorDimensions::new(&[500, 500, 4]).unwrap(); // 4MB tensor
+        let ok_dims = TensorDimensions::new(&[500, 500, 4]).unwrap()); // 4MB tensor
         let ok_tensor_result = Tensor::new(ok_dims, TensorType::F32, &asil_a_cap;
-        assert!(ok_tensor_result.is_ok();
+        assert!(ok_tensor_result.is_ok());
         
-        let tensor = ok_tensor_result.unwrap();
+        let tensor = ok_tensor_result.unwrap());
         assert_eq!(tensor.capability_level(), capabilities::VerificationLevel::Sampling;
     }
 
     #[test]
     fn test_asil_a_dimension_limits() {
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
         
         // Test dimension enforcement (6 dimensions max)
         let too_many_dims_result = TensorDimensions::new(&[2, 2, 2, 2, 2, 2, 2]); // 7 dimensions
         assert!(too_many_dims_result.is_ok())); // TensorDimensions allows up to 8
         
-        let too_many_dims = too_many_dims_result.unwrap();
+        let too_many_dims = too_many_dims_result.unwrap());
         let tensor_result = Tensor::new(too_many_dims, TensorType::U8, &asil_a_cap;
         // Note: Current implementation doesn't check rank against capability limits
         // This would need to be added for full ASIL-A compliance
@@ -150,7 +150,7 @@ mod asil_a_tests {
 
     #[test]
     fn test_asil_a_runtime_monitoring() {
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
         
         // ASIL-A should still approve models (no pre-approval required)
         // but has runtime monitoring enabled
@@ -159,7 +159,7 @@ mod asil_a_tests {
         
         // All operations should be verified for monitoring
         let compute_op = capabilities::NNOperation::Compute { estimated_flops: 1_000_000 };
-        assert!(asil_a_cap.verify_operation(&compute_op).is_ok();
+        assert!(asil_a_cap.verify_operation(&compute_op).is_ok());
     }
 }
 
@@ -169,7 +169,7 @@ mod asil_b_tests {
 
     #[test]
     fn test_asil_b_strictest_limits() {
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         assert_eq!(asil_b_cap.verification_level(), capabilities::VerificationLevel::Continuous;
         
         // ASIL-B has the strictest limits
@@ -178,13 +178,13 @@ mod asil_b_tests {
         assert_eq!(limits.max_tensor_memory, 10 * 1024 * 1024); // 10MB
         assert_eq!(limits.max_tensor_dimensions, 4;
         assert_eq!(limits.max_execution_time_us, 1_000_000); // 1 second (deterministic)
-        assert_eq!(limits.max_concurrent_models, 1;
+        assert_eq!(limits.max_concurrent_models, 1);
         assert_eq!(limits.max_concurrent_contexts, 2;
     }
 
     #[test]
     fn test_asil_b_no_dynamic_loading() {
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         
         // ASIL-B prohibits dynamic loading
         assert!(!asil_b_cap.allows_dynamic_loading();
@@ -192,7 +192,7 @@ mod asil_b_tests {
 
     #[test]
     fn test_asil_b_verified_formats_only() {
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         let formats = asil_b_cap.allowed_formats);
         
         // ASIL-B only allows verified, deterministic formats
@@ -214,7 +214,7 @@ mod asil_b_tests {
         let approved_hash2 = [0xBBu8; 32];
         let unapproved_hash = [0xCCu8; 32];
         
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[approved_hash1, approved_hash2]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[approved_hash1, approved_hash2]).unwrap());
         
         // Only pre-approved models allowed
         assert!(asil_b_cap.is_model_approved(&approved_hash1);
@@ -226,7 +226,7 @@ mod asil_b_tests {
     fn test_asil_b_constant_time_comparison() {
         // Test that model approval uses constant-time comparison
         let approved_hash = [0xDDu8; 32];
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[approved_hash]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[approved_hash]).unwrap());
         
         // These should all take the same time (no early exit on mismatch)
         let mut early_diff = approved_hash;
@@ -246,11 +246,11 @@ mod asil_b_tests {
 
     #[test]
     fn test_asil_b_deterministic_execution() {
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         
         // ASIL-B enforces deterministic execution
         let compute_op = capabilities::NNOperation::Compute { estimated_flops: 500_000 };
-        assert!(asil_b_cap.verify_operation(&compute_op).is_ok();
+        assert!(asil_b_cap.verify_operation(&compute_op).is_ok());
         
         // The implementation should ensure deterministic behavior
         // (this would be enforced in the actual execution path)
@@ -258,25 +258,25 @@ mod asil_b_tests {
 
     #[test]
     fn test_asil_b_strict_tensor_limits() {
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         
         // Test strict tensor memory limit (10MB)
-        let large_dims = TensorDimensions::new(&[1000, 1000, 3]).unwrap(); // 12MB tensor
+        let large_dims = TensorDimensions::new(&[1000, 1000, 3]).unwrap()); // 12MB tensor
         let large_tensor_result = Tensor::new(large_dims, TensorType::F32, &asil_b_cap;
         assert!(large_tensor_result.is_err())); // Should exceed 10MB limit
         
         // Test acceptable tensor
-        let ok_dims = TensorDimensions::new(&[500, 500, 1]).unwrap(); // 1MB tensor
+        let ok_dims = TensorDimensions::new(&[500, 500, 1]).unwrap()); // 1MB tensor
         let ok_tensor_result = Tensor::new(ok_dims, TensorType::F32, &asil_b_cap;
-        assert!(ok_tensor_result.is_ok();
+        assert!(ok_tensor_result.is_ok());
         
-        let tensor = ok_tensor_result.unwrap();
+        let tensor = ok_tensor_result.unwrap());
         assert_eq!(tensor.capability_level(), capabilities::VerificationLevel::Continuous;
     }
 
     #[test]
     fn test_asil_b_execution_time_limits() {
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         
         // ASIL-B has 1 second execution limit for deterministic execution
         let limits = asil_b_cap.resource_limits);
@@ -293,8 +293,8 @@ mod compatibility_tests {
     #[test]
     fn test_capability_level_hierarchy() {
         let qm_cap = capabilities::DynamicNNCapability::new);
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         
         // Verify hierarchy: QM < ASIL-A < ASIL-B (in terms of restrictions)
         let qm_limits = qm_cap.resource_limits);
@@ -317,16 +317,16 @@ mod compatibility_tests {
     #[test]
     fn test_tensor_compatibility_across_levels() {
         // Create a tensor that should work at all levels
-        let small_dims = TensorDimensions::new(&[10, 10]).unwrap(); // 400 bytes
+        let small_dims = TensorDimensions::new(&[10, 10]).unwrap()); // 400 bytes
         
         let qm_cap = capabilities::DynamicNNCapability::new);
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         
         // Should work with all capability levels
-        let qm_tensor = Tensor::new(small_dims.clone(), TensorType::F32, &qm_cap).unwrap();
-        let asil_a_tensor = Tensor::new(small_dims.clone(), TensorType::F32, &asil_a_cap).unwrap();
-        let asil_b_tensor = Tensor::new(small_dims, TensorType::F32, &asil_b_cap).unwrap();
+        let qm_tensor = Tensor::new(small_dims.clone(), TensorType::F32, &qm_cap).unwrap());
+        let asil_a_tensor = Tensor::new(small_dims.clone(), TensorType::F32, &asil_a_cap).unwrap());
+        let asil_b_tensor = Tensor::new(small_dims, TensorType::F32, &asil_b_cap).unwrap());
         
         // All should have same size but different capability levels
         assert_eq!(qm_tensor.size_bytes(), 400;
@@ -346,13 +346,13 @@ mod compatibility_tests {
         };
         
         let qm_cap = capabilities::DynamicNNCapability::new);
-        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+        let asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         
         // Small operation should be allowed by all levels
-        assert!(qm_cap.verify_operation(&small_op).is_ok();
-        assert!(asil_a_cap.verify_operation(&small_op).is_ok();
-        assert!(asil_b_cap.verify_operation(&small_op).is_ok();
+        assert!(qm_cap.verify_operation(&small_op).is_ok());
+        assert!(asil_a_cap.verify_operation(&small_op).is_ok());
+        assert!(asil_b_cap.verify_operation(&small_op).is_ok());
     }
 }
 
@@ -367,8 +367,8 @@ mod performance_tests {
         
         for _ in 0..1000 {
             let _qm_cap = capabilities::DynamicNNCapability::new);
-            let _asil_a_cap = capabilities::BoundedNNCapability::new().unwrap();
-            let _asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap();
+            let _asil_a_cap = capabilities::BoundedNNCapability::new().unwrap());
+            let _asil_b_cap = capabilities::StaticNNCapability::new(&[]).unwrap());
         }
         
         let duration = start.elapsed);
@@ -406,7 +406,7 @@ mod performance_tests {
     fn test_constant_time_verification() {
         // Verify that model approval checking is constant time
         let approved_hash = [0x42u8; 32];
-        let asil_b_cap = capabilities::StaticNNCapability::new(&[approved_hash]).unwrap();
+        let asil_b_cap = capabilities::StaticNNCapability::new(&[approved_hash]).unwrap());
         
         // Create hashes that differ at different positions
         let mut early_diff = approved_hash;

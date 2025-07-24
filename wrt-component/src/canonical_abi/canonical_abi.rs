@@ -1303,11 +1303,11 @@ mod tests {
         let mut memory = SimpleMemory::new(1024;
 
         // Test write and read
-        memory.write_u32_le(0, 0x12345678).unwrap();
+        memory.write_u32_le(0, 0x12345678).unwrap());
         assert_eq!(memory.read_u32_le(0).unwrap(), 0x12345678;
 
         // Test bytes
-        memory.write_bytes(10, &[1, 2, 3, 4]).unwrap();
+        memory.write_bytes(10, &[1, 2, 3, 4]).unwrap());
         assert_eq!(memory.read_bytes(10, 4).unwrap(), vec![1, 2, 3, 4];
     }
 
@@ -1317,23 +1317,23 @@ mod tests {
         let mut memory = SimpleMemory::new(1024;
 
         // Test bool
-        abi.lower_bool(&mut memory, true, 0).unwrap();
-        let value = abi.lift_bool(&memory, 0).unwrap();
+        abi.lower_bool(&mut memory, true, 0).unwrap());
+        let value = abi.lift_bool(&memory, 0).unwrap());
         assert_eq!(value, ComponentValue::Bool(true;
 
         // Test i32
-        abi.lower_s32(&mut memory, -42, 10).unwrap();
-        let value = abi.lift_s32(&memory, 10).unwrap();
+        abi.lower_s32(&mut memory, -42, 10).unwrap());
+        let value = abi.lift_s32(&memory, 10).unwrap());
         assert_eq!(value, ComponentValue::S32(-42;
 
         // Test f32
-        abi.lower_f32(&mut memory, 3.14, 20).unwrap();
-        let value = abi.lift_f32(&memory, 20).unwrap();
+        abi.lower_f32(&mut memory, 3.14, 20).unwrap());
+        let value = abi.lift_f32(&memory, 20).unwrap());
         assert_eq!(value, ComponentValue::F32(3.14;
 
         // Test char
-        abi.lower_char(&mut memory, 'A', 30).unwrap();
-        let value = abi.lift_char(&memory, 30).unwrap();
+        abi.lower_char(&mut memory, 'A', 30).unwrap());
+        let value = abi.lift_char(&memory, 30).unwrap());
         assert_eq!(value, ComponentValue::Char('A';
     }
 
@@ -1343,10 +1343,10 @@ mod tests {
         let mut memory = SimpleMemory::new(1024;
 
         // Lower a string
-        abi.lower_string(&mut memory, "hello", 0).unwrap();
+        abi.lower_string(&mut memory, "hello", 0).unwrap());
 
         // Lift it back
-        let value = abi.lift_string(&memory, 0).unwrap();
+        let value = abi.lift_string(&memory, 0).unwrap());
         assert_eq!(value, ComponentValue::String("hello".to_string();
     }
 
@@ -1354,7 +1354,7 @@ mod tests {
     fn test_size_calculation() {
         let abi = CanonicalABI::new);
 
-        assert_eq!(abi.size_of(&ComponentType::Bool).unwrap(), 1;
+        assert_eq!(abi.size_of(&ComponentType::Bool).unwrap(), 1);
         assert_eq!(abi.size_of(&ComponentType::S32).unwrap(), 4;
         assert_eq!(abi.size_of(&ComponentType::F64).unwrap(), 8;
         assert_eq!(abi.size_of(&ComponentType::String).unwrap(), 8); // ptr + len
@@ -1364,7 +1364,7 @@ mod tests {
     fn test_alignment_calculation() {
         let abi = CanonicalABI::new);
 
-        assert_eq!(abi.align_of(&ComponentType::Bool).unwrap(), 1;
+        assert_eq!(abi.align_of(&ComponentType::Bool).unwrap(), 1);
         assert_eq!(abi.align_of(&ComponentType::S32).unwrap(), 4;
         assert_eq!(abi.align_of(&ComponentType::F64).unwrap(), 8;
     }
@@ -1375,13 +1375,13 @@ mod tests {
         let mut memory = SimpleMemory::new(1024;
 
         // Test None option
-        abi.lower_option(&mut memory, &None, 0).unwrap();
-        let value = abi.lift_option(&memory, &ComponentType::S32, 0).unwrap();
+        abi.lower_option(&mut memory, &None, 0).unwrap());
+        let value = abi.lift_option(&memory, &ComponentType::S32, 0).unwrap());
         assert_eq!(value, ComponentValue::Option(None;
 
         // Test Some option
         let some_value = Some(Box::new(ComponentValue::S32(42);
-        abi.lower_option(&mut memory, &some_value, 10).unwrap();
+        abi.lower_option(&mut memory, &some_value, 10).unwrap());
         // Note: This test is simplified and doesn't actually verify the full lifting
         // because the lowering implementation is also simplified
     }

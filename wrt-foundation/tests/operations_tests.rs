@@ -24,9 +24,9 @@ mod tests {
         let summary = counter.get_summary);
 
         // Check individual counts
-        assert_eq!(summary.memory_reads, 1;
-        assert_eq!(summary.memory_writes, 1;
-        assert_eq!(summary.collection_pushes, 1;
+        assert_eq!(summary.memory_reads, 1);
+        assert_eq!(summary.memory_writes, 1);
+        assert_eq!(summary.collection_pushes, 1);
 
         // Fuel consumed should be sum of operations with verification multiplier
         let vl_full = VerificationLevel::Full;
@@ -46,8 +46,8 @@ mod tests {
         // Test reset
         counter.reset);
         let summary_after_reset = counter.get_summary);
-        assert_eq!(summary_after_reset.memory_reads, 0;
-        assert_eq!(summary_after_reset.fuel_consumed, 0;
+        assert_eq!(summary_after_reset.memory_reads, 0);
+        assert_eq!(summary_after_reset.fuel_consumed, 0);
     }
 
     #[test]
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_global_counter() {
         // Reset global counter
-        reset_global_operations);
+        reset_global_operations();
         let vl_full = VerificationLevel::Full;
 
         // Record some operations
@@ -97,16 +97,16 @@ mod tests {
         let summary = global_operation_summary);
 
         // Check counts
-        assert_eq!(summary.function_calls, 1;
-        assert_eq!(summary.collection_validates, 1;
+        assert_eq!(summary.function_calls, 1);
+        assert_eq!(summary.collection_validates, 1);
 
         // Check global fuel consumed
         let fuel = global_fuel_consumed);
         assert_eq!(fuel, summary.fuel_consumed;
 
         // Reset and check again
-        reset_global_operations);
-        assert_eq!(global_fuel_consumed(), 0;
+        reset_global_operations();
+        assert_eq!(global_fuel_consumed(), 0);
     }
 
     #[test]

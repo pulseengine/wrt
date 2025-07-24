@@ -96,10 +96,10 @@ fn test_atomic_alignment() -> Result<()> {
     let mut memory = Memory::new(mem_type)?;
     
     // Test that aligned accesses work
-    assert!(memory.atomic_load_i32(0).is_ok();
-    assert!(memory.atomic_load_i32(4).is_ok();
-    assert!(memory.atomic_load_i64(0).is_ok();
-    assert!(memory.atomic_load_i64(8).is_ok();
+    assert!(memory.atomic_load_i32(0).is_ok());
+    assert!(memory.atomic_load_i32(4).is_ok());
+    assert!(memory.atomic_load_i64(0).is_ok());
+    assert!(memory.atomic_load_i64(8).is_ok());
     
     // Test that misaligned accesses fail
     assert!(memory.atomic_load_i32(1).is_err())); // 32-bit at non-4-byte boundary
@@ -202,8 +202,8 @@ fn test_atomic_bounds_checking() -> Result<()> {
     assert!(memory.atomic_load_i64(memory_size as u32).is_err();
     
     // Test valid access near the end
-    assert!(memory.atomic_load_i32((memory_size - 4) as u32).is_ok();
-    assert!(memory.atomic_load_i64((memory_size - 8) as u32).is_ok();
+    assert!(memory.atomic_load_i32((memory_size - 4) as u32).is_ok());
+    assert!(memory.atomic_load_i64((memory_size - 8) as u32).is_ok());
     
     Ok(())
 }
@@ -214,8 +214,8 @@ fn test_atomic_bounds_checking() -> Result<()> {
 fn test_atomic_thread_manager_integration() -> Result<()> {
     use std::sync::Arc;
     
-    let config = ThreadPoolConfig::default);
-    let limits = ThreadingLimits::default);
+    let config = ThreadPoolConfig::default());
+    let limits = ThreadingLimits::default());
     let executor = Arc::new(|_function_id: u32, args: Vec<u8>| -> Result<Vec<u8>> {
         Ok(args) // Echo the arguments back
     };
@@ -246,7 +246,7 @@ fn test_concurrent_atomic_operations() -> Result<()> {
     
     // Initialize counter
     {
-        let mut mem = memory.lock().unwrap();
+        let mut mem = memory.lock().unwrap());
         mem.atomic_store_i32(0, 0)?;
     }
     
@@ -260,7 +260,7 @@ fn test_concurrent_atomic_operations() -> Result<()> {
         let mem_clone = Arc::clone(&memory);
         let handle = thread::spawn(move || -> Result<()> {
             for _j in 0..INCREMENTS_PER_THREAD {
-                let mut mem = mem_clone.lock().unwrap();
+                let mut mem = mem_clone.lock().unwrap());
                 mem.atomic_rmw_add_i32(0, 1)?;
             }
             Ok(())
@@ -275,7 +275,7 @@ fn test_concurrent_atomic_operations() -> Result<()> {
     
     // Check final value
     let final_value = {
-        let mem = memory.lock().unwrap();
+        let mem = memory.lock().unwrap());
         mem.atomic_load_i32(0)?
     };
     
@@ -294,7 +294,7 @@ fn test_atomic_wait_notify_threading() -> Result<()> {
     
     // Initialize value
     {
-        let mut mem = memory.lock().unwrap();
+        let mut mem = memory.lock().unwrap());
         mem.atomic_store_i32(0, 0)?;
     }
     
@@ -302,7 +302,7 @@ fn test_atomic_wait_notify_threading() -> Result<()> {
     
     // Spawn a thread that will wait
     let waiter_handle = thread::spawn(move || -> Result<i32> {
-        let mut mem = mem_clone.lock().unwrap();
+        let mut mem = mem_clone.lock().unwrap());
         // Wait for value 0 with a long timeout
         mem.atomic_wait32(0, 0, Some(5_000_000_000)) // 5 second timeout
     };
@@ -312,7 +312,7 @@ fn test_atomic_wait_notify_threading() -> Result<()> {
     
     // Change the value and notify
     {
-        let mut mem = memory.lock().unwrap();
+        let mut mem = memory.lock().unwrap());
         mem.atomic_store_i32(0, 1)?; // Change the value
         mem.atomic_notify(0, 1)?; // Wake the waiter
     }

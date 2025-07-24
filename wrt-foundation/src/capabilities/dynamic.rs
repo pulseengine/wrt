@@ -397,7 +397,7 @@ mod tests {
             DynamicMemoryCapability::new(1024, CrateId::Foundation, VerificationLevel::Standard;
 
         assert_eq!(capability.max_allocation_size(), 1024;
-        assert_eq!(capability.current_usage(), 0;
+        assert_eq!(capability.current_usage(), 0);
         assert_eq!(capability.remaining_capacity(), 1024;
     }
 
@@ -407,7 +407,7 @@ mod tests {
             DynamicMemoryCapability::new(100, CrateId::Foundation, VerificationLevel::Standard;
 
         let valid_op = MemoryOperation::Allocate { size: 50 };
-        assert!(capability.verify_access(&valid_op).is_ok();
+        assert!(capability.verify_access(&valid_op).is_ok());
 
         let invalid_op = MemoryOperation::Allocate { size: 200 };
         assert!(capability.verify_access(&invalid_op).is_err();
@@ -427,7 +427,7 @@ mod tests {
             max_size: 500,
         };
 
-        let delegated = capability.delegate(subset).unwrap();
+        let delegated = capability.delegate(subset).unwrap());
         assert_eq!(delegated.max_allocation_size(), 500;
         assert!(!delegated.supports_operation(MemoryOperationType::Write);
     }

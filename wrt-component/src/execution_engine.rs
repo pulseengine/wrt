@@ -685,28 +685,28 @@ mod tests {
 
     #[test]
     fn test_execution_engine_creation() {
-        let engine = ComponentExecutionEngine::new().unwrap();
+        let engine = ComponentExecutionEngine::new().unwrap());
         assert_eq!(engine.state(), &ExecutionState::Ready;
-        assert_eq!(engine.call_stack_depth(), 0;
+        assert_eq!(engine.call_stack_depth(), 0);
         assert_eq!(engine.current_instance(), None;
     }
 
     #[test]
     fn test_call_frame_creation() {
-        let frame = CallFrame::new(1, 2).unwrap();
-        assert_eq!(frame.instance_id, 1;
+        let frame = CallFrame::new(1, 2).unwrap());
+        assert_eq!(frame.instance_id, 1);
         assert_eq!(frame.function_index, 2;
-        assert_eq!(frame.locals.len(), 0;
+        assert_eq!(frame.locals.len(), 0);
         assert_eq!(frame.return_address, None;
     }
 
     #[test]
     fn test_call_frame_locals() {
-        let mut frame = CallFrame::new(1, 2).unwrap();
+        let mut frame = CallFrame::new(1, 2).unwrap());
 
         // Test pushing locals
-        assert!(frame.push_local(Value::U32(42)).is_ok();
-        assert!(frame.push_local(Value::Bool(true)).is_ok();
+        assert!(frame.push_local(Value::U32(42)).is_ok());
+        assert!(frame.push_local(Value::Bool(true)).is_ok());
 
         // Test getting locals
         assert_eq!(frame.get_local(0).unwrap(), &Value::U32(42;
@@ -714,7 +714,7 @@ mod tests {
         assert!(frame.get_local(2).is_err();
 
         // Test setting locals
-        assert!(frame.set_local(0, Value::U32(100)).is_ok();
+        assert!(frame.set_local(0, Value::U32(100)).is_ok());
         assert_eq!(frame.get_local(0).unwrap(), &Value::U32(100;
         assert!(frame.set_local(10, Value::U32(200)).is_err();
     }
@@ -743,16 +743,16 @@ mod tests {
     #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_host_function_registration_nostd() {
-        let mut engine = ComponentExecutionEngine::new().unwrap();
+        let mut engine = ComponentExecutionEngine::new().unwrap());
 
         fn test_func(_args: &[Value]) -> WrtResult<Value> {
             Ok(Value::U32(42))
         }
 
-        let index = engine.register_host_function(test_func).unwrap();
-        assert_eq!(index, 0;
+        let index = engine.register_host_function(test_func).unwrap());
+        assert_eq!(index, 0);
 
-        let result = engine.call_host_function(0, &[]).unwrap();
+        let result = engine.call_host_function(0, &[]).unwrap());
         assert_eq!(result, Value::U32(42;
     }
 }

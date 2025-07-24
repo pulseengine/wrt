@@ -378,10 +378,10 @@ mod tests {
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_futex_basic() {
         // Create a basic futex
-        let futex = QnxFutexBuilder::new().build().unwrap();
+        let futex = QnxFutexBuilder::new().build().unwrap());
 
         // Check initial state
-        assert_eq!(futex.get(), 0;
+        assert_eq!(futex.get(), 0);
 
         // Set new value
         futex.set(42;
@@ -402,17 +402,17 @@ mod tests {
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_futex_wake() {
         // Create a futex
-        let futex = QnxFutexBuilder::new().build().unwrap();
+        let futex = QnxFutexBuilder::new().build().unwrap());
 
         // Set initial state
         futex.set(0;
 
         // Test wake operations
         let result = futex.wake_one);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         let result = futex.wake_all);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     // Note: Testing wait functionality properly would require multiple threads

@@ -300,15 +300,15 @@ mod tests {
         let module = create_minimal_module);
 
         // Write to temporary file
-        let mut temp_file = NamedTempFile::new().unwrap();
-        temp_file.write_all(&module).unwrap();
+        let mut temp_file = NamedTempFile::new().unwrap());
+        temp_file.write_all(&module).unwrap());
 
         let verifier = WasmVerifier::new(temp_file.path);
-        let result = verifier.verify().unwrap();
+        let result = verifier.verify().unwrap());
 
         assert!(result.valid);
-        assert_eq!(result.version, 1;
-        assert_eq!(result.builtin_imports.len(), 1;
+        assert_eq!(result.version, 1);
+        assert_eq!(result.builtin_imports.len(), 1);
         assert_eq!(result.builtin_imports[0], "random";
     }
 
@@ -316,11 +316,11 @@ mod tests {
     fn test_invalid_module() {
         let invalid_module = vec![0xFF, 0xFF, 0xFF, 0xFF];
 
-        let mut temp_file = NamedTempFile::new().unwrap();
-        temp_file.write_all(&invalid_module).unwrap();
+        let mut temp_file = NamedTempFile::new().unwrap());
+        temp_file.write_all(&invalid_module).unwrap());
 
         let verifier = WasmVerifier::new(temp_file.path);
-        let result = verifier.verify().unwrap();
+        let result = verifier.verify().unwrap());
 
         assert!(!result.valid);
         assert!(!result.errors.is_empty();

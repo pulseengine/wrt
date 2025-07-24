@@ -278,7 +278,7 @@ impl StartFunctionValidator {
     }
 
     pub fn get_validation_summary(&self) -> ValidationSummary {
-        let mut summary = ValidationSummary::default);
+        let mut summary = ValidationSummary::default());
 
         for validation in self.validations.values() {
             summary.total += 1;
@@ -667,7 +667,7 @@ mod tests {
 
     #[test]
     fn test_start_function_descriptor_creation() {
-        let descriptor = create_start_function_descriptor("_start").unwrap();
+        let descriptor = create_start_function_descriptor("_start").unwrap());
         assert_eq!(descriptor.name, "_start";
         assert!(descriptor.required);
         assert_eq!(descriptor.timeout_ms, DEFAULT_START_TIMEOUT_MS;
@@ -687,14 +687,14 @@ mod tests {
         let validator = StartFunctionValidator::new);
 
         // Valid descriptor
-        let valid_descriptor = create_start_function_descriptor("_start").unwrap();
-        assert!(validator.validate_descriptor(&valid_descriptor).is_ok();
+        let valid_descriptor = create_start_function_descriptor("_start").unwrap());
+        assert!(validator.validate_descriptor(&valid_descriptor).is_ok());
 
         // Invalid descriptor (empty name)
-        let parameters_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-        let parameters = BoundedVec::new(parameters_provider).unwrap();
-        let dependencies_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
-        let dependencies = BoundedVec::new(dependencies_provider).unwrap();
+        let parameters_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+        let parameters = BoundedVec::new(parameters_provider).unwrap());
+        let dependencies_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+        let dependencies = BoundedVec::new(dependencies_provider).unwrap());
         
         let invalid_descriptor = StartFunctionDescriptor {
             name: String::new(),
@@ -710,9 +710,9 @@ mod tests {
 
     #[test]
     fn test_validation_summary() {
-        let summary = ValidationSummary::default);
-        assert_eq!(summary.total, 0;
-        assert_eq!(summary.passed, 0;
-        assert_eq!(summary.failed, 0;
+        let summary = ValidationSummary::default());
+        assert_eq!(summary.total, 0);
+        assert_eq!(summary.passed, 0);
+        assert_eq!(summary.failed, 0);
     }
 }

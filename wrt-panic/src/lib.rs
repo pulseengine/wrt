@@ -546,29 +546,29 @@ mod tests {
     #[test]
     fn test_safety_level_checking() {
         // Standard level should always be met
-        assert!(meets_safety_level("standard");
+        assert!(meets_safety_level("standard"));
         
         // Invalid levels should return false
-        assert!(!meets_safety_level("invalid");
-        assert!(!meets_safety_level("");
+        assert!(!meets_safety_level("invalid"));
+        assert!(!meets_safety_level(""));
         
         // ASIL levels depend on feature flags
         #[cfg(feature = "asil-d")]
         {
-            assert!(meets_safety_level("asil-d");
-            assert!(meets_safety_level("asil-b");
+            assert!(meets_safety_level("asil-d"));
+            assert!(meets_safety_level("asil-b"));
         }
         
         #[cfg(all(feature = "asil-b", not(feature = "asil-d")))]
         {
-            assert!(!meets_safety_level("asil-d");
-            assert!(meets_safety_level("asil-b");
+            assert!(!meets_safety_level("asil-d"));
+            assert!(meets_safety_level("asil-b"));
         }
         
         #[cfg(all(not(feature = "asil-b"), not(feature = "asil-d")))]
         {
-            assert!(!meets_safety_level("asil-d");
-            assert!(!meets_safety_level("asil-b");
+            assert!(!meets_safety_level("asil-d"));
+            assert!(!meets_safety_level("asil-b"));
         }
     }
 
@@ -579,7 +579,7 @@ mod tests {
         
         // Test ASIL level configuration
         let level = current_asil_level);
-        assert!(matches!(level, AsilLevel::QM | AsilLevel::AsilA | AsilLevel::AsilB | AsilLevel::AsilC | AsilLevel::AsilD);
+        assert!(matches!(level, AsilLevel::QM | AsilLevel::AsilA | AsilLevel::AsilB | AsilLevel::AsilC | AsilLevel::AsilD));
     }
 
     #[test]
@@ -587,7 +587,7 @@ mod tests {
         use core::mem;
         
         // Ensure the panic info structure has expected size constraints
-        let size = mem::size_of::<WrtPanicInfo>);
+        let size = mem::size_of::<WrtPanicInfo>();
         assert!(size >= MIN_PANIC_INFO_SIZE);
         assert!(size <= DEFAULT_PANIC_MEMORY_BUDGET);
     }
@@ -597,17 +597,17 @@ mod tests {
         // Test the hash function produces consistent results
         let hash1 = hash_str("test";
         let hash2 = hash_str("test";
-        assert_eq!(hash1, hash2;
+        assert_eq!(hash1, hash2);
         
         // Different strings should produce different hashes (usually)
-        let hash3 = hash_str("different";
-        assert_ne!(hash1, hash3;
+        let hash3 = hash_str("different");
+        assert_ne!(hash1, hash3);
     }
 
     #[test] 
     fn test_panic_context_builder() {
         type TestProvider = NoStdProvider<512>;
-        let provider = TestProvider::default);
+        let provider = TestProvider::default());
         
         let context = PanicContextBuilder::new()
             .with_safety_level(AsilLevel::AsilB)
@@ -615,9 +615,9 @@ mod tests {
             .with_memory_provider(provider)
             .build);
             
-        assert!(context.is_ok();
+        assert!(context.is_ok());
         
-        let context = context.unwrap();
+        let context = context.unwrap());
         assert_eq!(context.safety_level, AsilLevel::AsilB;
         assert_eq!(context.memory_budget, 512;
     }

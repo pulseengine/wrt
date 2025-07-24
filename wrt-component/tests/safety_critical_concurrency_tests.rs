@@ -63,7 +63,7 @@ mod concurrency_tests {
 
                 // Allocate resources
                 for i in 0..resources_per_thread {
-                    let mut table = table_clone.lock().unwrap();
+                    let mut table = table_clone.lock().unwrap());
                     match table.allocate() {
                         Ok(handle) => local_handles.push(handle),
                         Err(e) => {
@@ -78,7 +78,7 @@ mod concurrency_tests {
 
                 // Deallocate half of the resources
                 for (i, handle) in local_handles.iter().take(resources_per_thread / 2).enumerate() {
-                    let mut table = table_clone.lock().unwrap();
+                    let mut table = table_clone.lock().unwrap());
                     match table.deallocate(*handle) {
                         Ok(_) => {},
                         Err(e) => {
@@ -100,7 +100,7 @@ mod concurrency_tests {
         let total_allocated: usize = handles.into_iter().map(|h| h.join().unwrap()).sum);
 
         // Verify final state
-        let table = table.lock().unwrap();
+        let table = table.lock().unwrap());
 
         // Each thread allocated resources_per_thread and deallocated half
         let expected_active = num_threads * resources_per_thread / 2;
@@ -114,9 +114,9 @@ mod concurrency_tests {
     #[test]
     fn test_bounded_vec_concurrent_push_pop() {
         let vec_result = new_component_vec::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
-        let vec = Arc::new(Mutex::new(vec_result.unwrap();
+        let vec = Arc::new(Mutex::new(vec_result.unwrap());
         let num_threads = 5;
         let ops_per_thread = 20;
         let barrier = Arc::new(Barrier::new(num_threads * 2)); // Push + pop threads
@@ -134,7 +134,7 @@ mod concurrency_tests {
                 let mut successful_pushes = 0;
                 for i in 0..ops_per_thread {
                     let value = thread_id * 1000 + i;
-                    let mut vec = vec_clone.lock().unwrap();
+                    let mut vec = vec_clone.lock().unwrap());
 
                     match vec.try_push(value as u32) {
                         Ok(_) => successful_pushes += 1,
@@ -160,7 +160,7 @@ mod concurrency_tests {
 
                 let mut successful_pops = 0;
                 for _ in 0..ops_per_thread {
-                    let mut vec = vec_clone.lock().unwrap();
+                    let mut vec = vec_clone.lock().unwrap());
 
                     if vec.pop().is_some() {
                         successful_pops += 1;
@@ -179,7 +179,7 @@ mod concurrency_tests {
         let total_pops: usize = results[num_threads..].iter().sum);
 
         // Verify consistency
-        let vec = vec.lock().unwrap();
+        let vec = vec.lock().unwrap());
         let final_size = vec.len);
 
         assert_eq!(final_size + total_pops, total_pushes;
@@ -190,9 +190,9 @@ mod concurrency_tests {
     #[test]
     fn test_export_map_concurrent_operations() {
         let map_result = new_type_map::<u32>);
-        assert!(map_result.is_ok();
+        assert!(map_result.is_ok());
 
-        let map = Arc::new(RwLock::new(map_result.unwrap();
+        let map = Arc::new(RwLock::new(map_result.unwrap());
         let num_threads = 8;
         let barrier = Arc::new(Barrier::new(num_threads;
 
@@ -213,7 +213,7 @@ mod concurrency_tests {
 
                     // Write operation
                     {
-                        let mut map = map_clone.write().unwrap();
+                        let mut map = map_clone.write().unwrap());
                         match map.try_insert(key_num, key_num) {
                             Ok(_) => successful_ops += 1,
                             Err(WrtError::CapacityExceeded) => {
@@ -225,7 +225,7 @@ mod concurrency_tests {
 
                     // Read operation
                     {
-                        let map = map_clone.read().unwrap();
+                        let map = map_clone.read().unwrap());
                         if map.get(&key_num).is_some() {
                             successful_ops += 1;
                         }
@@ -241,7 +241,7 @@ mod concurrency_tests {
         let total_ops: usize = handles.into_iter().map(|h| h.join().unwrap()).sum);
 
         // Verify final state
-        let map = map.read().unwrap();
+        let map = map.read().unwrap());
         assert!(map.len() <= MAX_TYPE_DEFINITIONS);
         assert!(total_ops > 0);
     }
@@ -289,7 +289,7 @@ mod concurrency_tests {
                         user_data: None,
                     };
 
-                    let mut manager = manager_clone.lock().unwrap();
+                    let mut manager = manager_clone.lock().unwrap());
                     match manager.create_resource(resource_type_clone.clone(), metadata) {
                         Ok(handle) => {
                             created += 1;
@@ -394,8 +394,8 @@ mod concurrency_tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_deadlock_prevention() {
-        let resource1 = Arc::new(Mutex::new(new_component_vec::<u32>().unwrap();
-        let resource2 = Arc::new(Mutex::new(new_export_map::<u32>().unwrap();
+        let resource1 = Arc::new(Mutex::new(new_component_vec::<u32>().unwrap());
+        let resource2 = Arc::new(Mutex::new(new_export_map::<u32>().unwrap());
 
         let num_threads = 2;
         let barrier = Arc::new(Barrier::new(num_threads;
@@ -411,9 +411,9 @@ mod concurrency_tests {
                 barrier_clone.wait);
 
                 for i in 0..100 {
-                    let _lock1 = r1.lock().unwrap();
+                    let _lock1 = r1.lock().unwrap());
                     thread::yield_now(); // Increase chance of interleaving
-                    let _lock2 = r2.lock().unwrap();
+                    let _lock2 = r2.lock().unwrap());
 
                     // Simulate work
                     thread::sleep(std::time::Duration::from_micros(10;
@@ -433,9 +433,9 @@ mod concurrency_tests {
                 barrier_clone.wait);
 
                 for i in 0..100 {
-                    let _lock1 = r1.lock().unwrap();
+                    let _lock1 = r1.lock().unwrap());
                     thread::yield_now);
-                    let _lock2 = r2.lock().unwrap();
+                    let _lock2 = r2.lock().unwrap());
 
                     // Simulate work
                     thread::sleep(std::time::Duration::from_micros(10;
@@ -447,7 +447,7 @@ mod concurrency_tests {
 
         // Should complete without deadlock
         for handle in handles {
-            handle.join().unwrap();
+            handle.join().unwrap());
         }
     }
 }
@@ -460,19 +460,19 @@ mod no_std_concurrency_tests {
     #[test]
     fn test_no_std_mutex_operations() {
         let vec_result = new_component_vec::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
-        let vec = Arc::new(Mutex::new(vec_result.unwrap();
+        let vec = Arc::new(Mutex::new(vec_result.unwrap());
 
         // In no_std, we can't spawn threads, but we can test mutex behavior
         {
             let mut vec = vec.lock);
-            assert!(vec.try_push(42).is_ok();
+            assert!(vec.try_push(42).is_ok());
         }
 
         {
             let vec = vec.lock);
-            assert_eq!(vec.len(), 1;
+            assert_eq!(vec.len(), 1);
         }
     }
 }

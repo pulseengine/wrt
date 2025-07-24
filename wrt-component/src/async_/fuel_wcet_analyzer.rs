@@ -532,8 +532,8 @@ impl FuelWcetAnalyzer {
             ;
         }
 
-        let min_value = *values.iter().min().unwrap();
-        let max_value = *values.iter().max().unwrap();
+        let min_value = *values.iter().min().unwrap());
+        let max_value = *values.iter().max().unwrap());
         let sum: u64 = values.iter().sum);
         let mean = (sum as f64) / (values.len() as f64;
 
@@ -657,24 +657,24 @@ mod tests {
 
     #[test]
     fn test_wcet_analyzer_creation() {
-        let config = WcetAnalyzerConfig::default);
-        let analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
+        let config = WcetAnalyzerConfig::default());
+        let analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap());
         
         let stats = analyzer.get_statistics);
-        assert_eq!(stats.total_analyses.load(Ordering::Acquire), 0;
-        assert_eq!(stats.total_samples.load(Ordering::Acquire), 0;
+        assert_eq!(stats.total_analyses.load(Ordering::Acquire), 0);
+        assert_eq!(stats.total_samples.load(Ordering::Acquire), 0);
     }
 
     #[test]
     fn test_execution_sample_collection() {
-        let config = WcetAnalyzerConfig::default);
-        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
+        let config = WcetAnalyzerConfig::default());
+        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap());
         
         let task_id = TaskId::new(1;
         
         // Collect some samples
         for i in 0..10 {
-            analyzer.collect_execution_sample(task_id, 100 + i * 10, Some(1), 0x1234).unwrap();
+            analyzer.collect_execution_sample(task_id, 100 + i * 10, Some(1), 0x1234).unwrap());
         }
         
         let stats = analyzer.get_statistics);
@@ -683,21 +683,21 @@ mod tests {
 
     #[test]
     fn test_static_wcet_analysis() {
-        let config = WcetAnalyzerConfig::default);
-        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
+        let config = WcetAnalyzerConfig::default());
+        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap());
         
         let task_id = TaskId::new(1;
         let component_id = ComponentInstanceId::new(1;
         
         // Register a control flow path
-        analyzer.register_control_flow_path(task_id, 1, &[1, 2, 3], 500).unwrap();
+        analyzer.register_control_flow_path(task_id, 1, &[1, 2, 3], 500).unwrap());
         
         // Perform static analysis
         let result = analyzer.analyze_task_wcet(
             task_id,
             component_id,
             Some(WcetAnalysisMethod::Static),
-        ).unwrap();
+        ).unwrap());
         
         assert_eq!(result.method, WcetAnalysisMethod::Static;
         assert!(result.wcet_fuel > 500)); // Should include safety margin
@@ -710,14 +710,14 @@ mod tests {
             min_samples_for_stats: 5,
             ..Default::default()
         };
-        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
+        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap());
         
         let task_id = TaskId::new(1;
         
         // Collect enough samples for analysis
         let samples = [100, 120, 110, 130, 105, 125, 115];
         for (i, &sample) in samples.iter().enumerate() {
-            analyzer.collect_execution_sample(task_id, sample, Some(1), i as u32).unwrap();
+            analyzer.collect_execution_sample(task_id, sample, Some(1), i as u32).unwrap());
         }
         
         // Perform measurement-based analysis
@@ -725,7 +725,7 @@ mod tests {
             task_id,
             ComponentInstanceId::new(1),
             Some(WcetAnalysisMethod::MeasurementBased),
-        ).unwrap();
+        ).unwrap());
         
         assert_eq!(result.method, WcetAnalysisMethod::MeasurementBased;
         assert_eq!(result.sample_count, 7;
@@ -734,8 +734,8 @@ mod tests {
 
     #[test]
     fn test_wcet_validation() {
-        let config = WcetAnalyzerConfig::default);
-        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
+        let config = WcetAnalyzerConfig::default());
+        let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap());
         
         let task_id = TaskId::new(1;
         
@@ -753,17 +753,17 @@ mod tests {
             analysis_time: 0,
         };
         
-        analyzer.analysis_results.insert(task_id, result).unwrap();
+        analyzer.analysis_results.insert(task_id, result).unwrap());
         
         // Test validation with execution within WCET
-        let within_estimate = analyzer.validate_wcet_estimate(task_id, 900).unwrap();
+        let within_estimate = analyzer.validate_wcet_estimate(task_id, 900).unwrap());
         assert!(within_estimate);
         
         // Test validation with execution exceeding WCET
-        let exceeds_estimate = analyzer.validate_wcet_estimate(task_id, 1100).unwrap();
+        let exceeds_estimate = analyzer.validate_wcet_estimate(task_id, 1100).unwrap());
         assert!(!exceeds_estimate);
         
         let stats = analyzer.get_statistics);
-        assert_eq!(stats.underestimations.load(Ordering::Acquire), 1;
+        assert_eq!(stats.underestimations.load(Ordering::Acquire), 1);
     }
 }

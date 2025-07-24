@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn test_wasi_monotonic_clock_now() -> Result<()> {
         let result = wasi_monotonic_clock_now(&mut (), vec![])?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         // Should return a u64 timestamp
         if let Value::U64(timestamp) = &result[0] {
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn test_wasi_wall_clock_now() -> Result<()> {
         let result = wasi_wall_clock_now(&mut (), vec![])?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         
         // Should return a tuple of (seconds, nanoseconds)
         if let Value::Tuple(time_parts) = &result[0] {

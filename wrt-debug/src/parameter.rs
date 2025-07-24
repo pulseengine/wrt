@@ -426,7 +426,7 @@ impl<'a> InlinedFunctions<'a> {
             entries: {
                 let provider =
                     safe_managed_alloc!({ MAX_DWARF_ABBREV_CACHE * 128 }, CrateId::Debug)
-                        .unwrap_or_else(|_| LargeProvider::default);
+                        .unwrap_or_else(|_| LargeProvider::default());
                 BoundedVec::new(provider).expect("Failed to create entries BoundedVec")
             },
         }
@@ -496,8 +496,8 @@ mod tests {
             is_variadic: false,
         };
 
-        params.add_parameter(param1).unwrap();
-        params.add_parameter(param2).unwrap();
+        params.add_parameter(param1).unwrap());
+        params.add_parameter(param2).unwrap());
 
         let mut output = String::new);
         params
@@ -505,7 +505,7 @@ mod tests {
                 output.push_str(s;
                 Ok(())
             })
-            .unwrap();
+            .unwrap());
 
         assert_eq!(output, "(i32, ptr)";
     }
@@ -525,14 +525,14 @@ mod tests {
             depth:           0,
         };
 
-        inlined.add(func).unwrap();
+        inlined.add(func).unwrap());
 
         // Test PC lookup
         assert!(inlined.has_inlined_at(0x1050);
         assert!(!inlined.has_inlined_at(0x2000);
 
         let found: Vec<_> = inlined.find_at_pc(0x1050).collect();
-        assert_eq!(found.len(), 1;
+        assert_eq!(found.len(), 1);
         assert_eq!(found[0].call_line, 42;
     }
 }

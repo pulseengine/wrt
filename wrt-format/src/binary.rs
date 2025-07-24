@@ -3097,7 +3097,7 @@ mod tests {
 
         for &value in &values {
             let bytes = write_f32_test(value;
-            let (decoded, size) = read_f32_test(&bytes, 0).unwrap();
+            let (decoded, size) = read_f32_test(&bytes, 0).unwrap());
 
             assert_eq!(size, 4;
             if value.is_nan() {
@@ -3124,7 +3124,7 @@ mod tests {
 
         for &value in &values {
             let bytes = write_f64_test(value;
-            let (decoded, size) = read_f64_test(&bytes, 0).unwrap();
+            let (decoded, size) = read_f64_test(&bytes, 0).unwrap());
 
             assert_eq!(size, 8;
             if value.is_nan() {
@@ -3147,7 +3147,7 @@ mod tests {
 
         for &s in &test_strings {
             let bytes = write_string_test(s;
-            let (decoded, _) = read_string_test(&bytes, 0).unwrap();
+            let (decoded, _) = read_string_test(&bytes, 0).unwrap());
 
             assert_eq!(decoded, s;
         }
@@ -3169,7 +3169,7 @@ mod tests {
 
         for &value in &test_values {
             let bytes = write_leb128_u64_test(value;
-            let (decoded, _) = read_leb128_u64(&bytes, 0).unwrap();
+            let (decoded, _) = read_leb128_u64(&bytes, 0).unwrap());
 
             assert_eq!(decoded, value;
         }
@@ -3178,8 +3178,8 @@ mod tests {
     #[test]
     fn test_utf8_validation() {
         // Valid UTF-8
-        assert!(validate_utf8_test(b"Hello").is_ok();
-        assert!(validate_utf8_test("🦀 Rust".as_bytes()).is_ok();
+        assert!(validate_utf8_test(b"Hello").is_ok());
+        assert!(validate_utf8_test("🦀 Rust".as_bytes()).is_ok());
 
         // Invalid UTF-8
         let invalid_utf8 = [0xFF, 0xFE, 0xFD];
@@ -3196,7 +3196,7 @@ mod tests {
         let bytes = write_vector_test(&values, |v| write_leb128_u32_test(*v;
 
         // Read the vector back
-        let (decoded, _) = read_vector_test(&bytes, 0, read_leb128_u32).unwrap();
+        let (decoded, _) = read_vector_test(&bytes, 0, read_leb128_u32).unwrap());
 
         assert_eq!(values, decoded;
     }
@@ -3211,7 +3211,7 @@ mod tests {
         let bytes = write_section_header_test(section_id, content_size;
 
         // Read the section header back
-        let (decoded_id, decoded_size, _) = read_section_header_test(&bytes, 0).unwrap();
+        let (decoded_id, decoded_size, _) = read_section_header_test(&bytes, 0).unwrap());
 
         assert_eq!(section_id, decoded_id;
         assert_eq!(content_size, decoded_size;

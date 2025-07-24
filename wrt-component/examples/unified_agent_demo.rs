@@ -45,7 +45,7 @@ fn demo_synchronous_execution() {
     println!("-----------------------------";
 
     // Create a unified engine with default synchronous mode
-    let config = AgentConfiguration::default);
+    let config = AgentConfiguration::default());
     let mut engine = UnifiedExecutionAgent::new(config;
 
     // Prepare function arguments

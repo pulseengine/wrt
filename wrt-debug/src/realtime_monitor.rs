@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_monitor_config_default() {
-        let config = MonitorConfig::default);
+        let config = MonitorConfig::default());
         assert_eq!(config.interval_ms, 1000;
         assert_eq!(config.alert_threshold, 80;
         assert_eq!(config.critical_threshold, 95;
@@ -531,16 +531,16 @@ mod tests {
         let _ = wrt_foundation::memory_system_initializer::presets::test);
 
         let sample = RealtimeMonitor::collect_sample(0;
-        assert!(sample.is_ok();
+        assert!(sample.is_ok());
 
-        let sample = sample.unwrap();
-        assert_eq!(sample.timestamp, 0;
+        let sample = sample.unwrap());
+        assert_eq!(sample.timestamp, 0);
         assert!(sample.crate_utilization.len() == 16);
     }
 
     #[test]
     fn test_monitor_creation() {
-        let config = MonitorConfig::default);
+        let config = MonitorConfig::default());
         let monitor = RealtimeMonitor::new(config;
 
         assert!(!monitor.is_active();
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn test_global_monitor_init() {
-        let config = MonitorConfig::default);
+        let config = MonitorConfig::default());
 
         // This might fail if already initialized, which is okay
         let _ = init_global_monitor(config;

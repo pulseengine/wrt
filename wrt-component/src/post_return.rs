@@ -782,7 +782,7 @@ impl PostReturnRegistry {
 
     /// Reset metrics
     pub fn reset_metrics(&mut self) {
-        self.metrics = PostReturnMetrics::default);
+        self.metrics = PostReturnMetrics::default());
     }
 }
 
@@ -990,31 +990,31 @@ mod tests {
 
     #[test]
     fn test_post_return_registry_creation() {
-        let registry = PostReturnRegistry::new(100).unwrap();
+        let registry = PostReturnRegistry::new(100).unwrap());
         assert_eq!(registry.max_cleanup_tasks, 100;
-        assert_eq!(registry.functions.len(), 0;
+        assert_eq!(registry.functions.len(), 0);
     }
 
     #[test]
     fn test_register_post_return() {
-        let mut registry = PostReturnRegistry::new(100).unwrap();
+        let mut registry = PostReturnRegistry::new(100).unwrap());
         let instance_id = ComponentInstanceId(1;
 
-        assert!(registry.register_post_return(instance_id, 42, None).is_ok();
+        assert!(registry.register_post_return(instance_id, 42, None).is_ok());
         assert!(registry.functions.contains_key(&instance_id);
     }
 
     #[test]
     fn test_schedule_cleanup() {
-        let mut registry = PostReturnRegistry::new(100).unwrap();
+        let mut registry = PostReturnRegistry::new(100).unwrap());
         let instance_id = ComponentInstanceId(1;
 
-        registry.register_post_return(instance_id, 42, None).unwrap();
+        registry.register_post_return(instance_id, 42, None).unwrap());
 
         let task = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10;
-        assert!(registry.schedule_cleanup(instance_id, task).is_ok();
+        assert!(registry.schedule_cleanup(instance_id, task).is_ok());
 
-        assert_eq!(registry.pending_cleanups[&instance_id].len(), 1;
+        assert_eq!(registry.pending_cleanups[&instance_id].len(), 1);
     }
 
     #[test]
@@ -1043,36 +1043,36 @@ mod tests {
             vec![ComponentValue::U32(42)],
             7,
         ;
-        assert!(custom_task.is_ok();
-        let custom_task = custom_task.unwrap();
+        assert!(custom_task.is_ok());
+        let custom_task = custom_task.unwrap());
         assert_eq!(custom_task.task_type, CleanupTaskType::Custom;
         assert_eq!(custom_task.priority, 7;
     }
 
     #[test]
     fn test_cleanup_task_limits() {
-        let mut registry = PostReturnRegistry::new(2).unwrap(); // Small limit for testing
+        let mut registry = PostReturnRegistry::new(2).unwrap()); // Small limit for testing
         let instance_id = ComponentInstanceId(1;
 
-        registry.register_post_return(instance_id, 42, None).unwrap();
+        registry.register_post_return(instance_id, 42, None).unwrap());
 
         // Add tasks up to limit
         let task1 = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10;
         let task2 = helpers::memory_cleanup_task(instance_id, 0x2000, 64, 8, 10;
         let task3 = helpers::memory_cleanup_task(instance_id, 0x3000, 64, 8, 10;
 
-        assert!(registry.schedule_cleanup(instance_id, task1).is_ok();
-        assert!(registry.schedule_cleanup(instance_id, task2).is_ok();
+        assert!(registry.schedule_cleanup(instance_id, task1).is_ok());
+        assert!(registry.schedule_cleanup(instance_id, task2).is_ok());
         assert!(registry.schedule_cleanup(instance_id, task3).is_err())); // Should fail
     }
 
     #[test]
     fn test_metrics() {
-        let registry = PostReturnRegistry::new(100).unwrap();
+        let registry = PostReturnRegistry::new(100).unwrap());
         let metrics = registry.metrics);
 
-        assert_eq!(metrics.total_executions, 0;
-        assert_eq!(metrics.total_cleanup_tasks, 0;
-        assert_eq!(metrics.failed_cleanups, 0;
+        assert_eq!(metrics.total_executions, 0);
+        assert_eq!(metrics.total_cleanup_tasks, 0);
+        assert_eq!(metrics.failed_cleanups, 0);
     }
 }

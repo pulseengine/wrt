@@ -686,7 +686,7 @@ mod std_encoding {
         #[test]
         fn test_encode_empty_component() {
             let component = Component::new);
-            let binary = encode_component(&component).unwrap();
+            let binary = encode_component(&component).unwrap());
 
             // Check magic and version
             assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
@@ -701,7 +701,7 @@ mod std_encoding {
             let mut component = Component::new);
             component.name = Some("test_component".to_string();
 
-            let binary = encode_component(&component).unwrap();
+            let binary = encode_component(&component).unwrap());
 
             // Check magic and version
             assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
@@ -725,7 +725,7 @@ mod std_encoding {
             };
             component.core_instances.push(instance);
 
-            let binary = encode_component(&component).unwrap();
+            let binary = encode_component(&component).unwrap());
 
             // Check magic and version
             assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
@@ -748,7 +748,7 @@ mod std_encoding {
             };
             component.imports.push(import);
 
-            let binary = encode_component(&component).unwrap();
+            let binary = encode_component(&component).unwrap());
 
             // Check magic and version
             assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
@@ -771,7 +771,7 @@ mod std_encoding {
             };
             component.exports.push(export);
 
-            let binary = encode_component(&component).unwrap();
+            let binary = encode_component(&component).unwrap());
 
             // Check magic and version
             assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;

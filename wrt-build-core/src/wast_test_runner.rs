@@ -431,8 +431,8 @@ mod tests {
     #[test]
     fn test_wast_runner_creation() {
         let runner = WastTestRunner::new);
-        assert_eq!(runner.stats.total_files, 0;
-        assert_eq!(runner.stats.total_directives, 0;
+        assert_eq!(runner.stats.total_files, 0);
+        assert_eq!(runner.stats.total_directives, 0);
         assert_eq!(runner.continue_on_failure, true;
     }
 
@@ -445,7 +445,7 @@ mod tests {
             .max_failures(10;
 
         assert_eq!(runner.include_patterns.len(), 2); // default + added
-        assert_eq!(runner.exclude_patterns.len(), 1;
+        assert_eq!(runner.exclude_patterns.len(), 1);
         assert_eq!(runner.continue_on_failure, false;
         assert_eq!(runner.max_failures, Some(10;
     }
@@ -466,35 +466,35 @@ mod tests {
 
         let result = runner.run_wast_content(simple_wast, Some("test_simple";
         assert!(result.is_ok(), "Simple WAST execution should succeed");
-        assert_eq!(runner.stats.passed, 1;
-        assert_eq!(runner.stats.failed, 0;
+        assert_eq!(runner.stats.passed, 1);
+        assert_eq!(runner.stats.failed, 0);
     }
 
     #[test]
     fn test_test_file_discovery() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().unwrap());
         let test_dir = temp_dir.path);
 
         // Create test files
-        let mut file1 = File::create(test_dir.join("test1.wast")).unwrap();
-        writeln!(file1, "(module)").unwrap();
+        let mut file1 = File::create(test_dir.join("test1.wast")).unwrap());
+        writeln!(file1, "(module)").unwrap());
 
-        let mut file2 = File::create(test_dir.join("test2.wast")).unwrap();
-        writeln!(file2, "(module)").unwrap();
+        let mut file2 = File::create(test_dir.join("test2.wast")).unwrap());
+        writeln!(file2, "(module)").unwrap());
 
-        let mut file3 = File::create(test_dir.join("skip_test.wast")).unwrap();
-        writeln!(file3, "(module)").unwrap();
+        let mut file3 = File::create(test_dir.join("skip_test.wast")).unwrap());
+        writeln!(file3, "(module)").unwrap());
 
         // Test discovery with exclusion
         let runner = WastTestRunner::new().exclude_pattern("skip_".to_string();
 
-        let discovered = runner.discover_test_files(test_dir).unwrap();
+        let discovered = runner.discover_test_files(test_dir).unwrap());
         assert_eq!(discovered.len(), 2); // Should exclude skip_test.wast
     }
 
     #[test]
     fn test_statistics_calculation() {
-        let mut stats = WastTestStats::default);
+        let mut stats = WastTestStats::default());
         stats.total_directives = 10;
         stats.passed = 8;
         stats.failed = 2;

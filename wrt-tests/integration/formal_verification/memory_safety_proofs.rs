@@ -275,14 +275,14 @@ mod tests {
     fn test_traditional_memory_verification() {
         let registry = TestRegistry::global);
         let result = register_tests(registry;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(property_count(), 3;
     }
     
     #[test]
     fn test_provider_creation() {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation;
-        assert!(provider.is_ok();
+        assert!(provider.is_ok());
         
         if let Ok(p) = provider {
             assert!(p.available_memory() <= 1024);
@@ -291,13 +291,13 @@ mod tests {
     
     #[test]
     fn test_bounded_allocation() {
-        let provider = safe_managed_alloc!(2048, CrateId::Foundation).unwrap();
+        let provider = safe_managed_alloc!(2048, CrateId::Foundation).unwrap());
         let vec = BoundedVec::<u32, 64, _>::new(provider;
         
-        assert!(vec.is_ok();
+        assert!(vec.is_ok());
         if let Ok(v) = vec {
             assert!(v.capacity() <= 64);
-            assert_eq!(v.len(), 0;
+            assert_eq!(v.len(), 0);
         }
     }
 }

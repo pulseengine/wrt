@@ -13,40 +13,40 @@ mod tests {
 
     #[test]
     fn test_source_span_creation() {
-        let span1 = SourceSpan::new(0, 10, 0;
-        let span2 = SourceSpan::new(10, 20, 0;
+        let span1 = SourceSpan::new(0, 10, 0);
+        let span2 = SourceSpan::new(10, 20, 0);
 
-        assert_eq!(span1.start, 0;
+        assert_eq!(span1.start, 0);
         assert_eq!(span1.end, 10;
-        assert_eq!(span1.file_id, 0;
+        assert_eq!(span1.file_id, 0);
 
         assert_eq!(span2.start, 10;
         assert_eq!(span2.end, 20;
-        assert_eq!(span2.file_id, 0;
+        assert_eq!(span2.file_id, 0);
     }
 
     #[test]
     fn test_source_span_merge() {
-        let span1 = SourceSpan::new(0, 10, 0;
-        let span2 = SourceSpan::new(10, 20, 0;
+        let span1 = SourceSpan::new(0, 10, 0);
+        let span2 = SourceSpan::new(10, 20, 0);
 
         let merged = span1.merge(&span2;
-        assert_eq!(merged.start, 0;
+        assert_eq!(merged.start, 0);
         assert_eq!(merged.end, 20;
-        assert_eq!(merged.file_id, 0;
+        assert_eq!(merged.file_id, 0);
     }
 
     #[test]
     fn test_source_span_empty() {
         let empty = SourceSpan::empty);
-        assert_eq!(empty.start, 0;
-        assert_eq!(empty.end, 0;
-        assert_eq!(empty.file_id, 0;
+        assert_eq!(empty.start, 0);
+        assert_eq!(empty.end, 0);
+        assert_eq!(empty.file_id, 0);
     }
 
     #[test]
     fn test_primitive_types() {
-        let span = SourceSpan::new(0, 10, 0;
+        let span = SourceSpan::new(0, 10, 0);
 
         let string_type = PrimitiveType {
             kind: PrimitiveKind::String,
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_type_expressions() {
-        let span = SourceSpan::new(0, 10, 0;
+        let span = SourceSpan::new(0, 10, 0);
 
         let string_type = PrimitiveType {
             kind: PrimitiveKind::String,
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_function_results() {
-        let span = SourceSpan::new(0, 10, 0;
+        let span = SourceSpan::new(0, 10, 0);
 
         let u32_type = PrimitiveType {
             kind: PrimitiveKind::U32,
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_wit_document() {
-        let span = SourceSpan::new(0, 100, 0;
+        let span = SourceSpan::new(0, 100, 0);
 
         // Create a simple WIT document
         let document = WitDocument {
@@ -128,7 +128,7 @@ mod tests {
             span,
         };
 
-        assert_eq!(document.span.start, 0;
+        assert_eq!(document.span.start, 0);
         assert_eq!(document.span.end, 100;
         assert!(document.package.is_none();
 
@@ -160,7 +160,7 @@ mod tests {
 
         // Verify each kind can be created and compared
         for &kind in &kinds {
-            let span = SourceSpan::new(0, 5, 0;
+            let span = SourceSpan::new(0, 5, 0);
             let prim_type = PrimitiveType { kind, span };
             assert_eq!(prim_type.kind, kind;
         }
@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn test_function_definition() {
-        let span = SourceSpan::new(0, 50, 0;
+        let span = SourceSpan::new(0, 50, 0);
 
         // Create a simple function definition
         let function = Function {
@@ -180,7 +180,7 @@ mod tests {
         };
 
         assert!(!function.is_async);
-        assert_eq!(function.span.start, 0;
+        assert_eq!(function.span.start, 0);
         assert_eq!(function.span.end, 50;
 
         #[cfg(feature = "std")]
@@ -204,7 +204,7 @@ mod tests {
         assert!(top_level_items.is_empty();
 
         // Test that default implementations work
-        let function_results = FunctionResults::default);
+        let function_results = FunctionResults::default());
         match function_results {
             FunctionResults::None => {}, // Expected default
             _ => panic!("Expected None as default for FunctionResults"),

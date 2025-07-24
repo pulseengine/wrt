@@ -514,17 +514,17 @@ mod tests {
     #[test]
     fn test_simd_op_input_count() {
         assert_eq!(SimdOp::I8x16Add.input_count(), 2;
-        assert_eq!(SimdOp::I8x16Neg.input_count(), 1;
+        assert_eq!(SimdOp::I8x16Neg.input_count(), 1);
         assert_eq!(SimdOp::V128Bitselect.input_count(), 3;
-        assert_eq!(SimdOp::I8x16Splat.input_count(), 1;
+        assert_eq!(SimdOp::I8x16Splat.input_count(), 1);
         assert_eq!(SimdOp::V128Store { offset: 0, align: 0 }.input_count(), 2;
     }
     
     #[test]
     fn test_simd_op_output_count() {
-        assert_eq!(SimdOp::I8x16Add.output_count(), 1;
-        assert_eq!(SimdOp::V128Store { offset: 0, align: 0 }.output_count(), 0;
-        assert_eq!(SimdOp::V128AnyTrue.output_count(), 1;
+        assert_eq!(SimdOp::I8x16Add.output_count(), 1);
+        assert_eq!(SimdOp::V128Store { offset: 0, align: 0 }.output_count(), 0);
+        assert_eq!(SimdOp::V128AnyTrue.output_count(), 1);
     }
     
     #[test]

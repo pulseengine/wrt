@@ -19,11 +19,11 @@ use std::string::String;
 
 #[test]
 fn test_bounded_queue_operations() {
-    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap());
 
     // Check empty queue properties
-    assert_eq!(queue.len(), 0;
+    assert_eq!(queue.len(), 0);
     assert_eq!(queue.capacity(), 5;
     assert!(queue.is_empty();
     assert!(!queue.is_full();
@@ -32,7 +32,7 @@ fn test_bounded_queue_operations() {
 
     // Test enqueue operations
     for i in 0..5 {
-        assert!(queue.enqueue(i).is_ok();
+        assert!(queue.enqueue(i).is_ok());
         assert_eq!(queue.len(), i as usize + 1;
     }
 
@@ -56,14 +56,14 @@ fn test_bounded_queue_operations() {
 
     // Test wrap-around behavior with mixed enqueue/dequeue
     for i in 0..3 {
-        assert!(queue.enqueue(i).is_ok();
+        assert!(queue.enqueue(i).is_ok());
     }
 
     assert_eq!(queue.dequeue().unwrap(), Some(0;
     assert_eq!(queue.dequeue().unwrap(), Some(1;
 
     for i in 3..6 {
-        assert!(queue.enqueue(i).is_ok();
+        assert!(queue.enqueue(i).is_ok());
     }
 
     assert_eq!(queue.len(), 4;
@@ -77,7 +77,7 @@ fn test_bounded_queue_operations() {
 
     // Test checksum verification
     for i in 0..5 {
-        assert!(queue.enqueue(i).is_ok();
+        assert!(queue.enqueue(i).is_ok());
     }
 
     assert!(queue.verify_checksum();
@@ -92,16 +92,16 @@ fn test_bounded_queue_operations() {
 
 #[test]
 fn test_bounded_map_operations() {
-    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap();
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap());
 
     // Check empty map properties
-    assert_eq!(map.len(), 0;
+    assert_eq!(map.len(), 0);
     assert_eq!(map.capacity(), 5;
     assert!(map.is_empty();
     assert!(!map.is_full();
     assert!(map.get(&1).unwrap().is_none();
-    assert!(!map.contains_key(&1).unwrap();
+    assert!(!map.contains_key(&1).unwrap());
 
     // Test insert operations
     for i in 0..5 {
@@ -126,7 +126,7 @@ fn test_bounded_map_operations() {
     // Test remove
     assert_eq!(map.remove(&3).unwrap(), Some("value-3".to_string();
     assert_eq!(map.len(), 4;
-    assert!(!map.contains_key(&3).unwrap();
+    assert!(!map.contains_key(&3).unwrap());
 
     // Test insert after remove (should succeed now that we have space)
     assert_eq!(map.insert(5, "new-entry".to_string()).unwrap(), None;
@@ -134,9 +134,9 @@ fn test_bounded_map_operations() {
     assert_eq!(map.get(&5).unwrap(), Some("new-entry".to_string();
 
     // Test clear
-    assert!(map.clear().is_ok();
+    assert!(map.clear().is_ok());
     assert!(map.is_empty();
-    assert_eq!(map.len(), 0;
+    assert_eq!(map.len(), 0);
 
     // Test verification level setting
     map.set_verification_level(VerificationLevel::Off;
@@ -148,22 +148,22 @@ fn test_bounded_map_operations() {
 
 #[test]
 fn test_bounded_set_operations() {
-    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let mut set = BoundedSet::<String, 5, NoStdProvider<1024>>::new(provider).unwrap();
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    let mut set = BoundedSet::<String, 5, NoStdProvider<1024>>::new(provider).unwrap());
 
     // Check empty set properties
-    assert_eq!(set.len(), 0;
+    assert_eq!(set.len(), 0);
     assert_eq!(set.capacity(), 5;
     assert!(set.is_empty();
     assert!(!set.is_full();
-    assert!(!set.contains(&"item".to_string()).unwrap();
+    assert!(!set.contains(&"item".to_string()).unwrap());
 
     // Test insert operations
     for i in 0..5 {
         let value = format!("item-{}", i;
-        assert!(set.insert(value.clone()).unwrap();
+        assert!(set.insert(value.clone()).unwrap());
         assert_eq!(set.len(), i as usize + 1;
-        assert!(set.contains(&value).unwrap();
+        assert!(set.contains(&value).unwrap());
     }
 
     // Test full set
@@ -174,26 +174,26 @@ fn test_bounded_set_operations() {
     ;
 
     // Test insert duplicate (should return false without error)
-    assert!(!set.insert("item-2".to_string()).unwrap();
+    assert!(!set.insert("item-2".to_string()).unwrap());
     assert_eq!(set.len(), 5); // Length unchanged
 
     // Test remove
-    assert!(set.remove(&"item-3".to_string()).unwrap();
+    assert!(set.remove(&"item-3".to_string()).unwrap());
     assert_eq!(set.len(), 4;
-    assert!(!set.contains(&"item-3".to_string()).unwrap();
+    assert!(!set.contains(&"item-3".to_string()).unwrap());
 
     // Test remove non-existent item (should return false without error)
-    assert!(!set.remove(&"non-existent".to_string()).unwrap();
+    assert!(!set.remove(&"non-existent".to_string()).unwrap());
 
     // Test insert after remove (should succeed now that we have space)
-    assert!(set.insert("new-item".to_string()).unwrap();
+    assert!(set.insert("new-item".to_string()).unwrap());
     assert_eq!(set.len(), 5;
-    assert!(set.contains(&"new-item".to_string()).unwrap();
+    assert!(set.contains(&"new-item".to_string()).unwrap());
 
     // Test clear
-    assert!(set.clear().is_ok();
+    assert!(set.clear().is_ok());
     assert!(set.is_empty();
-    assert_eq!(set.len(), 0;
+    assert_eq!(set.len(), 0);
 
     // Test verification level setting
     set.set_verification_level(VerificationLevel::Off;
@@ -205,11 +205,11 @@ fn test_bounded_set_operations() {
 
 #[test]
 fn test_bounded_deque_operations() {
-    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
-    let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap());
 
     // Check empty deque properties
-    assert_eq!(deque.len(), 0;
+    assert_eq!(deque.len(), 0);
     assert_eq!(deque.capacity(), 5;
     assert!(deque.is_empty();
     assert!(!deque.is_full();
@@ -220,14 +220,14 @@ fn test_bounded_deque_operations() {
 
     // Test push_back operations
     for i in 0..3 {
-        assert!(deque.push_back(i).is_ok();
+        assert!(deque.push_back(i).is_ok());
         assert_eq!(deque.len(), i as usize + 1;
         assert_eq!(deque.back().unwrap(), Some(i;
     }
 
     // Test push_front operations
-    assert!(deque.push_front(100).is_ok();
-    assert!(deque.push_front(200).is_ok();
+    assert!(deque.push_front(100).is_ok());
+    assert!(deque.push_front(200).is_ok());
     assert_eq!(deque.len(), 5;
 
     // Test full deque
@@ -248,7 +248,7 @@ fn test_bounded_deque_operations() {
     // Test pop_back operations
     assert_eq!(deque.pop_back().unwrap(), Some(2;
     assert_eq!(deque.pop_back().unwrap(), Some(1;
-    assert_eq!(deque.len(), 1;
+    assert_eq!(deque.len(), 1);
     assert_eq!(deque.back().unwrap(), Some(0;
 
     // Test last element and empty deque
@@ -260,9 +260,9 @@ fn test_bounded_deque_operations() {
     // Test alternating push/pop operations for wrap-around behavior
     for i in 0..5 {
         if i % 2 == 0 {
-            assert!(deque.push_front(i).is_ok();
+            assert!(deque.push_front(i).is_ok());
         } else {
-            assert!(deque.push_back(i).is_ok();
+            assert!(deque.push_back(i).is_ok());
         }
     }
 
@@ -279,17 +279,17 @@ fn test_bounded_deque_operations() {
 
     // Test clear
     for i in 0..3 {
-        assert!(deque.push_back(i).is_ok();
+        assert!(deque.push_back(i).is_ok());
     }
     assert_eq!(deque.len(), 3;
 
-    assert!(deque.clear().is_ok();
+    assert!(deque.clear().is_ok());
     assert!(deque.is_empty();
-    assert_eq!(deque.len(), 0;
+    assert_eq!(deque.len(), 0);
 
     // Test checksum verification
     for i in 0..5 {
-        assert!(deque.push_back(i).is_ok();
+        assert!(deque.push_back(i).is_ok());
     }
 
     assert!(deque.verify_checksum();
@@ -307,37 +307,37 @@ fn test_bounded_bitset_operations() {
     let mut bitset = BoundedBitSet::<100>::new);
 
     // Check empty bitset properties
-    assert_eq!(bitset.len(), 0;
+    assert_eq!(bitset.len(), 0);
     assert_eq!(bitset.capacity(), 100;
     assert!(bitset.is_empty();
     assert!(!bitset.is_full();
 
     // Test set operations
     for i in 0..50 {
-        assert!(bitset.set(i).unwrap();
+        assert!(bitset.set(i).unwrap());
         assert_eq!(bitset.len(), i as usize + 1;
-        assert!(bitset.contains(i).unwrap();
+        assert!(bitset.contains(i).unwrap());
     }
 
     // Test set already set bit (should return false without error)
-    assert!(!bitset.set(25).unwrap();
+    assert!(!bitset.set(25).unwrap());
     assert_eq!(bitset.len(), 50); // Length unchanged
 
     // Test clear operations
     for i in 0..25 {
-        assert!(bitset.clear(i).unwrap();
+        assert!(bitset.clear(i).unwrap());
         assert_eq!(bitset.len(), 49 - i as usize;
-        assert!(!bitset.contains(i).unwrap();
+        assert!(!bitset.contains(i).unwrap());
     }
 
     // Test clear already cleared bit (should return false without error)
-    assert!(!bitset.clear(10).unwrap();
+    assert!(!bitset.clear(10).unwrap());
     assert_eq!(bitset.len(), 25); // Length unchanged
 
     // Test toggle operations
     for i in 0..10 {
-        let was_set = bitset.contains(i).unwrap();
-        let is_now_set = bitset.toggle(i).unwrap();
+        let was_set = bitset.contains(i).unwrap());
+        let is_now_set = bitset.toggle(i).unwrap());
         assert_ne!(was_set, is_now_set;
         assert_eq!(bitset.contains(i).unwrap(), is_now_set;
     }
@@ -354,20 +354,20 @@ fn test_bounded_bitset_operations() {
     assert!(bitset.is_full();
 
     for i in 0..100 {
-        assert!(bitset.contains(i).unwrap();
+        assert!(bitset.contains(i).unwrap());
     }
 
     bitset.clear_all);
-    assert_eq!(bitset.len(), 0;
+    assert_eq!(bitset.len(), 0);
     assert!(bitset.is_empty();
 
     for i in 0..100 {
-        assert!(!bitset.contains(i).unwrap();
+        assert!(!bitset.contains(i).unwrap());
     }
 
     // Test checksum verification
     for i in 0..50 {
-        assert!(bitset.set(i).unwrap();
+        assert!(bitset.set(i).unwrap());
     }
 
     assert!(bitset.verify_checksum();
@@ -386,7 +386,7 @@ fn test_bounded_builder_pattern() {
     let vec_builder = BoundedBuilder::<u32, 10, NoStdProvider<1024>>::new()
         .with_verification_level(VerificationLevel::Critical;
 
-    let mut vec = vec_builder.build_vec().unwrap();
+    let mut vec = vec_builder.build_vec().unwrap());
     assert_eq!(vec.capacity(), 10;
     assert_eq!(vec.verification_level(), VerificationLevel::Critical;
 
@@ -394,7 +394,7 @@ fn test_bounded_builder_pattern() {
     let stack_builder = BoundedBuilder::<u32, 20, NoStdProvider<1024>>::new()
         .with_verification_level(VerificationLevel::Full;
 
-    let stack = stack_builder.build_stack().unwrap();
+    let stack = stack_builder.build_stack().unwrap());
     assert_eq!(stack.capacity(), 20;
     assert_eq!(stack.verification_level(), VerificationLevel::Full;
 
@@ -403,7 +403,7 @@ fn test_bounded_builder_pattern() {
         .with_content("Hello, world!")
         .with_truncation(true;
 
-    let string = string_builder.build_string().unwrap();
+    let string = string_builder.build_string().unwrap());
     assert_eq!(string.as_str().unwrap(), "Hello, world!";
 
     // Test StringBuilder for WasmName
@@ -411,11 +411,11 @@ fn test_bounded_builder_pattern() {
         .with_content("function_name")
         .with_truncation(false;
 
-    let name = name_builder.build_wasm_name().unwrap();
+    let name = name_builder.build_wasm_name().unwrap());
     assert_eq!(name.as_str().unwrap(), "function_name";
 
     // Test modern provider factory - using safe_managed_alloc for simplicity
-    let provider = safe_managed_alloc!(4096, CrateId::Foundation).unwrap();
+    let provider = safe_managed_alloc!(4096, CrateId::Foundation).unwrap());
     assert!(provider.capacity() <= 4096)); // Capacity may be capped
     // Note: verification level testing would need provider API enhancement
 
@@ -424,7 +424,7 @@ fn test_bounded_builder_pattern() {
         .with_size(2048)
         .with_verification_level(VerificationLevel::Full;
 
-    let memory_handler = memory_builder.build_safe_memory_handler().unwrap();
+    let memory_handler = memory_builder.build_safe_memory_handler().unwrap());
     assert_eq!(memory_handler.verification_level(), VerificationLevel::Full;
 }
 
@@ -433,9 +433,9 @@ fn test_interoperability() {
     // Test interoperability between different bounded collections
 
     // Build a BoundedMap using safe modern allocation
-    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+    let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
 
-    let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap();
+    let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap());
 
     // Populate map with values from StringBuilder
     for i in 0..5 {
@@ -449,8 +449,8 @@ fn test_interoperability() {
             })
             .with_truncation(true;
 
-        let string = string_builder.build_string().unwrap();
-        map.insert(i, string.as_str().unwrap().to_string()).unwrap();
+        let string = string_builder.build_string().unwrap());
+        map.insert(i, string.as_str().unwrap().to_string()).unwrap());
     }
 
     // Verify map contents
@@ -470,24 +470,24 @@ fn test_interoperability() {
     }
 
     // Test using BoundedSet with BoundedQueue
-    let mut set = BoundedSet::<u32, 10, NoStdProvider<1024>>::new(provider).unwrap();
-    let mut queue = BoundedQueue::<u32, 10, NoStdProvider<1024>>::new(provider).unwrap();
+    let mut set = BoundedSet::<u32, 10, NoStdProvider<1024>>::new(provider).unwrap());
+    let mut queue = BoundedQueue::<u32, 10, NoStdProvider<1024>>::new(provider).unwrap());
 
     // Add values to queue
     for i in 0..8 {
-        queue.enqueue(i).unwrap();
+        queue.enqueue(i).unwrap());
     }
 
     // Dequeue items and add to set (will filter duplicates)
     while let Some(value) = queue.dequeue().unwrap() {
-        set.insert(value % 5).unwrap(); // Creates duplicates with modulo
+        set.insert(value % 5).unwrap()); // Creates duplicates with modulo
     }
 
     // Verify set has only unique values
     assert_eq!(set.len(), 5); // Only 0,1,2,3,4 due to modulo
 
     for i in 0..5 {
-        assert!(set.contains(&i).unwrap();
+        assert!(set.contains(&i).unwrap());
     }
 }
 
@@ -501,7 +501,7 @@ fn test_bounded_collections_performance() {
     let mut deque = BoundedDeque::<u32, 10_000, NoStdProvider<4_194_304>>::new(
         safe_managed_alloc!(4 * 1024 * 1024, CrateId::Foundation).unwrap(), // 4MB buffer
     )
-    .unwrap();
+    .unwrap());
 
     let mut bitset = BoundedBitSet::<100_000>::new);
 
@@ -509,15 +509,15 @@ fn test_bounded_collections_performance() {
     let start = Instant::now);
 
     for i in 0..5000 {
-        deque.push_back(i).unwrap();
+        deque.push_back(i).unwrap());
     }
 
     for _ in 0..2500 {
-        deque.pop_front().unwrap();
+        deque.pop_front().unwrap());
     }
 
     for i in 0..2500 {
-        deque.push_front(i).unwrap();
+        deque.push_front(i).unwrap());
     }
 
     let deque_duration = start.elapsed);
@@ -526,15 +526,15 @@ fn test_bounded_collections_performance() {
     let start = Instant::now);
 
     for i in 0..50_000 {
-        bitset.set(i % 100_000).unwrap();
+        bitset.set(i % 100_000).unwrap());
     }
 
     for i in 0..25_000 {
-        bitset.clear(i % 100_000).unwrap();
+        bitset.clear(i % 100_000).unwrap());
     }
 
     for i in 0..10_000 {
-        bitset.toggle(i % 100_000).unwrap();
+        bitset.toggle(i % 100_000).unwrap());
     }
 
     let bitset_duration = start.elapsed);

@@ -392,8 +392,8 @@ mod tests {
     
     #[test]
     fn test_next_power_of_2() {
-        assert_eq!(next_power_of_2(0), 1;
-        assert_eq!(next_power_of_2(1), 1;
+        assert_eq!(next_power_of_2(0), 1);
+        assert_eq!(next_power_of_2(1), 1);
         assert_eq!(next_power_of_2(3), 4;
         assert_eq!(next_power_of_2(8), 8;
         assert_eq!(next_power_of_2(9), 16;

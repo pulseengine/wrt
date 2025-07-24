@@ -601,9 +601,9 @@ mod tests {
     #[test]
     fn test_fixed_length_list_validation() {
         let valid_type = FixedLengthListType::new(ValueType::I32, 10;
-        assert!(valid_type.validate_size().is_ok();
+        assert!(valid_type.validate_size().is_ok());
 
-        let zero_length_type = FixedLengthListType::new(ValueType::I32, 0;
+        let zero_length_type = FixedLengthListType::new(ValueType::I32, 0);
         assert!(zero_length_type.validate_size().is_err();
 
         let too_large_type = FixedLengthListType::new(ValueType::I32, MAX_FIXED_LIST_SIZE as u32 + 1;
@@ -613,10 +613,10 @@ mod tests {
     #[test]
     fn test_fixed_length_list_creation() {
         let list_type = FixedLengthListType::new(ValueType::I32, 3;
-        let list = FixedLengthList::new(list_type).unwrap();
+        let list = FixedLengthList::new(list_type).unwrap());
         
         assert_eq!(list.length(), 3;
-        assert_eq!(list.current_length(), 0;
+        assert_eq!(list.current_length(), 0);
         assert_eq!(list.remaining_capacity(), 3;
         assert!(!list.is_full();
     }
@@ -631,9 +631,9 @@ mod tests {
         ];
 
         #[cfg(feature = "std")]
-        let list = FixedLengthList::with_elements(list_type, elements).unwrap();
+        let list = FixedLengthList::with_elements(list_type, elements).unwrap());
         #[cfg(not(feature = "std"))]
-        let list = FixedLengthList::with_elements(list_type, &elements).unwrap();
+        let list = FixedLengthList::with_elements(list_type, &elements).unwrap());
 
         assert_eq!(list.current_length(), 3;
         assert!(list.is_full();
@@ -670,19 +670,19 @@ mod tests {
     #[test]
     fn test_fixed_length_list_mutable_operations() {
         let list_type = FixedLengthListType::new_mutable(ValueType::I32, 3;
-        let mut list = FixedLengthList::new(list_type).unwrap();
+        let mut list = FixedLengthList::new(list_type).unwrap());
 
         // Test push
-        assert!(list.push(ComponentValue::I32(1)).is_ok();
-        assert!(list.push(ComponentValue::I32(2)).is_ok();
-        assert!(list.push(ComponentValue::I32(3)).is_ok();
+        assert!(list.push(ComponentValue::I32(1)).is_ok());
+        assert!(list.push(ComponentValue::I32(2)).is_ok());
+        assert!(list.push(ComponentValue::I32(3)).is_ok());
         assert!(list.is_full();
 
         // Try to push when full
         assert!(list.push(ComponentValue::I32(4)).is_err();
 
         // Test set
-        assert!(list.set(1, ComponentValue::I32(42)).is_ok();
+        assert!(list.set(1, ComponentValue::I32(42)).is_ok());
         assert_eq!(list.get(1), Some(&ComponentValue::I32(42;
 
         // Test invalid set
@@ -693,7 +693,7 @@ mod tests {
     #[test]
     fn test_immutable_list_restrictions() {
         let list_type = FixedLengthListType::new(ValueType::I32, 3); // Immutable
-        let mut list = FixedLengthList::new(list_type).unwrap();
+        let mut list = FixedLengthList::new(list_type).unwrap());
 
         // Should not be able to modify immutable list
         assert!(list.set(0, ComponentValue::I32(1)).is_err();
@@ -705,25 +705,25 @@ mod tests {
     #[test]
     fn test_fixed_length_list_type_registry() {
         let mut registry = FixedLengthListTypeRegistry::new);
-        assert_eq!(registry.type_count(), 0;
+        assert_eq!(registry.type_count(), 0);
 
         let list_type1 = FixedLengthListType::new(ValueType::I32, 10;
-        let index1 = registry.register_type(list_type1.clone()).unwrap();
-        assert_eq!(index1, 0;
-        assert_eq!(registry.type_count(), 1;
+        let index1 = registry.register_type(list_type1.clone()).unwrap());
+        assert_eq!(index1, 0);
+        assert_eq!(registry.type_count(), 1);
 
         let list_type2 = FixedLengthListType::new(ValueType::F64, 5;
-        let index2 = registry.register_type(list_type2).unwrap();
-        assert_eq!(index2, 1;
+        let index2 = registry.register_type(list_type2).unwrap());
+        assert_eq!(index2, 1);
         assert_eq!(registry.type_count(), 2;
 
         // Register duplicate should return existing index
-        let duplicate_index = registry.register_type(list_type1).unwrap();
-        assert_eq!(duplicate_index, 0;
+        let duplicate_index = registry.register_type(list_type1).unwrap());
+        assert_eq!(duplicate_index, 0);
         assert_eq!(registry.type_count(), 2); // No new type added
 
         // Test retrieval
-        let retrieved = registry.get_type(0).unwrap();
+        let retrieved = registry.get_type(0).unwrap());
         assert_eq!(retrieved.element_type(), &ValueType::I32;
         assert_eq!(retrieved.length(), 10;
 
@@ -745,9 +745,9 @@ mod tests {
         ];
 
         #[cfg(feature = "std")]
-        let list = FixedLengthList::with_elements(list_type.clone(), elements.clone()).unwrap();
+        let list = FixedLengthList::with_elements(list_type.clone(), elements.clone()).unwrap());
         #[cfg(not(feature = "std"))]
-        let list = FixedLengthList::with_elements(list_type.clone(), &elements).unwrap();
+        let list = FixedLengthList::with_elements(list_type.clone(), &elements).unwrap());
 
         // Convert to ComponentValue
         let component_value: ComponentValue = list.clone().into();
@@ -760,7 +760,7 @@ mod tests {
         }
 
         // Convert back from ComponentValue
-        let converted_back = FixedLengthList::try_from_component_value(component_value, list_type).unwrap();
+        let converted_back = FixedLengthList::try_from_component_value(component_value, list_type).unwrap());
         assert_eq!(converted_back.current_length(), 3;
         assert_eq!(converted_back.get(0), Some(&ComponentValue::I32(1;
     }
@@ -768,18 +768,18 @@ mod tests {
     #[test]
     fn test_utility_functions() {
         // Test repeat_element
-        let repeated = repeat_element(ValueType::Bool, ComponentValue::Bool(true), 5).unwrap();
+        let repeated = repeat_element(ValueType::Bool, ComponentValue::Bool(true), 5).unwrap());
         assert_eq!(repeated.current_length(), 5;
         assert_eq!(repeated.get(0), Some(&ComponentValue::Bool(true;
         assert_eq!(repeated.get(4), Some(&ComponentValue::Bool(true;
 
         // Test zero_filled
-        let zeros = zero_filled(ValueType::I32, 3).unwrap();
+        let zeros = zero_filled(ValueType::I32, 3).unwrap());
         assert_eq!(zeros.current_length(), 3;
         assert_eq!(zeros.get(0), Some(&ComponentValue::I32(0;
 
         // Test from_range
-        let range_list = from_range(5, 8).unwrap();
+        let range_list = from_range(5, 8).unwrap());
         assert_eq!(range_list.current_length(), 3;
         assert_eq!(range_list.get(0), Some(&ComponentValue::I32(5;
         assert_eq!(range_list.get(1), Some(&ComponentValue::I32(6;
@@ -791,19 +791,19 @@ mod tests {
         let list1_type = FixedLengthListType::new(ValueType::I32, 2;
         let list1_elements = vec![ComponentValue::I32(1), ComponentValue::I32(2)];
         #[cfg(feature = "std")]
-        let list1 = FixedLengthList::with_elements(list1_type, list1_elements).unwrap();
+        let list1 = FixedLengthList::with_elements(list1_type, list1_elements).unwrap());
         #[cfg(not(feature = "std"))]
-        let list1 = FixedLengthList::with_elements(list1_type, &list1_elements).unwrap();
+        let list1 = FixedLengthList::with_elements(list1_type, &list1_elements).unwrap());
 
         let list2_type = FixedLengthListType::new(ValueType::I32, 2;
         let list2_elements = vec![ComponentValue::I32(3), ComponentValue::I32(4)];
         #[cfg(feature = "std")]
-        let list2 = FixedLengthList::with_elements(list2_type, list2_elements).unwrap();
+        let list2 = FixedLengthList::with_elements(list2_type, list2_elements).unwrap());
         #[cfg(not(feature = "std"))]
-        let list2 = FixedLengthList::with_elements(list2_type, &list2_elements).unwrap();
+        let list2 = FixedLengthList::with_elements(list2_type, &list2_elements).unwrap());
 
         // Test concatenation
-        let concatenated = concatenate(&list1, &list2).unwrap();
+        let concatenated = concatenate(&list1, &list2).unwrap());
         assert_eq!(concatenated.current_length(), 4;
         assert_eq!(concatenated.get(0), Some(&ComponentValue::I32(1;
         assert_eq!(concatenated.get(1), Some(&ComponentValue::I32(2;
@@ -811,7 +811,7 @@ mod tests {
         assert_eq!(concatenated.get(3), Some(&ComponentValue::I32(4;
 
         // Test slicing
-        let sliced = slice(&concatenated, 1, 2).unwrap();
+        let sliced = slice(&concatenated, 1, 2).unwrap());
         assert_eq!(sliced.current_length(), 2;
         assert_eq!(sliced.get(0), Some(&ComponentValue::I32(2;
         assert_eq!(sliced.get(1), Some(&ComponentValue::I32(3;

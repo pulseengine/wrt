@@ -464,11 +464,11 @@ mod tests {
     #[test]
     fn test_memory_type_validation() {
         let linear = MemoryType::Linear { min: 1, max: Some(10) };
-        assert!(linear.validate().is_ok();
+        assert!(linear.validate().is_ok());
         assert!(!linear.is_shared();
 
         let shared = MemoryType::Shared { min: 1, max: 10 };
-        assert!(shared.validate().is_ok();
+        assert!(shared.validate().is_ok());
         assert!(shared.is_shared();
 
         let invalid = MemoryType::Linear { min: 10, max: Some(5) };
@@ -496,7 +496,7 @@ mod tests {
             0x1000,
             true,
         )
-        .unwrap();
+        .unwrap());
 
         assert!(segment.contains_address(0x1500);
         assert!(!segment.contains_address(0x500);
@@ -514,7 +514,7 @@ mod tests {
             0x1000,
             true,
         )
-        .unwrap();
+        .unwrap());
 
         let segment2 = SharedMemorySegment::new(
             MemoryType::Shared { min: 1, max: 10 },
@@ -523,29 +523,29 @@ mod tests {
             0x1000,
             false,
         )
-        .unwrap();
+        .unwrap());
 
-        assert!(manager.register_segment(segment1).is_ok();
-        assert!(manager.register_segment(segment2).is_ok();
+        assert!(manager.register_segment(segment1).is_ok());
+        assert!(manager.register_segment(segment2).is_ok());
 
         assert!(manager.allows_atomic_at(0x1500);
         assert!(!manager.allows_atomic_at(0x3500);
 
-        assert!(manager.validate_access(0x1500, SharedMemoryAccess::ReadWrite).is_ok();
-        assert!(manager.validate_access(0x3500, SharedMemoryAccess::ReadOnly).is_ok();
+        assert!(manager.validate_access(0x1500, SharedMemoryAccess::ReadWrite).is_ok());
+        assert!(manager.validate_access(0x3500, SharedMemoryAccess::ReadOnly).is_ok());
         assert!(manager.validate_access(0x3500, SharedMemoryAccess::ReadWrite).is_err();
     }
 
     #[test]
     fn test_memory_type_serialization() {
         let linear = MemoryType::Linear { min: 1, max: Some(10) };
-        let bytes = linear.to_bytes().unwrap();
-        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap();
+        let bytes = linear.to_bytes().unwrap());
+        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap());
         assert_eq!(linear, deserialized;
 
         let shared = MemoryType::Shared { min: 2, max: 20 };
-        let bytes = shared.to_bytes().unwrap();
-        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap();
+        let bytes = shared.to_bytes().unwrap());
+        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap());
         assert_eq!(shared, deserialized;
     }
 }

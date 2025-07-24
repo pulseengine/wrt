@@ -282,8 +282,8 @@ mod tests {
     #[test]
     fn test_checksum_empty() {
         let checksum = Checksum::compute(&[];
-        assert_eq!(checksum.a, 1;
-        assert_eq!(checksum.b, 0;
+        assert_eq!(checksum.a, 1);
+        assert_eq!(checksum.b, 0);
     }
 
     #[test]

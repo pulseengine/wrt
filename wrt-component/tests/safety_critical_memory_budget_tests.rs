@@ -83,13 +83,13 @@ mod memory_budget_tests {
     fn test_cross_collection_memory_sharing() {
         // Allocate different types of collections
         let vec1 = new_component_vec::<u32>);
-        assert!(vec1.is_ok();
+        assert!(vec1.is_ok());
 
         let map1 = new_export_map::<String>);
-        assert!(map1.is_ok();
+        assert!(map1.is_ok());
 
         let vec2 = new_resource_vec::<u64>);
-        assert!(vec2.is_ok();
+        assert!(vec2.is_ok());
 
         // All should share the same memory budget
         // Try to allocate many more until budget exhausted
@@ -157,9 +157,9 @@ mod memory_budget_tests {
     fn test_individual_collection_limits() {
         // Test export map memory usage
         let map_result = new_export_map::<[u8; 256]>);
-        assert!(map_result.is_ok();
+        assert!(map_result.is_ok());
 
-        let mut map = map_result.unwrap();
+        let mut map = map_result.unwrap());
         let mut successful_inserts = 0;
 
         for i in 0..MAX_COMPONENT_EXPORTS {
@@ -248,9 +248,9 @@ mod memory_budget_tests {
         }
 
         let vec_result = new_component_vec::<ComplexData>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap();
+        let mut vec = vec_result.unwrap());
         let mut count = 0;
 
         // Fill with complex data
@@ -411,7 +411,7 @@ mod safety_critical_budget_tests {
     fn test_safety_critical_budget_enforcement() {
         // In safety-critical mode, all allocations must be bounded
         let vec_result = new_component_vec::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
         // Verify managed allocation is used
         let guard_result = safe_managed_alloc!(1024, CrateId::Component;

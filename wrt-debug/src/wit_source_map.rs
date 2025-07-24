@@ -484,7 +484,7 @@ mod tests {
     fn test_source_map_basic() {
         let mut source_map = WitSourceMap::new);
 
-        let span = SourceSpan::new(10, 20, 0;
+        let span = SourceSpan::new(10, 20, 0);
         source_map.add_binary_mapping(100, span;
 
         assert_eq!(source_map.source_location_for_offset(100), Some(span;
@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn test_source_file() {
         let content = "line 1\nline 2\nline 3";
-        let file = WitSourceFile::new("test.wit", content).unwrap();
+        let file = WitSourceFile::new("test.wit", content).unwrap());
 
         assert_eq!(file.line_count(), 3;
         assert_eq!(file.line(1).unwrap().as_str().unwrap(), "line 1";
@@ -531,7 +531,7 @@ mod tests {
         assert!(boundary.contains_address(350);
         assert!(!boundary.contains_address(250);
 
-        let region = boundary.memory_region_for_address(150).unwrap();
+        let region = boundary.memory_region_for_address(150).unwrap());
         assert_eq!(region.region_type, MemoryRegionType::Linear;
     }
 }

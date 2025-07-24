@@ -97,14 +97,14 @@ impl PerformanceOptimizer {
 
     /// Start timing a command
     pub fn start_timer(&mut self, command: &str) {
-        self.command_timers.insert(command.to_string(), Instant::now);
+        self.command_timers.insert(command.to_string(), Instant::now());
     }
 
     /// Stop timing a command and record duration
     pub fn stop_timer(&mut self, command: &str) {
         if let Some(start_time) = self.command_timers.remove(command) {
-            let duration = start_time.elapsed);
-            self.metrics.command_times.insert(command.to_string(), duration;
+            let duration = start_time.elapsed();
+            self.metrics.command_times.insert(command.to_string(), duration);
         }
     }
 
@@ -130,10 +130,10 @@ impl PerformanceOptimizer {
 
     /// Get performance recommendations
     pub fn get_recommendations(&self) -> Vec<PerformanceRecommendation> {
-        let mut recommendations = Vec::new);
+        let mut recommendations = Vec::new();
 
         // Cache performance
-        let cache_ratio = self.cache_hit_ratio);
+        let cache_ratio = self.cache_hit_ratio();
         if cache_ratio < 0.5 && self.metrics.cache_hits + self.metrics.cache_misses > 10 {
             recommendations.push(PerformanceRecommendation {
                 category:    RecommendationCategory::Caching,
@@ -144,7 +144,7 @@ impl PerformanceOptimizer {
                 ),
                 impact:      ImpactLevel::Medium,
                 action:      "Enable aggressive caching with --cache --aggressive".to_string(),
-            };
+            });
         }
 
         // Parallel execution
@@ -156,7 +156,7 @@ impl PerformanceOptimizer {
                     .to_string(),
                 impact:      ImpactLevel::High,
                 action:      "Enable parallel execution in configuration".to_string(),
-            };
+            });
         }
 
         // Command performance analysis
@@ -172,7 +172,7 @@ impl PerformanceOptimizer {
                     ),
                     impact:      ImpactLevel::Medium,
                     action:      format!("Profile {} command for bottlenecks", command),
-                };
+                });
             }
         }
 
@@ -188,11 +188,11 @@ impl PerformanceOptimizer {
                     ),
                     impact:      ImpactLevel::High,
                     action:      "Increase memory limit or optimize memory usage".to_string(),
-                };
+                });
             }
         }
 
-        recommendations.sort_by_key(|r| r.impact.clone();
+        recommendations.sort_by_key(|r| r.impact.clone());
         recommendations
     }
 
@@ -209,7 +209,7 @@ impl PerformanceOptimizer {
     /// Optimize configuration based on system
     pub fn optimize_for_system(&mut self) -> Result<()> {
         // Detect system capabilities
-        let cpu_count = num_cpus::get);
+        let cpu_count = num_cpus::get();
         let available_memory = self.get_available_memory_mb()?;
 
         // Adjust parallel jobs
@@ -219,7 +219,7 @@ impl PerformanceOptimizer {
 
         // Adjust memory settings
         if self.config.memory_limit_mb.is_none() && available_memory > 1024 {
-            self.config.memory_limit_mb = Some(available_memory / 2;
+            self.config.memory_limit_mb = Some(available_memory / 2);
         }
 
         // Enable compiler cache if available
@@ -299,7 +299,7 @@ impl PerformanceReport {
     pub fn format_human(&self, use_colors: bool) -> String {
         use colored::Colorize;
 
-        let mut output = String::new);
+        let mut output = String::new();
 
         // Header
         if use_colors {
@@ -307,26 +307,26 @@ impl PerformanceReport {
                 "{} {}\n\n",
                 "📊".bright_blue(),
                 "Performance Report".bright_blue().bold()
-            ;
+            ));
         } else {
-            output.push_str("📊 Performance Report\n\n";
+            output.push_str("📊 Performance Report\n\n");
         }
 
         // Metrics summary
         if use_colors {
-            output.push_str(&format!("{}\n", "Metrics:".bright_yellow().bold();
+            output.push_str(&format!("{}\n", "Metrics:".bright_yellow().bold()));
         } else {
-            output.push_str("Metrics:\n";
+            output.push_str("Metrics:\n");
         }
 
         if !self.metrics.command_times.is_empty() {
-            output.push_str("  Command Times:\n";
+            output.push_str("  Command Times:\n");
             for (command, duration) in &self.metrics.command_times {
                 output.push_str(&format!(
                     "    {}: {:.2}s\n",
                     command,
                     duration.as_secs_f64()
-                ;
+                ));
             }
         }
 
@@ -336,20 +336,20 @@ impl PerformanceReport {
             output.push_str(&format!(
                 "  Cache Hit Ratio: {:.1}% ({}/{} hits)\n",
                 cache_ratio, self.metrics.cache_hits, cache_total
-            ;
+            ));
         }
 
         if self.metrics.memory_peak > 0 {
-            output.push_str(&format!("  Peak Memory: {} MB\n", self.metrics.memory_peak;
+            output.push_str(&format!("  Peak Memory: {} MB\n", self.metrics.memory_peak));
         }
 
         // Recommendations
         if !self.recommendations.is_empty() {
             output.push('\n');
             if use_colors {
-                output.push_str(&format!("{}\n", "Recommendations:".bright_yellow().bold();
+                output.push_str(&format!("{}\n", "Recommendations:".bright_yellow().bold()));
             } else {
-                output.push_str("Recommendations:\n";
+                output.push_str("Recommendations:\n");
             }
 
             for rec in &self.recommendations {
@@ -359,13 +359,13 @@ impl PerformanceReport {
                         rec.impact.emoji(),
                         rec.title.bright_white().bold(),
                         format!("({})", rec.impact.emoji()).bright_black()
-                    ;
-                    output.push_str(&format!("    {}\n", rec.description.bright_white();
-                    output.push_str(&format!("    Action: {}\n\n", rec.action.bright_cyan();
+                    ));
+                    output.push_str(&format!("    {}\n", rec.description.bright_white()));
+                    output.push_str(&format!("    Action: {}\n\n", rec.action.bright_cyan()));
                 } else {
-                    output.push_str(&format!("  {} {}\n", rec.impact.emoji(), rec.title;
-                    output.push_str(&format!("    {}\n", rec.description;
-                    output.push_str(&format!("    Action: {}\n\n", rec.action;
+                    output.push_str(&format!("  {} {}\n", rec.impact.emoji(), rec.title));
+                    output.push_str(&format!("    {}\n", rec.description));
+                    output.push_str(&format!("    Action: {}\n\n", rec.action));
                 }
             }
         }

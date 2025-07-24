@@ -402,10 +402,10 @@ mod tests {
             "Test error context",
             100,
         ;
-        assert!(context.is_ok();
+        assert!(context.is_ok());
         
-        let context = context.unwrap();
-        assert_eq!(context.component_id, 1;
+        let context = context.unwrap());
+        assert_eq!(context.component_id, 1);
         assert_eq!(context.task_id, Some(42;
         assert_eq!(context.fuel_consumed, 100;
     }
@@ -414,9 +414,9 @@ mod tests {
     fn test_contextual_error() {
         let error = Error::async_async_error("Test error");        
         let contextual = ContextualError::new(error, VerificationLevel::Basic;
-        assert!(contextual.is_ok();
+        assert!(contextual.is_ok());
         
-        let mut contextual = contextual.unwrap();
+        let mut contextual = contextual.unwrap());
         assert_eq!(contextual.total_fuel_consumed, ERROR_CREATE_FUEL;
         
         // Add context
@@ -426,10 +426,10 @@ mod tests {
             "test.rs:20",
             "Additional context",
             50,
-        ).unwrap();
+        ).unwrap());
         
-        contextual = contextual.with_context(context).unwrap();
-        assert_eq!(contextual.context_chain.len(), 1;
+        contextual = contextual.with_context(context).unwrap());
+        assert_eq!(contextual.context_chain.len(), 1);
     }
     
     #[test]
@@ -444,9 +444,9 @@ mod tests {
             75,
         ;
         
-        assert!(wrapped.is_ok();
-        let wrapped = wrapped.unwrap();
-        assert_eq!(wrapped.context_chain.len(), 1;
+        assert!(wrapped.is_ok());
+        let wrapped = wrapped.unwrap());
+        assert_eq!(wrapped.context_chain.len(), 1);
     }
     
     #[test]

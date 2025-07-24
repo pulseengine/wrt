@@ -941,8 +941,8 @@ mod tests {
     #[test]
     fn test_async_execution_engine_creation() -> Result<()> {
         let engine = AsyncExecutionEngine::new()?;
-        assert_eq!(engine.executions.len(), 0;
-        assert_eq!(engine.next_execution_id, 1;
+        assert_eq!(engine.executions.len(), 0);
+        assert_eq!(engine.next_execution_id, 1);
         Ok(())
     }
     
@@ -968,9 +968,9 @@ mod tests {
         };
         
         let execution_id = engine.start_execution(task_id, operation, None)?;
-        assert_eq!(execution_id.0, 1;
-        assert_eq!(engine.executions.len(), 1;
-        assert_eq!(engine.stats.executions_started, 1;
+        assert_eq!(execution_id.0, 1);
+        assert_eq!(engine.executions.len(), 1);
+        assert_eq!(engine.stats.executions_started, 1);
         Ok(())
     }
     
@@ -999,8 +999,8 @@ mod tests {
         let result = engine.step_execution(execution_id)?;
         
         assert_eq!(result, StepResult::Completed;
-        assert_eq!(engine.stats.executions_completed, 1;
-        assert_eq!(engine.stats.async_operations, 1;
+        assert_eq!(engine.stats.executions_completed, 1);
+        assert_eq!(engine.stats.async_operations, 1);
         Ok(())
     }
     
@@ -1018,7 +1018,7 @@ mod tests {
         
         let execution = engine.find_execution(execution_id)?;
         assert_eq!(execution.state, AsyncExecutionState::Cancelled;
-        assert_eq!(engine.stats.executions_cancelled, 1;
+        assert_eq!(engine.stats.executions_cancelled, 1);
         Ok(())
     }
     
@@ -1047,7 +1047,7 @@ mod tests {
         let result = engine.step_execution(parent_id)?;
         
         assert_eq!(result, StepResult::Completed;
-        assert_eq!(engine.stats.subtasks_spawned, 1;
+        assert_eq!(engine.stats.subtasks_spawned, 1);
         assert_eq!(engine.executions.len(), 2); // Parent and child
         Ok(())
     }
@@ -1064,10 +1064,10 @@ mod tests {
         };
         
         context.call_stack.push(frame).map_err(|_| Error::runtime_execution_error("Context access failed"))?;
-        assert_eq!(context.call_stack.len(), 1;
+        assert_eq!(context.call_stack.len(), 1);
         
         context.reset);
-        assert_eq!(context.call_stack.len(), 0;
+        assert_eq!(context.call_stack.len(), 0);
         Ok(())
     }
     
@@ -1096,7 +1096,7 @@ mod tests {
         };
         
         assert_eq!(wait_set.futures.len(), 2;
-        assert_eq!(wait_set.streams.len(), 1;
+        assert_eq!(wait_set.streams.len(), 1);
         
         Ok(())
     }

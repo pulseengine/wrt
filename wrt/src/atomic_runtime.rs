@@ -106,13 +106,13 @@ pub fn execute_atomic_operation(
 /// Validate input count for atomic operation
 #[inline]
 fn validate_input_count(op: &AtomicOp, inputs: &[Value]) -> Result<()> {
-    let expected = op.input_count);
-    let actual = inputs.len);
+    let expected = op.input_count();
+    let actual = inputs.len();
 
     if actual != expected {
         return Err(Error::runtime_execution_error(
             "Atomic operation {:?} expects {} inputs, got {}",
-        ;
+        ));
     }
 
     Ok(())
@@ -121,19 +121,19 @@ fn validate_input_count(op: &AtomicOp, inputs: &[Value]) -> Result<()> {
 /// Validate atomic operation result
 #[inline]
 fn validate_atomic_result(op: &AtomicOp, result: &Option<Value>) -> Result<()> {
-    let expects_result = op.produces_result);
-    let has_result = result.is_some);
+    let expects_result = op.produces_result();
+    let has_result = result.is_some();
 
     if expects_result && !has_result {
         return Err(Error::runtime_execution_error(
             "Atomic operation {:?} should produce a result but didn't",
-        ;
+        ));
     }
 
     if !expects_result && has_result {
         return Err(Error::runtime_execution_error(
             "Atomic operation {:?} should not produce a result but did",
-        ;
+        ));
     }
 
     Ok(())
@@ -205,7 +205,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                 | AtomicLoadOp::I64AtomicLoad16U { .. }
                 | AtomicLoadOp::I64AtomicLoad32U { .. } => {
                     if result.len() == 2 {
-                        let value = (result[0] as u64) | ((result[1] as u64) << 32;
+                        let value = (result[0] as u64) | ((result[1] as u64) << 32);
                         Ok(Some(Value::I64(value as i64)))
                     } else {
                         Err(Error::runtime_execution_error(
@@ -246,7 +246,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                     _ => {
                         // i64 RMW operations
                         if result.len() == 2 {
-                            let value = (result[0] as u64) | ((result[1] as u64) << 32;
+                            let value = (result[0] as u64) | ((result[1] as u64) << 32);
                             Ok(Some(Value::I64(value as i64)))
                         } else {
                             Err(Error::runtime_execution_error(
@@ -272,7 +272,7 @@ impl AtomicProvider for ASILCompliantAtomicProvider {
                     _ => {
                         // i64 cmpxchg operations
                         if result.len() == 2 {
-                            let value = (result[0] as u64) | ((result[1] as u64) << 32;
+                            let value = (result[0] as u64) | ((result[1] as u64) << 32);
                             Ok(Some(Value::I64(value as i64)))
                         } else {
                             Err(Error::runtime_execution_error(
@@ -311,7 +311,7 @@ pub fn atomic_i32_load(
         align:  2,
     }; // 2^2 = 4-byte alignment
     let load_op = AtomicLoadOp::I32AtomicLoad { memarg };
-    let op = AtomicOp::Load(load_op;
+    let op = AtomicOp::Load(load_op);
 
     let provider = ASILCompliantAtomicProvider;
     let result = execute_atomic_operation(op, &[], context, thread_id, &provider)?;
@@ -334,7 +334,7 @@ pub fn atomic_i32_store(
         align:  2,
     }; // 2^2 = 4-byte alignment
     let store_op = AtomicStoreOp::I32AtomicStore { memarg };
-    let op = AtomicOp::Store(store_op;
+    let op = AtomicOp::Store(store_op);
 
     let provider = ASILCompliantAtomicProvider;
     execute_atomic_operation(op, &[Value::I32(value)], context, thread_id, &provider)?;
@@ -355,7 +355,7 @@ pub fn atomic_i32_compare_and_swap(
         align:  2,
     }; // 2^2 = 4-byte alignment
     let cmpxchg_op = AtomicCmpxchgInstr::I32AtomicRmwCmpxchg { memarg };
-    let op = AtomicOp::Cmpxchg(cmpxchg_op;
+    let op = AtomicOp::Cmpxchg(cmpxchg_op);
 
     let provider = ASILCompliantAtomicProvider;
     let result = execute_atomic_operation(
@@ -386,7 +386,7 @@ pub fn atomic_i32_fetch_add(
         align:  2,
     }; // 2^2 = 4-byte alignment
     let rmw_op = AtomicRMWInstr::I32AtomicRmwAdd { memarg };
-    let op = AtomicOp::RMW(rmw_op;
+    let op = AtomicOp::RMW(rmw_op);
 
     let provider = ASILCompliantAtomicProvider;
     let result = execute_atomic_operation(op, &[Value::I32(value)], context, thread_id, &provider)?;

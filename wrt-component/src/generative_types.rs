@@ -275,12 +275,12 @@ mod tests {
         let instance_id = ComponentInstanceId(1;
 
         let result = registry.create_generative_type(base_type.clone(), instance_id;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
-        let gen_type = result.unwrap();
+        let gen_type = result.unwrap());
         assert_eq!(gen_type.base_type, base_type;
         assert_eq!(gen_type.instance_id, instance_id;
-        assert_eq!(gen_type.generation, 0;
+        assert_eq!(gen_type.generation, 0);
         assert_eq!(gen_type.unique_type_id, TypeId(1;
     }
 
@@ -291,8 +291,8 @@ mod tests {
         let instance1 = ComponentInstanceId(1;
         let instance2 = ComponentInstanceId(2;
 
-        let type1 = registry.create_generative_type(base_type.clone(), instance1).unwrap();
-        let type2 = registry.create_generative_type(base_type, instance2).unwrap();
+        let type1 = registry.create_generative_type(base_type.clone(), instance1).unwrap());
+        let type2 = registry.create_generative_type(base_type, instance2).unwrap());
 
         assert_ne!(type1.unique_type_id, type2.unique_type_id;
     }
@@ -305,7 +305,7 @@ mod tests {
 
         let bound = TypeBound { type_id, bound_kind: BoundKind::Eq, target_type };
 
-        assert!(registry.add_type_bound(type_id, bound).is_ok();
+        assert!(registry.add_type_bound(type_id, bound).is_ok());
         assert!(registry.check_type_bound_simple(type_id, target_type, BoundKind::Eq);
         assert!(!registry.check_type_bound_simple(type_id, target_type, BoundKind::Sub);
 
@@ -320,9 +320,9 @@ mod tests {
         let instance_id = ComponentInstanceId(1;
         let handle = ResourceHandle::new(100;
 
-        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();
+        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap());
 
-        assert!(registry.register_resource_handle(handle, gen_type.clone()).is_ok();
+        assert!(registry.register_resource_handle(handle, gen_type.clone()).is_ok());
         assert_eq!(registry.get_resource_type(handle), Some(&gen_type;
     }
 
@@ -332,7 +332,7 @@ mod tests {
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance_id = ComponentInstanceId(1;
 
-        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();
+        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap());
         assert!(registry.get_generative_type(gen_type.unique_type_id, instance_id).is_some();
 
         registry.cleanup_instance(instance_id;
@@ -349,10 +349,10 @@ mod tests {
         let bound1 = TypeBound { type_id: type_a, bound_kind: BoundKind::Sub, target_type: type_b };
         let bound2 = TypeBound { type_id: type_b, bound_kind: BoundKind::Sub, target_type: type_c };
 
-        assert!(registry.add_type_bound(type_a, bound1).is_ok();
-        assert!(registry.add_type_bound(type_b, bound2).is_ok();
+        assert!(registry.add_type_bound(type_a, bound1).is_ok());
+        assert!(registry.add_type_bound(type_b, bound2).is_ok());
 
-        assert!(registry.infer_type_relations().is_ok();
+        assert!(registry.infer_type_relations().is_ok());
 
         let result = registry.check_type_bound(type_a, type_c, BoundKind::Sub;
         assert_eq!(result, RelationResult::Satisfied;
@@ -365,12 +365,12 @@ mod tests {
     #[test]
     fn test_type_consistency_validation() {
         let mut registry = GenerativeTypeRegistry::new);
-        assert!(registry.validate_type_consistency().is_ok();
+        assert!(registry.validate_type_consistency().is_ok());
 
         let type_a = TypeId(1;
         let bound = TypeBound { type_id: type_a, bound_kind: BoundKind::Sub, target_type: type_a };
 
-        assert!(registry.add_type_bound(type_a, bound).is_ok();
+        assert!(registry.add_type_bound(type_a, bound).is_ok());
         assert!(registry.validate_type_consistency().is_err();
     }
 }

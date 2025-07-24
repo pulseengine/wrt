@@ -7,7 +7,7 @@ use wrt_foundation::budget_aware_provider::CrateId;
 #[cfg(feature = "std")]
 #[test]
 fn test_source_span() {
-    let span = SourceSpan::new(10, 20, 1;
+    let span = SourceSpan::new(10, 20, 1);
     assert_eq!(span.start, 10;
     assert_eq!(span.end, 20;
     assert_eq!(span.len(), 10;
@@ -23,9 +23,9 @@ fn test_identifier() {
     use wrt_format::wit_parser::WitBoundedString;
     use wrt_foundation::{NoStdProvider, safe_managed_alloc};
     
-    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
-    let name = WitBoundedString::from_str("test", provider).unwrap();
-    let span = SourceSpan::new(0, 4, 0;
+    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+    let name = WitBoundedString::from_str("test", provider).unwrap());
+    let span = SourceSpan::new(0, 4, 0);
     
     let ident = Identifier::new(name, span;
     assert_eq!(ident.span, span;
@@ -35,7 +35,7 @@ fn test_identifier() {
 #[cfg(feature = "std")]
 #[test]
 fn test_wit_document() {
-    let doc = WitDocument::default);
+    let doc = WitDocument::default());
     assert!(doc.package.is_none();
     assert!(doc.use_items.is_empty();
     assert!(doc.items.is_empty();
@@ -74,9 +74,9 @@ fn test_type_expr() {
     use wrt_format::wit_parser::WitBoundedString;
     use wrt_foundation::{NoStdProvider, safe_managed_alloc};
     
-    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
-    let name = WitBoundedString::from_str("MyType", provider).unwrap();
-    let ident = Identifier::new(name, SourceSpan::new(0, 6, 0;
+    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+    let name = WitBoundedString::from_str("MyType", provider).unwrap());
+    let ident = Identifier::new(name, SourceSpan::new(0, 6, 0);
     
     let named = TypeExpr::Named(NamedType {
         package: None,
@@ -84,5 +84,5 @@ fn test_type_expr() {
         span: ident.span,
     };
     
-    assert_eq!(named.span(), SourceSpan::new(0, 6, 0;
+    assert_eq!(named.span(), SourceSpan::new(0, 6, 0);
 }

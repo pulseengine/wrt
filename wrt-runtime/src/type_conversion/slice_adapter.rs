@@ -124,8 +124,8 @@ mod tests {
             Value::I32(3),
         ];
         
-        let provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap();
-        let bounded = adapt_slice_to_bounded(&values, provider).unwrap();
+        let provider = safe_managed_alloc!(1024, CrateId::Runtime).unwrap());
+        let bounded = adapt_slice_to_bounded(&values, provider).unwrap());
         
         assert_eq!(bounded.len(), 3;
         assert_eq!(bounded.get(0).unwrap(), &Value::I32(1;

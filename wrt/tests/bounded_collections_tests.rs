@@ -36,13 +36,13 @@ fn test_stackless_engine_with_verification_levels() -> Result<()> {
     ];
 
     for level in verification_levels.iter() {
-        println!("Testing with verification level: {:?}", level;
+        println!("Testing with verification level: {:?}", level);
 
         // Create a new module
         let module = Module::new()?.load_from_binary(&wasm)?;
 
         // Create an engine with the current verification level
-        let mut engine = StacklessEngine::with_verification_level(*level;
+        let mut engine = StacklessEngine::with_verification_level(*level);
 
         // Instantiate the module
         let instance_idx = engine.instantiate(module)?;
@@ -52,8 +52,8 @@ fn test_stackless_engine_with_verification_levels() -> Result<()> {
         let result = engine.call_function(instance_idx as u32, 0, &args)?;
 
         // Verify the result
-        assert_eq!(result.len(), 1;
-        assert_eq!(result[0], wrt::values::Value::I32(42;
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], wrt::values::Value::I32(42));
 
         // Validate the engine state
         engine.validate()?;
@@ -89,7 +89,7 @@ fn test_large_local_count() -> Result<()> {
     let module = Module::new()?.load_from_binary(&wasm)?;
 
     // Create an engine with standard verification
-    let mut engine = StacklessEngine::with_verification_level(VerificationLevel::Standard;
+    let mut engine = StacklessEngine::with_verification_level(VerificationLevel::Standard)?;
 
     // Instantiate the module
     let instance_idx = engine.instantiate(module)?;
@@ -98,8 +98,8 @@ fn test_large_local_count() -> Result<()> {
     let result = engine.call_function(instance_idx as u32, 0, &[])?;
 
     // Verify the result
-    assert_eq!(result.len(), 1;
-    assert_eq!(result[0], wrt::values::Value::I32(42;
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0], wrt::values::Value::I32(42));
 
     // Validate the engine state after execution
     engine.validate()?;
@@ -139,7 +139,7 @@ fn test_deep_call_stack() -> Result<()> {
     let module = Module::new()?.load_from_binary(&wasm)?;
 
     // Create an engine with standard verification
-    let mut engine = StacklessEngine::with_verification_level(VerificationLevel::Standard;
+    let mut engine = StacklessEngine::with_verification_level(VerificationLevel::Standard)?;
 
     // Instantiate the module
     let instance_idx = engine.instantiate(module)?;
@@ -149,8 +149,8 @@ fn test_deep_call_stack() -> Result<()> {
     let result = engine.call_function(instance_idx as u32, 0, &args)?;
 
     // Verify the result
-    assert_eq!(result.len(), 1;
-    assert_eq!(result[0], wrt::values::Value::I32(120;
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0], wrt::values::Value::I32(120));
 
     // Validate the engine state after execution
     engine.validate()?;

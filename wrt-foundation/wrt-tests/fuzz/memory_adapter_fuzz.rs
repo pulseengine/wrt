@@ -110,11 +110,11 @@ fn test_memory_adapter_edge_cases() {
     assert!(beyond_memory_result.is_err(), "Store beyond memory should fail");
     
     // Load the last byte
-    let load_result = adapter.load(size - 1, 1;
+    let load_result = adapter.load(size - 1, 1);
     assert!(load_result.is_ok(), "Load last byte should succeed");
     
     // Try to load beyond memory (should fail gracefully)
-    let beyond_load_result = adapter.load(size, 1;
+    let beyond_load_result = adapter.load(size, 1);
     assert!(beyond_load_result.is_err(), "Load beyond memory should fail");
 }
 

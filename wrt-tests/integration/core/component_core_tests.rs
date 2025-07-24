@@ -48,12 +48,12 @@ fn test_core_instance_with_multiple_arguments() -> Result<()> {
     
     // Verify section was parsed correctly
     assert_eq!(bytes_read, bytes.len);
-    assert_eq!(instances.len(), 1;
+    assert_eq!(instances.len(), 1);
     
     // Check the argument parsing
     use wrt_format::component::CoreInstanceExpr;
     if let CoreInstanceExpr::Instantiate { module_idx, args } = &instances[0].instance_expr {
-        assert_eq!(*module_idx, 0;
+        assert_eq!(*module_idx, 0);
         assert_eq!(args.len(), 3;
         
         // Check first argument

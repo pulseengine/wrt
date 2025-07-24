@@ -41,7 +41,7 @@ fn bench_zero_cost_push(c: &mut Criterion) {
     group.bench_function("wrt_single_push", |b| {
         b.iter(|| {
             let mut vec: WrtVec<i32, { CrateId::Component as u8 }, 1> =
-                WrtVec::with_capacity(1).unwrap();
+                WrtVec::with_capacity(1).unwrap());
             let _ = vec.push(black_box(42);
             black_box(vec)
         };
@@ -59,7 +59,7 @@ fn bench_zero_cost_access(c: &mut Criterion) {
     let mut std_vec = StdVec::with_capacity(100;
     #[cfg(feature = "safety-critical")]
     let mut wrt_vec: WrtVec<i32, { CrateId::Component as u8 }, 100> =
-        WrtVec::with_capacity(100).unwrap();
+        WrtVec::with_capacity(100).unwrap());
 
     for i in 0..100 {
         std_vec.push(i);

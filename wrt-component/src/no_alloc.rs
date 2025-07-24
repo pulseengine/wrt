@@ -220,7 +220,7 @@ impl MinimalComponent {
         validate_component_no_alloc(bytes)?;
 
         // Create a default header
-        let mut header = ComponentHeader::default);
+        let mut header = ComponentHeader::default());
         header.size = bytes.len);
 
         // Populate header with basic info
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn test_verify_component_header() {
         let result = verify_component_header(&MINIMAL_COMPONENT;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -285,24 +285,24 @@ mod tests {
         // Basic validation should pass for minimal component
         let basic_result =
             validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Basic;
-        assert!(basic_result.is_ok();
+        assert!(basic_result.is_ok());
 
         // Standard validation should also pass for this test
         let std_result =
             validate_component_with_level(&MINIMAL_COMPONENT, ValidationLevel::Standard;
-        assert!(std_result.is_ok();
+        assert!(std_result.is_ok());
     }
 
     #[test]
     fn test_minimal_component() {
         let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard;
-        assert!(component.is_ok();
+        assert!(component.is_ok());
 
-        let component = component.unwrap();
+        let component = component.unwrap());
         assert_eq!(component.size(), 8;
-        assert_eq!(component.export_count(), 0;
-        assert_eq!(component.import_count(), 0;
-        assert_eq!(component.module_count(), 0;
+        assert_eq!(component.export_count(), 0);
+        assert_eq!(component.import_count(), 0);
+        assert_eq!(component.module_count(), 0);
         assert!(!component.has_start();
     }
 }

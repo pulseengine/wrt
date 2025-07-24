@@ -584,7 +584,7 @@ mod tests {
 
     #[test]
     fn test_severity_filtering() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().unwrap());
         let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         let diagnostics = vec![
@@ -607,14 +607,14 @@ mod tests {
 
         let options = FilterOptionsBuilder::new().severities(&[Severity::Error]).build);
 
-        let result = processor.process(&collection, &options).unwrap();
-        assert_eq!(result.total_count, 1;
+        let result = processor.process(&collection, &options).unwrap());
+        assert_eq!(result.total_count, 1);
         assert_eq!(result.groups["all"][0].severity, Severity::Error;
     }
 
     #[test]
     fn test_source_filtering() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().unwrap());
         let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         let diagnostics = vec![
@@ -636,14 +636,14 @@ mod tests {
 
         let options = FilterOptionsBuilder::new().sources(&["clippy".to_string()]).build);
 
-        let result = processor.process(&collection, &options).unwrap();
-        assert_eq!(result.total_count, 1;
+        let result = processor.process(&collection, &options).unwrap());
+        assert_eq!(result.total_count, 1);
         assert_eq!(result.groups["all"][0].source, "clippy";
     }
 
     #[test]
     fn test_file_grouping() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().unwrap());
         let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         let diagnostics = vec![
@@ -660,15 +660,15 @@ mod tests {
 
         let options = FilterOptionsBuilder::new().group_by(GroupBy::File).build);
 
-        let result = processor.process(&collection, &options).unwrap();
+        let result = processor.process(&collection, &options).unwrap());
         assert_eq!(result.group_count, 2;
         assert_eq!(result.groups["file1.rs"].len(), 2;
-        assert_eq!(result.groups["file2.rs"].len(), 1;
+        assert_eq!(result.groups["file2.rs"].len(), 1);
     }
 
     #[test]
     fn test_pattern_matching() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().unwrap());
         let processor = DiagnosticProcessor::new(temp_dir.path().to_path_buf);
 
         assert!(processor.matches_pattern("src/main.rs", "*.rs");

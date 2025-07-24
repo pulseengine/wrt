@@ -120,7 +120,7 @@ pub mod std_runtime {
             
             // Cache the module
             {
-                let mut cache = self.module_cache.lock().unwrap();
+                let mut cache = self.module_cache.lock().unwrap());
                 cache.insert(module_path.to_string(), module_bytes.clone();
             }
             
@@ -138,7 +138,7 @@ pub mod std_runtime {
             
             // Update stats
             {
-                let mut stats = self.stats.lock().unwrap();
+                let mut stats = self.stats.lock().unwrap());
                 stats.modules_executed += 1;
                 stats.fuel_consumed += fuel_used;
                 stats.peak_memory = stats.peak_memory.max(memory_used;

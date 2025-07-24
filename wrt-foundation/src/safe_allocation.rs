@@ -82,7 +82,7 @@ pub mod capability_factories {
         let capability = CapabilityProviderFactory::create_static_provider::<PROVIDER_SIZE>(crate_id, verification_level)?;
         
         // Create provider using safe default construction
-        let provider = NoStdProvider::<PROVIDER_SIZE>::default);
+        let provider = NoStdProvider::<PROVIDER_SIZE>::default());
         
         let vec = BoundedVec::new(provider).map_err(|_| {
             Error::memory_error("Failed to create capability-managed bounded vector")

@@ -56,47 +56,47 @@ mod statistics_tests {
         }
 
         fn print_detailed_report(&self) {
-            let real_exec_total = self.real_execution_attempted.load(Ordering::Relaxed;
-            let real_exec_passed = self.real_execution_passed.load(Ordering::Relaxed;
-            let real_exec_failed = self.real_execution_failed.load(Ordering::Relaxed;
+            let real_exec_total = self.real_execution_attempted.load(Ordering::Relaxed);
+            let real_exec_passed = self.real_execution_passed.load(Ordering::Relaxed);
+            let real_exec_failed = self.real_execution_failed.load(Ordering::Relaxed);
 
-            let validation_total = self.validation_attempted.load(Ordering::Relaxed;
-            let validation_passed = self.validation_passed.load(Ordering::Relaxed;
-            let validation_failed = self.validation_failed.load(Ordering::Relaxed;
+            let validation_total = self.validation_attempted.load(Ordering::Relaxed);
+            let validation_passed = self.validation_passed.load(Ordering::Relaxed);
+            let validation_failed = self.validation_failed.load(Ordering::Relaxed);
 
-            let auto_passed = self.auto_passed.load(Ordering::Relaxed;
-            let expected_failures = self.expected_failures.load(Ordering::Relaxed;
-            let skipped = self.skipped.load(Ordering::Relaxed;
+            let auto_passed = self.auto_passed.load(Ordering::Relaxed);
+            let expected_failures = self.expected_failures.load(Ordering::Relaxed);
+            let skipped = self.skipped.load(Ordering::Relaxed);
 
-            println!("\n╔══════════════════════════════════════════════════════╗";
-            println!("║          Enhanced Test Statistics Report              ║";
-            println!("╠══════════════════════════════════════════════════════╣";
+            println!("\n╔══════════════════════════════════════════════════════╗");
+            println!("║          Enhanced Test Statistics Report              ║");
+            println!("╠══════════════════════════════════════════════════════╣");
 
-            println!("║ Real Execution Tests:                                ║";
+            println!("║ Real Execution Tests:                                ║");
             println!(
                 "║   Attempted: {:6} | Passed: {:6} | Failed: {:6} ║",
                 real_exec_total, real_exec_passed, real_exec_failed
-            ;
+            );
 
-            println!("║ Validation Tests:                                    ║";
+            println!("║ Validation Tests:                                    ║");
             println!(
                 "║   Attempted: {:6} | Passed: {:6} | Failed: {:6} ║",
                 validation_total, validation_passed, validation_failed
-            ;
+            );
 
-            println!("║ Other Categories:                                    ║";
+            println!("║ Other Categories:                                    ║");
             println!(
                 "║   Auto-passed: {:6}                                ║",
                 auto_passed
-            ;
+            );
             println!(
                 "║   Expected failures: {:6}                         ║",
                 expected_failures
-            ;
+            );
             println!(
                 "║   Skipped: {:6}                                    ║",
                 skipped
-            ;
+            );
 
             let total_real_tests = real_exec_total + validation_total;
             let total_all = total_real_tests + auto_passed + skipped;
@@ -106,40 +106,40 @@ mod statistics_tests {
                 0.0
             };
 
-            println!("╠══════════════════════════════════════════════════════╣";
-            println!("║ Summary:                                             ║";
+            println!("╠══════════════════════════════════════════════════════╣");
+            println!("║ Summary:                                             ║");
             println!(
                 "║   Total tests: {:6}                                ║",
                 total_all
-            ;
+            );
             println!(
                 "║   Real tests executed: {:6} ({:.1}%)               ║",
                 total_real_tests,
                 (total_real_tests as f64 / total_all as f64 * 100.0)
-            ;
+            );
             println!(
                 "║   Real pass rate: {:.1}%                             ║",
                 real_pass_rate
-            ;
-            println!("╚══════════════════════════════════════════════════════╝";
+            );
+            println!("╚══════════════════════════════════════════════════════╝");
 
             // Validation checks
             if auto_passed > 0 {
                 println!(
                     "\n⚠️  Warning: {} tests were auto-passed without real execution",
                     auto_passed
-                ;
+                );
             }
 
             if expected_failures == 0 {
                 println!(
                     "\n⚠️  Warning: No expected failures detected - test framework may not be \
                      catching errors properly"
-                ;
+                );
             }
 
             if total_real_tests == 0 {
-                println!("\n❌ Error: No real tests were executed!";
+                println!("\n❌ Error: No real tests were executed!");
             }
         }
     }
@@ -147,12 +147,12 @@ mod statistics_tests {
     /// Test that validates auto-pass detection
     #[test]
     fn test_auto_pass_detection() {
-        let stats = EnhancedTestStats::new);
+        let stats = EnhancedTestStats::new();
 
         // Simulate running tests with our enhanced statistics
 
         // Real execution test
-        stats.real_execution_attempted.fetch_add(1, Ordering::Relaxed;
+        stats.real_execution_attempted.fetch_add(1, Ordering::Relaxed);
         let real_test_wasm = wat::parse_str(
             r#"
             (module
@@ -167,70 +167,70 @@ mod statistics_tests {
         )
         .unwrap();
 
-        let engine = wrt::StacklessEngine::new);
+        let engine = wrt::StacklessEngine::new();
         match engine.load_module(Some("add_test"), &real_test_wasm) {
             Ok(_) => {
-                stats.real_execution_passed.fetch_add(1, Ordering::Relaxed;
-                println!("✓ Real execution: add function loaded successfully";
+                stats.real_execution_passed.fetch_add(1, Ordering::Relaxed);
+                println!("✓ Real execution: add function loaded successfully");
             },
             Err(_) => {
-                stats.real_execution_failed.fetch_add(1, Ordering::Relaxed;
+                stats.real_execution_failed.fetch_add(1, Ordering::Relaxed);
             },
         }
 
         // Validation test (should fail)
-        stats.validation_attempted.fetch_add(1, Ordering::Relaxed;
+        stats.validation_attempted.fetch_add(1, Ordering::Relaxed);
         let invalid_wasm = wat::parse_str(
             r#"
             (module
                 (func $invalid (result i32)
-                    ;; No return value
+                    );; No return value
                 )
             )
         "#,
-        ;
+        );
 
         match invalid_wasm {
             Ok(bytes) => match engine.load_module(Some("invalid"), &bytes) {
                 Ok(_) => stats.validation_passed.fetch_add(1, Ordering::Relaxed),
                 Err(_) => {
-                    stats.validation_failed.fetch_add(1, Ordering::Relaxed;
-                    stats.expected_failures.fetch_add(1, Ordering::Relaxed;
-                    println!("✓ Validation test: Invalid module correctly rejected";
+                    stats.validation_failed.fetch_add(1, Ordering::Relaxed);
+                    stats.expected_failures.fetch_add(1, Ordering::Relaxed);
+                    println!("✓ Validation test: Invalid module correctly rejected");
                 },
             },
             Err(_) => {
-                stats.validation_failed.fetch_add(1, Ordering::Relaxed;
-                stats.expected_failures.fetch_add(1, Ordering::Relaxed;
+                stats.validation_failed.fetch_add(1, Ordering::Relaxed);
+                stats.expected_failures.fetch_add(1, Ordering::Relaxed);
             },
         }
 
         // Simulate auto-passes (tests that report success without real execution)
-        stats.auto_passed.fetch_add(10, Ordering::Relaxed;
-        println!("⚠️  Simulated 10 auto-passed tests";
+        stats.auto_passed.fetch_add(10, Ordering::Relaxed);
+        println!("⚠️  Simulated 10 auto-passed tests");
 
         // Simulate skipped tests
-        stats.skipped.fetch_add(5, Ordering::Relaxed;
-        println!("⚠️  Simulated 5 skipped tests";
+        stats.skipped.fetch_add(5, Ordering::Relaxed);
+        println!("⚠️  Simulated 5 skipped tests");
 
         // Print the detailed report
-        stats.print_detailed_report);
+        stats.print_detailed_report();
 
         // Validate statistics
         assert!(
             stats.real_execution_attempted.load(Ordering::Relaxed) > 0,
             "Should have attempted real execution tests"
-        ;
+        );
         assert!(
             stats.expected_failures.load(Ordering::Relaxed) > 0,
             "Should have some expected failures"
-        ;
+        );
     }
 
     /// Test that measures actual vs reported statistics
     #[test]
     fn test_statistics_accuracy() {
-        println!("\n=== Testing Statistics Accuracy ===";
+        println!("\n=== Testing Statistics Accuracy ===\n");
 
         let mut actual_tests_run = 0;
         let mut actual_passes = 0;
@@ -253,7 +253,7 @@ mod statistics_tests {
             ),
         ];
 
-        let engine = wrt::StacklessEngine::new);
+        let engine = wrt::StacklessEngine::new();
 
         for (name, wat_code, should_pass) in test_cases {
             actual_tests_run += 1;
@@ -263,47 +263,47 @@ mod statistics_tests {
                     Ok(_) => {
                         actual_passes += 1;
                         if !should_pass {
-                            println!("❌ {} passed but should have failed", name;
+                            println!("❌ {} passed but should have failed", name);
                         } else {
-                            println!("✓ {} passed as expected", name;
+                            println!("✓ {} passed as expected", name);
                         }
                     },
                     Err(e) => {
                         actual_failures += 1;
                         if should_pass {
-                            println!("❌ {} failed but should have passed: {}", name, e;
+                            println!("❌ {} failed but should have passed: {}", name, e);
                         } else {
-                            println!("✓ {} failed as expected: {}", name, e;
+                            println!("✓ {} failed as expected: {}", name, e);
                         }
                     },
                 },
                 Err(e) => {
                     actual_failures += 1;
-                    println!("⚠️  {} failed to parse: {}", name, e;
+                    println!("⚠️  {} failed to parse: {}", name, e);
                 },
             }
         }
 
-        println!("\nActual Statistics:";
-        println!("  Tests run: {}", actual_tests_run;
-        println!("  Passes: {}", actual_passes;
-        println!("  Failures: {}", actual_failures;
+        println!("\nActual Statistics:");
+        println!("  Tests run: {}", actual_tests_run);
+        println!("  Passes: {}", actual_passes);
+        println!("  Failures: {}", actual_failures);
         println!(
             "  Success rate: {:.1}%",
             (actual_passes as f64 / actual_tests_run as f64) * 100.0
-        ;
+        );
 
         // Ensure we have some failures to validate failure detection
         assert!(
             actual_failures > 0,
             "Should have some test failures to validate failure detection"
-        ;
+        );
     }
 
     /// Test coverage analysis
     #[test]
     fn test_coverage_analysis() {
-        println!("\n=== Test Coverage Analysis ===";
+        println!("\n=== Test Coverage Analysis ===");
 
         // Categories of WASM features to test
         let feature_categories = vec![
@@ -340,7 +340,7 @@ mod statistics_tests {
         let mut auto_passed_features = 0;
 
         for (category, features) in feature_categories {
-            println!("\n{} Coverage:", category;
+            println!("\n{} Coverage:", category);
             for feature in features {
                 total_features += 1;
 
@@ -351,12 +351,12 @@ mod statistics_tests {
 
                 if is_auto_passed {
                     auto_passed_features += 1;
-                    println!("  {} - ⚠️  AUTO-PASSED (not really tested)", feature;
+                    println!("  {} - ⚠️  AUTO-PASSED (not really tested)", feature);
                 } else if is_tested {
                     tested_features += 1;
-                    println!("  {} - ✓ TESTED", feature;
+                    println!("  {} - ✓ TESTED", feature);
                 } else {
-                    println!("  {} - ❌ NOT TESTED", feature;
+                    println!("  {} - ❌ NOT TESTED", feature);
                 }
             }
         }
@@ -365,23 +365,23 @@ mod statistics_tests {
         let reported_coverage =
             ((tested_features + auto_passed_features) as f64 / total_features as f64) * 100.0;
 
-        println!("\n=== Coverage Summary ===";
-        println!("Total features: {}", total_features;
-        println!("Really tested: {} ({:.1}%)", tested_features, real_coverage;
+        println!("\n=== Coverage Summary ===");
+        println!("Total features: {}", total_features);
+        println!("Really tested: {} ({:.1}%)", tested_features, real_coverage);
         println!(
             "Auto-passed: {} ({:.1}%)",
             auto_passed_features,
             (auto_passed_features as f64 / total_features as f64) * 100.0
-        ;
-        println!("Reported coverage: {:.1}%", reported_coverage;
-        println!("Real coverage: {:.1}%", real_coverage;
+        );
+        println!("Reported coverage: {:.1}%", reported_coverage);
+        println!("Real coverage: {:.1}%", real_coverage);
 
         if auto_passed_features > 0 {
             println!(
                 "\n⚠️  Warning: {:.1}% of 'passing' tests are auto-passed without real validation",
                 (auto_passed_features as f64 / (tested_features + auto_passed_features) as f64)
                     * 100.0
-            ;
+            );
         }
     }
 }

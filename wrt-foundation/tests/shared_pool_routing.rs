@@ -174,7 +174,7 @@ mod shared_pool_routing_tests {
         for &crate_id in &[CrateId::Foundation, CrateId::Runtime, CrateId::Component] {
             let stats = BudgetAwareProviderFactory::get_crate_stats(crate_id)?;
             // Provider count should increase but not allocated bytes (from shared pool)
-            assert_eq!(stats.provider_count, 1;
+            assert_eq!(stats.provider_count, 1);
         }
 
         Ok(())
@@ -206,7 +206,7 @@ mod shared_pool_routing_tests {
         // Get initial stats
         let initial_stats = BudgetAwareProviderFactory::get_shared_pool_stats()?;
         assert!(initial_stats.total_budget > 0);
-        assert_eq!(initial_stats.allocated, 0;
+        assert_eq!(initial_stats.allocated, 0);
 
         // Make some allocations
         let _p1 = BudgetProvider::<4096>::new(CrateId::Foundation)?;

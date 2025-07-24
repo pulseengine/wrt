@@ -505,7 +505,7 @@ mod tests {
     fn test_incremental_parser_creation() {
         let parser = IncrementalParser::new);
         assert!(parser.get_ast().is_none();
-        assert_eq!(parser.stats().total_parses, 0;
+        assert_eq!(parser.stats().total_parses, 0);
     }
 
     #[cfg(feature = "std")]
@@ -537,9 +537,9 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_span_operations() {
-        let span1 = SourceSpan::new(10, 20, 0;
-        let span2 = SourceSpan::new(15, 25, 0;
-        let span3 = SourceSpan::new(25, 30, 0;
+        let span1 = SourceSpan::new(10, 20, 0);
+        let span2 = SourceSpan::new(15, 25, 0);
+        let span3 = SourceSpan::new(25, 30, 0);
 
         assert!(span1.overlaps(&span2);
         assert!(!span1.overlaps(&span3);

@@ -273,7 +273,7 @@ impl PlatformVerificationEngine {
             diagnostics.add_diagnostics(discovery_diagnostics.diagnostics;
         }
 
-        let limits = self.verified_limits.as_ref().unwrap();
+        let limits = self.verified_limits.as_ref().unwrap());
 
         // ASIL-specific validation
         let asil_requirements = self.get_asil_requirements(asil_level;
@@ -474,7 +474,7 @@ impl PlatformVerificationEngine {
         &self,
         diagnostics: &mut DiagnosticCollection,
     ) -> BuildResult<ComprehensivePlatformLimits> {
-        let mut limits = ComprehensivePlatformLimits::default);
+        let mut limits = ComprehensivePlatformLimits::default());
 
         // Detect platform
         limits.platform_id = self.detect_platform_id);
@@ -1069,7 +1069,7 @@ mod tests {
 
         assert!(config.strict_validation);
         assert_eq!(config.sources.container_runtime, ContainerRuntime::Docker;
-        assert_eq!(config.sources.cli_args.len(), 1;
+        assert_eq!(config.sources.cli_args.len(), 1);
     }
 
     #[test]
@@ -1077,7 +1077,7 @@ mod tests {
         let config = PlatformVerificationConfigBuilder::new().with_strict_validation(false).build);
 
         let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
-        let (limits, _diagnostics) = engine.discover_limits().unwrap();
+        let (limits, _diagnostics) = engine.discover_limits().unwrap());
 
         assert!(limits.max_total_memory > 0);
         assert!(limits.max_wasm_linear_memory > 0);
@@ -1106,7 +1106,7 @@ mod tests {
         let config = PlatformVerificationConfigBuilder::new().build);
         let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
 
-        let (result, _diagnostics) = engine.verify_for_asil(AsilLevel::A).unwrap();
+        let (result, _diagnostics) = engine.verify_for_asil(AsilLevel::A).unwrap());
 
         assert_eq!(result.asil_level, AsilLevel::A;
         assert!(!result.platform_limits.max_total_memory == 0);

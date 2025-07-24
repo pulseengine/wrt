@@ -297,7 +297,7 @@ mod budget_enforcement_integration_tests {
         // Generate health report
         let health = MemoryAnalyzer::generate_health_report()?;
         assert!(health.health_score > 0);
-        assert_eq!(health.critical_issue_count, 0;
+        assert_eq!(health.critical_issue_count, 0);
 
         Ok(())
     }
@@ -438,7 +438,7 @@ mod budget_enforcement_integration_tests {
 
         // Wait for all threads
         for handle in handles {
-            handle.join().unwrap();
+            handle.join().unwrap());
         }
 
         let total_success = success_count.load(Ordering::Relaxed;

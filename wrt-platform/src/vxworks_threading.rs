@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_thread_config_default() {
-        let config = VxWorksThreadConfig::default);
+        let config = VxWorksThreadConfig::default());
         assert_eq!(config.context, VxWorksContext::Rtp;
         assert_eq!(config.stack_size, 8192;
         assert!(config.priority.is_none();
@@ -451,6 +451,6 @@ mod tests {
         assert!(id > 0);
         
         #[cfg(not(target_os = "vxworks"))]
-        assert_eq!(id, 0;
+        assert_eq!(id, 0);
     }
 }

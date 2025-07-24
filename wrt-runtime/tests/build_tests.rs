@@ -52,7 +52,7 @@ mod tests {
         assert_ne!(module_handle, another_module, "Module handles should be unique";
         
         // Test instance handle indexing
-        assert_eq!(instance_handle.index(), 0;
+        assert_eq!(instance_handle.index(), 0);
         let instance_handle2 = InstanceHandle::from_index(42;
         assert_eq!(instance_handle2.index(), 42;
     }

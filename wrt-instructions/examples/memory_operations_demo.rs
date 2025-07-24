@@ -93,7 +93,7 @@ impl MemoryOperations for MockMemory {
         // Extend data if necessary
         let max_end = core::cmp::max(dest_start + copy_size, src_start + copy_size;
         if max_end > self.data.len() {
-            self.data.resize(max_end, 0;
+            self.data.resize(max_end, 0);
         }
         
         // Use Vec's copy_within for safe overlapping copy
@@ -228,7 +228,7 @@ mod tests {
         fill.execute(&mut memory, &Value::I32(0), &Value::I32(0xFF), &Value::I32(10))?;
         
         // Copy to another region
-        let copy = MemoryCopy::new(0, 0;
+        let copy = MemoryCopy::new(0, 0);
         copy.execute(&mut memory, &Value::I32(20), &Value::I32(0), &Value::I32(5))?;
         
         // Verify the copy

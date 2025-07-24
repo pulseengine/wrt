@@ -395,7 +395,7 @@ mod tests {
     fn test_range_creation() {
         let range = Range::single_line(5, 0, 10;
         assert_eq!(range.start.line, 5;
-        assert_eq!(range.start.character, 0;
+        assert_eq!(range.start.character, 0);
         assert_eq!(range.end.line, 5;
         assert_eq!(range.end.character, 10;
     }
@@ -444,8 +444,8 @@ mod tests {
         let collection = collection.finalize(1000;
 
         assert_eq!(collection.summary.total, 2;
-        assert_eq!(collection.summary.errors, 1;
-        assert_eq!(collection.summary.warnings, 1;
+        assert_eq!(collection.summary.errors, 1);
+        assert_eq!(collection.summary.warnings, 1);
         assert_eq!(collection.summary.files_with_diagnostics, 2;
         assert!(collection.has_errors();
         assert!(!collection.is_success();
@@ -480,10 +480,10 @@ mod tests {
         let summary = DiagnosticSummary::from_diagnostics(&diagnostics, 500;
 
         assert_eq!(summary.total, 3;
-        assert_eq!(summary.errors, 1;
-        assert_eq!(summary.warnings, 1;
-        assert_eq!(summary.infos, 1;
-        assert_eq!(summary.hints, 0;
+        assert_eq!(summary.errors, 1);
+        assert_eq!(summary.warnings, 1);
+        assert_eq!(summary.infos, 1);
+        assert_eq!(summary.hints, 0);
         assert_eq!(summary.files_with_diagnostics, 2;
         assert_eq!(summary.duration_ms, 500;
         assert!(summary.has_errors();

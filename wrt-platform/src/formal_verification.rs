@@ -410,10 +410,10 @@ pub mod integration_verification {
             unsafe { NonNull::new_unchecked(0x1000 as *mut u8) },
             4096,
             1024,
-        ;
+        );
 
         // Verify concurrency subsystem
-        concurrency_verification::verify_lockfree_safety);
+        concurrency_verification::verify_lockfree_safety();
 
         // Verify real-time properties
         realtime_verification::verify_deterministic_behavior();
@@ -511,10 +511,10 @@ pub mod verification_harnesses {
     fn verify_concurrent_safety() {
         use core::sync::atomic::{AtomicU32, Ordering};
 
-        let shared_data = AtomicU32::new(0;
+        let shared_data = AtomicU32::new(0);
 
         // Simulate concurrent access
-        let thread1_value: u32 = kani::any);
+        let thread1_value: u32 = kani::any();
         let thread2_value: u32 = kani::any();
 
         // Both threads try to update
@@ -559,10 +559,10 @@ mod tests {
     fn test_verification_annotations() {
         // Test that annotations don't panic in test builds
         annotations::assert_valid_ptr(0x1000 as *const u8);
-        annotations::assert_valid_memory(0x1000 as *const u8, 4096;
+        annotations::assert_valid_memory(0x1000 as *const u8, 4096);
         annotations::assert_bounds(5, 0, 10);
         annotations::assert_bounded_execution(100);
-        annotations::assert_no_data_races);
+        annotations::assert_no_data_races();
     }
 
     #[test]

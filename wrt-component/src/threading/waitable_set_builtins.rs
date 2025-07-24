@@ -706,10 +706,10 @@ mod tests {
             handle: FutureHandle::new(),
             state: FutureState::Pending,
         };
-        let waitable_id = set.add_waitable(Waitable::Future(future)).unwrap();
+        let waitable_id = set.add_waitable(Waitable::Future(future)).unwrap());
 
         assert!(!set.is_empty();
-        assert_eq!(set.waitable_count(), 1;
+        assert_eq!(set.waitable_count(), 1);
         assert!(set.contains_waitable(waitable_id);
 
         // Remove the waitable
@@ -740,25 +740,25 @@ mod tests {
             handle: FutureHandle::new(),
             state: FutureState::Pending,
         };
-        set.add_waitable(Waitable::Future(pending_future)).unwrap();
+        set.add_waitable(Waitable::Future(pending_future)).unwrap());
 
         // Add resolved future
         let resolved_future = Future {
             handle: FutureHandle::new(),
             state: FutureState::Resolved(ComponentValue::I32(42)),
         };
-        set.add_waitable(Waitable::Future(resolved_future)).unwrap();
+        set.add_waitable(Waitable::Future(resolved_future)).unwrap());
 
         // Check for ready waitables
         #[cfg(feature = "std")]
         {
             let ready = set.check_ready);
-            assert_eq!(ready.len(), 1;
+            assert_eq!(ready.len(), 1);
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let ready = set.check_ready().unwrap();
-            assert_eq!(ready.len(), 1;
+            let ready = set.check_ready().unwrap());
+            assert_eq!(ready.len(), 1);
         }
 
         // Poll for first ready
@@ -770,12 +770,12 @@ mod tests {
     #[test]
     fn test_waitable_set_registry() {
         let mut registry = WaitableSetRegistry::new);
-        assert_eq!(registry.set_count(), 0;
+        assert_eq!(registry.set_count(), 0);
 
         let set = WaitableSetImpl::new);
         let set_id = set.id;
-        registry.register_set(set).unwrap();
-        assert_eq!(registry.set_count(), 1;
+        registry.register_set(set).unwrap());
+        assert_eq!(registry.set_count(), 1);
 
         let retrieved_set = registry.get_set(set_id;
         assert!(retrieved_set.is_some();
@@ -783,46 +783,46 @@ mod tests {
 
         let removed_set = registry.remove_set(set_id;
         assert!(removed_set.is_some();
-        assert_eq!(registry.set_count(), 0;
+        assert_eq!(registry.set_count(), 0);
     }
 
     #[test]
     fn test_waitable_set_builtins() {
         // Initialize the registry
-        WaitableSetBuiltins::initialize().unwrap();
+        WaitableSetBuiltins::initialize().unwrap());
 
         // Create a new waitable set
-        let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
+        let set_id = WaitableSetBuiltins::waitable_set_new().unwrap());
 
         // Add a waitable
         let future = Future {
             handle: FutureHandle::new(),
             state: FutureState::Pending,
         };
-        let waitable_id = WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
+        let waitable_id = WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap());
 
         // Check operations
-        assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap();
-        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 1;
+        assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap());
+        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 1);
 
         // Wait operation (should timeout since nothing is ready)
-        let wait_result = WaitableSetBuiltins::waitable_set_wait(set_id).unwrap();
+        let wait_result = WaitableSetBuiltins::waitable_set_wait(set_id).unwrap());
         assert!(wait_result.is_timeout();
 
         // Remove waitable
-        assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap();
-        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 0;
+        assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap());
+        assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 0);
 
         // Close set
-        WaitableSetBuiltins::waitable_set_close(set_id).unwrap();
+        WaitableSetBuiltins::waitable_set_close(set_id).unwrap());
 
         // Drop set
-        WaitableSetBuiltins::waitable_set_drop(set_id).unwrap();
+        WaitableSetBuiltins::waitable_set_drop(set_id).unwrap());
     }
 
     #[test]
     fn test_helper_functions() {
-        WaitableSetBuiltins::initialize().unwrap();
+        WaitableSetBuiltins::initialize().unwrap());
 
         // Test waitable creation helpers
         let future_handle = FutureHandle::new);

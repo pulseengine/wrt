@@ -109,10 +109,10 @@ mod tests {
 
         // Load and validate the module
         let result = decode_and_validate(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Load the module into the runtime
         let result = load_module(&binary;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 }

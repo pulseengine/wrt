@@ -61,7 +61,7 @@ impl<P: Provider + Default> Default for CapabilityAwareProvider<P> {
         use crate::capabilities::{DynamicMemoryCapability, VerificationLevel};
         use alloc::boxed::Box;
         
-        let provider = P::default);
+        let provider = P::default());
         let capability = Box::new(DynamicMemoryCapability::new(
             4096, // Default size
             CrateId::Foundation, // Default crate
@@ -357,11 +357,11 @@ mod tests {
 
         // Read access should work
         let result = wrapped.verify_access(0, 100;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Borrow slice should work (read operation)
         let result = wrapped.borrow_slice(0, 100;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         Ok(())
     }
 
@@ -393,7 +393,7 @@ mod tests {
 
         // Should succeed with valid size
         let result = provider.with_verified_capability(capability, CrateId::Foundation, 512;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         Ok(())
     }
 

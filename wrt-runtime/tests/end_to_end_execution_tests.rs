@@ -129,7 +129,7 @@ fn test_function_execution() -> Result<()> {
     let results = engine.execute(instance_handle, "add", &args)?;
     
     // Verify result
-    assert_eq!(results.len(), 1;
+    assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 42;
     } else {
@@ -152,7 +152,7 @@ fn test_capability_validation() -> Result<()> {
     let results = engine.execute_with_validation(instance_handle, "add", &args)?;
     
     // Verify capability-validated execution works
-    assert_eq!(results.len(), 1;
+    assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 12;
     }
@@ -183,15 +183,15 @@ fn test_host_function_integration() -> Result<()> {
 fn test_wasi_support_by_asil_level() -> Result<()> {
     // QM should support WASI
     let mut qm_engine = CapabilityAwareEngine::with_preset(EnginePreset::QM)?;
-    assert!(qm_engine.enable_wasi().is_ok();
+    assert!(qm_engine.enable_wasi().is_ok());
     
     // ASIL-A should support WASI
     let mut asil_a_engine = CapabilityAwareEngine::with_preset(EnginePreset::AsilA)?;
-    assert!(asil_a_engine.enable_wasi().is_ok();
+    assert!(asil_a_engine.enable_wasi().is_ok());
     
     // ASIL-B should support limited WASI
     let mut asil_b_engine = CapabilityAwareEngine::with_preset(EnginePreset::AsilB)?;
-    assert!(asil_b_engine.enable_wasi().is_ok();
+    assert!(asil_b_engine.enable_wasi().is_ok());
     
     // ASIL-D should reject WASI
     let mut asil_d_engine = CapabilityAwareEngine::with_preset(EnginePreset::AsilD)?;
@@ -250,7 +250,7 @@ fn test_full_execution_pipeline() -> Result<()> {
     let results = engine.execute(instance_handle, "add", &args)?;
     
     // Step 5: Verify results
-    assert_eq!(results.len(), 1;
+    assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 42;
     }
@@ -306,7 +306,7 @@ fn test_complete_integration() -> Result<()> {
         let results = engine.execute(instance_handle, "add", &args)?;
         
         // Verify results are consistent across ASIL levels
-        assert_eq!(results.len(), 1;
+        assert_eq!(results.len(), 1);
         if let Value::I32(result) = &results[0] {
             assert_eq!(*result, 42;
         }

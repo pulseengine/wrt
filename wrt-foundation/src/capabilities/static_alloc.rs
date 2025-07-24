@@ -407,7 +407,7 @@ mod tests {
             StaticMemoryCapability::<100>::new(CrateId::Foundation, VerificationLevel::Standard;
 
         let valid_op = MemoryOperation::Allocate { size: 50 };
-        assert!(capability.verify_access(&valid_op).is_ok();
+        assert!(capability.verify_access(&valid_op).is_ok());
 
         let invalid_op = MemoryOperation::Allocate { size: 200 };
         assert!(capability.verify_access(&invalid_op).is_err();
@@ -419,7 +419,7 @@ mod tests {
             StaticMemoryCapability::<1000>::new(CrateId::Foundation, VerificationLevel::Standard;
 
         let valid_read = MemoryOperation::Read { offset: 0, len: 500 };
-        assert!(capability.verify_access(&valid_read).is_ok();
+        assert!(capability.verify_access(&valid_read).is_ok());
 
         let invalid_read = MemoryOperation::Read { offset: 500, len: 600 };
         assert!(capability.verify_access(&invalid_read).is_err();
@@ -427,7 +427,7 @@ mod tests {
 
     #[test]
     fn test_static_region_access() {
-        let mut region = StaticMemoryRegion::<1024>::new(100, None).unwrap();
+        let mut region = StaticMemoryRegion::<1024>::new(100, None).unwrap());
 
         assert_eq!(region.size(), 100;
         assert_eq!(region.buffer().len(), 100;

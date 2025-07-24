@@ -701,10 +701,10 @@ impl Default for Case {
 }
 
 // Apply macro to all complex types
-impl_basic_traits!(ValType, ValType::default);
-impl_basic_traits!(Record, Record::default);
-impl_basic_traits!(Field, Field::default);
-impl_basic_traits!(Tuple, Tuple::default);
-impl_basic_traits!(Variant, Variant::default);
-impl_basic_traits!(Case, Case::default);
+impl_basic_traits!(ValType, ValType::default());
+impl_basic_traits!(Record, Record::default());
+impl_basic_traits!(Field, Field::default());
+impl_basic_traits!(Tuple, Tuple::default());
+impl_basic_traits!(Variant, Variant::default());
+impl_basic_traits!(Case, Case::default());
 

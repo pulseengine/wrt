@@ -995,13 +995,13 @@ mod tests {
     #[test]
     fn test_wast_runner_creation() {
         let runner = WastTestRunner::new);
-        assert_eq!(runner.stats.passed, 0;
-        assert_eq!(runner.stats.failed, 0;
+        assert_eq!(runner.stats.passed, 0);
+        assert_eq!(runner.stats.failed, 0);
     }
 
     #[test]
     fn test_resource_limits_default() {
-        let limits = ResourceLimits::default);
+        let limits = ResourceLimits::default());
         assert_eq!(limits.max_stack_depth, 1024;
         assert_eq!(limits.max_memory_size, 64 * 1024 * 1024;
     }

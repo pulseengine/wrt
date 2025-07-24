@@ -197,7 +197,7 @@ where
             return Err(Error::resource_invalid_handle("Invalid owned handle - no entry";
         }
         
-        let mut entry = current_entry.unwrap();
+        let mut entry = current_entry.unwrap());
         if entry.ownership != ResourceOwnership::Owned {
             return Err(Error::resource_invalid_handle("Can only borrow from owned resources";
         }
@@ -289,25 +289,25 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_resource_table_basic() {
-        let provider = DefaultMemoryProvider::default);
-        let mut table = ResourceTable::<u32, _>::new(provider).unwrap();
+        let provider = DefaultMemoryProvider::default());
+        let mut table = ResourceTable::<u32, _>::new(provider).unwrap());
         
         // Create owned resource
-        let owned = table.new_own(42u32).unwrap();
+        let owned = table.new_own(42u32).unwrap());
         assert_eq!(table.get(owned), Some(&42u32;
         
         // Create borrowed handle
-        let borrowed = table.new_borrow(owned).unwrap();
+        let borrowed = table.new_borrow(owned).unwrap());
         assert_eq!(table.get(borrowed), Some(&42u32;
         
         // Cannot drop owned while borrowed
         assert!(table.drop_handle(owned).is_err();
         
         // Drop borrowed first
-        table.drop_handle(borrowed).unwrap();
+        table.drop_handle(borrowed).unwrap());
         
         // Now can drop owned
-        let resource = table.drop_handle(owned).unwrap();
+        let resource = table.drop_handle(owned).unwrap());
         assert_eq!(resource, Some(42u32;
     }
 }

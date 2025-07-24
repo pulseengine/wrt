@@ -1737,16 +1737,16 @@ mod tests {
             test_timeout_ms: 5000,
         };
         let runner = WastTestRunner::new(config;
-        assert!(runner.is_ok();
+        assert!(runner.is_ok());
         if let Ok(runner) = runner {
-            assert_eq!(runner.stats.passed, 0;
-            assert_eq!(runner.stats.failed, 0;
+            assert_eq!(runner.stats.passed, 0);
+            assert_eq!(runner.stats.failed, 0);
         }
     }
 
     #[test]
     fn test_resource_limits_default() {
-        let limits = ResourceLimits::default);
+        let limits = ResourceLimits::default());
         assert_eq!(limits.max_stack_depth, 1024;
         assert_eq!(limits.max_memory_size, 64 * 1024 * 1024;
     }

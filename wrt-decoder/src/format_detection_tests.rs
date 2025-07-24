@@ -304,7 +304,7 @@ impl FormatDetectionTests {
 
     /// Test lazy detection performance and accuracy
     pub fn test_lazy_detection() -> Result<()> {
-        let config = DetectionConfig::default);
+        let config = DetectionConfig::default());
         let detector = LazyDetector::with_config(config;
 
         // Test various binaries
@@ -561,11 +561,11 @@ mod tests {
 
     #[test]
     fn test_minimal_binaries() {
-        let core = FormatTestData::minimal_core_module().unwrap();
+        let core = FormatTestData::minimal_core_module().unwrap());
         assert!(core.len() >= 8);
         assert_eq!(&core[0..4], &[0x00, 0x61, 0x73, 0x6d];
 
-        let component = FormatTestData::minimal_component().unwrap();
+        let component = FormatTestData::minimal_component().unwrap());
         assert!(component.len() >= 8);
         assert_eq!(&component[0..4], &[0x00, 0x61, 0x73, 0x6d];
         assert_eq!(component[4], 0x0a); // Component version
@@ -573,21 +573,21 @@ mod tests {
 
     #[test]
     fn test_unified_loader_basic() {
-        FormatDetectionTests::test_unified_loader_detection().unwrap();
+        FormatDetectionTests::test_unified_loader_detection().unwrap());
     }
 
     #[test]
     fn test_lazy_detection_basic() {
-        FormatDetectionTests::test_lazy_detection().unwrap();
+        FormatDetectionTests::test_lazy_detection().unwrap());
     }
 
     #[test]
     fn test_error_cases() {
-        FormatDetectionTests::test_error_handling().unwrap();
+        FormatDetectionTests::test_error_handling().unwrap());
     }
 
     #[test]
     fn test_edge_cases() {
-        FormatDetectionTests::test_edge_cases().unwrap();
+        FormatDetectionTests::test_edge_cases().unwrap());
     }
 }

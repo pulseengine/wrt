@@ -156,7 +156,7 @@ impl SafeArithmetic for i32 {
         {
             // ASIL-D: Use saturating arithmetic with formal verification hooks
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i32_add(self, rhs;
+            kani_hook_i32_add(self, rhs);
             
             Ok(self.saturating_add(rhs))
         }
@@ -197,7 +197,7 @@ impl SafeArithmetic for i32 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i32_sub(self, rhs;
+            kani_hook_i32_sub(self, rhs);
             
             Ok(self.saturating_sub(rhs))
         }
@@ -234,7 +234,7 @@ impl SafeArithmetic for i32 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i32_mul(self, rhs;
+            kani_hook_i32_mul(self, rhs);
             
             Ok(self.saturating_mul(rhs))
         }
@@ -306,7 +306,7 @@ impl SafeArithmetic for i64 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i64_add(self, rhs;
+            kani_hook_i64_add(self, rhs);
             
             Ok(self.saturating_add(rhs))
         }
@@ -343,7 +343,7 @@ impl SafeArithmetic for i64 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i64_sub(self, rhs;
+            kani_hook_i64_sub(self, rhs);
             
             Ok(self.saturating_sub(rhs))
         }
@@ -380,7 +380,7 @@ impl SafeArithmetic for i64 {
         #[cfg(feature = "asil-d")]
         {
             #[cfg(feature = "formal-verification-required")]
-            kani_hook_i64_mul(self, rhs;
+            kani_hook_i64_mul(self, rhs);
             
             Ok(self.saturating_mul(rhs))
         }
@@ -728,7 +728,7 @@ mod tests {
         let b = 2.0f32;
         
         let result = a.safe_float_op(b, |x, y| x + y;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 3.0f32;
     }
     
@@ -756,7 +756,7 @@ mod tests {
         let memory = [0u8; 100];
         
         // Valid access
-        assert!(check_simd_bounds(0, 10, memory.len()).is_ok();
+        assert!(check_simd_bounds(0, 10, memory.len()).is_ok());
         
         // Out of bounds
         #[cfg(feature = "runtime-bounds-checking")]

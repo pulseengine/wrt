@@ -229,7 +229,7 @@ mod tests {
 
         assert!(!MemoryInitializer::is_initialized();
 
-        MemoryInitializer::initialize().unwrap();
+        MemoryInitializer::initialize().unwrap());
 
         assert!(MemoryInitializer::is_initialized();
     }
@@ -238,12 +238,12 @@ mod tests {
     fn test_crate_initialization() {
         MemoryInitializer::reset);
 
-        init_crate_memory(CrateId::Component).unwrap();
+        init_crate_memory(CrateId::Component).unwrap());
 
         assert!(MemoryInitializer::is_initialized();
         
         // Verify capability system is working
-        let context = get_global_capability_context().unwrap();
+        let context = get_global_capability_context().unwrap());
         assert!(context.has_capability(CrateId::Component);
     }
 }

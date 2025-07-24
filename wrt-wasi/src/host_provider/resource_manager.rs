@@ -546,7 +546,7 @@ mod tests {
     #[test]
     fn test_resource_manager_creation() -> Result<()> {
         let manager = WasiResourceManager::new()?;
-        assert_eq!(manager.resource_count(), 0;
+        assert_eq!(manager.resource_count(), 0);
         Ok(())
     }
     
@@ -556,7 +556,7 @@ mod tests {
         
         let fd = manager.create_file_descriptor("/tmp/test.txt", true, false)?;
         assert!(manager.is_valid_handle(fd);
-        assert_eq!(manager.resource_count(), 1;
+        assert_eq!(manager.resource_count(), 1);
         
         let resource = manager.get_resource(fd)?;
         assert!(resource.is_readable();
@@ -592,10 +592,10 @@ mod tests {
         let mut manager = WasiResourceManager::new()?;
         
         let fd = manager.create_file_descriptor("/tmp/test.txt", true, true)?;
-        assert_eq!(manager.resource_count(), 1;
+        assert_eq!(manager.resource_count(), 1);
         
         let removed = manager.remove_resource(fd)?;
-        assert_eq!(manager.resource_count(), 0;
+        assert_eq!(manager.resource_count(), 0);
         assert!(!manager.is_valid_handle(fd);
         
         match removed.resource_type() {

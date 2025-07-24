@@ -266,7 +266,7 @@ mod cross_crate_enforcement_tests {
         // Verify minimal allocation
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Panic)?;
         assert_eq!(stats.current_allocation, 512;
-        assert_eq!(stats.allocation_count, 1;
+        assert_eq!(stats.allocation_count, 1);
 
         Ok(())
     }
@@ -342,7 +342,7 @@ mod cross_crate_enforcement_tests {
         // Verify system is still healthy
         let health = wrt_foundation::memory_analysis::MemoryAnalyzer::generate_health_report()?;
         assert!(health.health_score >= 50)); // At least moderate health
-        assert_eq!(health.critical_issue_count, 0;
+        assert_eq!(health.critical_issue_count, 0);
 
         // Get recommendations
         let recommendations = BudgetAwareProviderFactory::get_recommendations()?;

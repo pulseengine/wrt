@@ -741,8 +741,8 @@ mod tests {
         let capability = DynamicNNCapability::new);
         let backend = TractBackend::new(capability;
         
-        let dims = TensorDimensions::new(&[10, 10]).unwrap();
-        let tensor = backend.create_tensor(dims, TensorType::F32).unwrap();
+        let dims = TensorDimensions::new(&[10, 10]).unwrap());
+        let tensor = backend.create_tensor(dims, TensorType::F32).unwrap());
         
         assert_eq!(tensor.size_bytes(), 400); // 10*10*4
         assert!(tensor.is_contiguous();
@@ -781,7 +781,7 @@ mod tests {
         let model_data = b"approved model";
         let hash = calculate_model_hash(model_data;
         
-        let capability = StaticNNCapability::new(&[hash]).unwrap();
+        let capability = StaticNNCapability::new(&[hash]).unwrap());
         assert!(capability.is_model_approved(&hash);
         
         // Test unapproved model

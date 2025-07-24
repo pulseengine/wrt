@@ -39,7 +39,7 @@ mod tests {
         };
         
         let result = atomic_model.execute_atomic_operation(0, load_op, &[])?;
-        assert_eq!(result.len(), 1;
+        assert_eq!(result.len(), 1);
         assert_eq!(result[0], 0); // Memory initialized to zero
         
         // Test i64 atomic load
@@ -49,8 +49,8 @@ mod tests {
         
         let result = atomic_model.execute_atomic_operation(0, load_op, &[])?;
         assert_eq!(result.len(), 2;
-        assert_eq!(result[0], 0;
-        assert_eq!(result[1], 0;
+        assert_eq!(result[0], 0);
+        assert_eq!(result[1], 0);
         
         Ok(())
     }
@@ -326,7 +326,7 @@ mod tests {
                             memarg: MemArg { offset: offset as u32, align: 2 }
                         };
                         
-                        let mut model = atomic_model.lock().unwrap();
+                        let mut model = atomic_model.lock().unwrap());
                         model.execute_atomic_operation(thread_id as ThreadId, store_op, &[i as u64])?;
                     }
                 }
@@ -343,7 +343,7 @@ mod tests {
         }
         
         // Validate memory consistency after multithreaded execution
-        let model = atomic_model.lock().unwrap();
+        let model = atomic_model.lock().unwrap());
         let validation_result = model.validate_memory_consistency()?;
         assert!(validation_result.is_consistent);
         

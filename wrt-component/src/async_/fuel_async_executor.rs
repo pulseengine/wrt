@@ -667,7 +667,7 @@ impl ExecutionContext {
     
     /// Create a new execution context with ASIL mode (creates default limits)
     pub fn new_with_mode(asil_mode: ASILExecutionMode) -> Self {
-        let limits = ExecutionLimitsConfig::from_asil_requirements(asil_mode, 1;
+        let limits = ExecutionLimitsConfig::from_asil_requirements(asil_mode, 1);
         let asil_config = ASILExecutionConfig {
             mode: asil_mode,
             limits,
@@ -3097,17 +3097,17 @@ mod tests {
 
     #[test]
     fn test_executor_creation() {
-        let executor = FuelAsyncExecutor::new().unwrap();
+        let executor = FuelAsyncExecutor::new().unwrap());
         let status = executor.get_global_fuel_status);
         
-        assert_eq!(status.active_tasks, 0;
-        assert_eq!(status.ready_tasks, 0;
+        assert_eq!(status.active_tasks, 0);
+        assert_eq!(status.ready_tasks, 0);
         assert!(status.enforcement_enabled);
     }
 
     #[test]
     fn test_task_spawning() {
-        let mut executor = FuelAsyncExecutor::new().unwrap();
+        let mut executor = FuelAsyncExecutor::new().unwrap());
         executor.set_global_fuel_limit(10000;
 
         let future = async { Ok(()) };
@@ -3116,16 +3116,16 @@ mod tests {
             1000,
             Priority::Normal,
             future,
-        ).unwrap();
+        ).unwrap());
 
-        let status = executor.get_task_status(task_id).unwrap();
+        let status = executor.get_task_status(task_id).unwrap());
         assert_eq!(status.state, AsyncTaskState::Ready;
         assert_eq!(status.fuel_budget, 1000;
     }
 
     #[test]
     fn test_fuel_limit_enforcement() {
-        let mut executor = FuelAsyncExecutor::new().unwrap();
+        let mut executor = FuelAsyncExecutor::new().unwrap());
         executor.set_global_fuel_limit(100;
 
         let future = async { Ok(()) };
@@ -3141,7 +3141,7 @@ mod tests {
 
     #[test]
     fn test_proper_waker_integration() {
-        let mut executor = FuelAsyncExecutor::new().unwrap();
+        let mut executor = FuelAsyncExecutor::new().unwrap());
         executor.set_global_fuel_limit(10000;
         
         // Create Arc<Mutex<>> wrapper and set self reference
@@ -3152,7 +3152,7 @@ mod tests {
         
         // Spawn a task that yields once
         let task_id = {
-            let mut exec = executor_arc.lock().unwrap();
+            let mut exec = executor_arc.lock().unwrap());
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 1000,
@@ -3163,37 +3163,37 @@ mod tests {
         
         // First poll should return Pending and wake the task
         {
-            let mut exec = executor_arc.lock().unwrap();
-            let polled = exec.poll_tasks().unwrap();
-            assert_eq!(polled, 1;
+            let mut exec = executor_arc.lock().unwrap());
+            let polled = exec.poll_tasks().unwrap());
+            assert_eq!(polled, 1);
             
             let stats = exec.get_polling_stats);
-            assert_eq!(stats.tasks_yielded, 1;
-            assert_eq!(stats.total_polls, 1;
+            assert_eq!(stats.tasks_yielded, 1);
+            assert_eq!(stats.total_polls, 1);
         }
         
         // Second poll should complete the task
         {
-            let mut exec = executor_arc.lock().unwrap();
-            let polled = exec.poll_tasks().unwrap();
-            assert_eq!(polled, 1;
+            let mut exec = executor_arc.lock().unwrap());
+            let polled = exec.poll_tasks().unwrap());
+            assert_eq!(polled, 1);
             
             let stats = exec.get_polling_stats);
-            assert_eq!(stats.tasks_completed, 1;
+            assert_eq!(stats.tasks_completed, 1);
             assert_eq!(stats.total_polls, 2;
         }
         
         // Verify task is completed
         {
-            let exec = executor_arc.lock().unwrap();
-            let status = exec.get_task_status(task_id).unwrap();
+            let exec = executor_arc.lock().unwrap());
+            let status = exec.get_task_status(task_id).unwrap());
             assert_eq!(status.state, AsyncTaskState::Completed;
         }
     }
 
     #[test]
     fn test_polling_statistics() {
-        let mut executor = FuelAsyncExecutor::new().unwrap();
+        let mut executor = FuelAsyncExecutor::new().unwrap());
         executor.set_global_fuel_limit(10000;
         
         // Spawn multiple tasks
@@ -3203,11 +3203,11 @@ mod tests {
                 1000,
                 Priority::Normal,
                 async { Ok(()) },
-            ).unwrap();
+            ).unwrap());
         }
         
         // Poll all tasks
-        let polled = executor.poll_tasks().unwrap();
+        let polled = executor.poll_tasks().unwrap());
         assert_eq!(polled, 3;
         
         let stats = executor.get_polling_stats);
@@ -3217,7 +3217,7 @@ mod tests {
         // Reset stats and verify
         executor.reset_polling_stats);
         let stats = executor.get_polling_stats);
-        assert_eq!(stats.total_polls, 0;
-        assert_eq!(stats.tasks_completed, 0;
+        assert_eq!(stats.total_polls, 0);
+        assert_eq!(stats.tasks_completed, 0);
     }
 }

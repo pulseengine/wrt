@@ -125,8 +125,8 @@ fn example_lkm_threading() {
     
     println!("✓ Configured LKM task with VxWorks kernel APIs";
     println!("  Stack size: {} bytes (kernel space)", thread_config.stack_size;
-    println!("  Priority: {} (real-time)", thread_config.priority.unwrap();
-    println!("  Task name: {}", thread_config.name.as_ref().unwrap();
+    println!("  Priority: {} (real-time)", thread_config.priority.unwrap());
+    println!("  Task name: {}", thread_config.name.as_ref().unwrap());
     println!("  Floating point: enabled for kernel task";
     
     // In a real implementation, you would spawn the task here

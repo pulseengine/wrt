@@ -721,7 +721,7 @@ impl ResourceManager {
         }
 
         // Mark as borrowed in owner table
-        let owner_table = self.instance_tables.get_mut(&owner_instance).unwrap();
+        let owner_table = self.instance_tables.get_mut(&owner_instance).unwrap());
         owner_table.borrow_resource(handle, borrower_instance)?;
 
         // Create borrowed reference in borrower table
@@ -910,16 +910,16 @@ mod tests {
     #[test]
     fn test_resource_table_creation() {
         let table = ResourceTable::new(1;
-        assert_eq!(table.instance_id, 1;
-        assert_eq!(table.resources.len(), 0;
-        assert_eq!(table.stats.active_resources, 0;
+        assert_eq!(table.instance_id, 1);
+        assert_eq!(table.resources.len(), 0);
+        assert_eq!(table.stats.active_resources, 0);
     }
 
     #[test]
     fn test_resource_manager_creation() {
         let manager = ResourceManager::new);
-        assert_eq!(manager.resource_types.len(), 0;
-        assert_eq!(manager.stats.types_registered, 0;
+        assert_eq!(manager.resource_types.len(), 0);
+        assert_eq!(manager.stats.types_registered, 0);
     }
 
     #[test]
@@ -928,12 +928,12 @@ mod tests {
 
         let type_id = manager
             .register_resource_type("file".to_string(), "File handle".to_string(), true, true)
-            .unwrap();
+            .unwrap());
 
         assert!(type_id.is_valid();
-        assert_eq!(manager.stats.types_registered, 1;
+        assert_eq!(manager.stats.types_registered, 1);
 
-        let resource_type = manager.get_resource_type(type_id).unwrap();
+        let resource_type = manager.get_resource_type(type_id).unwrap());
         assert_eq!(resource_type.name, "file";
         assert!(resource_type.borrowable);
         assert!(resource_type.needs_finalization);
@@ -944,15 +944,15 @@ mod tests {
         let mut manager = ResourceManager::new);
 
         let result = manager.create_instance_table(1;
-        assert!(result.is_ok();
-        assert_eq!(manager.stats.instances_managed, 1;
+        assert!(result.is_ok());
+        assert_eq!(manager.stats.instances_managed, 1);
 
         let table = manager.get_instance_table(1;
         assert!(table.is_some();
 
         let result = manager.remove_instance_table(1;
-        assert!(result.is_ok();
-        assert_eq!(manager.stats.instances_managed, 0;
+        assert!(result.is_ok());
+        assert_eq!(manager.stats.instances_managed, 0);
     }
 
     #[test]
@@ -962,26 +962,26 @@ mod tests {
         // Register resource type
         let file_type = manager
             .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
-            .unwrap();
+            .unwrap());
 
         // Create instance table
-        manager.create_instance_table(1).unwrap();
+        manager.create_instance_table(1).unwrap());
 
         // Create resource
         let data = ResourceData::Bytes(vec![1, 2, 3, 4];
-        let handle = manager.create_resource(1, file_type, data).unwrap();
+        let handle = manager.create_resource(1, file_type, data).unwrap());
 
         assert!(handle.is_valid();
-        assert_eq!(manager.stats.global_resources, 1;
+        assert_eq!(manager.stats.global_resources, 1);
 
         // Verify resource exists
-        let table = manager.get_instance_table(1).unwrap();
+        let table = manager.get_instance_table(1).unwrap());
         let resource = table.get_resource(handle;
         assert!(resource.is_some();
 
         // Clean up
-        manager.remove_instance_table(1).unwrap();
-        assert_eq!(manager.stats.instances_managed, 0;
+        manager.remove_instance_table(1).unwrap());
+        assert_eq!(manager.stats.instances_managed, 0);
     }
 
     #[test]
@@ -996,28 +996,28 @@ mod tests {
                 true, // borrowable
                 false,
             )
-            .unwrap();
+            .unwrap());
 
         // Create instance tables
-        manager.create_instance_table(1).unwrap(); // owner
-        manager.create_instance_table(2).unwrap(); // borrower
+        manager.create_instance_table(1).unwrap()); // owner
+        manager.create_instance_table(2).unwrap()); // borrower
 
         // Create resource in owner instance
         let data = ResourceData::Bytes(vec![1, 2, 3, 4];
-        let owner_handle = manager.create_resource(1, file_type, data).unwrap();
+        let owner_handle = manager.create_resource(1, file_type, data).unwrap());
 
         // Borrow resource
-        let borrowed_handle = manager.borrow_resource(owner_handle, 1, 2).unwrap();
+        let borrowed_handle = manager.borrow_resource(owner_handle, 1, 2).unwrap());
         assert!(borrowed_handle.is_valid();
 
         // Verify borrowed resource exists in borrower table
-        let borrower_table = manager.get_instance_table(2).unwrap();
+        let borrower_table = manager.get_instance_table(2).unwrap());
         let borrowed_resource = borrower_table.get_resource(borrowed_handle;
         assert!(borrowed_resource.is_some();
 
         // Return borrowed resource
         let result = manager.return_borrowed_resource(borrowed_handle, 2;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -1027,29 +1027,29 @@ mod tests {
         // Register resource type
         let file_type = manager
             .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
-            .unwrap();
+            .unwrap());
 
         // Create instance tables
-        manager.create_instance_table(1).unwrap(); // source
-        manager.create_instance_table(2).unwrap(); // target
+        manager.create_instance_table(1).unwrap()); // source
+        manager.create_instance_table(2).unwrap()); // target
 
         // Create resource in source instance
         let data = ResourceData::Bytes(vec![1, 2, 3, 4];
-        let source_handle = manager.create_resource(1, file_type, data).unwrap();
+        let source_handle = manager.create_resource(1, file_type, data).unwrap());
 
         // Transfer ownership
-        let target_handle = manager.transfer_ownership(source_handle, 1, 2).unwrap();
+        let target_handle = manager.transfer_ownership(source_handle, 1, 2).unwrap());
         assert!(target_handle.is_valid();
         assert_ne!(source_handle, target_handle;
 
         // Verify resource moved
-        let source_table = manager.get_instance_table(1).unwrap();
+        let source_table = manager.get_instance_table(1).unwrap());
         assert!(source_table.get_resource(source_handle).is_none();
 
-        let target_table = manager.get_instance_table(2).unwrap();
+        let target_table = manager.get_instance_table(2).unwrap());
         assert!(target_table.get_resource(target_handle).is_some();
 
-        assert_eq!(manager.stats.cross_instance_transfers, 1;
+        assert_eq!(manager.stats.cross_instance_transfers, 1);
     }
 
     #[test]
@@ -1074,18 +1074,18 @@ mod tests {
         // Register resource type
         let file_type = manager
             .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
-            .unwrap();
+            .unwrap());
 
         // Create instance table
-        manager.create_instance_table(1).unwrap();
+        manager.create_instance_table(1).unwrap());
 
         // Create resource
         let data = ResourceData::Bytes(vec![1, 2, 3, 4];
-        manager.create_resource(1, file_type, data).unwrap();
+        manager.create_resource(1, file_type, data).unwrap());
 
         // Validate all resources
         let result = manager.validate_all_resources);
-        assert!(result.is_ok();
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -1095,21 +1095,21 @@ mod tests {
         // Register resource type
         let file_type = manager
             .register_resource_type("file".to_string(), "File handle".to_string(), true, false)
-            .unwrap();
+            .unwrap());
 
         // Create instance table
-        manager.create_instance_table(1).unwrap();
+        manager.create_instance_table(1).unwrap());
 
         // Create and immediately drop some resources
         for _ in 0..5 {
             let data = ResourceData::Bytes(vec![1, 2, 3, 4];
-            manager.create_resource(1, file_type, data).unwrap();
+            manager.create_resource(1, file_type, data).unwrap());
         }
 
         // Run garbage collection
-        let cleaned = manager.garbage_collect().unwrap();
+        let cleaned = manager.garbage_collect().unwrap());
         // In this simple test, no resources should be cleaned since they're not expired
-        assert_eq!(cleaned, 0;
-        assert_eq!(manager.stats.garbage_collections, 1;
+        assert_eq!(cleaned, 0);
+        assert_eq!(manager.stats.garbage_collections, 1);
     }
 }

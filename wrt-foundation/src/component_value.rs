@@ -1077,8 +1077,8 @@ mod tests {
         // For primitive types, the store might not be strictly necessary if
         // they don't involve ValueRef. However, matches_type now
         // requires the store. let provider =
-        // crate::NoStdProvider::<1024>::new().unwrap(); // Example provider
-        // let store = ComponentValueStore::new(provider).unwrap();
+        // crate::NoStdProvider::<1024>::new().unwrap()); // Example provider
+        // let store = ComponentValueStore::new(provider).unwrap());
 
         // let bool_value = ComponentValue::Bool(true;
         // let int_value = ComponentValue::S32(42;

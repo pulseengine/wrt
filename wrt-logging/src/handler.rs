@@ -138,7 +138,7 @@ mod tests {
         registry.handle_log(LogOperation::new(LogLevel::Error, "error message".to_string();
 
         // Check received messages
-        let received = received.lock().unwrap();
+        let received = received.lock().unwrap());
         assert_eq!(received.len(), 2;
         assert_eq!(received[0], (LogLevel::Info, "info message".to_string();
         assert_eq!(received[1], (LogLevel::Error, "error message".to_string();

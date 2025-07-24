@@ -228,7 +228,7 @@ mod tests {
         
         // Test conversion
         let format_type = FormatValType("i32".to_string();
-        let runtime_type: RuntimeValType = registry.convert(&format_type).unwrap();
+        let runtime_type: RuntimeValType = registry.convert(&format_type).unwrap());
         
         assert_eq!(runtime_type, RuntimeValType("i32".to_string();
     }
@@ -239,7 +239,7 @@ mod tests {
         
         // Test loading a component
         let format_type = FormatValType("i32".to_string();
-        let runtime_type = loader.load_component(&format_type).unwrap();
+        let runtime_type = loader.load_component(&format_type).unwrap());
         
         assert_eq!(runtime_type, RuntimeValType("i32".to_string();
     }

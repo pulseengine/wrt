@@ -540,15 +540,15 @@ mod tests {
             priority: None,
             stack_size: Some(1024 * 1024),
         };
-        assert!(tracker.can_allocate_thread(&request1).unwrap();
-        tracker.allocate_thread(1, 1024 * 1024).unwrap();
+        assert!(tracker.can_allocate_thread(&request1).unwrap());
+        tracker.allocate_thread(1, 1024 * 1024).unwrap());
         
         // Second thread for same module should be allowed
-        assert!(tracker.can_allocate_thread(&request1).unwrap();
-        tracker.allocate_thread(1, 1024 * 1024).unwrap();
+        assert!(tracker.can_allocate_thread(&request1).unwrap());
+        tracker.allocate_thread(1, 1024 * 1024).unwrap());
         
         // Third thread for same module should be denied (per-module limit)
-        assert!(!tracker.can_allocate_thread(&request1).unwrap();
+        assert!(!tracker.can_allocate_thread(&request1).unwrap());
         
         // Thread for different module should be allowed
         let request2 = ThreadSpawnRequest {
@@ -558,7 +558,7 @@ mod tests {
             priority: None,
             stack_size: Some(1024 * 1024),
         };
-        assert!(tracker.can_allocate_thread(&request2).unwrap();
+        assert!(tracker.can_allocate_thread(&request2).unwrap());
     }
 }
 

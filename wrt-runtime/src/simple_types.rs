@@ -105,7 +105,7 @@ mod tests {
     
     #[test]
     fn test_platform_capacities() {
-        let default_caps = PlatformCapacities::default);
+        let default_caps = PlatformCapacities::default());
         assert_eq!(default_caps.small_capacity, 64;
         
         let embedded_caps = PlatformCapacities::embedded);

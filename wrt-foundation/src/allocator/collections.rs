@@ -265,12 +265,12 @@ mod tests {
     #[test]
     fn test_wrt_vec_creation() {
         let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 100> = WrtVec::new);
-        assert_eq!(vec.len(), 0;
+        assert_eq!(vec.len(), 0);
         assert_eq!(WrtVec::<i32, { CrateId::Foundation as u8 }, 100>::max_capacity(), 100;
 
         // Test successful push
-        assert!(vec.push(42).is_ok();
-        assert_eq!(vec.len(), 1;
+        assert!(vec.push(42).is_ok());
+        assert_eq!(vec.len(), 1);
         assert_eq!(vec[0], 42;
     }
 
@@ -279,8 +279,8 @@ mod tests {
         let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 2> = WrtVec::new);
 
         // Fill to capacity
-        assert!(vec.push(1).is_ok();
-        assert!(vec.push(2).is_ok();
+        assert!(vec.push(1).is_ok());
+        assert!(vec.push(2).is_ok());
 
         // Should fail on overflow
         assert_eq!(vec.push(3), Err(CapacityError::Exceeded;
@@ -291,15 +291,15 @@ mod tests {
     fn test_wrt_hashmap_creation() {
         let mut map: WrtHashMap<String, i32, { CrateId::Foundation as u8 }, 100> =
             WrtHashMap::new);
-        assert_eq!(map.len(), 0;
+        assert_eq!(map.len(), 0);
         assert_eq!(
             WrtHashMap::<String, i32, { CrateId::Foundation as u8 }, 100>::max_capacity(),
             100
         ;
 
         // Test successful insert
-        assert!(map.insert("key".to_string(), 42).is_ok();
-        assert_eq!(map.len(), 1;
+        assert!(map.insert("key".to_string(), 42).is_ok());
+        assert_eq!(map.len(), 1);
         assert_eq!(map.get("key"), Some(&42;
     }
 }

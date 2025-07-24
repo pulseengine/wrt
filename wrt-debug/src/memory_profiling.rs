@@ -949,7 +949,7 @@ mod tests {
 
     #[test]
     fn test_memory_profiler_basic() {
-        init_profiler().unwrap();
+        init_profiler().unwrap());
         MemoryProfiler::enable_allocation_tracking);
 
         // Track an allocation
@@ -961,23 +961,23 @@ mod tests {
                 "test_allocation",
             )
         })
-        .unwrap();
+        .unwrap());
 
         assert!(alloc_id > 0);
 
         // Track deallocation
-        with_profiler(|profiler| profiler.track_deallocation(alloc_id)).unwrap();
+        with_profiler(|profiler| profiler.track_deallocation(alloc_id)).unwrap());
 
         // Generate report
-        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap();
+        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap());
 
-        assert_eq!(report.total_allocations, 1;
-        assert_eq!(report.total_deallocations, 1;
+        assert_eq!(report.total_allocations, 1);
+        assert_eq!(report.total_deallocations, 1);
     }
 
     #[test]
     fn test_leak_detection() {
-        init_profiler().unwrap();
+        init_profiler().unwrap());
         MemoryProfiler::enable_allocation_tracking);
 
         // Create allocation without deallocation
@@ -989,10 +989,10 @@ mod tests {
                 "potential_leak",
             )
         })
-        .unwrap();
+        .unwrap());
 
         // Detect leaks
-        let leaks = with_profiler(|profiler| profiler.detect_leaks()).unwrap();
+        let leaks = with_profiler(|profiler| profiler.detect_leaks()).unwrap());
 
         // Should detect the large allocation as potential leak
         assert!(!leaks.is_empty();
@@ -1000,7 +1000,7 @@ mod tests {
 
     #[test]
     fn test_profiling() {
-        init_profiler().unwrap();
+        init_profiler().unwrap());
         MemoryProfiler::enable_profiling);
 
         // Profile an operation
@@ -1016,7 +1016,7 @@ mod tests {
         assert_eq!(result, 4950;
 
         // Check that profiling was recorded
-        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap();
+        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap());
 
         assert!(!report.performance_metrics.slowest_operations.is_empty();
     }

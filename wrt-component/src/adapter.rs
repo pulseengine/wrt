@@ -296,7 +296,7 @@ impl CoreModuleAdapter {
 
     /// Convert this adapter to a component
     pub fn to_component(&self) -> Result<Component> {
-        let mut component = Component::new(WrtComponentType::default);
+        let mut component = Component::new(WrtComponentType::default());
 
         // Convert function adapters to component functions
         for func_adapter in &self.functions {
@@ -600,15 +600,15 @@ macro_rules! impl_basic_traits {
 }
 
 // Apply macro to all adapter types
-impl_basic_traits!(FunctionAdapter, FunctionAdapter::default);
-impl_basic_traits!(MemoryAdapter, MemoryAdapter::default);
-impl_basic_traits!(TableAdapter, TableAdapter::default);
-impl_basic_traits!(GlobalAdapter, GlobalAdapter::default);
-impl_basic_traits!(MemoryLimits, MemoryLimits::default);
-impl_basic_traits!(TableLimits, TableLimits::default);
-impl_basic_traits!(CoreValType, CoreValType::default);
-impl_basic_traits!(AdaptationMode, AdaptationMode::default);
-impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default);
+impl_basic_traits!(FunctionAdapter, FunctionAdapter::default());
+impl_basic_traits!(MemoryAdapter, MemoryAdapter::default());
+impl_basic_traits!(TableAdapter, TableAdapter::default());
+impl_basic_traits!(GlobalAdapter, GlobalAdapter::default());
+impl_basic_traits!(MemoryLimits, MemoryLimits::default());
+impl_basic_traits!(TableLimits, TableLimits::default());
+impl_basic_traits!(CoreValType, CoreValType::default());
+impl_basic_traits!(AdaptationMode, AdaptationMode::default());
+impl_basic_traits!(CoreFunctionSignature, CoreFunctionSignature::default());
 
 mod tests {
     use super::*;
@@ -619,27 +619,27 @@ mod tests {
         {
             let adapter = CoreModuleAdapter::new("test_module".to_string();
             assert_eq!(adapter.name, "test_module";
-            assert_eq!(adapter.functions.len(), 0;
+            assert_eq!(adapter.functions.len(), 0);
         }
         #[cfg(not(feature = "std"))]
         {
-            let name = BoundedString::from_str("test_module").unwrap();
-            let adapter = CoreModuleAdapter::new(name).unwrap();
+            let name = BoundedString::from_str("test_module").unwrap());
+            let adapter = CoreModuleAdapter::new(name).unwrap());
             assert_eq!(adapter.name.as_str(), "test_module";
-            assert_eq!(adapter.functions.len(), 0;
+            assert_eq!(adapter.functions.len(), 0);
         }
     }
 
     #[test]
     fn test_function_adapter() {
-        let mut core_sig = CoreFunctionSignature::new().unwrap();
-        core_sig.add_param(CoreValType::I32).unwrap();
-        core_sig.add_result(CoreValType::I32).unwrap();
+        let mut core_sig = CoreFunctionSignature::new().unwrap());
+        core_sig.add_param(CoreValType::I32).unwrap());
+        core_sig.add_result(CoreValType::I32).unwrap());
 
         let adapter =
             FunctionAdapter::new(0, WrtComponentType::Unit, core_sig, AdaptationMode::Direct;
 
-        assert_eq!(adapter.core_index, 0;
+        assert_eq!(adapter.core_index, 0);
         assert_eq!(adapter.mode, AdaptationMode::Direct;
         assert!(!adapter.needs_canonical_abi();
     }
@@ -661,8 +661,8 @@ mod tests {
     #[test]
     fn test_memory_adapter() {
         let adapter = MemoryAdapter::new(0, 1, Some(10), false;
-        assert_eq!(adapter.core_index, 0;
-        assert_eq!(adapter.limits.min, 1;
+        assert_eq!(adapter.core_index, 0);
+        assert_eq!(adapter.limits.min, 1);
         assert_eq!(adapter.limits.max, Some(10;
         assert!(!adapter.shared);
     }
@@ -670,16 +670,16 @@ mod tests {
     #[test]
     fn test_table_adapter() {
         let adapter = TableAdapter::new(0, CoreValType::FuncRef, 0, None;
-        assert_eq!(adapter.core_index, 0;
+        assert_eq!(adapter.core_index, 0);
         assert_eq!(adapter.element_type, CoreValType::FuncRef;
-        assert_eq!(adapter.limits.min, 0;
+        assert_eq!(adapter.limits.min, 0);
         assert_eq!(adapter.limits.max, None;
     }
 
     #[test]
     fn test_global_adapter() {
         let adapter = GlobalAdapter::new(0, CoreValType::I32, true;
-        assert_eq!(adapter.core_index, 0;
+        assert_eq!(adapter.core_index, 0);
         assert_eq!(adapter.global_type, CoreValType::I32;
         assert!(adapter.mutable);
     }

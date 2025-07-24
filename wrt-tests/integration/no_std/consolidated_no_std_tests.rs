@@ -34,7 +34,7 @@ mod tests {
         #[test]
         fn test_result_operations() {
             let ok_result: Result<i32> = Ok(42;
-            assert!(ok_result.is_ok();
+            assert!(ok_result.is_ok());
             assert_eq!(ok_result.unwrap(), 42;
 
             let error = Error::core_invalid_memory_access("Invalid memory access";
@@ -82,20 +82,20 @@ mod tests {
         #[test]
         fn test_bounded_vec_no_alloc() {
             const CAPACITY: usize = 10;
-            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default);
+            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default());
             let mut vec: BoundedVec<u32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
-                BoundedVec::new(provider).unwrap();
+                BoundedVec::new(provider).unwrap());
 
             assert!(vec.is_empty();
-            assert_eq!(vec.len(), 0;
+            assert_eq!(vec.len(), 0);
             assert_eq!(vec.capacity(), CAPACITY;
 
-            vec.push(1).unwrap();
-            vec.push(2).unwrap();
-            vec.push(3).unwrap();
+            vec.push(1).unwrap());
+            vec.push(2).unwrap());
+            vec.push(3).unwrap());
 
             assert_eq!(vec.len(), 3;
-            assert_eq!(vec.get(0).unwrap(), 1;
+            assert_eq!(vec.get(0).unwrap(), 1);
             assert_eq!(vec.get(1).unwrap(), 2;
             assert_eq!(vec.get(2).unwrap(), 3;
         }
@@ -103,32 +103,32 @@ mod tests {
         #[test]
         fn test_bounded_string_no_alloc() {
             const CAPACITY: usize = 32;
-            let provider = NoStdProvider::<CAPACITY>::default);
+            let provider = NoStdProvider::<CAPACITY>::default());
             let mut string: BoundedString<CAPACITY, NoStdProvider<CAPACITY>> =
-                BoundedString::from_str("", provider).unwrap();
+                BoundedString::from_str("", provider).unwrap());
 
             assert!(string.is_empty();
-            assert_eq!(string.len(), 0;
+            assert_eq!(string.len(), 0);
 
-            string.push_str("Hello").unwrap();
+            string.push_str("Hello").unwrap());
             assert_eq!(string.as_str().unwrap(), "Hello";
 
-            string.push_str(", World!").unwrap();
+            string.push_str(", World!").unwrap());
             assert_eq!(string.as_str().unwrap(), "Hello, World!";
         }
 
         #[test]
         fn test_bounded_stack_no_alloc() {
             const CAPACITY: usize = 5;
-            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default);
+            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default());
             let mut stack: BoundedStack<i32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
-                BoundedStack::new(provider).unwrap();
+                BoundedStack::new(provider).unwrap());
 
             assert!(stack.is_empty();
 
-            stack.push(10).unwrap();
-            stack.push(20).unwrap();
-            stack.push(30).unwrap();
+            stack.push(10).unwrap());
+            stack.push(20).unwrap());
+            stack.push(30).unwrap());
 
             assert_eq!(stack.len(), 3;
 
@@ -141,15 +141,15 @@ mod tests {
         #[test]
         fn test_bounded_queue_no_alloc() {
             const CAPACITY: usize = 4;
-            let provider = NoStdProvider::<{ CAPACITY * 16 }>::default);
+            let provider = NoStdProvider::<{ CAPACITY * 16 }>::default());
             let mut queue: BoundedQueue<u8, CAPACITY, NoStdProvider<{ CAPACITY * 16 }>> =
-                BoundedQueue::new(provider).unwrap();
+                BoundedQueue::new(provider).unwrap());
 
             assert!(queue.is_empty();
 
-            queue.enqueue(1).unwrap();
-            queue.enqueue(2).unwrap();
-            queue.enqueue(3).unwrap();
+            queue.enqueue(1).unwrap());
+            queue.enqueue(2).unwrap());
+            queue.enqueue(3).unwrap());
 
             assert_eq!(queue.len(), 3;
 
@@ -162,10 +162,10 @@ mod tests {
         #[test]
         fn test_types_no_alloc() {
             let _val_type = ValueType::I32;
-            assert_eq!(mem::size_of::<ValueType>(), 1;
+            assert_eq!(mem::size_of::<ValueType>(), 1);
 
             let _ref_type = RefType::Funcref;
-            assert_eq!(mem::size_of::<RefType>(), 1;
+            assert_eq!(mem::size_of::<RefType>(), 1);
 
             let limits = Limits::new(10, Some(100;
             assert_eq!(limits.min, 10;
@@ -188,7 +188,7 @@ mod tests {
 
             const CAPACITY: usize = 16;
             const PROVIDER_SIZE: usize = CAPACITY * 32;
-            let provider = NoStdProvider::<PROVIDER_SIZE>::default);
+            let provider = NoStdProvider::<PROVIDER_SIZE>::default());
             let mut map: BoundedMap<u32, u32, CAPACITY, NoStdProvider<PROVIDER_SIZE>> =
                 BoundedMap::new);
 
@@ -296,11 +296,11 @@ mod tests {
 
             // Test wait with timeout (should return immediately since value doesn't match)
             let result = futex.wait(999, Some(Duration::from_millis(1);
-            assert!(result.is_ok();
+            assert!(result.is_ok());
 
             // Test wake
             let result = futex.wake(1;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
         }
 
         #[test]
@@ -334,24 +334,24 @@ mod tests {
                 shared: false,
             };
 
-            let memory = Memory::new(mem_type).unwrap();
+            let memory = Memory::new(mem_type).unwrap());
 
             let data = [1, 2, 3, 4];
-            assert!(memory.write(100, &data).is_ok();
+            assert!(memory.write(100, &data).is_ok());
 
             let mut buffer = [0; 4];
-            assert!(memory.read(100, &mut buffer).is_ok();
+            assert!(memory.read(100, &mut buffer).is_ok());
 
             assert_eq!(buffer, data;
         }
 
         #[test]
         fn test_global_no_std() {
-            let global = Global::new(ValueType::I32, true, Value::I32(42)).unwrap();
+            let global = Global::new(ValueType::I32, true, Value::I32(42)).unwrap());
 
             assert_eq!(global.get(), Value::I32(42;
 
-            assert!(global.set(Value::I32(100)).is_ok();
+            assert!(global.set(Value::I32(100)).is_ok());
             assert_eq!(global.get(), Value::I32(100;
         }
     }
@@ -377,7 +377,7 @@ mod tests {
             let opcode = Opcode::I32Const;
             
             // Test that opcodes have consistent representation
-            assert_eq!(core::mem::size_of::<Opcode>(), 1;
+            assert_eq!(core::mem::size_of::<Opcode>(), 1);
         }
     }
 
@@ -403,13 +403,13 @@ mod tests {
 
             let types_limits = format_limits_to_types_limits(format_limits;
 
-            assert_eq!(types_limits.min, 1;
+            assert_eq!(types_limits.min, 1);
             assert_eq!(types_limits.max, Some(2;
             assert_eq!(types_limits.shared, false;
 
             let format_limits2 = types_limits_to_format_limits(types_limits;
 
-            assert_eq!(format_limits2.min, 1;
+            assert_eq!(format_limits2.min, 1);
             assert_eq!(format_limits2.max, Some(2;
             assert_eq!(format_limits2.shared, false;
             assert_eq!(format_limits2.memory64, false;
@@ -430,7 +430,7 @@ mod tests {
         #[test]
         fn test_format_module_creation() {
             // Test that we can create format structures in no_std
-            let _module = FormatModule::default);
+            let _module = FormatModule::default());
         }
 
         #[test]
@@ -560,12 +560,12 @@ mod tests {
             assert_eq!(WASM_PAGE_SIZE, 65536;
 
             const CAPACITY: usize = 4;
-            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default);
+            let provider = NoStdProvider::<{ CAPACITY * 4 }>::default());
             let mut vec: BoundedVec<u32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
-                BoundedVec::new(provider).unwrap();
+                BoundedVec::new(provider).unwrap());
 
             // Ensure we can store page-related data
-            vec.push(WASM_PAGE_SIZE as u32).unwrap();
+            vec.push(WASM_PAGE_SIZE as u32).unwrap());
             assert_eq!(vec.get(0).unwrap(), WASM_PAGE_SIZE as u32;
         }
     }

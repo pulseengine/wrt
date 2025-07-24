@@ -250,7 +250,7 @@ pub fn decode_component(binary: &[u8]) -> Result<Component> {
             }
 
             // Parse component (skip magic number and version)
-            let mut component = Component::default);
+            let mut component = Component::default());
 
             // Store the binary data
             component.binary = Some(binary.to_vec);

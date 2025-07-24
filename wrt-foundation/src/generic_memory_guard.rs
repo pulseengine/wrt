@@ -292,7 +292,7 @@ mod tests {
             GenericMemoryCoordinator::new);
 
         // Initialize coordinator
-        COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap();
+        COORDINATOR.initialize([(TestCrateId(0), 1024)].iter().copied(), 2048).unwrap());
 
         // Create guard using builder
         let guard = MemoryGuardBuilder::new()
@@ -300,7 +300,7 @@ mod tests {
             .coordinator(&COORDINATOR)
             .crate_id(TestCrateId(0))
             .build()
-            .unwrap();
+            .unwrap());
 
         assert_eq!(guard.size(), 256;
         assert_eq!(COORDINATOR.get_crate_allocation(TestCrateId(0)), 256;

@@ -320,7 +320,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         let memory_data = {
             let mut data = wrt_foundation::bounded::BoundedVec::new);
             for _ in 0..memory_size.min(65536) {
-                data.push(0u8).unwrap();
+                data.push(0u8).unwrap());
             }
             data
         };
@@ -728,7 +728,7 @@ mod tests {
         let mut runtime = ComponentRuntimeImpl::with_verification_level(VerificationLevel::Full;
 
         // Check initial state
-        assert_eq!(runtime.factory_count(), 0;
+        assert_eq!(runtime.factory_count(), 0);
 
         // Register host function factories
         runtime
@@ -738,7 +738,7 @@ mod tests {
         runtime.verify_integrity()?;
 
         // Check count after registration
-        assert_eq!(runtime.factory_count(), 1;
+        assert_eq!(runtime.factory_count(), 1);
 
         // Test with another verification level
         let mut runtime =

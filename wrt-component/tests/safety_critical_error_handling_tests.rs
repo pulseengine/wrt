@@ -34,14 +34,14 @@ mod error_handling_tests {
     #[test]
     fn test_no_panic_on_capacity_exceeded() {
         let vec_result = new_component_vec::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap();
+        let mut vec = vec_result.unwrap());
 
         // Fill to capacity
         for i in 0..MAX_COMPONENT_INSTANCES {
             let result = vec.try_push(i as u32;
-            assert!(result.is_ok();
+            assert!(result.is_ok());
         }
 
         // All subsequent pushes should return error, not panic
@@ -61,19 +61,19 @@ mod error_handling_tests {
     #[test]
     fn test_string_error_handling() {
         let name_result = new_component_name);
-        assert!(name_result.is_ok();
+        assert!(name_result.is_ok());
 
-        let mut name = name_result.unwrap();
+        let mut name = name_result.unwrap());
 
         // Test empty string
         let result = name.try_set("Error";
-        assert!(result.is_ok();
-        assert_eq!(name.len(), 0;
+        assert!(result.is_ok());
+        assert_eq!(name.len(), 0);
 
         // Test exact limit
         let exact_limit = "a".repeat(MAX_COMPONENT_NAME_LEN;
         let result = name.try_set(&exact_limit;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
 
         // Test over limit - should return error
         let over_limit = "a".repeat(MAX_COMPONENT_NAME_LEN + 1;
@@ -93,14 +93,14 @@ mod error_handling_tests {
     #[test]
     fn test_map_error_handling() {
         let map_result = new_type_map::<u32>);
-        assert!(map_result.is_ok();
+        assert!(map_result.is_ok());
 
-        let mut map = map_result.unwrap();
+        let mut map = map_result.unwrap());
 
         // Test duplicate key handling
         let key1 = 42u32;
         let result1 = map.try_insert(key1, 100;
-        assert!(result1.is_ok();
+        assert!(result1.is_ok());
 
         // Insert with same key should handle gracefully
         let result2 = map.try_insert(key1, 200;
@@ -144,7 +144,7 @@ mod error_handling_tests {
 
         // Allocate and deallocate correctly
         let handle = table.allocate().expect("Failed to allocate");
-        assert!(table.deallocate(handle).is_ok();
+        assert!(table.deallocate(handle).is_ok());
 
         // Double deallocate should error
         let result = table.deallocate(handle;
@@ -158,7 +158,7 @@ mod error_handling_tests {
 
         // Test with null memory
         let null_memory = core::ptr::null);
-        let options = CanonicalOptions::default);
+        let options = CanonicalOptions::default());
 
         // These operations should handle null memory gracefully
         // (Note: actual implementation details may vary)
@@ -216,7 +216,7 @@ mod error_handling_tests {
         assert!(result.is_err();
 
         // Test double operations
-        assert!(manager.drop_resource(handle).is_ok();
+        assert!(manager.drop_resource(handle).is_ok());
         let result = manager.drop_resource(handle;
         assert!(result.is_err())); // Already dropped
     }
@@ -225,13 +225,13 @@ mod error_handling_tests {
     #[test]
     fn test_stack_overflow_protection() {
         let stack_result = new_call_stack::<u32>);
-        assert!(stack_result.is_ok();
+        assert!(stack_result.is_ok());
 
-        let mut stack = stack_result.unwrap();
+        let mut stack = stack_result.unwrap());
 
         // Push until full
         while !stack.is_full() {
-            assert!(stack.try_push(1).is_ok();
+            assert!(stack.try_push(1).is_ok());
         }
 
         // Further pushes should error, not overflow
@@ -244,7 +244,7 @@ mod error_handling_tests {
         assert_eq!(stack.pop(), Some(1;
 
         // Can push again after pop
-        assert!(stack.try_push(3).is_ok();
+        assert!(stack.try_push(3).is_ok());
     }
 
     /// Test empty collection operations
@@ -252,9 +252,9 @@ mod error_handling_tests {
     fn test_empty_collection_operations() {
         // Test empty vector operations
         let vec_result = new_component_vec::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap();
+        let mut vec = vec_result.unwrap());
 
         // Pop from empty should return None, not panic
         assert_eq!(vec.pop(), None;
@@ -266,9 +266,9 @@ mod error_handling_tests {
 
         // Test empty map operations
         let map_result = new_type_map::<String>);
-        assert!(map_result.is_ok();
+        assert!(map_result.is_ok());
 
-        let map = map_result.unwrap();
+        let map = map_result.unwrap());
 
         // Get from empty map
         let key = 42u32;
@@ -276,7 +276,7 @@ mod error_handling_tests {
 
         // Iteration over empty map should work
         let count = map.iter().count);
-        assert_eq!(count, 0;
+        assert_eq!(count, 0);
     }
 
     /// Test boundary value error handling
@@ -284,14 +284,14 @@ mod error_handling_tests {
     fn test_boundary_value_errors() {
         // Test with maximum indices
         let vec_result = new_type_map::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
-        let mut map = vec_result.unwrap();
+        let mut map = vec_result.unwrap());
 
         // Insert at boundary values
-        assert!(map.try_insert(0, 100).is_ok();
-        assert!(map.try_insert(u32::MAX, 200).is_ok();
-        assert!(map.try_insert(u32::MAX / 2, 300).is_ok();
+        assert!(map.try_insert(0, 100).is_ok());
+        assert!(map.try_insert(u32::MAX, 200).is_ok());
+        assert!(map.try_insert(u32::MAX / 2, 300).is_ok());
 
         // Lookup at boundaries
         assert_eq!(map.get(&0), Some(&100;
@@ -337,16 +337,16 @@ mod error_handling_tests {
         // All operations that can fail should return Result<T, E>
 
         let vec_result: WrtResult<_> = new_component_vec::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
         let map_result: WrtResult<_> = new_export_map::<u32>);
-        assert!(map_result.is_ok();
+        assert!(map_result.is_ok());
 
         let string_result: WrtResult<_> = new_component_name);
-        assert!(string_result.is_ok();
+        assert!(string_result.is_ok());
 
         let bounded_string_result: WrtResult<_> = bounded_component_name_from_str("test";
-        assert!(bounded_string_result.is_ok();
+        assert!(bounded_string_result.is_ok());
 
         // All constructors return Result, enabling proper error handling
     }
@@ -355,13 +355,13 @@ mod error_handling_tests {
     #[test]
     fn test_error_recovery() {
         let vec_result = new_component_vec::<u32>);
-        assert!(vec_result.is_ok();
+        assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap();
+        let mut vec = vec_result.unwrap());
 
         // Fill vector
         while !vec.is_full() {
-            vec.try_push(1).unwrap();
+            vec.try_push(1).unwrap());
         }
 
         // Cause error
@@ -372,7 +372,7 @@ mod error_handling_tests {
         assert_eq!(vec.pop(), Some(1;
 
         // Can continue operations after error
-        assert!(vec.try_push(3).is_ok();
+        assert!(vec.try_push(3).is_ok());
         assert_eq!(vec.len(), MAX_COMPONENT_INSTANCES;
     }
 }

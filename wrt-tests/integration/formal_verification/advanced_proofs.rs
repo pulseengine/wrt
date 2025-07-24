@@ -129,18 +129,18 @@ pub mod redundant_computation {
             let mut algorithms = bounded_vec(4;
             
             // Algorithm 1: Direct computation
-            algorithms.push(Box::new(|x| x.wrapping_mul(2))).unwrap();
+            algorithms.push(Box::new(|x| x.wrapping_mul(2))).unwrap());
             
             // Algorithm 2: Bit-shift based
-            algorithms.push(Box::new(|x| x << 1)).unwrap();
+            algorithms.push(Box::new(|x| x << 1)).unwrap());
             
             // Algorithm 3: Addition based
-            algorithms.push(Box::new(|x| x.wrapping_add(x))).unwrap();
+            algorithms.push(Box::new(|x| x.wrapping_add(x))).unwrap());
             
             // Algorithm 4: Table lookup simulation
             algorithms.push(Box::new(|x| {
                 if x < 0x80000000 { x * 2 } else { (x - 0x80000000) * 2 }
-            })).unwrap();
+            })).unwrap());
             
             Self { algorithms }
         }
@@ -149,11 +149,11 @@ pub mod redundant_computation {
             let mut results = bounded_vec(4;
             
             for algo in self.algorithms.iter() {
-                results.push(algo(input)).unwrap();
+                results.push(algo(input)).unwrap());
             }
             
             // Verify all algorithms produce same result
-            let first = results.get(0).unwrap();
+            let first = results.get(0).unwrap());
             for i in 1..results.len() {
                 if results.get(i).unwrap() != first {
                     return Err("Diverse redundancy check failed";
@@ -249,7 +249,7 @@ pub mod hardware_error_detection {
             // Verify control flow integrity
             let idx = self.actual_sequence.len() - 1;
             if idx < self.expected_sequence.len() {
-                let expected = self.expected_sequence.get(idx).unwrap();
+                let expected = self.expected_sequence.get(idx).unwrap());
                 if *expected != step {
                     self.violations += 1;
                     return Err("Control flow violation detected";
@@ -348,8 +348,8 @@ mod proofs {
             ;
         }
         
-        assert!(result.is_ok();
-        assert_eq!(result.unwrap(), 1;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 1);
     }
     
     #[test]
@@ -419,7 +419,7 @@ mod proofs {
             ;
         }
         
-        assert!(result1.is_ok();
+        assert!(result1.is_ok());
     }
     
     #[test]
@@ -429,7 +429,7 @@ mod proofs {
         
         // Set expected control flow
         let expected = vec![1, 2, 3, 4, 5];
-        monitor.set_expected_flow(&expected).unwrap();
+        monitor.set_expected_flow(&expected).unwrap());
         
         // Execute correct flow
         let mut flow_correct = true;

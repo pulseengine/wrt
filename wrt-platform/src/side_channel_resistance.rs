@@ -255,7 +255,7 @@ pub mod constant_time {
             let mut result_bytes = [0u8; 32]; // Assume T fits in 32 bytes
 
             for i in 0..core::mem::size_of::<T>() {
-                result_bytes[i] = (a_bytes[i] & mask) | (b_bytes[i] & !mask;
+                result_bytes[i] = (a_bytes[i] & mask) | (b_bytes[i] & !mask);
             }
 
             core::ptr::read(result_bytes.as_ptr() as *const T)
@@ -268,10 +268,10 @@ pub mod constant_time {
     /// Uses cache line alignment and prefetching for timing consistency.
     pub fn constant_time_copy(dst: &mut [u8], src: &[u8]) -> Result<(), wrt_error::Error> {
         if dst.len() != src.len() {
-            return Err(wrt_error::Error::runtime_execution_error("Source and destination lengths must match";
+            return Err(wrt_error::Error::runtime_execution_error("Source and destination lengths must match"));
         }
 
-        let len = dst.len);
+        let len = dst.len();
 
         // Copy in cache-line sized chunks for consistent timing
         const CACHE_LINE_SIZE: usize = 64;
@@ -291,17 +291,17 @@ pub mod constant_time {
                     core::arch::x86_64::_mm_prefetch(
                         src.as_ptr().add(next_start) as *const i8,
                         core::arch::x86_64::_MM_HINT_T0,
-                    ;
+                    );
                 }
             }
 
-            dst[start..end].copy_from_slice(&src[start..end];
+            dst[start..end].copy_from_slice(&src[start..end]);
         }
 
         // Copy remainder with padding to full cache line
         if remainder > 0 {
             let start = full_lines * CACHE_LINE_SIZE;
-            dst[start..].copy_from_slice(&src[start..];
+            dst[start..].copy_from_slice(&src[start..]);
 
             // Add dummy reads to complete cache line timing
             let dummy_reads = CACHE_LINE_SIZE - remainder;
@@ -748,7 +748,7 @@ mod tests {
         let mut dst = [0u8; 21];
 
         let result = constant_time::constant_time_copy(&mut dst, src;
-        assert!(result.is_ok();
+        assert!(result.is_ok());
         assert_eq!(&dst, src;
 
         // Test error on size mismatch

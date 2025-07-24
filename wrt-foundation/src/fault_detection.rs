@@ -379,7 +379,7 @@ mod tests {
         };
         
         // Valid bounds check
-        assert!(detector.check_bounds(5, 10, &context).is_ok();
+        assert!(detector.check_bounds(5, 10, &context).is_ok());
         
         // Invalid bounds check
         assert!(detector.check_bounds(10, 10, &context).is_err();
@@ -401,14 +401,14 @@ mod tests {
         };
         
         // Valid budget check
-        assert!(detector.check_budget(512, 1024, &context).is_ok();
+        assert!(detector.check_budget(512, 1024, &context).is_ok());
         
         // Invalid budget check
         assert!(detector.check_budget(2048, 1024, &context).is_err();
         
         // Check statistics
         let stats = detector.get_statistics);
-        assert_eq!(stats.budget_violations, 1;
+        assert_eq!(stats.budget_violations, 1);
         assert!(stats.memory_watermark >= 512);
     }
     
@@ -423,8 +423,8 @@ mod tests {
         };
         
         // Valid alignment
-        assert!(detector.check_alignment(0x1000, 4, &context).is_ok();
-        assert!(detector.check_alignment(0x1004, 4, &context).is_ok();
+        assert!(detector.check_alignment(0x1000, 4, &context).is_ok());
+        assert!(detector.check_alignment(0x1004, 4, &context).is_ok());
         
         // Invalid alignment
         assert!(detector.check_alignment(0x1001, 4, &context).is_err();
@@ -454,10 +454,10 @@ mod tests {
         };
         
         // In LogOnly mode, report_fault should succeed
-        assert!(detector.report_fault(fault, &context).is_ok();
+        assert!(detector.report_fault(fault, &context).is_ok());
         
         // Verify the fault was counted
         let stats = detector.get_statistics);
-        assert_eq!(stats.budget_violations, 1;
+        assert_eq!(stats.budget_violations, 1);
     }
 }
