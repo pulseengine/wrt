@@ -527,7 +527,7 @@ impl Counter {
                 // Log error if fuel calculation fails (should not happen
                 // currently)
                 // Consider using a proper logging facade if available
-                // eprintln!("Error calculating fuel cost: {}", e));
+                // eprintln!("Error calculating fuel cost: {}", e);
             }
         }
     }

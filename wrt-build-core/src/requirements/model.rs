@@ -453,7 +453,7 @@ impl ComplianceReport {
         output.push_str(&format!("\n📈 ASIL Compliance:\n";
         output.push_str(&format!("──────────────────\n";
 
-        let mut asil_levels: Vec<_> = self.asil_compliance.iter().collect());
+        let mut asil_levels: Vec<_> = self.asil_compliance.iter().collect();
         asil_levels.sort_by_key(|(asil, _)| match asil {
             AsilLevel::QM => 0,
             AsilLevel::A => 1,

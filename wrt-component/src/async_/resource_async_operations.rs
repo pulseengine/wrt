@@ -508,8 +508,8 @@ impl ResourceAsyncOperations {
         // Poll underlying ABI operations
         let abi_result = self.abi_support.poll_async_operations()?;
 
-        let mut completed_operations = Vec::new());
-        let mut failed_operations = Vec::new());
+        let mut completed_operations = Vec::new();
+        let mut failed_operations = Vec::new();
 
         // Check operation statuses
         for (op_id, operation) in self.active_operations.iter() {

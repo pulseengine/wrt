@@ -396,7 +396,7 @@ impl Default for Memory {
             // If we can't create default memory, create a minimal fallback
             // Log the error if logging is available
             #[cfg(feature = "std")]
-            eprintln!("Warning: Failed to create default memory: {}. Creating minimal fallback.", e));
+            eprintln!("Warning: Failed to create default memory: {}. Creating minimal fallback.", e);
             
             // Create minimal memory with zero pages
             let minimal_type = MemoryType {
@@ -608,7 +608,7 @@ impl Memory {
         // memory integrity is verified during the operation
         let data_size = self.data.size);
         if data_size == 0 {
-            return Ok(std::vec::Vec::new());
+            return Ok(std::vec::Vec::new();
         }
 
         // Get a safe slice over the entire memory
@@ -2137,7 +2137,7 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
-            return Ok(std::vec::Vec::new());
+            return Ok(std::vec::Vec::new();
         }
 
         // Convert to usize and check for overflow
@@ -2158,7 +2158,7 @@ impl MemoryOperations for Memory {
         let mut buffer = vec![0u8; len_usize];
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let mut buffer = {
-            let mut buf = wrt_foundation::bounded::BoundedVec::new());
+            let mut buf = wrt_foundation::bounded::BoundedVec::new();
             for _ in 0..len_usize {
                 buf.push(0u8).unwrap();
             }
@@ -2735,7 +2735,7 @@ mod tests {
 
         // Print safety stats
         #[cfg(feature = "std")]
-        println!("{}", memory.safety_stats));
+        println!("{}", memory.safety_stats);
         #[cfg(not(feature = "std"))]
         println!("{}", memory.safety_stats()?.as_str().unwrap_or("");
 

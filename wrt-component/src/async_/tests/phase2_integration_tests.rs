@@ -110,7 +110,7 @@ mod tests {
         }
 
         // Track execution order
-        let execution_order = Arc::new(Mutex::new(Vec::new());
+        let execution_order = Arc::new(Mutex::new(Vec::new();
 
         // Spawn low priority task first
         let order_clone1 = execution_order.clone();
@@ -239,7 +239,7 @@ mod tests {
         ).unwrap();
 
         // Spawn multiple tasks that compete for fuel
-        let mut task_ids = Vec::new());
+        let mut task_ids = Vec::new();
         let completed = Arc::new(AtomicU64::new(0;
 
         for i in 0..5 {

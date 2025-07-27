@@ -384,7 +384,7 @@ mod benchmarks {
 
         let start = Instant::now();
         let _engine = WrtdEngine::new(config).unwrap();
-        let duration = start.elapsed());
+        let duration = start.elapsed();
 
         // Engine creation should be fast (< 100ms)
         assert!(
@@ -403,7 +403,7 @@ mod benchmarks {
 
         let start = Instant::now();
         let _engine = WrtdEngine::new(config).unwrap();
-        let duration = start.elapsed());
+        let duration = start.elapsed();
 
         // WASI initialization should be reasonable (< 500ms)
         assert!(

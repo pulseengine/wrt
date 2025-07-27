@@ -19,8 +19,8 @@ use wrt_instructions::simd_ops::SimdOp;
 use wrt_error::Result;
 
 fn main() -> Result<()> {
-    println!("🚀 SIMD Execution Integration Demo"));
-    println!("=================================="));
+    println!("🚀 SIMD Execution Integration Demo");
+    println!("==================================");
     
     // Create a stackless engine for demonstration
     let mut engine = StacklessEngine::new();
@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     demonstrate_simd_lane_operations(&adapter, &mut engine)?;
     demonstrate_execution_statistics(&engine;
     
-    println!("\n✅ SIMD execution integration demo completed successfully!"));
+    println!("\n✅ SIMD execution integration demo completed successfully!");
     Ok(())
 }
 
@@ -73,7 +73,7 @@ fn demonstrate_simd_arithmetic(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(result_v128) = result {
         println!("✓ I32x4 Add executed successfully");
-        println!("  Result vector: {:?}", result_v128.bytes));
+        println!("  Result vector: {:?}", result_v128.bytes);
     } else {
         println!("✗ Unexpected result type");
     }
@@ -88,7 +88,7 @@ fn demonstrate_simd_arithmetic(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(result_v128) = result {
         println!("✓ I32x4 Mul executed successfully");
-        println!("  Result vector: {:?}", result_v128.bytes));
+        println!("  Result vector: {:?}", result_v128.bytes);
     }
     
     Ok(())
@@ -176,7 +176,7 @@ fn demonstrate_simd_lane_operations(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(splat_result) = result {
         println!("✓ I8x16 Splat executed successfully");
-        println!("  Splat result: {:?}", splat_result.bytes));
+        println!("  Splat result: {:?}", splat_result.bytes);
     }
     
     // Demonstrate replace lane
@@ -190,7 +190,7 @@ fn demonstrate_simd_lane_operations(
     let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(replace_result) = result {
         println!("✓ I8x16 ReplaceLane executed successfully");
-        println!("  Replace result: {:?}", replace_result.bytes));
+        println!("  Replace result: {:?}", replace_result.bytes);
     }
     
     Ok(())

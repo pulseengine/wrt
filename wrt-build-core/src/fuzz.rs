@@ -65,7 +65,7 @@ pub struct FuzzResults {
 
 /// List available fuzzing targets implementation
 pub fn list_fuzz_targets_impl(build_system: &BuildSystem) -> BuildResult<Vec<String>> {
-    let mut targets = Vec::new());
+    let mut targets = Vec::new();
 
     // Look for fuzz directories in workspace crates
     for crate_path in build_system.workspace.crate_paths() {
@@ -85,15 +85,15 @@ pub fn run_fuzz_with_options_impl(
     build_system: &BuildSystem,
     options: &FuzzOptions,
 ) -> BuildResult<FuzzResults> {
-    println!("{} Starting fuzzing campaign...", "🐛".bright_blue));
+    println!("{} Starting fuzzing campaign...", "🐛".bright_blue);
 
     // Check if cargo-fuzz is available with helpful error message
     use crate::tools::ensure_tool_available;
     ensure_tool_available("cargo-fuzz", "fuzz")?;
 
     let start_time = std::time::Instant::now);
-    let mut targets_run = Vec::new());
-    let mut crashed_targets = Vec::new());
+    let mut targets_run = Vec::new();
+    let mut crashed_targets = Vec::new();
     let mut success = true;
 
     // Determine targets to run
@@ -113,7 +113,7 @@ pub fn run_fuzz_with_options_impl(
     if let Some(runs) = options.runs {
         println!("  Runs: {}", runs);
     }
-    println!("  Targets: {}", targets_to_run.len));
+    println!("  Targets: {}", targets_to_run.len);
     println!);
 
     // Run each fuzzing target
@@ -218,7 +218,7 @@ fn is_cargo_fuzz_available_impl() -> BuildResult<bool> {
 
 /// Discover fuzz targets in a fuzz directory implementation
 fn discover_fuzz_targets_impl(fuzz_dir: &Path) -> BuildResult<Vec<String>> {
-    let mut targets = Vec::new());
+    let mut targets = Vec::new();
 
     let fuzz_targets_dir = fuzz_dir.join("fuzz_targets";
     if !fuzz_targets_dir.exists() {

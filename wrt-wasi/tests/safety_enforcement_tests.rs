@@ -12,19 +12,19 @@ use wrt_foundation::{safe_managed_alloc, memory_init::{init_wrt_memory, init_cra
 #[test]
 fn test_safety_level_detection() {
     // Test that we can detect the current safety level
-    let level = wasi_safety_level);
+    let level = wasi_safety_level();
     println!("Current safety level: {}", level);
     
     // Verify it's one of the expected values
     assert!(matches!(
         level,
         "dynamic-allocation" | "bounded-collections" | "static-memory-safety" | "maximum-safety"
-    ;
+    ));
 }
 
 #[test]
 fn test_allocation_size_limits() {
-    let max_size = wasi_max_allocation_size);
+    let max_size = wasi_max_allocation_size();
     println!("Maximum allocation size: {} bytes", max_size);
     
     // Verify size based on safety level
@@ -44,7 +44,7 @@ fn test_safety_aware_allocation_enforcement() {
     init_crate_memory(CrateId::Wasi).unwrap();
     
     // Try to allocate within limits
-    let small_alloc = safe_managed_alloc!(1024, WASI_CRATE_ID;
+    let small_alloc = safe_managed_alloc!(1024, WASI_CRATE_ID);
     assert!(small_alloc.is_ok(), "Small allocation should succeed");
     
     // The actual enforcement happens at compile time for maximum-safety
@@ -57,12 +57,12 @@ fn test_safety_aware_allocation_enforcement() {
         }
         "static-memory-safety" => {
             // Try to allocate more than 32KB
-            let large_alloc = safe_managed_alloc!(40000, WASI_CRATE_ID;
+            let large_alloc = safe_managed_alloc!(40000, WASI_CRATE_ID);
             assert!(large_alloc.is_err(), "Large allocation should fail in static-memory-safety mode");
         }
         "bounded-collections" => {
             // Try to allocate more than 64KB
-            let large_alloc = safe_managed_alloc!(70000, WASI_CRATE_ID;
+            let large_alloc = safe_managed_alloc!(70000, WASI_CRATE_ID);
             assert!(large_alloc.is_err(), "Large allocation should fail in bounded-collections mode");
         }
         _ => {

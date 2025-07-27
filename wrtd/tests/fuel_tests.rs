@@ -20,7 +20,7 @@ mod tests {
             .to_path_buf();
 
         let wrtd_path = project_root.join("target/debug/wrtd");
-        println!("Using wrtd at: {}", wrtd_path.display()));
+        println!("Using wrtd at: {}", wrtd_path.display());
 
         let mut cmd = Command::new(wrtd_path);
 
@@ -34,13 +34,13 @@ mod tests {
             cmd.arg("--call").arg(function_name);
         }
 
-        let output = cmd.output().expect("Failed to execute wrtd"));
+        let output = cmd.output().expect("Failed to execute wrtd");
         let success = output.status.success();
         let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
         let error_str = String::from_utf8_lossy(&output.stderr).into_owned();
 
         if !error_str.is_empty() {
-            println!("Error output: {}", error_str));
+            println!("Error output: {}", error_str);
         }
 
         (success, output_str)
@@ -55,7 +55,7 @@ mod tests {
             .join("tests/fixtures/loop.wasm")
             .to_str()
             .unwrap()
-            .to_string());
+            .to_string();
 
         // Execute with a very small fuel limit that should cause the execution to pause
         let (success, output) = run_wrtd(&test_wasm, Some(10), Some("hello"));
@@ -68,7 +68,7 @@ mod tests {
         assert!(output.contains("Function result:"));
 
         // Print the output for debugging
-        println!("Output content:\n{}", output));
+        println!("Output content:\n{}", output);
 
         // Also verify we're loading the WebAssembly file
         assert!(output.contains("Loaded"));
@@ -81,7 +81,7 @@ mod tests {
             .to_path_buf();
 
         let wrtd_path = project_root.join("target/debug/wrtd");
-        println!("Using wrtd at: {}", wrtd_path.display()));
+        println!("Using wrtd at: {}", wrtd_path.display());
 
         let mut cmd = Command::new(wrtd_path);
 
@@ -90,20 +90,20 @@ mod tests {
         cmd.arg("--call").arg("hello");
         cmd.arg("--stats");
 
-        let output = cmd.output().expect("Failed to execute wrtd"));
+        let output = cmd.output().expect("Failed to execute wrtd");
         let success = output.status.success();
         let output_str = String::from_utf8_lossy(&output.stdout).into_owned();
         let error_str = String::from_utf8_lossy(&output.stderr).into_owned();
 
         if !error_str.is_empty() {
-            println!("Error output: {}", error_str));
+            println!("Error output: {}", error_str);
         }
 
         // Should succeed
         assert!(success);
 
         // Print the output for debugging
-        println!("Stats output content:\n{}", output_str));
+        println!("Stats output content:\n{}", output_str);
 
         // We're falling back to the mock component which doesn't display statistics,
         // so we'll just verify that we received the function result

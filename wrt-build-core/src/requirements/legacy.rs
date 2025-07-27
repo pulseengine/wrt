@@ -175,8 +175,8 @@ platform = ["all"]
 
     /// Verify all requirements
     pub fn verify(&self, workspace_root: &Path) -> BuildResult<RequirementsVerificationResult> {
-        let mut missing_files = Vec::new());
-        let mut incomplete_requirements = Vec::new());
+        let mut missing_files = Vec::new();
+        let mut incomplete_requirements = Vec::new();
         let mut verified_count = 0;
 
         for req in &self.requirement {

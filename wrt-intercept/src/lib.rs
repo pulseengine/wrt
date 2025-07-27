@@ -513,16 +513,16 @@ impl LinkInterceptor {
 
             // Early return if strategy bypasses execution
             if strategy.should_bypass() {
-                return Ok(modified_args;
+                return Ok(modified_args);
             }
         }
 
         // Execute the actual call
-        let mut result = call_fn(modified_args;
+        let mut result = call_fn(modified_args);
 
         // Apply after_call interceptors in reverse order
         for strategy in self.strategies.iter().rev() {
-            result = strategy.after_call(&self.name, target, function, &args, result;
+            result = strategy.after_call(&self.name, target, function, &args, result);
         }
 
         result
@@ -608,7 +608,7 @@ impl LinkInterceptor {
         serialized_data: &[u8],
         modifications: &[Modification],
     ) -> Result<Vec<u8>> {
-        let mut modified_data = serialized_data.to_vec);
+        let mut modified_data = serialized_data.to_vec();
 
         for modification in modifications {
             match modification {
@@ -616,9 +616,9 @@ impl LinkInterceptor {
                     // No modification needed
                 }
                 Modification::Replace { offset, data } => {
-                    let end_offset = offset + data.len);
+                    let end_offset = offset + data.len();
                     if end_offset > modified_data.len() {
-                        return Err(Error::runtime_execution_error("Replace range exceeds data length";
+                        return Err(Error::runtime_execution_error("Replace range exceeds data length"));
                     }
 
                     // Fixed version without borrowing issues

@@ -602,7 +602,7 @@ impl SubtaskManager {
     pub fn wait_all(&self) -> Result<Vec<SubtaskResult>> {
         // In a real implementation, this would block until all subtasks complete
         // For now, we return current results
-        let mut results = Vec::new());
+        let mut results = Vec::new();
         
         for subtask in &self.subtasks {
             if let Some(ref result) = subtask.result {

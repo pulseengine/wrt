@@ -98,11 +98,11 @@ fn bench_zero_cost_iteration(c: &mut Criterion) {
     group.sample_size(1000);
 
     // Setup test data
-    let data: Vec<i32> = (0..100).collect());
+    let data: Vec<i32> = (0..100).collect();
     let std_vec = StdVec::from(data.clone());
 
     #[cfg(feature = "safety-critical")]
-    let mut wrt_vec: WrtVec<i32, { CrateId::Component as u8 }, 100> = WrtVec::new());
+    let mut wrt_vec: WrtVec<i32, { CrateId::Component as u8 }, 100> = WrtVec::new();
     #[cfg(feature = "safety-critical")]
     for &val in &data {
         let _ = wrt_vec.push(val);
@@ -140,7 +140,7 @@ fn bench_capacity_overhead(c: &mut Criterion) {
     #[cfg(feature = "safety-critical")]
     group.bench_function("wrt_push_within_capacity", |b| {
         b.iter(|| {
-            let mut vec: WrtVec<i32, { CrateId::Component as u8 }, 10> = WrtVec::new());
+            let mut vec: WrtVec<i32, { CrateId::Component as u8 }, 10> = WrtVec::new();
             for i in 0..5 {
                 let _ = vec.push(black_box(i));
             }

@@ -78,7 +78,7 @@ mod complete_debug_tests {
         assert!(!inlined.has_inlined_at(0x3000);
 
         // Test finding multiple inlined functions
-        let found: Vec<_> = inlined.find_at_pc(0x2050).collect());
+        let found: Vec<_> = inlined.find_at_pc(0x2050).collect();
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].call_line, 42;
     }
@@ -273,11 +273,11 @@ mod complete_debug_tests {
         inlined.add(func2).unwrap();
 
         // PC 0x2100 should find both functions
-        let found: Vec<_> = inlined.find_at_pc(0x2100).collect());
+        let found: Vec<_> = inlined.find_at_pc(0x2100).collect();
         assert_eq!(found.len(), 2;
 
         // Check depths
-        let depths: Vec<_> = found.iter().map(|f| f.depth).collect());
+        let depths: Vec<_> = found.iter().map(|f| f.depth).collect();
         assert!(depths.contains(&0);
         assert!(depths.contains(&1);
     }

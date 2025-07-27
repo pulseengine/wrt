@@ -372,7 +372,7 @@ impl WitLanguageServer {
 
     /// Get completion items
     pub fn completion(&self, _uri: &str, _position: Position) -> Result<Vec<CompletionItem>> {
-        let mut items = Vec::new());
+        let mut items = Vec::new();
         let provider = wrt_foundation::safe_managed_alloc!(
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
@@ -434,7 +434,7 @@ impl WitLanguageServer {
     /// Get document symbols
     pub fn document_symbols(&self, uri: &str) -> Result<Vec<DocumentSymbol>> {
         let file_id = self.uri_to_file_id(uri;
-        let mut symbols = Vec::new());
+        let mut symbols = Vec::new();
 
         // Get AST from parser
         let ast = if let Ok(mut cache) = self.parser_cache.lock() {
@@ -453,7 +453,7 @@ impl WitLanguageServer {
     /// Update diagnostics for a document
     fn update_diagnostics(&mut self, uri: &str) -> Result<()> {
         let _file_id = self.uri_to_file_id(uri;
-        let diagnostics = Vec::new());
+        let diagnostics = Vec::new();
 
         // Get parser errors (if any)
         // In a real implementation, the parser would provide error information
@@ -527,7 +527,7 @@ impl WitLanguageServer {
         for item in &ast.items {
             match item {
                 TopLevelItem::Interface(interface) => {
-                    let mut children = Vec::new());
+                    let mut children = Vec::new();
 
                     // Extract function symbols
                     for interface_item in &interface.items {

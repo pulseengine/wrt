@@ -14,7 +14,7 @@ mod tests {
 
     /// Create a minimal valid component binary for testing
     fn create_minimal_component_binary() -> Vec<u8> {
-        let mut binary = Vec::new());
+        let mut binary = Vec::new();
 
         // Add component magic
         binary.extend_from_slice(&[0x00, 0x61, 0x73, 0x6D]); // Component magic
@@ -45,7 +45,7 @@ mod tests {
 
     /// Create a component binary with invalid magic
     fn create_invalid_magic_binary() -> Vec<u8> {
-        let mut binary = Vec::new());
+        let mut binary = Vec::new();
 
         // Add invalid magic
         binary.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]); // Invalid magic
@@ -57,7 +57,7 @@ mod tests {
 
     /// Create a component binary with invalid version
     fn create_invalid_version_binary() -> Vec<u8> {
-        let mut binary = Vec::new());
+        let mut binary = Vec::new();
 
         binary.extend_from_slice(&[0x00, 0x61, 0x73, 0x6D]); // Valid magic
         binary.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]); // Invalid version
@@ -68,7 +68,7 @@ mod tests {
 
     /// Create a component binary with invalid layer
     fn create_invalid_layer_binary() -> Vec<u8> {
-        let mut binary = Vec::new());
+        let mut binary = Vec::new();
 
         binary.extend_from_slice(&[0x00, 0x61, 0x73, 0x6D]); // Valid magic
         binary.extend_from_slice(&[0x01, 0x00, 0x00, 0x00]); // Version 1

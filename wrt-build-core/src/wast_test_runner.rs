@@ -108,7 +108,7 @@ impl WastTestRunner {
         ;
 
         let test_files = self.discover_test_files(test_dir)?;
-        println!("📁 Found {} test files", test_files.len));
+        println!("📁 Found {} test files", test_files.len);
 
         for test_file in test_files {
             if let Some(max) = self.max_failures {
@@ -301,7 +301,7 @@ impl WastTestRunner {
 
     /// Discover test files in directory
     fn discover_test_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
-        let mut test_files = Vec::new());
+        let mut test_files = Vec::new();
 
         if !dir.is_dir() {
             return Err(anyhow::anyhow!(
@@ -345,7 +345,7 @@ impl WastTestRunner {
         println!("✅ Passed: {}", self.stats.passed);
         println!("❌ Failed: {}", self.stats.failed);
         println!("⏭️  Skipped: {}", self.stats.skipped);
-        println!("📈 Success rate: {:.1}%", self.stats.success_rate));
+        println!("📈 Success rate: {:.1}%", self.stats.success_rate);
 
         if !self.stats.errors.is_empty() {
             println!("\n❌ Errors:");

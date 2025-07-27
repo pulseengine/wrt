@@ -106,7 +106,7 @@ mod tests {
 
         fn report_safety_violation(&self, violation: &str) {
             self.safety_violations.fetch_add(1, Ordering::AcqRel;
-            eprintln!("SAFETY VIOLATION: {}", violation));
+            eprintln!("SAFETY VIOLATION: {}", violation);
         }
 
         fn verify_no_safety_violations(&self) -> bool {
@@ -186,7 +186,7 @@ mod tests {
         const FUEL_BUDGET: u64 = 1000; // Strict budget
         const MAX_EXECUTIONS: u32 = 10; // Bounded execution
         
-        let mut task_ids = Vec::new());
+        let mut task_ids = Vec::new();
         
         for i in 0..NUM_TASKS {
             let task_id = {

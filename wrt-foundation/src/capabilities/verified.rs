@@ -283,7 +283,7 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
     /// Perform runtime verification of a memory operation
     fn runtime_verify_operation(&self, operation: &MemoryOperation) -> Result<()> {
         if !self.runtime_verification {
-            return Ok();
+            return Ok(());
         }
 
         match operation {
@@ -464,7 +464,7 @@ impl<const N: usize> VerifiedMemoryRegion<N> {
     /// Verify buffer integrity using checksum
     fn verify_integrity(&self) -> Result<()> {
         if !self.runtime_verification {
-            return Ok();
+            return Ok(());
         }
 
         let mut current_checksum = Checksum::new();

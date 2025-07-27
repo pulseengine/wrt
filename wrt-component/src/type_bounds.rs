@@ -196,7 +196,7 @@ impl TypeBoundsChecker {
 
         for _ in 0..max_iterations {
             #[cfg(feature = "std")]
-            let mut new_relations = Vec::new());
+            let mut new_relations = Vec::new();
             #[cfg(not(feature = "std"))]
             let mut new_relations = {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
@@ -264,7 +264,7 @@ impl TypeBoundsChecker {
 
     #[cfg(feature = "std")]
     pub fn get_all_supertypes(&self, type_id: TypeId) -> Vec<TypeId> {
-        let mut supertypes = Vec::new());
+        let mut supertypes = Vec::new();
         self.collect_supertypes(type_id, &mut supertypes;
         supertypes
     }
@@ -281,7 +281,7 @@ impl TypeBoundsChecker {
 
     #[cfg(feature = "std")]
     pub fn get_all_subtypes(&self, type_id: TypeId) -> Vec<TypeId> {
-        let mut subtypes = Vec::new());
+        let mut subtypes = Vec::new();
 
         for (sub_type_id, relations) in &self.type_hierarchy {
             for relation in relations.iter() {

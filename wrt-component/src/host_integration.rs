@@ -493,7 +493,7 @@ impl HostIntegrationManager {
         }
 
         #[cfg(feature = "std")]
-        let mut allowed_instances = Vec::new());
+        let mut allowed_instances = Vec::new();
         #[cfg(not(any(feature = "std", )))]
         let mut allowed_instances = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;

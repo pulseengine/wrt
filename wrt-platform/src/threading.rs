@@ -3,6 +3,8 @@
 //! This module provides safe abstractions for mapping WebAssembly threads to
 //! native platform threads with proper resource controls and isolation.
 
+#[cfg(feature = "std")]
+extern crate alloc;
 
 use core::{
     fmt::Debug,
@@ -11,7 +13,7 @@ use core::{
 };
 
 #[cfg(feature = "std")]
-use std::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
 use wrt_error::Result;
 use wrt_sync::WrtRwLock;

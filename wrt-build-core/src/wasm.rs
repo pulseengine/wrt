@@ -105,10 +105,10 @@ impl WasmVerifier {
         let start_time = Instant::now);
 
         // Parse the module using wrt-decoder unified loader
-        let mut imports = Vec::new());
-        let mut exports = Vec::new());
-        let mut builtin_imports = Vec::new());
-        let mut errors = Vec::new());
+        let mut imports = Vec::new();
+        let mut exports = Vec::new();
+        let mut builtin_imports = Vec::new();
+        let mut errors = Vec::new();
         let section_count = 0; // Will be updated when we have section counting
         let version = 1; // WebAssembly version 1
 
@@ -194,9 +194,9 @@ impl WasmVerifier {
     /// Print human-readable verification results
     pub fn print_results(&self, result: &WasmVerificationResult) {
         if result.valid {
-            println!("{} WebAssembly module is valid", "✅".bright_green));
+            println!("{} WebAssembly module is valid", "✅".bright_green);
         } else {
-            println!("{} WebAssembly module validation failed", "❌".bright_red));
+            println!("{} WebAssembly module validation failed", "❌".bright_red);
         }
 
         println!("\n📊 Module Information:");
@@ -234,7 +234,7 @@ impl WasmVerifier {
         if !result.errors.is_empty() {
             println!("\n❌ Errors:");
             for error in &result.errors {
-                println!("  - {}", error.bright_red));
+                println!("  - {}", error.bright_red);
             }
         }
     }
@@ -251,7 +251,7 @@ pub fn scan_for_builtins(module_path: impl AsRef<Path>) -> BuildResult<Vec<Strin
 pub fn verify_modules(
     module_paths: &[impl AsRef<Path>],
 ) -> BuildResult<Vec<(String, WasmVerificationResult)>> {
-    let mut results = Vec::new());
+    let mut results = Vec::new();
 
     for path in module_paths {
         let path_ref = path.as_ref);

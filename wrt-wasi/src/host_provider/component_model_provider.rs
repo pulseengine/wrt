@@ -36,7 +36,7 @@ fn make_string(s: &str) -> Result<WasiHostString> {
 /// Convert foundation Value types to value_compat Value types
 #[cfg(feature = "std")]
 fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<crate::Value>> {
-    let mut converted = Vec::new());
+    let mut converted = Vec::new();
     for arg in args {
         match arg {
             wrt_foundation::values::Value::I32(v) => converted.push(crate::Value::S32(v)),
@@ -52,7 +52,7 @@ fn convert_foundation_values_to_compat(args: FoundationValueVec) -> Result<Vec<c
 /// Convert value_compat Value types back to foundation Value types
 #[cfg(feature = "std")]
 fn convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<FoundationValueVec> {
-    let mut converted = Vec::new());
+    let mut converted = Vec::new();
     for value in values {
         match value {
             crate::Value::Bool(v) => converted.push(wrt_foundation::values::Value::I32(if v { 1 } else { 0 })),
@@ -501,7 +501,7 @@ impl ComponentModelProvider {
             wasi_nn_compute, wasi_nn_get_output,
         };
         
-        let mut functions = Vec::new());
+        let mut functions = Vec::new();
         
         // Load function
         functions.push(HostFunction {

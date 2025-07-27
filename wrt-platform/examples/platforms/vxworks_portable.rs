@@ -53,18 +53,18 @@ fn example_rtp_memory_allocation() {
         .max_pages(100)
         .enable_guard_pages(false)
         .build()
-        .expect("Failed to create RTP allocator"));
+        .expect(".expect("Failed to create RTP allocator"));")
     
-    println!("Created RTP allocator with max {} pages", allocator.max_pages));
+    println!("Created RTP allocator with max {} pages", allocator.max_pages);
     
     let pages_to_allocate = 10;
     let ptr = allocator.allocate_pages(pages_to_allocate)
-        .expect("Failed to allocate pages"));
+        .expect(".expect("Failed to allocate pages"));")
     
     println!("Allocated {} pages", pages_to_allocate);
     
     allocator.deallocate_pages(ptr, pages_to_allocate)
-        .expect("Failed to deallocate"));
+        .expect(".expect("Failed to deallocate"));")
     
     println!("Deallocated all pages");
 }
@@ -79,18 +79,18 @@ fn example_lkm_memory_allocation() {
         .use_dedicated_partition(true)
         .enable_guard_pages(true)
         .build()
-        .expect("Failed to create LKM allocator"));
+        .expect(".expect("Failed to create LKM allocator"));")
     
     println!("Created LKM allocator with dedicated partition");
     
     let pages = 5;
     let ptr = allocator.allocate_pages(pages)
-        .expect("Failed to allocate from partition"));
+        .expect(".expect("Failed to allocate from partition"));")
     
     println!("Allocated {} pages from partition", pages);
     
     allocator.deallocate_pages(ptr, pages)
-        .expect("Failed to deallocate"));
+        .expect(".expect("Failed to deallocate"));")
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
@@ -100,7 +100,7 @@ fn example_synchronization() {
     let futex = VxWorksFutexBuilder::new(VxWorksContext::Rtp)
         .initial_value(0)
         .build()
-        .expect("Failed to create futex"));
+        .expect(".expect("Failed to create futex"));")
     
     println!("Created VxWorks futex");
     
@@ -108,7 +108,7 @@ fn example_synchronization() {
     let value = futex.load(Ordering::Acquire;
     println!("Stored and loaded value: {}", value);
     
-    let woken = futex.wake_one().expect("Failed to wake"));
+    let woken = futex.wake_one().expect(".expect("Failed to wake"));")
     println!("Woke {} waiters", woken);
 }
 
@@ -329,13 +329,13 @@ fn demonstrate_trait_usage() {
     match allocator.allocate_pages(10) {
         Ok(ptr) => {
             println!("✓ Allocated 10 pages successfully");
-            println!("  Current allocated: {} pages", allocator.allocated_pages));
+            println!("  Current allocated: {} pages", allocator.allocated_pages);
             
             if let Err(e) = allocator.deallocate_pages(ptr, 10) {
                 println!("✗ Deallocation failed: {}", e);
             } else {
                 println!("✓ Deallocated successfully");
-                println!("  Final allocated: {} pages", allocator.allocated_pages));
+                println!("  Final allocated: {} pages", allocator.allocated_pages);
             }
         }
         Err(e) => println!("✗ Allocation failed: {}", e),

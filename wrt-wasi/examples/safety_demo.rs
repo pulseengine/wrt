@@ -1,6 +1,9 @@
 //! Demonstration of safety feature enforcement in wrt-wasi
 
-use wrt_wasi::{wasi_max_allocation_size, wasi_safety_level};
+use wrt_wasi::{
+    wasi_max_allocation_size,
+    wasi_safety_level,
+};
 
 fn main() {
     #[cfg(feature = "qm")]

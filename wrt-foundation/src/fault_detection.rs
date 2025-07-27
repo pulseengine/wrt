@@ -142,7 +142,7 @@ impl FaultDetector {
     /// Report a detected fault
     pub fn report_fault(&self, fault: FaultType, context: &FaultContext) -> Result<()> {
         if !self.is_enabled() {
-            return Ok();
+            return Ok(());
         }
         
         // Increment appropriate counter

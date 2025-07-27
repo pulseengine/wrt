@@ -235,7 +235,7 @@ impl StacklessFrame {
 
         #[cfg(feature = "std")]
         let mut locals_vec = {
-            let mut vec = Vec::new());
+            let mut vec = Vec::new();
             for value in invocation_inputs.iter() {
                 vec.push(value.clone();
             }
@@ -5516,7 +5516,7 @@ impl StacklessFrame {
         // segments store their items. If Element.items are already `Value` or
         // `Option<Value>`, this is simpler. Let's assume Element stores func
         // indices as u32.
-        let mut items_to_init: Vec<Option<Value>> = Vec::new());
+        let mut items_to_init: Vec<Option<Value>> = Vec::new();
         for i in 0..n {
             let idx = (src_offset + i) as usize;
             let item = segment.items.get(idx).map_err(|_| {

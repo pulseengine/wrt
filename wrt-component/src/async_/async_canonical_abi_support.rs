@@ -602,7 +602,7 @@ impl AsyncCanonicalAbiSupport {
         // Poll underlying bridge
         let bridge_result = self.bridge.poll_async_tasks()?;
 
-        let mut completed_operations = Vec::new());
+        let mut completed_operations = Vec::new();
         let mut ready_operations = 0;
 
         // Check operation statuses

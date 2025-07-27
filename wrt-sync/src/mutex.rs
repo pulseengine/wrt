@@ -1,7 +1,14 @@
 // #![allow(unsafe_code)] // Allow unsafe for UnsafeCell and Send/Sync impls
 
 // use crate::prelude::*;
-use crate::prelude::{fmt, AtomicBool, Deref, DerefMut, Ordering, UnsafeCell};
+use crate::prelude::{
+    fmt,
+    AtomicBool,
+    Deref,
+    DerefMut,
+    Ordering,
+    UnsafeCell,
+};
 
 /// A simple, non-reentrant spinlock mutex suitable for `no_std` environments.
 ///
@@ -11,7 +18,7 @@ use crate::prelude::{fmt, AtomicBool, Deref, DerefMut, Ordering, UnsafeCell};
 /// expected to be high.
 pub struct WrtMutex<T: ?Sized> {
     locked: AtomicBool,
-    data: UnsafeCell<T>,
+    data:   UnsafeCell<T>,
 }
 
 /// A guard that provides mutable access to the data protected by a `WrtMutex`.
@@ -43,7 +50,7 @@ impl<T> WrtMutex<T> {
     pub const fn new(data: T) -> Self {
         WrtMutex {
             locked: AtomicBool::new(false),
-            data: UnsafeCell::new(data),
+            data:   UnsafeCell::new(data),
         }
     }
 }
@@ -172,7 +179,10 @@ mod tests {
     // For std-specific parts of tests, ensure std imports are scoped or handled by
     // feature flags.
     #[cfg(feature = "std")]
-    use std::{sync::Arc, thread};
+    use std::{
+        sync::Arc,
+        thread,
+    };
 
     use super::*;
 

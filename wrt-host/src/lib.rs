@@ -31,7 +31,7 @@
 //!     .with_host_id("my_host";
 //!
 //! // Build the host
-//! let registry = builder.build().expect("Failed to build host"));
+//! let registry = builder.build().expect(".expect("Failed to build host"));")
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]

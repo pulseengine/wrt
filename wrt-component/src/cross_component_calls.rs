@@ -480,14 +480,14 @@ impl CrossComponentCallManager {
         caller_instance: u32,
     ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
         #[cfg(feature = "std")]
-        let mut prepared_args = Vec::new());
+        let mut prepared_args = Vec::new();
         #[cfg(not(any(feature = "std", )))]
-        let mut prepared_args = Vec::new());
+        let mut prepared_args = Vec::new();
 
         #[cfg(feature = "std")]
-        let mut transferred_resources = Vec::new());
+        let mut transferred_resources = Vec::new();
         #[cfg(not(any(feature = "std", )))]
-        let mut transferred_resources = Vec::new());
+        let mut transferred_resources = Vec::new();
 
         for arg in args {
             match arg {

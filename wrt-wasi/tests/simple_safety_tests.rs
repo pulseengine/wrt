@@ -6,7 +6,7 @@ use wrt_foundation::{safe_managed_alloc, CrateId, memory_init::{init_wrt_memory,
 #[test]
 fn test_safety_level_detection() {
     let level = wasi_safety_level();
-    println!("Current safety level: {}", level));
+    println!("Current safety level: {}", level);
     
     // The level depends on which feature is enabled at compile time
     #[cfg(feature = "qm")]
@@ -28,7 +28,7 @@ fn test_safety_level_detection() {
 #[test]
 fn test_allocation_limits() {
     let max_size = wasi_max_allocation_size();
-    println!("Maximum allocation size: {} bytes", max_size));
+    println!("Maximum allocation size: {} bytes", max_size);
     
     #[cfg(feature = "asil-d")]
     assert_eq!(max_size, 16384); // 16KB for ASIL-D
@@ -54,12 +54,12 @@ fn test_safety_aware_allocation() {
     assert!(small_result.is_ok(), "Small allocation should succeed");
     
     // Test allocation at various sizes
-    let max_allowed = wasi_max_allocation_size);
+    let max_allowed = wasi_max_allocation_size();
     
     // Test 8KB allocation
     {
         let size = 8192;
-        println!("Testing allocation of {} bytes", size));
+        println!("Testing allocation of {} bytes", size);
         let result = safe_managed_alloc!(8192, CrateId::Wasi);
         if size <= max_allowed {
             assert!(result.is_ok(), "Allocation of {} bytes should succeed (max: {})", size, max_allowed);
@@ -71,7 +71,7 @@ fn test_safety_aware_allocation() {
     // Test 16KB allocation
     {
         let size = 16384;
-        println!("Testing allocation of {} bytes", size));
+        println!("Testing allocation of {} bytes", size);
         let result = safe_managed_alloc!(16384, CrateId::Wasi);
         if size <= max_allowed {
             assert!(result.is_ok(), "Allocation of {} bytes should succeed (max: {})", size, max_allowed);
@@ -83,7 +83,7 @@ fn test_safety_aware_allocation() {
     // Test 32KB allocation
     {
         let size = 32768;
-        println!("Testing allocation of {} bytes", size));
+        println!("Testing allocation of {} bytes", size);
         let result = safe_managed_alloc!(32768, CrateId::Wasi);
         if size <= max_allowed {
             assert!(result.is_ok(), "Allocation of {} bytes should succeed (max: {})", size, max_allowed);
@@ -95,7 +95,7 @@ fn test_safety_aware_allocation() {
     // Test 64KB allocation
     {
         let size = 65536;
-        println!("Testing allocation of {} bytes", size));
+        println!("Testing allocation of {} bytes", size);
         let result = safe_managed_alloc!(65536, CrateId::Wasi);
         if size <= max_allowed {
             assert!(result.is_ok(), "Allocation of {} bytes should succeed (max: {})", size, max_allowed);
@@ -139,20 +139,20 @@ fn test_feature_combinations() {
     let level = wasi_safety_level();
     let max_size = wasi_max_allocation_size();
     
-    println!("Active features:"));
+    println!("Active features:");
     #[cfg(feature = "qm")]
-    println!("  - qm"));
+    println!("  - qm");
     #[cfg(feature = "asil-a")]
-    println!("  - asil-a"));
+    println!("  - asil-a");
     #[cfg(feature = "asil-b")]
-    println!("  - asil-b"));
+    println!("  - asil-b");
     #[cfg(feature = "asil-c")]
-    println!("  - asil-c"));
+    println!("  - asil-c");
     #[cfg(feature = "asil-d")]
-    println!("  - asil-d"));
+    println!("  - asil-d");
     
-    println!("Detected safety level: {}", level));
-    println!("Max allocation size: {} bytes", max_size));
+    println!("Detected safety level: {}", level);
+    println!("Max allocation size: {} bytes", max_size);
     
     // When multiple features are enabled, the strictest one should win
     #[cfg(all(feature = "asil-d", feature = "qm"))]

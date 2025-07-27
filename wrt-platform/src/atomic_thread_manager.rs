@@ -118,7 +118,7 @@ impl AtomicCoordinator {
             module_id: self.atomic_module_id,
             function_id: 0xFFFF, // Special function ID for atomic operations
             args: {
-                let mut args = Vec::new());
+                let mut args = Vec::new();
                 args.extend_from_slice(&addr.to_le_bytes);
                 args.extend_from_slice(&expected.to_le_bytes);
                 if let Some(timeout) = timeout_ns {

@@ -288,7 +288,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for resources"));
+                    .expect(".expect("Failed to allocate memory for resources"));")
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
@@ -296,7 +296,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             drop_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for drop handlers"));
+                    .expect(".expect("Failed to allocate memory for drop handlers"));")
                 BoundedVec::new(provider).unwrap()
             },
             policies: LifecyclePolicies::default(),
@@ -320,7 +320,7 @@ impl ResourceLifecycleManager {
 
         // Register drop handlers for this resource
         #[cfg(feature = "std")]
-        let mut handler_ids = Vec::new());
+        let mut handler_ids = Vec::new();
         #[cfg(not(any(feature = "std", )))]
         let mut handler_ids = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -423,7 +423,7 @@ impl ResourceLifecycleManager {
 
         // Execute drop handlers
         #[cfg(feature = "std")]
-        let handler_ids: Vec<DropHandlerId> = resource.handlers.iter().cloned().collect());
+        let handler_ids: Vec<DropHandlerId> = resource.handlers.iter().cloned().collect();
         #[cfg(not(any(feature = "std", )))]
         let handler_ids = resource.handlers.clone();
         
@@ -491,7 +491,7 @@ impl ResourceLifecycleManager {
 
         // Find resources to collect
         #[cfg(feature = "std")]
-        let mut resources_to_drop = Vec::new());
+        let mut resources_to_drop = Vec::new();
         #[cfg(not(any(feature = "std", )))]
         let mut resources_to_drop = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -595,10 +595,10 @@ impl ResourceLifecycleManager {
     #[cfg(feature = "std")]
     pub fn check_for_leaks(&mut self) -> Result<Vec<ResourceId>> {
         if !self.policies.leak_detection {
-            return Ok(Vec::new());
+            return Ok(Vec::new();
         }
 
-        let mut leaked_resources = Vec::new());
+        let mut leaked_resources = Vec::new();
         let current_time = self.get_current_time);
 
         for resource in &self.resources {

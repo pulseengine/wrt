@@ -253,9 +253,9 @@ impl CanonicalABI {
         // Tuple is a sequence of values with their specific types
         let mut current_addr = addr;
         #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 32> = WrtVec::new());
+        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 32> = WrtVec::new();
         #[cfg(not(feature = "safety-critical"))]
-        let mut values = Vec::new());
+        let mut values = Vec::new();
 
         for ty in types {
             let value = self.lift_value(ty, current_addr, resource_table, memory_bytes)?;
@@ -280,9 +280,9 @@ impl CanonicalABI {
         self.check_bounds(addr, num_bytes as u32, memory_bytes)?;
 
         #[cfg(feature = "safety-critical")]
-        let mut flags: WrtVec<u32, {CrateId::Component as u8}, 64> = WrtVec::new());
+        let mut flags: WrtVec<u32, {CrateId::Component as u8}, 64> = WrtVec::new();
         #[cfg(not(feature = "safety-critical"))]
-        let mut flags = Vec::new());
+        let mut flags = Vec::new();
         
         for (i, _) in names.iter().enumerate() {
             let byte_idx = i / 8;
@@ -314,9 +314,9 @@ impl CanonicalABI {
         // Similar to list but with fixed size
         let mut current_addr = addr;
         #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 256> = WrtVec::new());
+        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 256> = WrtVec::new();
         #[cfg(not(feature = "safety-critical"))]
-        let mut values = Vec::new());
+        let mut values = Vec::new();
 
         for _ in 0..size {
             let value = self.lift_value(inner_ty, current_addr, resource_table, memory_bytes)?;
@@ -554,9 +554,9 @@ impl CanonicalABI {
 
         // Lift each element
         #[cfg(feature = "safety-critical")]
-        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 1024> = WrtVec::new());
+        let mut values: WrtVec<Box<ComponentValue>, {CrateId::Component as u8}, 1024> = WrtVec::new();
         #[cfg(not(feature = "safety-critical"))]
-        let mut values = Vec::new());
+        let mut values = Vec::new();
         let mut current_addr = data_ptr;
 
         for _ in 0..length {
@@ -1268,9 +1268,9 @@ pub fn convert_value_for_canonical_abi(
         FoundationValType::<ComponentProvider>::List(inner_type) => {
             if let Some(list) = value.as_list() {
                 #[cfg(feature = "safety-critical")]
-                let mut converted_list: WrtVec<Value, {CrateId::Component as u8}, 1024> = WrtVec::new());
+                let mut converted_list: WrtVec<Value, {CrateId::Component as u8}, 1024> = WrtVec::new();
                 #[cfg(not(feature = "safety-critical"))]
-                let mut converted_list = Vec::new());
+                let mut converted_list = Vec::new();
                 for item in list {
                     let converted_item = convert_value_for_canonical_abi(item, &inner_type)?;
                     #[cfg(feature = "safety-critical")]
@@ -1324,9 +1324,9 @@ pub fn convert_value_for_canonical_abi(
                     ;
                 }
                 #[cfg(feature = "safety-critical")]
-                let mut converted_tuple: WrtVec<Value, {CrateId::Component as u8}, 32> = WrtVec::new());
+                let mut converted_tuple: WrtVec<Value, {CrateId::Component as u8}, 32> = WrtVec::new();
                 #[cfg(not(feature = "safety-critical"))]
-                let mut converted_tuple = Vec::new());
+                let mut converted_tuple = Vec::new();
                 for (item, item_type) in tuple.iter().zip(types.iter()) {
                     let converted_item = convert_value_for_canonical_abi(item, item_type)?;
                     #[cfg(feature = "safety-critical")]

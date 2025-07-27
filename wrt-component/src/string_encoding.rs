@@ -58,7 +58,7 @@ pub fn string_byte_length(s: &str, encoding: StringEncoding) -> usize {
 
 /// Encode to UTF-16 Little Endian
 fn encode_utf16_le(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new());
+    let mut bytes = Vec::new();
 
     for code_unit in s.encode_utf16() {
         bytes.push((code_unit & 0xFF) as u8;
@@ -70,7 +70,7 @@ fn encode_utf16_le(s: &str) -> Result<Vec<u8>> {
 
 /// Encode to UTF-16 Big Endian
 fn encode_utf16_be(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new());
+    let mut bytes = Vec::new();
 
     for code_unit in s.encode_utf16() {
         bytes.push((code_unit >> 8) as u8;
@@ -82,7 +82,7 @@ fn encode_utf16_be(s: &str) -> Result<Vec<u8>> {
 
 /// Encode to Latin-1 (ISO-8859-1)
 fn encode_latin1(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new());
+    let mut bytes = Vec::new();
 
     for c in s.chars() {
         let code_point = c as u32;
@@ -108,7 +108,7 @@ fn decode_utf16_le(bytes: &[u8]) -> Result<String> {
         return Err(Error::runtime_execution_error("Error occurred";
     }
 
-    let mut code_units = Vec::new());
+    let mut code_units = Vec::new();
     for chunk in bytes.chunks_exact(2) {
         let code_unit = u16::from_le_bytes([chunk[0], chunk[1]];
         code_units.push(code_unit);
@@ -125,7 +125,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
         return Err(Error::runtime_execution_error("Error occurred";
     }
 
-    let mut code_units = Vec::new());
+    let mut code_units = Vec::new();
     for chunk in bytes.chunks_exact(2) {
         let code_unit = u16::from_be_bytes([chunk[0], chunk[1]];
         code_units.push(code_unit);
@@ -139,7 +139,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
 /// Decode from Latin-1 (ISO-8859-1)
 fn decode_latin1(bytes: &[u8]) -> Result<String> {
     // Latin-1 is a direct mapping from bytes to Unicode code points 0x00-0xFF
-    let chars: Vec<char> = bytes.iter().map(|&b| b as char).collect());
+    let chars: Vec<char> = bytes.iter().map(|&b| b as char).collect();
     Ok(chars.into_iter().collect())
 }
 

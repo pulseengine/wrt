@@ -203,7 +203,7 @@ fn main() -> Result<()> {
     // f32.lt (less than)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(2.718)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(3.14159)))?;
-    println!("   Input: 2.718, 3.14159"));
+    println!("   Input: 2.718, 3.14159");
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   2.718 < 3.14159: {} (true)", result));
@@ -213,7 +213,7 @@ fn main() -> Result<()> {
     // f32.ge (greater than or equal)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0)))?;
-    println!("   Input: 5.0, 5.0"));
+    println!("   Input: 5.0, 5.0");
     ComparisonOp::F32Ge.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   5.0 >= 5.0: {} (true)", result));
@@ -248,7 +248,7 @@ fn main() -> Result<()> {
 
     // i32.eqz with zero
     context.push_comparison_value(Value::I32(0))?;
-    println!("   Input: 0"));
+    println!("   Input: 0");
     ComparisonOp::I32Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   0 == 0: {} (true)", result));
@@ -257,7 +257,7 @@ fn main() -> Result<()> {
 
     // i32.eqz with non-zero
     context.push_comparison_value(Value::I32(42))?;
-    println!("   Input: 42"));
+    println!("   Input: 42");
     ComparisonOp::I32Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   42 == 0: {} (false)", result));
@@ -266,7 +266,7 @@ fn main() -> Result<()> {
 
     // i64.eqz with zero
     context.push_comparison_value(Value::I64(0))?;
-    println!("   Input: 0i64"));
+    println!("   Input: 0i64");
     ComparisonOp::I64Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   0i64 == 0: {} (true)", result));
@@ -275,7 +275,7 @@ fn main() -> Result<()> {
 
     // i64.eqz with large non-zero
     context.push_comparison_value(Value::I64(0x123456789ABCDEF0))?;
-    println!("   Input: 0x123456789ABCDEF0"));
+    println!("   Input: 0x123456789ABCDEF0");
     ComparisonOp::I64Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   0x123456789ABCDEF0 == 0: {} (false)", result));
@@ -283,12 +283,12 @@ fn main() -> Result<()> {
     context.stack.clear();
 
     // 8. NaN handling in float comparisons
-    println!("\n8. NaN Handling in Float Comparisons:"));
+    println!("\n8. NaN Handling in Float Comparisons:");
 
     // f32 NaN == NaN (should be false)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
-    println!("   Input: NaN, NaN"));
+    println!("   Input: NaN, NaN");
     ComparisonOp::F32Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   NaN == NaN: {} (false - WebAssembly spec)", result));
@@ -298,7 +298,7 @@ fn main() -> Result<()> {
     // f32 NaN != anything (should be true)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(42.0)))?;
-    println!("   Input: NaN, 42.0"));
+    println!("   Input: NaN, 42.0");
     ComparisonOp::F32Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   NaN != 42.0: {} (true - WebAssembly spec)", result));
@@ -308,7 +308,7 @@ fn main() -> Result<()> {
     // f32 NaN < anything (should be false)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(42.0)))?;
-    println!("   Input: NaN, 42.0"));
+    println!("   Input: NaN, 42.0");
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!(
@@ -329,12 +329,12 @@ fn main() -> Result<()> {
     context.stack.clear();
 
     // 9. Special float values
-    println!("\n9. Special Float Values:"));
+    println!("\n9. Special Float Values:");
 
     // Positive and negative infinity
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NEG_INFINITY)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::INFINITY)))?;
-    println!("   Input: -∞, +∞"));
+    println!("   Input: -∞, +∞");
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   -∞ < +∞: {} (true)", result));
@@ -344,7 +344,7 @@ fn main() -> Result<()> {
     // Positive and negative zero
     context.push_comparison_value(Value::F64(FloatBits64::from_float(-0.0)))?;
     context.push_comparison_value(Value::F64(FloatBits64::from_float(0.0)))?;
-    println!("   Input: -0.0, +0.0"));
+    println!("   Input: -0.0, +0.0");
     ComparisonOp::F64Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   -0.0 == +0.0: {} (true - IEEE 754 spec)", result));
@@ -352,7 +352,7 @@ fn main() -> Result<()> {
     context.stack.clear();
 
     // 10. Edge cases and overflow scenarios
-    println!("\n10. Edge Cases:"));
+    println!("\n10. Edge Cases:");
 
     // Maximum i32 values
     context.push_comparison_value(Value::I32(i32::MAX))?;
@@ -376,13 +376,13 @@ fn main() -> Result<()> {
         );
     }
 
-    println!("\n=== Demo Complete ==="));
-    println!("\nKey Takeaways:"));
+    println!("\n=== Demo Complete ===");
+    println!("\nKey Takeaways:");
     println!("- All comparison operations return i32 values (0 for false, 1 for true)"));
-    println!("- Signed vs unsigned comparisons can produce different results"));
-    println!("- NaN handling follows WebAssembly specification exactly"));
+    println!("- Signed vs unsigned comparisons can produce different results");
+    println!("- NaN handling follows WebAssembly specification exactly");
     println!("- Float comparisons handle special values (±∞, ±0, NaN) correctly"));
-    println!("- Integer operations work with full 32-bit and 64-bit ranges"));
+    println!("- Integer operations work with full 32-bit and 64-bit ranges");
 
     Ok(())
 }

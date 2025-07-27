@@ -30,7 +30,7 @@ where
             println!("{}", serde_json::to_string(result)?));
         },
         OutputFormat::Human => {
-            println!("{}", result));
+            println!("{}", result);
         },
     }
     Ok(())
@@ -60,12 +60,12 @@ where
         OutputFormat::Human => {
             if is_success {
                 if let Some(msg) = success_message {
-                    println!("✅ {}", msg));
+                    println!("✅ {}", msg);
                 }
             } else if let Some(msg) = failure_message {
-                println!("❌ {}", msg));
+                println!("❌ {}", msg);
             }
-            println!("{}", result));
+            println!("{}", result);
             Ok(())
         },
     }
@@ -160,7 +160,7 @@ impl OutputManager {
             let _ = self.output_result(&response);
         } else {
             let prefix = if self.colored { "✅".bright_green() } else { "✅".normal() };
-            println!("{} {}", prefix, message));
+            println!("{} {}", prefix, message);
         }
     }
 
@@ -168,7 +168,7 @@ impl OutputManager {
     pub fn warning(&self, message: &str) {
         if !self.is_json_mode() {
             let prefix = if self.colored { "⚠️".bright_yellow() } else { "⚠️".normal() };
-            println!("{} {}", prefix, message));
+            println!("{} {}", prefix, message);
         }
     }
 
@@ -176,7 +176,7 @@ impl OutputManager {
     pub fn info(&self, message: &str) {
         if !self.is_json_mode() {
             let prefix = if self.colored { "ℹ️".bright_blue() } else { "ℹ️".normal() };
-            println!("{} {}", prefix, message));
+            println!("{} {}", prefix, message);
         }
     }
 
@@ -184,7 +184,7 @@ impl OutputManager {
     pub fn progress(&self, message: &str) {
         if !self.is_json_mode() {
             let prefix = if self.colored { "🔨".bright_blue() } else { "🔨".normal() };
-            println!("{} {}", prefix, message));
+            println!("{} {}", prefix, message);
         }
     }
 
@@ -194,7 +194,7 @@ impl OutputManager {
             if self.colored {
                 println!("{}", title.bright_cyan().bold()));
             } else {
-                println!("{}", title));
+                println!("{}", title);
             }
         }
     }
@@ -205,7 +205,7 @@ impl OutputManager {
             if self.colored {
                 println!("  {}", title.cyan()));
             } else {
-                println!("  {}", title));
+                println!("  {}", title);
             }
         }
     }
@@ -213,14 +213,14 @@ impl OutputManager {
     /// Output plain text (respects JSON mode)
     pub fn text(&self, message: &str) {
         if !self.is_json_mode() {
-            println!("{}", message));
+            println!("{}", message);
         }
     }
 
     /// Output indented text with consistent formatting
     pub fn indent(&self, message: &str) {
         if !self.is_json_mode() {
-            println!("  {}", message));
+            println!("  {}", message);
         }
     }
 
@@ -243,7 +243,7 @@ impl OutputManager {
     pub fn debug(&self, message: &str) {
         if !self.is_json_mode() {
             let prefix = if self.colored { "🐛".bright_magenta() } else { "🐛".normal() };
-            println!("{} {}", prefix, message));
+            println!("{} {}", prefix, message);
         }
     }
 }

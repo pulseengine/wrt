@@ -13,7 +13,7 @@ use wrt_error::Result;
 
 /// Create a minimal valid component binary for demonstration
 fn create_demo_component_binary() -> Vec<u8> {
-    let mut binary = Vec::new());
+    let mut binary = Vec::new();
 
     // Component header
     binary.extend_from_slice(&[0x00, 0x61, 0x73, 0x6D]); // Magic: "\0asm"
@@ -48,8 +48,8 @@ fn demo_basic_parsing() -> Result<()> {
     let component = parse_component_binary(&binary)?;
     println!("✅ Successfully parsed component");
     println!("   Component name: {:?}", component.name);
-    println!("   Modules: {}", component.modules.len));
-    println!("   Types: {}", component.types.len));
+    println!("   Modules: {}", component.modules.len);
+    println!("   Types: {}", component.types.len);
 
     Ok(())
 }

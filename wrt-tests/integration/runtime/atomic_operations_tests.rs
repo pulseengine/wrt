@@ -253,7 +253,7 @@ fn test_concurrent_atomic_operations() -> Result<()> {
     const NUM_THREADS: usize = 4;
     const INCREMENTS_PER_THREAD: i32 = 1000;
     
-    let mut handles = Vec::new());
+    let mut handles = Vec::new();
     
     // Spawn threads that increment the counter
     for _i in 0..NUM_THREADS {

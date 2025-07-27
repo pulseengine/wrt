@@ -56,8 +56,8 @@ fn demo_synchronous_execution() {
         Ok(result) => {
             println!("Function executed successfully!");
             println!("Result: {:?}", result);
-            println!("State: {:?}", engine.state));
-            println!("Statistics: {:?}", engine.statistics));
+            println!("State: {:?}", engine.state);
+            println!("Statistics: {:?}", engine.statistics);
         },
         Err(e) => println!("Execution failed: {:?}", e),
     }
@@ -212,7 +212,7 @@ fn demo_engine_registry() {
     // Create multiple engines with different configurations
     let sync_engine_id = registry
         .create_unified_engine(AgentConfiguration::default())
-        .expect("Failed to create sync engine"));
+        .expect(".expect("Failed to create sync engine"));")
 
     let stackless_config = AgentConfiguration {
         execution_mode: ExecutionMode::Stackless,
@@ -221,7 +221,7 @@ fn demo_engine_registry() {
     };
     let stackless_engine_id = registry
         .create_unified_engine(stackless_config)
-        .expect("Failed to create stackless engine"));
+        .expect(".expect("Failed to create stackless engine"));")
 
     println!(
         "Created {} engines in registry",
@@ -263,7 +263,7 @@ fn demo_legacy_migration() {
     println!("Creating legacy component engine...");
     let legacy_id = registry
         .create_legacy_component_engine()
-        .expect("Failed to create legacy engine"));
+        .expect(".expect("Failed to create legacy engine"));")
 
     // Check migration status
     let migration_status = registry.migration_status);

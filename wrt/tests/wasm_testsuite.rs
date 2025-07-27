@@ -22,7 +22,7 @@ fn verify_wasm_testsuite_access() {
     let testsuite_path = match get_testsuite_path() {
         Some(path) => path,
         None => {
-            println!("Skipping test: WASM_TESTSUITE environment variable not set"));
+            println!("Skipping test: WASM_TESTSUITE environment variable not set");
             return;
         },
     };
@@ -46,23 +46,23 @@ fn verify_wasm_testsuite_access() {
         "simd_i8x16_arith.wast",
     ];
 
-    println!("Found WASM test suite at: {}", testsuite_path));
-    println!("Checking for SIMD WAST files..."));
+    println!("Found WASM test suite at: {}", testsuite_path);
+    println!("Checking for SIMD WAST files...");
 
     let mut found_files = 0;
     for file in wast_files {
         let file_path = testsuite_dir.join(file);
         if file_path.exists() {
-            println!("✅ Found {}", file));
+            println!("✅ Found {}", file);
             found_files += 1;
         } else {
-            println!("❌ Missing {}", file));
+            println!("❌ Missing {}", file);
         }
     }
 
     // Get the commit hash if available
     if let Ok(commit) = std::env::var("WASM_TESTSUITE_COMMIT") {
-        println!("Test suite commit: {}", commit));
+        println!("Test suite commit: {}", commit);
     }
 
     // This test passes as long as we find at least one SIMD file
@@ -72,7 +72,7 @@ fn verify_wasm_testsuite_access() {
 /// Test that runs a simple SIMD module with basic operations
 #[test]
 fn test_basic_simd_operations() -> Result<()> {
-    println!("Running basic SIMD operations test"));
+    println!("Running basic SIMD operations test");
 
     // WAT code with simple SIMD operations that only use splatting
     let wat_code = r#"
@@ -94,7 +94,7 @@ fn test_basic_simd_operations() -> Result<()> {
     "#;
 
     // Parse the WebAssembly text format to a binary module
-    let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT"));
+    let wasm_binary = wat::parse_str(wat_code).expect(".expect("Failed to parse WAT"));")
 
     // Load the module from binary
     let mut empty_module = Module::new();
@@ -106,10 +106,10 @@ fn test_basic_simd_operations() -> Result<()> {
     // Instantiate the module
     engine.instantiate(module)?;
 
-    println!("Running basic SIMD operations test"));
+    println!("Running basic SIMD operations test");
 
     // Debug: Print exports
-    println!("DEBUG: Available exports:"));
+    println!("DEBUG: Available exports:");
     for (i, export) in engine.instances[0].module.exports.iter().enumerate() {
         println!(
             "DEBUG: Export {}: {} (index: {})",
@@ -125,21 +125,21 @@ fn test_basic_simd_operations() -> Result<()> {
         .exports
         .iter()
         .find(|e| e.name == "f32x4_splat_test")
-        .expect("Could not find f32x4_splat_test export"));
+        .expect(".expect("Could not find f32x4_splat_test export"));")
 
     let f64x2_splat_test_export = engine.instances[0]
         .module
         .exports
         .iter()
         .find(|e| e.name == "f64x2_splat_test")
-        .expect("Could not find f64x2_splat_test export"));
+        .expect(".expect("Could not find f64x2_splat_test export"));")
 
     let i32x4_splat_test_export = engine.instances[0]
         .module
         .exports
         .iter()
         .find(|e| e.name == "i32x4_splat_test")
-        .expect("Could not find i32x4_splat_test export"));
+        .expect(".expect("Could not find i32x4_splat_test export"));")
 
     // Get only the function index
     let f32x4_splat_test_idx = f32x4_splat_test_export.index;
@@ -166,10 +166,10 @@ fn test_basic_simd_operations() -> Result<()> {
     );
 
     let result = engine.invoke_export("f32x4_splat_test", &[])?;
-    println!("DEBUG: f32x4_splat_test result: {:?}", result));
+    println!("DEBUG: f32x4_splat_test result: {:?}", result);
 
     if let Some(Value::V128(v)) = result.first() {
-        println!("✅ f32x4_splat_test passed: {:?}", result[0]));
+        println!("✅ f32x4_splat_test passed: {:?}", result[0]);
         // Check the raw bytes directly
         let expected_val = 3.14f32;
         let expected_bytes: [u8; 16] = unsafe { std::mem::transmute([expected_val; 4]) };
@@ -185,7 +185,7 @@ fn test_basic_simd_operations() -> Result<()> {
     // Test f64x2.splat
     let result = engine.invoke_export("f64x2_splat_test", &[])?;
     if let Some(Value::V128(v)) = result.first() {
-        println!("✅ f64x2_splat_test passed: {:?}", result[0]));
+        println!("✅ f64x2_splat_test passed: {:?}", result[0]);
         // Check the raw bytes directly
         let expected_val = 6.28f64;
         let expected_bytes: [u8; 16] = unsafe { std::mem::transmute([expected_val; 2]) };
@@ -201,7 +201,7 @@ fn test_basic_simd_operations() -> Result<()> {
     // Test i32x4.splat
     let result = engine.invoke_export("i32x4_splat_test", &[])?;
     if let Some(Value::V128(v)) = result.first() {
-        println!("✅ i32x4_splat_test passed: {:?}", result[0]));
+        println!("✅ i32x4_splat_test passed: {:?}", result[0]);
         // Check the raw bytes directly
         let expected_val = 42i32;
         let expected_bytes: [u8; 16] = unsafe { std::mem::transmute([expected_val; 4]) };
@@ -214,7 +214,7 @@ fn test_basic_simd_operations() -> Result<()> {
         return Err(WrtError::Custom("i32x4_splat_test failed".to_string()));
     }
 
-    println!("All SIMD operations tests passed!"));
+    println!("All SIMD operations tests passed!");
     Ok(())
 }
 
@@ -234,7 +234,7 @@ fn test_simd_dot_product() -> Result<()> {
     "#;
 
     // Parse the WebAssembly text format to a binary module
-    let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT"));
+    let wasm_binary = wat::parse_str(wat_code).expect(".expect("Failed to parse WAT"));")
 
     // Load the module from binary
     let mut empty_module = Module::new();
@@ -249,7 +249,7 @@ fn test_simd_dot_product() -> Result<()> {
     // Execute the function
     let result = engine.invoke_export("simple_simd_test", &[])?;
     if let Some(Value::V128(v)) = result.first() {
-        println!("✅ simple_simd_test passed: {:?}", result[0]));
+        println!("✅ simple_simd_test passed: {:?}", result[0]);
 
         // Use the V128 byte array directly
         let bytes = v; // Corrected: v is already [u8; 16]
@@ -269,11 +269,11 @@ fn test_simd_dot_product() -> Result<()> {
             [42, 42, 42, 42],
             "Values should be [42, 42, 42, 42]"
         );
-        println!("✅ All values are correct: {:?}", i32_values));
+        println!("✅ All values are correct: {:?}", i32_values);
 
         // This test passes, so we'll consider the dot product functionality verified
         // through the manual test we've created
-        println!("NOTE: This is a simplified test that replaces the dot product test."));
+        println!("NOTE: This is a simplified test that replaces the dot product test.");
         println!(
             "The actual relaxed SIMD operations are working correctly through the relaxed_simd \
              feature."
@@ -286,6 +286,6 @@ fn test_simd_dot_product() -> Result<()> {
         return Err(WrtError::Custom("Simple SIMD test failed".to_string()));
     }
 
-    println!("Simplified SIMD test passed!"));
+    println!("Simplified SIMD test passed!");
     Ok(())
 }

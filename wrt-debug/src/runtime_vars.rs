@@ -397,11 +397,11 @@ mod tests {
         inspector.add_variable(var).unwrap();
 
         // Variable should be in scope at 0x1500
-        let vars: Vec<_> = inspector.find_variables_at_pc(0x1500).collect());
+        let vars: Vec<_> = inspector.find_variables_at_pc(0x1500).collect();
         assert_eq!(vars.len(), 1);
 
         // Variable should not be in scope at 0x2500
-        let vars: Vec<_> = inspector.find_variables_at_pc(0x2500).collect());
+        let vars: Vec<_> = inspector.find_variables_at_pc(0x2500).collect();
         assert_eq!(vars.len(), 0);
     }
 }

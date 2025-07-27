@@ -696,7 +696,7 @@ mod component_binary_parser {
             let mut parser = ComponentBinaryParser::new();
 
             // Create minimal valid component binary: magic + version + layer
-            let mut binary = Vec::new());
+            let mut binary = Vec::new();
             binary.extend_from_slice(&COMPONENT_MAGIC); // Magic
             binary.extend_from_slice(&COMPONENT_VERSION.to_le_bytes()); // Version
             binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes()); // Layer
@@ -710,7 +710,7 @@ mod component_binary_parser {
         #[test]
         fn test_convenience_functions() {
             // Test the convenience parsing functions
-            let mut binary = Vec::new());
+            let mut binary = Vec::new();
             binary.extend_from_slice(&COMPONENT_MAGIC;
             binary.extend_from_slice(&COMPONENT_VERSION.to_le_bytes);
             binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes);

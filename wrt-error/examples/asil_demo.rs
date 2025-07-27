@@ -28,7 +28,7 @@ fn main() {
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
     {
         let current_level = AsilLevel::current);
-        println!("Current ASIL Level: {}", current_level.name));
+        println!("Current ASIL Level: {}", current_level.name);
         println!);
     }
 
@@ -122,7 +122,7 @@ fn demonstrate_asil_features() {
         .with_module_id(42;
 
     println!("\nError Context:");
-    println!("- ASIL Level: {}", context.asil_level.name));
+    println!("- ASIL Level: {}", context.asil_level.name);
     println!("- Timestamp: {:?}", context.timestamp);
     println!("- Module ID: {:?}", context.module_id);
     println!(
@@ -153,11 +153,11 @@ fn demonstrate_safety_monitoring() {
         println!("Recorded error {}: {}", i + 1, error);
     }
 
-    println!("\nTotal errors recorded: {}", monitor.error_count));
+    println!("\nTotal errors recorded: {}", monitor.error_count);
 
     // Reset monitor
     monitor.reset);
-    println!("Monitor reset. Error count: {}", monitor.error_count));
+    println!("Monitor reset. Error count: {}", monitor.error_count);
     println!);
 }
 

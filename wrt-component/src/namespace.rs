@@ -27,7 +27,7 @@ impl Namespace {
             return Self { parts: Vec::new() };
         }
 
-        let parts = s.split('.').map(ToString::to_string).collect());
+        let parts = s.split('.').map(ToString::to_string).collect();
 
         Self { parts }
     }

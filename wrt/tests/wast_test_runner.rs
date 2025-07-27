@@ -251,11 +251,11 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect());
+                    invoke.args.iter().map(convert_wast_arg_core).collect();
                 let args = args?;
 
                 let expected: Result<Vec<Value>, _> =
-                    results.iter().map(convert_wast_ret_core).collect());
+                    results.iter().map(convert_wast_ret_core).collect();
                 let expected = expected?;
 
                 // Execute the function and compare results
@@ -310,7 +310,7 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect());
+                    invoke.args.iter().map(convert_wast_arg_core).collect();
                 let args = args?;
 
                 // Execute and expect a trap
@@ -562,7 +562,7 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect());
+                    invoke.args.iter().map(convert_wast_arg_core).collect();
                 let args = args?;
 
                 // Set resource limits before execution
@@ -661,7 +661,7 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect());
+                    invoke.args.iter().map(convert_wast_arg_core).collect();
                 let args = args?;
 
                 // Execute the function (result is discarded)
@@ -971,7 +971,7 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
     }
 
     if failed_files == 0 {
-        println!("All {} WAST files processed successfully", total_files));
+        println!("All {} WAST files processed successfully", total_files);
         wrt_test_registry::TestResult::Ok(())
     } else {
         wrt_test_registry::TestResult::Err(format!(

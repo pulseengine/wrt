@@ -263,13 +263,13 @@ impl BoundedWitParser {
     pub fn new(limits: WitParsingLimits) -> Result<Self> {
         limits.validate()?;
 
-        let mut input_buffer = alloc::vec::Vec::new());
+        let mut input_buffer = alloc::vec::Vec::new();
         input_buffer.resize(limits.max_input_buffer, 0);
 
-        let mut worlds = alloc::vec::Vec::new());
+        let mut worlds = alloc::vec::Vec::new();
         worlds.resize(limits.max_worlds, None;
 
-        let mut interfaces = alloc::vec::Vec::new());
+        let mut interfaces = alloc::vec::Vec::new();
         interfaces.resize(limits.max_interfaces, None;
 
         let memory_usage = input_buffer.capacity()
@@ -347,8 +347,8 @@ impl BoundedWitParser {
         let end_time = self.get_timestamp);
 
         // Collect results
-        let mut result_worlds = alloc::vec::Vec::new());
-        let mut result_interfaces = alloc::vec::Vec::new());
+        let mut result_worlds = alloc::vec::Vec::new();
+        let mut result_interfaces = alloc::vec::Vec::new();
 
         for world_opt in &self.worlds {
             if let Some(world) = world_opt {

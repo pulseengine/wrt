@@ -1213,7 +1213,7 @@ fn get_cache_path(workspace_root: &std::path::Path) -> std::path::PathBuf {
 /// Parse command line arguments, handling both `cargo-wrt` and `cargo wrt`
 /// patterns
 fn parse_args() -> Cli {
-    let args: Vec<String> = std::env::args().collect());
+    let args: Vec<String> = std::env::args().collect();
 
     // Check if we're being called as a Cargo subcommand
     // Pattern: ["cargo-wrt", "wrt", "build", ...] vs ["cargo-wrt", "build", ...]
@@ -1253,7 +1253,7 @@ async fn main() -> Result<()> {
     }
 
     // Handle special help cases before parsing
-    let args: Vec<String> = std::env::args().collect());
+    let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && (args[1] == "help" && args.get(2) == Some(&"diagnostics".to_string())) {
         print_diagnostic_help();
         return Ok(());
@@ -1272,7 +1272,7 @@ async fn main() -> Result<()> {
 
     // Print header
     if cli.verbose {
-        let args: Vec<String> = std::env::args().collect());
+        let args: Vec<String> = std::env::args().collect();
         let calling_pattern =
             if args.len() > 1 && args[1] == "wrt" { "cargo wrt" } else { "cargo-wrt" };
 
@@ -1657,7 +1657,7 @@ async fn cmd_build(
                     file_diagnostic_map
                         .entry(diagnostic.file.clone())
                         .or_insert_with(Vec::new)
-                        .push(diagnostic.clone();
+                        .push(diagnostic.clone());
                 }
 
                 for (file, file_diagnostics) in file_diagnostic_map {
@@ -1682,7 +1682,7 @@ async fn cmd_build(
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new());
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -1694,7 +1694,7 @@ async fn cmd_build(
                 true,
                 global.output.is_colored(),
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
                 process::exit(1);
@@ -1721,7 +1721,7 @@ async fn cmd_build(
                     "Package '{}' built successfully in {:.2}s",
                     pkg,
                     results.duration().as_secs_f64()
-                );
+                ));
 
                 if !results.warnings().is_empty() {
                     output.warning("Build warnings:");
@@ -1746,7 +1746,7 @@ async fn cmd_build(
 
                 progress.begin_step("Analyzing workspace dependencies");
                 // Simulate dependency analysis
-                std::thread::sleep(std::time::Duration::from_millis(500);
+                std::thread::sleep(std::time::Duration::from_millis(500));
                 progress.finish_step("Dependencies analyzed");
 
                 progress.begin_step("Compiling all workspace components");
@@ -1755,13 +1755,13 @@ async fn cmd_build(
 
                 progress.begin_step("Running clippy and format checks");
                 // Additional checks would go here
-                std::thread::sleep(std::time::Duration::from_millis(300);
+                std::thread::sleep(std::time::Duration::from_millis(300));
                 progress.finish_step("Checks completed");
 
                 progress.finish(format!(
                     "All components built successfully in {:.2}s",
                     results.duration().as_secs_f64()
-                );
+                ));
 
                 if !results.warnings().is_empty() {
                     output.warning("Build warnings:");
@@ -1845,7 +1845,7 @@ async fn cmd_test(
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new());
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -1857,7 +1857,7 @@ async fn cmd_test(
                 true,
                 global.output.is_colored(),
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
                 process::exit(1);
@@ -1942,7 +1942,7 @@ async fn cmd_test_asil(
         "Running ASIL-{} test suite{}",
         config.asil_level,
         if no_std_only { " (no_std only)" } else { "" }
-    );
+    ));
 
     run_asil_tests(global, config.asil_level).context("ASIL tests failed")
 }
@@ -1981,7 +1981,7 @@ async fn cmd_test_config(output: String, example: bool, global: &mut GlobalArgs)
 
     config.save_to_file(&output).context("Failed to save test configuration file")?;
 
-    global.output.success(&format!("Test configuration saved to: {}", output);
+    global.output.success(&format!("Test configuration saved to: {}", output));
 
     if example {
         global.output.info("Edit the configuration file to customize test behavior");
@@ -2086,7 +2086,7 @@ async fn cmd_verify(
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new());
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -2098,7 +2098,7 @@ async fn cmd_verify(
                 true,
                 global.output.is_colored(),
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
                 process::exit(1);
@@ -2163,7 +2163,7 @@ async fn cmd_docs(
             .split(',')
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
-            .collect());
+            .collect();
 
         if versions.is_empty() {
             anyhow::bail!("No versions specified for multi-version documentation");
@@ -2307,7 +2307,7 @@ async fn cmd_check(
                 let grouped = processor.process(&diagnostics, &filter_options)?;
 
                 // Convert grouped diagnostics back to collection format
-                let mut filtered_diagnostics = Vec::new());
+                let mut filtered_diagnostics = Vec::new();
                 for (_, group_diagnostics) in grouped.groups {
                     filtered_diagnostics.extend(group_diagnostics);
                 }
@@ -2319,7 +2319,7 @@ async fn cmd_check(
                 true,
                 global.output.is_colored(),
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if diagnostics.has_errors() {
                 process::exit(1);
@@ -2340,9 +2340,9 @@ async fn cmd_check(
                 let fix_result = autofix_manager.apply_fixes(&diagnostics)?;
 
                 if fix_result.has_fixes() {
-                    output.success(&format!("Applied {} fixes", fix_result.successful_fixes);
+                    output.success(&format!("Applied {} fixes", fix_result.successful_fixes));
                     if fix_result.failed_fixes > 0 {
-                        output.warning(&format!("{} fixes failed", fix_result.failed_fixes);
+                        output.warning(&format!("{} fixes failed", fix_result.failed_fixes));
                     }
                 } else {
                     output.info("No auto-fixable issues found");
@@ -2378,9 +2378,9 @@ async fn cmd_no_std(
             Ok(()) => output.success("no_std compatibility verified"),
             Err(e) => {
                 if continue_on_error {
-                    output.warning(&format!("no_std verification failed: {}", e);
+                    output.warning(&format!("no_std verification failed: {}", e));
                 } else {
-                    return Err(anyhow::anyhow!("no_std verification failed: {}", e);
+                    return Err(anyhow::anyhow!("no_std verification failed: {}", e));
                 }
             },
         }
@@ -2412,12 +2412,12 @@ async fn cmd_wrtd(
 async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Result<()> {
     println!("{} Running comprehensive CI checks...", "🤖".bright_blue());
 
-    let mut errors = Vec::new());
+    let mut errors = Vec::new();
 
     // 1. Build
     println!("  {} Building...", "🔨".bright_cyan());
     if let Err(e) = build_system.build_all() {
-        errors.push(format!("Build failed: {}", e);
+        errors.push(format!("Build failed: {}", e));
         if fail_fast {
             anyhow::bail!("Build failed: {}", e);
         }
@@ -2426,7 +2426,7 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
     // 2. Tests
     println!("  {} Testing...", "🧪".bright_cyan());
     if let Err(e) = build_system.run_tests() {
-        errors.push(format!("Tests failed: {}", e);
+        errors.push(format!("Tests failed: {}", e));
         if fail_fast {
             anyhow::bail!("Tests failed: {}", e);
         }
@@ -2435,7 +2435,7 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
     // 3. Static analysis
     println!("  {} Static analysis...", "🔍".bright_cyan());
     if let Err(e) = build_system.run_static_analysis() {
-        errors.push(format!("Static analysis failed: {}", e);
+        errors.push(format!("Static analysis failed: {}", e));
         if fail_fast {
             anyhow::bail!("Static analysis failed: {}", e);
         }
@@ -2444,7 +2444,7 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
     // 4. Safety verification
     println!("  {} Safety verification...", "🛡️".bright_cyan());
     if let Err(e) = build_system.verify_safety() {
-        errors.push(format!("Safety verification failed: {}", e);
+        errors.push(format!("Safety verification failed: {}", e));
         if fail_fast {
             anyhow::bail!("Safety verification failed: {}", e);
         }
@@ -2453,7 +2453,7 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
     // 5. Advanced tests
     println!("  {} Advanced tests...", "🧪".bright_cyan());
     if let Err(e) = build_system.run_advanced_tests() {
-        errors.push(format!("Advanced tests failed: {}", e);
+        errors.push(format!("Advanced tests failed: {}", e));
         if fail_fast {
             anyhow::bail!("Advanced tests failed: {}", e);
         }
@@ -2462,7 +2462,7 @@ async fn cmd_ci(build_system: &BuildSystem, fail_fast: bool, json: bool) -> Resu
     // 6. Integrity checks
     println!("  {} Integrity checks...", "🔒".bright_cyan());
     if let Err(e) = build_system.run_integrity_checks() {
-        errors.push(format!("Integrity checks failed: {}", e);
+        errors.push(format!("Integrity checks failed: {}", e));
         if fail_fast {
             anyhow::bail!("Integrity checks failed: {}", e);
         }
@@ -2506,7 +2506,7 @@ async fn cmd_clean(build_system: &BuildSystem, all: bool, global: &mut GlobalArg
         let target_dir = workspace_root.join("target");
         if target_dir.exists() {
             std::fs::remove_dir_all(&target_dir).context("Failed to remove target directory")?;
-            output.indent(&format!("Removed {}", target_dir.display());
+            output.indent(&format!("Removed {}", target_dir.display()));
         }
 
         // Remove cargo-wrt target if it exists
@@ -2514,7 +2514,7 @@ async fn cmd_clean(build_system: &BuildSystem, all: bool, global: &mut GlobalArg
         if cargo_wrt_target.exists() {
             std::fs::remove_dir_all(&cargo_wrt_target)
                 .context("Failed to remove cargo-wrt target directory")?;
-            output.indent(&format!("Removed {}", cargo_wrt_target.display());
+            output.indent(&format!("Removed {}", cargo_wrt_target.display()));
         }
 
         // Remove wrt-build-core target if it exists
@@ -2760,7 +2760,7 @@ async fn cmd_setup(
         let tool_manager = ToolManager::new();
 
         if let Err(e) = tool_manager.install_all_needed_tools() {
-            println!("    ⚠️ Some tools failed to install: {}", e);
+            println!("    ⚠️ Some tools failed to install: {}", e));
         }
 
         println!();
@@ -2784,7 +2784,7 @@ async fn cmd_setup(
         let output = git_cmd.output().context("Failed to configure git hooks")?;
 
         if output.status.success() {
-            println!("{} Git hooks configured successfully!", "✅".bright_green());
+            println!("{} Git hooks configured successfully!", "✅".bright_green();
             println!("  Pre-commit hook will prevent test files in src/ directories");
             println!();
             println!("  To bypass hooks temporarily (not recommended), use:");
@@ -2851,7 +2851,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
             std::fs::write(&config_path, toml_content)
                 .context("Failed to write tool-versions.toml")?;
 
-            println!("  ✅ Generated {}", config_path.display());
+            println!("  ✅ Generated {}", config_path.display();
             println!(
                 "  📋 Configuration includes {} tools",
                 config.get_managed_tools().len()
@@ -2870,7 +2870,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                 // Check specific tool
                 let status = tool_manager.check_tool(&tool_name);
                 if verbose {
-                    println!("  Tool: {}", tool_name.bright_cyan());
+                    println!("  Tool: {}", tool_name.bright_cyan();
                     println!(
                         "  Available: {}",
                         if status.available { "✅ Yes" } else { "❌ No" }
@@ -2879,7 +2879,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                         println!("  Version: {}", version);
                     }
                     if let Some(error) = &status.error {
-                        println!("  Error: {}", error.bright_red());
+                        println!("  Error: {}", error.bright_red();
                     }
                     println!("  Version Status: {:?}", status.version_status);
                     println!(
@@ -2888,7 +2888,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                     );
                 } else {
                     let icon = if status.available && !status.needs_action { "✅" } else { "❌" };
-                    println!("  {} {}", icon, tool_name.bright_cyan());
+                    println!("  {} {}", icon, tool_name.bright_cyan();
                 }
             } else {
                 // Check all tools
@@ -2899,7 +2899,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                     for (tool_name, status) in results {
                         let icon =
                             if status.available && !status.needs_action { "✅" } else { "❌" };
-                        println!("  {} {}", icon, tool_name.bright_cyan());
+                        println!("  {} {}", icon, tool_name.bright_cyan();
                     }
                 }
             }
@@ -2933,7 +2933,7 @@ async fn cmd_tool_versions(build_system: &BuildSystem, command: ToolVersionComma
                 );
             } else {
                 println!("  ℹ️ Specify --tool <name> or --all to update versions");
-                println!("  📝 Current file: {}", config_path.display());
+                println!("  📝 Current file: {}", config_path.display();
             }
         },
     }
@@ -2967,7 +2967,7 @@ async fn cmd_fuzz(
                 }
             },
             Err(e) => {
-                println!("  Failed to list fuzz targets: {}", e);
+                println!("  Failed to list fuzz targets: {}", e));
             },
         }
         return Ok(());
@@ -2984,7 +2984,7 @@ async fn cmd_fuzz(
     };
 
     if let Some(pkg) = package {
-        println!("  Focusing on package: {}", pkg.bright_cyan());
+        println!("  Focusing on package: {}", pkg.bright_cyan();
         // Filter targets by package - would need package-specific logic
     }
 
@@ -2996,7 +2996,7 @@ async fn cmd_fuzz(
                     "✅".bright_green(),
                     results.duration_ms as f64 / 1000.0
                 );
-                println!("  Targets run: {}", results.targets_run.len());
+                println!("  Targets run: {}", results.targets_run.len();
             } else {
                 println!(
                     "{} Fuzzing found issues in {} targets",
@@ -3009,7 +3009,7 @@ async fn cmd_fuzz(
             }
         },
         Err(e) => {
-            anyhow::bail!("Fuzzing failed: {}", e);
+            anyhow::bail!("Fuzzing failed: {}", e));
         },
     }
 
@@ -3027,7 +3027,7 @@ async fn cmd_test_features(
     println!("{} Testing feature combinations...", "🧪".bright_blue());
 
     if let Some(pkg) = package {
-        println!("  Testing package: {}", pkg.bright_cyan());
+        println!("  Testing package: {}", pkg.bright_cyan();
     }
 
     if combinations {
@@ -3039,7 +3039,7 @@ async fn cmd_test_features(
     }
 
     // TODO: Implement feature testing through wrt-build-core
-    println!("{} Feature testing completed", "✅".bright_green());
+    println!("{} Feature testing completed", "✅".bright_green();
     Ok(())
 }
 
@@ -3058,7 +3058,7 @@ async fn cmd_testsuite(
     test_timeout_ms: u64,
     global: &mut GlobalArgs,
 ) -> Result<()> {
-    eprintln!("DEBUG: cmd_testsuite called with run_wast={}", run_wast));
+    eprintln!("DEBUG: cmd_testsuite called with run_wast={}", run_wast);
     if clean {
         println!("{} Cleaning extracted test files...", "🧹".bright_blue());
         // TODO: Implement cleaning through wrt-build-core
@@ -3088,19 +3088,19 @@ async fn cmd_testsuite(
             WastTestRunner,
         };
 
-        eprintln!("DEBUG: run_wast is true, starting WAST test suite..."));
+        eprintln!("DEBUG: run_wast is true, starting WAST test suite...");
 
         // Initialize the memory system before running WAST tests
-        eprintln!("DEBUG: Initializing memory system..."));
+        eprintln!("DEBUG: Initializing memory system...");
         // The memory system initialization is handled by wrt-build-core internally
         // No need to initialize it here as the WastEngine will do it when needed
-        eprintln!("DEBUG: Memory system initialization delegated to WastEngine"));
+        eprintln!("DEBUG: Memory system initialization delegated to WastEngine");
 
         println!("{} Running WAST test suite...", "🧪".bright_blue());
 
         let workspace_root = build_system.workspace_root;
-        eprintln!("DEBUG: workspace_root = {:?}", workspace_root));
-        eprintln!("DEBUG: wast_dir = {:?}", wast_dir));
+        eprintln!("DEBUG: workspace_root = {:?}", workspace_root);
+        eprintln!("DEBUG: wast_dir = {:?}", wast_dir);
         let test_directory = workspace_root.join(&wast_dir);
 
         if !test_directory.exists() {
@@ -3126,10 +3126,10 @@ async fn cmd_testsuite(
         };
 
         // Create and run WAST test runner
-        eprintln!("DEBUG: About to create WastTestRunner with config..."));
+        eprintln!("DEBUG: About to create WastTestRunner with config...");
         let mut runner =
             WastTestRunner::new(config).context("Failed to create WAST test runner")?;
-        eprintln!("DEBUG: WastTestRunner created successfully"));
+        eprintln!("DEBUG: WastTestRunner created successfully");
         let start_time = std::time::Instant::now();
 
         match runner.run_all_tests() {
@@ -3169,7 +3169,7 @@ async fn cmd_testsuite(
                         if per_assertion {
                             println!("\n{} Per-assertion Results:", "📊".bright_cyan());
                             for file_result in &results {
-                                println!("\n📄 {}", file_result.file_path.bright_cyan());
+                                println!("\n📄 {}", file_result.file_path.bright_cyan();
                                 for directive in &file_result.directive_results {
                                     let status_icon = match directive.result {
                                         wrt_build_core::wast::TestResult::Passed => "✅",
@@ -3181,7 +3181,7 @@ async fn cmd_testsuite(
                                         status_icon, directive.directive_name, directive.test_type
                                     );
                                     if let Some(error) = &directive.error_message {
-                                        println!("    Error: {}", error.bright_red());
+                                        println!("    Error: {}", error.bright_red();
                                     }
                                 }
                             }
@@ -3207,7 +3207,7 @@ async fn cmd_testsuite(
                             "  Assertions: {} passed, {} failed",
                             runner.stats.passed, runner.stats.failed
                         );
-                        println!("  Execution time: {:.2}s", total_time.as_secs_f64());
+                        println!("  Execution time: {:.2}s", total_time.as_secs_f64();
 
                         if let Some(report_file) = wast_report {
                             let report_path = workspace_root.join(report_file);
@@ -3244,7 +3244,7 @@ async fn cmd_testsuite(
                 }
             },
             Err(e) => {
-                global.output.error(&format!("WAST test execution failed: {}", e);
+                global.output.error(&format!("WAST test execution failed: {}", e));
                 return Err(e);
             },
         }
@@ -3329,14 +3329,14 @@ async fn cmd_requirements(
                         println!("{}", serde_json::to_string_pretty(&report)?);
                     },
                     OutputFormat::Human => {
-                        println!("{}", report.format_human());
+                        println!("{}", report.format_human();
 
                         if detailed {
                             println!("\n📋 Detailed Requirements Status:");
                             println!("─────────────────────────────────");
 
                             for req in &registry.requirements {
-                                println!("\n{} {}", req.id, req.title.bright_cyan());
+                                println!("\n{} {}", req.id, req.title.bright_cyan();
                                 println!("  Type: {}", req.req_type);
                                 println!("  ASIL: {}", req.asil_level);
                                 println!("  Status: {}", req.status);
@@ -3365,14 +3365,14 @@ async fn cmd_requirements(
                         );
 
                         if !result.missing_files.is_empty() {
-                            println!("\n{} Missing Files:", "⚠️ ".yellow());
+                            println!("\n{} Missing Files:", "⚠️ ".yellow();
                             for file in &result.missing_files {
                                 println!("  - {}", file);
                             }
                         }
 
                         if !result.incomplete_requirements.is_empty() {
-                            println!("\n{} Incomplete Requirements:", "❌".red());
+                            println!("\n{} Incomplete Requirements:", "❌".red();
                             for req in &result.incomplete_requirements {
                                 println!("  - {}", req);
                             }
@@ -3399,7 +3399,7 @@ async fn cmd_requirements(
                     println!("{}", serde_json::to_string_pretty(&report)?);
                 },
                 OutputFormat::Human => {
-                    println!("{}", report.format_human());
+                    println!("{}", report.format_human();
 
                     if by_asil {
                         println!("\n📊 Compliance by ASIL Level:");
@@ -3483,7 +3483,7 @@ async fn cmd_requirements(
                             tests:           req.tests.clone(),
                             documentation:   req.documentation.clone(),
                         })
-                        .collect());
+                        .collect();
 
                     HtmlReportGenerator::requirements_matrix(&req_data, &formatter)?
                 },
@@ -3511,7 +3511,7 @@ async fn cmd_requirements(
                             tests:           req.tests.clone(),
                             documentation:   req.documentation.clone(),
                         })
-                        .collect());
+                        .collect();
 
                     MarkdownReportGenerator::requirements_matrix(&req_data, &formatter)?
                 },
@@ -3539,7 +3539,7 @@ async fn cmd_requirements(
                             tests:           req.tests.clone(),
                             documentation:   req.documentation.clone(),
                         })
-                        .collect());
+                        .collect();
 
                     MarkdownReportGenerator::requirements_matrix(&req_data, &formatter)?
                 },
@@ -3578,7 +3578,7 @@ async fn cmd_requirements(
             if show_all || implementation {
                 let missing_impl = registry.get_requirements_needing_implementation();
                 if !missing_impl.is_empty() {
-                    println!("{} Requirements Missing Implementation:", "⚠️ ".yellow());
+                    println!("{} Requirements Missing Implementation:", "⚠️ ".yellow();
                     for req in missing_impl {
                         println!("  - {} {}", req.id, req.title);
                     }
@@ -3589,7 +3589,7 @@ async fn cmd_requirements(
             if show_all || tests {
                 let missing_tests = registry.get_requirements_needing_testing();
                 if !missing_tests.is_empty() {
-                    println!("{} Requirements Missing Tests:", "⚠️ ".yellow());
+                    println!("{} Requirements Missing Tests:", "⚠️ ".yellow();
                     for req in missing_tests {
                         println!("  - {} {} (coverage: {})", req.id, req.title, req.coverage);
                     }
@@ -3599,9 +3599,9 @@ async fn cmd_requirements(
 
             if show_all || docs {
                 let missing_docs: Vec<_> =
-                    registry.requirements.iter().filter(|r| r.documentation.is_empty()).collect());
+                    registry.requirements.iter().filter(|r| r.documentation.is_empty()).collect();
                 if !missing_docs.is_empty() {
-                    println!("{} Requirements Missing Documentation:", "⚠️ ".yellow());
+                    println!("{} Requirements Missing Documentation:", "⚠️ ".yellow();
                     for req in missing_docs {
                         println!("  - {} {}", req.id, req.title);
                     }
@@ -3627,7 +3627,7 @@ async fn cmd_requirements(
                 let req_path = PathBuf::from(&output_dir).join("requirements.toml");
                 Requirements::init_sample(&req_path)?;
 
-                println!("✅ Created sample requirements at {}", req_path.display());
+                println!("✅ Created sample requirements at {}", req_path.display();
                 println!("\n📚 SCORE Methodology Overview:");
                 println!("  - Safety requirements with ASIL levels");
                 println!("  - Multiple verification methods");
@@ -3710,7 +3710,7 @@ async fn cmd_wasm(
                     println!("───────────────────");
                     let formatter =
                         wrt_build_core::formatters::FormatterFactory::create(*output_format)?;
-                    println!("{}", formatter.format_collection(&diagnostics));
+                    println!("{}", formatter.format_collection(&diagnostics);
                 }
             }
 
@@ -3740,7 +3740,7 @@ async fn cmd_wasm(
                             .imports
                             .iter()
                             .filter(|imp| module.as_ref().map_or(true, |m| &imp.module == m))
-                            .collect());
+                            .collect();
                         println!("{}", serde_json::to_string_pretty(&filtered_imports)?);
                     }
                 },
@@ -3759,7 +3759,7 @@ async fn cmd_wasm(
                             .imports
                             .iter()
                             .filter(|imp| module.as_ref().map_or(true, |m| &imp.module == m))
-                            .collect());
+                            .collect();
 
                         if filtered_imports.is_empty() {
                             println!("No imports found");
@@ -3793,7 +3793,7 @@ async fn cmd_wasm(
                 .exports
                 .iter()
                 .filter(|exp| kind.as_ref().map_or(true, |k| &exp.kind == k))
-                .collect());
+                .collect();
 
             match output_format {
                 OutputFormat::Json | OutputFormat::JsonLines => {
@@ -3819,7 +3819,7 @@ async fn cmd_wasm(
             summary,
             performance,
         } => {
-            let mut wasm_paths = Vec::new());
+            let mut wasm_paths = Vec::new();
 
             // Expand glob patterns
             for pattern in &files {
@@ -3853,7 +3853,7 @@ async fn cmd_wasm(
                 OutputFormat::Human => {
                     println!("🔍 WebAssembly Module Analysis");
                     println!("════════════════════════════");
-                    println!("Analyzed {} modules\n", results.len());
+                    println!("Analyzed {} modules\n", results.len();
 
                     let mut total_valid = 0;
                     let mut total_imports = 0;
@@ -3862,7 +3862,7 @@ async fn cmd_wasm(
 
                     for (path, result) in &results {
                         if summary {
-                            println!("📄 {}", path.bright_cyan());
+                            println!("📄 {}", path.bright_cyan();
                             println!(
                                 "  Status: {}",
                                 if result.valid { "✅ Valid" } else { "❌ Invalid" }
@@ -3897,7 +3897,7 @@ async fn cmd_wasm(
                     if summary {
                         println!("📊 Summary:");
                         println!("─────────");
-                        println!("  Valid modules: {}/{}", total_valid, results.len());
+                        println!("  Valid modules: {}/{}", total_valid, results.len();
                         println!("  Total imports: {}", total_imports);
                         println!("  Total exports: {}", total_exports);
                         println!("  Total builtins: {}", total_builtins);
@@ -4040,7 +4040,7 @@ async fn cmd_safety(
                         );
 
                         if !compliance_result.violations.is_empty() {
-                            println!("\n{} Violations:", "⚠️ ".bright_yellow());
+                            println!("\n{} Violations:", "⚠️ ".bright_yellow();
                             for violation in &compliance_result.violations {
                                 println!(
                                     "  • {}: {}",
@@ -4101,7 +4101,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             match output_format {
                 OutputFormat::Json => {
@@ -4132,7 +4132,7 @@ async fn cmd_safety(
                     );
 
                     if !readiness.blocking_issues.is_empty() {
-                        println!("\n{} Blocking Issues:", "🚫".bright_red());
+                        println!("\n{} Blocking Issues:", "🚫".bright_red();
                         for issue in &readiness.blocking_issues {
                             println!("  • {}", issue);
                         }
@@ -4195,7 +4195,7 @@ async fn cmd_safety(
                         .asil_compliance
                         .iter()
                         .map(|(k, v)| (format!("{:?}", k), *v))
-                        .collect());
+                        .collect();
 
                     let html_data = crate::formatters::html::SafetyReportData {
                         overall_compliance: safety_report.overall_compliance * 100.0,
@@ -4227,7 +4227,7 @@ async fn cmd_safety(
                         .asil_compliance
                         .iter()
                         .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
-                        .collect());
+                        .collect();
 
                     let report_data = crate::formatters::html::SafetyReportData {
                         overall_compliance: safety_report.overall_compliance * 100.0,
@@ -4259,7 +4259,7 @@ async fn cmd_safety(
                         .asil_compliance
                         .iter()
                         .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
-                        .collect());
+                        .collect();
 
                     let report_data = crate::formatters::html::SafetyReportData {
                         overall_compliance: safety_report.overall_compliance * 100.0,
@@ -4349,7 +4349,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             Ok(())
         },
@@ -4404,7 +4404,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if passed {
                 println!(
@@ -4454,7 +4454,7 @@ async fn cmd_safety(
                 "  Function Coverage: {:.1}%",
                 coverage_data.function_coverage
             );
-            println!("  Overall: {:.1}%", coverage_data.overall_coverage());
+            println!("  Overall: {:.1}%", coverage_data.overall_coverage();
 
             Ok(())
         },
@@ -4474,12 +4474,12 @@ async fn cmd_safety(
                 .unwrap_or_default()
                 .split(',')
                 .map(|s| s.trim().to_string())
-                .collect());
+                .collect();
             let failed = failed_features
                 .unwrap_or_default()
                 .split(',')
                 .map(|s| s.trim().to_string())
-                .collect());
+                .collect();
 
             let verification = PlatformVerification {
                 platform_name:       platform.clone(),
@@ -4525,7 +4525,7 @@ async fn cmd_safety(
                     true,
                     use_colors,
                 );
-                print!("{}", formatter.format_collection(&diagnostics);
+                print!("{}", formatter.format_collection(&diagnostics));
 
                 println!(
                     "{} Initialized safety verification with WRT-specific requirements",
@@ -4563,7 +4563,7 @@ async fn cmd_safety(
                 println!("🏆 Certification workflow demo not yet implemented");
             }
 
-            println!("{} SCORE demo setup complete", "✅".bright_green());
+            println!("{} SCORE demo setup complete", "✅".bright_green();
             Ok(())
         },
 
@@ -4611,7 +4611,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             if detailed {
                 match output_format {
@@ -4636,7 +4636,7 @@ async fn cmd_safety(
                         );
 
                         if !result.violations.is_empty() {
-                            println!("\n{} Documentation Violations:", "⚠️ ".bright_yellow());
+                            println!("\n{} Documentation Violations:", "⚠️ ".bright_yellow();
                             for violation in &result.violations {
                                 println!(
                                     "  • {} ({}): {}",
@@ -4698,7 +4698,7 @@ async fn cmd_safety(
                         .asil_compliance
                         .iter()
                         .map(|(k, v)| (format!("{:?}", k), *v))
-                        .collect());
+                        .collect();
 
                     let html_data = crate::formatters::html::DocumentationReportData {
                         overall_compliance: doc_report.overall_compliance * 100.0,
@@ -4726,7 +4726,7 @@ async fn cmd_safety(
                         .asil_compliance
                         .iter()
                         .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
-                        .collect());
+                        .collect();
 
                     let report_data = crate::formatters::html::DocumentationReportData {
                         overall_compliance: doc_report.overall_compliance * 100.0,
@@ -4754,7 +4754,7 @@ async fn cmd_safety(
                         .asil_compliance
                         .iter()
                         .map(|(k, v)| (format!("{:?}", k), *v * 100.0))
-                        .collect());
+                        .collect();
 
                     let report_data = crate::formatters::html::DocumentationReportData {
                         overall_compliance: doc_report.overall_compliance * 100.0,
@@ -4790,7 +4790,7 @@ async fn cmd_safety(
 
                     if all_asil && !doc_report.asil_compliance.is_empty() {
                         content.push_str("📊 ASIL Documentation Compliance:\n");
-                        let mut sorted_asil: Vec<_> = doc_report.asil_compliance.iter().collect());
+                        let mut sorted_asil: Vec<_> = doc_report.asil_compliance.iter().collect();
                         sorted_asil.sort_by_key(|(asil, _)| match asil {
                             wrt_build_core::config::AsilLevel::QM => 0,
                             wrt_build_core::config::AsilLevel::A => 1,
@@ -4834,7 +4834,7 @@ async fn cmd_safety(
                 true,
                 use_colors,
             );
-            print!("{}", formatter.format_collection(&diagnostics);
+            print!("{}", formatter.format_collection(&diagnostics));
 
             Ok(())
         },
@@ -5085,7 +5085,7 @@ fn generate_markdown_report(
     let failed_files: Vec<_> = results
         .iter()
         .filter(|r| r.status == wrt_build_core::wast::TestResult::Failed)
-        .collect());
+        .collect();
     if !failed_files.is_empty() {
         report.push_str("\n## Failed Tests Details\n\n");
         for file_result in failed_files {

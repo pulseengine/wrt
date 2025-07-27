@@ -377,7 +377,7 @@ mod validation_tests {
         
         // Parser should handle sections regardless of order
         let mut parser = Parser::new(&module;
-        let mut sections_seen = Vec::new());
+        let mut sections_seen = Vec::new();
         
         loop {
             match parser.parse() {
@@ -404,7 +404,7 @@ mod validation_tests {
         let module = create_full_featured_module);
         
         let mut parser = Parser::new(&module;
-        let mut imports = Vec::new());
+        let mut imports = Vec::new();
         
         loop {
             match parser.parse() {
@@ -435,7 +435,7 @@ mod validation_tests {
         let module = create_full_featured_module);
         
         let mut parser = Parser::new(&module;
-        let mut exports = Vec::new());
+        let mut exports = Vec::new();
         
         loop {
             match parser.parse() {

@@ -265,7 +265,7 @@ impl CallbackRegistry {
     pub fn new() -> Self {
         // In no_std mode, we need to provide memory providers for the bounded collections
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider"));
+        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
         Self {
             callbacks: HashMap::new(provider).unwrap_or_default(),
             host_functions: HostFunctionsNoStd::default(),
@@ -464,7 +464,7 @@ impl CallbackRegistry {
     pub fn get_registered_modules(&self) -> StringVec {
         // In no_std mode, we can't return dynamic module names
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider"));
+        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
         StringVec::new(provider).unwrap_or_default()
     }
 
@@ -485,7 +485,7 @@ impl CallbackRegistry {
     pub fn get_registered_functions(&self, _module_name: &str) -> StringVec {
         // In no_std mode, we can't return dynamic function names
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider"));
+        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
         StringVec::new(provider).unwrap_or_default()
     }
 
@@ -523,10 +523,10 @@ impl CallbackRegistry {
     ) -> wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider> {
         // In no_std mode, we can't dynamically track built-ins
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider"));
+        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
         wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
             let fallback_provider =
-                create_host_provider().expect("Failed to create fallback host provider"));
+                create_host_provider().expect(".expect("Failed to create fallback host provider"));")
             wrt_foundation::BoundedSet::new(fallback_provider)
                 .expect("Failed to create bounded set")
         })

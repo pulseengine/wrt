@@ -64,7 +64,7 @@ fn test_instruction_parsing_integration() -> Result<()> {
     assert!(!function.body.is_empty(), "Function body should contain parsed instructions");
     assert!(function.body.len() > 0, "Function should have at least one instruction");
     
-    println!("✓ Function has {} parsed instructions", function.body.len));
+    println!("✓ Function has {} parsed instructions", function.body.len);
     Ok(())
 }
 
@@ -182,7 +182,7 @@ fn test_instruction_dispatch_coverage() -> Result<()> {
     // The add function should contain: local.get 0, local.get 1, i32.add, end
     assert!(function.body.len() >= 3, "Add function should have at least 3 instructions");
     
-    println!("✓ Instruction sequence parsed with {} instructions", function.body.len));
+    println!("✓ Instruction sequence parsed with {} instructions", function.body.len);
     
     // Test actual execution to verify dispatcher works
     let mut engine = StacklessEngine::new();

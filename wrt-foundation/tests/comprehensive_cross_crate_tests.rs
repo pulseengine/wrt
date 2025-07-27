@@ -220,7 +220,7 @@ mod error_propagation_tests {
     use super::*;
 
     fn allocate_until_exhausted(crate_id: CrateId) -> WrtResult<Vec<BudgetProvider<1024>>> {
-        let mut providers = Vec::new());
+        let mut providers = Vec::new();
         loop {
             match BudgetProvider::<1024>::new(crate_id) {
                 Ok(p) => providers.push(p),
@@ -325,7 +325,7 @@ mod performance_tests {
         let _ = memory_system_initializer::presets::development);
 
         const ALLOCATION_COUNT: usize = 5000;
-        let mut providers = Vec::new());
+        let mut providers = Vec::new();
 
         let start = Instant::now);
         for i in 0..ALLOCATION_COUNT {
@@ -364,7 +364,7 @@ mod edge_case_tests {
         // This tests graceful handling if budget is exhausted
 
         // Exhaust a crate's budget
-        let mut providers = Vec::new());
+        let mut providers = Vec::new();
         while let Ok(p) = BudgetProvider::<1024>::new(CrateId::Math) {
             providers.push(p);
         }
@@ -452,7 +452,7 @@ mod thread_safety_tests {
         const THREAD_COUNT: usize = 8;
         const ALLOCATIONS_PER_THREAD: usize = 100;
 
-        let mut handles = Vec::new());
+        let mut handles = Vec::new();
 
         for thread_id in 0..THREAD_COUNT {
             let handle = thread::spawn(move || {
@@ -463,7 +463,7 @@ mod thread_safety_tests {
                     _ => CrateId::Host,
                 };
 
-                let mut providers = Vec::new());
+                let mut providers = Vec::new();
                 for _ in 0..ALLOCATIONS_PER_THREAD {
                     if let Ok(p) = BudgetProvider::<256>::new(crate_id) {
                         providers.push(p);
@@ -496,7 +496,7 @@ mod thread_safety_tests {
         ;
 
         // Concurrent allocations and deallocations
-        let mut handles = Vec::new());
+        let mut handles = Vec::new();
 
         for _ in 0..4 {
             let usage_after_clone = usage_after.clone();
@@ -575,14 +575,14 @@ mod diagnostic_integration_tests {
 
         // Intentionally create a potential leak scenario
         let leaked_providers: Vec<BudgetProvider<512>> =
-            (0..10).filter_map(|_| BudgetProvider::<512>::new(CrateId::Logging).ok()).collect());
+            (0..10).filter_map(|_| BudgetProvider::<512>::new(CrateId::Logging).ok()).collect();
 
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Logging).unwrap();
         let usage_with_leaks = stats.allocated_bytes;
         assert!(usage_with_leaks >= 5120)); // At least 10 * 512
 
         // In a real system, leak detection would identify these allocations
-        println!("Simulated memory leak scenario with {} allocations", leaked_providers.len));
+        println!("Simulated memory leak scenario with {} allocations", leaked_providers.len);
 
         // Clean up
         drop(leaked_providers;
@@ -693,7 +693,7 @@ mod external_integration_tests {
         }
 
         // Call host function multiple times
-        let mut results = Vec::new());
+        let mut results = Vec::new();
         for _ in 0..5 {
             if let Ok(buffer) = host_function_with_allocation() {
                 results.push(buffer);
@@ -775,7 +775,7 @@ fn test_comprehensive_system_stress() {
                     _ => CrateId::Host,
                 };
 
-                let mut allocations = Vec::new());
+                let mut allocations = Vec::new();
                 let mut allocation_count = 0;
 
                 // Mixed allocation patterns
@@ -824,7 +824,7 @@ fn test_comprehensive_system_stress() {
                 (crate_id, allocation_count, allocations.len())
             })
         })
-        .collect());
+        .collect();
 
     // Phase 3: Monitor system health during stress
     let monitor_handle = thread::spawn(|| {

@@ -240,7 +240,7 @@ mod safety_critical_only_tests {
     fn test_deterministic_allocation() {
         // In safety-critical mode, allocations should be deterministic
 
-        let mut vecs = Vec::new());
+        let mut vecs = Vec::new();
 
         // Allocate multiple vectors
         for _ in 0..5 {

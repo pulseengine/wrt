@@ -432,7 +432,7 @@ impl AdvancedThreadingBuiltins {
     pub fn initialize() -> Result<()> {
         let mut registry_ref = ADVANCED_THREAD_REGISTRY.try_borrow_mut()
             .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
-        *registry_ref = Some(AdvancedThreadRegistry::new());
+        *registry_ref = Some(AdvancedThreadRegistry::new();
         Ok(())
     }
 
@@ -679,7 +679,7 @@ pub mod advanced_threading_helpers {
     /// Cancel all child threads of a parent
     #[cfg(feature = "std")]
     pub fn cancel_child_threads(parent_id: AdvancedThreadId) -> Result<Vec<AdvancedThreadId>> {
-        let mut cancelled = Vec::new());
+        let mut cancelled = Vec::new();
         
         AdvancedThreadingBuiltins::with_registry_mut(|registry| {
             if let Some(parent) = registry.get_thread(parent_id) {

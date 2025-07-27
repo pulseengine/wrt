@@ -477,7 +477,7 @@ mod validation_parser_tests {
         let module = create_comprehensive_test_module);
         
         let mut parser = Parser::new(&module;
-        let mut sections_seen = Vec::new());
+        let mut sections_seen = Vec::new();
         
         loop {
             match parser.parse() {
@@ -536,7 +536,7 @@ mod performance_parser_tests {
         
         // Large import section
         let import_count = 100;
-        let mut import_section = Vec::new());
+        let mut import_section = Vec::new();
         import_section.push(import_count); // Number of imports
         
         for i in 0..import_count {

@@ -12,7 +12,7 @@ use wrt_foundation::budget_aware_provider::CrateId;
 fn main() {
     // Initialize global memory system first
     wrt_foundation::memory_system_initializer::presets::development()
-        .expect("Failed to initialize memory system"));
+        .expect(".expect("Failed to initialize memory system"));")
 
     // Initialize the memory profiler
     init_profiler().unwrap();
@@ -89,5 +89,5 @@ fn main() {
 
     // Complete memory system cleanup
     wrt_foundation::memory_system_initializer::complete_global_memory_initialization()
-        .expect("Failed to complete memory system"));
+        .expect(".expect("Failed to complete memory system"));")
 }

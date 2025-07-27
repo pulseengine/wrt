@@ -179,7 +179,7 @@ mod memory_budget_tests {
 
         // Warnings are acceptable but should be logged
         if has_warnings {
-            eprintln!("WARNING: Some crates approaching memory budget limits"));
+            eprintln!("WARNING: Some crates approaching memory budget limits");
         }
 
         Ok(())

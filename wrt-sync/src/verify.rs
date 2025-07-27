@@ -10,7 +10,10 @@
 #[cfg(any(doc, kani))]
 /// Formal verification module for Kani proofs
 pub mod kani_verification {
-    use crate::{prelude::*, *};
+    use crate::{
+        prelude::*,
+        *,
+    };
 
     // --- WrtMutex Verification ---
 
@@ -237,7 +240,10 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(5))]
     pub fn verify_atomic_operations_safety() {
-        use core::sync::atomic::{AtomicU32, Ordering};
+        use core::sync::atomic::{
+            AtomicU32,
+            Ordering,
+        };
 
         let atomic_counter = AtomicU32::new(0);
 

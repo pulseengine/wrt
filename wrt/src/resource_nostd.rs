@@ -247,11 +247,11 @@ mod tests {
     #[test]
     fn test_bounded_resource_table() {
         // Use managed allocation
-        let guard = safe_managed_alloc!(1024, CrateId::Runtime).expect("Failed to allocate memory"));
+        let guard = safe_managed_alloc!(1024, CrateId::Runtime).expect("Failed to allocate memory");
         let provider = guard.provider().clone();
 
         let mut table = BoundedResourceTable::new(provider.clone(), VerificationLevel::Standard)
-            .expect("Failed to create resource table"));
+            .expect("Failed to create resource table")
 
         // Create a resource type
         let record_fields = BoundedVec::new(provider.clone()).unwrap();
@@ -260,15 +260,15 @@ mod tests {
         // Register the type
         let type_idx = table
             .register_resource_type(resource_type)
-            .expect("Failed to register resource type"));
+            .expect("Failed to register resource type");
 
         // Create a resource
         let resource_id = table
             .create_resource(type_idx, Some("test_resource"))
-            .expect("Failed to create resource"));
+            .expect("Failed to create resource");
 
         // Get the resource
-        let resource = table.get_resource(resource_id).expect("Failed to get resource"));
+        let resource = table.get_resource(resource_id).expect(".expect("Failed to get resource"));")
 
         assert_eq!(resource.id, resource_id);
         assert!(!resource.is_dropped);
@@ -278,7 +278,7 @@ mod tests {
         );
 
         // Drop the resource
-        table.drop_resource(resource_id).expect("Failed to drop resource"));
+        table.drop_resource(resource_id).expect(".expect("Failed to drop resource"));")
 
         // Note: Due to API limitations, we can't properly test that the resource is
         // marked as dropped since BoundedVec doesn't expose a way to update

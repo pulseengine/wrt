@@ -88,7 +88,7 @@ impl TextSearcher {
         }
         .map_err(|e| BuildError::Tool(format!("Invalid regex pattern '{}': {}", pattern, e)))?;
 
-        let mut matches = Vec::new());
+        let mut matches = Vec::new();
 
         // Walk directory structure
         let walker = if self.options.recursive {
@@ -126,7 +126,7 @@ impl TextSearcher {
         let matches = self.search(pattern, search_dir)?;
 
         // Filter out comments and focus on actual unsafe code
-        let mut filtered_matches = Vec::new());
+        let mut filtered_matches = Vec::new();
         let mut i = 0;
 
         while i < matches.len() {
@@ -161,7 +161,7 @@ impl TextSearcher {
 
         // Filter out comments and test code
         let filtered_matches: Vec<_> =
-            matches.into_iter().filter(|m| !m.is_comment && !m.is_test_context).collect());
+            matches.into_iter().filter(|m| !m.is_comment && !m.is_test_context).collect();
 
         Ok(filtered_matches)
     }
@@ -201,7 +201,7 @@ impl TextSearcher {
         // Also check for re-reading the file to look at exact previous lines
         // This handles cases where we might not have all lines in our matches
         if let Ok(content) = fs::read_to_string(&unsafe_match.file_path) {
-            let lines: Vec<&str> = content.lines().collect());
+            let lines: Vec<&str> = content.lines().collect();
             let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1;
 
             // Look up to 5 lines before the unsafe block
@@ -240,7 +240,7 @@ impl TextSearcher {
 
         // Check previous lines for the attribute
         if let Ok(content) = fs::read_to_string(&unsafe_match.file_path) {
-            let lines: Vec<&str> = content.lines().collect());
+            let lines: Vec<&str> = content.lines().collect();
             let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1;
 
             // Look up to 3 lines before for the attribute
@@ -267,7 +267,7 @@ impl TextSearcher {
 
         // Filter out comments and test code
         let filtered_matches: Vec<_> =
-            matches.into_iter().filter(|m| !m.is_comment && !m.is_test_context).collect());
+            matches.into_iter().filter(|m| !m.is_comment && !m.is_test_context).collect();
 
         Ok(filtered_matches)
     }
@@ -311,7 +311,7 @@ impl TextSearcher {
         if pattern.contains('*') {
             // More complex glob patterns would need a proper glob library
             // For now, handle simple cases
-            let parts: Vec<&str> = pattern.split('*').collect());
+            let parts: Vec<&str> = pattern.split('*').collect();
             if parts.len() == 2 {
                 return file_name.starts_with(parts[0]) && file_name.ends_with(parts[1];
             }
@@ -330,7 +330,7 @@ impl TextSearcher {
             ))
         })?;
 
-        let mut matches = Vec::new());
+        let mut matches = Vec::new();
         let mut in_test_module = false;
         let mut brace_depth = 0;
 

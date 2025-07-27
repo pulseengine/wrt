@@ -52,7 +52,7 @@ impl<const N: usize, P: wrt_foundation::MemoryProvider + Default + Clone + Parti
 /// Extract embedded WebAssembly modules from a component binary
 #[cfg(feature = "std")]
 pub fn extract_embedded_modules(bytes: &[u8]) -> Result<std::vec::Vec<std::vec::Vec<u8>>> {
-    let mut modules = std::vec::Vec::new());
+    let mut modules = std::vec::Vec::new();
     let mut offset = 8; // Skip magic and version
 
     // Parse sections
@@ -711,7 +711,7 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
-        let mut bytes = Vec::new());
+        let mut bytes = Vec::new();
         #[cfg(not(feature = "std"))]
         let mut bytes = {
             let provider = wrt_foundation::safe_managed_alloc!(
@@ -729,7 +729,7 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
             }
         }
 
-        let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect());
+        let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
         if parts.len() >= 3 {
             let index = if parts.len() > 3 && parts[3].len() >= 4 {
                 u32::from_le_bytes([parts[3][0], parts[3][1], parts[3][2], parts[3][3]])
@@ -796,7 +796,7 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
         _provider: &PStream,
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
-        let mut bytes = Vec::new());
+        let mut bytes = Vec::new();
         #[cfg(not(feature = "std"))]
         let mut bytes = {
             let provider = wrt_foundation::safe_managed_alloc!(
@@ -814,7 +814,7 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
             }
         }
 
-        let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect());
+        let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
         if parts.len() >= 2 {
             let index = if parts.len() > 2 && parts[2].len() >= 4 {
                 u32::from_le_bytes([parts[2][0], parts[2][1], parts[2][2], parts[2][3]])

@@ -172,7 +172,7 @@ impl DaggerPipeline {
     async fn run_local_fallback(&self, args: &[&str]) -> Result<String> {
         use std::process::Command;
 
-        eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution"));
+        eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution");
 
         let mut cmd = Command::new("cargo-wrt";
         cmd.args(args;

@@ -69,7 +69,7 @@ pub struct MemoryBreakdown {
 impl BuildSystem {
     /// Analyze memory budget for all platforms
     pub fn analyze_memory_budget(&self) -> BuildResult<Vec<MemoryAnalysisResult>> {
-        println!("{} Analyzing memory budgets...", "🔍".bright_blue));
+        println!("{} Analyzing memory budgets...", "🔍".bright_blue);
 
         let platforms = vec![
             PlatformMemoryBudget {
@@ -95,7 +95,7 @@ impl BuildSystem {
             },
         ];
 
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         for platform in platforms {
             let result = self.analyze_platform_memory(&platform)?;
@@ -133,7 +133,7 @@ impl BuildSystem {
 
         let usage_percentage = (total_used as f64 / platform.total_budget as f64) * 100.0;
 
-        let mut warnings = Vec::new());
+        let mut warnings = Vec::new();
 
         if usage_percentage > 90.0 {
             warnings.push(format!("Critical: Memory usage exceeds 90% of budget");
@@ -167,7 +167,7 @@ impl BuildSystem {
         let mut all_passed = true;
 
         println!);
-        println!("{} Memory Budget Validation Results", "📊".bright_blue));
+        println!("{} Memory Budget Validation Results", "📊".bright_blue);
         println!("{}", "─".repeat(60);
 
         for result in &results {
@@ -197,14 +197,14 @@ impl BuildSystem {
             }
 
             for warning in &result.warnings {
-                println!("    {}", warning.bright_yellow));
+                println!("    {}", warning.bright_yellow);
             }
         }
 
         println!("{}", "─".repeat(60);
 
         if all_passed {
-            println!("{} All platforms within memory budget", "✅".bright_green));
+            println!("{} All platforms within memory budget", "✅".bright_green);
         } else {
             println!(
                 "{} Some platforms exceed critical threshold",

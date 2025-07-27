@@ -2,12 +2,17 @@
 
 use wrt_component::type_conversion::bidirectional::*;
 use wrt_format::component::{
-    ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
+    ExternType as FormatExternType,
+    ResourceRepresentation,
+    ValType as FormatValType,
 };
 use wrt_foundation::{
     component::ResourceType,
     component_value::ValType as TypesValType,
-    types::{FuncType as TypesFuncType, ValueType},
+    types::{
+        FuncType as TypesFuncType,
+        ValueType,
+    },
     ExternType as TypesExternType,
 };
 
@@ -245,7 +250,7 @@ fn test_format_valtype_roundtrip() {
 fn test_format_to_runtime_extern_type() {
     // Test function type conversion
     let format_func = FormatExternType::Function {
-        params: vec![("arg".to_string(), FormatValType::S32)],
+        params:  vec![("arg".to_string(), FormatValType::S32)],
         results: vec![FormatValType::S32],
     };
 
@@ -264,7 +269,7 @@ fn test_format_to_runtime_extern_type() {
         exports: vec![(
             "func".to_string(),
             FormatExternType::Function {
-                params: vec![],
+                params:  vec![],
                 results: vec![],
             },
         )],
@@ -281,7 +286,7 @@ fn test_format_to_runtime_extern_type() {
 
     // Test resource type conversion
     let resource_extern_type = FormatExternType::Resource {
-        rep: ResourceRepresentation::Handle32,
+        rep:      ResourceRepresentation::Handle32,
         nullable: false,
     };
 
@@ -359,7 +364,7 @@ fn test_common_conversion_utilities() {
 fn test_conversion_traits() {
     // Test IntoRuntimeType for FormatExternType
     let format_func = FormatExternType::Function {
-        params: vec![("arg".to_string(), FormatValType::S32)],
+        params:  vec![("arg".to_string(), FormatValType::S32)],
         results: vec![FormatValType::S32],
     };
 

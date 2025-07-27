@@ -544,7 +544,7 @@ impl BoundedLogBuffer {
     
     /// Get all log entries
     pub fn get_entries(&self) -> Vec<BoundedLogEntry> {
-        let mut entries = Vec::new());
+        let mut entries = Vec::new();
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 entries.push(entry);
@@ -555,7 +555,7 @@ impl BoundedLogBuffer {
     
     /// Get log entries filtered by level
     pub fn get_entries_by_level(&self, level: LogLevel) -> Vec<BoundedLogEntry> {
-        let mut filtered = Vec::new());
+        let mut filtered = Vec::new();
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if entry.level == level {
@@ -568,7 +568,7 @@ impl BoundedLogBuffer {
     
     /// Get log entries filtered by component
     pub fn get_entries_by_component(&self, component_id: ComponentLoggingId) -> Vec<BoundedLogEntry> {
-        let mut filtered = Vec::new());
+        let mut filtered = Vec::new();
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if entry.component_id == component_id {

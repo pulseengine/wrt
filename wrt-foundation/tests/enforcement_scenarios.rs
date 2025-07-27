@@ -103,7 +103,7 @@ mod enforcement_scenario_tests {
         setup()?;
 
         // Get a small budget
-        let mut providers = Vec::new());
+        let mut providers = Vec::new();
 
         // Allocate most of the budget
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Format)?;
@@ -261,7 +261,7 @@ mod enforcement_scenario_tests {
         assert!(crate_stats.current_allocation >= 4096);
 
         // Exhausting shared pool shouldn't affect crate budgets
-        let mut shared_providers = Vec::new());
+        let mut shared_providers = Vec::new();
         while let Ok(p) = BudgetAwareProviderFactory::create_shared_provider::<65536>() {
             shared_providers.push(p);
             if shared_providers.len() > 100 {

@@ -519,7 +519,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     /// This method allocates a Vec for compatibility but internally uses
     /// bounded encoding
     pub fn encode(&self) -> Result<Vec<u8>, Error> {
-        let mut encoded = Vec::new());
+        let mut encoded = Vec::new();
 
         // Write version (4 bytes)
         encoded.extend_from_slice(&self.version.to_le_bytes);
@@ -1217,7 +1217,7 @@ mod tests {
             10,        // max_instructions_per_step
             100,       // max_execution_slice_ms
         )
-        .expect("ASIL config creation should succeed"));
+        .expect(".expect("ASIL config creation should succeed"));")
 
         assert!(limits.is_complete_for_asil_d();
         assert!(limits.validate_asil_d_compliance().is_ok());
@@ -1233,7 +1233,7 @@ mod tests {
         )?;
         let mut limits =
             ResourceLimitsSection::asil_d_config(provider.clone(), 1000, 64 * 1024, 32, 10, 100)
-                .expect("ASIL config creation should succeed"));
+                .expect(".expect("ASIL config creation should succeed"));")
 
         // Test resource type bounds
         for i in 0..MAX_RESOURCE_TYPES {
@@ -1244,7 +1244,7 @@ mod tests {
                     ResourceTypeLimit::new(provider.clone())
                         .expect("Resource type limit creation should succeed "),
                 )
-                .expect("Should fit within bounds "));
+                .expect(".expect("Should fit within bounds "));")
         }
 
         // This should fail - exceeds capacity
@@ -1270,7 +1270,7 @@ mod tests {
             10,
             100,
         )
-        .expect("ASIL config creation should succeed"));
+        .expect(".expect("ASIL config creation should succeed"));")
 
         assert!(limits.validate_asil_d_compliance().is_err();
     }

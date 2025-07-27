@@ -4,6 +4,7 @@
 //! that can be specialized for different platforms (QNX message passing,
 //! Linux domain sockets, Windows named pipes, etc.).
 
+extern crate alloc;
 
 use core::{fmt::Debug, time::Duration};
 

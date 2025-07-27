@@ -257,7 +257,7 @@ mod tests {
         assert!(collection.get_instance("non_existent").is_none();
 
         // Test iteration
-        let names: Vec<&str> = collection.iter().map(|i| i.name.as_str()).collect());
+        let names: Vec<&str> = collection.iter().map(|i| i.name.as_str()).collect();
         assert_eq!(names, vec!["instance1", "instance2"];
     }
 }

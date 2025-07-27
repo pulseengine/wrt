@@ -58,7 +58,7 @@ mod memory_budget_tests {
         let element_size = core::mem::size_of::<u64>();
         let overhead_per_vec = 64; // Approximate overhead
 
-        let mut allocations = Vec::new());
+        let mut allocations = Vec::new();
         let mut total_allocated = 0;
 
         // Keep allocating until we hit the budget
@@ -131,7 +131,7 @@ mod memory_budget_tests {
     /// Test memory budget with actual data storage
     #[test]
     fn test_memory_budget_with_data() {
-        let mut vecs = Vec::new());
+        let mut vecs = Vec::new();
 
         // Allocate and fill vectors
         for i in 0..10 {
@@ -173,7 +173,7 @@ mod memory_budget_tests {
 
         for i in 0..MAX_COMPONENT_EXPORTS {
             let key = bounded_export_name_from_str(&format!("export_{:04}", i))
-                .expect("Failed to create key"));
+                .expect(".expect("Failed to create key"));")
             let value = [i as u8; 256];
 
             match map.try_insert(key, value) {
@@ -193,7 +193,7 @@ mod memory_budget_tests {
     fn test_memory_reclamation() {
         // Allocate and drop collections
         for cycle in 0..3 {
-            let mut temp_vecs = Vec::new());
+            let mut temp_vecs = Vec::new();
 
             // Allocate until budget exhausted
             for i in 0..20 {
@@ -223,7 +223,7 @@ mod memory_budget_tests {
     /// Test string allocation budgets
     #[test]
     fn test_string_allocation_budget() {
-        let mut strings = Vec::new());
+        let mut strings = Vec::new();
 
         // Allocate bounded strings
         for i in 0..100 {
@@ -337,7 +337,7 @@ mod memory_budget_tests {
 
         for iteration in 0..TEST_ITERATIONS {
             let mut allocation_count = 0;
-            let mut allocations = Vec::new());
+            let mut allocations = Vec::new();
 
             // Allocate until budget exhausted
             loop {
@@ -371,7 +371,7 @@ mod memory_budget_tests {
     /// Test memory budget with type map allocations
     #[test]
     fn test_type_map_memory_budget() {
-        let mut maps = Vec::new());
+        let mut maps = Vec::new();
 
         loop {
             match new_type_map::<[u8; 128]>() {

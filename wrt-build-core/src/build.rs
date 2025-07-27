@@ -82,7 +82,7 @@ pub fn execute_command(
 #[cfg(feature = "std")]
 fn format_command(cmd: &Command) -> String {
     let program = cmd.get_program().to_string_lossy();
-    let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect());
+    let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect();
 
     if args.is_empty() {
         program.to_string()
@@ -103,7 +103,7 @@ pub mod xtask_port {
         println!(
             "{} Running comprehensive coverage analysis...",
             "📊".bright_blue()
-        ;
+        );
 
         // Build with coverage flags
         let mut cmd = Command::new("cargo");
@@ -174,7 +174,7 @@ pub mod xtask_port {
         let mut any_failed = false;
 
         for package in &packages {
-            print!("    Building docs for {}... ", package;
+            print!("    Building docs for {}... ", package);
             std::io::stdout().flush().ok();
 
             let mut cmd = Command::new("cargo");
@@ -205,7 +205,7 @@ pub mod xtask_port {
                         .take(3)
                         .collect::<Vec<_>>()
                         .join("\n      ")
-                ;
+                );
                 any_failed = true;
             }
         }
@@ -241,7 +241,7 @@ pub mod xtask_port {
         println!(
             "{} Documentation generated successfully",
             "✅".bright_green()
-        ;
+        );
         Ok(())
     }
 
@@ -309,7 +309,7 @@ pub mod xtask_port {
             return Err(BuildError::Tool(format!(
                 "Failed to create documentation virtual environment: {}",
                 stderr
-            );
+            )));
         }
 
         // 2. Install requirements in virtual environment
@@ -329,7 +329,7 @@ pub mod xtask_port {
             return Err(BuildError::Tool(format!(
                 "Failed to install documentation dependencies in venv: {}",
                 stderr
-            );
+            )));
         }
 
         println!("    ✅ Documentation environment ready");
@@ -371,7 +371,7 @@ pub mod xtask_port {
             BuildError::Build(format!("Failed to create documentation directory: {}", e))
         })?;
 
-        let mut cmd = Command::new(sphinx_cmd;
+        let mut cmd = Command::new(sphinx_cmd);
         cmd.args([
             "-b",
             "html",
@@ -390,7 +390,7 @@ pub mod xtask_port {
             return Err(BuildError::Build(format!(
                 "Sphinx documentation generation failed: {}",
                 stderr
-            );
+            )));
         }
 
         Ok(())
@@ -411,7 +411,7 @@ pub mod xtask_port {
                     "xdg-open"
                 };
 
-                let _ = Command::new(open_cmd).arg(docs_path).spawn);
+                let _ = Command::new(open_cmd).arg(docs_path).spawn();
                 println!("    🌐 Opened documentation at {}", docs_path);
                 break;
             }
@@ -452,14 +452,14 @@ pub mod xtask_port {
                 return Err(BuildError::Build(format!(
                     "no_std verification failed for {}: {}",
                     crate_name, stderr
-                );
+                )));
             }
 
             println!(
                 "  {} {} no_std compatibility verified",
                 "✓".bright_green(),
                 crate_name
-            ;
+            );
         }
 
         println!("{} All crates are no_std compatible", "✅".bright_green);
@@ -607,7 +607,7 @@ pub mod xtask_port {
         println!(
             "{} Generating multi-version documentation...",
             "📚".bright_blue()
-        ;
+        );
 
         let temp_dir = std::env::temp_dir().join("wrt-docs");
 
@@ -815,7 +815,7 @@ pub mod xtask_port {
         println!(
             "{} All WRTD binaries built successfully",
             "✅".bright_green()
-        ;
+        );
         Ok(())
     }
 }
@@ -1121,41 +1121,41 @@ impl BuildSystem {
         println!(
             "{} Checking requirements traceability...",
             "📋".bright_blue()
-        ;
+        );
 
         let requirements = Requirements::load(&req_path)?;
         let results = requirements.verify(&self.workspace.root)?;
 
-        println!);
+        println!();
         println!("📊 Requirements Summary:");
-        println!("  Total requirements: {}", results.total_requirements;
-        println!("  Verified requirements: {}", results.verified_requirements;
+        println!("  Total requirements: {}", results.total_requirements);
+        println!("  Verified requirements: {}", results.verified_requirements);
         println!(
             "  Certification readiness: {:.1}%",
             results.certification_readiness
-        ;
+        );
 
         if !results.missing_files.is_empty() {
-            println!);
-            println!("{} Missing files:", "⚠️".bright_yellow);
+            println!();
+            println!("{} Missing files:", "⚠️".bright_yellow());
             for file in &results.missing_files {
-                println!("  - {}", file;
+                println!("  - {}", file);
             }
         }
 
         if !results.incomplete_requirements.is_empty() {
-            println!);
-            println!("{} Incomplete requirements:", "❌".bright_red);
+            println!();
+            println!("{} Incomplete requirements:", "❌".bright_red());
             for req in &results.incomplete_requirements {
-                println!("  - {}", req;
+                println!("  - {}", req);
             }
         }
 
         if results.certification_readiness >= 80.0 {
-            println!);
+            println!();
             println!("{} Requirements verification passed!", "✅".bright_green);
         } else {
-            println!);
+            println!();
             println!(
                 "{} Requirements need attention for certification",
                 "⚠️".bright_yellow()
@@ -1526,7 +1526,7 @@ impl BuildSystem {
             .lines()
             .filter(|line| line.contains("warning:"))
             .map(|line| line.to_string())
-            .collect());
+            .collect();
 
         Ok(warnings)
     }

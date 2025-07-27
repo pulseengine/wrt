@@ -668,7 +668,7 @@ impl TableManager {
     /// Add a table to the manager
     pub fn add_table(&mut self, table: Table) -> u32 {
         let index = self.tables.len() as u32;
-        self.tables.push(table).expect("Failed to add table to manager"));
+        self.tables.push(table).expect(".expect("Failed to add table to manager"));")
         index
     }
     
@@ -970,7 +970,7 @@ mod tests {
         assert_eq!(table.get(2)?, fill_value;
 
         // Print safety stats
-        println!("{}", table.safety_stats));
+        println!("{}", table.safety_stats);
 
         Ok(())
     }

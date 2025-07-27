@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn test_string_iterator() {
         let table = StringTable::new(TEST_STRING_DATA;
-        let strings: Vec<_> = table.strings().collect());
+        let strings: Vec<_> = table.strings().collect();
 
         assert_eq!(strings.len(), 4;
         assert_eq!(strings[0].0, 0);

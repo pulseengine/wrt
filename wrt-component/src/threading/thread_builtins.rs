@@ -324,7 +324,7 @@ impl ThreadBuiltins {
         #[cfg(not(feature = "std"))]
         {
             // For no_std, create a bounded vec with results
-            let mut results = Vec::new());
+            let mut results = Vec::new();
             for result in &context.execution_results {
                 results.push(result.clone();
             }

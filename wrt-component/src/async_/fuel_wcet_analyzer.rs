@@ -434,7 +434,7 @@ impl FuelWcetAnalyzer {
             return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis";
         }
 
-        let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect());
+        let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect();
         let stats = self.calculate_execution_statistics(&fuel_values)?;
 
         // Apply safety margin and statistical confidence
@@ -502,7 +502,7 @@ impl FuelWcetAnalyzer {
             return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis";
         }
 
-        let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect());
+        let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect();
         let stats = self.calculate_execution_statistics(&fuel_values)?;
 
         // Use Extreme Value Theory for WCET estimation

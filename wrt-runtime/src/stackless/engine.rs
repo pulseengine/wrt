@@ -685,7 +685,7 @@ impl StacklessEngine {
     
     /// Collect results from the operand stack
     fn collect_results(&mut self) -> Result<Vec<Value>> {
-        let mut results = Vec::new());
+        let mut results = Vec::new();
         
         // Get the function type to determine expected results
         if let Some(current_module) = &self.current_module {
@@ -2617,7 +2617,7 @@ impl StacklessEngine {
         // Read vector length
         let len = self.read_leb128_u32(code)?;
         
-        let mut targets = Vec::new());
+        let mut targets = Vec::new();
         for _ in 0..len {
             let target = self.read_leb128_u32(code)?;
             targets.push(target);

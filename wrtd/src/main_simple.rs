@@ -115,7 +115,7 @@ pub mod std_runtime {
             };
             
             if self.config.verbose {
-                println!("Loaded module: {} bytes", module_bytes.len));
+                println!("Loaded module: {} bytes", module_bytes.len);
             }
             
             // Cache the module
@@ -165,7 +165,7 @@ pub mod std_runtime {
         println!("WRT Daemon - Standard Runtime Mode");
         println!("=================================");
         
-        let args: Vec<String> = env::args().collect());
+        let args: Vec<String> = env::args().collect();
         if args.len() < 3 {
             println!("Usage: {} <module.wasm> <function>", args[0]);
             return Ok();
@@ -190,7 +190,7 @@ pub mod std_runtime {
                         stats.modules_executed, stats.fuel_consumed, stats.peak_memory / 1024;
             }
             Err(e) => {
-                eprintln!("✗ Error: {}", e));
+                eprintln!("✗ Error: {}", e);
                 std::process::exit(1;
             }
         }

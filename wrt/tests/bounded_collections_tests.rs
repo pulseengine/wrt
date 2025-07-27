@@ -36,7 +36,7 @@ fn test_stackless_engine_with_verification_levels() -> Result<()> {
     ];
 
     for level in verification_levels.iter() {
-        println!("Testing with verification level: {:?}", level));
+        println!("Testing with verification level: {:?}", level);
 
         // Create a new module
         let module = Module::new()?.load_from_binary(&wasm)?;

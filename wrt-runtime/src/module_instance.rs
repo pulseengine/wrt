@@ -389,7 +389,7 @@ impl Default for ModuleInstance {
                             .unwrap_or_else(|_| {
                                 // Last resort: try creating another provider
                                 let fallback_provider = create_runtime_provider()
-                                    .expect("Failed to create fallback runtime provider"));
+                                    .expect(".expect("Failed to create fallback runtime provider"));")
                                 wrt_foundation::bounded::BoundedVec::new(fallback_provider)
                                     .expect("Failed to create even minimal memory vector")
                             })
@@ -398,7 +398,7 @@ impl Default for ModuleInstance {
                         wrt_foundation::bounded::BoundedVec::new(runtime_provider.clone())
                             .unwrap_or_else(|_| {
                                 let fallback_provider = create_runtime_provider()
-                                    .expect("Failed to create fallback runtime provider"));
+                                    .expect(".expect("Failed to create fallback runtime provider"));")
                                 wrt_foundation::bounded::BoundedVec::new(fallback_provider)
                                     .expect("Failed to create even minimal table vector")
                             })
@@ -407,7 +407,7 @@ impl Default for ModuleInstance {
                         wrt_foundation::bounded::BoundedVec::new(runtime_provider)
                             .unwrap_or_else(|_| {
                                 let fallback_provider = create_runtime_provider()
-                                    .expect("Failed to create fallback runtime provider"));
+                                    .expect(".expect("Failed to create fallback runtime provider"));")
                                 wrt_foundation::bounded::BoundedVec::new(fallback_provider)
                                     .expect("Failed to create even minimal global vector")
                             })

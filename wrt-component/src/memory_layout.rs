@@ -251,7 +251,7 @@ const fn align_to(value: usize, alignment: usize) -> usize {
 
 /// Calculate field offsets for a record or struct
 pub fn calculate_field_offsets(fields: &[(String, FormatValType<ComponentProvider>)]) -> Vec<(String, usize, MemoryLayout)> {
-    let mut result = Vec::new());
+    let mut result = Vec::new();
     let mut offset = 0;
 
     for (name, field_type) in fields {
@@ -279,7 +279,7 @@ impl LayoutOptimizer {
                 let layout = calculate_layout(ty;
                 (name.clone(), ty.clone(), layout)
             })
-            .collect());
+            .collect();
 
         // Sort by alignment (descending) then by size (descending)
         fields_with_layout.sort_by(|a, b| {

@@ -153,7 +153,7 @@ impl SafetyVerificationFramework {
         let mut verified_count = 0;
         let mut missing_implementation_count = 0;
         let mut missing_testing_count = 0;
-        let mut violations = Vec::new());
+        let mut violations = Vec::new();
 
         for requirement in requirements {
             if requirement.is_verified() {
@@ -392,7 +392,7 @@ impl SafetyVerificationFramework {
         ]
         .iter()
         .map(|&asil| (asil, self.requirement_registry.asil_compliance(asil)))
-        .collect());
+        .collect();
 
         let test_summary = TestSummary {
             total_tests:         self.test_results.len(),
@@ -721,7 +721,7 @@ impl SafetyVerificationFramework {
 
     fn get_critical_violations(&self) -> Vec<ComplianceViolation> {
         // Analyze current state for critical violations
-        let mut violations = Vec::new());
+        let mut violations = Vec::new();
 
         for req in &self.requirement_registry.requirements {
             if matches!(req.asil_level, AsilLevel::D | AsilLevel::C) && !req.is_verified() {
@@ -738,7 +738,7 @@ impl SafetyVerificationFramework {
     }
 
     fn get_blocking_issues_for_asil(&self, asil_level: AsilLevel) -> Vec<String> {
-        let mut issues = Vec::new());
+        let mut issues = Vec::new();
 
         let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
         let unverified = requirements.iter().filter(|r| !r.is_verified()).count);
@@ -763,7 +763,7 @@ impl SafetyVerificationFramework {
     }
 
     fn generate_recommendations(&self) -> Vec<String> {
-        let mut recommendations = Vec::new());
+        let mut recommendations = Vec::new();
 
         if self.requirement_registry.overall_compliance() < 0.9 {
             recommendations.push("Increase test coverage for unverified requirements".to_string());

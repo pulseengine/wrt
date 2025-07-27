@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Peak memory usage: {} bytes", stats.peak_memory);
         }
         Err(e) => {
-            eprintln!("Execution failed: {}", e));
+            eprintln!("Execution failed: {}", e);
             return Err(e.into();
         }
     }
@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(not(all(feature = "std", feature = "wasi", feature = "wasi-nn")))]
 fn main() {
-    eprintln!("This example requires features: std, wasi, wasi-nn"));
+    eprintln!("This example requires features: std, wasi, wasi-nn");
     std::process::exit(1;
 }
 

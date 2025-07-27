@@ -422,7 +422,7 @@ impl Logger {
         // For now, output to stderr
         // In production, this could be directed to proper logging infrastructure
         #[cfg(feature = "std")]
-        eprintln!("{}", output));
+        eprintln!("{}", output);
         
         #[cfg(not(feature = "std"))]
         {

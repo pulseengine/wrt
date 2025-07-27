@@ -224,7 +224,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         };
 
         #[cfg(feature = "std")]
-        let lines: Vec<&str> = source.lines().collect());
+        let lines: Vec<&str> = source.lines().collect();
         #[cfg(feature = "std")]
         let mut i = 0;
 
@@ -268,7 +268,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         };
 
         #[cfg(feature = "std")]
-        let lines: Vec<&str> = source.lines().collect());
+        let lines: Vec<&str> = source.lines().collect();
         #[cfg(feature = "std")]
         let mut i = 0;
 
@@ -302,7 +302,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     fn parse_import(&mut self, line: &str) -> Result<WitImport<P>, WitParseError<P>> {
         #[cfg(feature = "std")]
-        let parts: Vec<&str> = line.split_whitespace().collect());
+        let parts: Vec<&str> = line.split_whitespace().collect();
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
@@ -342,7 +342,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     fn parse_export(&mut self, line: &str) -> Result<WitExport<P>, WitParseError<P>> {
         #[cfg(feature = "std")]
-        let parts: Vec<&str> = line.split_whitespace().collect());
+        let parts: Vec<&str> = line.split_whitespace().collect();
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
@@ -391,7 +391,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
             let name_part = &line[..colon_pos].trim);
-            let parts: Vec<&str> = name_part.split_whitespace().collect());
+            let parts: Vec<&str> = name_part.split_whitespace().collect();
             
             if let Some(name) = parts.last() {
                 function.name = BoundedString::from_str(name, self.provider.clone())
@@ -406,7 +406,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     fn parse_type_def(&mut self, line: &str) -> Result<WitTypeDef<P>, WitParseError<P>> {
         #[cfg(feature = "std")]
-        let parts: Vec<&str> = line.splitn(3, ' ').collect());
+        let parts: Vec<&str> = line.splitn(3, ' ').collect();
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(

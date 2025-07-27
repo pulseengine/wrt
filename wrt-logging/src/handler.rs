@@ -121,7 +121,7 @@ mod tests {
         registry.handle_log(LogOperation::new(LogLevel::Info, "test message".to_string());
 
         // Register handler
-        let received = Arc::new(Mutex::new(Vec::new());
+        let received = Arc::new(Mutex::new(Vec::new();
         {
             let received = received.clone();
             registry.register_log_handler(move |log_op| {
@@ -165,7 +165,7 @@ mod no_std_alloc_tests {
         registry.handle_log(LogOperation::new(LogLevel::Info, "test message".to_string());
 
         // Use RefCell instead of Mutex for no_std
-        let received = RefCell::new(Vec::new());
+        let received = RefCell::new(Vec::new();
 
         registry.register_log_handler(move |log_op| {
             received.borrow_mut().push((log_op.level, log_op.message);

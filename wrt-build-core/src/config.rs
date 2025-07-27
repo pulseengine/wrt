@@ -141,7 +141,7 @@ impl WorkspaceConfig {
 
     /// Parse workspace members from Cargo.toml content
     fn parse_workspace_members(content: &str) -> BuildResult<Vec<String>> {
-        let mut members = Vec::new());
+        let mut members = Vec::new();
         let mut in_workspace = false;
         let mut in_members = false;
 

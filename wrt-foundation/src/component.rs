@@ -84,7 +84,10 @@ use core::marker::PhantomData;
 
 /// Represents the type of a WebAssembly component.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ComponentType<P> {
+pub struct ComponentType<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     pub imports: BoundedVec<Import<P>, MAX_COMPONENT_IMPORTS, P>,
     pub exports: BoundedVec<Export<P>, MAX_COMPONENT_EXPORTS, P>,
     pub aliases: BoundedVec<ComponentAlias<P>, MAX_COMPONENT_ALIASES, P>,
@@ -98,7 +101,7 @@ pub struct ComponentType<P> {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Import<P>
 where
-    P: Clone + Default, // For WasmName default and BoundedVec usage if this struct becomes Default
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug, // For WasmName default and BoundedVec usage if this struct becomes Default
 {
     pub key: ImportKey<P>,
     pub ty: ExternType<P>,
@@ -108,7 +111,7 @@ where
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Export<P>
 where
-    P: Clone + Default, // For WasmName default and BoundedVec usage
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug, // For WasmName default and BoundedVec usage
 {
     pub name: WasmName<MAX_NAME_LEN, P>,
     pub ty: ExternType<P>,
@@ -154,7 +157,10 @@ impl<P> Namespace<P> {
 
 /// External types that can be imported or exported.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExternType<P> {
+pub enum ExternType<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     Func(FuncType<P>),
     Table(TableType),
     Memory(MemoryType),
@@ -188,21 +194,30 @@ where
 
 /// Represents an alias in a component.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ComponentAlias<P> {
+pub enum ComponentAlias<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     InstanceExport(ComponentAliasInstanceExport<P>),
     CoreInstanceExport(ComponentAliasCoreInstanceExport<P>),
     Outer(ComponentAliasOuter),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ComponentAliasInstanceExport<P> {
+pub struct ComponentAliasInstanceExport<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     pub instance_idx: u32,
     pub name: WasmName<MAX_NAME_LEN, P>,
     pub kind: ComponentAliasExportKind,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ComponentAliasCoreInstanceExport<P> {
+pub struct ComponentAliasCoreInstanceExport<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     pub core_instance_idx: u32,
     pub name: WasmName<MAX_NAME_LEN, P>,
 }
@@ -270,12 +285,18 @@ impl FromBytes for ComponentAliasOuterKind {
 
 /// Represents a component instance declaration within a component.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ComponentInstance<P> {
+pub struct ComponentInstance<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     pub kind: ComponentInstanceKind<P>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub enum ComponentInstanceKind<P> {
+pub enum ComponentInstanceKind<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     #[default]
     Unknown,
     Instantiate {
@@ -288,7 +309,10 @@ pub enum ComponentInstanceKind<P> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ComponentInstantiationArg<P> {
+pub struct ComponentInstantiationArg<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     pub name: WasmName<MAX_NAME_LEN, P>,
     pub index: u32, // Index of the item being passed as argument (e.g. func_idx, table_idx)
     pub kind: ExternKind, // The kind of the item being passed
@@ -296,12 +320,18 @@ pub struct ComponentInstantiationArg<P> {
 
 /// Represents a core WebAssembly module instance declaration.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct CoreInstance<P> {
+pub struct CoreInstance<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     pub kind: CoreInstanceKind<P>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub enum CoreInstanceKind<P> {
+pub enum CoreInstanceKind<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     #[default]
     Unknown,
     Instantiate {
@@ -314,7 +344,10 @@ pub enum CoreInstanceKind<P> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct CoreInstantiationArg<P> {
+pub struct CoreInstantiationArg<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     pub name: WasmName<MAX_NAME_LEN, P>,
     pub index: u32,
     pub kind: ExternKind,
@@ -322,7 +355,10 @@ pub struct CoreInstantiationArg<P> {
 
 /// Represents a core type definition (func, table, memory, global, tag).
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub enum CoreType<P> {
+pub enum CoreType<P>
+where
+    P: MemoryProvider + Clone + Default + Eq + core::fmt::Debug,
+{
     #[default]
     Unknown,
     Func(FuncType<P>),

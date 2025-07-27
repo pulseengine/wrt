@@ -358,7 +358,7 @@ impl FuelStreamManager {
                 stream.target_component == component_id
             })
             .map(|(id, _)| *id)
-            .collect());
+            .collect();
         
         for stream_id in stream_ids {
             self.close_stream(stream_id)?;

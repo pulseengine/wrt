@@ -165,7 +165,7 @@ fn manual_async_example() {
     let component_id = ComponentInstanceId::new(1;
 
     // Create multiple futures
-    let mut futures = Vec::new());
+    let mut futures = Vec::new();
     for i in 0..3 {
         let future = Future::<i32>::new(FutureHandle(i), ValType::I32;
         futures.push(future);

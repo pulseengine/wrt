@@ -546,7 +546,7 @@ impl AgentRegistry {
         
         // Get list of legacy agent IDs to avoid borrow conflicts
         #[cfg(feature = "std")]
-        let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect());
+        let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect();
         #[cfg(not(feature = "std"))]
         let legacy_ids: BoundedVec<AgentId, MAX_AGENTS, crate::bounded_component_infra::ComponentProvider> = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;

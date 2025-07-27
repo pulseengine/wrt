@@ -193,7 +193,7 @@ impl Default for AsyncContext {
 #[cfg(feature = "std")]
 thread_local! {
     static ASYNC_CONTEXT_STACK: AtomicRefCell<Vec<AsyncContext>> = 
-        AtomicRefCell::new(Vec::new());
+        AtomicRefCell::new(Vec::new();
 }
 
 /// Global context storage for no_std environments

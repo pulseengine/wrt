@@ -1200,7 +1200,7 @@ impl ResourceCoordinator {
     /// Coordinate resources for a call
     pub fn coordinate_resources(&mut self, resource_handles: &[ResourceHandle]) -> Result<ResourceState> {
         #[cfg(feature = "std")]
-        let mut acquired_locks = std::vec::Vec::new());
+        let mut acquired_locks = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
         let mut acquired_locks = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
 

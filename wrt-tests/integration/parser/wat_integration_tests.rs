@@ -320,7 +320,7 @@ mod wat_integration_tests {
         let wasm = wat_to_wasm(wat).unwrap();
         
         let mut parser = Parser::new(&wasm;
-        let mut exports_found = Vec::new());
+        let mut exports_found = Vec::new();
         
         loop {
             match parser.parse() {

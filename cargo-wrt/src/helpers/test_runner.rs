@@ -107,7 +107,7 @@ impl TestRunner {
     /// Run tests for the current ASIL configuration
     pub fn run(&self) -> Result<TestSummary> {
         let start = Instant::now();
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         // Get test packages based on ASIL level
         let packages = self.get_test_packages()?;
@@ -271,7 +271,7 @@ impl TestRunner {
 
     /// Output human-readable results
     fn output_human_results(&self, summary: &TestSummary) {
-        println!("\n{}", "Test Results".bold));
+        println!("\n{}", "Test Results".bold);
         println!("{}", "=".repeat(50)));
 
         // Summary stats
@@ -291,7 +291,7 @@ impl TestRunner {
                 println!("  {} {}", "❌".red(), package.red()));
                 if let Some(err) = error {
                     // Show first few lines of error
-                    let lines: Vec<&str> = err.lines().take(3).collect());
+                    let lines: Vec<&str> = err.lines().take(3).collect();
                     for line in lines {
                         println!("     {}", line.dimmed()));
                     }

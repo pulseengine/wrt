@@ -298,11 +298,11 @@ fn test_stress_allocation_patterns() {
 
     // Pattern 1: Many small allocations
     let small_guards: Vec<_> =
-        (0..100).map(|_| safe_managed_alloc!(64, CrateId::Foundation).unwrap()).collect());
+        (0..100).map(|_| safe_managed_alloc!(64, CrateId::Foundation).unwrap()).collect();
 
     // Pattern 2: Few large allocations
     let large_guards: Vec<_> =
-        (0..10).map(|_| safe_managed_alloc!(4096, CrateId::Component).unwrap()).collect());
+        (0..10).map(|_| safe_managed_alloc!(4096, CrateId::Component).unwrap()).collect();
 
     // Pattern 3: Mixed sizes
     let mixed_guards: Vec<_> = (0..50)
@@ -310,7 +310,7 @@ fn test_stress_allocation_patterns() {
             let size = if i % 2 == 0 { 128 } else { 256 };
             safe_managed_alloc!(size, CrateId::Runtime).unwrap()
         })
-        .collect());
+        .collect();
 
     // Verify all allocations are tracked
     let stats = monitoring::convenience::global_stats);

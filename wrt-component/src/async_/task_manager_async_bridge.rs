@@ -445,7 +445,7 @@ impl TaskManagerAsyncBridge {
         let mut result = self.async_bridge.poll_async_tasks()?;
 
         // Update Component Model task states
-        let mut completed_tasks = Vec::new());
+        let mut completed_tasks = Vec::new();
         for (comp_task_id, async_task) in self.async_tasks.iter() {
             if self.async_bridge.is_task_ready(*comp_task_id)? {
                 // Task is ready, update Component Model task state

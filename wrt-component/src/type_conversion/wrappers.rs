@@ -193,7 +193,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
                 runtime_to_format_extern_type(&extern_type)
                     .map(|format_type| (namespace, name, format_type))
             })
-            .collect());
+            .collect();
 
         // Convert exports
         let exports_result: core::result::Result<Vec<(String, FormatExternType)>> = runtime_type
@@ -202,7 +202,7 @@ impl TryFrom<RuntimeComponentType> for FormatComponentType {
             .map(|(name, extern_type)| {
                 runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type))
             })
-            .collect());
+            .collect();
 
         Ok(Self { imports: imports_result?, exports: exports_result? })
     }
@@ -220,7 +220,7 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
                 format_to_runtime_extern_type(&extern_type)
                     .map(|runtime_type| (namespace, name, runtime_type))
             })
-            .collect());
+            .collect();
 
         // Convert exports
         let exports_result: core::result::Result<Vec<(String, TypesExternType)>> = format_type
@@ -229,10 +229,10 @@ impl TryFrom<FormatComponentType> for RuntimeComponentType {
             .map(|(name, extern_type)| {
                 format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type))
             })
-            .collect());
+            .collect();
 
         // Create empty instances for now - can be enhanced in future
-        let instances = Vec::new());
+        let instances = Vec::new();
 
         Ok(Self::new(ComponentType {
             imports: imports_result?,
@@ -255,7 +255,7 @@ impl TryFrom<RuntimeInstanceType> for FormatInstanceType {
             .map(|(name, extern_type)| {
                 runtime_to_format_extern_type(&extern_type).map(|format_type| (name, format_type))
             })
-            .collect());
+            .collect();
 
         Ok(Self { exports: exports_result? })
     }
@@ -272,7 +272,7 @@ impl TryFrom<FormatInstanceType> for RuntimeInstanceType {
             .map(|(name, extern_type)| {
                 format_to_runtime_extern_type(&extern_type).map(|runtime_type| (name, runtime_type))
             })
-            .collect());
+            .collect();
 
         Ok(Self::new(InstanceType { exports: exports_result? }))
     }

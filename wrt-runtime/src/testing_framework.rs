@@ -154,7 +154,7 @@ impl TestingFramework {
         println!("✅ Passed: {}", self.statistics.passed);
         println!("❌ Failed: {}", self.statistics.failed);
         println!("⏭️  Skipped: {}", self.statistics.skipped);
-        println!("⏱️  Total time: {:.2}s", self.statistics.total_duration.as_secs_f64));
+        println!("⏱️  Total time: {:.2}s", self.statistics.total_duration.as_secs_f64);
         println!("📈 Success rate: {:.1}%", 
             (self.statistics.passed as f64 / self.statistics.total_tests as f64) * 100.0;
     }

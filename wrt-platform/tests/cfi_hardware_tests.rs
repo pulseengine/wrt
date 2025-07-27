@@ -281,7 +281,7 @@ fn test_x86_cet_placeholder() {
 #[test]
 fn test_cross_platform_cfi_detection() {
     // Test comprehensive CFI feature detection across platforms
-    let mut cfi_features = Vec::new());
+    let mut cfi_features = Vec::new();
 
     if BranchTargetIdentification::is_available() {
         cfi_features.push("ARM BTI");

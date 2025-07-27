@@ -15,7 +15,7 @@ mod std_encoding {
 
     /// Encode a WebAssembly Component Model component into binary format
     pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
-        let mut binary = Vec::new());
+        let mut binary = Vec::new();
 
         // Write magic and version
         binary.extend_from_slice(&binary::COMPONENT_MAGIC); // \0asm
@@ -44,7 +44,7 @@ mod std_encoding {
                 crate::component::name_section::generate_component_name_section(&name_section)?;
 
             // Create the custom section content
-            let mut custom_section_content = Vec::new());
+            let mut custom_section_content = Vec::new();
             custom_section_content.extend_from_slice(&write_string("name";
             custom_section_content.extend_from_slice(&name_section_bytes;
 
@@ -100,7 +100,7 @@ mod std_encoding {
     }
 
     fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<Vec<u8>> {
-        let mut data = Vec::new());
+        let mut data = Vec::new();
 
         // Write count of modules
         data.extend_from_slice(&write_leb128_u32(modules.len() as u32;
@@ -125,7 +125,7 @@ mod std_encoding {
     fn encode_core_instance_section(
         instances: &[wrt_format::component::CoreInstance],
     ) -> Result<Vec<u8>> {
-        let mut data = Vec::new());
+        let mut data = Vec::new();
 
         // Write count of instances
         data.extend_from_slice(&write_leb128_u32(instances.len() as u32;
@@ -178,7 +178,7 @@ mod std_encoding {
     }
 
     fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Vec<u8>> {
-        let mut data = Vec::new());
+        let mut data = Vec::new();
 
         // Write count of imports
         data.extend_from_slice(&write_leb128_u32(imports.len() as u32;
@@ -490,7 +490,7 @@ mod std_encoding {
     }
 
     fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Vec<u8>> {
-        let mut data = Vec::new());
+        let mut data = Vec::new();
 
         // Write count of exports
         data.extend_from_slice(&write_leb128_u32(exports.len() as u32;
@@ -622,7 +622,7 @@ mod std_encoding {
             },
             wrt_format::component::FormatValType::Tuple(types) => {
                 // Create new vectors of types to avoid references to temporaries
-                let new_types = types.iter().map(format_val_type_to_val_type).collect());
+                let new_types = types.iter().map(format_val_type_to_val_type).collect();
                 wrt_format::component::FormatValType::Tuple(new_types)
             },
             wrt_format::component::FormatValType::Flags(names) => {

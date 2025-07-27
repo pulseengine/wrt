@@ -209,7 +209,7 @@ fn test_bounded_collections_fuel_impact() {
         VerificationLevel::Full,
     ];
 
-    let mut fuel_consumed = Vec::new());
+    let mut fuel_consumed = Vec::new();
 
     // Perform the same operations with each verification level
     for &level in &verification_levels {

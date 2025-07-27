@@ -128,7 +128,7 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
     ) -> wrt_foundation::WrtResult<Self> {
         let index = reader.read_u32_le()?;
         #[cfg(feature = "std")]
-        let mut bytes = std::vec::Vec::new());
+        let mut bytes = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
         let mut bytes: wrt_foundation::BoundedVec<
             u8,
@@ -233,7 +233,7 @@ pub struct NameMap {
 impl NameMap {
     pub fn new() -> Self {
         #[cfg(feature = "std")]
-        let entries = std::vec::Vec::new());
+        let entries = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
         let entries = wrt_foundation::BoundedVec::default());
 
@@ -246,7 +246,7 @@ impl NameMap {
 
         let mut current_offset = offset + count_len;
         #[cfg(feature = "std")]
-        let mut entries = std::vec::Vec::new());
+        let mut entries = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
         let mut entries = {
             let provider = crate::prelude::create_decoder_provider::<4096>()
@@ -317,7 +317,7 @@ impl wrt_foundation::traits::FromBytes for NameMap {
     ) -> wrt_foundation::WrtResult<Self> {
         let count = reader.read_u32_le()?;
         #[cfg(feature = "std")]
-        let mut entries = std::vec::Vec::new());
+        let mut entries = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
         let mut entries = {
             let provider = crate::prelude::create_decoder_provider::<4096>().map_err(|_| {
@@ -534,7 +534,7 @@ pub fn generate_component_name_section(
     name_section: &ComponentNameSection,
 ) -> Result<GeneratedNameSectionData> {
     #[cfg(feature = "std")]
-    let mut data = std::vec::Vec::new());
+    let mut data = std::vec::Vec::new();
     #[cfg(not(feature = "std"))]
     let mut data = {
         let provider = wrt_foundation::safe_managed_alloc!(
@@ -552,7 +552,7 @@ pub fn generate_component_name_section(
 
         // Generate data for name
         #[cfg(feature = "std")]
-        let mut subsection_data = std::vec::Vec::new());
+        let mut subsection_data = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
         let mut subsection_data: wrt_foundation::BoundedVec<
             u8,
@@ -618,7 +618,7 @@ pub fn generate_component_name_section(
 
         // Generate data for sorts
         #[cfg(feature = "std")]
-        let mut subsection_data = std::vec::Vec::new());
+        let mut subsection_data = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
         let mut subsection_data: wrt_foundation::BoundedVec<
             u8,
@@ -826,7 +826,7 @@ pub fn generate_component_name_section(
 
 #[cfg(feature = "std")]
 fn generate_sort(sort: &SortIdentifier) -> Result<std::vec::Vec<u8>> {
-    let mut data = std::vec::Vec::new());
+    let mut data = std::vec::Vec::new();
     match sort {
         SortIdentifier::Module => data.push(0),
         SortIdentifier::Function => data.push(1),
@@ -877,7 +877,7 @@ fn generate_sort(
 
 #[cfg(feature = "std")]
 fn generate_name_map(names: &NameMap) -> Result<std::vec::Vec<u8>> {
-    let mut data = std::vec::Vec::new());
+    let mut data = std::vec::Vec::new();
 
     // Number of entries
     data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32;

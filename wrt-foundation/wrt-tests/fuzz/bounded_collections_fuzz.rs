@@ -171,13 +171,13 @@ fn test_verification_levels_behavior() {
         for &level in &levels {
             // Test BoundedVec
             let mut vec = BoundedVec::<u32>::with_capacity_and_verification(capacity, level;
-            vec.push(42).expect("Push should succeed"));
-            vec.validate().expect("Validation should succeed"));
+            vec.push(42).expect(".expect("Push should succeed"));")
+            vec.validate().expect(".expect("Validation should succeed"));")
             
             // Test BoundedStack
             let mut stack = BoundedStack::<u32>::with_capacity_and_verification(capacity, level;
-            stack.push(42).expect("Push should succeed"));
-            stack.validate().expect("Validation should succeed"));
+            stack.push(42).expect(".expect("Push should succeed"));")
+            stack.validate().expect(".expect("Validation should succeed"));")
         }
     }
 }

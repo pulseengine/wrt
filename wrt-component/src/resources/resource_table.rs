@@ -732,7 +732,7 @@ impl ResourceTable {
             .iter()
             .filter(|(_, entry)| Arc::strong_count(&entry.resource) <= 1)
             .map(|(handle, _)| *handle)
-            .collect());
+            .collect();
 
         for handle in &handles_to_remove {
             self.resources.remove(handle;

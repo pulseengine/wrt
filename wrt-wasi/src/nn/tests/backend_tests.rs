@@ -321,7 +321,7 @@ mod concurrency_tests {
                 
                 i * 42 // Return some value
             })
-        }).collect());
+        }).collect();
         
         // Wait for all threads to complete
         for handle in handles {
@@ -342,9 +342,9 @@ mod concurrency_tests {
             thread::spawn(move || {
                 sha256(&data)
             })
-        }).collect());
+        }).collect();
         
-        let mut hashes = Vec::new());
+        let mut hashes = Vec::new();
         for handle in handles {
             hashes.push(handle.join().unwrap();
         }
@@ -371,7 +371,7 @@ mod concurrency_tests {
                 let is_approved = cap.is_model_approved(&test_hash;
                 (i, is_approved)
             })
-        }).collect());
+        }).collect();
         
         for handle in handles {
             let (i, is_approved) = handle.join().unwrap();

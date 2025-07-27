@@ -122,7 +122,7 @@ impl DecodedCache {
                 .iter()
                 .filter(|import| import.module == "wasi_builtin")
                 .map(|import| import.name.clone())
-                .collect());
+                .collect();
             self.builtin_imports = Some(builtins;
         }
 
@@ -340,7 +340,7 @@ fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
     use crate::unified_loader::parse_import_section_info;
 
     let mut offset = 8; // Skip header
-    let mut imports = Vec::new());
+    let mut imports = Vec::new();
 
     // Find import section
     while offset < binary.len() {
@@ -385,7 +385,7 @@ fn parse_exports_from_binary(binary: &[u8]) -> Result<Vec<ExportInfo>> {
     use crate::unified_loader::parse_export_section_info;
 
     let mut offset = 8; // Skip header
-    let mut exports = Vec::new());
+    let mut exports = Vec::new();
 
     // Find export section
     while offset < binary.len() {

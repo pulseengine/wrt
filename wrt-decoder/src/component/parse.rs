@@ -416,9 +416,9 @@ mod std_parsing {
                     let provider = crate::prelude::create_decoder_provider::<512>()?;
                     // Use standard Vec for std mode, explicit types for no_std
                     #[cfg(feature = "std")]
-                    let empty_params = Vec::new());
+                    let empty_params = Vec::new();
                     #[cfg(feature = "std")]
-                    let empty_results = Vec::new());
+                    let empty_results = Vec::new();
 
                     #[cfg(not(feature = "std"))]
                     let empty_params = {
@@ -1820,7 +1820,7 @@ mod std_parsing {
 
             // Check if there are nested namespaces or package information
             let provider = crate::prelude::create_decoder_provider::<1024>()?;
-            let mut nested = crate::prelude::Vec::new());
+            let mut nested = crate::prelude::Vec::new();
             let mut package = None;
 
             // Read nested namespace flag if present
@@ -1958,7 +1958,7 @@ mod std_parsing {
                 let (nested_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut nested_names = Vec::new());
+                let mut nested_names = Vec::new();
                 for _ in 0..nested_count {
                     let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;

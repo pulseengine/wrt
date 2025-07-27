@@ -74,11 +74,11 @@ mod tests {
         assert_eq!(vec[5], 5;
         
         // Binary std/no_std choice
-        let evens: Vec<u32> = vec.iter().filter(|&&x| x % 2 == 0).cloned().collect());
+        let evens: Vec<u32> = vec.iter().filter(|&&x| x % 2 == 0).cloned().collect();
         assert_eq!(evens, vec![0, 2, 4, 6, 8];
         
         // Binary std/no_std choice
-        let doubled: Vec<u32> = vec.iter().map(|&x| x * 2).collect());
+        let doubled: Vec<u32> = vec.iter().map(|&x| x * 2).collect();
         assert_eq!(doubled[5], 10;
     }
     

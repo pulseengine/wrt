@@ -200,7 +200,7 @@ impl Tensor {
             }
             VerificationLevel::Sampling | VerificationLevel::Continuous => {
                 // Bounded allocation with pre-checking
-                let mut vec = Vec::new());
+                let mut vec = Vec::new();
                 vec.try_reserve_exact(size_bytes)
                     .map_err(|_| Error::wasi_resource_exhausted("Failed to allocate tensor memory"))?;
                 vec.resize(size_bytes, 0);

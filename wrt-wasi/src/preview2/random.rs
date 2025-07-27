@@ -27,7 +27,7 @@ pub fn wasi_get_random_bytes(
     let random_bytes = generate_secure_random(len)?;
     
     // Convert to WASI list<u8>
-    let value_bytes: Vec<Value> = random_bytes.into_iter().map(Value::U8).collect());
+    let value_bytes: Vec<Value> = random_bytes.into_iter().map(Value::U8).collect();
     Ok(vec![Value::List(value_bytes)])
 }
 
@@ -50,7 +50,7 @@ pub fn wasi_get_insecure_random_bytes(
     let random_bytes = generate_pseudo_random(len)?;
     
     // Convert to WASI list<u8>
-    let value_bytes: Vec<Value> = random_bytes.into_iter().map(Value::U8).collect());
+    let value_bytes: Vec<Value> = random_bytes.into_iter().map(Value::U8).collect();
     Ok(vec![Value::List(value_bytes)])
 }
 

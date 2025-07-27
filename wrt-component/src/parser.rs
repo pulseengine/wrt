@@ -56,7 +56,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
         return Err(Error::parse_error("Invalid WebAssembly magic number";
     }
     
-    let mut builtin_names = Vec::new());
+    let mut builtin_names = Vec::new();
     let mut offset = 8; // Skip magic number and version
     
     // Parse sections to find the import section
@@ -95,7 +95,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
 
 /// Parse builtin imports from import section data
 fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
-    let mut builtin_names = Vec::new());
+    let mut builtin_names = Vec::new();
     let mut offset = 0;
     
     // Read import count

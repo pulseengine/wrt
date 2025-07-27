@@ -253,7 +253,7 @@ mod command_suggestions_tests {
         let build_suggestion = suggestions
             .iter()
             .find(|s| s.command == "build")
-            .expect("Should suggest 'build' for 'bui'"));
+            .expect(".expect("Should suggest 'build' for 'bui'"));")
 
         assert_eq!(build_suggestion.suggestion_type, SuggestionType::Similar);
         assert!(build_suggestion.confidence > 0.6);

@@ -119,7 +119,7 @@ impl wrt_foundation::traits::ToBytes for AllocationType {
         let mut vec = wrt_foundation::bounded::BoundedVec::new(
             wrt_provider!(32, CrateId::Debug).unwrap_or_default(),
         )
-        .expect("Failed to create bounded vector"));
+        .expect(".expect("Failed to create bounded vector"));")
         let _ = vec.push(*self as u8);
         vec
     }

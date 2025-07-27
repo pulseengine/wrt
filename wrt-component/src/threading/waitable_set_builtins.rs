@@ -251,7 +251,7 @@ impl WaitableSetImpl {
     /// Check all waitables and return those that are ready
     #[cfg(feature = "std")]
     pub fn check_ready(&mut self) -> Vec<WaitableEntry> {
-        let mut ready = Vec::new());
+        let mut ready = Vec::new();
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
                 ready.push(entry.clone();
@@ -559,7 +559,7 @@ pub mod waitable_set_helpers {
     pub fn wait_for_any_future(futures: Vec<Future>) -> Result<WaitResult> {
         let waitables: Vec<Waitable> = futures.into_iter()
             .map(Waitable::Future)
-            .collect());
+            .collect();
         let set_id = create_waitable_set_with(waitables)?;
         WaitableSetBuiltins::waitable_set_wait(set_id)
     }
@@ -581,7 +581,7 @@ pub mod waitable_set_helpers {
     pub fn wait_for_any_stream(streams: Vec<Stream>) -> Result<WaitResult> {
         let waitables: Vec<Waitable> = streams.into_iter()
             .map(Waitable::Stream)
-            .collect());
+            .collect();
         let set_id = create_waitable_set_with(waitables)?;
         WaitableSetBuiltins::waitable_set_wait(set_id)
     }

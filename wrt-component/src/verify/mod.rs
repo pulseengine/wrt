@@ -27,8 +27,8 @@ pub mod kani_verification {
         {
             use std::vec::Vec;
 
-            let mut imports = Vec::new());
-            let mut exports = Vec::new());
+            let mut imports = Vec::new();
+            let mut exports = Vec::new();
 
             // Add imports with type constraints
             for i in 0..import_count {
@@ -129,7 +129,7 @@ pub mod kani_verification {
                     let param_count: usize = kani::any);
                     kani::assume(param_count <= 4;
 
-                    let mut params = Vec::new());
+                    let mut params = Vec::new();
                     for _ in 0..param_count {
                         params.push(ValueType::I32); // Simplified for verification
                     }
@@ -243,7 +243,7 @@ pub mod kani_verification {
 
             // Create a minimal component
             let imports = if has_imports {
-                let mut imp = Vec::new());
+                let mut imp = Vec::new();
                 imp.push("required_func".to_string());
                 imp
             } else {
@@ -251,7 +251,7 @@ pub mod kani_verification {
             };
 
             let exports = if has_exports {
-                let mut exp = Vec::new());
+                let mut exp = Vec::new();
                 exp.push("exported_func".to_string());
                 exp
             } else {

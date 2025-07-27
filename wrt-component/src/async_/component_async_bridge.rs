@@ -175,7 +175,7 @@ impl ComponentAsyncBridge {
         result.tasks_polled = tasks_polled;
 
         // Update component task states based on executor state
-        let mut completed_tasks = Vec::new());
+        let mut completed_tasks = Vec::new();
         for (comp_task_id, exec_task_id) in self.task_mapping.iter() {
             let exec = self.executor.lock()?;
             if let Some(status) = exec.get_task_status(*exec_task_id) {

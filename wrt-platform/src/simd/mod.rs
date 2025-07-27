@@ -512,7 +512,7 @@ impl SimdRuntime {
         // #[cfg(target_arch = "aarch64")]
         // {
         //     if capabilities.has_neon {
-        //         return Box::new(aarch64::ArmSimdProvider::new());
+        //         return Box::new(aarch64::ArmSimdProvider::new();
         //     }
         // }
         

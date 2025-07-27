@@ -288,7 +288,7 @@ pub mod binary {
     pub fn write_leb128_u32(value: u32) -> BoundedVec<u8, 10, NoStdProvider<64>> {
         if let Ok(provider) = create_decoder_provider::<64>() {
             let mut result =
-                BoundedVec::new(provider).expect("Failed to create bounded vec for LEB128"));
+                BoundedVec::new(provider).expect(".expect("Failed to create bounded vec for LEB128"));")
             let mut buffer = [0u8; 10];
             // Simple LEB128 encoding for no_std
             let mut bytes_written = 0;
@@ -472,7 +472,7 @@ where
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         // For std mode, read all items without provider
-        let mut result = Vec::new());
+        let mut result = Vec::new();
         // Read count first (assuming LEB128 u32 count prefix)
         let mut count_bytes = [0u8; 4];
         reader.read_exact(&mut count_bytes)?;

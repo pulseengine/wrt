@@ -126,7 +126,7 @@ impl Drop for DropTracker {
 /// Test resource cleanup
 #[test]
 fn test_resource_cleanup() {
-    let dropped = Rc::new(RefCell::new(Vec::new());
+    let dropped = Rc::new(RefCell::new(Vec::new();
 
     {
         let mut resource_manager = ResourceManager::new();
@@ -336,7 +336,7 @@ fn test_thread_safety() {
     }
 
     // Collect results
-    let ids: Vec<ResourceId> = handles.into_iter().map(|h| h.join().unwrap()).collect());
+    let ids: Vec<ResourceId> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
     // Verify all resources exist
     let manager = resource_manager.lock().unwrap();

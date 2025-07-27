@@ -129,8 +129,8 @@ mod error_handling_tests {
         let invalid_handle = 0xFFFFFFFF;
 
         // Deallocate non-existent handle
-        let result = table.deallocate(invalid_handle;
-        assert!(result.is_err();
+        let result = table.deallocate(invalid_handle);
+        assert!(result.is_err());
         match result {
             Err(WrtError::InvalidHandle) => {
                 // Expected
@@ -139,16 +139,16 @@ mod error_handling_tests {
         }
 
         // Get non-existent handle
-        let result = table.get(invalid_handle;
-        assert!(result.is_err();
+        let result = table.get(invalid_handle);
+        assert!(result.is_err());
 
         // Allocate and deallocate correctly
-        let handle = table.allocate().expect("Failed to allocate"));
+        let handle = table.allocate().expect("Failed to allocate");
         assert!(table.deallocate(handle).is_ok());
 
         // Double deallocate should error
         let result = table.deallocate(handle;
-        assert!(result.is_err();
+        assert!(result.is_err());
     }
 
     /// Test canonical ABI error handling
@@ -157,19 +157,19 @@ mod error_handling_tests {
         let abi = CanonicalABI::new();
 
         // Test with null memory
-        let null_memory = core::ptr::null);
-        let options = CanonicalOptions::default());
+        let null_memory = core::ptr::null();
+        let options = CanonicalOptions::default();
 
         // These operations should handle null memory gracefully
         // (Note: actual implementation details may vary)
 
         // Test invalid offset
-        let result = abi.lift_flat_value(null_memory, 0xFFFFFFFF, &options;
-        assert!(result.is_err();
+        let result = abi.lift_flat_value(null_memory, 0xFFFFFFFF, &options);
+        assert!(result.is_err());
 
         // Test invalid size
-        let result = abi.lower_flat_value(null_memory, 0, usize::MAX, &options;
-        assert!(result.is_err();
+        let result = abi.lower_flat_value(null_memory, 0, usize::MAX, &options);
+        assert!(result.is_err());
     }
 
     /// Test resource lifecycle error handling
@@ -194,37 +194,37 @@ mod error_handling_tests {
         // Create resource
         let handle = manager
             .create_resource(resource_type, metadata)
-            .expect("Failed to create resource"));
+            .expect("Failed to create resource");
 
         // Test invalid operations
         let invalid_handle = handle + 1000;
 
         // Borrow non-existent resource
-        let result = manager.borrow_resource(invalid_handle;
-        assert!(result.is_err();
+        let result = manager.borrow_resource(invalid_handle);
+        assert!(result.is_err());
 
         // Release non-existent borrow
-        let result = manager.release_borrow(invalid_handle;
-        assert!(result.is_err();
+        let result = manager.release_borrow(invalid_handle);
+        assert!(result.is_err());
 
         // Transfer non-existent resource
-        let result = manager.transfer_ownership(invalid_handle, 999;
-        assert!(result.is_err();
+        let result = manager.transfer_ownership(invalid_handle, 999);
+        assert!(result.is_err());
 
         // Drop non-existent resource
-        let result = manager.drop_resource(invalid_handle;
-        assert!(result.is_err();
+        let result = manager.drop_resource(invalid_handle);
+        assert!(result.is_err());
 
         // Test double operations
         assert!(manager.drop_resource(handle).is_ok());
-        let result = manager.drop_resource(handle;
-        assert!(result.is_err())); // Already dropped
+        let result = manager.drop_resource(handle);
+        assert!(result.is_err()); // Already dropped
     }
 
     /// Test stack overflow protection
     #[test]
     fn test_stack_overflow_protection() {
-        let stack_result = new_call_stack::<u32>);
+        let stack_result = new_call_stack::<u32>();
         assert!(stack_result.is_ok());
 
         let mut stack = stack_result.unwrap();
@@ -236,12 +236,12 @@ mod error_handling_tests {
 
         // Further pushes should error, not overflow
         for _ in 0..100 {
-            let result = stack.try_push(2;
-            assert!(result.is_err();
+            let result = stack.try_push(2);
+            assert!(result.is_err());
         }
 
         // Pop should still work
-        assert_eq!(stack.pop(), Some(1;
+        assert_eq!(stack.pop(), Some(1));
 
         // Can push again after pop
         assert!(stack.try_push(3).is_ok());
@@ -251,31 +251,31 @@ mod error_handling_tests {
     #[test]
     fn test_empty_collection_operations() {
         // Test empty vector operations
-        let vec_result = new_component_vec::<u32>);
+        let vec_result = new_component_vec::<u32>();
         assert!(vec_result.is_ok());
 
         let mut vec = vec_result.unwrap();
 
         // Pop from empty should return None, not panic
-        assert_eq!(vec.pop(), None;
+        assert_eq!(vec.pop(), None);
 
         // Multiple pops should continue returning None
         for _ in 0..10 {
-            assert_eq!(vec.pop(), None;
+            assert_eq!(vec.pop(), None);
         }
 
         // Test empty map operations
-        let map_result = new_type_map::<String>);
+        let map_result = new_type_map::<String>();
         assert!(map_result.is_ok());
 
         let map = map_result.unwrap();
 
         // Get from empty map
         let key = 42u32;
-        assert_eq!(map.get(&key), None;
+        assert_eq!(map.get(&key), None);
 
         // Iteration over empty map should work
-        let count = map.iter().count);
+        let count = map.iter().count();
         assert_eq!(count, 0);
     }
 
@@ -283,7 +283,7 @@ mod error_handling_tests {
     #[test]
     fn test_boundary_value_errors() {
         // Test with maximum indices
-        let vec_result = new_type_map::<u32>);
+        let vec_result = new_type_map::<u32>();
         assert!(vec_result.is_ok());
 
         let mut map = vec_result.unwrap();
@@ -294,9 +294,9 @@ mod error_handling_tests {
         assert!(map.try_insert(u32::MAX / 2, 300).is_ok());
 
         // Lookup at boundaries
-        assert_eq!(map.get(&0), Some(&100;
-        assert_eq!(map.get(&u32::MAX), Some(&200;
-        assert_eq!(map.get(&(u32::MAX - 1)), None;
+        assert_eq!(map.get(&0), Some(&100));
+        assert_eq!(map.get(&u32::MAX), Some(&200));
+        assert_eq!(map.get(&(u32::MAX - 1)), None);
     }
 
     /// Test error propagation through layers
@@ -336,16 +336,16 @@ mod error_handling_tests {
         // This test verifies the API design
         // All operations that can fail should return Result<T, E>
 
-        let vec_result: WrtResult<_> = new_component_vec::<u32>);
+        let vec_result: WrtResult<_> = new_component_vec::<u32>();
         assert!(vec_result.is_ok());
 
-        let map_result: WrtResult<_> = new_export_map::<u32>);
+        let map_result: WrtResult<_> = new_export_map::<u32>();
         assert!(map_result.is_ok());
 
-        let string_result: WrtResult<_> = new_component_name);
+        let string_result: WrtResult<_> = new_component_name();
         assert!(string_result.is_ok());
 
-        let bounded_string_result: WrtResult<_> = bounded_component_name_from_str("test";
+        let bounded_string_result: WrtResult<_> = bounded_component_name_from_str("test");
         assert!(bounded_string_result.is_ok());
 
         // All constructors return Result, enabling proper error handling
@@ -354,7 +354,7 @@ mod error_handling_tests {
     /// Test error recovery
     #[test]
     fn test_error_recovery() {
-        let vec_result = new_component_vec::<u32>);
+        let vec_result = new_component_vec::<u32>();
         assert!(vec_result.is_ok());
 
         let mut vec = vec_result.unwrap();
@@ -365,15 +365,15 @@ mod error_handling_tests {
         }
 
         // Cause error
-        assert!(vec.try_push(2).is_err();
+        assert!(vec.try_push(2).is_err());
 
         // Vector should still be usable
-        assert_eq!(vec.len(), MAX_COMPONENT_INSTANCES;
+        assert_eq!(vec.len(), MAX_COMPONENT_INSTANCES);
         assert_eq!(vec.pop(), Some(1;
 
         // Can continue operations after error
         assert!(vec.try_push(3).is_ok());
-        assert_eq!(vec.len(), MAX_COMPONENT_INSTANCES;
+        assert_eq!(vec.len(), MAX_COMPONENT_INSTANCES);
     }
 }
 
@@ -388,10 +388,10 @@ mod no_std_error_tests {
         let error = WrtError::CapacityExceeded;
 
         // Error should have a representation
-        let _ = format!("{:?}", error;
+        let _ = format!("{:?}", error);
 
         // Result type should work
-        let result: WrtResult<()> = Err(WrtError::OutOfMemory;
-        assert!(result.is_err();
+        let result: WrtResult<()> = Err(WrtError::OutOfMemory);
+        assert!(result.is_err());
     }
 }

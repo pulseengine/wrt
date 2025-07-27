@@ -430,7 +430,7 @@ impl HandleRepresentationManager {
             if let Err(e) = self.type_registry.unmap_resource_handle(handle) {
                 // Log error but don't fail the drop
                 #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to unmap handle from type registry: {}", e));
+                eprintln!("Warning: Failed to unmap handle from type registry: {}", e);
                 #[cfg(not(feature = "std"))]
                 {
                     // In no_std, we can't print to stderr, so we silently ignore the error

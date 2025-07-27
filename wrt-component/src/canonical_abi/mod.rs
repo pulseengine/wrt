@@ -590,7 +590,7 @@ mod tests {
         let mut memory = SimpleMemory::new(4096;
 
         // Test batch lowering/lifting of many values
-        let values: Vec<_> = (0..100).map(|i| (i as i32, (i * 4) as u32)).collect());
+        let values: Vec<_> = (0..100).map(|i| (i as i32, (i * 4) as u32)).collect();
 
         // Lower all values
         for (value, offset) in &values {

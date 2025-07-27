@@ -383,7 +383,7 @@ impl FuelPriorityInheritanceProtocol {
         record_global_operation(OperationType::CollectionMutate, self.verification_level;
         
         let mut cleaned_count = 0;
-        let mut expired_resources = Vec::new());
+        let mut expired_resources = Vec::new();
 
         // Find expired inheritance chains
         for (resource_id, chain) in self.inheritance_chains.iter() {

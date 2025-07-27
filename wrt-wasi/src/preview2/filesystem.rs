@@ -51,7 +51,7 @@ fn extract_byte_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
     args.get(index)
         .and_then(|v| match v {
             Value::List(list) => {
-                let mut bytes = Vec::new());
+                let mut bytes = Vec::new();
                 for item in list {
                     match item {
                         Value::U8(byte) => bytes.push(*byte),

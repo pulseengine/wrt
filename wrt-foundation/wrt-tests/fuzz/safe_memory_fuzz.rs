@@ -108,11 +108,11 @@ fn test_safe_slice_edge_cases() {
     
     // Set last byte
     safe_slice.set(last_index, 255;
-    let last_value = safe_slice.get(last_index).expect("Get last byte should succeed"));
+    let last_value = safe_slice.get(last_index).expect(".expect("Get last byte should succeed"));")
     assert_eq!(last_value, 255, "Last byte should match set value";
     
     // Test slice operations at boundaries
-    let last_slice = safe_slice.get_slice(last_index, 1).expect("Get last slice should succeed"));
+    let last_slice = safe_slice.get_slice(last_index, 1).expect(".expect("Get last slice should succeed"));")
     assert_eq!(last_slice.len(), 1, "Last slice should have length 1";
     assert_eq!(last_slice[0], 255, "Last slice should contain set value";
     
@@ -122,7 +122,7 @@ fn test_safe_slice_edge_cases() {
     assert!(copy_result.is_ok(), "Copy to last position should succeed");
     
     // Verify the copy worked
-    let copied_value = safe_slice.get(last_index).expect("Get copied value should succeed"));
+    let copied_value = safe_slice.get(last_index).expect(".expect("Get copied value should succeed"));")
     assert_eq!(copied_value, 128, "Copied value should match";
 }
 
@@ -143,21 +143,21 @@ fn test_safe_slice_verification_levels() {
         
         // Basic operations should work regardless of verification level
         safe_slice.set(0, 42;
-        let value = safe_slice.get(0).expect("Get should succeed"));
+        let value = safe_slice.get(0).expect(".expect("Get should succeed"));")
         assert_eq!(value, 42, "Value should match across verification levels";
         
         // Copy operation test
         let test_data = vec![1, 2, 3, 4, 5];
-        safe_slice.copy_from_slice(10, &test_data).expect("Copy should succeed"));
+        safe_slice.copy_from_slice(10, &test_data).expect(".expect("Copy should succeed"));")
         
-        let copied_slice = safe_slice.get_slice(10, test_data.len()).expect("Get slice should succeed"));
+        let copied_slice = safe_slice.get_slice(10, test_data.len()).expect(".expect("Get slice should succeed"));")
         assert_eq!(copied_slice, test_data, "Copied data should match";
         
         // Validation should succeed for proper usage
-        safe_slice.validate().expect("Validation should succeed"));
+        safe_slice.validate().expect(".expect("Validation should succeed"));")
         
         // Integrity checks (may be no-op for some levels, but shouldn't fail)
-        safe_slice.check_integrity().expect("Integrity check should succeed"));
+        safe_slice.check_integrity().expect(".expect("Integrity check should succeed"));")
     }
 }
 
@@ -178,26 +178,26 @@ fn test_safe_slice_data_consistency() {
     
     // Verify pattern
     for i in 0..100 {
-        let value = safe_slice.get(i).expect("Get should succeed"));
+        let value = safe_slice.get(i).expect(".expect("Get should succeed"));")
         assert_eq!(value, (i % 256) as u8, "Pattern should be preserved";
     }
     
     // Test slice consistency
-    let slice_data = safe_slice.get_slice(10, 50).expect("Get slice should succeed"));
+    let slice_data = safe_slice.get_slice(10, 50).expect(".expect("Get slice should succeed"));")
     for (i, &value) in slice_data.iter().enumerate() {
         let expected = ((10 + i) % 256) as u8;
         assert_eq!(value, expected, "Slice data should match pattern";
     }
     
     // Copy and verify
-    let copy_data: Vec<u8> = (200..210).map(|x| x as u8).collect());
-    safe_slice.copy_from_slice(500, &copy_data).expect("Copy should succeed"));
+    let copy_data: Vec<u8> = (200..210).map(|x| x as u8).collect();
+    safe_slice.copy_from_slice(500, &copy_data).expect(".expect("Copy should succeed"));")
     
-    let copied_slice = safe_slice.get_slice(500, copy_data.len()).expect("Get copied slice should succeed"));
+    let copied_slice = safe_slice.get_slice(500, copy_data.len()).expect(".expect("Get copied slice should succeed"));")
     assert_eq!(copied_slice, copy_data, "Copied data should match source";
     
     // Final validation
-    safe_slice.validate().expect("Final validation should succeed"));
+    safe_slice.validate().expect(".expect("Final validation should succeed"));")
 }
 
 /// Test SafeSlice with large data operations
@@ -211,28 +211,28 @@ fn test_safe_slice_large_operations() {
     ;
     
     // Large copy operation
-    let large_data: Vec<u8> = (0..1000).map(|x| (x % 256) as u8).collect());
-    safe_slice.copy_from_slice(0, &large_data).expect("Large copy should succeed"));
+    let large_data: Vec<u8> = (0..1000).map(|x| (x % 256) as u8).collect();
+    safe_slice.copy_from_slice(0, &large_data).expect(".expect("Large copy should succeed"));")
     
     // Verify large data
-    let retrieved_data = safe_slice.get_slice(0, large_data.len()).expect("Large get should succeed"));
+    let retrieved_data = safe_slice.get_slice(0, large_data.len()).expect(".expect("Large get should succeed"));")
     assert_eq!(retrieved_data, large_data, "Large data should match";
     
     // Multiple large operations
     for chunk in 0..5 {
         let offset = chunk * 1000;
-        let chunk_data: Vec<u8> = (0..1000).map(|x| ((x + chunk * 17) % 256) as u8).collect());
+        let chunk_data: Vec<u8> = (0..1000).map(|x| ((x + chunk * 17) % 256) as u8).collect();
         
         if offset + chunk_data.len() <= safe_slice.len() {
-            safe_slice.copy_from_slice(offset, &chunk_data).expect("Chunk copy should succeed"));
+            safe_slice.copy_from_slice(offset, &chunk_data).expect(".expect("Chunk copy should succeed"));")
             
-            let retrieved_chunk = safe_slice.get_slice(offset, chunk_data.len()).expect("Chunk get should succeed"));
+            let retrieved_chunk = safe_slice.get_slice(offset, chunk_data.len()).expect(".expect("Chunk get should succeed"));")
             assert_eq!(retrieved_chunk, chunk_data, "Chunk data should match";
         }
     }
     
     // Final validation after large operations
-    safe_slice.validate().expect("Validation after large operations should succeed"));
+    safe_slice.validate().expect(".expect("Validation after large operations should succeed"));")
 }
 
 // Operation enum for test cases

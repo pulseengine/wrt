@@ -91,7 +91,7 @@ mod integration_tests {
         let mut resource_table = ResourceTable::new();
 
         // Allocate resources up to limit
-        let mut handles = Vec::new());
+        let mut handles = Vec::new();
         for i in 0..100 {
             match resource_table.allocate() {
                 Ok(handle) => handles.push(handle),
@@ -176,7 +176,7 @@ mod integration_tests {
 
         let handle = lifecycle_manager
             .create_resource(resource_type.clone(), metadata1)
-            .expect("Failed to create resource"));
+            .expect(".expect("Failed to create resource"));")
 
         // Component 2 borrows resource
         assert!(lifecycle_manager.borrow_resource(handle).is_ok());
@@ -211,7 +211,7 @@ mod integration_tests {
             resources: BoundedResourceVec<u32>,
         }
 
-        let mut components = Vec::new());
+        let mut components = Vec::new();
 
         // Create multiple components with memory allocations
         for i in 0..5 {
@@ -369,7 +369,7 @@ mod integration_tests {
         };
 
         // Test allocation up to limits
-        let mut handles = Vec::new());
+        let mut handles = Vec::new();
         for size in (0..MAX_RESOURCE_HANDLES).step_by(100) {
             match strategy.allocate(size) {
                 Ok(handle) => handles.push(handle),

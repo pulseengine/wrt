@@ -277,7 +277,7 @@ impl PlatformVerificationEngine {
 
         // ASIL-specific validation
         let asil_requirements = self.get_asil_requirements(asil_level;
-        let mut violations = Vec::new());
+        let mut violations = Vec::new();
 
         // Check memory requirements
         if limits.max_total_memory < asil_requirements.min_total_memory {

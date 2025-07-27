@@ -110,7 +110,7 @@ fn demonstrate_multiple_table_operations(
     let funcref_table_index = table_manager.add_table(funcref_table;
     let externref_table_index = table_manager.add_table(externref_table;
     
-    println!("  Created table manager with {} tables", table_manager.table_count));
+    println!("  Created table manager with {} tables", table_manager.table_count);
     println!("  FuncRef table index: {}", funcref_table_index);
     println!("  ExternRef table index: {}", externref_table_index);
     

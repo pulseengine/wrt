@@ -390,7 +390,7 @@ impl RealtimeMonitor {
         // Ensure output directory exists
         if let Err(e) = fs::create_dir_all(&config.output_dir) {
             if config.console_output {
-                eprintln!("Failed to create output directory: {}", e));
+                eprintln!("Failed to create output directory: {}", e);
             }
             return Ok();
         }

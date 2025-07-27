@@ -3,13 +3,22 @@
 #![cfg(all(feature = "wasi-nn", feature = "tract"))]
 
 use wrt_wasi::nn::{
-    backend::{ComputeCapable, ModelCapability, NeuralNetworkBackend},
+    backend::{
+        ComputeCapable,
+        ModelCapability,
+        NeuralNetworkBackend,
+    },
     capabilities::{
-        create_nn_capability, DynamicNNCapability, NNVerificationLevel as VerificationLevel,
+        create_nn_capability,
+        DynamicNNCapability,
+        NNVerificationLevel as VerificationLevel,
         NeuralNetworkCapability,
     },
     tract_backend::TractBackend,
-    GraphEncoding, Tensor, TensorDimensions, TensorType,
+    GraphEncoding,
+    Tensor,
+    TensorDimensions,
+    TensorType,
 };
 
 #[test]

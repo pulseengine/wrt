@@ -253,7 +253,7 @@ mod bounded_stack_tests {
         }
         
         // Iterator should go from top to bottom (LIFO)
-        let collected: Vec<i32> = stack.iter().copied().collect());
+        let collected: Vec<i32> = stack.iter().copied().collect();
         assert_eq!(collected, vec![50, 40, 30, 20, 10];
         
         // Length should remain unchanged after iteration
@@ -564,7 +564,7 @@ mod collection_error_tests {
                 }
                 Ok(())
             })
-        }).collect());
+        }).collect();
         
         // Wait for all threads
         for handle in handles {

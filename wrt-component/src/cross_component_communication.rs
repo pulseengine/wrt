@@ -345,7 +345,7 @@ impl ComponentCommunicationStrategy {
         // Convert to ComponentValue format
         #[cfg(feature = "safety-critical")]
         let component_values: Result<WrtVec<ComponentValue, {CrateId::Component as u8}, 256>> = {
-            let mut vec = WrtVec::new());
+            let mut vec = WrtVec::new();
             for val in args.iter() {
                 let converted = self.convert_value_to_component_value(val)?;
                 vec.push(converted).map_err(|_| {
@@ -357,7 +357,7 @@ impl ComponentCommunicationStrategy {
         #[cfg(not(feature = "safety-critical"))]
         let component_values: Result<Vec<ComponentValue>> = args.iter()
             .map(|val| self.convert_value_to_component_value(val))
-            .collect());
+            .collect();
         
         let component_values = component_values?;
         
@@ -384,9 +384,9 @@ impl ComponentCommunicationStrategy {
         // For now, serialize as simple byte representation
         // In a full implementation, this would use proper canonical ABI serialization
         #[cfg(feature = "safety-critical")]
-        let mut marshaled_data: WrtVec<u8, {CrateId::Component as u8}, 8192> = WrtVec::new());
+        let mut marshaled_data: WrtVec<u8, {CrateId::Component as u8}, 8192> = WrtVec::new();
         #[cfg(not(feature = "safety-critical"))]
-        let mut marshaled_data = Vec::new());
+        let mut marshaled_data = Vec::new();
         for value in &component_values {
             let value_bytes = self.serialize_component_value(value)?;
             #[cfg(feature = "safety-critical")]
@@ -490,14 +490,14 @@ impl ComponentCommunicationStrategy {
             ComponentValue::F32(v) => Ok(v.to_le_bytes().to_vec()),
             ComponentValue::F64(v) => Ok(v.to_le_bytes().to_vec()),
             ComponentValue::String(s) => {
-                let mut bytes = Vec::new());
+                let mut bytes = Vec::new();
                 bytes.extend((s.len() as u32).to_le_bytes);
                 bytes.extend(s.as_bytes();
                 Ok(bytes)
             }
             #[cfg(feature = "safety-critical")]
             _ => {
-                let mut vec = WrtVec::new());
+                let mut vec = WrtVec::new();
                 vec.push(0).map_err(|_| {
                     Error::runtime_execution_error("Unable to serialize component value")
                 })?;

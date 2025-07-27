@@ -269,7 +269,7 @@ impl MinimalLogHandler for WrtdLogHandler {
                 LogLevel::Error => "ERROR",
                 LogLevel::Critical => "CRITICAL",
             };
-            println!("[{}] {}", prefix, message));
+            println!("[{}] {}", prefix, message);
         }
 
         #[cfg(not(feature = "std"))]
@@ -654,7 +654,7 @@ impl WrtdEngine {
             #[cfg(feature = "safety-critical")]
             {
                 let mut module_data: WrtVec<u8, { CrateId::Wrtd as u8 }, MAX_MODULE_SIZE> =
-                    WrtVec::new());
+                    WrtVec::new();
 
                 // Read file in chunks to stay within bounds
                 let mut file = fs::File::open(path)
@@ -820,7 +820,7 @@ pub struct SimpleArgs {
 impl SimpleArgs {
     /// Parse command line arguments without external dependencies
     pub fn parse() -> Result<Self> {
-        let args: Vec<String> = env::args().collect());
+        let args: Vec<String> = env::args().collect();
         let mut result = Self {
             module_path: None,
             function_name: None,
@@ -849,30 +849,30 @@ impl SimpleArgs {
         while i < args.len() {
             match args[i].as_str() {
                 "--help" | "-h" => {
-                    println!("WebAssembly Runtime Daemon (wrtd)"));
+                    println!("WebAssembly Runtime Daemon (wrtd)");
                     println!("Usage: wrtd [OPTIONS] <module.wasm>");
-                    println!);
-                    println!("Options:"));
-                    println!("  --function <name>     Function to execute (default: start)"));
-                    println!("  --fuel <amount>       Maximum fuel limit"));
-                    println!("  --memory <bytes>      Maximum memory limit"));
-                    println!("  --no-std             Force no-std execution mode"));
-                    println!("  --memory-profile     Enable memory profiling"));
-                    println!("  --no-platform-opt    Disable platform optimizations"));
+                    println!();
+                    println!("Options:");
+                    println!("  --function <name>     Function to execute (default: start)");
+                    println!("  --fuel <amount>       Maximum fuel limit");
+                    println!("  --memory <bytes>      Maximum memory limit");
+                    println!("  --no-std             Force no-std execution mode");
+                    println!("  --memory-profile     Enable memory profiling");
+                    println!("  --no-platform-opt    Disable platform optimizations");
                     #[cfg(feature = "wasi")]
                     {
-                        println!("  --wasi               Enable WASI support"));
-                        println!("  --wasi-version <v>   WASI version (preview2)"));
-                        println!("  --wasi-fs <path>     Allow filesystem access to path"));
-                        println!("  --wasi-env <var>     Expose environment variable to WASI"));
-                        println!("  --wasi-arg <arg>     Pass argument to WASI program"));
+                        println!("  --wasi               Enable WASI support");
+                        println!("  --wasi-version <v>   WASI version (preview2)");
+                        println!("  --wasi-fs <path>     Allow filesystem access to path");
+                        println!("  --wasi-env <var>     Expose environment variable to WASI");
+                        println!("  --wasi-arg <arg>     Pass argument to WASI program");
                     }
                     #[cfg(feature = "component-model")]
                     {
-                        println!("  --component          Enable component model support"));
-                        println!("  --interface <name>   Register component interface"));
+                        println!("  --component          Enable component model support");
+                        println!("  --interface <name>   Register component interface");
                     }
-                    println!("  --help               Show this help message"));
+                    println!("  --help               Show this help message");
                     process::exit(0);
                 },
                 "--function" => {
@@ -963,15 +963,15 @@ impl SimpleArgs {
 /// Main entry point
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
-    eprintln!("DEBUG: wrtd starting")));
+    eprintln!("DEBUG: wrtd starting");
 
     // Parse arguments first to check for --help
     let args = SimpleArgs::parse()?;
 
-    eprintln!("DEBUG: args parsed")));
+    eprintln!("DEBUG: args parsed");
 
-    println!("WebAssembly Runtime Daemon (wrtd)"));
-    println!("==================================="));
+    println!("WebAssembly Runtime Daemon (wrtd)");
+    println!("===================================");
 
     // Create configuration from arguments
     let mut config = WrtdConfig::default();
@@ -1028,11 +1028,11 @@ fn main() -> Result<()> {
             config.wasi_env_vars = args.wasi_env_vars.clone();
             config.wasi_args = args.wasi_args.clone();
 
-            println!("✓ WASI enabled:"));
-            println!("  - Version: {:?}", config.wasi_version));
-            println!("  - Filesystem paths: {}", args.wasi_fs_paths.len));
-            println!("  - Environment variables: {}", args.wasi_env_vars.len));
-            println!("  - Program arguments: {}", args.wasi_args.len));
+            println!("✓ WASI enabled:");
+            println!("  - Version: {:?}", config.wasi_version);
+            println!("  - Filesystem paths: {}", args.wasi_fs_paths.len);
+            println!("  - Environment variables: {}", args.wasi_env_vars.len);
+            println!("  - Program arguments: {}", args.wasi_args.len);
         }
     }
 
@@ -1051,17 +1051,17 @@ fn main() -> Result<()> {
     }
 
     if config.enable_memory_profiling {
-        println!("✓ Memory profiling enabled"));
+        println!("✓ Memory profiling enabled");
     }
 
     if !config.enable_platform_optimizations {
-        println!("! Platform optimizations disabled"));
+        println!("! Platform optimizations disabled");
     }
 
     // Check if we have a module to execute
     if config.module_path.is_none() {
-        println!("Error: No module specified"));
-        println!("Use --help for usage information"));
+        println!("Error: No module specified");
+        println!("Use --help for usage information");
         process::exit(1);
     }
 
@@ -1071,23 +1071,23 @@ fn main() -> Result<()> {
     match engine.execute_module() {
         Ok(()) => {
             let stats = engine.stats();
-            println!("✓ Execution completed successfully"));
-            println!("  Modules executed: {}", stats.modules_executed));
-            println!("  Components executed: {}", stats.components_executed));
-            println!("  Fuel consumed: {}", stats.fuel_consumed));
-            println!("  Peak memory: {} bytes", stats.peak_memory));
+            println!("✓ Execution completed successfully");
+            println!("  Modules executed: {}", stats.modules_executed);
+            println!("  Components executed: {}", stats.components_executed);
+            println!("  Fuel consumed: {}", stats.fuel_consumed);
+            println!("  Peak memory: {} bytes", stats.peak_memory);
             println!(
                 "  Host functions registered: {}",
                 stats.host_functions_registered
             );
-            println!("  WASI functions called: {}", stats.wasi_functions_called));
-            println!("  Cross-component calls: {}", stats.cross_component_calls));
+            println!("  WASI functions called: {}", stats.wasi_functions_called);
+            println!("  Cross-component calls: {}", stats.cross_component_calls);
 
             // Display memory profiling if enabled
             if let Some(profiler) = engine.memory_profiler() {
-                println!("Memory Profiling:"));
-                println!("  Peak usage: {} bytes", profiler.peak_usage));
-                println!("  Current usage: {} bytes", profiler.current_usage));
+                println!("Memory Profiling:");
+                println!("  Peak usage: {} bytes", profiler.peak_usage);
+                println!("  Current usage: {} bytes", profiler.current_usage);
             }
         },
         Err(e) => {

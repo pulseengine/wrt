@@ -30,10 +30,10 @@ const ITERATIONS: usize = 10000;
 const WARMUP_ITERATIONS: usize = 100;
 
 fn main() {
-    println!("=== Execution Engine Performance Comparison ===\n"));
+    println!("=== Execution Engine Performance Comparison ===\n");
 
     // Warm up
-    println!("Warming up..."));
+    println!("Warming up...");
     warmup();
 
     // Test 1: Agent creation performance
@@ -67,8 +67,8 @@ fn warmup() {
 }
 
 fn test_agent_creation_performance() {
-    println!("\n1. Agent Creation Performance"));
-    println!("----------------------------"));
+    println!("\n1. Agent Creation Performance");
+    println!("----------------------------");
 
     // Measure unified agent creation
     let start = Instant::now();
@@ -97,12 +97,12 @@ fn test_agent_creation_performance() {
     );
 
     let improvement = calculate_improvement(legacy_duration, unified_duration);
-    println!("Performance improvement: {:.1}%", improvement));
+    println!("Performance improvement: {:.1}%", improvement);
 }
 
 fn test_execution_performance() {
-    println!("\n2. Function Execution Performance"));
-    println!("--------------------------------"));
+    println!("\n2. Function Execution Performance");
+    println!("--------------------------------");
 
     // Create agents
     let mut unified_agent = UnifiedExecutionAgent::new_default();
@@ -141,12 +141,12 @@ fn test_execution_performance() {
     );
 
     let improvement = calculate_improvement(legacy_duration, unified_duration);
-    println!("Performance improvement: {:.1}%", improvement));
+    println!("Performance improvement: {:.1}%", improvement);
 }
 
 fn test_memory_usage() {
-    println!("\n3. Memory Usage Comparison"));
-    println!("-------------------------"));
+    println!("\n3. Memory Usage Comparison");
+    println!("-------------------------");
 
     // Estimate memory usage (simplified)
     let unified_size = std::mem::size_of::<UnifiedExecutionAgent>();
@@ -155,7 +155,7 @@ fn test_memory_usage() {
     // For hybrid mode (which would require multiple legacy agents)
     let hybrid_legacy_size = legacy_component_size * 3; // Component + Async + CFI
 
-    println!("Unified agent size: {} bytes", unified_size));
+    println!("Unified agent size: {} bytes", unified_size);
     println!(
         "Legacy component agent size: {} bytes",
         legacy_component_size
@@ -167,12 +167,12 @@ fn test_memory_usage() {
 
     let memory_savings =
         ((hybrid_legacy_size - unified_size) as f64 / hybrid_legacy_size as f64) * 100.0;
-    println!("Memory savings in hybrid mode: {:.1}%", memory_savings));
+    println!("Memory savings in hybrid mode: {:.1}%", memory_savings);
 }
 
 fn test_context_switching() {
-    println!("\n4. Context Switching Performance"));
-    println!("-------------------------------"));
+    println!("\n4. Context Switching Performance");
+    println!("-------------------------------");
 
     // Create agents with different modes
     let mut sync_agent = UnifiedExecutionAgent::new_default();
@@ -205,14 +205,14 @@ fn test_context_switching() {
     }
     let legacy_duration = start.elapsed());
 
-    println!("Unified multi-mode execution: {:?}", unified_duration));
-    println!("Legacy single-mode execution: {:?}", legacy_duration));
-    println!("Note: Legacy requires separate agent instances for each mode"));
+    println!("Unified multi-mode execution: {:?}", unified_duration);
+    println!("Legacy single-mode execution: {:?}", legacy_duration);
+    println!("Note: Legacy requires separate agent instances for each mode");
 }
 
 fn test_resource_management() {
-    println!("\n5. Resource Management Performance"));
-    println!("---------------------------------"));
+    println!("\n5. Resource Management Performance");
+    println!("---------------------------------");
 
     // Test resource creation and cleanup
     let mut unified_agent = UnifiedExecutionAgent::new_default();
@@ -244,26 +244,26 @@ fn test_resource_management() {
     }
     let legacy_duration = start.elapsed());
 
-    println!("Unified resource ops: {:?}", unified_duration));
-    println!("Legacy resource ops:  {:?}", legacy_duration));
+    println!("Unified resource ops: {:?}", unified_duration);
+    println!("Legacy resource ops:  {:?}", legacy_duration);
 
     let improvement = calculate_improvement(legacy_duration, unified_duration);
-    println!("Performance improvement: {:.1}%", improvement));
+    println!("Performance improvement: {:.1}%", improvement);
 }
 
 fn print_summary() {
-    println!("\n=== Summary ==="));
-    println!("\nKey Benefits of Unified Agent System:"));
-    println!("1. ✅ Single agent instance reduces memory overhead"));
-    println!("2. ✅ Faster execution due to optimized code paths"));
-    println!("3. ✅ Better cache locality with consolidated data structures"));
-    println!("4. ✅ Reduced context switching between execution modes"));
-    println!("5. ✅ Unified resource management improves efficiency"));
-    println!("6. ✅ Hybrid modes enable new optimization opportunities"));
+    println!("\n=== Summary ===");
+    println!("\nKey Benefits of Unified Agent System:");
+    println!("1. ✅ Single agent instance reduces memory overhead");
+    println!("2. ✅ Faster execution due to optimized code paths");
+    println!("3. ✅ Better cache locality with consolidated data structures");
+    println!("4. ✅ Reduced context switching between execution modes");
+    println!("5. ✅ Unified resource management improves efficiency");
+    println!("6. ✅ Hybrid modes enable new optimization opportunities");
 
-    println!("\nRecommendation:"));
-    println!("Migrate to UnifiedExecutionAgent for better performance and features."));
-    println!("Use AgentRegistry for managing multiple agents and migration."));
+    println!("\nRecommendation:");
+    println!("Migrate to UnifiedExecutionAgent for better performance and features.");
+    println!("Use AgentRegistry for managing multiple agents and migration.");
 }
 
 fn calculate_improvement(legacy: Duration, unified: Duration) -> f64 {

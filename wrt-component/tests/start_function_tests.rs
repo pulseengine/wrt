@@ -1,20 +1,30 @@
 #![deny(warnings)]
 
 use std::{
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
     time::Duration,
 };
 
 use wrt_component::{
-    CanonicalABI, Component, ComponentOptions, ComponentValue, ExecutionTimeoutError,
+    CanonicalABI,
+    Component,
+    ComponentOptions,
+    ComponentValue,
+    ExecutionTimeoutError,
 };
 use wrt_error::Error;
-use wrt_intercept::{LinkInterceptorStrategy, MemoryStrategy};
+use wrt_intercept::{
+    LinkInterceptorStrategy,
+    MemoryStrategy,
+};
 
 /// A simple test interceptor that logs function calls
 #[derive(Default)]
 struct TestInterceptor {
-    calls: Arc<Mutex<Vec<String>>>,
+    calls:          Arc<Mutex<Vec<String>>>,
     intercept_mode: InterceptMode,
 }
 
@@ -35,7 +45,7 @@ impl Default for InterceptMode {
 impl TestInterceptor {
     fn new(mode: InterceptMode) -> Self {
         Self {
-            calls: Arc::new(Mutex::new(Vec::new())),
+            calls:          Arc::new(Mutex::new(Vec::new())),
             intercept_mode: mode,
         }
     }
@@ -110,17 +120,17 @@ impl LinkInterceptorStrategy for TestInterceptor {
 
 // Mock component for testing
 struct MockComponentBuilder {
-    has_start: bool,
+    has_start:         bool,
     start_should_fail: bool,
-    timeout_ms: Option<u64>,
+    timeout_ms:        Option<u64>,
 }
 
 impl MockComponentBuilder {
     fn new() -> Self {
         Self {
-            has_start: true,
+            has_start:         true,
             start_should_fail: false,
-            timeout_ms: None,
+            timeout_ms:        None,
         }
     }
 
@@ -160,10 +170,10 @@ impl MockComponentBuilder {
 impl Component {
     pub(crate) fn new(name: &str) -> Self {
         Self {
-            name: name.to_string(),
+            name:               name.to_string(),
             has_start_function: false,
-            start_should_fail: false,
-            options: ComponentOptions::default(),
+            start_should_fail:  false,
+            options:            ComponentOptions::default(),
             // Other fields would be initialized here
         }
     }

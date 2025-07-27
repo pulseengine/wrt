@@ -82,7 +82,7 @@ fn main() -> WrtResult<()> {
 }
 
 fn simulate_foundation_startup() -> WrtResult<Vec<BudgetProvider<{ 64 * 1024 }>>> {
-    let mut providers = Vec::new());
+    let mut providers = Vec::new();
 
     // Simulate core foundation allocations
     for i in 0..3 {
@@ -100,7 +100,7 @@ fn simulate_foundation_startup() -> WrtResult<Vec<BudgetProvider<{ 64 * 1024 }>>
 }
 
 fn simulate_runtime_loading() -> WrtResult<Vec<BudgetProvider<{ 256 * 1024 }>>> {
-    let mut providers = Vec::new());
+    let mut providers = Vec::new();
 
     // Simulate runtime module loading
     for i in 0..4 {
@@ -118,7 +118,7 @@ fn simulate_runtime_loading() -> WrtResult<Vec<BudgetProvider<{ 256 * 1024 }>>> 
 }
 
 fn simulate_component_instantiation() -> WrtResult<Vec<Box<dyn core::any::Any>>> {
-    let mut allocations: Vec<Box<dyn core::any::Any>> = Vec::new());
+    let mut allocations: Vec<Box<dyn core::any::Any>> = Vec::new();
 
     // Simulate component type definitions
     for i in 0..2 {
@@ -178,7 +178,7 @@ fn demonstrate_visualization_formats() -> WrtResult<()> {
         ..Default::default()
     };
     let md_output = BudgetVisualizer::generate_visualization(md_config)?;
-    let md_lines: Vec<&str> = md_output.lines().take(10).collect());
+    let md_lines: Vec<&str> = md_output.lines().take(10).collect();
     println!("{}\n", md_lines.join("\n");
 
     Ok(())
@@ -223,7 +223,7 @@ fn demonstrate_monitoring_macros() -> WrtResult<()> {
 }
 
 fn simulate_memory_pressure() -> WrtResult<()> {
-    let mut pressure_allocations = Vec::new());
+    let mut pressure_allocations = Vec::new();
 
     // Try to allocate large chunks until we hit limits
     for i in 0..10 {

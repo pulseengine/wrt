@@ -444,7 +444,7 @@ impl StreamingCanonicalAbi {
     }
 
     fn serialize_values_to_buffer(&mut self, _stream_index: usize, values: &[Value]) -> core::result::Result<(Vec<u8>, usize)> {
-        let mut result_bytes = Vec::new());
+        let mut result_bytes = Vec::new();
         let mut values_consumed = 0;
 
         for value in values {

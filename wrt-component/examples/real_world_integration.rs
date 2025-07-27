@@ -173,7 +173,7 @@ impl WasmApplicationManager {
                 function_name, component_result.execution_time_ms
             );
         } else {
-            println!("❌ Function '{}' failed", function_name));
+            println!("❌ Function '{}' failed", function_name);
         }
 
         Ok(component_result)
@@ -185,9 +185,9 @@ impl WasmApplicationManager {
         workflow_name: &str,
         input_data: Value,
     ) -> Result<Vec<ComponentResult>, Box<dyn std::error::Error>> {
-        println!("\n🚀 Executing workflow: {}", workflow_name));
+        println!("\n🚀 Executing workflow: {}", workflow_name);
 
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         match workflow_name {
             "user_data_processing" => {
@@ -244,8 +244,8 @@ impl WasmApplicationManager {
         let total_time: u64 = results.iter().map(|r| r.execution_time_ms).sum();
         let success_count = results.iter().filter(|r| r.success).count();
 
-        println!("📊 Workflow '{}' completed:", workflow_name));
-        println!("   Total execution time: {}ms", total_time));
+        println!("📊 Workflow '{}' completed:", workflow_name);
+        println!("   Total execution time: {}ms", total_time);
         println!("   Successful steps: {}/{}", success_count, results.len()));
 
         Ok(results)
@@ -267,9 +267,9 @@ impl WasmApplicationManager {
 
     /// Migrate all legacy agents to unified (if any)
     pub fn migrate_legacy_agents(&mut self) -> Result<u32, Box<dyn std::error::Error>> {
-        println!("🔄 Migrating legacy agents to unified..."));
+        println!("🔄 Migrating legacy agents to unified...");
         let migrated = self.agent_registry.migrate_all_agents()?;
-        println!("✅ Migrated {} agents", migrated));
+        println!("✅ Migrated {} agents", migrated);
         Ok(migrated)
     }
 
@@ -368,7 +368,7 @@ impl Default for ApplicationConfig {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Real-World WebAssembly Application Example ===\n"));
+    println!("=== Real-World WebAssembly Application Example ===\n");
 
     // Create application manager with configuration
     let config = ApplicationConfig {
@@ -389,13 +389,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show initial statistics
     let stats = app_manager.get_statistics();
-    println!("\n📈 Initial Statistics:"));
-    println!("   Components registered: {}", stats.total_components));
-    println!("   Active agents: {}", stats.active_agents));
-    println!("   Unified agents: {}", stats.unified_agents));
+    println!("\n📈 Initial Statistics:");
+    println!("   Components registered: {}", stats.total_components);
+    println!("   Active agents: {}", stats.active_agents);
+    println!("   Unified agents: {}", stats.unified_agents);
 
     // Execute individual component functions
-    println!("\n🔧 Testing Individual Components:"));
+    println!("\n🔧 Testing Individual Components:");
 
     let validation_result = app_manager.execute_component_function(
         "security",
@@ -410,7 +410,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Execute complex workflows
-    println!("\n🏗️ Executing Complex Workflows:"));
+    println!("\n🏗️ Executing Complex Workflows:");
 
     let workflow_results = app_manager.execute_workflow(
         "user_data_processing",
@@ -421,20 +421,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show final statistics
     let final_stats = app_manager.get_statistics();
-    println!("\n📊 Final Statistics:"));
-    println!("   Total components: {}", final_stats.total_components));
-    println!("   Active agents: {}", final_stats.active_agents));
-    println!("   Unified agents: {}", final_stats.unified_agents));
-    println!("   Legacy agents: {}", final_stats.legacy_agents));
+    println!("\n📊 Final Statistics:");
+    println!("   Total components: {}", final_stats.total_components);
+    println!("   Active agents: {}", final_stats.active_agents);
+    println!("   Unified agents: {}", final_stats.unified_agents);
+    println!("   Legacy agents: {}", final_stats.legacy_agents);
 
-    println!("\n✅ Application completed successfully!"));
-    println!("\nKey Benefits Demonstrated:"));
-    println!("  🔹 Unified agents handle different component types seamlessly"));
-    println!("  🔹 Execution modes are automatically chosen based on component requirements"));
-    println!("  🔹 Complex workflows coordinate multiple components efficiently"));
+    println!("\n✅ Application completed successfully!");
+    println!("\nKey Benefits Demonstrated:");
+    println!("  🔹 Unified agents handle different component types seamlessly");
+    println!("  🔹 Execution modes are automatically chosen based on component requirements");
+    println!("  🔹 Complex workflows coordinate multiple components efficiently");
     println!("  🔹 Security-critical components get appropriate protection (CFI)"));
-    println!("  🔹 Memory-intensive components use stackless execution"));
-    println!("  🔹 UI components use async execution for responsiveness"));
+    println!("  🔹 Memory-intensive components use stackless execution");
+    println!("  🔹 UI components use async execution for responsiveness");
 
     Ok(())
 }

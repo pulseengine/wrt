@@ -160,7 +160,7 @@ fn main() -> Result<()> {
     
     ArithmeticOp::F32Add.execute(&mut context)?;
     if let Some(Value::F32(result)) = context.peek() {
-        println!("   3.14 + 2.71 = {}", result.value));
+        println!("   3.14 + 2.71 = {}", result.value);
     }
     context.stack.clear);
     
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
     context.push_arithmetic_value(Value::F32(FloatBits32::from_float(3.0)))?;
     ArithmeticOp::F32Div.execute(&mut context)?;
     if let Some(Value::F32(result)) = context.peek() {
-        println!("   10.0 / 3.0 = {}", result.value));
+        println!("   10.0 / 3.0 = {}", result.value);
     }
     context.stack.clear);
     
@@ -291,7 +291,7 @@ fn main() -> Result<()> {
     
     ArithmeticOp::F64Add.execute(&mut context)?;
     if let Some(Value::F64(result)) = context.peek() {
-        println!("   π + e = {}", result.value));
+        println!("   π + e = {}", result.value);
     }
     context.stack.clear);
     
@@ -309,5 +309,5 @@ fn main() -> Result<()> {
 #[cfg(not(feature = "std"))]
 fn main() {
     // Binary std/no_std choice
-    eprintln!("This example requires std or alloc features"));
+    eprintln!("This example requires std or alloc features");
 }

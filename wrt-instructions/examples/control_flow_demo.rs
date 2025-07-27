@@ -151,22 +151,22 @@ impl FunctionOperations for DemoContext {
 
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
-    println!("=== WebAssembly Control Flow Operations Demo ===\n"));
+    println!("=== WebAssembly Control Flow Operations Demo ===\n");
     
     let mut context = DemoContext::new();
     
     // 1. Demonstrate Return instruction
-    println!("1. Return Operation:"));
+    println!("1. Return Operation:");
     let return_op = Return::new();
     return_op.execute(&mut context)?;
-    println!("   Executed return instruction"));
-    println!("   Function returned: {}", context.returned));
+    println!("   Executed return instruction");
+    println!("   Function returned: {}", context.returned);
     
     // Reset context for next demo
     context.returned = false;
     
     // 2. Demonstrate CallIndirect instruction
-    println!("\n2. Call Indirect Operation:"));
+    println!("\n2. Call Indirect Operation:");
     // Push function index onto stack
     context.push_control_value(Value::I32(42))?;
     
@@ -255,5 +255,5 @@ fn main() -> Result<()> {
 #[cfg(not(feature = "std"))]
 fn main() {
     // Binary std/no_std choice
-    eprintln!("This example requires std or alloc features"));
+    eprintln!("This example requires std or alloc features");
 }

@@ -242,7 +242,7 @@ impl OutputFormatter for HumanFormatter {
         if self.group_by_file {
             // Group diagnostics by file
             let grouped = collection.group_by_file);
-            let mut files: Vec<_> = grouped.keys().collect());
+            let mut files: Vec<_> = grouped.keys().collect();
             files.sort);
 
             for file in files {
@@ -315,7 +315,7 @@ impl OutputFormatter for HumanFormatter {
                 if summary.hints > 0 { Some(format!("{} hints", summary.hints)) } else { None },
             ];
 
-            let parts: Vec<String> = parts.into_iter().flatten().collect());
+            let parts: Vec<String> = parts.into_iter().flatten().collect();
             let summary_text = parts.join(", ";
 
             let icon = if summary.errors > 0 {
@@ -572,7 +572,7 @@ mod tests {
         let formatter = JsonLinesFormatter::new();
         let output = formatter.format_collection(&collection;
 
-        let lines: Vec<&str> = output.trim().split('\n').collect());
+        let lines: Vec<&str> = output.trim().split('\n').collect();
         assert_eq!(lines.len(), 3); // 2 diagnostics + 1 summary
 
         // Each line should be valid JSON

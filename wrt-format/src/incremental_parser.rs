@@ -352,7 +352,7 @@ impl IncrementalParser {
 
     /// Build parse tree from AST
     fn build_parse_tree(&self, doc: &WitDocument) -> Result<ParseNode> {
-        let mut children = Vec::new());
+        let mut children = Vec::new();
 
         // Add package node if present
         if let Some(ref pkg) = doc.package {

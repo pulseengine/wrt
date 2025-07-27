@@ -197,10 +197,10 @@ mod tests {
     fn test_ast_structure_without_strings() {
         // Test that we can work with the AST structure even without BoundedString
         // creation
-        let interface_items: Vec<InterfaceItem> = Vec::new());
+        let interface_items: Vec<InterfaceItem> = Vec::new();
         assert!(interface_items.is_empty());
 
-        let top_level_items: Vec<TopLevelItem> = Vec::new());
+        let top_level_items: Vec<TopLevelItem> = Vec::new();
         assert!(top_level_items.is_empty());
 
         // Test that default implementations work

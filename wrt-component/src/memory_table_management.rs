@@ -340,7 +340,7 @@ impl ComponentMemoryManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let mut result = Vec::new());
+            let mut result = Vec::new();
             for i in offset as usize..end_offset {
                 result.push(memory.data[i]);
             }

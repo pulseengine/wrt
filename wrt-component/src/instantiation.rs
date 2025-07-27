@@ -381,7 +381,7 @@ impl Component {
     /// Create resource tables for the instance with budget enforcement
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     fn create_resource_tables(&self) -> WrtResult<WrtVec<ResourceTable, {CrateId::Component as u8}, 16>> {
-        let mut tables = WrtVec::new());
+        let mut tables = WrtVec::new();
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
@@ -399,7 +399,7 @@ impl Component {
     /// Create resource tables for the instance
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
-        let mut tables = Vec::new());
+        let mut tables = Vec::new();
 
         // Create resource tables based on component types
         // For each resource type in the component, create a table
@@ -438,7 +438,7 @@ impl Component {
         imports: &ImportValues,
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>> {
-        let mut resolved = WrtVec::new());
+        let mut resolved = WrtVec::new();
 
         for import in &self.imports {
             if let Some(value) = imports.get(&import.name) {
@@ -459,7 +459,7 @@ impl Component {
         imports: &ImportValues,
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ResolvedImport>> {
-        let mut resolved = Vec::new());
+        let mut resolved = Vec::new();
 
         for import in &self.imports {
             if let Some(value) = imports.get(&import.name) {
@@ -533,7 +533,7 @@ impl Component {
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>> {
-        let mut instances = WrtVec::new());
+        let mut instances = WrtVec::new();
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -554,7 +554,7 @@ impl Component {
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ModuleInstance>> {
-        let mut instances = Vec::new());
+        let mut instances = Vec::new();
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
@@ -593,7 +593,7 @@ impl Component {
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
     ) -> WrtResult<WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>> {
-        let mut exports = WrtVec::new());
+        let mut exports = WrtVec::new();
 
         for export in &self.exports {
             // Resolve export to actual value based on export kind
@@ -646,7 +646,7 @@ impl Component {
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ResolvedExport>> {
-        let mut exports = Vec::new());
+        let mut exports = Vec::new();
 
         for export in &self.exports {
             // Resolve export to actual value based on export kind

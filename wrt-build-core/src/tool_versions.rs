@@ -649,9 +649,9 @@ fn compare_versions(v1: &str, v2: &str) -> std::cmp::Ordering {
     // Pad to ensure same length
     let max_len = v1_parts.len().max(v2_parts.len);
     let v1_padded: Vec<u32> =
-        v1_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect());
+        v1_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect();
     let v2_padded: Vec<u32> =
-        v2_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect());
+        v2_parts.into_iter().chain(std::iter::repeat(0)).take(max_len).collect();
 
     v1_padded.cmp(&v2_padded)
 }
@@ -731,9 +731,9 @@ mod tests {
     #[test]
     fn test_config_serialization() {
         let config = ToolVersionConfig::default());
-        let toml_str = config.to_toml().expect("Should serialize to TOML"));
+        let toml_str = config.to_toml().expect(".expect("Should serialize to TOML"));")
         let loaded_config =
-            ToolVersionConfig::from_toml(&toml_str).expect("Should deserialize from TOML"));
+            ToolVersionConfig::from_toml(&toml_str).expect(".expect("Should deserialize from TOML"));")
 
         assert_eq!(config.tools.len(), loaded_config.tools.len);
         assert_eq!(

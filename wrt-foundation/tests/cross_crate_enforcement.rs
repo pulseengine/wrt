@@ -219,8 +219,8 @@ mod cross_crate_enforcement_tests {
             CrateId::Platform,
         ];
 
-        let mut allocations = Vec::new());
-        let mut failed_crates = Vec::new());
+        let mut allocations = Vec::new();
+        let mut failed_crates = Vec::new();
 
         // Each crate tries to allocate 2MB
         for &crate_id in &crates {
@@ -317,7 +317,7 @@ mod cross_crate_enforcement_tests {
         setup_strict_enforcement()?;
 
         // Simulate realistic full system usage
-        let mut all_allocations = Vec::new());
+        let mut all_allocations = Vec::new();
 
         // Runtime: Main execution state
         let runtime_main = BudgetProvider::<{ 512 * 1024 }>::new(CrateId::Runtime)?;

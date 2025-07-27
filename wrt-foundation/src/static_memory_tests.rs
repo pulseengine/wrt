@@ -184,7 +184,7 @@ fn test_memory_pool_static_blocks() {
     let mut pool = BoundedMemoryPool::<128, 8, TestProvider>::new();
 
     // Allocate all blocks
-    let mut blocks = Vec::new());
+    let mut blocks = Vec::new();
     for _ in 0..8 {
         match pool.allocate() {
             Ok(block) => blocks.push(block.as_ptr()),

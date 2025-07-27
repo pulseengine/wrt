@@ -1,8 +1,13 @@
 //! Build script for the WRT crate.
 
 use std::{
-    env, fs, io,
-    path::{Path, PathBuf},
+    env,
+    fs,
+    io,
+    path::{
+        Path,
+        PathBuf,
+    },
     process::Command,
 };
 

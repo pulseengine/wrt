@@ -74,16 +74,16 @@ mod comprehensive_tests {
         }
 
         fn print_summary(&self) {
-            println!("\n=== Comprehensive Test Suite Summary ==="));
-            println!("Total tests run: {}", self.total_tests));
-            println!("Real passes: {}", self.real_passes));
-            println!("Expected failures: {}", self.expected_failures));
-            println!("Unexpected failures: {}", self.unexpected_failures));
-            println!("Auto-passes: {}", self.auto_passes));
+            println!("\n=== Comprehensive Test Suite Summary ===");
+            println!("Total tests run: {}", self.total_tests);
+            println!("Real passes: {}", self.real_passes);
+            println!("Expected failures: {}", self.expected_failures);
+            println!("Unexpected failures: {}", self.unexpected_failures);
+            println!("Auto-passes: {}", self.auto_passes);
 
-            println!("\nBy Category:"));
+            println!("\nBy Category:");
             for (category, (passed, failed)) in &self.by_category {
-                println!("  {:?}: {} passed, {} failed", category, passed, failed));
+                println!("  {:?}: {} passed, {} failed", category, passed, failed);
             }
 
             // Validate that we have some expected failures
@@ -98,7 +98,7 @@ mod comprehensive_tests {
     #[test]
     fn test_intentional_failures() {
         let mut stats = TestSuiteStats::new();
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         // Test 1: Invalid module that should fail validation
         let invalid_wasm = wat::parse_str(
@@ -201,7 +201,7 @@ mod comprehensive_tests {
     #[test]
     fn test_unimplemented_features() {
         let mut stats = TestSuiteStats::new();
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         // Test 1: SIMD instructions (if not implemented)
         let simd_wasm = wat::parse_str(
@@ -311,7 +311,7 @@ mod comprehensive_tests {
     #[test]
     fn test_edge_cases() {
         let mut stats = TestSuiteStats::new();
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         // Test 1: Maximum function parameters
         let max_params_wasm = wat::parse_str(
@@ -421,18 +421,18 @@ mod comprehensive_tests {
     fn test_comprehensive_suite() {
         let mut overall_stats = TestSuiteStats::new();
 
-        println!("\n=== Running Comprehensive Test Suite ===\n"));
+        println!("\n=== Running Comprehensive Test Suite ===\n");
 
         // Run all test categories
         // Note: In a real implementation, we would aggregate results from all tests
 
         // Print overall summary
-        println!("\n=== Overall Test Results ==="));
-        println!("This comprehensive test suite validates that:"));
-        println!("1. The test framework can detect failures"));
-        println!("2. We have expected failures for unimplemented features"));
-        println!("3. Edge cases are properly tested"));
-        println!("4. Test statistics accurately reflect reality"));
+        println!("\n=== Overall Test Results ===");
+        println!("This comprehensive test suite validates that:");
+        println!("1. The test framework can detect failures");
+        println!("2. We have expected failures for unimplemented features");
+        println!("3. Edge cases are properly tested");
+        println!("4. Test statistics accurately reflect reality");
 
         // Ensure we have some expected failures
         assert!(

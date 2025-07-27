@@ -77,7 +77,7 @@ impl WitParser {
 
         #[cfg(feature = "std")]
         {
-            let lines: Vec<&str> = source.lines().collect());
+            let lines: Vec<&str> = source.lines().collect();
             let mut i = 0;
 
             while i < lines.len() {
@@ -122,7 +122,7 @@ impl WitParser {
 
         #[cfg(feature = "std")]
         {
-            let lines: Vec<&str> = source.lines().collect());
+            let lines: Vec<&str> = source.lines().collect();
             let mut i = 0;
 
             while i < lines.len() {
@@ -156,7 +156,7 @@ impl WitParser {
     fn parse_import(&mut self, line: &str) -> Result<WitImport, WitParseError> {
         #[cfg(feature = "std")]
         {
-            let parts: Vec<&str> = line.split_whitespace().collect());
+            let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
@@ -248,7 +248,7 @@ impl WitParser {
     fn parse_export(&mut self, line: &str) -> Result<WitExport, WitParseError> {
         #[cfg(feature = "std")]
         {
-            let parts: Vec<&str> = line.split_whitespace().collect());
+            let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
@@ -348,7 +348,7 @@ impl WitParser {
         #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
             let name_part = &line[..colon_pos].trim);
-            let parts: Vec<&str> = name_part.split_whitespace().collect());
+            let parts: Vec<&str> = name_part.split_whitespace().collect();
             
             if let Some(name) = parts.last() {
                 function.name = BoundedString::from_str(name, self.provider.clone())
@@ -364,7 +364,7 @@ impl WitParser {
     fn parse_type_def(&mut self, line: &str) -> Result<WitTypeDef, WitParseError> {
         #[cfg(feature = "std")]
         {
-            let parts: Vec<&str> = line.splitn(3, ' ').collect());
+            let parts: Vec<&str> = line.splitn(3, ' ').collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()

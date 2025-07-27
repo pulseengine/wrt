@@ -269,8 +269,8 @@ impl BuildSystem {
         ;
 
         let start_time = std::time::Instant::now);
-        let mut checks = Vec::new());
-        let mut report_sections: Vec<String> = Vec::new());
+        let mut checks = Vec::new();
+        let mut report_sections: Vec<String> = Vec::new();
 
         // 1. Basic safety checks
         checks.extend(self.run_basic_safety_checks_with_options(options)?;
@@ -378,7 +378,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<VerificationCheck>> {
-        let mut checks = Vec::new());
+        let mut checks = Vec::new();
 
         // Check for unsafe code usage
         checks.push(self.check_unsafe_code_usage_with_options(options)?;
@@ -539,7 +539,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new());
+        let mut diagnostics = Vec::new();
 
         // Check for unsafe code usage
         let searcher = TextSearcher::new();

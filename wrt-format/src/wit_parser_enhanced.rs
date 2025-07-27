@@ -90,7 +90,7 @@ struct Lexer {
 
 impl Lexer {
     fn new(input: &str, file_id: u32) -> Self {
-        let chars: Vec<char> = input.chars().collect());
+        let chars: Vec<char> = input.chars().collect();
         let current_char = chars.get(0).copied);
         Self {
             input: chars,
@@ -365,8 +365,8 @@ impl EnhancedWitParser {
         let start = self.lexer.current_position);
         
         let mut package = None;
-        let mut use_items = Vec::new());
-        let mut items = Vec::new());
+        let mut use_items = Vec::new();
+        let mut items = Vec::new();
         
         // Collect any leading documentation
         self.collect_documentation);
@@ -521,7 +521,7 @@ impl EnhancedWitParser {
         let start = self.lexer.current_position);
         
         if let Token::Version(v) = &self.current_token {
-            let parts: Vec<&str> = v.split('.').collect());
+            let parts: Vec<&str> = v.split('.').collect();
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     WitBoundedString::from_str("Invalid version format", self.provider.clone()).unwrap()
@@ -573,7 +573,7 @@ impl EnhancedWitParser {
             self.advance()?;
             self.expect(Token::LeftBrace)?);
             
-            let mut items = Vec::new());
+            let mut items = Vec::new();
             
             loop {
                 let name = self.parse_identifier()?;
@@ -715,7 +715,7 @@ impl EnhancedWitParser {
         let start = self.lexer.current_position);
         self.expect(Token::LeftBrace)?);
         
-        let mut fields = Vec::new());
+        let mut fields = Vec::new();
         
         while !matches!(self.current_token, Token::RightBrace) {
             self.collect_documentation);
@@ -752,7 +752,7 @@ impl EnhancedWitParser {
         let start = self.lexer.current_position);
         self.expect(Token::LeftBrace)?);
         
-        let mut cases = Vec::new());
+        let mut cases = Vec::new();
         
         while !matches!(self.current_token, Token::RightBrace) {
             self.collect_documentation);
@@ -797,7 +797,7 @@ impl EnhancedWitParser {
         let start = self.lexer.current_position);
         self.expect(Token::LeftBrace)?);
         
-        let mut cases = Vec::new());
+        let mut cases = Vec::new();
         
         while !matches!(self.current_token, Token::RightBrace) {
             self.collect_documentation);
@@ -831,7 +831,7 @@ impl EnhancedWitParser {
         let start = self.lexer.current_position);
         self.expect(Token::LeftBrace)?);
         
-        let mut flags = Vec::new());
+        let mut flags = Vec::new();
         
         while !matches!(self.current_token, Token::RightBrace) {
             self.collect_documentation);
@@ -865,7 +865,7 @@ impl EnhancedWitParser {
         let start = self.lexer.current_position);
         self.expect(Token::LeftBrace)?);
         
-        let mut methods = Vec::new());
+        let mut methods = Vec::new();
         
         while !matches!(self.current_token, Token::RightBrace) {
             self.collect_documentation);
@@ -1068,7 +1068,7 @@ impl EnhancedWitParser {
                         self.advance()?;
                         self.expect(Token::LeftAngle)?);
                         
-                        let mut types = Vec::new());
+                        let mut types = Vec::new();
                         
                         loop {
                             types.push(self.parse_type_expr()?)
@@ -1150,7 +1150,7 @@ impl EnhancedWitParser {
         let name = self.parse_identifier()?;
         self.expect(Token::LeftBrace)?);
         
-        let mut items = Vec::new());
+        let mut items = Vec::new();
         
         while !matches!(self.current_token, Token::RightBrace) {
             self.collect_documentation);
@@ -1228,7 +1228,7 @@ impl EnhancedWitParser {
         self.expect(Token::Func)?);
         self.expect(Token::LeftParen)?);
         
-        let mut params = Vec::new());
+        let mut params = Vec::new();
         
         while !matches!(self.current_token, Token::RightParen) {
             let param_start = self.lexer.current_position);
@@ -1256,7 +1256,7 @@ impl EnhancedWitParser {
             if matches!(self.current_token, Token::LeftParen) {
                 // Named results
                 self.advance()?;
-                let mut named = Vec::new());
+                let mut named = Vec::new();
                 
                 while !matches!(self.current_token, Token::RightParen) {
                     let result_start = self.lexer.current_position);
@@ -1305,7 +1305,7 @@ impl EnhancedWitParser {
         let name = self.parse_identifier()?;
         self.expect(Token::LeftBrace)?);
         
-        let mut items = Vec::new());
+        let mut items = Vec::new();
         
         while !matches!(self.current_token, Token::RightBrace) {
             self.collect_documentation);
@@ -1434,7 +1434,7 @@ impl EnhancedWitParser {
             self.advance()?;
             self.expect(Token::LeftBrace)?);
             
-            let mut items = Vec::new());
+            let mut items = Vec::new();
             
             while !matches!(self.current_token, Token::RightBrace) {
                 let from = self.parse_identifier()?;

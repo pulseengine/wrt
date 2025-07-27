@@ -85,7 +85,7 @@ impl DocumentationVerificationFramework {
         ;
 
         let requirements = self.requirement_registry.requirements.clone();
-        let mut violations = Vec::new());
+        let mut violations = Vec::new();
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
@@ -193,7 +193,7 @@ impl DocumentationVerificationFramework {
         ;
 
         let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
-        let mut violations = Vec::new());
+        let mut violations = Vec::new();
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
@@ -372,7 +372,7 @@ impl DocumentationVerificationFramework {
         requirement: &SafetyRequirement,
         diagnostics: &mut DiagnosticCollection,
     ) -> DocumentationAnalysis {
-        let mut violations = Vec::new());
+        let mut violations = Vec::new();
         let required_standards = self.get_documentation_standards_for_asil(requirement.asil_level;
 
         // Check requirement documentation completeness
@@ -654,7 +654,7 @@ impl DocumentationVerificationFramework {
                 .documentation_analysis
                 .iter()
                 .filter(|a| a.asil_level == asil_level)
-                .collect());
+                .collect();
 
             if !asil_analyses.is_empty() {
                 let compliance = asil_analyses.iter().map(|a| a.compliance_score).sum::<f64>()
@@ -668,7 +668,7 @@ impl DocumentationVerificationFramework {
 
     /// Generate recommendations for improving documentation
     fn generate_recommendations(&self) -> Vec<String> {
-        let mut recommendations = Vec::new());
+        let mut recommendations = Vec::new();
 
         let critical_violations = self
             .documentation_analysis

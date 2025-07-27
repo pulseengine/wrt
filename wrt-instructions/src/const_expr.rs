@@ -121,7 +121,7 @@ impl ConstExprSequence {
     /// Evaluate the constant expression sequence
     pub fn evaluate(&self, context: &dyn ConstExprContext) -> Result<Value> {
         #[cfg(feature = "std")]
-        let mut stack = Vec::new());
+        let mut stack = Vec::new();
         
         #[cfg(not(feature = "std"))]
         let mut stack = {
@@ -475,7 +475,7 @@ mod tests {
         
         let context = TestConstExprContext {
             globals: {
-                let mut v = Vec::new());
+                let mut v = Vec::new();
                 v.push(Value::I32(100);
                 v
             },

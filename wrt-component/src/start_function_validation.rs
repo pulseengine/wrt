@@ -256,7 +256,7 @@ impl StartFunctionValidator {
             .iter()
             .filter(|(_, v)| v.validation_state == ValidationState::Pending)
             .map(|(id, _)| *id)
-            .collect());
+            .collect();
 
         for component_id in pending_components {
             let state = self.validate_start_function(component_id)?;

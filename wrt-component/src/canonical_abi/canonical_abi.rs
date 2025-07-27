@@ -550,7 +550,7 @@ impl CanonicalABI {
                     return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new());
+                let mut code_units = Vec::new();
                 for chunk in bytes.chunks_exact(2) {
                     let code_unit = u16::from_le_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
@@ -565,7 +565,7 @@ impl CanonicalABI {
                     return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new());
+                let mut code_units = Vec::new();
                 for chunk in bytes.chunks_exact(2) {
                     let code_unit = u16::from_be_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
@@ -601,7 +601,7 @@ impl CanonicalABI {
         }
 
         let element_size = self.size_of(element_ty)?;
-        let mut values = Vec::new());
+        let mut values = Vec::new();
 
         for i in 0..len {
             let element_offset = ptr + i * element_size;
@@ -619,7 +619,7 @@ impl CanonicalABI {
         fields: &[(String, ComponentType)],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut field_values = Vec::new());
+        let mut field_values = Vec::new();
         let mut current_offset = offset;
 
         for (field_name, field_ty) in fields {
@@ -638,7 +638,7 @@ impl CanonicalABI {
         types: &[ComponentType],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut values = Vec::new());
+        let mut values = Vec::new();
         let mut current_offset = offset;
 
         for ty in types {
@@ -749,7 +749,7 @@ impl CanonicalABI {
         let byte_count = (flags.len() + 7) / 8;
         let bytes = memory.read_bytes(offset, byte_count as u32)?;
 
-        let mut active_flags = Vec::new());
+        let mut active_flags = Vec::new();
 
         for (i, flag_name) in flags.iter().enumerate() {
             let byte_index = i / 8;

@@ -8,8 +8,11 @@
 use wrt_error::Result;
 use wrt_foundation::Value;
 use wrt_instructions::{
-    comparison_ops::ComparisonContext, parametric_ops::ParametricContext, ComparisonOp,
-    ParametricOp, PureInstruction,
+    comparison_ops::ComparisonContext,
+    parametric_ops::ParametricContext,
+    ComparisonOp,
+    ParametricOp,
+    PureInstruction,
 };
 
 // Mock contexts for demonstration

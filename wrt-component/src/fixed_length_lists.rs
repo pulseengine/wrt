@@ -334,7 +334,7 @@ impl FixedLengthListTypeRegistry {
             #[cfg(not(feature = "std"))]
             types: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for type registry"));
+                    .expect(".expect("Failed to allocate memory for type registry"));")
                 BoundedVec::new(provider).expect("Failed to create BoundedVec")
             },
         }
@@ -400,7 +400,7 @@ pub mod component_integration {
             #[cfg(not(feature = "std"))]
             {
                 // Convert to regular list representation
-                let vec_data: Vec<ComponentValue> = list.elements.iter().cloned().collect());
+                let vec_data: Vec<ComponentValue> = list.elements.iter().cloned().collect();
                 ComponentValue::List(vec_data)
             }
         }

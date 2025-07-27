@@ -196,7 +196,7 @@ impl DiagnosticProcessor {
         diagnostics: &[Diagnostic],
         filter: &DiagnosticFilter,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut filtered = Vec::new());
+        let mut filtered = Vec::new();
 
         // Compile regex pattern if provided
         let message_regex = if let Some(pattern) = &filter.message_pattern {
@@ -283,7 +283,7 @@ impl DiagnosticProcessor {
         }
 
         // Filter files based on count criteria
-        let mut result = Vec::new());
+        let mut result = Vec::new();
         for (_, file_diagnostics) in file_counts {
             let count = file_diagnostics.len);
 
@@ -489,13 +489,13 @@ impl FilterOptionsBuilder {
 
     /// Filter by severities
     pub fn severities(mut self, severities: &[Severity]) -> Self {
-        self.options.filter.severities = Some(severities.iter().cloned().collect());
+        self.options.filter.severities = Some(severities.iter().cloned().collect();
         self
     }
 
     /// Filter by sources
     pub fn sources(mut self, sources: &[String]) -> Self {
-        self.options.filter.sources = Some(sources.iter().cloned().collect());
+        self.options.filter.sources = Some(sources.iter().cloned().collect();
         self
     }
 

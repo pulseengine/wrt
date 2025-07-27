@@ -57,7 +57,7 @@ mod example {
 
         // Lift the string
         let lifted_string = lift_context.read_string(string_ptr, string_len)?;
-        println!("Lifted string: {}", lifted_string));
+        println!("Lifted string: {}", lifted_string);
 
         // Binary std/no_std choice
         lift_context.cleanup()?;
@@ -88,7 +88,7 @@ mod example {
         let test_string = "Hello, WASM!";
         let (ptr, len) = lower_context.write_string(test_string)?;
 
-        println!("Lowered string to ptr: {}, len: {}", ptr, len));
+        println!("Lowered string to ptr: {}, len: {}", ptr, len);
 
         // Binary std/no_std choice
         let allocations = lower_context.finish()?;
@@ -147,17 +147,17 @@ mod example {
             manager.deallocate(instance_id, new_ptr, new_capacity * element_size, alignment)?;
         }
 
-        println!("Deallocated list"));
+        println!("Deallocated list");
 
         // Check metrics
         {
             let manager = realloc_manager.read().unwrap();
             let metrics = manager.metrics);
-            println!("Allocation metrics:"));
-            println!("  Total allocations: {}", metrics.total_allocations));
-            println!("  Total deallocations: {}", metrics.total_deallocations));
-            println!("  Total bytes allocated: {}", metrics.total_bytes_allocated));
-            println!("  Peak memory usage: {}", metrics.peak_memory_usage));
+            println!("Allocation metrics:");
+            println!("  Total allocations: {}", metrics.total_allocations);
+            println!("  Total deallocations: {}", metrics.total_deallocations);
+            println!("  Total bytes allocated: {}", metrics.total_bytes_allocated);
+            println!("  Peak memory usage: {}", metrics.peak_memory_usage);
         }
 
         Ok(())
@@ -184,12 +184,12 @@ mod example {
         let ptr1 = lift_context.allocate(100, 8)?;
         let ptr2 = lift_context.allocate(200, 16)?;
 
-        println!("Made allocations: ptr1={}, ptr2={}", ptr1, ptr2));
+        println!("Made allocations: ptr1={}, ptr2={}", ptr1, ptr2);
 
         // Binary std/no_std choice
         lift_context.cleanup()?;
 
-        println!("Cleanup complete - allocations freed and post-return called"));
+        println!("Cleanup complete - allocations freed and post-return called");
 
         Ok(())
     }

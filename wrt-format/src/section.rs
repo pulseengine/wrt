@@ -259,7 +259,7 @@ impl CustomSection {
     /// Serialize the custom section to binary
     #[cfg(feature = "std")]
     pub fn to_binary(&self) -> core::result::Result<Vec<u8>, wrt_error::Error> {
-        let mut section_data = Vec::new());
+        let mut section_data = Vec::new();
 
         // Add name as encoded string (name length + name bytes)
         let name_len = self.name.len() as u32;
@@ -401,7 +401,7 @@ pub fn write_component_section_header(
     section_type: ComponentSectionType,
     content_size: u32,
 ) -> Vec<u8> {
-    let mut bytes = Vec::new());
+    let mut bytes = Vec::new();
     bytes.push(section_type.id();
     bytes.extend_from_slice(&crate::binary::with_alloc::write_leb128_u32(content_size;
     bytes
@@ -569,7 +569,7 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_invalid_component_section_id() {
         // Create an invalid section ID
-        let mut header_bytes = Vec::new());
+        let mut header_bytes = Vec::new();
         header_bytes.push(255); // Invalid section ID
         // Use a manual LEB128 encoding for 42
         header_bytes.push(42); // 42 fits in one byte for LEB128

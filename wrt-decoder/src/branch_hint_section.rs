@@ -325,7 +325,7 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
 #[cfg(feature = "std")]
 pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>> {
     use crate::prelude::write_leb128_u32 as format_write_leb128_u32;
-    let mut data = Vec::new());
+    let mut data = Vec::new();
 
     // Write function count
     data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(

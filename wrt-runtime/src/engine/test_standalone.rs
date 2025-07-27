@@ -34,15 +34,15 @@ mod tests {
         use crate::engine::presets;
         
         // Test QM preset
-        let qm_context = presets::qm().expect("QM preset should work"));
+        let qm_context = presets::qm().expect(".expect("QM preset should work"));")
         assert_eq!(qm_context.default_verification_level(), VerificationLevel::Standard;
         
         // Test ASIL-A preset  
-        let asil_a_context = presets::asil_a().expect("ASIL-A preset should work"));
+        let asil_a_context = presets::asil_a().expect(".expect("ASIL-A preset should work"));")
         assert_eq!(asil_a_context.default_verification_level(), VerificationLevel::Sampling;
         
         // Test ASIL-B preset
-        let asil_b_context = presets::asil_b().expect("ASIL-B preset should work"));
+        let asil_b_context = presets::asil_b().expect(".expect("ASIL-B preset should work"));")
         assert_eq!(asil_b_context.default_verification_level(), VerificationLevel::Continuous;
     }
 }

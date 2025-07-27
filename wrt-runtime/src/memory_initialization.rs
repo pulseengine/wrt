@@ -118,7 +118,7 @@ impl RuntimeMemoryManager {
         println!("Memory system locked:");
         println!("  Total allocated: {} bytes ({} MB)", total_allocated, total_allocated / (1024 * 1024);
         println!("  Budget utilization: {}%", utilization);
-        println!("  Components: {}", self.allocated_components.len));
+        println!("  Components: {}", self.allocated_components.len);
 
         Ok(LockedRuntimeMemoryManager {
             phase: InitializationPhase::Locked,

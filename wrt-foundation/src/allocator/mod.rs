@@ -16,7 +16,7 @@
 //! use wrt_foundation::allocator::{WrtVec, WrtHashMap, CrateId};
 //!
 //! // Compile-time verified collections
-//! let mut vec: WrtVec<i32, {CrateId::Component as u8}, 1000> = WrtVec::new());
+//! let mut vec: WrtVec<i32, {CrateId::Component as u8}, 1000> = WrtVec::new();
 //! let mut map: WrtHashMap<String, Data, {CrateId::Component as u8}, 256> = WrtHashMap::new();
 //!
 //! // Works exactly like std collections but with compile-time safety

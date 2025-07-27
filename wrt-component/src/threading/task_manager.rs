@@ -535,7 +535,7 @@ impl TaskManager {
 
     /// Update waitable states and wake waiting tasks
     pub fn update_waitables(&mut self) -> WrtResult<()> {
-        let mut tasks_to_wake = Vec::new());
+        let mut tasks_to_wake = Vec::new();
 
         // Check all waiting tasks
         #[cfg(feature = "std")]

@@ -743,7 +743,7 @@ pub struct BoundedNNCapability {
 impl BoundedNNCapability {
     /// Create a new bounded capability
     pub fn new() -> Result<Self> {
-        let mut allowed_formats = Vec::new());
+        let mut allowed_formats = Vec::new();
         
         // Only allow well-tested formats
         allowed_formats.push(ModelFormat::ONNX);
@@ -833,7 +833,7 @@ pub struct StaticNNCapability {
 impl StaticNNCapability {
     /// Create a new static capability with pre-approved models
     pub fn new(approved_hashes: &[[u8); 32]]) -> Result<Self> {
-        let mut approved_models = Vec::new());
+        let mut approved_models = Vec::new();
         
         for hash in approved_hashes {
             approved_models.push(*hash);

@@ -388,8 +388,8 @@ impl TimerIntegration {
     /// Process expired timers
     pub fn process_timers(&mut self) -> Result<TimerProcessResult, Error> {
         let current_time = self.get_current_time);
-        let mut fired_timers = Vec::new());
-        let mut timers_to_reschedule = Vec::new());
+        let mut fired_timers = Vec::new();
+        let mut timers_to_reschedule = Vec::new();
 
         // Process expired timers
         while let Some(timer_entry) = self.timer_queue.peek() {

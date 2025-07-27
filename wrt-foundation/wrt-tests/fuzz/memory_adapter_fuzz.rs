@@ -39,7 +39,7 @@ fn test_memory_adapter_property_invariants() {
 
     for (initial_pages, verification_level, operations) in test_cases {
         // Create runtime memory
-        let memory = Memory::new(initial_pages).expect("Memory creation should succeed"));
+        let memory = Memory::new(initial_pages).expect(".expect("Memory creation should succeed"));")
         let memory = Arc::new(memory;
         
         // Create SafeMemoryAdapter
@@ -90,7 +90,7 @@ fn test_memory_adapter_property_invariants() {
 #[test]
 fn test_memory_adapter_edge_cases() {
     // Test with minimal memory
-    let memory = Memory::new(1).expect("Memory creation should succeed"));
+    let memory = Memory::new(1).expect(".expect("Memory creation should succeed"));")
     let memory = Arc::new(memory;
     let adapter = SafeMemoryAdapter::with_verification_level(
         memory.clone(),
@@ -98,7 +98,7 @@ fn test_memory_adapter_edge_cases() {
     ;
     
     // Test boundary conditions
-    let size = adapter.byte_size().expect("Size should be available"));
+    let size = adapter.byte_size().expect(".expect("Size should be available"));")
     
     // Store at the very end of memory
     let last_byte_data = vec![255];
@@ -129,41 +129,41 @@ fn test_memory_adapter_verification_levels() {
     ];
     
     for &level in &levels {
-        let memory = Memory::new(2).expect("Memory creation should succeed"));
+        let memory = Memory::new(2).expect(".expect("Memory creation should succeed"));")
         let memory = Arc::new(memory;
         let adapter = SafeMemoryAdapter::with_verification_level(memory.clone(), level;
         
         // Basic operations should work regardless of verification level
         let test_data = vec![1, 2, 3, 4, 5];
-        adapter.store(0, &test_data).expect("Store should succeed"));
+        adapter.store(0, &test_data).expect(".expect("Store should succeed"));")
         
-        let loaded_data = adapter.load(0, test_data.len()).expect("Load should succeed"));
+        let loaded_data = adapter.load(0, test_data.len()).expect(".expect("Load should succeed"));")
         assert_eq!(loaded_data, test_data, "Loaded data should match stored data";
         
         // Integrity check should succeed for proper usage
-        adapter.verify_integrity().expect("Integrity check should succeed"));
+        adapter.verify_integrity().expect(".expect("Integrity check should succeed"));")
     }
 }
 
 /// Test memory growth scenarios
 #[test]
 fn test_memory_adapter_growth() {
-    let memory = Memory::new(1).expect("Memory creation should succeed"));
+    let memory = Memory::new(1).expect(".expect("Memory creation should succeed"));")
     let memory = Arc::new(memory;
     let adapter = SafeMemoryAdapter::with_verification_level(
         memory.clone(),
         VerificationLevel::Standard,
     ;
     
-    let initial_size = adapter.size().expect("Size should be available"));
-    let initial_byte_size = adapter.byte_size().expect("Byte size should be available"));
+    let initial_size = adapter.size().expect(".expect("Size should be available"));")
+    let initial_byte_size = adapter.byte_size().expect(".expect("Byte size should be available"));")
     
     // Grow memory by 2 pages
     let grow_result = adapter.grow(2;
     assert!(grow_result.is_ok(), "Memory growth should succeed");
     
-    let new_size = adapter.size().expect("Size should be available after growth"));
-    let new_byte_size = adapter.byte_size().expect("Byte size should be available after growth"));
+    let new_size = adapter.size().expect(".expect("Size should be available after growth"));")
+    let new_byte_size = adapter.byte_size().expect(".expect("Byte size should be available after growth"));")
     
     assert!(new_size > initial_size, "Size should increase after growth");
     assert!(new_byte_size > initial_byte_size, "Byte size should increase after growth");
@@ -174,7 +174,7 @@ fn test_memory_adapter_growth() {
     assert!(store_result.is_ok(), "Store in new memory region should succeed");
     
     // Integrity should still be maintained
-    adapter.verify_integrity().expect("Integrity check should succeed after growth"));
+    adapter.verify_integrity().expect(".expect("Integrity check should succeed after growth"));")
 }
 
 // Operation enum for test cases

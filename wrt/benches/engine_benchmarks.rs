@@ -1,11 +1,23 @@
-use std::{fs, sync::Arc};
+use std::{
+    fs,
+    sync::Arc,
+};
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{
+    black_box,
+    criterion_group,
+    criterion_main,
+    Criterion,
+};
 // Import the current execution components
 use wrt_decoder::decoder::decode_module;
 use wrt_error::Result;
 use wrt_foundation::values::Value;
-use wrt_runtime::{module::Module, module_instance::ModuleInstance, stackless::StacklessEngine};
+use wrt_runtime::{
+    module::Module,
+    module_instance::ModuleInstance,
+    stackless::StacklessEngine,
+};
 
 /// Helper function to load the real test WASM module
 fn load_test_module() -> Result<Module> {

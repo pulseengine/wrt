@@ -279,7 +279,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         // Safety-enhanced push operation with verification
         if self.verification_level.should_verify(128) {
             // Perform pre-push integrity verification
-            self.verify_integrity().expect("ComponentRuntime integrity check failed"));
+            self.verify_integrity().expect(".expect("ComponentRuntime integrity check failed"));")
         }
 
         #[cfg(feature = "std")]
@@ -299,7 +299,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
         if self.verification_level.should_verify(128) {
             // Perform post-push integrity verification
-            self.verify_integrity().expect("ComponentRuntime integrity check failed after push"));
+            self.verify_integrity().expect(".expect("ComponentRuntime integrity check failed after push"));")
         }
     }
 
@@ -318,7 +318,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         let memory_data = vec![0; memory_size];
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let memory_data = {
-            let mut data = wrt_foundation::bounded::BoundedVec::new());
+            let mut data = wrt_foundation::bounded::BoundedVec::new();
             for _ in 0..memory_size.min(65536) {
                 data.push(0u8).unwrap();
             }
@@ -327,9 +327,9 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
         // Collect host function names and types for tracking
         #[cfg(feature = "std")]
-        let mut host_function_names = Vec::new());
+        let mut host_function_names = Vec::new();
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
-        let mut host_function_names = wrt_foundation::bounded::BoundedVec::new());
+        let mut host_function_names = wrt_foundation::bounded::BoundedVec::new();
 
         #[cfg(feature = "std")]
         let mut host_functions = {

@@ -836,7 +836,7 @@ impl UnifiedExecutionAgent {
     /// Convert values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<ComponentValue>> {
-        let mut component_values = Vec::new());
+        let mut component_values = Vec::new();
         for value in values {
             component_values.push(value.clone().into();
         }

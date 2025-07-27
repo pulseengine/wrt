@@ -237,7 +237,7 @@ impl ComponentLinker {
             .values()
             .filter(|instance| &instance.name == id)
             .map(|instance| instance.id)
-            .collect());
+            .collect();
 
         if !dependent_instances.is_empty() {
             return Err(Error::runtime_execution_error("Component has active instances and cannot be removed")
@@ -298,7 +298,7 @@ impl ComponentLinker {
 
     /// Link all components and create instances
     pub fn link_all(&mut self) -> Result<Vec<InstanceId>> {
-        let mut instance_ids = Vec::new());
+        let mut instance_ids = Vec::new();
 
         // Topological sort to determine instantiation order
         let sorted_components = self.link_graph.topological_sort()?;
@@ -352,9 +352,9 @@ impl ComponentLinker {
         
         #[cfg(not(feature = "std"))]
         let exports = {
-            let mut exports = Vec::new());
-            let mut params = Vec::new());
-            let mut results = Vec::new());
+            let mut exports = Vec::new();
+            let mut params = Vec::new();
+            let mut results = Vec::new();
             results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
             
             let signature = crate::component_instantiation::create_function_signature(
@@ -391,7 +391,7 @@ impl ComponentLinker {
         component_id: &ComponentId,
         imports: &[ComponentImport],
     ) -> Result<Vec<ResolvedImport>> {
-        let mut resolved = Vec::new());
+        let mut resolved = Vec::new();
 
         for import in imports {
             let resolution = self.resolve_single_import(component_id, import)?;
@@ -527,7 +527,7 @@ impl LinkGraph {
         {
             let mut visited = vec![false; self.nodes.len()];
             let mut temp_visited = vec![false; self.nodes.len()];
-            let mut result = Vec::new());
+            let mut result = Vec::new();
             
             for i in 0..self.nodes.len() {
                 if !visited[i] {
@@ -549,7 +549,7 @@ impl LinkGraph {
             let mut temp_visited = BoundedVec::new(provider2).map_err(|_| {
                 Error::platform_memory_allocation_failed("Failed to create temp_visited vector")
             })?;
-            let mut result = Vec::new());
+            let mut result = Vec::new();
             
             // Initialize with false values
             for _ in 0..self.nodes.len() {

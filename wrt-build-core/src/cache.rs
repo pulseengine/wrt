@@ -430,13 +430,13 @@ impl CacheManager {
             };
         }
 
-        let mut new_diagnostics = Vec::new());
-        let mut removed_diagnostics = Vec::new());
-        let mut changed_diagnostics = Vec::new());
-        let mut unchanged_diagnostics = Vec::new());
+        let mut new_diagnostics = Vec::new();
+        let mut removed_diagnostics = Vec::new();
+        let mut changed_diagnostics = Vec::new();
+        let mut unchanged_diagnostics = Vec::new();
 
         // Collect all cached diagnostics
-        let mut cached_diagnostics = Vec::new());
+        let mut cached_diagnostics = Vec::new();
         for entry in self.cache.entries.values() {
             cached_diagnostics.extend(entry.diagnostics.iter().cloned);
         }

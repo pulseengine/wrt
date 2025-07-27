@@ -338,7 +338,7 @@ impl ContextDetector {
         git_context: &Option<GitContext>,
         ci_context: &Option<CiContext>,
     ) -> Vec<Recommendation> {
-        let mut recommendations = Vec::new());
+        let mut recommendations = Vec::new();
 
         // Project setup recommendations
         match project_type {

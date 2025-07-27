@@ -2701,7 +2701,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// bitset.set(20).unwrap();
     /// bitset.set(30).unwrap();
     ///
-    /// let indices: Vec<usize> = bitset.iter_ones().collect());
+    /// let indices: Vec<usize> = bitset.iter_ones().collect();
     /// assert_eq!(indices, vec![10, 20, 30]);
     /// ```
     pub fn iter_ones(&self) -> BitSetOnesIterator<N_BITS> {
@@ -2719,7 +2719,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// bitset.set(1).unwrap();
     /// bitset.set(3).unwrap();
     ///
-    /// let indices: Vec<usize> = bitset.iter_zeros().collect());
+    /// let indices: Vec<usize> = bitset.iter_zeros().collect();
     /// assert_eq!(indices, vec![0, 2, 4]);
     /// ```
     pub fn iter_zeros(&self) -> BitSetZerosIterator<N_BITS> {

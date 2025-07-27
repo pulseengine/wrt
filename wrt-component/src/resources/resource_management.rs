@@ -503,7 +503,7 @@ impl ResourceTable {
                     || (current_time - resource.last_accessed > max_age)
             })
             .map(|(&handle, _)| handle)
-            .collect());
+            .collect();
 
         for handle in expired_handles {
             self.drop_resource(handle)?;

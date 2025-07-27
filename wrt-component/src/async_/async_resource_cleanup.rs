@@ -254,7 +254,7 @@ impl AsyncResourceCleanupManager {
 
     /// Execute all cleanups for an instance
     pub fn execute_cleanups(&mut self, instance_id: ComponentInstanceId) -> Result<Vec<CleanupResult>> {
-        let mut results = Vec::new());
+        let mut results = Vec::new();
         
         #[cfg(feature = "std")]
         let entries = self.cleanup_entries.remove(&instance_id).unwrap_or_default);

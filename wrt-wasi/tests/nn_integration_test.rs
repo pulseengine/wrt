@@ -33,7 +33,7 @@ fn test_wasi_nn_full_initialization() {
     // The provider should support NN functions when NN capabilities are enabled
     // We can't directly test the functions list, but we can verify the provider
     // was created successfully with NN capabilities
-    assert_eq!(provider.capabilities().nn.dynamic_loading, true;
+    assert_eq!(provider.capabilities().nn.dynamic_loading, true);
 }
 
 /// Test capability-based NN initialization
@@ -71,7 +71,7 @@ fn test_nn_subsystem_init() {
     initialize_context_store().unwrap();
     
     // Verify we can get the capability
-    let retrieved = wrt_wasi::nn::get_nn_capability);
+    let retrieved = wrt_wasi::nn::get_nn_capability();
     assert!(retrieved.is_ok());
 }
 

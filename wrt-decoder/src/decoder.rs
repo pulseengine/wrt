@@ -201,7 +201,7 @@ fn build_module_from_sections(sections: Vec<crate::sections::Section>) -> Result
                 // Update function bodies
                 for (idx, body) in code_bodies.into_iter().enumerate() {
                     if let Some(func) = module.functions.get_mut(idx) {
-                        func.code = body.into_iter().collect());
+                        func.code = body.into_iter().collect();
                     }
                 }
             },
@@ -297,12 +297,12 @@ fn build_module_from_sections(
                     if let Some(func) = module.functions.get_mut(idx) {
                         #[cfg(feature = "std")]
                         {
-                            func.code = body.into_iter().collect());
+                            func.code = body.into_iter().collect();
                         }
                         #[cfg(not(feature = "std"))]
                         {
                             // For no_std, convert to Vec
-                            func.code = body.into_iter().collect());
+                            func.code = body.into_iter().collect();
                         }
                     }
                 }

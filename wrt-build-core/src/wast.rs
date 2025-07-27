@@ -221,10 +221,10 @@ pub struct WastFileResult {
 impl WastTestRunner {
     /// Create a new WAST test runner
     pub fn new(config: WastConfig) -> Result<Self> {
-        eprintln!("DEBUG: Creating WastTestRunner..."));
+        eprintln!("DEBUG: Creating WastTestRunner...");
         let engine = WastEngine::new().context("Failed to create WAST execution engine")?;
 
-        eprintln!("DEBUG: WastTestRunner created, creating Self..."));
+        eprintln!("DEBUG: WastTestRunner created, creating Self...");
         let result = Ok(Self {
             module_registry: HashMap::new(),
             stats: WastTestStats::default(),
@@ -233,7 +233,7 @@ impl WastTestRunner {
             diagnostics: Vec::new(),
             engine: Box::new(engine),
         };
-        eprintln!("DEBUG: WastTestRunner creation complete"));
+        eprintln!("DEBUG: WastTestRunner creation complete");
         result
     }
 
@@ -244,21 +244,21 @@ impl WastTestRunner {
 
     /// Run all WAST files in the configured directory
     pub fn run_all_tests(&mut self) -> Result<Vec<WastFileResult>> {
-        eprintln!("DEBUG: Starting WAST test runner..."));
-        eprintln!("DEBUG: Test directory: {:?}", self.config.test_directory));
+        eprintln!("DEBUG: Starting WAST test runner...");
+        eprintln!("DEBUG: Test directory: {:?}", self.config.test_directory);
         eprintln!("DEBUG: Current dir: {:?}", std::env::current_dir)));
         let start_time = std::time::Instant::now);
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         // Collect WAST files
-        eprintln!("DEBUG: About to collect WAST files..."));
+        eprintln!("DEBUG: About to collect WAST files...");
         let wast_files = match self.collect_wast_files() {
             Ok(files) => {
                 eprintln!("DEBUG: Collected {} WAST files", files.len)));
                 files
             },
             Err(e) => {
-                eprintln!("DEBUG: Error collecting files: {}", e));
+                eprintln!("DEBUG: Error collecting files: {}", e);
                 // If we can't even collect files, return the error
                 return Err(e;
             },
@@ -324,17 +324,17 @@ impl WastTestRunner {
             .unwrap_or(file_path)
             .to_string_lossy()
             .to_string());
-        eprintln!("DEBUG: relative_path = {:?}", relative_path));
+        eprintln!("DEBUG: relative_path = {:?}", relative_path);
 
         // Read file content
-        eprintln!("DEBUG: About to read file content..."));
+        eprintln!("DEBUG: About to read file content...");
         eprintln!("DEBUG: File path exists: {}", file_path.exists)));
         eprintln!("DEBUG: File path is_file: {}", file_path.is_file)));
         eprintln!("DEBUG: File path metadata: {:?}", file_path.metadata)));
 
         // Temporary: Try using a fixed simple content to isolate the issue
         let content = if file_path.to_string_lossy().contains("simple") {
-            eprintln!("DEBUG: Using hardcoded simple content to test"));
+            eprintln!("DEBUG: Using hardcoded simple content to test");
             "(module (func (export \"test\") (result i32) i32.const 42))".to_string()
         } else {
             match fs::read_to_string(file_path) {
@@ -359,11 +359,11 @@ impl WastTestRunner {
         ;
         let buf = match ParseBuffer::new(&content) {
             Ok(buf) => {
-                eprintln!("DEBUG: ParseBuffer created successfully"));
+                eprintln!("DEBUG: ParseBuffer created successfully");
                 buf
             },
             Err(e) => {
-                eprintln!("DEBUG: ParseBuffer creation failed: {}", e));
+                eprintln!("DEBUG: ParseBuffer creation failed: {}", e);
                 return Ok(WastFileResult {
                     file_path:         relative_path,
                     directives_count:  0,
@@ -375,7 +375,7 @@ impl WastTestRunner {
             },
         };
 
-        eprintln!("DEBUG: About to parse WAST content"));
+        eprintln!("DEBUG: About to parse WAST content");
         let wast: Wast = match parser::parse::<Wast>(&buf) {
             Ok(wast) => {
                 eprintln!(
@@ -385,8 +385,8 @@ impl WastTestRunner {
                 wast
             },
             Err(e) => {
-                eprintln!("DEBUG: Parse error for file {:?}: {}", file_path, e));
-                eprintln!("DEBUG: Parse error debug: {:?}", e));
+                eprintln!("DEBUG: Parse error for file {:?}: {}", file_path, e);
+                eprintln!("DEBUG: Parse error debug: {:?}", e);
                 return Ok(WastFileResult {
                     file_path:         relative_path,
                     directives_count:  0,
@@ -398,15 +398,15 @@ impl WastTestRunner {
             },
         };
 
-        let mut directive_results = Vec::new());
+        let mut directive_results = Vec::new();
         let mut file_status = TestResult::Passed;
 
         let directive_count = wast.directives.len);
-        eprintln!("DEBUG: Starting to process {} directives", directive_count));
+        eprintln!("DEBUG: Starting to process {} directives", directive_count);
 
         // Process each directive
         for (i, mut directive) in wast.directives.into_iter().enumerate() {
-            eprintln!("DEBUG: Processing directive {}/{}", i + 1, directive_count));
+            eprintln!("DEBUG: Processing directive {}/{}", i + 1, directive_count);
             match self.execute_directive(&mut directive, file_path) {
                 Ok(directive_info) => {
                     if directive_info.result == TestResult::Failed {
@@ -457,14 +457,14 @@ impl WastTestRunner {
         directive: &mut WastDirective,
         file_path: &Path,
     ) -> Result<WastDirectiveInfo> {
-        eprintln!("DEBUG: execute_directive - Entry"));
+        eprintln!("DEBUG: execute_directive - Entry");
         match directive {
             WastDirective::Module(ref mut wast_module) => {
-                eprintln!("DEBUG: execute_directive - Module directive"));
+                eprintln!("DEBUG: execute_directive - Module directive");
                 // Handle QuoteWat to extract actual Module
                 match wast_module {
                     wast::QuoteWat::Wat(wast::Wat::Module(ref mut module)) => {
-                        eprintln!("DEBUG: execute_directive - Calling handle_module_directive"));
+                        eprintln!("DEBUG: execute_directive - Calling handle_module_directive");
                         self.handle_module_directive(module, file_path)
                     },
                     _ => {
@@ -551,9 +551,9 @@ impl WastTestRunner {
         wast_module: &mut wast::core::Module,
         _file_path: &Path,
     ) -> Result<WastDirectiveInfo> {
-        eprintln!("DEBUG: handle_module_directive - Entry"));
+        eprintln!("DEBUG: handle_module_directive - Entry");
 
-        eprintln!("DEBUG: handle_module_directive - Encoding WAST module to binary"));
+        eprintln!("DEBUG: handle_module_directive - Encoding WAST module to binary");
         // Get the binary from the WAST module
         match wast_module.encode() {
             Ok(binary) => {
@@ -564,9 +564,9 @@ impl WastTestRunner {
 
                 // Store the module binary for potential registration
                 self.module_registry.insert("current".to_string(), binary.clone();
-                eprintln!("DEBUG: handle_module_directive - Module stored in registry"));
+                eprintln!("DEBUG: handle_module_directive - Module stored in registry");
 
-                eprintln!("DEBUG: handle_module_directive - About to call engine.load_module"));
+                eprintln!("DEBUG: handle_module_directive - About to call engine.load_module");
                 eprintln!(
                     "DEBUG: handle_module_directive - Binary size to load: {}",
                     binary.len()
@@ -1095,7 +1095,7 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args_result: Result<Vec<_>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect());
+                    invoke.args.iter().map(convert_wast_arg_core).collect();
 
                 match args_result {
                     Ok(_args) => {
@@ -1366,8 +1366,8 @@ impl WastTestRunner {
 
     /// Collect all WAST files in the configured directory
     fn collect_wast_files(&self) -> Result<Vec<PathBuf>> {
-        eprintln!("DEBUG: Entering collect_wast_files..."));
-        let mut files = Vec::new());
+        eprintln!("DEBUG: Entering collect_wast_files...");
+        let mut files = Vec::new();
 
         eprintln!(
             "DEBUG: About to read test directory: {:?}",
@@ -1376,12 +1376,12 @@ impl WastTestRunner {
         // Try to read the main directory, but don't fail if we can't
         match fs::read_dir(&self.config.test_directory) {
             Ok(entries) => {
-                eprintln!("DEBUG: Successfully read directory, processing entries..."));
+                eprintln!("DEBUG: Successfully read directory, processing entries...");
                 for entry in entries {
                     match entry {
                         Ok(entry) => {
                             let path = entry.path);
-                            eprintln!("DEBUG: Checking path: {:?}", path));
+                            eprintln!("DEBUG: Checking path: {:?}", path);
 
                             if path.extension().map_or(false, |ext| ext == "wast") {
                                 // Apply filter if specified
@@ -1399,7 +1399,7 @@ impl WastTestRunner {
                         },
                         Err(e) => {
                             // Log error but continue processing other entries
-                            eprintln!("Warning: Failed to read directory entry: {}", e));
+                            eprintln!("Warning: Failed to read directory entry: {}", e);
                         },
                     }
                 }
@@ -1415,11 +1415,11 @@ impl WastTestRunner {
 
         // Also check proposals subdirectory
         let proposals_dir = self.config.test_directory.join("proposals";
-        eprintln!("DEBUG: Checking proposals dir: {:?}", proposals_dir));
+        eprintln!("DEBUG: Checking proposals dir: {:?}", proposals_dir);
         if proposals_dir.exists() {
-            eprintln!("DEBUG: Proposals dir exists, collecting files recursively..."));
+            eprintln!("DEBUG: Proposals dir exists, collecting files recursively...");
             if let Err(e) = self.collect_wast_files_recursive(&proposals_dir, &mut files) {
-                eprintln!("Warning: Failed to read proposals directory: {}", e));
+                eprintln!("Warning: Failed to read proposals directory: {}", e);
             }
         }
 

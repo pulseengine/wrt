@@ -366,7 +366,7 @@ impl WasmThreadManager {
             .iter()
             .filter(|(_, info)| info.module_id == module_id)
             .map(|(id, _)| *id)
-            .collect());
+            .collect();
 
         for thread_id in to_remove {
             if let Some(thread_info) = threads.remove(&thread_id) {
@@ -381,7 +381,7 @@ impl WasmThreadManager {
     /// Perform health check on all threads
     pub fn health_check(&self) -> Result<Vec<(u64, ThreadHealth)>> {
         let threads = self.threads.read);
-        let mut results = Vec::new());
+        let mut results = Vec::new();
 
         for (thread_id, _) in threads.iter() {
             match self.monitor.check_thread_health(*thread_id) {
@@ -433,7 +433,7 @@ impl WasmThreadManager {
         *self.shutdown.lock() = true;
 
         // Cancel all threads
-        let thread_ids: Vec<u64> = self.threads.read().keys().cloned().collect());
+        let thread_ids: Vec<u64> = self.threads.read().keys().cloned().collect();
         for thread_id in thread_ids {
             let _ = self.cancel_thread(thread_id;
         }

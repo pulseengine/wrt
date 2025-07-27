@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_parsed_component_creation() {
-        let mut component = ParsedComponent::new().expect("Failed to create ParsedComponent"));
+        let mut component = ParsedComponent::new().expect(".expect("Failed to create ParsedComponent"));")
         assert_eq!(component.types.len(), 0);
         assert_eq!(component.imports.len(), 0);
         assert_eq!(component.exports.len(), 0);

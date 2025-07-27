@@ -17,10 +17,10 @@ fn main() -> Result<()> {
     println!("=== Safe Memory Usage Example ===");
 
     // Create a safe memory handler for the WASM binary
-    let mut handler = SafeMemoryHandler::new(MINIMAL_WASM.to_vec);
+    let mut handler = SafeMemoryHandler::new(MINIMAL_WASM.to_vec());
 
     // Set the verification level to FULL for maximum safety
-    handler.set_verification_level(VerificationLevel::Full;
+    handler.set_verification_level(VerificationLevel::Full);
 
     // Get a safe slice from the memory handler
     let slice = handler.get_slice(0, handler.size())?;
@@ -34,13 +34,13 @@ fn main() -> Result<()> {
 
     // Display module information
     println!("Decoded WebAssembly module (version {})", module.version);
-    println!("Types: {}", module.types.len));
-    println!("Imports: {}", module.imports.len));
-    println!("Functions: {}", module.functions.len));
-    println!("Exports: {}", module.exports.len));
+    println!("Types: {}", module.types.len());
+    println!("Imports: {}", module.imports.len());
+    println!("Functions: {}", module.functions.len());
+    println!("Exports: {}", module.exports.len());
 
     // Get memory statistics
-    let stats = handler.memory_stats);
+    let stats = handler.memory_stats();
     println!("\nMemory Statistics:");
     println!("Total size: {} bytes", stats.total_size);
     println!("Access count: {}", stats.access_count);

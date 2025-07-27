@@ -457,7 +457,7 @@ impl CapabilityAwareEngine {
             .get(&instance_handle)?
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
-        let mut functions = Vec::new());
+        let mut functions = Vec::new();
         // TODO: BoundedMap doesn't support iteration, so we can't list all exports
         // For now, return an empty list as a placeholder
         // In a real implementation, we'd need an iterator interface on BoundedMap

@@ -302,7 +302,7 @@ fn test_thread_spawn_integration() {
     };
 
     // Create spawn request
-    let mut arguments = BoundedVec::new());
+    let mut arguments = BoundedVec::new();
     arguments.push(ComponentValue::I32(42)).unwrap();
 
     let spawn_request = ThreadSpawnRequest {
@@ -345,7 +345,7 @@ fn test_fuel_aware_thread_spawning() {
     let fuel_config = create_fuel_thread_config(5000;
 
     // Create spawn request
-    let mut arguments = BoundedVec::new());
+    let mut arguments = BoundedVec::new();
     arguments.push(ComponentValue::I32(100)).unwrap();
 
     let spawn_request = ThreadSpawnRequest {
@@ -482,7 +482,7 @@ fn test_handle_representation_and_sharing() {
     // Test handle operations
     let read_op = HandleOperation::Read {
         fields: {
-            let mut fields = BoundedVec::new());
+            let mut fields = BoundedVec::new();
             fields.push("value".to_string()).unwrap();
             fields
         },
@@ -493,7 +493,7 @@ fn test_handle_representation_and_sharing() {
 
     // Set up resource sharing
     // Establish sharing agreement
-    let mut resource_types = BoundedVec::new());
+    let mut resource_types = BoundedVec::new();
     resource_types.push(resource_type.type_id).unwrap();
 
     let agreement_id = sharing_manager
@@ -509,7 +509,7 @@ fn test_handle_representation_and_sharing() {
 
     // Add a basic sharing policy
     let mut policy = create_basic_sharing_policy("test-policy";
-    let mut allowed_types = BoundedVec::new());
+    let mut allowed_types = BoundedVec::new();
     allowed_types.push(resource_type.type_id).unwrap();
     policy
         .rules
@@ -600,7 +600,7 @@ fn test_cross_environment_compatibility() {
     // Test that our implementations work across different environments
 
     // Test bounded collections (for no_std)
-    let mut bounded_vec: BoundedVec<u32, MAX_TEST_ITEMS> = BoundedVec::new());
+    let mut bounded_vec: BoundedVec<u32, MAX_TEST_ITEMS> = BoundedVec::new();
     for i in 0..10 {
         bounded_vec.push(i).unwrap();
     }

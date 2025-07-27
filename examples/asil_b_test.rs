@@ -20,15 +20,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     bounded_vec.push(100)?;
     bounded_vec.push(255)?;
     
-    println!("✓ Successfully created BoundedVec with {} elements", bounded_vec.len));
-    println!("  Contents: {:?}", bounded_vec.as_slice));
+    println!("✓ Successfully created BoundedVec with {} elements", bounded_vec.len);
+    println!("  Contents: {:?}", bounded_vec.as_slice);
     
     // Test 3: Memory safety verification
     println!("\n3. Testing capacity limits (ASIL-B safety)...");
     for i in bounded_vec.len()..10 {
         bounded_vec.push(i as u32)?;
     }
-    println!("✓ BoundedVec filled to capacity: {}", bounded_vec.len));
+    println!("✓ BoundedVec filled to capacity: {}", bounded_vec.len);
     
     // Test 4: Demonstrate capacity enforcement
     println!("\n4. Testing capacity enforcement...");

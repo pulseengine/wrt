@@ -558,7 +558,7 @@ pub mod task_helpers {
     /// Wait for multiple tasks to complete
     #[cfg(feature = "std")]
     pub fn wait_for_tasks(task_ids: Vec<TaskId>) -> Result<Vec<Option<TaskReturn>>> {
-        let mut results = Vec::new());
+        let mut results = Vec::new();
         for task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results.push(result);

@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         initialize_graph_store()?;
         initialize_context_store()?;
 
-        println!("WASI-NN initialized successfully"));
+        println!("WASI-NN initialized successfully");
     }
 
     // Example: Load a WebAssembly module that uses WASI-NN
@@ -82,18 +82,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Execute the module
     match engine.execute(wasm_module) {
         Ok(result) => {
-            println!("Module executed successfully"));
-            println!("Result: {:?}", result));
+            println!("Module executed successfully");
+            println!("Result: {:?}", result);
 
             // Print runtime statistics
             let stats = engine.get_stats();
-            println!("\nRuntime Statistics:"));
-            println!("  Modules executed: {}", stats.modules_executed));
-            println!("  WASI functions called: {}", stats.wasi_functions_called));
-            println!("  Peak memory usage: {} bytes", stats.peak_memory));
+            println!("\nRuntime Statistics:");
+            println!("  Modules executed: {}", stats.modules_executed);
+            println!("  WASI functions called: {}", stats.wasi_functions_called);
+            println!("  Peak memory usage: {} bytes", stats.peak_memory);
         },
         Err(e) => {
-            eprintln!("Execution failed: {}", e)));
+            eprintln!("Execution failed: {}", e);
             return Err(e.into());
         },
     }

@@ -105,7 +105,7 @@ impl BuiltinSerialization {
         values: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> wrt_error::Result<Vec<u8>> {
         // Simple implementation for now - convert to bytes
-        let mut result = Vec::new());
+        let mut result = Vec::new();
         for value in values {
             let bytes = match value {
                 ComponentValue::S32(v) => v.to_le_bytes().to_vec(),
@@ -136,7 +136,7 @@ impl BuiltinSerialization {
         bytes: &[u8],
         types: &[ValType<wrt_foundation::NoStdProvider<64>>],
     ) -> wrt_error::Result<Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>> {
-        let mut result = Vec::new());
+        let mut result = Vec::new();
         let mut offset = 0;
 
         for ty in types {
@@ -212,7 +212,7 @@ impl BuiltinSerialization {
     // args: &[ComponentValue],
     // types: &[ValType],
     // ) -> Result<Vec<u8>> {
-    // let mut bytes = Vec::new());
+    // let mut bytes = Vec::new();
     // for (index, value) in args.iter().enumerate() {
     // match types.get(index) {
     // Some(ty) => match ty {

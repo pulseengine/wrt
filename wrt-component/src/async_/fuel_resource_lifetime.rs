@@ -353,7 +353,7 @@ impl ResourceLifetimeManager {
                 // was created by this task
                 Some(*handle)
             })
-            .collect());
+            .collect();
         
         for handle in handles_to_drop {
             self.drop_resource(handle)?;

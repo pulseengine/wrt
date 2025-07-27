@@ -52,8 +52,8 @@ impl FormatRuntimeConnector {
     
     /// Convert format runtime data to runtime-compatible format
     fn convert_to_runtime_format(data: ModuleRuntimeData) -> Result<RuntimeCompatibleData> {
-        let mut runtime_data_segments = Vec::new());
-        let mut runtime_element_segments = Vec::new());
+        let mut runtime_data_segments = Vec::new();
+        let mut runtime_element_segments = Vec::new();
         
         // Convert data extractions
         for extraction in data.data_extractions {
@@ -99,7 +99,7 @@ impl FormatRuntimeConnector {
     
     /// Create runtime initialization guide
     fn create_runtime_guide(plan: ModuleInitializationPlan) -> Result<RuntimeInitializationGuide> {
-        let mut steps = Vec::new());
+        let mut steps = Vec::new();
         
         // Add data initialization steps
         for (index, hint) in plan.data_initialization_order {

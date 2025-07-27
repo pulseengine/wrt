@@ -527,7 +527,7 @@ mod protection_integration_tests {
                 
                 Ok(())
             })
-        }).collect());
+        }).collect();
         
         // Wait for all threads
         for handle in handles {

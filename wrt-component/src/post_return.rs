@@ -316,7 +316,7 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             self.functions.insert(instance_id, post_return_fn;
-            self.pending_cleanups.insert(instance_id, Vec::new());
+            self.pending_cleanups.insert(instance_id, Vec::new();
         }
         #[cfg(not(any(feature = "std", )))]
         {

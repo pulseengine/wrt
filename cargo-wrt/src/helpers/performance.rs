@@ -130,7 +130,7 @@ impl PerformanceOptimizer {
 
     /// Get performance recommendations
     pub fn get_recommendations(&self) -> Vec<PerformanceRecommendation> {
-        let mut recommendations = Vec::new());
+        let mut recommendations = Vec::new();
 
         // Cache performance
         let cache_ratio = self.cache_hit_ratio();

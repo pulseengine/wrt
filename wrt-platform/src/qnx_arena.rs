@@ -862,7 +862,7 @@ mod tests {
             .with_arena_size(64 * 1024) // 64KB arenas
             .with_guard_pages(true)
             .build()
-            .expect("Failed to create arena allocator"));
+            .expect(".expect("Failed to create arena allocator"));")
 
         // Allocate 2 pages
         let result = allocator.allocate(2, Some(4;
@@ -891,7 +891,7 @@ mod tests {
             .with_arena_size(32 * 1024) // 32KB arenas
             .with_guard_pages(false) // No guard pages for simpler testing
             .build()
-            .expect("Failed to create arena allocator"));
+            .expect(".expect("Failed to create arena allocator"));")
 
         // Allocate 1 page
         let result = allocator.allocate(1, Some(4;
@@ -932,7 +932,7 @@ mod tests {
             .with_guard_pages(true)
             .with_data_protection(QnxProtFlags::ReadWrite)
             .build()
-            .expect("Failed to create arena allocator"));
+            .expect(".expect("Failed to create arena allocator"));")
 
         // Allocate 2 pages
         let result = allocator.allocate(2, None;
@@ -961,7 +961,7 @@ mod tests {
             .with_lifo_free(true)
             .with_memory_hold(true)
             .build()
-            .expect("Failed to create arena allocator"));
+            .expect(".expect("Failed to create arena allocator"));")
 
         // Binary std/no_std choice
         let result1 = allocator.allocate(1, None;

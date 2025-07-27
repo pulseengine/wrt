@@ -21,7 +21,7 @@ fuzz_target!(|data: &[u8]| {
     let num_bounds = (data[2] % 20) as usize;
     
     // Create some resource types
-    let mut type_ids = Vec::new());
+    let mut type_ids = Vec::new();
     for i in 0..num_types.min(data.len() / 4) {
         let name = format!("type_{}", i;
         if let Ok(resource_type) = type_registry.create_resource_type(component_id, &name) {

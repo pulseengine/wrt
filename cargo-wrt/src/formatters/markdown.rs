@@ -391,7 +391,7 @@ fn generate_asil_breakdown(
     }
 
     if asil_counts.is_empty() {
-        return Ok(String::new());
+        return Ok(String::new();
     }
 
     let mut output = String::new();
@@ -405,7 +405,7 @@ fn generate_asil_breakdown(
         "|:-----------|------:|------------:|-------:|-----------:|"
     )?;
 
-    let mut levels: Vec<_> = asil_counts.keys().collect());
+    let mut levels: Vec<_> = asil_counts.keys().collect();
     levels.sort();
 
     for level in levels {
@@ -436,7 +436,7 @@ fn format_asil_compliance_table(
     writeln!(output, "| ASIL Level | Compliance |")?;
     writeln!(output, "|:-----------|:-----------|")?;
 
-    let mut levels: Vec<_> = compliance.keys().collect());
+    let mut levels: Vec<_> = compliance.keys().collect();
     levels.sort();
 
     for level in levels {
@@ -503,7 +503,7 @@ fn format_asil_documentation(
     writeln!(output, "| ASIL Level | Documentation Compliance |")?;
     writeln!(output, "|:-----------|:------------------------|")?;
 
-    let mut levels: Vec<_> = compliance.keys().collect());
+    let mut levels: Vec<_> = compliance.keys().collect();
     levels.sort();
 
     for level in levels {

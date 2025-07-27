@@ -241,7 +241,7 @@ mod tests {
         assert!(id > 0);
 
         // Get the error context
-        let error = store.get_error(id).expect("Error context should exist"));
+        let error = store.get_error(id).expect(".expect("Error context should exist"));")
         assert_eq!(error.message(), "Test error";
         assert_eq!(error.trace().len(), 0);
 
@@ -268,7 +268,7 @@ mod tests {
 
         // Test with valid arguments
         let args = vec![ComponentValue::String("Test error".to_string())];
-        let result = handler.execute(&args).expect("Handler should succeed"));
+        let result = handler.execute(&args).expect(".expect("Handler should succeed"));")
         assert_eq!(result.len(), 1);
         let id = match result[0] {
             ComponentValue::U64(id) => id,
@@ -276,7 +276,7 @@ mod tests {
         };
 
         // Verify the error was created
-        let error = store.lock().unwrap().get_error(id).expect("Error context should exist"));
+        let error = store.lock().unwrap().get_error(id).expect(".expect("Error context should exist"));")
         assert_eq!(error.message(), "Test error";
 
         // Test with invalid arguments
@@ -296,11 +296,11 @@ mod tests {
 
         // Test with valid arguments
         let args = vec![ComponentValue::U64(id), ComponentValue::String("Trace entry".to_string())];
-        let result = handler.execute(&args).expect("Handler should succeed"));
+        let result = handler.execute(&args).expect(".expect("Handler should succeed"));")
         assert_eq!(result.len(), 0);
 
         // Verify the trace was added
-        let error = store.lock().unwrap().get_error(id).expect("Error context should exist"));
+        let error = store.lock().unwrap().get_error(id).expect(".expect("Error context should exist"));")
         assert_eq!(error.trace().len(), 1);
         assert_eq!(error.trace()[0], "Trace entry";
 

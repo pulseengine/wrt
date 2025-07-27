@@ -9,7 +9,10 @@
 //! Integration tests for CFI-protected WebAssembly execution
 
 use wrt::{
-    new_cfi_protected_engine, CfiConfiguration, CfiHardwareFeatures, CfiProtectionLevel,
+    new_cfi_protected_engine,
+    CfiConfiguration,
+    CfiHardwareFeatures,
+    CfiProtectionLevel,
     CfiViolationPolicy,
 };
 
@@ -26,15 +29,15 @@ fn test_cfi_configuration_creation() {
 #[test]
 fn test_cfi_custom_configuration() {
     let config = CfiConfiguration {
-        protection_level: CfiProtectionLevel::Software,
-        max_shadow_stack_depth: 2048,
-        landing_pad_timeout_ns: Some(1_000_000),
-        violation_policy: CfiViolationPolicy::LogAndContinue,
+        protection_level:           CfiProtectionLevel::Software,
+        max_shadow_stack_depth:     2048,
+        landing_pad_timeout_ns:     Some(1_000_000),
+        violation_policy:           CfiViolationPolicy::LogAndContinue,
         enable_temporal_validation: false,
-        hardware_features: CfiHardwareFeatures {
-            arm_bti: true,
-            riscv_cfi: false,
-            x86_cet: true,
+        hardware_features:          CfiHardwareFeatures {
+            arm_bti:     true,
+            riscv_cfi:   false,
+            x86_cet:     true,
             auto_detect: false,
         },
     };

@@ -145,7 +145,7 @@ async fn main() -> Result<()> {
         Commands::Run { args } => {
             println!("⚡ Running custom cargo-wrt command in container...");
             let pipeline = DaggerPipeline::new(config).await?;
-            let args_str: Vec<&str> = args.iter().map(|s| s.as_str()).collect());
+            let args_str: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             let output = pipeline.run_cargo_wrt(&args_str).await?;
             println!("{}", output);
         },

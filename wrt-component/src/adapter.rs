@@ -410,7 +410,7 @@ impl CoreModuleAdapter {
         }
         #[cfg(not(feature = "std"))]
         {
-            let mut result = Vec::new());
+            let mut result = Vec::new();
             for arg in args {
                 result.push(arg.clone();
             }

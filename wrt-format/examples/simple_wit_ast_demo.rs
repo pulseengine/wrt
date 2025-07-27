@@ -93,7 +93,7 @@ fn demonstrate_primitive_types() {
         assert_eq!(prim_type.kind, *kind;
     }
 
-    println!("✓ All {} primitive types work correctly", types.len));
+    println!("✓ All {} primitive types work correctly", types.len);
 }
 
 fn demonstrate_type_expressions() {

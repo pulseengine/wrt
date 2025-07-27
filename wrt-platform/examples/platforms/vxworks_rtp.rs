@@ -48,7 +48,7 @@ fn example_rtp_memory() {
         .max_pages(100)
         .enable_guard_pages(false)  // RTP typically doesn't need guard pages
         .build()
-        .expect("Failed to create RTP allocator"));
+        .expect(".expect("Failed to create RTP allocator"));")
     
     println!("✓ Created RTP allocator using malloc/POSIX APIs");
     
@@ -59,7 +59,7 @@ fn example_rtp_memory() {
     match allocator.allocate(initial_pages, max_pages) {
         Ok((ptr, size)) => {
             println!("✓ Allocated {} pages ({} bytes)", initial_pages, size);
-            println!("  Memory at: {:p}", ptr.as_ptr));
+            println!("  Memory at: {:p}", ptr.as_ptr);
             
             // Test memory growth
             if allocator.grow(initial_pages, 5).is_ok() {
@@ -68,7 +68,7 @@ fn example_rtp_memory() {
             
             // Clean up
             unsafe {
-                allocator.deallocate(ptr, size).expect("Failed to deallocate"));
+                allocator.deallocate(ptr, size).expect(".expect("Failed to deallocate"));")
             }
             println!("✓ Memory deallocated successfully");
         }
@@ -84,7 +84,7 @@ fn example_rtp_synchronization() {
     let futex = VxWorksFutexBuilder::new(VxWorksContext::Rtp)
         .initial_value(0)
         .build()
-        .expect("Failed to create RTP futex"));
+        .expect(".expect("Failed to create RTP futex"));")
     
     println!("✓ Created RTP futex using POSIX semaphores");
     

@@ -179,10 +179,10 @@ impl TaskCleanupContext {
     ) -> Result<Vec<ContextualError>> {
         // Check if already executed
         if self.cleanup_executed.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new());
+            return Ok(Vec::new();
         }
         
-        let mut errors = Vec::new());
+        let mut errors = Vec::new();
         
         // Execute callbacks in priority order
         for callback in self.callbacks.drain(..) {
@@ -379,9 +379,9 @@ impl GlobalCleanupManager {
             .iter()
             .filter(|(_, ctx)| ctx.component_id == component_id)
             .map(|(id, _)| *id)
-            .collect());
+            .collect();
         
-        let mut all_errors = Vec::new());
+        let mut all_errors = Vec::new();
         
         for task_id in task_ids {
             match self.cancel_task(task_id) {
@@ -445,7 +445,7 @@ impl TaskCleanupGuard {
     /// Cancel the task early
     pub fn cancel(&self) -> Result<Vec<ContextualError>> {
         if self.cancelled.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new());
+            return Ok(Vec::new();
         }
         
         self.manager.lock()?.cancel_task(self.task_id)

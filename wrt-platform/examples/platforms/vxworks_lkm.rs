@@ -49,7 +49,7 @@ fn example_lkm_memory() {
         .use_dedicated_partition(true)  // LKM benefits from dedicated partitions
         .enable_guard_pages(true)       // Important for kernel space safety
         .build()
-        .expect("Failed to create LKM allocator"));
+        .expect(".expect("Failed to create LKM allocator"));")
     
     println!("✓ Created LKM allocator using memory partitions");
     println!("  Features: dedicated partition, guard pages enabled");
@@ -61,7 +61,7 @@ fn example_lkm_memory() {
     match allocator.allocate(initial_pages, max_pages) {
         Ok((ptr, size)) => {
             println!("✓ Allocated {} pages ({} bytes) from partition", initial_pages, size);
-            println!("  Kernel memory at: {:p}", ptr.as_ptr));
+            println!("  Kernel memory at: {:p}", ptr.as_ptr);
             
             // Test controlled memory growth
             if allocator.grow(initial_pages, 3).is_ok() {
@@ -70,7 +70,7 @@ fn example_lkm_memory() {
             
             // Clean up partition memory
             unsafe {
-                allocator.deallocate(ptr, size).expect("Failed to deallocate partition memory"));
+                allocator.deallocate(ptr, size).expect(".expect("Failed to deallocate partition memory"));")
             }
             println!("✓ Partition memory deallocated successfully");
         }
@@ -86,7 +86,7 @@ fn example_lkm_synchronization() {
     let futex = VxWorksFutexBuilder::new(VxWorksContext::Lkm)
         .initial_value(1)
         .build()
-        .expect("Failed to create LKM futex"));
+        .expect(".expect("Failed to create LKM futex"));")
     
     println!("✓ Created LKM futex using VxWorks binary semaphores");
     println!("  Features: priority inheritance, kernel-space synchronization");

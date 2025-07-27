@@ -70,8 +70,8 @@ mod tests {
         ).unwrap();
 
         // Spawn multiple async tasks
-        let mut task_ids = Vec::new());
-        let mut completion_flags = Vec::new());
+        let mut task_ids = Vec::new();
+        let mut completion_flags = Vec::new();
 
         for i in 0..3 {
             let completed = Arc::new(AtomicBool::new(false;
@@ -218,8 +218,8 @@ mod tests {
         }
 
         // Spawn tasks across components
-        let mut all_tasks = Vec::new());
-        let mut completion_counters = Vec::new());
+        let mut all_tasks = Vec::new();
+        let mut completion_counters = Vec::new();
 
         for comp_id in 1..=3 {
             let counter = Arc::new(AtomicU64::new(0;
@@ -315,7 +315,7 @@ mod tests {
         executor.set_global_fuel_limit(100000;
         
         // Spawn many lightweight tasks
-        let mut task_ids = Vec::new());
+        let mut task_ids = Vec::new();
         for i in 0..20 {
             let task_id = executor.spawn_task(
                 ComponentInstanceId::new(1),

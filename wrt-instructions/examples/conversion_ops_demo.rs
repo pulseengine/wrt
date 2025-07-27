@@ -100,7 +100,7 @@ fn main() -> Result<()> {
     println!("   Input: i32 = -100");
     ConversionOp::F32ConvertI32S.execute(&mut context)?;
     if let Some(Value::F32(result)) = context.peek() {
-        println!("   Result: f32 = {}", result.value));
+        println!("   Result: f32 = {}", result.value);
     }
     context.stack.clear);
     
@@ -183,6 +183,6 @@ fn main() -> Result<()> {
 #[cfg(not(feature = "std"))]
 fn main() {
     // Binary std/no_std choice - ASIL-D safe: exit gracefully
-    eprintln!("This example requires std or alloc features"));
+    eprintln!("This example requires std or alloc features");
     core::process::exit(1;
 }

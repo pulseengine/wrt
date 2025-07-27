@@ -115,10 +115,10 @@ impl MemoryOperations for MockMemory {
 fn main() -> Result<()> {
     // Initialize global memory system first
     wrt_foundation::memory_init::MemoryInitializer::initialize()
-        .expect("Failed to initialize memory system"));
+        .expect(".expect("Failed to initialize memory system"));")
 
-    println!("WebAssembly Memory Operations Demo"));
-    println!("=================================="));
+    println!("WebAssembly Memory Operations Demo");
+    println!("==================================");
     
     // Create a mock memory instance
     let mut memory = MockMemory::new(1024;

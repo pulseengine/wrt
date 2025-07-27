@@ -111,9 +111,9 @@ mod safe_memory_ops {
         // Both source and destination ranges are verified to be within bounds.
         // core::ptr::copy handles overlapping regions correctly.
         unsafe {
-            let src_ptr = base_ptr.as_ptr().add(src_offset;
-            let dst_ptr = base_ptr.as_ptr().add(dst_offset;
-            core::ptr::copy(src_ptr, dst_ptr, len;
+            let src_ptr = base_ptr.as_ptr().add(src_offset);
+            let dst_ptr = base_ptr.as_ptr().add(dst_offset);
+            core::ptr::copy(src_ptr, dst_ptr, len);
         }
         Ok(())
     }
@@ -233,7 +233,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
 
         let (ptr, allocated_size) = allocator.allocate(initial_pages, maximum_pages)?;
 
-        let adapter = PageAllocatorAdapter::new(allocator.clone();
+        let adapter = PageAllocatorAdapter::new(allocator.clone());
 
         Ok(Self {
             allocator,
@@ -259,13 +259,13 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     /// error).
     pub fn grow(&mut self, additional_pages: u32) -> Result<u32> {
         if additional_pages == 0 {
-            return Ok(self.current_pages;
+            return Ok(self.current_pages);
         }
         let Some(_base_ptr) = self.base_ptr else {
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "Memory not initialized";
+                "Memory not initialized"));
         };
 
         let old_pages = self.current_pages;
@@ -278,7 +278,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::CAPACITY_EXCEEDED,
-                    "Growth would exceed maximum page limit";
+                    "Growth would exceed maximum page limit"));
             }
         }
 
@@ -288,8 +288,8 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     }
 
     fn track_access(&self, _offset: usize, len: usize) {
-        self.access_count.fetch_add(1, Ordering::Relaxed;
-        self.max_access_size.fetch_max(len, Ordering::Relaxed;
+        self.access_count.fetch_add(1, Ordering::Relaxed);
+        self.max_access_size.fetch_max(len, Ordering::Relaxed);
         // More sophisticated tracking (like unique regions) could be added if
         // needed.
     }
@@ -310,9 +310,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         use safe_memory_ops::*;
         self.verify_access(offset, len)?;
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error("Memory not initialized: base pointer is null";
+            return Err(Error::runtime_execution_error("Memory not initialized: base pointer is null"));
         };
-        self.track_access(offset, len;
+        self.track_access(offset, len);
         // Use ASIL-D safe memory operation wrapper
         let data_slice = safe_memory_ops::safe_slice_from_verified_bounds(base_ptr, offset, len)
             .map_err(|_| Error::memory_access_out_of_bounds("Invalid memory access bounds"))?;
@@ -322,13 +322,13 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         self.verify_access(offset, data.len())?;
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error("Cannot write: memory not initialized";
+            return Err(Error::runtime_execution_error("Cannot write: memory not initialized"));
         };
-        self.track_access(offset, data.len);
+        self.track_access(offset, data.len());
         // Use ASIL-D safe memory operation wrapper  
         let dest_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, data.len())
             .map_err(|_| Error::memory_access_out_of_bounds("Invalid memory write bounds"))?;
-        dest_slice.copy_from_slice(data;
+        dest_slice.copy_from_slice(data);
         Ok(())
     }
 
@@ -339,7 +339,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         })?;
 
         if end_offset > current_byte_size {
-            return Err(Error::memory_access_out_of_bounds("Access beyond memory bounds";
+            return Err(Error::memory_access_out_of_bounds("Access beyond memory bounds"));
         }
         Ok(())
     }
@@ -360,7 +360,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         // and our view (pages, ptr) is consistent. Deeper integrity (checksums)
         // is handled by Slice/SliceMut.
         if self.base_ptr.is_none() && self.current_pages > 0 {
-            return Err(Error::runtime_execution_error("Memory consistency error: pages allocated but base pointer null";
+            return Err(Error::runtime_execution_error("Memory consistency error: pages allocated but base pointer null"));
         }
         // Binary std/no_std choice
         // checks.
@@ -390,9 +390,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "Memory not initialized";
+                "Memory not initialized"));
         };
-        self.track_access(offset, len;
+        self.track_access(offset, len);
         // Use ASIL-D safe memory operation wrapper
         let data_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, len)
             .map_err(|_| Error::memory_access_out_of_bounds("Failed to create safe mutable slice from verified bounds"))?;
@@ -401,7 +401,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 
     fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
         if len == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Verify source and destination ranges independently first.
@@ -413,7 +413,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         })?;
 
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error("Cannot copy: memory not initialized";
+            return Err(Error::runtime_execution_error("Cannot copy: memory not initialized"));
         };
 
         // Track access before performing the copy
@@ -429,10 +429,10 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
     }
 
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
-        let current_size_bytes = self.size);
+        let current_size_bytes = self.size();
         if byte_offset > current_size_bytes {
             if byte_offset > self.capacity() {
-                return Err(Error::runtime_execution_error("Requested byte offset exceeds memory capacity";
+                return Err(Error::runtime_execution_error("Requested byte offset exceeds memory capacity"));
             }
             // Calculate additional pages needed. Ceiling division.
             let additional_bytes_needed = byte_offset - current_size_bytes;
@@ -449,7 +449,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::INVALID_STATE,
-                    "Memory growth succeeded but size is still insufficient";
+                    "Memory growth succeeded but size is still insufficient"));
             }
         }
         Ok(())
@@ -517,16 +517,16 @@ mod kani_proofs {
     /// Verify that safe_slice_from_verified_bounds never creates invalid slices
     #[kani::proof]
     fn verify_safe_slice_bounds() {
-        let size: usize = kani::any_where(|&s| s > 0 && s <= 4096;
-        let offset: usize = kani::any_where(|&o| o < size;
-        let len: usize = kani::any_where(|&l| l <= size - offset;
+        let size: usize = kani::any_where(|&s| s > 0 && s <= 4096);
+        let offset: usize = kani::any_where(|&o| o < size);
+        let len: usize = kani::any_where(|&l| l <= size - offset);
         
         // Simulate valid memory allocation
         let mut memory = vec![0u8; size];
         let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap();
         
         // This should never panic or create invalid slices
-        let result = safe_slice_from_verified_bounds(base_ptr, offset, len;
+        let result = safe_slice_from_verified_bounds(base_ptr, offset, len);
         
         if let Ok(slice) = result {
             // Verify slice properties
@@ -538,16 +538,16 @@ mod kani_proofs {
     /// Verify that safe_slice_mut_from_verified_bounds maintains memory safety
     #[kani::proof]
     fn verify_safe_slice_mut_bounds() {
-        let size: usize = kani::any_where(|&s| s > 0 && s <= 4096;
-        let offset: usize = kani::any_where(|&o| o < size;
-        let len: usize = kani::any_where(|&l| l <= size - offset;
+        let size: usize = kani::any_where(|&s| s > 0 && s <= 4096);
+        let offset: usize = kani::any_where(|&o| o < size);
+        let len: usize = kani::any_where(|&l| l <= size - offset);
         
         // Simulate valid memory allocation
         let mut memory = vec![0u8; size];
         let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap();
         
         // This should never panic or create invalid slices
-        let result = safe_slice_mut_from_verified_bounds(base_ptr, offset, len;
+        let result = safe_slice_mut_from_verified_bounds(base_ptr, offset, len);
         
         if let Ok(slice) = result {
             // Verify slice properties
@@ -559,8 +559,8 @@ mod kani_proofs {
     /// Verify memory bounds checking never overflows
     #[kani::proof]
     fn verify_no_overflow_in_bounds_check() {
-        let offset: usize = kani::any);
-        let len: usize = kani::any);
+        let offset: usize = kani::any();
+        let len: usize = kani::any();
         
         // Verify that overflow detection works correctly
         if let Some(end) = offset.checked_add(len) {

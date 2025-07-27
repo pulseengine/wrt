@@ -216,7 +216,7 @@ impl PostReturnContext {
 
         self.is_executing = true;
         let start_time = current_time_us);
-        let mut errors = Vec::new());
+        let mut errors = Vec::new();
 
         // Execute each cleanup operation in priority order
         let entries = mem::take(&mut self.entries;
@@ -260,7 +260,7 @@ impl PostReturnContext {
     /// Execute a single cleanup entry
     fn execute_cleanup_entry(&self, instance: &mut Instance, memory: &mut Memory, entry: &PostReturnEntry) -> Result<()> {
         // Convert ComponentValue args to raw values for function call
-        let mut raw_args = Vec::new());
+        let mut raw_args = Vec::new();
         
         #[cfg(feature = "std")]
         {

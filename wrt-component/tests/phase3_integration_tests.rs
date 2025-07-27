@@ -314,7 +314,7 @@ mod tests {
         assert_eq!(control_wcet.confidence_level, 0.8); // Static analysis confidence
         assert!(control_wcet.critical_path.is_some());
 
-        println!("WCET Analysis Results:"));
+        println!("WCET Analysis Results:");
         println!(
             "- ASIL-C Control Task: WCET = {} fuel, BCET = {} fuel",
             control_wcet.wcet_fuel, control_wcet.bcet_fuel
@@ -393,10 +393,10 @@ mod tests {
         // Test schedulability analysis
         let analysis = scheduler.analyze_schedulability().unwrap();
         assert!(analysis.schedulable);
-        println!("Schedulability Analysis:"));
-        println!("- Total utilization: {:.3}", analysis.total_utilization));
-        println!("- Utilization bound: {:.3}", analysis.utilization_bound));
-        println!("- Schedulable: {}", analysis.schedulable));
+        println!("Schedulability Analysis:");
+        println!("- Total utilization: {:.3}", analysis.total_utilization);
+        println!("- Utilization bound: {:.3}", analysis.utilization_bound);
+        println!("- Schedulable: {}", analysis.schedulable);
     }
 
     #[test]
@@ -675,10 +675,10 @@ mod tests {
             1
         );
 
-        println!("WCET Validation Results:"));
-        println!("- Static WCET: {} fuel", wcet_result.wcet_fuel));
-        println!("- Measurement WCET: {} fuel", refined_result.wcet_fuel));
-        println!("- Sample count: {}", refined_result.sample_count));
+        println!("WCET Validation Results:");
+        println!("- Static WCET: {} fuel", wcet_result.wcet_fuel);
+        println!("- Measurement WCET: {} fuel", refined_result.wcet_fuel);
+        println!("- Sample count: {}", refined_result.sample_count);
         println!(
             "- Confidence: {:.2}%",
             refined_result.confidence_level * 100.0
@@ -805,12 +805,12 @@ mod tests {
                 )
                 .unwrap();
 
-            println!("Task {} WCET Analysis:", task_id.0));
+            println!("Task {} WCET Analysis:", task_id.0);
             println!(
                 "  WCET: {} fuel, BCET: {} fuel",
                 wcet_result.wcet_fuel, wcet_result.bcet_fuel
             );
-            println!("  Confidence: {:.1}%", wcet_result.confidence_level * 100.0));
+            println!("  Confidence: {:.1}%", wcet_result.confidence_level * 100.0);
         }
 
         // 5. Test schedulability with ASIL-C constraints
@@ -897,7 +897,7 @@ mod tests {
                 / 1000.0;
         assert!(current_util <= 0.5);
 
-        println!("ASIL-C Compliance Verification Results:"));
+        println!("ASIL-C Compliance Verification Results:");
         println!(
             "✓ Zero deadline misses: {}",
             scheduler_stats
@@ -921,8 +921,8 @@ mod tests {
             "✓ WCET analysis samples: {}",
             wcet_stats.total_samples.load(core::sync::atomic::Ordering::Acquire)
         );
-        println!("✓ Deterministic scheduling: Hybrid RM+EDF with fuel bounds"));
-        println!("✓ Freedom from interference: Component isolation enforced"));
+        println!("✓ Deterministic scheduling: Hybrid RM+EDF with fuel bounds");
+        println!("✓ Freedom from interference: Component isolation enforced");
     }
 
     #[test]
@@ -1020,13 +1020,13 @@ mod examples {
         let priority_protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Full)?;
         let channel_manager = FuelAsyncChannelManager::<String>::new(VerificationLevel::Full)?;
 
-        println!("Phase 3 ASIL-C async system created with:"));
-        println!("- Fuel-aware WCET analysis with 99.9% confidence bounds"));
+        println!("Phase 3 ASIL-C async system created with:");
+        println!("- Fuel-aware WCET analysis with 99.9% confidence bounds");
         println!("- Constrained deadline scheduler (deadline ≤ period)"));
-        println!("- Hybrid Rate Monotonic + EDF scheduling"));
-        println!("- ASIL-based criticality mode switching"));
-        println!("- Real-time WCET enforcement and validation"));
-        println!("- Freedom from interference with deadline guarantees"));
+        println!("- Hybrid Rate Monotonic + EDF scheduling");
+        println!("- ASIL-based criticality mode switching");
+        println!("- Real-time WCET enforcement and validation");
+        println!("- Freedom from interference with deadline guarantees");
 
         Ok(())
     }
@@ -1076,12 +1076,12 @@ mod examples {
             wcet_result.bcet_fuel,     // Use analyzed BCET
         )?;
 
-        println!("ASIL-C Engine Control Task configured:"));
+        println!("ASIL-C Engine Control Task configured:");
         println!("- Period: 10ms (100Hz control rate)"));
         println!("- Deadline: 8ms (constrained deadline)"));
-        println!("- WCET: {} fuel units", wcet_result.wcet_fuel));
-        println!("- BCET: {} fuel units", wcet_result.bcet_fuel));
-        println!("- Safety margin: included in WCET analysis"));
+        println!("- WCET: {} fuel units", wcet_result.wcet_fuel);
+        println!("- BCET: {} fuel units", wcet_result.bcet_fuel);
+        println!("- Safety margin: included in WCET analysis");
 
         Ok(())
     }

@@ -675,7 +675,7 @@ impl wrt_foundation::traits::FromBytes for ExportInfo {
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
         {
-            let mut bytes = Vec::new());
+            let mut bytes = Vec::new();
             loop {
                 match reader.read_u8() {
                     Ok(byte) => bytes.push(byte),
@@ -683,7 +683,7 @@ impl wrt_foundation::traits::FromBytes for ExportInfo {
                 }
             }
 
-            let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect());
+            let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
             if parts.len() >= 3 {
                 Ok(ExportInfo {
                     name:      String::from_utf8_lossy(parts[0]).to_string(),
@@ -780,7 +780,7 @@ impl wrt_foundation::traits::FromBytes for ImportInfo {
     ) -> wrt_foundation::WrtResult<Self> {
         #[cfg(feature = "std")]
         {
-            let mut bytes = Vec::new());
+            let mut bytes = Vec::new();
             loop {
                 match reader.read_u8() {
                     Ok(byte) => bytes.push(byte),
@@ -788,7 +788,7 @@ impl wrt_foundation::traits::FromBytes for ImportInfo {
                 }
             }
 
-            let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect());
+            let parts: Vec<&[u8]> = bytes.split(|&b| b == 0).collect();
             if parts.len() >= 4 {
                 Ok(ImportInfo {
                     module:    String::from_utf8_lossy(parts[0]).to_string(),

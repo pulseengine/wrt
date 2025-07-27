@@ -334,7 +334,7 @@ mod tests {
             (FailureMode::NoFailure, 2),
         ];
 
-        let mut task_ids = Vec::new());
+        let mut task_ids = Vec::new();
         
         for (i, (failure_mode, polls_until_failure)) in task_configs.iter().enumerate() {
             let task_id = {
@@ -395,7 +395,7 @@ mod tests {
         assert!(completed_tasks > 0, "No tasks completed despite failures");
         
         println!("Task Failure Isolation Test: PASSED");
-        println!("  Total Tasks: {}", task_configs.len));
+        println!("  Total Tasks: {}", task_configs.len);
         println!("  Completed Tasks: {}", completed_tasks);
         println!("  Expected Good Tasks: {}", expected_good_tasks);
         println!("  Errors Isolated: {}", errors);
@@ -719,7 +719,7 @@ mod tests {
             FailureMode::RecoveryAfterFailure,
         ];
 
-        let mut task_ids = Vec::new());
+        let mut task_ids = Vec::new();
         
         for (i, failure_mode) in recovery_tasks.iter().enumerate() {
             let task_id = {
@@ -780,7 +780,7 @@ mod tests {
         assert_eq!(bridge_stats.active_components, 1);
         
         println!("Recovery and Graceful Degradation Test: PASSED");
-        println!("  Total Tasks: {}", recovery_tasks.len));
+        println!("  Total Tasks: {}", recovery_tasks.len);
         println!("  Completed Tasks: {}", completed_tasks);
         println!("  Expected Recoverable: {}", expected_recoverable);
         println!("  Errors: {}", errors);
@@ -795,7 +795,7 @@ mod tests {
         // Create multiple components to test system-wide stability
         let components: Vec<ComponentInstanceId> = (1..=3)
             .map(|i| ComponentInstanceId::new(i)
-            .collect());
+            .collect();
 
         for &component_id in &components {
             {
@@ -920,7 +920,7 @@ mod tests {
         let completion_rate = completed_tasks as f64 / task_count as f64;
         
         println!("System Stability Under Errors Test: PASSED");
-        println!("  Components: {}", components.len));
+        println!("  Components: {}", components.len);
         println!("  Total Tasks: {}", task_count);
         println!("  Completed Tasks: {}", completed_tasks);
         println!("  Completion Rate: {:.1}%", completion_rate * 100.0);

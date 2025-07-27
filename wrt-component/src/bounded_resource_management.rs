@@ -630,7 +630,7 @@ impl BoundedResourceManager {
         let pending_resources: alloc::vec::Vec<ResourceId> = self.global_resources.iter()
             .filter(|r| r.state == ResourceState::PendingCleanup)
             .map(|r| r.id)
-            .collect());
+            .collect();
         
         for resource_id in pending_resources {
             self.finalize_resource(resource_id)?;

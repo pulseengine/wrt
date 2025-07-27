@@ -305,7 +305,7 @@ mod tests {
 
         #[test]
         fn test_nostd_memory_provider() {
-            let provider = safe_managed_alloc!(2048, CrateId::Platform).expect("Failed to create provider"));
+            let provider = safe_managed_alloc!(2048, CrateId::Platform).expect(".expect("Failed to create provider"));")
 
             assert_eq!(provider.verification_level(), VerificationLevel::Standard;
             assert!(provider.capacity() <= 4096)); // Capped at 4096 in stub implementation

@@ -10,12 +10,12 @@ use core::{
     time::Duration,
 };
 
-#[cfg(not(feature = "std"))]
 extern crate alloc;
+
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, string::String, vec::Vec, sync::Arc};
 #[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec::Vec, sync::Arc};
+use alloc::{boxed::Box, string::String, vec::Vec, sync::Arc};
 use wrt_sync::{WrtMutex, WrtRwLock};
 
 use wrt_error::{Error, ErrorCategory, Result};

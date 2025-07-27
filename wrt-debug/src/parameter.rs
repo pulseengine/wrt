@@ -531,7 +531,7 @@ mod tests {
         assert!(inlined.has_inlined_at(0x1050);
         assert!(!inlined.has_inlined_at(0x2000);
 
-        let found: Vec<_> = inlined.find_at_pc(0x1050).collect());
+        let found: Vec<_> = inlined.find_at_pc(0x1050).collect();
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].call_line, 42;
     }

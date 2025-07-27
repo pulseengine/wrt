@@ -141,7 +141,7 @@ impl CiSimulator {
 
     /// Run the full CI simulation
     pub fn run_simulation(&self) -> BuildResult<CiSimulationResults> {
-        println!("{} CI Workflow Simulation", "🔄".bright_blue));
+        println!("{} CI Workflow Simulation", "🔄".bright_blue);
         println!);
 
         let start_time = Instant::now);
@@ -224,7 +224,7 @@ impl CiSimulator {
 
     /// Check prerequisites
     fn check_prerequisites(&self) -> PrerequisiteResults {
-        println!("{} Checking prerequisites...", "1️⃣".bright_yellow));
+        println!("{} Checking prerequisites...", "1️⃣".bright_yellow);
 
         // Check Rust
         let (rust_installed, rust_version) = match Command::new("rustc").arg("--version").output() {
@@ -234,7 +234,7 @@ impl CiSimulator {
                 (true, Some(version))
             },
             _ => {
-                println!("  {} Rust not found", "✗".bright_red));
+                println!("  {} Rust not found", "✗".bright_red);
                 (false, None)
             },
         };
@@ -248,7 +248,7 @@ impl CiSimulator {
                 (true, Some(version))
             },
             _ => {
-                println!("  {} Cargo not found", "✗".bright_red));
+                println!("  {} Cargo not found", "✗".bright_red);
                 (false, None)
             },
         };
@@ -285,7 +285,7 @@ impl CiSimulator {
 
     /// Simulate cache operations
     fn simulate_cache(&self) {
-        println!("{} Simulating cache operations...", "2️⃣".bright_yellow));
+        println!("{} Simulating cache operations...", "2️⃣".bright_yellow);
 
         // In real CI, this would use actions/cache
         if let Ok(metadata) = fs::read_to_string(self.workspace_root.join("Cargo.lock")) {
@@ -293,12 +293,12 @@ impl CiSimulator {
             println!("  Cache key would be: {}", cache_key);
         }
 
-        println!("  {} Cache simulation complete", "✓".bright_green));
+        println!("  {} Cache simulation complete", "✓".bright_green);
     }
 
     /// Check workspace syntax
     fn check_workspace_syntax(&self, logs: &mut HashMap<String, String>) -> BuildResult<bool> {
-        println!("{} Workspace syntax validation...", "3️⃣".bright_yellow));
+        println!("{} Workspace syntax validation...", "3️⃣".bright_yellow);
 
         let output = Command::new("cargo")
             .arg("check")
@@ -316,10 +316,10 @@ impl CiSimulator {
         logs.insert("syntax-check".to_string(), log_content;
 
         if output.status.success() {
-            println!("  {} Workspace syntax valid", "✓".bright_green));
+            println!("  {} Workspace syntax valid", "✓".bright_green);
             Ok(true)
         } else {
-            println!("  {} Workspace syntax errors", "✗".bright_red));
+            println!("  {} Workspace syntax errors", "✗".bright_red);
             println!("  See logs for details");
             Ok(false)
         }
@@ -327,7 +327,7 @@ impl CiSimulator {
 
     /// Validate configuration
     fn validate_configuration(&self) -> BuildResult<ConfigurationResults> {
-        println!("{} KANI configuration validation...", "4️⃣".bright_yellow));
+        println!("{} KANI configuration validation...", "4️⃣".bright_yellow);
 
         let mut results = ConfigurationResults {
             workspace_syntax_valid: true,
@@ -348,7 +348,7 @@ impl CiSimulator {
                     packages
                 ;
             } else {
-                println!("  {} Missing workspace KANI config", "✗".bright_red));
+                println!("  {} Missing workspace KANI config", "✗".bright_red);
             }
         }
 
@@ -357,9 +357,9 @@ impl CiSimulator {
             self.workspace_root.join("wrt-tests").join("integration").join("Kani.toml";
         if integration_kani.exists() {
             results.integration_kani_toml = true;
-            println!("  {} Integration Kani.toml present", "✓".bright_green));
+            println!("  {} Integration Kani.toml present", "✓".bright_green);
         } else {
-            println!("  {} Missing integration Kani.toml", "✗".bright_red));
+            println!("  {} Missing integration Kani.toml", "✗".bright_red);
         }
 
         Ok(results)
@@ -367,7 +367,7 @@ impl CiSimulator {
 
     /// Validate build system capabilities
     fn validate_build_system(&self) -> BuildResult<BuildSystemValidationResults> {
-        println!("{} Build system validation...", "5️⃣".bright_yellow));
+        println!("{} Build system validation...", "5️⃣".bright_yellow);
 
         // Check if KANI verification is available via Rust implementation
         let kani_verify_available = crate::kani::is_kani_available);
@@ -425,13 +425,13 @@ impl CiSimulator {
 
     /// Run quick verification simulation
     fn run_quick_verification(&self, kani_available: &bool) -> BuildResult<VerificationResult> {
-        println!("{} Quick verification simulation...", "6️⃣".bright_yellow));
+        println!("{} Quick verification simulation...", "6️⃣".bright_yellow);
 
         let start = Instant::now);
 
         if *kani_available {
             println!("  Running: cargo kani -p wrt-integration-tests --features kani");
-            println!("  {} Quick verification would run", "✓".bright_green));
+            println!("  {} Quick verification would run", "✓".bright_green);
 
             Ok(VerificationResult {
                 executed:    true,
@@ -449,7 +449,7 @@ impl CiSimulator {
 
             match output {
                 Ok(result) if result.status.success() => {
-                    println!("  {} Quick test simulation passed", "✓".bright_green));
+                    println!("  {} Quick test simulation passed", "✓".bright_green);
                     Ok(VerificationResult {
                         executed:    true,
                         passed:      true,
@@ -458,7 +458,7 @@ impl CiSimulator {
                     })
                 },
                 Ok(_) => {
-                    println!("  {} Quick test simulation had issues", "⚠".bright_yellow));
+                    println!("  {} Quick test simulation had issues", "⚠".bright_yellow);
                     Ok(VerificationResult {
                         executed:    true,
                         passed:      false,
@@ -481,7 +481,7 @@ impl CiSimulator {
 
     /// Simulate matrix strategy
     fn simulate_matrix_strategy(&self) -> MatrixStrategy {
-        println!("{} Matrix verification simulation...", "7️⃣".bright_yellow));
+        println!("{} Matrix verification simulation...", "7️⃣".bright_yellow);
 
         let packages = vec![
             "wrt-foundation".to_string(),
@@ -529,14 +529,14 @@ impl CiSimulator {
         build_system: &BuildSystemValidationResults,
         matrix: &MatrixStrategy,
     ) -> BuildResult<Vec<PathBuf>> {
-        println!("{} Artifact generation simulation...", "8️⃣".bright_yellow));
+        println!("{} Artifact generation simulation...", "8️⃣".bright_yellow);
 
         let artifacts_dir = self.simulation_dir.join("artifacts";
         fs::create_dir_all(&artifacts_dir).map_err(|e| {
             BuildError::Tool(format!("Failed to create artifacts directory: {}", e))
         })?;
 
-        let mut artifacts = Vec::new());
+        let mut artifacts = Vec::new();
 
         // Generate verification summary
         let summary_path = artifacts_dir.join("verification_summary.md";
@@ -592,7 +592,7 @@ impl CiSimulator {
         matrix: &MatrixStrategy,
         overall_passed: bool,
     ) -> BuildResult<()> {
-        println!("{} Summary generation...", "9️⃣".bright_yellow));
+        println!("{} Summary generation...", "9️⃣".bright_yellow);
 
         let status_path = self.simulation_dir.join("ci-status.txt";
         let status_content = format!(
@@ -623,7 +623,7 @@ The CI workflow is ready for GitHub Actions execution.
 
         // Print summary
         println!);
-        println!("{}", "=== Simulation Complete ===".bright_blue));
+        println!("{}", "=== Simulation Complete ===".bright_blue);
         println!("{}", status_content);
         println!(
             "Detailed logs available in: {}",
@@ -651,9 +651,9 @@ The CI workflow is ready for GitHub Actions execution.
     /// Print results summary to console
     pub fn print_summary(&self, results: &CiSimulationResults) {
         if results.overall_passed {
-            println!("{} CI workflow ready for execution", "✅".bright_green));
+            println!("{} CI workflow ready for execution", "✅".bright_green);
         } else {
-            println!("{} CI workflow has issues to address", "❌".bright_red));
+            println!("{} CI workflow has issues to address", "❌".bright_red);
         }
     }
 }

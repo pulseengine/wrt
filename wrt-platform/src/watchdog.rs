@@ -12,7 +12,7 @@ use core::{
 };
 
 #[cfg(not(feature = "std"))]
-use std::{collections::BTreeMap, string::String, sync::Arc};
+use alloc::{collections::BTreeMap, string::String, sync::Arc};
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, string::String, sync::Arc};
 
@@ -140,8 +140,8 @@ impl SoftwareWatchdog {
                     if elapsed > task.timeout {
                         // Timeout detected
                         eprintln!(
-                            "Watchdog: Task '{}' (ID: {:?}) timed out after {:?}",
-                            task.name, task.id, elapsed
+                            "Watchdog: Task '{name}' (ID: {id:?}) timed out after {elapsed:?}",
+                            name = task.name, id = task.id, elapsed = elapsed
                         );
 
                         // Execute action
@@ -152,7 +152,7 @@ impl SoftwareWatchdog {
                             WatchdogAction::Kill => {
                                 if auto_kill {
                                     // Platform-specific kill logic would go here
-                                    eprintln!("Watchdog: Would kill task {}", task.name);
+                                    eprintln!("Watchdog: Would kill task {name}", name = task.name);
                                 }
                             }
                         }
@@ -319,7 +319,7 @@ impl WatchdogIntegration for SoftwareWatchdog {
         timeout: Duration,
     ) -> Result<WatchdogHandle> {
         self.watch_task(
-            format!("WASM module: {}", module_name),
+            format!("WASM module: {module_name}"),
             Some(timeout),
             WatchdogAction::Log,
         )

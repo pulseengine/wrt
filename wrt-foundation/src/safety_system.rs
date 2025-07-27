@@ -956,7 +956,7 @@ impl UniversalSafetyContext {
             if slot.is_none() {
                 *slot = Some(standard);
                 self.update_effective_severity();
-                return Ok();
+                return Ok(());
             }
         }
         Err(Error::safety_violation("Too many secondary standards"))

@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_wrt_vec_creation() {
-        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 100> = WrtVec::new());
+        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 100> = WrtVec::new();
         assert_eq!(vec.len(), 0);
         assert_eq!(WrtVec::<i32, { CrateId::Foundation as u8 }, 100>::max_capacity(), 100);
 
@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn test_wrt_vec_capacity_limits() {
-        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 2> = WrtVec::new());
+        let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 2> = WrtVec::new();
 
         // Fill to capacity
         assert!(vec.push(1).is_ok());

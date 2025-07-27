@@ -135,12 +135,12 @@ fn test_custom_section_with_name() {
     let name_section_data = generate_component_name_section(&actual_name_section).unwrap();
 
     // Create custom section content with "name" as the identifier
-    let mut custom_section_content = Vec::new());
+    let mut custom_section_content = Vec::new();
     custom_section_content.extend_from_slice(&binary::write_string("name";
     custom_section_content.extend_from_slice(&name_section_data;
 
     // Create a component with just the custom section
-    let mut binary = Vec::new());
+    let mut binary = Vec::new();
 
     // Component preamble
     binary.extend_from_slice(&binary::COMPONENT_MAGIC;

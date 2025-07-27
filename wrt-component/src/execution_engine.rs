@@ -462,7 +462,7 @@ impl ComponentExecutionEngine {
     /// Convert engine values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<crate::canonical_abi::ComponentValue>> {
-        let mut component_values = Vec::new());
+        let mut component_values = Vec::new();
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
             component_values.push(component_value);

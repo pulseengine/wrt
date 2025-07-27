@@ -322,7 +322,7 @@ impl FuelAsyncRuntime {
     
     /// Collect results from completed tasks
     fn collect_completed_tasks(&mut self) -> Result<()> {
-        let mut completed_tasks = Vec::new());
+        let mut completed_tasks = Vec::new();
         
         // Get completed tasks from executor
         {

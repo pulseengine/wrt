@@ -816,7 +816,7 @@ mod tests {
 
         // Test br_table instruction with in-range index
         context.push_control_value(Value::I32(1)).unwrap()); // Index 1
-        let mut table = Vec::new());
+        let mut table = Vec::new();
         table.push(10);
         table.push(20);
         table.push(30);

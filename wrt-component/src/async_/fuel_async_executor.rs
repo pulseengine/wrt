@@ -1353,7 +1353,7 @@ impl FuelAsyncExecutor {
     pub fn get_fuel_alerts(&self) -> Vec<FuelAlert> {
         if let Some(monitor) = &self.fuel_monitor {
             if let Ok(alerts) = monitor.active_alerts.lock() {
-                return alerts.iter().cloned().collect());
+                return alerts.iter().cloned().collect();
             }
         }
         Vec::new()
@@ -2645,7 +2645,7 @@ impl FuelAsyncExecutor {
     
     /// Serialize WebAssembly values to bytes
     fn serialize_values(&self, values: &[wrt_foundation::Value]) -> Result<Vec<u8>, Error> {
-        let mut result = Vec::new());
+        let mut result = Vec::new();
         
         for value in values {
             match value {

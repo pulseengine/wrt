@@ -241,7 +241,7 @@ impl ArcMemoryExt for Arc<Memory> {
     fn read_exact(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Early return for zero-length reads
         if len == 0 {
-            return Ok(Vec::new());
+            return Ok(Vec::new();
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer
@@ -251,7 +251,7 @@ impl ArcMemoryExt for Arc<Memory> {
         let data = safe_slice.data()?;
 
         // Create a Vec from the verified slice data
-        let mut buffer = Vec::new());
+        let mut buffer = Vec::new();
         for &byte in data {
             buffer.push(byte);
         }

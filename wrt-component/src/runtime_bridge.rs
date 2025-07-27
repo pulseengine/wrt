@@ -367,7 +367,7 @@ impl ValueConverter {
 
     /// Convert multiple values
     pub fn convert_values_component_to_core(&self, values: &[ComponentValue]) -> Result<Vec<CoreValue>> {
-        let mut core_values = Vec::new());
+        let mut core_values = Vec::new();
         for value in values {
             core_values.push(self.component_to_core(value)?;
         }
@@ -384,7 +384,7 @@ impl ValueConverter {
             return Err(Error::validation_error("Error occurred";
         }
 
-        let mut component_values = Vec::new());
+        let mut component_values = Vec::new();
         for (value, target_type) in values.iter().zip(types.iter()) {
             component_values.push(self.core_to_component(value, target_type)?;
         }

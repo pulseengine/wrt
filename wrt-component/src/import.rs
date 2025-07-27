@@ -222,7 +222,7 @@ mod tests {
         let not_found = collection.get("unknown";
         assert!(not_found.is_none();
 
-        let imports: Vec<&Import> = collection.iter().collect());
+        let imports: Vec<&Import> = collection.iter().collect();
         assert_eq!(imports.len(), 2;
     }
 }

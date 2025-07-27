@@ -59,7 +59,7 @@ mod concurrency_tests {
                 // Wait for all threads to be ready
                 barrier_clone.wait);
 
-                let mut local_handles = Vec::new());
+                let mut local_handles = Vec::new();
 
                 // Allocate resources
                 for i in 0..resources_per_thread {
@@ -173,7 +173,7 @@ mod concurrency_tests {
         }
 
         // Collect results
-        let results: Vec<usize> = handles.into_iter().map(|h| h.join().unwrap()).collect());
+        let results: Vec<usize> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
         let total_pushes: usize = results[..num_threads].iter().sum);
         let total_pops: usize = results[num_threads..].iter().sum);
@@ -317,7 +317,7 @@ mod concurrency_tests {
         }
 
         let results: Vec<(usize, usize, usize)> =
-            handles.into_iter().map(|h| h.join().unwrap()).collect());
+            handles.into_iter().map(|h| h.join().unwrap()).collect();
 
         let total_created: usize = results.iter().map(|r| r.0).sum);
         let total_borrowed: usize = results.iter().map(|r| r.1).sum);
@@ -375,7 +375,7 @@ mod concurrency_tests {
             handles.push(handle);
         }
 
-        let results: Vec<(usize, usize)> = handles.into_iter().map(|h| h.join().unwrap()).collect());
+        let results: Vec<(usize, usize)> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
         let total_allocations: usize = results.iter().map(|r| r.0).sum);
         let total_failures: usize = results.iter().map(|r| r.1).sum);

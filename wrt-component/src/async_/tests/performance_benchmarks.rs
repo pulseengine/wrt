@@ -179,7 +179,7 @@ mod tests {
         const NUM_TASKS: usize = 50;
         const ITERATIONS_PER_TASK: u64 = 1000;
         
-        let mut task_ids = Vec::new());
+        let mut task_ids = Vec::new();
         
         for i in 0..NUM_TASKS {
             let task_id = bridge.spawn_async_task(
@@ -212,7 +212,7 @@ mod tests {
             
             // Prevent infinite loop
             if round > 5000 {
-                eprintln!("Warning: Benchmark may not have completed all tasks"));
+                eprintln!("Warning: Benchmark may not have completed all tasks");
                 break;
             }
         }
@@ -363,7 +363,7 @@ mod tests {
         const TIMER_DURATION: u64 = 100; // 100ms
 
         // Create multiple timers
-        let mut timer_ids = Vec::new());
+        let mut timer_ids = Vec::new();
         for _ in 0..NUM_TIMERS {
             let timer_id = timers.create_timer(
                 component_id,
@@ -417,7 +417,7 @@ mod tests {
 
         let components: Vec<ComponentInstanceId> = (1..=NUM_COMPONENTS)
             .map(|i| ComponentInstanceId::new(i)
-            .collect());
+            .collect();
 
         // Initialize all components
         for &component_id in &components {
@@ -508,7 +508,7 @@ mod tests {
         const NUM_PRIMITIVES: u32 = 100;
 
         // Create channels
-        let mut channel_pairs = Vec::new());
+        let mut channel_pairs = Vec::new();
         for _ in 0..NUM_PRIMITIVES {
             if let Ok(pair) = channels.create_channel(component_id, ChannelType::Bounded(16)) {
                 channel_pairs.push(pair);
@@ -516,7 +516,7 @@ mod tests {
         }
 
         // Create timers
-        let mut timer_ids = Vec::new());
+        let mut timer_ids = Vec::new();
         for i in 0..NUM_PRIMITIVES {
             if let Ok(timer_id) = timers.create_timer(
                 component_id,
@@ -528,8 +528,8 @@ mod tests {
         }
 
         // Create sync primitives
-        let mut mutex_ids = Vec::new());
-        let mut semaphore_ids = Vec::new());
+        let mut mutex_ids = Vec::new();
+        let mut semaphore_ids = Vec::new();
         
         for _ in 0..NUM_PRIMITIVES / 2 {
             if let Ok(mutex_id) = sync_primitives.create_async_mutex(component_id, false) {

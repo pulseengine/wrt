@@ -203,7 +203,7 @@ mod tests {
                 1000,
                 ASILExecutionMode::A { error_detection: true },
             ).unwrap()
-        }).collect());
+        }).collect();
         
         // Run runtime for a limited time
         let start_fuel = global_fuel_consumed);
@@ -398,7 +398,7 @@ mod tests {
                 2000,
                 asil_mode,
             ).unwrap()
-        }).collect());
+        }).collect();
         
         // Execute with limited fuel to force interleaving
         let mut polls = 0;

@@ -95,7 +95,7 @@ impl AsyncCanonicalEncoder {
                 // Use proper error propagation for encoder construction
                 // This should only fail in extreme memory exhaustion scenarios
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("AsyncCanonicalEncoder allocation should not fail"));
+                    .expect(".expect("AsyncCanonicalEncoder allocation should not fail"));")
                 BoundedVec::new(provider)
                     .expect("AsyncCanonicalEncoder buffer initialization should not fail")
             },
@@ -466,7 +466,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     }
     
     fn decode_record(&mut self, fields: &[(String, ValType)], options: &CanonicalOptions) -> core::result::Result<Vec<(String, Value)>> {
-        let mut result = Vec::new());
+        let mut result = Vec::new();
         for (name, field_type) in fields {
             let value = self.decode_value(field_type, options)?;
             result.push((name.clone(), value;
@@ -490,7 +490,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     }
     
     fn decode_tuple(&mut self, types: &[ValType], options: &CanonicalOptions) -> Result<Vec<Value>> {
-        let mut values = Vec::new());
+        let mut values = Vec::new();
         for val_type in types {
             values.push(self.decode_value(val_type, options)?;
         }
@@ -520,7 +520,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     
     fn decode_flags(&mut self, count: usize) -> Result<Vec<bool>> {
         let packed = self.decode_u32()?;
-        let mut flags = Vec::new());
+        let mut flags = Vec::new();
         
         for i in 0..count.min(32) {
             flags.push((packed & (1 << i)) != 0;
@@ -594,7 +594,7 @@ pub fn async_canonical_lift(
     options: &CanonicalOptions,
 ) -> Result<Vec<Value>> {
     let mut decoder = AsyncCanonicalDecoder::new(bytes;
-    let mut values = Vec::new());
+    let mut values = Vec::new();
     
     for val_type in target_types {
         values.push(decoder.decode_value(val_type, options)?;

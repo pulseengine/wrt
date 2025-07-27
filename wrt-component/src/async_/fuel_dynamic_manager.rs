@@ -426,7 +426,7 @@ impl FuelDynamicManager {
     fn rebalance_priority_adaptive(&mut self, total_available: u64) -> Result<(), Error> {
         // Calculate priority weights
         let mut total_weight = 0.0;
-        let mut weights = Vec::new());
+        let mut weights = Vec::new();
 
         for (id, quota) in self.component_quotas.iter() {
             let active = quota.active_tasks.load(Ordering::Acquire) as f64;

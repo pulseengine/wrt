@@ -555,7 +555,7 @@ mod tests {
             formal_verification: true,
             max_fuel_per_slice: 1000,
         }), 100;
-        assert!(!executor.can_preempt(&ExecutionContext::new());
+        assert!(!executor.can_preempt(&ExecutionContext::new();
     }
 
     #[test]

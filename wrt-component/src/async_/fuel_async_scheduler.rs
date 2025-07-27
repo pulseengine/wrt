@@ -220,7 +220,7 @@ impl FuelAsyncScheduler {
 
     /// Check for deadline violations
     pub fn check_deadlines(&self, current_time: u64) -> Vec<TaskId> {
-        let mut violations = Vec::new());
+        let mut violations = Vec::new();
 
         for (task_id, task) in self.scheduled_tasks.iter() {
             if let Some(deadline) = task.deadline {

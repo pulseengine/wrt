@@ -156,6 +156,6 @@ mod tests {
 }
 
 fn main() {
-    println!("wrt-debug runtime features compile successfully!"));
-    println!("The build failures are in dependencies, not our code."));
+    println!("wrt-debug runtime features compile successfully!");
+    println!("The build failures are in dependencies, not our code.");
 }

@@ -564,7 +564,7 @@ impl Memory {
         // memory integrity is verified during the operation
         let data_size = self.data.size);
         if data_size == 0 {
-            return Ok(Vec::new());
+            return Ok(Vec::new();
         }
 
         // Get a safe slice over the entire memory

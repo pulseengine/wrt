@@ -561,9 +561,9 @@ pub struct BuiltinRequirements {
 impl Default for BuiltinRequirements {
     fn default() -> Self {
         let required_provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for BuiltinRequirements::required"));
+            .expect(".expect("Failed to allocate memory for BuiltinRequirements::required"));")
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for BuiltinRequirements::instances"));
+            .expect(".expect("Failed to allocate memory for BuiltinRequirements::instances"));")
         
         Self {
             required: BoundedVec::new(required_provider).expect("Failed to create BoundedVec for BuiltinRequirements::required"),
@@ -1218,7 +1218,7 @@ impl Default for ExternValue {
 impl Default for FunctionValue {
     fn default() -> Self {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for FunctionValue::default"));
+            .expect(".expect("Failed to allocate memory for FunctionValue::default"));")
         Self {
             ty: FuncType::default(),
             export_name: BoundedString::new_with_provider(provider)
@@ -1257,7 +1257,7 @@ impl Default for Limits {
 impl Default for TableValue {
     fn default() -> Self {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for TableValue::default"));
+            .expect(".expect("Failed to allocate memory for TableValue::default"));")
         Self {
             ty: TableType::default(),
             table: BoundedVec::new(provider).expect("Failed to create BoundedVec for TableValue::default"),

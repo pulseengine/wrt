@@ -97,7 +97,7 @@ impl CleanRuntime {
                 CleanValType::F64 => CleanValue::F64(42.0),
                 _ => CleanValue::S32(0), // Default for complex types
             })
-            .collect());
+            .collect();
 
         Ok(results)
     }

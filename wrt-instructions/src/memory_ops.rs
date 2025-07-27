@@ -1583,10 +1583,10 @@ mod tests {
         fn new() -> Self {
             #[cfg(feature = "std")]
             {
-                let mut segments = Vec::new());
-                let mut seg1 = Vec::new());
+                let mut segments = Vec::new();
+                let mut seg1 = Vec::new();
                 for val in [1, 2, 3, 4, 5] { seg1.push(val); }
-                let mut seg2 = Vec::new());
+                let mut seg2 = Vec::new();
                 for val in [0xAA, 0xBB, 0xCC, 0xDD] { seg2.push(val); }
                 segments.push(Some(seg1);
                 segments.push(Some(seg2);
@@ -1595,15 +1595,15 @@ mod tests {
             }
             #[cfg(not(any(feature = "std", )))]
             {
-                let mut segments = wrt_foundation::BoundedVec::new());
+                let mut segments = wrt_foundation::BoundedVec::new();
                 
-                let mut seg1 = wrt_foundation::BoundedVec::new());
+                let mut seg1 = wrt_foundation::BoundedVec::new();
                 for &b in &[1, 2, 3, 4, 5] {
                     seg1.push(b).unwrap();
                 }
                 segments.push(Some(seg1)).unwrap();
                 
-                let mut seg2 = wrt_foundation::BoundedVec::new());
+                let mut seg2 = wrt_foundation::BoundedVec::new();
                 for &b in &[0xAA, 0xBB, 0xCC, 0xDD] {
                     seg2.push(b).unwrap();
                 }

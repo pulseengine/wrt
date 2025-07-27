@@ -373,7 +373,7 @@ mod tests {
         // Create multiple components
         let components: Vec<ComponentInstanceId> = (1..=5)
             .map(|i| ComponentInstanceId::new(i))
-            .collect());
+            .collect();
 
         for &component_id in &components {
             harness.initialize_component(component_id).unwrap();
@@ -480,7 +480,7 @@ mod tests {
 
         // 2. Component limits exceeded
         // Try to create too many timers
-        let mut timer_ids = Vec::new());
+        let mut timer_ids = Vec::new();
         for i in 0..200 { // Exceed limit
             match harness.timers.create_timer(
                 component_id,
@@ -629,10 +629,10 @@ mod tests {
         ).unwrap();
 
         // Simulate concurrent access from multiple tasks
-        let task_ids: Vec<_> = (1..=5).map(|i| crate::threading::task_manager::TaskId::new(i)).collect());
+        let task_ids: Vec<_> = (1..=5).map(|i| crate::threading::task_manager::TaskId::new(i)).collect();
 
         // Test concurrent mutex access
-        let mut mutex_results = Vec::new());
+        let mut mutex_results = Vec::new();
         for &task_id in &task_ids {
             let result = harness.sync_primitives.lock_async_mutex(
                 mutex_id,
@@ -649,7 +649,7 @@ mod tests {
         assert_eq!(acquired_count, 1);
 
         // Test concurrent semaphore access
-        let mut sem_results = Vec::new());
+        let mut sem_results = Vec::new();
         for &task_id in &task_ids {
             let result = harness.sync_primitives.acquire_semaphore(
                 semaphore_id,
