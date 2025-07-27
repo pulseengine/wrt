@@ -55,7 +55,7 @@ impl LinuxDomainSocket {
 
     /// Generate next client ID
     fn next_client_id(&self) -> u64 {
-        let mut id = self.next_client_id.lock().unwrap());
+        let mut id = self.next_client_id.lock().unwrap();
         let current = *id;
         *id += 1;
         current
@@ -168,7 +168,7 @@ mod tests {
         let result = LinuxDomainSocket::create_server("test_socket";
         assert!(result.is_ok());
         
-        let socket = result.unwrap());
+        let socket = result.unwrap();
         assert!(socket.socket_path.contains("test_socket");
         
         // Clean up
@@ -177,8 +177,8 @@ mod tests {
 
     #[test]
     fn test_channel_id_generation() {
-        let socket1 = LinuxDomainSocket::new("test1".to_string();
-        let socket2 = LinuxDomainSocket::new("test2".to_string();
+        let socket1 = LinuxDomainSocket::new("test1".to_string());
+        let socket2 = LinuxDomainSocket::new("test2".to_string());
         
         // Channel IDs should be different
         assert_ne!(socket1.id().0, socket2.id().0;

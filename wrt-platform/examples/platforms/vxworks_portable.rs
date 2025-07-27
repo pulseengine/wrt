@@ -18,18 +18,18 @@ use core::sync::atomic::Ordering;
 use core::time::Duration;
 
 fn main() {
-    println!("=== VxWorks Platform Usage Example ===";
+    println!("=== VxWorks Platform Usage Example ===");
     
     #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
     {
-        println!("Running on VxWorks platform!";
+        println!("Running on VxWorks platform!");
         run_vxworks_examples);
     }
     
     #[cfg(not(all(feature = "platform-vxworks", target_os = "vxworks")))]
     {
-        println!("VxWorks platform not available on this system.";
-        println!("This example demonstrates how VxWorks support would work:";
+        println!("VxWorks platform not available on this system.");
+        println!("This example demonstrates how VxWorks support would work:");
         show_vxworks_concepts);
     }
 }
@@ -46,32 +46,32 @@ fn run_vxworks_examples() {
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn example_rtp_memory_allocation() {
-    println!("\n=== Example 1: RTP Memory Allocation ===";
+    println!("\n=== Example 1: RTP Memory Allocation ===");
     
     let mut allocator = VxWorksAllocatorBuilder::new()
         .context(VxWorksContext::Rtp)
         .max_pages(100)
         .enable_guard_pages(false)
         .build()
-        .expect("Failed to create RTP allocator");
+        .expect("Failed to create RTP allocator"));
     
-    println!("Created RTP allocator with max {} pages", allocator.max_pages);
+    println!("Created RTP allocator with max {} pages", allocator.max_pages));
     
     let pages_to_allocate = 10;
     let ptr = allocator.allocate_pages(pages_to_allocate)
-        .expect("Failed to allocate pages");
+        .expect("Failed to allocate pages"));
     
-    println!("Allocated {} pages", pages_to_allocate;
+    println!("Allocated {} pages", pages_to_allocate);
     
     allocator.deallocate_pages(ptr, pages_to_allocate)
-        .expect("Failed to deallocate");
+        .expect("Failed to deallocate"));
     
-    println!("Deallocated all pages";
+    println!("Deallocated all pages");
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn example_lkm_memory_allocation() {
-    println!("\n=== Example 2: LKM Memory Allocation ===";
+    println!("\n=== Example 2: LKM Memory Allocation ===");
     
     let mut allocator = VxWorksAllocatorBuilder::new()
         .context(VxWorksContext::Lkm)
@@ -79,122 +79,122 @@ fn example_lkm_memory_allocation() {
         .use_dedicated_partition(true)
         .enable_guard_pages(true)
         .build()
-        .expect("Failed to create LKM allocator");
+        .expect("Failed to create LKM allocator"));
     
-    println!("Created LKM allocator with dedicated partition";
+    println!("Created LKM allocator with dedicated partition");
     
     let pages = 5;
     let ptr = allocator.allocate_pages(pages)
-        .expect("Failed to allocate from partition");
+        .expect("Failed to allocate from partition"));
     
-    println!("Allocated {} pages from partition", pages;
+    println!("Allocated {} pages from partition", pages);
     
     allocator.deallocate_pages(ptr, pages)
-        .expect("Failed to deallocate");
+        .expect("Failed to deallocate"));
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn example_synchronization() {
-    println!("\n=== Example 3: Synchronization ===";
+    println!("\n=== Example 3: Synchronization ===");
     
     let futex = VxWorksFutexBuilder::new(VxWorksContext::Rtp)
         .initial_value(0)
         .build()
-        .expect("Failed to create futex");
+        .expect("Failed to create futex"));
     
-    println!("Created VxWorks futex";
+    println!("Created VxWorks futex");
     
     futex.store(42, Ordering::Release;
     let value = futex.load(Ordering::Acquire;
-    println!("Stored and loaded value: {}", value;
+    println!("Stored and loaded value: {}", value);
     
-    let woken = futex.wake_one().expect("Failed to wake");
-    println!("Woke {} waiters", woken;
+    let woken = futex.wake_one().expect("Failed to wake"));
+    println!("Woke {} waiters", woken);
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn example_threading() {
-    println!("\n=== Example 4: Threading ===";
+    println!("\n=== Example 4: Threading ===");
     
     // Binary std/no_std choice
-    println!("Threading examples would work with VxWorks tasks and pthreads";
+    println!("Threading examples would work with VxWorks tasks and pthreads");
 }
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 fn example_complete_integration() {
-    println!("\n=== Example 5: Complete Integration ===";
-    println!("VxWorks platform integrated with WRT runtime";
+    println!("\n=== Example 5: Complete Integration ===");
+    println!("VxWorks platform integrated with WRT runtime");
 }
 
 // This function demonstrates the concepts even on non-VxWorks platforms
 #[cfg(not(all(feature = "platform-vxworks", target_os = "vxworks")))]
 fn show_vxworks_concepts() {
-    println!("\n=== VxWorks Platform Concepts ===";
+    println!("\n=== VxWorks Platform Concepts ===");
     
-    println!("\n1. Execution Contexts:";
-    println!("   - RTP (Real-Time Process): User-space applications";
-    println!("   - LKM (Loadable Kernel Module): Kernel-space modules";
+    println!("\n1. Execution Contexts:");
+    println!("   - RTP (Real-Time Process): User-space applications");
+    println!("   - LKM (Loadable Kernel Module): Kernel-space modules");
     
-    println!("\n2. Memory Management:";
-    println!("   - RTP: Uses standard C malloc/free or POSIX APIs";
-    println!("   - LKM: Uses VxWorks memory partitions (memPartAlloc/memPartFree)";
-    println!("   - Both support 64KB aligned WASM pages";
+    println!("\n2. Memory Management:");
+    println!("   - RTP: Uses standard C malloc/free or POSIX APIs");
+    println!("   - LKM: Uses VxWorks memory partitions (memPartAlloc/memPartFree)");
+    println!("   - Both support 64KB aligned WASM pages");
     
-    println!("\n3. Synchronization:";
-    println!("   - RTP: POSIX semaphores (sem_init, sem_wait, sem_post)";
-    println!("   - LKM: VxWorks semaphores (semBCreate, semTake, semGive)";
-    println!("   - Both provide futex-like semantics for WRT";
+    println!("\n3. Synchronization:");
+    println!("   - RTP: POSIX semaphores (sem_init, sem_wait, sem_post)");
+    println!("   - LKM: VxWorks semaphores (semBCreate, semTake, semGive)");
+    println!("   - Both provide futex-like semantics for WRT");
     
-    println!("\n4. Threading:";
-    println!("   - RTP: POSIX threads (pthread_create, pthread_join)";
-    println!("   - LKM: VxWorks tasks (taskSpawn, taskDelete)";
+    println!("\n4. Threading:");
+    println!("   - RTP: POSIX threads (pthread_create, pthread_join)");
+    println!("   - LKM: VxWorks tasks (taskSpawn, taskDelete)");
     
-    println!("\n5. Configuration Example:";
-    println!("   ```rust";
-    println!("   let allocator = VxWorksAllocatorBuilder::new()";
-    println!("       .context(VxWorksContext::Rtp)";
-    println!("       .max_pages(1024)";
-    println!("       .enable_guard_pages(true)";
+    println!("\n5. Configuration Example:");
+    println!("   ```rust");
+    println!("   let allocator = VxWorksAllocatorBuilder::new()");
+    println!("       .context(VxWorksContext::Rtp)");
+    println!("       .max_pages(1024)");
+    println!("       .enable_guard_pages(true)");
     println!("       .build()?;";
-    println!("   ```";
+    println!("   ```");
     
-    println!("\n6. Platform Integration:";
-    println!("   - Implements wrt_platform::PageAllocator trait";
-    println!("   - Implements wrt_platform::FutexLike trait";
-    println!("   - Works seamlessly with WRT runtime components";
+    println!("\n6. Platform Integration:");
+    println!("   - Implements wrt_platform::PageAllocator trait");
+    println!("   - Implements wrt_platform::FutexLike trait");
+    println!("   - Works seamlessly with WRT runtime components");
     
-    println!("\n7. Real-time Features:";
-    println!("   - Priority inheritance for semaphores";
-    println!("   - Deterministic memory allocation with partitions";
-    println!("   - Support for real-time task priorities";
+    println!("\n7. Real-time Features:");
+    println!("   - Priority inheritance for semaphores");
+    println!("   - Deterministic memory allocation with partitions");
+    println!("   - Support for real-time task priorities");
     
-    println!("\nTo use VxWorks platform support:";
-    println!("1. Enable the 'platform-vxworks' feature";
-    println!("2. Compile for target_os = \"vxworks\"";
-    println!("3. Link with VxWorks runtime libraries";
+    println!("\nTo use VxWorks platform support:");
+    println!("1. Enable the 'platform-vxworks' feature");
+    println!("2. Compile for target_os = \"vxworks\"");
+    println!("3. Link with VxWorks runtime libraries");
     
-    println!("\nExample usage in application:";
-    println!("```rust";
+    println!("\nExample usage in application:");
+    println!("```rust");
     println!("use wrt_platform::vxworks_memory::*;";
     println!("use wrt_platform::vxworks_sync::*;";
-    println!("";
-    println!("// Detect execution context";
+    println!("");
+    println!("// Detect execution context");
     println!("let context = detect_vxworks_context();";
-    println!("";
-    println!("// Create platform components";
-    println!("let allocator = VxWorksAllocatorBuilder::new()";
-    println!("    .context(context)";
+    println!("");
+    println!("// Create platform components");
+    println!("let allocator = VxWorksAllocatorBuilder::new()");
+    println!("    .context(context)");
     println!("    .build()?;";
-    println!("";
-    println!("let futex = VxWorksFutexBuilder::new(context)";
+    println!("");
+    println!("let futex = VxWorksFutexBuilder::new(context)");
     println!("    .build()?;";
-    println!("";
-    println!("// Use with WRT runtime";
-    println!("let runtime = wrt::Runtime::builder()";
-    println!("    .with_allocator(Box::new(allocator))";
-    println!("    .with_futex(Box::new(futex))";
+    println!("");
+    println!("// Use with WRT runtime");
+    println!("let runtime = wrt::Runtime::builder()");
+    println!("    .with_allocator(Box::new(allocator))");
+    println!("    .with_futex(Box::new(futex))");
     println!("    .build()?;";
-    println!("```";
+    println!("```");
     
     // Demonstrate trait usage with mock implementations
     demonstrate_trait_usage);
@@ -202,7 +202,7 @@ fn show_vxworks_concepts() {
 
 #[cfg(not(all(feature = "platform-vxworks", target_os = "vxworks")))]
 fn demonstrate_trait_usage() {
-    println!("\n=== Trait Usage Demonstration ===";
+    println!("\n=== Trait Usage Demonstration ===");
     
     // Binary std/no_std choice
     struct MockVxWorksAllocator {
@@ -323,19 +323,19 @@ fn demonstrate_trait_usage() {
     let mut allocator = MockVxWorksAllocator::new(100;
     let futex = MockVxWorksFutex::new(0;
     
-    println!("Created mock VxWorks allocator and futex";
+    println!("Created mock VxWorks allocator and futex");
     
     // Binary std/no_std choice
     match allocator.allocate_pages(10) {
         Ok(ptr) => {
-            println!("✓ Allocated 10 pages successfully";
-            println!("  Current allocated: {} pages", allocator.allocated_pages);
+            println!("✓ Allocated 10 pages successfully");
+            println!("  Current allocated: {} pages", allocator.allocated_pages));
             
             if let Err(e) = allocator.deallocate_pages(ptr, 10) {
-                println!("✗ Deallocation failed: {}", e;
+                println!("✗ Deallocation failed: {}", e);
             } else {
-                println!("✓ Deallocated successfully";
-                println!("  Final allocated: {} pages", allocator.allocated_pages);
+                println!("✓ Deallocated successfully");
+                println!("  Final allocated: {} pages", allocator.allocated_pages));
             }
         }
         Err(e) => println!("✗ Allocation failed: {}", e),
@@ -344,12 +344,12 @@ fn demonstrate_trait_usage() {
     // Test futex
     futex.store(42, Ordering::SeqCst;
     let value = futex.load(Ordering::SeqCst;
-    println!("✓ Futex operations: stored and loaded {}", value;
+    println!("✓ Futex operations: stored and loaded {}", value);
     
     match futex.wake_one() {
         Ok(woken) => println!("✓ Wake operation: woke {} waiters", woken),
         Err(e) => println!("✗ Wake failed: {}", e),
     }
     
-    println!("\nThis demonstrates how VxWorks types implement WRT traits!";
+    println!("\nThis demonstrates how VxWorks types implement WRT traits!");
 }

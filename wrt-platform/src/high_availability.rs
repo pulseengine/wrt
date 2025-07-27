@@ -185,7 +185,7 @@ pub trait HighAvailabilityManager: Send + Sync {
 
 /// Entity identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EntityId(pub u64;
+pub struct EntityId(pub u64);
 
 /// Generic high availability monitor
 pub struct GenericHaMonitor {
@@ -221,30 +221,30 @@ impl GenericHaMonitor {
     /// Start the monitor thread
     pub fn start(&self) -> Result<()> {
         if self.running.load(Ordering::Acquire) {
-            return Ok();
+            return Ok(());
         }
 
-        self.running.store(true, Ordering::Release;
+        self.running.store(true, Ordering::Release);
         let running = self.running.clone();
 
         let thread = std::thread::spawn(move || {
             while running.load(Ordering::Acquire) {
                 // Monitor loop
-                std::thread::sleep(Duration::from_millis(100;
+                std::thread::sleep(Duration::from_millis(100));
                 // Check conditions and trigger actions
             }
-        };
+        });
 
-        *self.monitor_thread.lock() = Some(thread;
+        *self.monitor_thread.lock() = Some(thread);
         Ok(())
     }
 
     /// Stop the monitor
     pub fn stop(&self) -> Result<()> {
-        self.running.store(false, Ordering::Release;
+        self.running.store(false, Ordering::Release);
         
         if let Some(thread) = self.monitor_thread.lock().take() {
-            let _ = thread.join);
+            let _ = thread.join();
         }
         
         Ok(())
@@ -253,7 +253,7 @@ impl GenericHaMonitor {
 
 impl HighAvailabilityManager for GenericHaMonitor {
     fn create_entity(&mut self, name: &str) -> Result<EntityId> {
-        let id = EntityId(self.next_id.fetch_add(1, Ordering::AcqRel;
+        let id = EntityId(self.next_id.fetch_add(1, Ordering::AcqRel));
         
         let entity = MonitoredEntity {
             id,
@@ -275,7 +275,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
         condition: MonitorCondition,
         actions: Vec<RecoveryAction>,
     ) -> Result<()> {
-        let mut entities = self.entities.write);
+        let mut entities = self.entities.write();
         let entity = entities
             .iter_mut()
             .find(|e| e.id == entity)
@@ -284,26 +284,26 @@ impl HighAvailabilityManager for GenericHaMonitor {
             })?;
 
         // Convert Vec<RecoveryAction> to bounded (simplified for now)
-        let mut bounded_actions = new_condition_vec);
+        let mut bounded_actions = new_condition_vec();
         for action in actions {
             if bounded_actions.len() >= 32 { // MAX_CONDITIONS check
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     wrt_error::codes::CAPACITY_EXCEEDED,
-                    "Too many actions for entity";
+                    "Too many actions for entity"));
             }
             bounded_actions.push(action);
         }
         
         if entity.conditions.len() >= MAX_ENTITIES {
-            return Err(Error::runtime_execution_error("Too many conditions for entity";
+            return Err(Error::runtime_execution_error("Too many conditions for entity"));
         }
-        entity.conditions.push((condition, bounded_actions);
+        entity.conditions.push((condition, bounded_actions));
         Ok(())
     }
 
     fn start_monitoring(&mut self, entity: EntityId) -> Result<()> {
-        let entities = self.entities.read);
+        let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Validation,
@@ -311,22 +311,22 @@ impl HighAvailabilityManager for GenericHaMonitor {
                 "Entity not found")
         })?;
 
-        entity.monitoring.store(true, Ordering::Release;
+        entity.monitoring.store(true, Ordering::Release);
         Ok(())
     }
 
     fn stop_monitoring(&mut self, entity: EntityId) -> Result<()> {
-        let entities = self.entities.read);
+        let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::runtime_execution_error("Entity not found")
         })?;
 
-        entity.monitoring.store(false, Ordering::Release;
+        entity.monitoring.store(false, Ordering::Release);
         Ok(())
     }
 
     fn heartbeat(&self, entity: EntityId) -> Result<()> {
-        let entities = self.entities.read);
+        let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Validation,
@@ -340,12 +340,12 @@ impl HighAvailabilityManager for GenericHaMonitor {
     }
 
     fn get_health(&self, entity: EntityId) -> Result<HealthStatus> {
-        let entities = self.entities.read);
+        let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::runtime_execution_error("Entity not found")
         })?;
 
-        let status = *entity.status.lock);
+        let status = *entity.status.lock();
         Ok(status)
     }
 
@@ -412,14 +412,14 @@ impl HaBuilder {
 
     /// Configure heartbeat monitoring
     pub fn with_heartbeat(mut self, interval: Duration, tolerance: u32) -> Self {
-        self.heartbeat_interval = Some(interval;
-        self.heartbeat_tolerance = Some(tolerance;
+        self.heartbeat_interval = Some(interval);
+        self.heartbeat_tolerance = Some(tolerance);
         self
     }
 
     /// Configure restart policy
     pub fn with_restart_policy(mut self, policy: RestartPolicy) -> Self {
-        self.restart_policy = Some(policy;
+        self.restart_policy = Some(policy);
         self
     }
 
@@ -467,18 +467,18 @@ mod tests {
                 max_restarts: 5,
                 window: Duration::from_secs(300),
                 backoff: BackoffStrategy::Exponential(Duration::from_secs(1)),
-            };
+            });
 
-        assert_eq!(builder.entity_name, "test_entity";
-        assert!(builder.heartbeat_interval.is_some();
-        assert!(builder.restart_policy.is_some();
+        assert_eq!(builder.entity_name, "test_entity");
+        assert!(builder.heartbeat_interval.is_some());
+        assert!(builder.restart_policy.is_some());
     }
 
     #[test]
     fn test_generic_ha_monitor() {
-        let mut monitor = GenericHaMonitor::new);
+        let mut monitor = GenericHaMonitor::new();
         
-        let entity_id = monitor.create_entity("test").unwrap());
+        let entity_id = monitor.create_entity("test").unwrap();
         assert_eq!(entity_id.0, 1);
 
         monitor.add_condition(
@@ -488,15 +488,15 @@ mod tests {
                 tolerance: 3,
             },
             vec![RecoveryAction::Restart],
-        ).unwrap());
+        ).unwrap();
 
-        monitor.start_monitoring(entity_id).unwrap());
+        monitor.start_monitoring(entity_id).unwrap();
         
         // Send heartbeat
-        monitor.heartbeat(entity_id).unwrap());
+        monitor.heartbeat(entity_id).unwrap();
         
         // Check health
-        let health = monitor.get_health(entity_id).unwrap());
-        assert_eq!(health, HealthStatus::Healthy;
+        let health = monitor.get_health(entity_id).unwrap();
+        assert_eq!(health, HealthStatus::Healthy);
     }
 }

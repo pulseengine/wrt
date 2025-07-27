@@ -118,7 +118,7 @@ impl AtomicCoordinator {
             module_id: self.atomic_module_id,
             function_id: 0xFFFF, // Special function ID for atomic operations
             args: {
-                let mut args = Vec::new);
+                let mut args = Vec::new());
                 args.extend_from_slice(&addr.to_le_bytes);
                 args.extend_from_slice(&expected.to_le_bytes);
                 if let Some(timeout) = timeout_ns {
@@ -254,7 +254,7 @@ mod tests {
         let limits = ThreadingLimits::default());
         let executor = create_test_executor);
         
-        let base_manager = Arc::new(WasmThreadManager::new(config, limits, executor).unwrap());
+        let base_manager = Arc::new(WasmThreadManager::new(config, limits, executor).unwrap();
         let coordinator = AtomicCoordinator::new(base_manager;
         assert!(coordinator.is_ok());
     }
@@ -275,7 +275,7 @@ mod tests {
         let limits = ThreadingLimits::default());
         let executor = create_test_executor);
         
-        let manager = AtomicAwareThreadManager::new(config, limits, executor).unwrap());
+        let manager = AtomicAwareThreadManager::new(config, limits, executor).unwrap();
         
         // Test atomic notify (no waiters)
         let result = manager.execute_atomic_notify(0x1000, 1);

@@ -192,7 +192,7 @@ impl WasmThreadManager {
     ) -> Result<Self> {
         let pool = create_thread_pool(&config)?;
         let resource_tracker = Arc::new(ResourceTracker::new(limits;
-        let monitor = Arc::new(SimpleExecutionMonitor::new);
+        let monitor = Arc::new(SimpleExecutionMonitor::new();
 
         Ok(Self {
             pool,
@@ -366,7 +366,7 @@ impl WasmThreadManager {
             .iter()
             .filter(|(_, info)| info.module_id == module_id)
             .map(|(id, _)| *id)
-            .collect();
+            .collect());
 
         for thread_id in to_remove {
             if let Some(thread_info) = threads.remove(&thread_id) {
@@ -381,7 +381,7 @@ impl WasmThreadManager {
     /// Perform health check on all threads
     pub fn health_check(&self) -> Result<Vec<(u64, ThreadHealth)>> {
         let threads = self.threads.read);
-        let mut results = Vec::new);
+        let mut results = Vec::new());
 
         for (thread_id, _) in threads.iter() {
             match self.monitor.check_thread_health(*thread_id) {
@@ -433,7 +433,7 @@ impl WasmThreadManager {
         *self.shutdown.lock() = true;
 
         // Cancel all threads
-        let thread_ids: Vec<u64> = self.threads.read().keys().cloned().collect();
+        let thread_ids: Vec<u64> = self.threads.read().keys().cloned().collect());
         for thread_id in thread_ids {
             let _ = self.cancel_thread(thread_id;
         }
@@ -494,7 +494,7 @@ mod tests {
         let limits = ThreadingLimits::default());
         let executor = create_test_executor);
 
-        let manager = WasmThreadManager::new(config, limits, executor).unwrap());
+        let manager = WasmThreadManager::new(config, limits, executor).unwrap();
 
         let module = WasmModuleInfo {
             id: 1,
@@ -515,7 +515,7 @@ mod tests {
         let limits = ThreadingLimits::default());
         let executor = create_test_executor);
 
-        let manager = WasmThreadManager::new(config, limits, executor).unwrap());
+        let manager = WasmThreadManager::new(config, limits, executor).unwrap();
 
         let values = vec![
             ComponentValue::U32(42),
@@ -523,8 +523,8 @@ mod tests {
             ComponentValue::String("hello".to_string()),
         ];
 
-        let serialized = manager.serialize_component_values(&values).unwrap());
-        let deserialized = manager.deserialize_component_values(&serialized).unwrap());
+        let serialized = manager.serialize_component_values(&values).unwrap();
+        let deserialized = manager.deserialize_component_values(&serialized).unwrap();
 
         assert_eq!(values.len(), deserialized.len);
         assert_eq!(values[0], deserialized[0];

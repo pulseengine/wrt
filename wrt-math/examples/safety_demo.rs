@@ -14,8 +14,8 @@ use wrt_math::{
 };
 
 fn main() {
-    println!("WRT Math Safety Features Demo";
-    println!("=============================\n";
+    println!("WRT Math Safety Features Demo");
+    println!("=============================\n");
 
     // Integer arithmetic safety
     demo_integer_safety);
@@ -31,8 +31,8 @@ fn main() {
 }
 
 fn demo_integer_safety() {
-    println!("Integer Arithmetic Safety:";
-    println!("--------------------------";
+    println!("Integer Arithmetic Safety:");
+    println!("--------------------------");
 
     // Safe addition
     let a = 100i32;
@@ -52,11 +52,11 @@ fn demo_integer_safety() {
                 max_val, result
             ;
             #[cfg(not(any(feature = "asil-c", feature = "asil-d")))]
-            println!("Overflow wrapped: {} + 1 = {}", max_val, result;
+            println!("Overflow wrapped: {} + 1 = {}", max_val, result);
         },
         Err(e) => {
             #[cfg(any(feature = "asil-a", feature = "asil-b"))]
-            println!("Overflow detected and trapped: {:?}", e;
+            println!("Overflow detected and trapped: {:?}", e);
         },
     }
 
@@ -76,8 +76,8 @@ fn demo_integer_safety() {
 }
 
 fn demo_float_safety() {
-    println!("Floating-Point Safety:";
-    println!("----------------------";
+    println!("Floating-Point Safety:");
+    println!("----------------------");
 
     let a = 3.14f32;
     let b = 2.71f32;
@@ -93,9 +93,9 @@ fn demo_float_safety() {
         Ok(result) => println!("NaN operation result: {}", result),
         Err(e) => {
             #[cfg(feature = "nan-propagation-checking")]
-            println!("NaN detected and trapped: {:?}", e;
+            println!("NaN detected and trapped: {:?}", e);
             #[cfg(not(feature = "nan-propagation-checking"))]
-            println!("NaN checking disabled: {:?}", e;
+            println!("NaN checking disabled: {:?}", e);
         },
     }
 
@@ -103,8 +103,8 @@ fn demo_float_safety() {
 }
 
 fn demo_rounding_modes() {
-    println!("Rounding Modes:";
-    println!("---------------";
+    println!("Rounding Modes:");
+    println!("---------------");
 
     let val = 2.7f32;
 
@@ -126,8 +126,8 @@ fn demo_rounding_modes() {
 }
 
 fn demo_simd_bounds() {
-    println!("SIMD Bounds Checking:";
-    println!("---------------------";
+    println!("SIMD Bounds Checking:");
+    println!("---------------------");
 
     let memory_size = 1024;
 
@@ -148,9 +148,9 @@ fn demo_simd_bounds() {
         ),
         Err(e) => {
             #[cfg(feature = "runtime-bounds-checking")]
-            println!("Out of bounds SIMD access prevented: {:?}", e;
+            println!("Out of bounds SIMD access prevented: {:?}", e);
             #[cfg(not(feature = "runtime-bounds-checking"))]
-            println!("SIMD bounds checking disabled";
+            println!("SIMD bounds checking disabled");
         },
     }
 

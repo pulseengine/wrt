@@ -39,27 +39,27 @@ impl PlatformRandom {
     pub fn get_secure_bytes(buffer: &mut [u8]) -> Result<()> {
         #[cfg(target_os = "linux")]
         {
-            return Self::linux_random(buffer);
+            Self::linux_random(buffer)
         }
         
         #[cfg(target_os = "macos")]
         {
-            return Self::macos_random(buffer);
+            Self::macos_random(buffer)
         }
         
         #[cfg(target_os = "windows")]
         {
-            return Self::windows_random(buffer);
+            Self::windows_random(buffer)
         }
         
         #[cfg(target_os = "nto")]
         {
-            return Self::qnx_random(buffer);
+            Self::qnx_random(buffer)
         }
         
         #[cfg(target_os = "vxworks")]
         {
-            return Self::vxworks_random(buffer);
+            Self::vxworks_random(buffer)
         }
         
         #[cfg(all(
@@ -198,7 +198,7 @@ impl PlatformRandom {
         
         if let Ok(mut urandom) = File::open("/dev/urandom") {
             if urandom.read_exact(buffer).is_ok() {
-                return Ok();
+                return Ok(());
             }
         }
         
@@ -214,7 +214,7 @@ impl PlatformRandom {
         
         #[cfg(feature = "platform-tock")]
         {
-            return Self::tock_random(buffer);
+            Self::tock_random(buffer)
         }
         
         #[cfg(not(feature = "platform-tock"))]

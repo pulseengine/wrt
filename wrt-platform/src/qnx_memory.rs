@@ -609,7 +609,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Binary std/no_std choice
-        let (ptr, size) = result.unwrap());
+        let (ptr, size) = result.unwrap();
         assert!(!ptr.as_ptr().is_null();
         assert_eq!(size, 2 * WASM_PAGE_SIZE;
 
@@ -631,7 +631,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Write a test pattern to verify data preservation after grow
-        let (ptr, _) = result.unwrap());
+        let (ptr, _) = result.unwrap();
         let test_pattern = [0xDE, 0xAD, 0xBE, 0xEF];
         unsafe {
             core::ptr::copy_nonoverlapping(test_pattern.as_ptr(), ptr.as_ptr(), 4;
@@ -642,7 +642,7 @@ mod tests {
         assert!(grow_result.is_ok());
 
         // Verify the data was preserved
-        let (new_ptr, new_size) = grow_result.unwrap());
+        let (new_ptr, new_size) = grow_result.unwrap();
         assert!(!new_ptr.as_ptr().is_null();
         assert_eq!(new_size, 2 * WASM_PAGE_SIZE;
 
@@ -670,7 +670,7 @@ mod tests {
         let result = allocator.allocate(2, None;
         assert!(result.is_ok());
 
-        let (ptr, size) = result.unwrap());
+        let (ptr, size) = result.unwrap();
 
         // Change protection on the second page to read-only
         let second_page_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(WASM_PAGE_SIZE)) };

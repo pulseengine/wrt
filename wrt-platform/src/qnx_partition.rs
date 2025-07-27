@@ -491,7 +491,7 @@ mod tests {
         let partition = QnxMemoryPartitionBuilder::new()
             .with_name("test_partition")
             .build()
-            .expect("Failed to create partition");
+            .expect("Failed to create partition"));
 
         // Get partition ID
         let id = partition.id);
@@ -517,11 +517,11 @@ mod tests {
         let partition = QnxMemoryPartitionBuilder::new()
             .with_name("guard_test")
             .build()
-            .expect("Failed to create partition");
+            .expect("Failed to create partition"));
 
         // Use partition guard
         {
-            let guard = PartitionGuard::new(&partition).expect("Failed to create guard");
+            let guard = PartitionGuard::new(&partition).expect("Failed to create guard"));
 
             // Execute code inside the partition
             // ...
@@ -531,7 +531,7 @@ mod tests {
 
         // Test manual deactivation
         {
-            let mut guard = PartitionGuard::new(&partition).expect("Failed to create guard");
+            let mut guard = PartitionGuard::new(&partition).expect("Failed to create guard"));
 
             // Manually deactivate
             let result = guard.deactivate);
@@ -552,7 +552,7 @@ mod tests {
                 1 * 1024 * 1024,  // 1MB reserved
             )
             .build()
-            .expect("Failed to create partition");
+            .expect("Failed to create partition"));
 
         // Execute a closure within the partition
         let result = partition.with_partition(|| {

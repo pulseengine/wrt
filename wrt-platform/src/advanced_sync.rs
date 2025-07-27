@@ -35,7 +35,7 @@
 extern crate alloc;
 
 #[cfg(feature = "std")]
-use std::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 use core::{
     cell::UnsafeCell,
     ptr::NonNull,
@@ -91,7 +91,7 @@ impl<T> LockFreeMpscQueue<T> {
     /// Create a new empty MPSC queue
     #[cfg(feature = "std")]
     pub fn new() -> Self {
-        let stub = Box::new(Node::stub);
+        let stub = Box::new(Node::stub());
         let stub_ptr = Box::as_ref(&stub) as *const Node<T> as *mut Node<T>;
 
         Self { head: AtomicPtr::new(stub_ptr), tail: AtomicPtr::new(stub_ptr), stub }

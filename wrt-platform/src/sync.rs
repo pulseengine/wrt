@@ -9,6 +9,8 @@
 
 //! Provides traits and implementations for platform-specific synchronization.
 
+extern crate alloc;
+
 use core::fmt::Debug;
 
 // Re-export Duration for platform use
@@ -21,8 +23,12 @@ pub use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
-pub use std::sync::{Arc, Mutex, RwLock, MutexGuard, Condvar};
+pub use alloc::sync::Arc;
+#[cfg(feature = "std")]
+pub use std::sync::{Mutex, RwLock, MutexGuard, Condvar};
 
+#[cfg(not(feature = "std"))]
+pub use alloc::sync::Arc;
 #[cfg(not(feature = "std"))]
 pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
 

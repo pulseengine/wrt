@@ -862,21 +862,21 @@ mod tests {
             .with_arena_size(64 * 1024) // 64KB arenas
             .with_guard_pages(true)
             .build()
-            .expect("Failed to create arena allocator");
+            .expect("Failed to create arena allocator"));
 
         // Allocate 2 pages
         let result = allocator.allocate(2, Some(4;
         assert!(result.is_ok());
 
         // Binary std/no_std choice
-        let (ptr, size) = result.unwrap());
+        let (ptr, size) = result.unwrap();
         assert!(!ptr.as_ptr().is_null();
         assert_eq!(size, 2 * WASM_PAGE_SIZE;
 
         // Get memory info
-        let info = allocator.memory_info().unwrap());
-        println!("Arena size: {}", info.arena;
-        println!("Allocated space: {}", info.uordblks;
+        let info = allocator.memory_info().unwrap();
+        println!("Arena size: {}", info.arena);
+        println!("Allocated space: {}", info.uordblks);
 
         // Clean up
         let free_result = allocator.free);
@@ -891,14 +891,14 @@ mod tests {
             .with_arena_size(32 * 1024) // 32KB arenas
             .with_guard_pages(false) // No guard pages for simpler testing
             .build()
-            .expect("Failed to create arena allocator");
+            .expect("Failed to create arena allocator"));
 
         // Allocate 1 page
         let result = allocator.allocate(1, Some(4;
         assert!(result.is_ok());
 
         // Write a test pattern to verify data preservation after grow
-        let (ptr, _) = result.unwrap());
+        let (ptr, _) = result.unwrap();
         let test_pattern = [0xDE, 0xAD, 0xBE, 0xEF];
         unsafe {
             core::ptr::copy_nonoverlapping(test_pattern.as_ptr(), ptr.as_ptr(), 4;
@@ -909,7 +909,7 @@ mod tests {
         assert!(grow_result.is_ok());
 
         // Verify the data was preserved
-        let (new_ptr, new_size) = grow_result.unwrap());
+        let (new_ptr, new_size) = grow_result.unwrap();
         assert!(!new_ptr.as_ptr().is_null();
         assert_eq!(new_size, 2 * WASM_PAGE_SIZE;
 
@@ -932,13 +932,13 @@ mod tests {
             .with_guard_pages(true)
             .with_data_protection(QnxProtFlags::ReadWrite)
             .build()
-            .expect("Failed to create arena allocator");
+            .expect("Failed to create arena allocator"));
 
         // Allocate 2 pages
         let result = allocator.allocate(2, None;
         assert!(result.is_ok());
 
-        let (ptr, size) = result.unwrap());
+        let (ptr, size) = result.unwrap();
 
         // Change protection on the second page to read-only
         let second_page_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(WASM_PAGE_SIZE)) };
@@ -961,19 +961,19 @@ mod tests {
             .with_lifo_free(true)
             .with_memory_hold(true)
             .build()
-            .expect("Failed to create arena allocator");
+            .expect("Failed to create arena allocator"));
 
         // Binary std/no_std choice
         let result1 = allocator.allocate(1, None;
         assert!(result1.is_ok());
-        allocator.free().unwrap());
+        allocator.free().unwrap();
 
         let result2 = allocator.allocate(2, None;
         assert!(result2.is_ok());
-        allocator.free().unwrap());
+        allocator.free().unwrap();
 
         // Get memory info - should show held memory with the memory_hold option
-        let info = allocator.memory_info().unwrap());
+        let info = allocator.memory_info().unwrap();
         assert!(info.keepcost > 0, "Memory should be held in the arena cache");
     }
 }

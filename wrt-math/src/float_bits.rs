@@ -12,7 +12,7 @@
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use alloc::vec::Vec;
 use core::{
     // cmp::Ordering, // Unused import
     hash::{Hash, Hasher},

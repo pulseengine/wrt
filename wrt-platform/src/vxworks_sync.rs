@@ -396,7 +396,7 @@ mod tests {
         #[cfg(target_os = "vxworks")]
         {
             assert!(futex.is_ok());
-            let futex = futex.unwrap());
+            let futex = futex.unwrap();
             assert_eq!(futex.load(Ordering::Relaxed), 42;
         }
         

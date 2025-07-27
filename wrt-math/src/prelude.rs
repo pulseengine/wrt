@@ -12,7 +12,7 @@
 // Re-export commonly used items from this crate
 // Binary std/no_std choice
 #[cfg(feature = "std")]
-pub use std::{
+pub use alloc::{
     boxed::Box,
     format,
     string::{String, ToString},

@@ -25,7 +25,10 @@
 #![allow(missing_docs)]
 
 #[cfg(feature = "std")]
-use std::boxed::Box;
+extern crate alloc;
+
+#[cfg(feature = "std")]
+use alloc::boxed::Box;
 
 use core::sync::atomic::AtomicBool;
 

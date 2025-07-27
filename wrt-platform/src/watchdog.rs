@@ -64,7 +64,7 @@ impl Clone for WatchdogAction {
 
 /// Watched task identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct WatchedTaskId(pub u64;
+pub struct WatchedTaskId(pub u64);
 
 /// Information about a watched task
 #[derive(Debug)]
@@ -109,10 +109,10 @@ impl SoftwareWatchdog {
     /// Start the watchdog monitoring thread
     pub fn start(&self) -> Result<()> {
         if self.running.load(Ordering::Acquire) {
-            return Ok();
+            return Ok(());
         }
 
-        self.running.store(true, Ordering::Release;
+        self.running.store(true, Ordering::Release);
 
         let tasks = self.tasks.clone();
         let running = self.running.clone();
@@ -133,16 +133,16 @@ impl SoftwareWatchdog {
                         continue;
                     }
 
-                    let last_heartbeat = *task.last_heartbeat.lock);
-                    let elapsed_ms = now.saturating_sub(last_heartbeat;
-                    let elapsed = Duration::from_millis(elapsed_ms;
+                    let last_heartbeat = *task.last_heartbeat.lock();
+                    let elapsed_ms = now.saturating_sub(last_heartbeat);
+                    let elapsed = Duration::from_millis(elapsed_ms);
 
                     if elapsed > task.timeout {
                         // Timeout detected
                         eprintln!(
                             "Watchdog: Task '{}' (ID: {:?}) timed out after {:?}",
                             task.name, task.id, elapsed
-                        ;
+                        );
 
                         // Execute action
                         match &task.action {
@@ -152,30 +152,30 @@ impl SoftwareWatchdog {
                             WatchdogAction::Kill => {
                                 if auto_kill {
                                     // Platform-specific kill logic would go here
-                                    eprintln!("Watchdog: Would kill task {}", task.name;
+                                    eprintln!("Watchdog: Would kill task {}", task.name);
                                 }
                             }
                         }
 
                         // Mark as inactive after timeout
-                        task.active.store(false, Ordering::Release;
+                        task.active.store(false, Ordering::Release);
                     }
                 }
 
-                std::thread::sleep(check_interval;
+                std::thread::sleep(check_interval);
             }
-        };
+        });
 
-        *self.watchdog_thread.lock() = Some(thread;
+        *self.watchdog_thread.lock() = Some(thread);
         Ok(())
     }
 
     /// Stop the watchdog
     pub fn stop(&self) -> Result<()> {
-        self.running.store(false, Ordering::Release;
+        self.running.store(false, Ordering::Release);
 
         if let Some(thread) = self.watchdog_thread.lock().take() {
-            let _ = thread.join);
+            let _ = thread.join();
         }
 
         Ok(())
@@ -188,7 +188,7 @@ impl SoftwareWatchdog {
         timeout: Option<Duration>,
         action: WatchdogAction,
     ) -> Result<WatchdogHandle> {
-        let task_id = WatchedTaskId(self.next_task_id.fetch_add(1, Ordering::AcqRel;
+        let task_id = WatchedTaskId(self.next_task_id.fetch_add(1, Ordering::AcqRel));
         // Get current timestamp
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -203,17 +203,17 @@ impl SoftwareWatchdog {
             last_heartbeat: WrtMutex::new(now),
             action,
             active: AtomicBool::new(true),
-        };
+        });
 
         // Check limit
         {
-            let tasks = self.tasks.read);
+            let tasks = self.tasks.read();
             if tasks.len() >= self.config.max_watched_tasks {
-                return Err(Error::runtime_execution_error("Maximum watched tasks limit reached";
+                return Err(Error::runtime_execution_error("Maximum watched tasks limit reached"));
             }
         }
 
-        self.tasks.write().insert(task_id, task.clone();
+        self.tasks.write().insert(task_id, task.clone());
 
         Ok(WatchdogHandle {
             task: Some(task),
@@ -223,7 +223,7 @@ impl SoftwareWatchdog {
 
     /// Send heartbeat for a task
     pub fn heartbeat(&self, task_id: WatchedTaskId) -> Result<()> {
-        let tasks = self.tasks.read);
+        let tasks = self.tasks.read();
         let task = tasks.get(&task_id).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Validation,
@@ -247,7 +247,7 @@ impl SoftwareWatchdog {
     /// Cancel watching a task
     pub fn cancel_task(&self, task_id: WatchedTaskId) -> Result<()> {
         if let Some(task) = self.tasks.write().remove(&task_id) {
-            task.active.store(false, Ordering::Release;
+            task.active.store(false, Ordering::Release);
             Ok(())
         } else {
             Err(Error::new(
@@ -292,7 +292,7 @@ impl<'a> WatchdogHandle<'a> {
 impl<'a> Drop for WatchdogHandle<'a> {
     fn drop(&mut self) {
         if let Some(task) = self.task.take() {
-            let _ = self.watchdog.cancel_task(task.id;
+            let _ = self.watchdog.cancel_task(task.id);
         }
     }
 }
@@ -330,7 +330,7 @@ impl WatchdogIntegration for SoftwareWatchdog {
         F: FnOnce(&WatchdogHandle) -> Result<R>,
     {
         let handle = self.watch_task(name, Some(timeout), WatchdogAction::Log)?;
-        let result = f(&handle;
+        let result = f(&handle);
         handle.cancel()?;
         result
     }
@@ -350,24 +350,24 @@ mod tests {
             max_watched_tasks: 10,
         };
 
-        let watchdog = SoftwareWatchdog::new(config;
-        watchdog.start().unwrap());
+        let watchdog = SoftwareWatchdog::new(config);
+        watchdog.start().unwrap();
 
         // Watch a task
         let handle = watchdog
             .watch_task("test_task", None, WatchdogAction::Log)
-            .unwrap());
+            .unwrap();
 
         // Send heartbeats
         for _ in 0..5 {
-            std::thread::sleep(Duration::from_millis(50;
-            handle.heartbeat().unwrap());
+            std::thread::sleep(Duration::from_millis(50));
+            handle.heartbeat().unwrap();
         }
 
         // Cancel the task
-        handle.cancel().unwrap());
+        handle.cancel().unwrap();
 
-        watchdog.stop().unwrap());
+        watchdog.stop().unwrap();
     }
 
     #[test]
@@ -379,8 +379,8 @@ mod tests {
             max_watched_tasks: 10,
         };
 
-        let watchdog = SoftwareWatchdog::new(config;
-        watchdog.start().unwrap());
+        let watchdog = SoftwareWatchdog::new(config);
+        watchdog.start().unwrap();
 
         // Watch a task with kill action
         let _handle = watchdog
@@ -389,35 +389,35 @@ mod tests {
                 Some(Duration::from_millis(50)),
                 WatchdogAction::Kill,
             )
-            .unwrap());
+            .unwrap();
 
         // Don't send heartbeats, let it timeout
-        std::thread::sleep(Duration::from_millis(100;
+        std::thread::sleep(Duration::from_millis(100));
 
         // Task should have timed out (verified through logs)
         
-        watchdog.stop().unwrap());
+        watchdog.stop().unwrap();
     }
 
     #[test]
     fn test_watchdog_integration() {
         let watchdog = SoftwareWatchdog::new(WatchdogConfig::default());
-        watchdog.start().unwrap());
+        watchdog.start().unwrap();
 
         // Test function watching
         let result = watchdog
             .watch_function("test_function", Duration::from_secs(1), |handle| {
                 // Simulate some work with heartbeats
                 for i in 0..3 {
-                    std::thread::sleep(Duration::from_millis(100;
+                    std::thread::sleep(Duration::from_millis(100));
                     handle.heartbeat()?;
                 }
                 Ok::<_, Error>(42)
             })
-            .unwrap());
+            .unwrap();
 
-        assert_eq!(result, 42;
+        assert_eq!(result, 42);
 
-        watchdog.stop().unwrap());
+        watchdog.stop().unwrap();
     }
 }

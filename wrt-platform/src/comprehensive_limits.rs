@@ -9,8 +9,10 @@ use wrt_error::Error;
 #[cfg(feature = "std")]
 extern crate std;
 
+extern crate alloc;
+
 #[cfg(feature = "std")]
-use std::boxed::Box;
+use alloc::boxed::Box;
 
 // Stub imports for foundation module - will be replaced during integration
 mod foundation_stubs {
@@ -100,8 +102,10 @@ pub struct LinuxLimitProvider;
 
 impl ComprehensiveLimitProvider for LinuxLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default();
-        limits.platform_id = PlatformId::Linux;
+        let mut limits = ComprehensivePlatformLimits {
+            platform_id: PlatformId::Linux,
+            ..ComprehensivePlatformLimits::default()
+        };
         
         #[cfg(feature = "std")]
         {

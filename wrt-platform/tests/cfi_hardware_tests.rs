@@ -21,7 +21,7 @@ fn test_arm_bti_availability() {
     #[cfg(target_arch = "aarch64")]
     {
         // Just test that the detection doesn't panic
-        println!("ARM64 BTI availability: {}", bti_available;
+        println!("ARM64 BTI availability: {}", bti_available);
     }
 }
 
@@ -31,7 +31,7 @@ fn test_arm_bti_modes() {
     let modes = [BtiMode::Standard, BtiMode::CallOnly, BtiMode::JumpOnly, BtiMode::CallAndJump];
 
     for mode in modes {
-        println!("Testing BTI mode: {:?}", mode;
+        println!("Testing BTI mode: {:?}", mode);
 
         // Test that we can create BTI configuration with each mode
         let bti = BranchTargetIdentification::new(mode, BtiExceptionLevel::El1;
@@ -50,7 +50,7 @@ fn test_arm_bti_exception_levels() {
     ];
 
     for level in levels {
-        println!("Testing BTI exception level: {:?}", level;
+        println!("Testing BTI exception level: {:?}", level);
 
         let bti = BranchTargetIdentification::new(BtiMode::Standard, level;
         assert_eq!(bti.exception_level(), level;
@@ -70,7 +70,7 @@ fn test_riscv_cfi_availability() {
     #[cfg(target_arch = "riscv64")]
     {
         // Just test that the detection doesn't panic
-        println!("RISC-V CFI availability: {}", cfi_available;
+        println!("RISC-V CFI availability: {}", cfi_available);
     }
 }
 
@@ -80,7 +80,7 @@ fn test_riscv_cfi_modes() {
         [CfiExceptionMode::Synchronous, CfiExceptionMode::Asynchronous, CfiExceptionMode::Deferred];
 
     for mode in modes {
-        println!("Testing RISC-V CFI mode: {:?}", mode;
+        println!("Testing RISC-V CFI mode: {:?}", mode);
 
         let cfi = ControlFlowIntegrity::new(mode;
         assert_eq!(cfi.exception_mode(), mode;
@@ -228,7 +228,7 @@ fn test_cfi_configuration_combinations() {
 
         // Test that configuration is consistent
         let description = bti.description);
-        assert!(!description.is_empty();
+        assert!(!description.is_empty());
     }
 
     // Test various CFI configurations
@@ -241,7 +241,7 @@ fn test_cfi_configuration_combinations() {
 
         // Test that configuration is consistent
         let description = cfi.description);
-        assert!(!description.is_empty();
+        assert!(!description.is_empty());
     }
 }
 
@@ -269,19 +269,19 @@ fn test_x86_cet_placeholder() {
     {
         // Test would check for CET availability using CPUID
         // For now, just verify we're on x86_64
-        println!("Running on x86_64 - CET support to be implemented";
+        println!("Running on x86_64 - CET support to be implemented");
     }
 
     #[cfg(not(target_arch = "x86_64"))]
     {
-        println!("Not on x86_64 - CET not applicable";
+        println!("Not on x86_64 - CET not applicable");
     }
 }
 
 #[test]
 fn test_cross_platform_cfi_detection() {
     // Test comprehensive CFI feature detection across platforms
-    let mut cfi_features = Vec::new);
+    let mut cfi_features = Vec::new());
 
     if BranchTargetIdentification::is_available() {
         cfi_features.push("ARM BTI");
@@ -293,7 +293,7 @@ fn test_cross_platform_cfi_detection() {
 
     // Future: x86 CET detection would go here
 
-    println!("Available CFI features: {:?}", cfi_features;
+    println!("Available CFI features: {:?}", cfi_features);
 
     // At least one of these should work on any platform that supports CFI
     // (though none may be available in test environments)

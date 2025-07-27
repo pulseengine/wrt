@@ -13,7 +13,7 @@ mod simd_tests {
     
     #[test]
     fn test_scalar_simd_provider() {
-        let provider = ScalarSimdProvider::new);
+        let provider = ScalarSimdProvider::new();
         
         assert_eq!(provider.simd_level(), SimdLevel::None;
         assert!(provider.is_available();
@@ -48,7 +48,7 @@ mod simd_tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_simd_runtime() {
-        let runtime = SimdRuntime::new);
+        let runtime = SimdRuntime::new();
         
         // Should have a valid provider
         assert!(runtime.provider().is_available();
@@ -84,7 +84,7 @@ mod simd_tests {
     
     #[test]
     fn test_bitwise_operations() {
-        let provider = ScalarSimdProvider::new);
+        let provider = ScalarSimdProvider::new();
         
         let a = [0xFF; 16];
         let b = [0xAA; 16];
@@ -108,7 +108,7 @@ mod simd_tests {
     
     #[test]
     fn test_float_operations() {
-        let provider = ScalarSimdProvider::new);
+        let provider = ScalarSimdProvider::new();
         
         // Create f32x4 vectors [2.0, 3.0, 4.0, 5.0] and [0.5, 2.0, 0.25, 0.2]
         let mut a = [0u8; 16];

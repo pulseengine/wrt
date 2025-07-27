@@ -236,7 +236,7 @@ fn benchmark_feature_matrix(c: &mut Criterion) {
     c.bench_function("complete_cfi_assessment", |b| {
         b.iter(|| {
             // Comprehensive CFI capability assessment
-            let mut features = Vec::new();
+            let mut features = Vec::new());
 
             if BranchTargetIdentification::is_available() {
                 let bti =

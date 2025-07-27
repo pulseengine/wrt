@@ -239,7 +239,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut pool = GenericThreadPool::new(config).unwrap());
+        let mut pool = GenericThreadPool::new(config).unwrap();
 
         // Set a test executor
         pool.set_executor(|task| Ok(task.args;
@@ -256,10 +256,10 @@ mod tests {
             deadline: None,
         };
 
-        let handle = pool.spawn_wasm_thread(task).unwrap());
+        let handle = pool.spawn_wasm_thread(task).unwrap();
 
         // Join and verify result
-        let result = handle.join().unwrap());
+        let result = handle.join().unwrap();
         assert_eq!(result, vec![1, 2, 3, 4];
 
         // Check stats
@@ -274,7 +274,7 @@ mod tests {
             ..Default::default()
         };
 
-        let pool = GenericThreadPool::new(config).unwrap());
+        let pool = GenericThreadPool::new(config).unwrap();
 
         let task = WasmTask {
             id: 1,
@@ -288,7 +288,7 @@ mod tests {
         };
 
         // First thread should succeed
-        let _handle1 = pool.spawn_wasm_thread(task.clone()).unwrap());
+        let _handle1 = pool.spawn_wasm_thread(task.clone()).unwrap();
 
         // Second thread should fail due to limit
         let result2 = pool.spawn_wasm_thread(task;
