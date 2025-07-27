@@ -251,10 +251,10 @@ mod tests {
         
         let validation_result = atomic_model.validate_memory_consistency()?;
         assert!(validation_result.is_consistent);
-        assert!(validation_result.data_races.is_empty();
-        assert!(validation_result.ordering_violations.is_empty();
-        assert!(validation_result.potential_deadlocks.is_empty();
-        assert!(validation_result.sync_violations.is_empty();
+        assert!(validation_result.data_races.is_empty());
+        assert!(validation_result.ordering_violations.is_empty());
+        assert!(validation_result.potential_deadlocks.is_empty());
+        assert!(validation_result.sync_violations.is_empty());
         
         Ok(())
     }
@@ -326,7 +326,7 @@ mod tests {
                             memarg: MemArg { offset: offset as u32, align: 2 }
                         };
                         
-                        let mut model = atomic_model.lock().unwrap());
+                        let mut model = atomic_model.lock().unwrap();
                         model.execute_atomic_operation(thread_id as ThreadId, store_op, &[i as u64])?;
                     }
                 }
@@ -343,7 +343,7 @@ mod tests {
         }
         
         // Validate memory consistency after multithreaded execution
-        let model = atomic_model.lock().unwrap());
+        let model = atomic_model.lock().unwrap();
         let validation_result = model.validate_memory_consistency()?;
         assert!(validation_result.is_consistent);
         
@@ -472,7 +472,7 @@ mod tests {
         let duration = start_time.elapsed);
         let ops_per_second = num_operations as f64 / duration.as_secs_f64);
         
-        println!("Atomic operations performance: {:.0} ops/sec", ops_per_second;
+        println!("Atomic operations performance: {:.0} ops/sec", ops_per_second);
         assert!(ops_per_second > 1000.0)); // Should be reasonably fast
         
         Ok(())

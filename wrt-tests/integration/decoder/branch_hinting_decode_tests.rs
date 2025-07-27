@@ -260,7 +260,7 @@ fn test_decode_performance() -> Result<()> {
     use std::time::Instant;
     
     // Create bytecode with 1000 br_on_null instructions
-    let mut bytecode = Vec::new);
+    let mut bytecode = Vec::new());
     for _ in 0..1000 {
         bytecode.extend_from_slice(&[0xD5, 0x00]); // br_on_null 0
     }
@@ -285,7 +285,7 @@ fn test_decode_performance() -> Result<()> {
     assert_eq!(count, 1000;
     
     // Performance check: should decode 1000 instructions quickly
-    println!("Decoded {} branch hinting instructions in {:?}", count, duration;
+    println!("Decoded {} branch hinting instructions in {:?}", count, duration);
     assert!(duration.as_millis() < 100, "Decoding took too long: {:?}", duration);
     
     Ok(())

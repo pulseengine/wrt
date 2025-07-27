@@ -187,7 +187,7 @@ mod overflow_prevention_tests {
         
         #[cfg(not(feature = "std"))]
         {
-            let provider = NoStdMemoryProvider::<1024>::new);
+            let provider = NoStdMemoryProvider::<1024>::new();
             
             // Test access operations that could overflow
             assert!(provider.verify_access(usize::MAX, 1).is_err();
@@ -413,7 +413,7 @@ mod access_control_tests {
         
         #[cfg(not(feature = "std"))]
         {
-            let provider = NoStdMemoryProvider::<1024>::new);
+            let provider = NoStdMemoryProvider::<1024>::new();
             
             // Test valid access patterns
             assert!(provider.verify_access(0, 100).is_ok());
@@ -527,7 +527,7 @@ mod protection_integration_tests {
                 
                 Ok(())
             })
-        }).collect();
+        }).collect());
         
         // Wait for all threads
         for handle in handles {

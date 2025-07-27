@@ -12,7 +12,7 @@ use wrt_test_registry::{TestRegistry, TestResult, assert_test, assert_eq_test};
 
 /// Create an integration test registry with comprehensive tests
 fn create_integration_test_registry() -> TestRegistry {
-    let registry = TestRegistry::new);
+    let registry = TestRegistry::new();
     
     // Register all integration tests
     registry.register(Box::new(CoreFeaturesTest;
@@ -88,7 +88,7 @@ impl wrt_test_registry::TestCase for ComponentModelTest {
         #[cfg(feature = "std")]
         {
             // Create a basic component
-            let component = wrt::component::Component::new);
+            let component = wrt::component::Component::new();
             
             // Verify component properties
             assert_test!(!component.is_initialized(), "New component should not be initialized";
@@ -213,14 +213,14 @@ impl wrt_test_registry::TestCase for DecoderTest {
                     i32.add
                 )
             )"#,
-        ).unwrap());
+        ).unwrap();
         
         // Test decoding
         let result = wrt_decoder::decode_module(&wasm_bytes;
         assert_test!(result.is_ok(), "Should successfully decode valid WASM module";
         
         // Get decoded module
-        let decoded_module = result.unwrap());
+        let decoded_module = result.unwrap();
         
         // Verify structure
         assert_test!(!decoded_module.functions.is_empty(), "Decoded module should have functions";

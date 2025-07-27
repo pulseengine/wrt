@@ -84,7 +84,7 @@ pub fn verify_asil_monotonicity() {
 #[cfg(kani)]
 pub fn verify_violation_count_monotonicity() {
     // Create a safety system to test
-    let mut system = SafetySystem::new);
+    let mut system = SafetySystem::new();
     
     // Generate arbitrary violation counts
     let initial_violations = system.get_violation_count);
@@ -163,8 +163,8 @@ pub fn verify_cross_standard_safety_conversion() {
 #[cfg(kani)]
 pub fn verify_safety_context_consistency() {
     // Create safety systems for different standards
-    let mut iso_system = SafetySystem::new);
-    let mut iec_system = Iec61508System::new);
+    let mut iso_system = SafetySystem::new();
+    let mut iec_system = Iec61508System::new();
     
     // Generate arbitrary safety operations
     let operation_count: u8 = kani::any);
@@ -229,7 +229,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("violation_count_basic", || {
         // Basic violation count test
-        let mut system = SafetySystem::new);
+        let mut system = SafetySystem::new();
         let initial_count = system.get_violation_count);
         
         system.record_violation(AsilLevel::AsilB;
@@ -261,8 +261,8 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("safety_context_consistency_basic", || {
         // Basic safety context consistency test
-        let mut iso_system = SafetySystem::new);
-        let mut iec_system = Iec61508System::new);
+        let mut iso_system = SafetySystem::new();
+        let mut iec_system = Iec61508System::new();
         
         iso_system.record_violation(AsilLevel::AsilB;
         iec_system.record_violation(SilLevel::Sil2;
@@ -359,7 +359,7 @@ mod tests {
     
     #[test]
     fn test_safety_system_violations() {
-        let mut system = SafetySystem::new);
+        let mut system = SafetySystem::new();
         let initial = system.get_violation_count);
         
         system.record_violation(AsilLevel::AsilB;

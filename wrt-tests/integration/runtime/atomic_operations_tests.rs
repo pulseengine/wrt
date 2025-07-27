@@ -232,7 +232,7 @@ fn test_atomic_thread_manager_integration() -> Result<()> {
     assert!(result == 0 || result == 1 || result == 2)); // Valid return codes
     
     let stats = manager.get_stats);
-    println!("Atomic-aware thread manager stats: {:?}", stats;
+    println!("Atomic-aware thread manager stats: {:?}", stats);
     
     Ok(())
 }
@@ -246,21 +246,21 @@ fn test_concurrent_atomic_operations() -> Result<()> {
     
     // Initialize counter
     {
-        let mut mem = memory.lock().unwrap());
+        let mut mem = memory.lock().unwrap();
         mem.atomic_store_i32(0, 0)?;
     }
     
     const NUM_THREADS: usize = 4;
     const INCREMENTS_PER_THREAD: i32 = 1000;
     
-    let mut handles = Vec::new);
+    let mut handles = Vec::new());
     
     // Spawn threads that increment the counter
     for _i in 0..NUM_THREADS {
         let mem_clone = Arc::clone(&memory);
         let handle = thread::spawn(move || -> Result<()> {
             for _j in 0..INCREMENTS_PER_THREAD {
-                let mut mem = mem_clone.lock().unwrap());
+                let mut mem = mem_clone.lock().unwrap();
                 mem.atomic_rmw_add_i32(0, 1)?;
             }
             Ok(())
@@ -275,7 +275,7 @@ fn test_concurrent_atomic_operations() -> Result<()> {
     
     // Check final value
     let final_value = {
-        let mem = memory.lock().unwrap());
+        let mem = memory.lock().unwrap();
         mem.atomic_load_i32(0)?
     };
     
@@ -294,7 +294,7 @@ fn test_atomic_wait_notify_threading() -> Result<()> {
     
     // Initialize value
     {
-        let mut mem = memory.lock().unwrap());
+        let mut mem = memory.lock().unwrap();
         mem.atomic_store_i32(0, 0)?;
     }
     
@@ -302,7 +302,7 @@ fn test_atomic_wait_notify_threading() -> Result<()> {
     
     // Spawn a thread that will wait
     let waiter_handle = thread::spawn(move || -> Result<i32> {
-        let mut mem = mem_clone.lock().unwrap());
+        let mut mem = mem_clone.lock().unwrap();
         // Wait for value 0 with a long timeout
         mem.atomic_wait32(0, 0, Some(5_000_000_000)) // 5 second timeout
     };
@@ -312,7 +312,7 @@ fn test_atomic_wait_notify_threading() -> Result<()> {
     
     // Change the value and notify
     {
-        let mut mem = memory.lock().unwrap());
+        let mut mem = memory.lock().unwrap();
         mem.atomic_store_i32(0, 1)?; // Change the value
         mem.atomic_notify(0, 1)?; // Wake the waiter
     }
@@ -359,10 +359,10 @@ fn benchmark_atomic_operations() -> Result<()> {
     }
     let rmw_duration = start.elapsed);
     
-    println!("Atomic operations benchmark:";
-    println!("  Load:  {:?} ({:.2} ns/op)", load_duration, load_duration.as_nanos() as f64 / NUM_OPERATIONS as f64;
-    println!("  Store: {:?} ({:.2} ns/op)", store_duration, store_duration.as_nanos() as f64 / NUM_OPERATIONS as f64;
-    println!("  RMW:   {:?} ({:.2} ns/op)", rmw_duration, rmw_duration.as_nanos() as f64 / NUM_OPERATIONS as f64;
+    println!("Atomic operations benchmark:");
+    println!("  Load:  {:?} ({:.2} ns/op)", load_duration, load_duration.as_nanos() as f64 / NUM_OPERATIONS as f64);
+    println!("  Store: {:?} ({:.2} ns/op)", store_duration, store_duration.as_nanos() as f64 / NUM_OPERATIONS as f64);
+    println!("  RMW:   {:?} ({:.2} ns/op)", rmw_duration, rmw_duration.as_nanos() as f64 / NUM_OPERATIONS as f64);
     
     // Verify RMW operations worked correctly
     let final_value = memory.atomic_load_i32(0)?;

@@ -75,13 +75,13 @@ mod tests {
     #[test]
     fn test_bounded_container_integration() {
         // Test BoundedVec from wrt-foundation
-        let mut vec = BoundedVec::<u32, 5>::new);
+        let mut vec = BoundedVec::<u32, 5>::new();
         assert!(vec.push(1).is_ok());
         assert!(vec.push(2).is_ok());
         assert_eq!(vec.len(), 2;
         
         // Test BoundedStack from wrt-foundation
-        let mut stack = BoundedStack::<u32, 5>::new);
+        let mut stack = BoundedStack::<u32, 5>::new();
         assert!(stack.push(1).is_ok());
         assert!(stack.push(2).is_ok());
         assert_eq!(stack.pop(), Some(2;
@@ -148,7 +148,7 @@ mod tests {
                 mutable: true,
             },
             Value::I32(42),
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(global.get(), Value::I32(42;
         
@@ -160,8 +160,8 @@ mod tests {
     #[test]
     fn test_module_integration() {
         // Test Module 
-        let module = new_module().unwrap());
-        assert!(module.exports().is_empty();
+        let module = new_module().unwrap();
+        assert!(module.exports().is_empty());
         
         // Create a new engine
         let engine = new_engine);
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn test_comprehensive_integration() {
         // Create module
-        let module = new_module().unwrap());
+        let module = new_module().unwrap();
         
         // Create memory
         let memory = new_memory(wrt::MemoryType {
@@ -218,7 +218,7 @@ mod tests {
                 mutable: true,
             },
             Value::I32(42),
-        ).unwrap());
+        ).unwrap();
         
         // Create engine
         let engine = new_engine);
@@ -232,8 +232,8 @@ mod tests {
             use wrt::serialization::{serialize_module, deserialize_module};
             
             // Serialize and deserialize the module
-            let serialized = serialize_module(&module).unwrap());
-            let deserialized = deserialize_module(&serialized).unwrap());
+            let serialized = serialize_module(&module).unwrap();
+            let deserialized = deserialize_module(&serialized).unwrap();
             
             // Validate the deserialized module
             assert!(engine.validate_module(&deserialized).is_ok());

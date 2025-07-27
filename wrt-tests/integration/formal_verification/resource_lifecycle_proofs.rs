@@ -94,7 +94,7 @@ pub fn verify_resource_id_uniqueness() {
     let resource_count: usize = kani::any);
     kani::assume(resource_count <= MAX_VERIFICATION_RESOURCES;
     
-    let provider = NoStdProvider::<4096>::new);
+    let provider = NoStdProvider::<4096>::new();
     let mut resource_ids: BoundedVec<u32, MAX_VERIFICATION_RESOURCES, _> = 
         BoundedVec::new(provider;
     
@@ -127,7 +127,7 @@ pub fn verify_resource_id_uniqueness() {
 /// create -> use -> drop, with proper state transitions.
 #[cfg(kani)]
 pub fn verify_resource_lifecycle_correctness() {
-    let provider = NoStdProvider::<4096>::new);
+    let provider = NoStdProvider::<4096>::new();
     
     // Generate resource properties
     let resource_id: u32 = kani::any);
@@ -217,8 +217,8 @@ pub fn verify_resource_table_bounds() {
 /// cannot access each other without proper authorization.
 #[cfg(kani)]
 pub fn verify_cross_component_isolation() {
-    let provider1 = NoStdProvider::<2048>::new);
-    let provider2 = NoStdProvider::<2048>::new);
+    let provider1 = NoStdProvider::<2048>::new();
+    let provider2 = NoStdProvider::<2048>::new();
     
     // Create resources for two different components
     let component1_resource_id: u32 = kani::any);
@@ -262,7 +262,7 @@ pub fn verify_cross_component_isolation() {
 /// throughout their intended lifetime and become invalid after drop.
 #[cfg(kani)]
 pub fn verify_resource_reference_validity() {
-    let provider = NoStdProvider::<4096>::new);
+    let provider = NoStdProvider::<4096>::new();
     
     // Generate resource data
     let resource_id: u32 = kani::any);
@@ -325,7 +325,7 @@ pub fn verify_resource_representation_consistency() {
         _ => ResourceRepr::Opaque,
     };
     
-    let provider = NoStdProvider::<4096>::new);
+    let provider = NoStdProvider::<4096>::new();
     let resource_id: u32 = kani::any);
     
     let resource = Resource::new(
@@ -360,7 +360,7 @@ pub fn verify_resource_representation_consistency() {
 pub fn register_tests(registry: &TestRegistry) -> TestResult {
     registry.register_test("resource_creation_basic", || {
         // Basic resource creation test
-        let provider = NoStdProvider::<4096>::new);
+        let provider = NoStdProvider::<4096>::new();
         
         let resource = Resource::new(
             42,
@@ -388,7 +388,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("resource_verification_level_update", || {
         // Test verification level updates
-        let provider = NoStdProvider::<4096>::new);
+        let provider = NoStdProvider::<4096>::new();
         
         let mut resource = Resource::new(
             1,
@@ -407,7 +407,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("resource_representation_types", || {
         // Test different resource representations
-        let provider = NoStdProvider::<4096>::new);
+        let provider = NoStdProvider::<4096>::new();
         
         let primitive_repr = ResourceRepr::Primitive(ValueType::F32;
         let opaque_repr = ResourceRepr::Opaque;
@@ -422,7 +422,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("resource_id_uniqueness_basic", || {
         // Basic uniqueness test
-        let provider = NoStdProvider::<4096>::new);
+        let provider = NoStdProvider::<4096>::new();
         
         let resource1 = Resource::new(1, ResourceRepr::Opaque, None, VerificationLevel::Standard;
         let resource2 = Resource::new(2, ResourceRepr::Opaque, None, VerificationLevel::Standard;
@@ -514,7 +514,7 @@ mod tests {
     
     #[test]
     fn test_resource_basic_operations() {
-        let provider = NoStdProvider::<4096>::new);
+        let provider = NoStdProvider::<4096>::new();
         
         // Test basic resource creation and properties
         let resource = Resource::new(

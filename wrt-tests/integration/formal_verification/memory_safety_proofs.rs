@@ -291,7 +291,7 @@ mod tests {
     
     #[test]
     fn test_bounded_allocation() {
-        let provider = safe_managed_alloc!(2048, CrateId::Foundation).unwrap());
+        let provider = safe_managed_alloc!(2048, CrateId::Foundation).unwrap();
         let vec = BoundedVec::<u32, 64, _>::new(provider;
         
         assert!(vec.is_ok());

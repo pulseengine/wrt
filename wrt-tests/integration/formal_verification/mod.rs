@@ -381,23 +381,23 @@ pub fn run_tests() -> TestResult {
     #[cfg(not(kani))]
     {
         // When not under KANI, run as traditional tests via TestRegistry
-        let mut runner = KaniTestRunner::new);
+        let mut runner = KaniTestRunner::new();
         runner.register_all_kani_tests()?;
         
         let registry = TestRegistry::global);
         let executed = registry.run_filtered_tests(None, Some("formal-verification"), true;
         
         if executed == 0 {
-            return Err("No formal verification tests executed".to_string();
+            return Err("No formal verification tests executed".to_string());
         }
         
         #[cfg(feature = "std")]
         {
             let stats = runner.get_stats);
-            println!("Formal verification completed:";
-            println!("  Properties verified: {}", stats.verified_properties;
-            println!("  Properties failed: {}", stats.failed_properties;
-            println!("  Properties skipped: {}", stats.skipped_properties;
+            println!("Formal verification completed:");
+            println!("  Properties verified: {}", stats.verified_properties);
+            println!("  Properties failed: {}", stats.failed_properties);
+            println!("  Properties skipped: {}", stats.skipped_properties);
         }
     }
     
@@ -410,7 +410,7 @@ mod tests {
     
     #[test]
     fn test_kani_runner_creation() {
-        let runner = KaniTestRunner::new);
+        let runner = KaniTestRunner::new();
         let stats = runner.get_stats);
         
         // Initially no properties should be registered

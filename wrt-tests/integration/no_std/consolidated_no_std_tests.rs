@@ -84,15 +84,15 @@ mod tests {
             const CAPACITY: usize = 10;
             let provider = NoStdProvider::<{ CAPACITY * 4 }>::default());
             let mut vec: BoundedVec<u32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
-                BoundedVec::new(provider).unwrap());
+                BoundedVec::new(provider).unwrap();
 
-            assert!(vec.is_empty();
+            assert!(vec.is_empty());
             assert_eq!(vec.len(), 0);
             assert_eq!(vec.capacity(), CAPACITY;
 
-            vec.push(1).unwrap());
-            vec.push(2).unwrap());
-            vec.push(3).unwrap());
+            vec.push(1).unwrap();
+            vec.push(2).unwrap();
+            vec.push(3).unwrap();
 
             assert_eq!(vec.len(), 3;
             assert_eq!(vec.get(0).unwrap(), 1);
@@ -105,15 +105,15 @@ mod tests {
             const CAPACITY: usize = 32;
             let provider = NoStdProvider::<CAPACITY>::default());
             let mut string: BoundedString<CAPACITY, NoStdProvider<CAPACITY>> =
-                BoundedString::from_str("", provider).unwrap());
+                BoundedString::from_str("", provider).unwrap();
 
-            assert!(string.is_empty();
+            assert!(string.is_empty());
             assert_eq!(string.len(), 0);
 
-            string.push_str("Hello").unwrap());
+            string.push_str("Hello").unwrap();
             assert_eq!(string.as_str().unwrap(), "Hello";
 
-            string.push_str(", World!").unwrap());
+            string.push_str(", World!").unwrap();
             assert_eq!(string.as_str().unwrap(), "Hello, World!";
         }
 
@@ -122,13 +122,13 @@ mod tests {
             const CAPACITY: usize = 5;
             let provider = NoStdProvider::<{ CAPACITY * 4 }>::default());
             let mut stack: BoundedStack<i32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
-                BoundedStack::new(provider).unwrap());
+                BoundedStack::new(provider).unwrap();
 
-            assert!(stack.is_empty();
+            assert!(stack.is_empty());
 
-            stack.push(10).unwrap());
-            stack.push(20).unwrap());
-            stack.push(30).unwrap());
+            stack.push(10).unwrap();
+            stack.push(20).unwrap();
+            stack.push(30).unwrap();
 
             assert_eq!(stack.len(), 3;
 
@@ -143,13 +143,13 @@ mod tests {
             const CAPACITY: usize = 4;
             let provider = NoStdProvider::<{ CAPACITY * 16 }>::default());
             let mut queue: BoundedQueue<u8, CAPACITY, NoStdProvider<{ CAPACITY * 16 }>> =
-                BoundedQueue::new(provider).unwrap());
+                BoundedQueue::new(provider).unwrap();
 
-            assert!(queue.is_empty();
+            assert!(queue.is_empty());
 
-            queue.enqueue(1).unwrap());
-            queue.enqueue(2).unwrap());
-            queue.enqueue(3).unwrap());
+            queue.enqueue(1).unwrap();
+            queue.enqueue(2).unwrap();
+            queue.enqueue(3).unwrap();
 
             assert_eq!(queue.len(), 3;
 
@@ -190,9 +190,9 @@ mod tests {
             const PROVIDER_SIZE: usize = CAPACITY * 32;
             let provider = NoStdProvider::<PROVIDER_SIZE>::default());
             let mut map: BoundedMap<u32, u32, CAPACITY, NoStdProvider<PROVIDER_SIZE>> =
-                BoundedMap::new);
+                BoundedMap::new();
 
-            assert!(map.is_empty();
+            assert!(map.is_empty());
 
             assert!(map.insert(1, 100).unwrap().is_none();
             assert!(map.insert(2, 200).unwrap().is_none();
@@ -305,7 +305,7 @@ mod tests {
 
         #[test]
         fn test_nostd_memory_provider() {
-            let provider = safe_managed_alloc!(2048, CrateId::Platform).expect("Failed to create provider");
+            let provider = safe_managed_alloc!(2048, CrateId::Platform).expect("Failed to create provider"));
 
             assert_eq!(provider.verification_level(), VerificationLevel::Standard;
             assert!(provider.capacity() <= 4096)); // Capped at 4096 in stub implementation
@@ -334,7 +334,7 @@ mod tests {
                 shared: false,
             };
 
-            let memory = Memory::new(mem_type).unwrap());
+            let memory = Memory::new(mem_type).unwrap();
 
             let data = [1, 2, 3, 4];
             assert!(memory.write(100, &data).is_ok());
@@ -347,7 +347,7 @@ mod tests {
 
         #[test]
         fn test_global_no_std() {
-            let global = Global::new(ValueType::I32, true, Value::I32(42)).unwrap());
+            let global = Global::new(ValueType::I32, true, Value::I32(42)).unwrap();
 
             assert_eq!(global.get(), Value::I32(42;
 
@@ -562,10 +562,10 @@ mod tests {
             const CAPACITY: usize = 4;
             let provider = NoStdProvider::<{ CAPACITY * 4 }>::default());
             let mut vec: BoundedVec<u32, CAPACITY, NoStdProvider<{ CAPACITY * 4 }>> =
-                BoundedVec::new(provider).unwrap());
+                BoundedVec::new(provider).unwrap();
 
             // Ensure we can store page-related data
-            vec.push(WASM_PAGE_SIZE as u32).unwrap());
+            vec.push(WASM_PAGE_SIZE as u32).unwrap();
             assert_eq!(vec.get(0).unwrap(), WASM_PAGE_SIZE as u32;
         }
     }

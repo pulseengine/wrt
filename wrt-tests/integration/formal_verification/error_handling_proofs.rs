@@ -92,8 +92,8 @@ pub fn verify_asil_error_classification() {
     }
     
     // Verify error serialization preserves classification
-    let error_string = error.to_string();
-    assert!(!error_string.is_empty();
+    let error_string = error.to_string());
+    assert!(!error_string.is_empty());
     
     // Verify error chaining preserves highest ASIL level
     let chain_error = Error::system_error("Chained error", AsilLevel::QM)

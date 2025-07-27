@@ -14,20 +14,20 @@ fn test_add_wasm_execution() {
     
     // Create execution engine
     let mut engine = CapabilityAwareEngine::new(EnginePreset::QM)
-        .expect("Failed to create engine");
+        .expect("Failed to create engine"));
     
     // Load the module
     let module_handle = engine.load_module(wasm_bytes)
-        .expect("Failed to load module");
+        .expect("Failed to load module"));
     
     // Instantiate the module
     let instance_handle = engine.instantiate(module_handle)
-        .expect("Failed to instantiate module");
+        .expect("Failed to instantiate module"));
     
     // Execute the add function
     let args = vec![Value::I32(5), Value::I32(3)];
     let results = engine.execute(instance_handle, "add", &args)
-        .expect("Failed to execute add function");
+        .expect("Failed to execute add function"));
     
     // Verify the result
     assert_eq!(results.len(), 1, "Expected one return value";
@@ -42,5 +42,5 @@ fn test_add_wasm_execution() {
 #[cfg(not(all(feature = "std", feature = "wrt-execution")))]
 #[test]
 fn test_add_wasm_execution() {
-    println!("Test skipped: wrt-execution feature not enabled";
+    println!("Test skipped: wrt-execution feature not enabled");
 }

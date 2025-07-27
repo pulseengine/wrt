@@ -58,7 +58,7 @@ where
     ];
     
     for level in &levels {
-        test_fn(*level).expect(&format!("Test failed for verification level: {:?}", level);
+        test_fn(*level).expect(&format!("Test failed for verification level: {:?}", level));
     }
 }
 
@@ -164,12 +164,12 @@ mod foundation_memory_tests {
         let data = create_test_data);
         let slice_res = SafeSlice::new(&data;
         assert!(slice_res.is_ok(), "Slice creation failed");
-        let slice = slice_res.unwrap());
+        let slice = slice_res.unwrap();
 
         // Verify data access works
         assert_eq!(slice.data().unwrap(), &data;
         assert_eq!(slice.len(), data.len);
-        assert!(!slice.is_empty();
+        assert!(!slice.is_empty());
     }
 
     #[test]
@@ -187,7 +187,7 @@ mod foundation_memory_tests {
     #[test]
     fn test_safe_slice_bounds_checking() {
         let data = create_test_data);
-        let slice = SafeSlice::new(&data).unwrap());
+        let slice = SafeSlice::new(&data).unwrap();
 
         // Test valid access
         let subslice = slice.subslice(2, 5;
@@ -206,7 +206,7 @@ mod foundation_memory_tests {
         let provider = StdMemoryProvider::new(data.clone();
 
         // Test borrow_slice
-        let slice = provider.borrow_slice(0, 5).unwrap());
+        let slice = provider.borrow_slice(0, 5).unwrap();
         assert_eq!(slice, &data[..5];
 
         // Test with different verification levels
@@ -221,21 +221,21 @@ mod foundation_memory_tests {
     #[cfg(not(feature = "std"))]
     #[test]
     fn test_nostd_memory_provider() {
-        let provider = NoStdMemoryProvider::<64>::new);
+        let provider = NoStdMemoryProvider::<64>::new();
 
         // Binary std/no_std choice
-        let memory_id = provider.allocate(32).unwrap());
+        let memory_id = provider.allocate(32).unwrap();
         
         // Test write/read
         let test_data = [1, 2, 3, 4, 5];
-        provider.write(memory_id, 0, &test_data).unwrap());
+        provider.write(memory_id, 0, &test_data).unwrap();
         
         let mut buffer = [0; 5];
-        provider.read(memory_id, 0, &mut buffer).unwrap());
+        provider.read(memory_id, 0, &mut buffer).unwrap();
         assert_eq!(buffer, test_data;
         
         // Clean up
-        provider.deallocate(memory_id).unwrap());
+        provider.deallocate(memory_id).unwrap();
     }
 
     #[test]
@@ -246,23 +246,23 @@ mod foundation_memory_tests {
 
         // Push values
         for &value in &test_values {
-            stack.push(value).unwrap());
+            stack.push(value).unwrap();
         }
 
         assert_eq!(stack.len(), test_values.len);
-        assert!(!stack.is_empty();
+        assert!(!stack.is_empty());
 
         // Pop values (should be in reverse order)
         for &expected in test_values.iter().rev() {
-            let value = stack.pop().unwrap());
+            let value = stack.pop().unwrap();
             assert_eq!(value, Some(expected;
         }
 
         assert_eq!(stack.len(), 0);
-        assert!(stack.is_empty();
+        assert!(stack.is_empty());
 
         // Pop from empty stack
-        let empty_pop = stack.pop().unwrap());
+        let empty_pop = stack.pop().unwrap();
         assert_eq!(empty_pop, None;
     }
 
@@ -274,7 +274,7 @@ mod foundation_memory_tests {
             stack.push(42)?;
             assert_eq!(stack.verification_level(), level;
             
-            let value = stack.pop()?.unwrap());
+            let value = stack.pop()?.unwrap();
             assert_eq!(value, 42;
             
             Ok(())

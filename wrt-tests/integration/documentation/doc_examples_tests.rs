@@ -10,12 +10,12 @@ mod foundation_examples {
     #[test]
     fn test_bounded_vec_example() {
         // This is the exact code from the documentation
-        let mut vec: BoundedVec<u32, 10> = BoundedVec::new);
+        let mut vec: BoundedVec<u32, 10> = BoundedVec::new());
         
         // Push elements (safe - returns Result)
-        vec.push(1).expect("capacity available");
-        vec.push(2).expect("capacity available");
-        vec.push(3).expect("capacity available");
+        vec.push(1).expect("capacity available"));
+        vec.push(2).expect("capacity available"));
+        vec.push(3).expect("capacity available"));
         
         // Check current state
         assert_eq!(vec.len(), 3;
@@ -28,7 +28,7 @@ mod foundation_examples {
         
         // Handle capacity errors
         for i in 4..=10 {
-            vec.push(i).expect("capacity available");
+            vec.push(i).expect("capacity available"));
         }
         assert!(vec.is_full();
         
@@ -44,12 +44,12 @@ mod foundation_examples {
         use wrt_foundation::bounded::BoundedStack;
         
         // Create a stack with capacity 5
-        let mut stack: BoundedStack<&str, 5> = BoundedStack::new);
+        let mut stack: BoundedStack<&str, 5> = BoundedStack::new();
         
         // Push operations
-        stack.push("first").unwrap());
-        stack.push("second").unwrap());
-        stack.push("third").unwrap());
+        stack.push("first").unwrap();
+        stack.push("second").unwrap();
+        stack.push("third").unwrap();
         
         // Pop operations (LIFO)
         assert_eq!(stack.pop(), Some("third";

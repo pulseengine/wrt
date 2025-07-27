@@ -129,18 +129,18 @@ pub mod redundant_computation {
             let mut algorithms = bounded_vec(4;
             
             // Algorithm 1: Direct computation
-            algorithms.push(Box::new(|x| x.wrapping_mul(2))).unwrap());
+            algorithms.push(Box::new(|x| x.wrapping_mul(2))).unwrap();
             
             // Algorithm 2: Bit-shift based
-            algorithms.push(Box::new(|x| x << 1)).unwrap());
+            algorithms.push(Box::new(|x| x << 1)).unwrap();
             
             // Algorithm 3: Addition based
-            algorithms.push(Box::new(|x| x.wrapping_add(x))).unwrap());
+            algorithms.push(Box::new(|x| x.wrapping_add(x))).unwrap();
             
             // Algorithm 4: Table lookup simulation
             algorithms.push(Box::new(|x| {
                 if x < 0x80000000 { x * 2 } else { (x - 0x80000000) * 2 }
-            })).unwrap());
+            })).unwrap();
             
             Self { algorithms }
         }
@@ -149,11 +149,11 @@ pub mod redundant_computation {
             let mut results = bounded_vec(4;
             
             for algo in self.algorithms.iter() {
-                results.push(algo(input)).unwrap());
+                results.push(algo(input)).unwrap();
             }
             
             // Verify all algorithms produce same result
-            let first = results.get(0).unwrap());
+            let first = results.get(0).unwrap();
             for i in 1..results.len() {
                 if results.get(i).unwrap() != first {
                     return Err("Diverse redundancy check failed";
@@ -249,7 +249,7 @@ pub mod hardware_error_detection {
             // Verify control flow integrity
             let idx = self.actual_sequence.len() - 1;
             if idx < self.expected_sequence.len() {
-                let expected = self.expected_sequence.get(idx).unwrap());
+                let expected = self.expected_sequence.get(idx).unwrap();
                 if *expected != step {
                     self.violations += 1;
                     return Err("Control flow violation detected";
@@ -277,7 +277,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_lockstep_synchronization() {
-        let mut coordinator = LockStepCoordinator::new);
+        let mut coordinator = LockStepCoordinator::new();
         
         // Execute sequence of operations
         let inputs = [1u32, 2, 3, 4, 5];
@@ -355,7 +355,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_diverse_redundancy_correctness() {
-        let redundancy = DiverseRedundancy::new);
+        let redundancy = DiverseRedundancy::new();
         
         // Test with various inputs
         let test_inputs = [0u32, 1, 42, 1000, u32::MAX / 2];
@@ -391,7 +391,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_memory_edc_effectiveness() {
-        let mut edc = MemoryEDC::new);
+        let mut edc = MemoryEDC::new();
         
         // Test data with no errors
         let good_data = vec![0x12, 0x34, 0x56, 0x78];
@@ -425,11 +425,11 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_control_flow_integrity() {
-        let mut monitor = ControlFlowMonitor::new);
+        let mut monitor = ControlFlowMonitor::new();
         
         // Set expected control flow
         let expected = vec![1, 2, 3, 4, 5];
-        monitor.set_expected_flow(&expected).unwrap());
+        monitor.set_expected_flow(&expected).unwrap();
         
         // Execute correct flow
         let mut flow_correct = true;
@@ -460,7 +460,7 @@ mod proofs {
     #[test]
     #[cfg_attr(feature = "kani", kani::proof)]
     fn verify_fault_propagation_prevention() {
-        let mut coordinator = LockStepCoordinator::new);
+        let mut coordinator = LockStepCoordinator::new();
         
         // Simulate fault injection
         coordinator.secondary.state = 0xDEADBEEF; // Inject fault

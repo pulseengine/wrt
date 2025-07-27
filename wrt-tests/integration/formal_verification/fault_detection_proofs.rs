@@ -698,8 +698,8 @@ mod tests {
     
     #[test]
     fn test_capacity_enforcement() {
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
-        let mut vec = BoundedVec::<u8, 8, _>::new(provider).unwrap());
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let mut vec = BoundedVec::<u8, 8, _>::new(provider).unwrap();
         
         // Fill to capacity
         for i in 0..8 {

@@ -194,8 +194,8 @@ fn test_cfi_configuration_default() -> RegistryTestResult {
 
 fn test_cfi_configuration_serialization() -> RegistryTestResult {
     let config = CfiConfiguration::default());
-    let json = serde_json::to_string(&config).unwrap());
-    let deserialized: CfiConfiguration = serde_json::from_str(&json).unwrap());
+    let json = serde_json::to_string(&config).unwrap();
+    let deserialized: CfiConfiguration = serde_json::from_str(&json).unwrap();
     
     assert_eq!(config.protection_level, deserialized.protection_level;
     assert_eq!(config.max_shadow_stack_depth, deserialized.max_shadow_stack_depth;
@@ -212,8 +212,8 @@ fn test_cfi_protection_levels() -> RegistryTestResult {
     ];
     
     for level in levels {
-        let json = serde_json::to_string(&level).unwrap());
-        let deserialized: CfiProtectionLevel = serde_json::from_str(&json).unwrap());
+        let json = serde_json::to_string(&level).unwrap();
+        let deserialized: CfiProtectionLevel = serde_json::from_str(&json).unwrap();
         assert_eq!(level, deserialized;
     }
     Ok(())
@@ -231,8 +231,8 @@ fn test_cfi_violation_policy() -> RegistryTestResult {
     ];
     
     for policy in policies {
-        let json = serde_json::to_string(&policy).unwrap());
-        let deserialized: CfiViolationPolicy = serde_json::from_str(&json).unwrap());
+        let json = serde_json::to_string(&policy).unwrap();
+        let deserialized: CfiViolationPolicy = serde_json::from_str(&json).unwrap();
         assert_eq!(policy, deserialized;
     }
     Ok(())
@@ -261,8 +261,8 @@ fn test_shadow_stack_entry() -> RegistryTestResult {
         call_site_id: 0x1000,
     };
     
-    let json = serde_json::to_string(&entry).unwrap());
-    let deserialized: ShadowStackEntry = serde_json::from_str(&json).unwrap());
+    let json = serde_json::to_string(&entry).unwrap();
+    let deserialized: ShadowStackEntry = serde_json::from_str(&json).unwrap();
     
     assert_eq!(entry, deserialized;
     Ok(())
@@ -279,8 +279,8 @@ fn test_landing_pad() -> RegistryTestResult {
         timeout_ns: Some(500_000),
     };
     
-    let json = serde_json::to_string(&landing_pad).unwrap());
-    let deserialized: LandingPad = serde_json::from_str(&json).unwrap());
+    let json = serde_json::to_string(&landing_pad).unwrap();
+    let deserialized: LandingPad = serde_json::from_str(&json).unwrap();
     
     assert_eq!(landing_pad, deserialized;
     Ok(())
@@ -294,8 +294,8 @@ fn test_hardware_instructions() -> RegistryTestResult {
     ];
     
     for instruction in instructions {
-        let json = serde_json::to_string(&instruction).unwrap());
-        let deserialized: HardwareInstruction = serde_json::from_str(&json).unwrap());
+        let json = serde_json::to_string(&instruction).unwrap();
+        let deserialized: HardwareInstruction = serde_json::from_str(&json).unwrap();
         assert_eq!(instruction, deserialized;
     }
     Ok(())
@@ -310,8 +310,8 @@ fn test_arm_bti_modes() -> RegistryTestResult {
     ];
     
     for mode in modes {
-        let json = serde_json::to_string(&mode).unwrap());
-        let deserialized: ArmBtiMode = serde_json::from_str(&json).unwrap());
+        let json = serde_json::to_string(&mode).unwrap();
+        let deserialized: ArmBtiMode = serde_json::from_str(&json).unwrap();
         assert_eq!(mode, deserialized;
     }
     Ok(())
@@ -328,8 +328,8 @@ fn test_cfi_hardware_features() -> RegistryTestResult {
     features.riscv_cfi = true;
     features.auto_detect = false;
     
-    let json = serde_json::to_string(&features).unwrap());
-    let deserialized: CfiHardwareFeatures = serde_json::from_str(&json).unwrap());
+    let json = serde_json::to_string(&features).unwrap();
+    let deserialized: CfiHardwareFeatures = serde_json::from_str(&json).unwrap();
     
     assert_eq!(features.arm_bti, deserialized.arm_bti;
     assert_eq!(features.riscv_cfi, deserialized.riscv_cfi;

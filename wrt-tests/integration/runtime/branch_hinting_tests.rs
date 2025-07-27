@@ -75,7 +75,7 @@ fn test_br_on_non_null_instruction() -> Result<()> {
 /// Test ref.is_null instruction
 #[test]
 fn test_ref_is_null_instruction() -> Result<()> {
-    let op = RefIsNull::new);
+    let op = RefIsNull::new();
 
     // Test with null funcref
     let result = op.execute(Value::FuncRef(None))?;
@@ -103,7 +103,7 @@ fn test_ref_is_null_instruction() -> Result<()> {
 /// Test ref.as_non_null instruction
 #[test]
 fn test_ref_as_non_null_instruction() -> Result<()> {
-    let op = RefAsNonNull::new);
+    let op = RefAsNonNull::new();
 
     // Test with non-null funcref - should pass through
     let input = Value::FuncRef(Some(FuncRef { index: 42 };
@@ -133,7 +133,7 @@ fn test_ref_as_non_null_instruction() -> Result<()> {
 /// Test ref.eq instruction
 #[test]
 fn test_ref_eq_instruction() -> Result<()> {
-    let op = RefEq::new);
+    let op = RefEq::new();
 
     // Test null funcref equality
     let result = op.execute(Value::FuncRef(None), Value::FuncRef(None))?;
@@ -219,7 +219,7 @@ fn test_integration_workflow() -> Result<()> {
     let valid_extern = Value::ExternRef(Some(ExternRef { index: 2 };
 
     // Test workflow: check if reference is null, then conditionally branch
-    let is_null_op = RefIsNull::new);
+    let is_null_op = RefIsNull::new();
     
     // Check null funcref
     let is_null_result = is_null_op.execute(null_func.clone())?;
@@ -241,12 +241,12 @@ fn test_integration_workflow() -> Result<()> {
     assert_eq!(kept_value, Some(valid_func.clone();
 
     // Test ref.as_non_null with valid reference
-    let as_non_null_op = RefAsNonNull::new);
+    let as_non_null_op = RefAsNonNull::new();
     let result = as_non_null_op.execute(valid_func.clone())?;
     assert_eq!(result, valid_func;
 
     // Test ref.eq with same references
-    let eq_op = RefEq::new);
+    let eq_op = RefEq::new();
     let eq_result = eq_op.execute(valid_func.clone(), valid_func.clone())?;
     assert_eq!(eq_result, Value::I32(1;
 
@@ -276,18 +276,18 @@ fn test_performance() -> Result<()> {
         let br_on_non_null = BrOnNonNull::new(1;
         let _ = br_on_non_null.execute(&valid_ref)?;
         
-        let is_null = RefIsNull::new);
+        let is_null = RefIsNull::new();
         let _ = is_null.execute(null_ref.clone())?;
         
-        let as_non_null = RefAsNonNull::new);
+        let as_non_null = RefAsNonNull::new();
         let _ = as_non_null.execute(valid_ref.clone())?;
         
-        let eq_op = RefEq::new);
+        let eq_op = RefEq::new();
         let _ = eq_op.execute(valid_ref.clone(), valid_ref.clone())?;
     }
     
     let duration = start.elapsed);
-    println!("10000 branch hinting operations took: {:?}", duration;
+    println!("10000 branch hinting operations took: {:?}", duration);
     
     // Should complete in reasonable time (less than 100ms on modern hardware)
     assert!(duration.as_millis() < 100);
@@ -300,18 +300,18 @@ fn test_performance() -> Result<()> {
 fn test_edge_cases() -> Result<()> {
     // Test with maximum function index
     let max_func = Value::FuncRef(Some(FuncRef { index: u32::MAX };
-    let is_null_op = RefIsNull::new);
+    let is_null_op = RefIsNull::new();
     let result = is_null_op.execute(max_func.clone())?;
     assert_eq!(result, Value::I32(0)); // Should be non-null
 
     // Test as_non_null with max index
-    let as_non_null_op = RefAsNonNull::new);
+    let as_non_null_op = RefAsNonNull::new();
     let result = as_non_null_op.execute(max_func.clone())?;
     assert_eq!(result, max_func;
 
     // Test ref.eq with max indices
     let max_extern = Value::ExternRef(Some(ExternRef { index: u32::MAX };
-    let eq_op = RefEq::new);
+    let eq_op = RefEq::new();
     let result = eq_op.execute(max_func, max_extern)?;
     assert_eq!(result, Value::I32(0)); // Different types
 

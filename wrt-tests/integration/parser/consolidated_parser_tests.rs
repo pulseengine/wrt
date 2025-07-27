@@ -146,7 +146,7 @@ pub fn create_multi_import_module() -> Vec<u8> {
 /// Helper function consolidated from individual tests
 pub fn get_required_builtins(module: &[u8]) -> Result<HashSet<BuiltinType>> {
     let builtin_names = parser::scan_for_builtins(module)?;
-    let mut required_builtins = HashSet::new);
+    let mut required_builtins = HashSet::new();
     
     for name in builtin_names {
         match name.as_str() {
@@ -177,7 +177,7 @@ mod basic_parser_tests {
     fn test_scan_for_builtins() {
         let module = create_test_module("wasi_builtin", "resource.create";
         
-        let builtin_names = parser::scan_for_builtins(&module).unwrap());
+        let builtin_names = parser::scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 1);
         assert_eq!(builtin_names[0], "resource.create";
     }
@@ -186,7 +186,7 @@ mod basic_parser_tests {
     fn test_non_builtin_imports() {
         let module = create_test_module("other_module", "other_import";
         
-        let builtin_names = parser::scan_for_builtins(&module).unwrap());
+        let builtin_names = parser::scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 0);
     }
 
@@ -194,7 +194,7 @@ mod basic_parser_tests {
     fn test_get_required_builtins() {
         let module = create_test_module("wasi_builtin", "resource.create";
         
-        let required_builtins = get_required_builtins(&module).unwrap());
+        let required_builtins = get_required_builtins(&module).unwrap();
         assert!(required_builtins.contains(&BuiltinType::ResourceCreate);
         assert_eq!(required_builtins.len(), 1);
     }
@@ -203,15 +203,15 @@ mod basic_parser_tests {
     fn test_random_builtin_import() {
         let module = create_test_module("wasi_builtin", "random_get_bytes";
         
-        let required_builtins = get_required_builtins(&module).unwrap());
-        assert!(required_builtins.is_empty();
+        let required_builtins = get_required_builtins(&module).unwrap();
+        assert!(required_builtins.is_empty());
     }
 
     #[test]
     fn test_multiple_builtins() {
         let module = create_multi_import_module);
         
-        let required_builtins = get_required_builtins(&module).unwrap());
+        let required_builtins = get_required_builtins(&module).unwrap();
         assert!(required_builtins.contains(&BuiltinType::ResourceCreate);
         assert!(required_builtins.contains(&BuiltinType::ResourceDrop);
         assert_eq!(required_builtins.len(), 2;
@@ -289,7 +289,7 @@ mod comprehensive_parser_tests {
                         
                         // Parse imports
                         for import in reader {
-                            let import = import.unwrap());
+                            let import = import.unwrap();
                             assert_eq!(import.module, "wasi_builtin";
                             assert_eq!(import.name, "random";
                         }
@@ -359,7 +359,7 @@ mod integration_parser_tests {
         let module = create_multi_import_module);
         
         // Test that both parsers detect the same information
-        let builtins = parser::scan_for_builtins(&module).unwrap());
+        let builtins = parser::scan_for_builtins(&module).unwrap();
         assert_eq!(builtins.len(), 2;
         assert!(builtins.contains(&"resource.create".to_string());
         assert!(builtins.contains(&"resource.drop".to_string());
@@ -420,11 +420,11 @@ mod validation_parser_tests {
                 Ok(payload) => {
                     if let Payload::ImportSection(reader) = payload {
                         for import in reader {
-                            let import = import.unwrap());
+                            let import = import.unwrap();
                             
                             // Validate import structure
-                            assert!(!import.module.is_empty();
-                            assert!(!import.name.is_empty();
+                            assert!(!import.module.is_empty());
+                            assert!(!import.name.is_empty());
                             
                             // Validate specific import
                             if import.module == "wasi_builtin" {
@@ -477,7 +477,7 @@ mod validation_parser_tests {
         let module = create_comprehensive_test_module);
         
         let mut parser = Parser::new(&module;
-        let mut sections_seen = Vec::new);
+        let mut sections_seen = Vec::new());
         
         loop {
             match parser.parse() {
@@ -517,7 +517,7 @@ mod performance_parser_tests {
         let start = Instant::now);
         
         for _ in 0..1000 {
-            let _builtins = parser::scan_for_builtins(&module).unwrap());
+            let _builtins = parser::scan_for_builtins(&module).unwrap();
         }
         
         let duration = start.elapsed);
@@ -536,7 +536,7 @@ mod performance_parser_tests {
         
         // Large import section
         let import_count = 100;
-        let mut import_section = Vec::new);
+        let mut import_section = Vec::new());
         import_section.push(import_count); // Number of imports
         
         for i in 0..import_count {
@@ -557,7 +557,7 @@ mod performance_parser_tests {
         
         // Test parsing performance
         let start = Instant::now);
-        let _builtins = parser::scan_for_builtins(&module).unwrap());
+        let _builtins = parser::scan_for_builtins(&module).unwrap();
         let duration = start.elapsed);
         
         assert!(duration.as_millis() < 100, "Large module parsing too slow");

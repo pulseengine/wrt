@@ -105,8 +105,8 @@ pub fn verify_cross_component_memory_isolation() {
     kani::assume(component1_budget > 0;
     kani::assume(component2_budget > 0;
     
-    let provider1 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new);
-    let provider2 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new);
+    let provider1 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new();
+    let provider2 = NoStdProvider::<{ MAX_VERIFICATION_MEMORY / 2 }>::new();
     
     // Generate allocation sizes for each component
     let component1_alloc_size: usize = kani::any);
@@ -336,7 +336,7 @@ pub fn verify_multi_component_workflow_consistency() {
     let workflow_steps: usize = kani::any);
     kani::assume(workflow_steps >= 1 && workflow_steps <= MAX_CROSS_COMPONENT_OPS;
     
-    let provider = NoStdProvider::<4096>::new);
+    let provider = NoStdProvider::<4096>::new();
     
     // Track workflow state across components
     let mut workflow_resource_count: usize = 0;
@@ -439,8 +439,8 @@ pub fn verify_component_isolation_under_stress() {
 pub fn register_tests(registry: &TestRegistry) -> TestResult {
     registry.register_test("cross_component_isolation_basic", || {
         // Basic cross-component isolation test
-        let provider1 = NoStdProvider::<1024>::new);
-        let provider2 = NoStdProvider::<1024>::new);
+        let provider1 = NoStdProvider::<1024>::new();
+        let provider2 = NoStdProvider::<1024>::new();
         
         // Different providers should have independent capacities
         assert_eq!(provider1.capacity(), provider2.capacity);
@@ -507,7 +507,7 @@ pub fn register_tests(registry: &TestRegistry) -> TestResult {
     
     registry.register_test("workflow_consistency_basic", || {
         // Basic workflow consistency test
-        let provider = NoStdProvider::<4096>::new);
+        let provider = NoStdProvider::<4096>::new();
         
         let resource = Resource::new(
             42,
