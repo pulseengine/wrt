@@ -97,7 +97,7 @@ impl CleanRuntime {
                 CleanValType::F64 => CleanValue::F64(42.0),
                 _ => CleanValue::S32(0), // Default for complex types
             })
-            .collect();
+            .collect());
 
         Ok(results)
     }
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_clean_runtime_creation() {
-        let runtime = CleanRuntime::new);
+        let runtime = CleanRuntime::new();
         assert_eq!(runtime.functions.len(), 0);
         assert_eq!(runtime.memories.len(), 0);
         assert_eq!(runtime.tables.len(), 0);
@@ -209,18 +209,18 @@ mod tests {
 
     #[test]
     fn test_add_function() {
-        let mut runtime = CleanRuntime::new);
+        let mut runtime = CleanRuntime::new();
         
         let func_type = CleanFuncType {
             params: vec![CleanValType::S32, CleanValType::S32],
             results: vec![CleanValType::S32],
         };
         
-        let func_id = runtime.add_function("add".to_string(), func_type).unwrap());
+        let func_id = runtime.add_function("add".to_string(), func_type).unwrap();
         assert_eq!(func_id, 0);
         assert_eq!(runtime.functions.len(), 1);
         
-        let function = runtime.get_function(func_id).unwrap());
+        let function = runtime.get_function(func_id).unwrap();
         assert_eq!(function.name, "add";
         assert_eq!(function.func_type.params.len(), 2;
         assert_eq!(function.func_type.results.len(), 1);
@@ -228,35 +228,35 @@ mod tests {
 
     #[test]
     fn test_add_memory() {
-        let mut runtime = CleanRuntime::new);
+        let mut runtime = CleanRuntime::new();
         
         let memory_type = CleanMemoryType {
             limits: CleanLimits { min: 1, max: Some(10) },
             shared: false,
         };
         
-        let mem_id = runtime.add_memory("mem0".to_string(), memory_type).unwrap());
+        let mem_id = runtime.add_memory("mem0".to_string(), memory_type).unwrap();
         assert_eq!(mem_id, 0);
         assert_eq!(runtime.memories.len(), 1);
         
-        let memory = runtime.get_memory(mem_id).unwrap());
+        let memory = runtime.get_memory(mem_id).unwrap();
         assert_eq!(memory.name, "mem0";
         assert_eq!(memory.memory_type.limits.min, 1);
     }
 
     #[test]
     fn test_execute_function() {
-        let mut runtime = CleanRuntime::new);
+        let mut runtime = CleanRuntime::new();
         
         let func_type = CleanFuncType {
             params: vec![CleanValType::S32, CleanValType::S32],
             results: vec![CleanValType::S32],
         };
         
-        let func_id = runtime.add_function("add".to_string(), func_type).unwrap());
+        let func_id = runtime.add_function("add".to_string(), func_type).unwrap();
         
         let args = vec![CleanValue::S32(10), CleanValue::S32(20)];
-        let results = runtime.execute_function(func_id, args).unwrap());
+        let results = runtime.execute_function(func_id, args).unwrap();
         
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], CleanValue::S32(42)); // Dummy implementation returns 42
@@ -264,15 +264,15 @@ mod tests {
 
     #[test]
     fn test_memory_operations() {
-        let mut runtime = CleanRuntime::new);
+        let mut runtime = CleanRuntime::new();
         
         let memory_type = CleanMemoryType {
             limits: CleanLimits { min: 1, max: Some(10) },
             shared: false,
         };
         
-        let mem_id = runtime.add_memory("mem0".to_string(), memory_type).unwrap());
-        let memory = runtime.get_memory(mem_id).unwrap());
+        let mem_id = runtime.add_memory("mem0".to_string(), memory_type).unwrap();
+        let memory = runtime.get_memory(mem_id).unwrap();
         
         // Memory starts empty
         assert_eq!(memory.data.len(), 0);
@@ -280,11 +280,11 @@ mod tests {
 
     #[test]
     fn test_factory_access() {
-        let runtime = CleanRuntime::new);
+        let runtime = CleanRuntime::new();
         let factory = runtime.factory);
         
         // Test that we can create bounded strings using the factory
-        let bounded_str = factory.create_bounded_string::<64>("test").unwrap());
+        let bounded_str = factory.create_bounded_string::<64>("test").unwrap();
         assert_eq!(bounded_str.as_str(), "test";
     }
 }

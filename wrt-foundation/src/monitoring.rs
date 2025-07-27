@@ -39,11 +39,11 @@ impl MemoryMonitor {
 
     /// Record a successful allocation
     pub fn record_allocation(&self, size: usize) {
-        self.total_allocations.fetch_add(1, Ordering::Relaxed;
+        self.total_allocations.fetch_add(1, Ordering::Relaxed);
         let new_usage = self.current_usage.fetch_add(size, Ordering::Relaxed) + size;
 
         // Update peak if necessary
-        let mut current_peak = self.peak_usage.load(Ordering::Relaxed;
+        let mut current_peak = self.peak_usage.load(Ordering::Relaxed);
         while new_usage > current_peak {
             match self.peak_usage.compare_exchange_weak(
                 current_peak,
@@ -59,18 +59,18 @@ impl MemoryMonitor {
 
     /// Record a deallocation
     pub fn record_deallocation(&self, size: usize) {
-        self.total_deallocations.fetch_add(1, Ordering::Relaxed;
-        self.current_usage.fetch_sub(size, Ordering::Relaxed;
+        self.total_deallocations.fetch_add(1, Ordering::Relaxed);
+        self.current_usage.fetch_sub(size, Ordering::Relaxed);
     }
 
     /// Record an allocation failure
     pub fn record_allocation_failure(&self) {
-        self.allocation_failures.fetch_add(1, Ordering::Relaxed;
+        self.allocation_failures.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Record a budget overrun prevention
     pub fn record_budget_overrun_prevented(&self) {
-        self.budget_overruns_prevented.fetch_add(1, Ordering::Relaxed;
+        self.budget_overruns_prevented.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Get current statistics snapshot
@@ -87,12 +87,12 @@ impl MemoryMonitor {
 
     /// Reset all counters (useful for testing)
     pub fn reset(&self) {
-        self.total_allocations.store(0, Ordering::Relaxed;
-        self.total_deallocations.store(0, Ordering::Relaxed;
-        self.peak_usage.store(0, Ordering::Relaxed;
-        self.current_usage.store(0, Ordering::Relaxed;
-        self.allocation_failures.store(0, Ordering::Relaxed;
-        self.budget_overruns_prevented.store(0, Ordering::Relaxed;
+        self.total_allocations.store(0, Ordering::Relaxed);
+        self.total_deallocations.store(0, Ordering::Relaxed);
+        self.peak_usage.store(0, Ordering::Relaxed);
+        self.current_usage.store(0, Ordering::Relaxed);
+        self.allocation_failures.store(0, Ordering::Relaxed);
+        self.budget_overruns_prevented.store(0, Ordering::Relaxed);
     }
 }
 
@@ -132,7 +132,7 @@ impl MemoryStatistics {
 }
 
 /// Global memory monitor instance
-pub static MEMORY_MONITOR: MemoryMonitor = MemoryMonitor::new);
+pub static MEMORY_MONITOR: MemoryMonitor = MemoryMonitor::new();
 
 /// Per-crate monitoring
 pub struct CrateMonitor {
@@ -153,11 +153,11 @@ impl CrateMonitor {
     }
 
     pub fn record_allocation(&self, size: usize) {
-        self.allocations.fetch_add(1, Ordering::Relaxed;
+        self.allocations.fetch_add(1, Ordering::Relaxed);
         let new_usage = self.current_usage.fetch_add(size, Ordering::Relaxed) + size;
 
         // Update peak
-        let mut current_peak = self.peak_usage.load(Ordering::Relaxed;
+        let mut current_peak = self.peak_usage.load(Ordering::Relaxed);
         while new_usage > current_peak {
             match self.peak_usage.compare_exchange_weak(
                 current_peak,
@@ -171,12 +171,12 @@ impl CrateMonitor {
         }
 
         // Also record in global monitor
-        MEMORY_MONITOR.record_allocation(size;
+        MEMORY_MONITOR.record_allocation(size);
     }
 
     pub fn record_deallocation(&self, size: usize) {
-        self.current_usage.fetch_sub(size, Ordering::Relaxed;
-        MEMORY_MONITOR.record_deallocation(size;
+        self.current_usage.fetch_sub(size, Ordering::Relaxed);
+        MEMORY_MONITOR.record_deallocation(size);
     }
 
     pub fn get_statistics(&self) -> CrateStatistics {
@@ -201,19 +201,19 @@ pub struct CrateStatistics {
 #[cfg(debug_assertions)]
 pub fn debug_track_allocation(crate_id: CrateId, size: usize, purpose: &str) {
     // In debug mode, we can add detailed tracking
-    MEMORY_MONITOR.record_allocation(size;
+    MEMORY_MONITOR.record_allocation(size);
 
     #[cfg(feature = "std")]
     {
         use std::collections::HashMap;
         use std::sync::{Mutex, OnceLock};
 
-        static DEBUG_TRACKER: OnceLock<Mutex<HashMap<String, (usize, usize)>>> = OnceLock::new);
+        static DEBUG_TRACKER: OnceLock<Mutex<HashMap<String, (usize, usize)>>> = OnceLock::new();
 
-        let tracker = DEBUG_TRACKER.get_or_init(|| Mutex::new(HashMap::new();
+        let tracker = DEBUG_TRACKER.get_or_init(|| Mutex::new(HashMap::new()));
         if let Ok(mut map) = tracker.lock() {
-            let key = format!("{}:{}", crate_id.name(), purpose;
-            let (count, total) = map.entry(key).or_insert((0, 0);
+            let key = format!("{}:{}", crate_id.name(), purpose);
+            let (count, total) = map.entry(key).or_insert((0, 0));
             *count += 1;
             *total += size;
         }
@@ -222,7 +222,7 @@ pub fn debug_track_allocation(crate_id: CrateId, size: usize, purpose: &str) {
 
 /// Get comprehensive system report
 pub fn get_system_report() -> SystemReport {
-    let global_stats = MEMORY_MONITOR.get_statistics);
+    let global_stats = MEMORY_MONITOR.get_statistics();
 
     SystemReport {
         global_statistics: global_stats,
@@ -245,8 +245,8 @@ pub enum SystemHealth {
 }
 
 fn calculate_system_health(stats: &MemoryStatistics) -> SystemHealth {
-    let success_rate = stats.success_rate);
-    let has_leaks = stats.has_leaks);
+    let success_rate = stats.success_rate();
+    let has_leaks = stats.has_leaks();
 
     if success_rate > 0.95 && !has_leaks {
         SystemHealth::Excellent

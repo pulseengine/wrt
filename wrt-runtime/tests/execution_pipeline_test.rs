@@ -52,7 +52,7 @@ fn test_pipeline_with_const_function() -> Result<()> {
     assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 42;
-        println!("✅ Constant function test passed: got {}", result;
+        println!("✅ Constant function test passed: got {}", result);
     } else {
         panic!("Expected I32 result, got {:?}", results[0];
     }
@@ -79,7 +79,7 @@ fn test_pipeline_with_add_function() -> Result<()> {
     assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 42;
-        println!("✅ Add function test passed: 10 + 32 = {}", result;
+        println!("✅ Add function test passed: 10 + 32 = {}", result);
     } else {
         panic!("Expected I32 result, got {:?}", results[0];
     }
@@ -91,7 +91,7 @@ fn test_pipeline_with_add_function() -> Result<()> {
 fn test_pipeline_across_asil_levels() -> Result<()> {
     // Test that the same module works across different ASIL levels
     for preset in [EnginePreset::QM, EnginePreset::AsilA, EnginePreset::AsilB, EnginePreset::AsilD] {
-        println!("Testing preset: {:?}", preset;
+        println!("Testing preset: {:?}", preset);
         
         let mut engine = CapabilityAwareEngine::with_preset(preset)?;
         let module_handle = engine.load_module(CONST_42_WASM)?;
@@ -107,7 +107,7 @@ fn test_pipeline_across_asil_levels() -> Result<()> {
         }
     }
     
-    println!("✅ All ASIL levels work correctly";
+    println!("✅ All ASIL levels work correctly");
     Ok(())
 }
 
@@ -123,7 +123,7 @@ fn test_function_existence_checking() -> Result<()> {
     // Should not find a non-existent function
     assert!(!engine.has_function(instance_handle, "nonexistent")?);
     
-    println!("✅ Function existence checking works correctly";
+    println!("✅ Function existence checking works correctly");
     Ok(())
 }
 
@@ -137,6 +137,6 @@ fn test_error_handling() -> Result<()> {
     let result = engine.execute(instance_handle, "nonexistent", &[];
     assert!(result.is_err();
     
-    println!("✅ Error handling works correctly";
+    println!("✅ Error handling works correctly");
     Ok(())
 }

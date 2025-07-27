@@ -190,20 +190,20 @@ mod tests {
         let provider = TestProvider::default());
         
         // Test compatible types
-        let mut params1 = BoundedVec::new(provider.clone()).unwrap());
-        params1.push(ValueType::I32).unwrap());
-        params1.push(ValueType::I32).unwrap());
-        let mut results1 = BoundedVec::new(provider.clone()).unwrap());
-        results1.push(ValueType::I32).unwrap());
+        let mut params1 = BoundedVec::new(provider.clone()).unwrap();
+        params1.push(ValueType::I32).unwrap();
+        params1.push(ValueType::I32).unwrap();
+        let mut results1 = BoundedVec::new(provider.clone()).unwrap();
+        results1.push(ValueType::I32).unwrap();
         let func1 = WrtFuncType {
             params: params1,
             results: results1,
         };
         
-        let mut params2 = BoundedVec::new(provider.clone()).unwrap());
-        params2.push(ValueType::I32).unwrap());
-        let mut results2 = BoundedVec::new(provider.clone()).unwrap());
-        results2.push(ValueType::I32).unwrap());
+        let mut params2 = BoundedVec::new(provider.clone()).unwrap();
+        params2.push(ValueType::I32).unwrap();
+        let mut results2 = BoundedVec::new(provider.clone()).unwrap();
+        results2.push(ValueType::I32).unwrap();
         let func2 = WrtFuncType {
             params: params2,
             results: results2,
@@ -213,10 +213,10 @@ mod tests {
         assert!(validation::validate_tail_call(&func1, &func2).is_ok());
         
         // Test incompatible return types
-        let mut params3 = BoundedVec::new(provider.clone()).unwrap());
-        params3.push(ValueType::I32).unwrap());
-        let mut results3 = BoundedVec::new(provider.clone()).unwrap());
-        results3.push(ValueType::I64).unwrap());
+        let mut params3 = BoundedVec::new(provider.clone()).unwrap();
+        params3.push(ValueType::I32).unwrap();
+        let mut results3 = BoundedVec::new(provider.clone()).unwrap();
+        results3.push(ValueType::I64).unwrap();
         let func3 = WrtFuncType {
             params: params3,
             results: results3,

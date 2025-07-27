@@ -26,7 +26,7 @@ use crate::traits::importance; // Added this import
 use crate::verification::VerificationLevel;
 
 // Global operation counter for use when a local counter isn't available
-static GLOBAL_COUNTER: WrtOnce<Counter> = WrtOnce::new);
+static GLOBAL_COUNTER: WrtOnce<Counter> = WrtOnce::new();
 
 /// Enum representing different types of operations that can be tracked
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -255,7 +255,7 @@ impl Type {
 
         // Adjust cost based on verification level using scaled integer math
         // Multiplier is scaled by 100 (e.g., 1.25 becomes 125)
-        let scaled_multiplier = verification_cost_multiplier_scaled(&verification_level;
+        let scaled_multiplier = verification_cost_multiplier_scaled(&verification_level);
 
         // Calculate cost with rounding: (base * multiplier + 50) / 100
         let total_cost = (base_cost * scaled_multiplier + 50) / 100;
@@ -388,131 +388,131 @@ impl Counter {
         // Record the specific operation
         match op_type {
             Type::MemoryAllocation => {
-                self.memory_allocations.fetch_add(1, Ordering::Relaxed;
+                self.memory_allocations.fetch_add(1, Ordering::Relaxed);
             }
             Type::MemoryDeallocation => {
-                self.memory_deallocations.fetch_add(1, Ordering::Relaxed;
+                self.memory_deallocations.fetch_add(1, Ordering::Relaxed);
             }
             Type::MemoryRead => {
-                self.memory_reads.fetch_add(1, Ordering::Relaxed;
+                self.memory_reads.fetch_add(1, Ordering::Relaxed);
             }
             Type::MemoryWrite => {
-                self.memory_writes.fetch_add(1, Ordering::Relaxed;
+                self.memory_writes.fetch_add(1, Ordering::Relaxed);
             }
             Type::MemoryCopy => {
-                self.memory_writes.fetch_add(1, Ordering::Relaxed;
+                self.memory_writes.fetch_add(1, Ordering::Relaxed);
             }
             Type::MemoryGrow => {
-                self.memory_grows.fetch_add(1, Ordering::Relaxed;
+                self.memory_grows.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionPush => {
-                self.collection_pushes.fetch_add(1, Ordering::Relaxed;
+                self.collection_pushes.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionPop => {
-                self.collection_pops.fetch_add(1, Ordering::Relaxed;
+                self.collection_pops.fetch_add(1, Ordering::Relaxed);
             }
             // Merged CollectionLookup, CollectionRead, CollectionPeek
             Type::CollectionLookup | Type::CollectionRead | Type::CollectionPeek => {
-                self.collection_lookups.fetch_add(1, Ordering::Relaxed;
+                self.collection_lookups.fetch_add(1, Ordering::Relaxed);
             }
             // Merged CollectionInsert, CollectionWrite
             Type::CollectionInsert | Type::CollectionWrite => {
-                self.collection_inserts.fetch_add(1, Ordering::Relaxed;
+                self.collection_inserts.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionRemove => {
-                self.collection_removes.fetch_add(1, Ordering::Relaxed;
+                self.collection_removes.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionValidate => {
-                self.collection_validates.fetch_add(1, Ordering::Relaxed;
+                self.collection_validates.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionMutate => {
-                self.collection_mutates.fetch_add(1, Ordering::Relaxed;
+                self.collection_mutates.fetch_add(1, Ordering::Relaxed);
             }
             // Merged ChecksumCalculation, ChecksumFullRecalculation
             Type::ChecksumCalculation | Type::ChecksumFullRecalculation => {
-                self.checksum_calculations.fetch_add(1, Ordering::Relaxed;
+                self.checksum_calculations.fetch_add(1, Ordering::Relaxed);
             }
             Type::FunctionCall => {
-                self.function_calls.fetch_add(1, Ordering::Relaxed;
+                self.function_calls.fetch_add(1, Ordering::Relaxed);
             }
             Type::ControlFlow => {
-                self.control_flows.fetch_add(1, Ordering::Relaxed;
+                self.control_flows.fetch_add(1, Ordering::Relaxed);
             }
             Type::Arithmetic => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::Other => {
-                self.other_ops.fetch_add(1, Ordering::Relaxed;
+                self.other_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionCreate => {
-                self.collection_creates.fetch_add(1, Ordering::Relaxed;
+                self.collection_creates.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionClear => {
-                self.collection_clears.fetch_add(1, Ordering::Relaxed;
+                self.collection_clears.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionTruncate => {
-                self.collection_truncates.fetch_add(1, Ordering::Relaxed;
+                self.collection_truncates.fetch_add(1, Ordering::Relaxed);
             }
             Type::CollectionIterate => {
-                self.collection_iterates.fetch_add(1, Ordering::Relaxed;
+                self.collection_iterates.fetch_add(1, Ordering::Relaxed);
             }
             // WASM-specific operations
             Type::WasmSimpleConstant => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmLocalAccess => {
-                self.memory_reads.fetch_add(1, Ordering::Relaxed;
+                self.memory_reads.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmGlobalAccess => {
-                self.memory_reads.fetch_add(1, Ordering::Relaxed;
+                self.memory_reads.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmSimpleArithmetic => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmComplexArithmetic => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmFloatArithmetic => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmComparison => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmSimpleControl => {
-                self.control_flows.fetch_add(1, Ordering::Relaxed;
+                self.control_flows.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmComplexControl => {
-                self.control_flows.fetch_add(1, Ordering::Relaxed;
+                self.control_flows.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmFunctionCall => {
-                self.function_calls.fetch_add(1, Ordering::Relaxed;
+                self.function_calls.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmMemoryLoad => {
-                self.memory_reads.fetch_add(1, Ordering::Relaxed;
+                self.memory_reads.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmMemoryStore => {
-                self.memory_writes.fetch_add(1, Ordering::Relaxed;
+                self.memory_writes.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmMemoryManagement => {
-                self.memory_grows.fetch_add(1, Ordering::Relaxed;
+                self.memory_grows.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmTableAccess => {
-                self.memory_reads.fetch_add(1, Ordering::Relaxed;
+                self.memory_reads.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmTypeConversion => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmSimdOperation => {
-                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed;
+                self.arithmetic_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::WasmAtomicOperation => {
-                self.memory_writes.fetch_add(1, Ordering::Relaxed;
+                self.memory_writes.fetch_add(1, Ordering::Relaxed);
             }
             Type::StreamOperation | Type::StreamCreate => {
-                self.other_ops.fetch_add(1, Ordering::Relaxed;
+                self.other_ops.fetch_add(1, Ordering::Relaxed);
             }
             Type::FutureOperation => {
-                self.other_ops.fetch_add(1, Ordering::Relaxed;
+                self.other_ops.fetch_add(1, Ordering::Relaxed);
             }
         };
 
@@ -521,13 +521,13 @@ impl Counter {
         // fuel_cost_for_operation is infallible in its Result signature.
         match Type::fuel_cost_for_operation(op_type, verification_level) {
             Ok(cost) => {
-                self.fuel_consumed.fetch_add(cost, Ordering::Relaxed;
+                self.fuel_consumed.fetch_add(cost, Ordering::Relaxed);
             }
             Err(_e) => {
                 // Log error if fuel calculation fails (should not happen
                 // currently)
                 // Consider using a proper logging facade if available
-                // eprintln!("Error calculating fuel cost: {}", e;
+                // eprintln!("Error calculating fuel cost: {}", e));
             }
         }
     }
@@ -540,28 +540,28 @@ impl Counter {
 
     /// Reset all operation counters and fuel consumed to zero.
     pub fn reset(&self) {
-        self.memory_reads.store(0, Ordering::Relaxed;
-        self.memory_writes.store(0, Ordering::Relaxed;
-        self.memory_grows.store(0, Ordering::Relaxed;
-        self.memory_allocations.store(0, Ordering::Relaxed;
-        self.memory_deallocations.store(0, Ordering::Relaxed;
-        self.collection_pushes.store(0, Ordering::Relaxed;
-        self.collection_pops.store(0, Ordering::Relaxed;
-        self.collection_lookups.store(0, Ordering::Relaxed;
-        self.collection_inserts.store(0, Ordering::Relaxed;
-        self.collection_removes.store(0, Ordering::Relaxed;
-        self.collection_validates.store(0, Ordering::Relaxed;
-        self.collection_mutates.store(0, Ordering::Relaxed;
-        self.checksum_calculations.store(0, Ordering::Relaxed;
-        self.function_calls.store(0, Ordering::Relaxed;
-        self.control_flows.store(0, Ordering::Relaxed;
-        self.arithmetic_ops.store(0, Ordering::Relaxed;
-        self.other_ops.store(0, Ordering::Relaxed;
-        self.collection_creates.store(0, Ordering::Relaxed;
-        self.collection_clears.store(0, Ordering::Relaxed;
-        self.collection_truncates.store(0, Ordering::Relaxed;
-        self.collection_iterates.store(0, Ordering::Relaxed;
-        self.fuel_consumed.store(0, Ordering::Relaxed;
+        self.memory_reads.store(0, Ordering::Relaxed);
+        self.memory_writes.store(0, Ordering::Relaxed);
+        self.memory_grows.store(0, Ordering::Relaxed);
+        self.memory_allocations.store(0, Ordering::Relaxed);
+        self.memory_deallocations.store(0, Ordering::Relaxed);
+        self.collection_pushes.store(0, Ordering::Relaxed);
+        self.collection_pops.store(0, Ordering::Relaxed);
+        self.collection_lookups.store(0, Ordering::Relaxed);
+        self.collection_inserts.store(0, Ordering::Relaxed);
+        self.collection_removes.store(0, Ordering::Relaxed);
+        self.collection_validates.store(0, Ordering::Relaxed);
+        self.collection_mutates.store(0, Ordering::Relaxed);
+        self.checksum_calculations.store(0, Ordering::Relaxed);
+        self.function_calls.store(0, Ordering::Relaxed);
+        self.control_flows.store(0, Ordering::Relaxed);
+        self.arithmetic_ops.store(0, Ordering::Relaxed);
+        self.other_ops.store(0, Ordering::Relaxed);
+        self.collection_creates.store(0, Ordering::Relaxed);
+        self.collection_clears.store(0, Ordering::Relaxed);
+        self.collection_truncates.store(0, Ordering::Relaxed);
+        self.collection_iterates.store(0, Ordering::Relaxed);
+        self.fuel_consumed.store(0, Ordering::Relaxed);
     }
 
     /// Get a summary of all operation counts.
@@ -646,13 +646,13 @@ pub struct Summary {
 /// Trait for objects that can track operations
 pub trait Tracking {
     /// Record an operation occurred
-    fn record_operation(&self, op_type: Type;
+    fn record_operation(&self, op_type: Type);
 
     /// Get the current operation statistics
     fn operation_stats(&self) -> Summary;
 
     /// Reset operation counters
-    fn reset_operation_stats(&self;
+    fn reset_operation_stats(&self);
 }
 
 // Helper function to get or initialize the global counter
@@ -671,7 +671,7 @@ fn global_counter() -> &'static Counter {
 /// * `op_type` - The type of operation being performed
 /// * `level` - The verification level for cost calculation
 pub fn record_global_operation(op_type: Type, level: VerificationLevel) {
-    global_counter().record_operation(op_type, level;
+    global_counter().record_operation(op_type, level);
 }
 
 /// Get a summary from the global operation counter.
@@ -692,7 +692,7 @@ pub fn global_operation_summary() -> Summary {
 /// Clears all operation counts and fuel consumption in the global counter.
 /// This is useful for benchmarking or when starting a new measurement period.
 pub fn reset_global_operations() {
-    global_counter().reset);
+    global_counter().reset();
 }
 
 /// Get the global fuel consumed count.
@@ -733,47 +733,47 @@ mod tests {
 
     #[test]
     fn test_operation_counter() {
-        let counter = Counter::new);
+        let counter = Counter::new();
         let vl_full = VerificationLevel::Full;
 
-        counter.record_operation(Type::MemoryRead, vl_full;
-        counter.record_operation(Type::MemoryWrite, vl_full;
-        counter.record_operation(Type::CollectionPush, vl_full;
+        counter.record_operation(Type::MemoryRead, vl_full);
+        counter.record_operation(Type::MemoryWrite, vl_full);
+        counter.record_operation(Type::CollectionPush, vl_full);
 
-        let summary = counter.get_summary);
+        let summary = counter.get_summary();
         assert_eq!(summary.memory_reads, 1);
         assert_eq!(summary.memory_writes, 1);
         assert_eq!(summary.collection_pushes, 1);
 
         let expected_fuel = Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap()
             + Type::fuel_cost_for_operation(Type::MemoryWrite, vl_full).unwrap()
-            + Type::fuel_cost_for_operation(Type::CollectionPush, vl_full).unwrap());
-        assert_eq!(summary.fuel_consumed, expected_fuel;
+            + Type::fuel_cost_for_operation(Type::CollectionPush, vl_full).unwrap();
+        assert_eq!(summary.fuel_consumed, expected_fuel);
 
-        counter.reset);
-        let summary_after_reset = counter.get_summary);
+        counter.reset();
+        let summary_after_reset = counter.get_summary();
         assert_eq!(summary_after_reset.memory_reads, 0);
         assert_eq!(summary_after_reset.fuel_consumed, 0);
     }
 
     #[test]
     fn test_verification_level_impact() {
-        let counter = Counter::new);
+        let counter = Counter::new();
         let vl_off = VerificationLevel::Off;
         let vl_sampling = VerificationLevel::default(); // Sampling
         let vl_full = VerificationLevel::Full;
 
-        counter.record_operation(Type::MemoryRead, vl_off;
-        counter.record_operation(Type::MemoryRead, vl_sampling;
-        counter.record_operation(Type::MemoryRead, vl_full;
+        counter.record_operation(Type::MemoryRead, vl_off);
+        counter.record_operation(Type::MemoryRead, vl_sampling);
+        counter.record_operation(Type::MemoryRead, vl_full);
 
-        let summary = counter.get_summary);
-        assert_eq!(summary.memory_reads, 3;
+        let summary = counter.get_summary();
+        assert_eq!(summary.memory_reads, 3);
 
         let expected_fuel = Type::fuel_cost_for_operation(Type::MemoryRead, vl_off).unwrap()
             + Type::fuel_cost_for_operation(Type::MemoryRead, vl_sampling).unwrap()
-            + Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap());
-        assert_eq!(summary.fuel_consumed, expected_fuel;
+            + Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap();
+        assert_eq!(summary.fuel_consumed, expected_fuel);
     }
 
     #[test]
@@ -784,12 +784,12 @@ mod tests {
         record_global_operation(Type::FunctionCall, vl_full); // Was Standard
         record_global_operation(Type::CollectionValidate, vl_full); // Was Standard
 
-        let summary = global_operation_summary);
+        let summary = global_operation_summary();
         assert_eq!(summary.function_calls, 1);
         assert_eq!(summary.collection_validates, 1);
 
-        let fuel = global_fuel_consumed);
-        assert_eq!(fuel, summary.fuel_consumed;
+        let fuel = global_fuel_consumed();
+        assert_eq!(fuel, summary.fuel_consumed);
 
         reset_global_operations();
         assert_eq!(global_fuel_consumed(), 0);

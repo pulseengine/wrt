@@ -229,7 +229,7 @@ impl RuntimeModuleInitializer {
             .iter()
             .enumerate()
             .filter_map(|(i, segment)| if segment.memory_index.is_some() { Some(i) } else { None })
-            .collect();
+            .collect());
         
         for idx in data_indices {
             if let Some(segment) = self.data_segments.get_mut(idx) {
@@ -243,7 +243,7 @@ impl RuntimeModuleInitializer {
             .iter()
             .enumerate()
             .filter_map(|(i, segment)| if segment.table_index.is_some() { Some(i) } else { None })
-            .collect();
+            .collect());
         
         for idx in element_indices {
             if let Some(segment) = self.element_segments.get_mut(idx) {

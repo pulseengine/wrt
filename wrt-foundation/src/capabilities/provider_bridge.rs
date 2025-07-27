@@ -61,12 +61,12 @@ impl<P: Provider + Default> Default for CapabilityAwareProvider<P> {
         use crate::capabilities::{DynamicMemoryCapability, VerificationLevel};
         use alloc::boxed::Box;
         
-        let provider = P::default());
+        let provider = P::default();
         let capability = Box::new(DynamicMemoryCapability::new(
             4096, // Default size
             CrateId::Foundation, // Default crate
             VerificationLevel::Standard,
-        ;
+        ));
         
         Self {
             provider,
@@ -337,11 +337,11 @@ mod tests {
             1024,
             CrateId::Foundation,
             VerificationLevel::Standard,
-        ;
+        ));
 
-        let wrapped = provider.with_capability(capability, CrateId::Foundation;
-        assert_eq!(wrapped.capacity(), 1024;
-        assert_eq!(wrapped.owner_crate(), CrateId::Foundation;
+        let wrapped = provider.with_capability(capability, CrateId::Foundation);
+        assert_eq!(wrapped.capacity(), 1024);
+        assert_eq!(wrapped.owner_crate(), CrateId::Foundation);
         Ok(())
     }
 
@@ -351,16 +351,16 @@ mod tests {
 
         // Create a capability that only allows read access
         let mut capability =
-            DynamicMemoryCapability::new(1024, CrateId::Foundation, VerificationLevel::Standard;
+            DynamicMemoryCapability::new(1024, CrateId::Foundation, VerificationLevel::Standard);
 
-        let wrapped = provider.with_capability(Box::new(capability), CrateId::Foundation;
+        let wrapped = provider.with_capability(Box::new(capability), CrateId::Foundation);
 
         // Read access should work
-        let result = wrapped.verify_access(0, 100;
+        let result = wrapped.verify_access(0, 100);
         assert!(result.is_ok());
 
         // Borrow slice should work (read operation)
-        let result = wrapped.borrow_slice(0, 100;
+        let result = wrapped.borrow_slice(0, 100);
         assert!(result.is_ok());
         Ok(())
     }
@@ -372,13 +372,13 @@ mod tests {
             1024, // Capability allows more than provider capacity
             CrateId::Foundation,
             VerificationLevel::Standard,
-        ;
+        ));
 
-        let wrapped = provider.with_capability(capability, CrateId::Foundation;
+        let wrapped = provider.with_capability(capability, CrateId::Foundation);
 
         // Try to access beyond provider's capacity should fail at provider level
-        let result = wrapped.borrow_slice(0, 200;
-        assert!(result.is_err();
+        let result = wrapped.borrow_slice(0, 200);
+        assert!(result.is_err());
         Ok(())
     }
 
@@ -389,10 +389,10 @@ mod tests {
             1024,
             CrateId::Foundation,
             VerificationLevel::Standard,
-        ;
+        ));
 
         // Should succeed with valid size
-        let result = provider.with_verified_capability(capability, CrateId::Foundation, 512;
+        let result = provider.with_verified_capability(capability, CrateId::Foundation, 512);
         assert!(result.is_ok());
         Ok(())
     }
@@ -404,11 +404,11 @@ mod tests {
             512, // Capability only allows 512 bytes
             CrateId::Foundation,
             VerificationLevel::Standard,
-        ;
+        ));
 
         // Should fail with size exceeding capability
-        let result = provider.with_verified_capability(capability, CrateId::Foundation, 1024;
-        assert!(result.is_err();
+        let result = provider.with_verified_capability(capability, CrateId::Foundation, 1024);
+        assert!(result.is_err());
         Ok(())
     }
 }

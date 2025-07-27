@@ -10,10 +10,10 @@ use wrt_runtime::state::{create_state_section, extract_state_section, StateSecti
 #[cfg(feature = "std")]
 fn test_basic_serialization() {
     // Create a simple module
-    let mut module = Module::new);
+    let mut module = Module::new();
 
     // Verify initial state
-    assert!(module.custom_sections.is_empty();
+    assert!(module.custom_sections.is_empty());
     assert!(!has_state_sections(&module.custom_sections);
 
     // Create a non-state custom section
@@ -27,7 +27,7 @@ fn test_basic_serialization() {
     // Create a state section
     let test_data = vec![5, 6, 7, 8];
     let state_section =
-        create_state_section(StateSection::Stack, &test_data, CompressionType::None).unwrap());
+        create_state_section(StateSection::Stack, &test_data, CompressionType::None).unwrap();
 
     module.add_custom_section(state_section;
 
@@ -39,7 +39,7 @@ fn test_basic_serialization() {
     assert!(found.is_some();
 
     // Extract the state section data
-    let (header, data) = extract_state_section(found.unwrap()).unwrap());
+    let (header, data) = extract_state_section(found.unwrap()).unwrap();
 
     // Verify section data
     assert_eq!(header.section_type, StateSection::Stack;
@@ -55,19 +55,19 @@ fn test_state_section_format() {
 
     // First state section
     let section1 =
-        create_state_section(StateSection::Globals, &test_data, CompressionType::None).unwrap());
+        create_state_section(StateSection::Globals, &test_data, CompressionType::None).unwrap();
 
     // Second state section
     let section2 =
-        create_state_section(StateSection::Memory, &test_data, CompressionType::None).unwrap());
+        create_state_section(StateSection::Memory, &test_data, CompressionType::None).unwrap();
 
     // Verify section names
     assert_eq!(section1.name, StateSection::Globals.name);
     assert_eq!(section2.name, StateSection::Memory.name);
 
     // Extract and verify data
-    let (header1, data1) = extract_state_section(&section1).unwrap());
-    let (header2, data2) = extract_state_section(&section2).unwrap());
+    let (header1, data1) = extract_state_section(&section1).unwrap();
+    let (header2, data2) = extract_state_section(&section2).unwrap();
 
     // Verify extracted data
     assert_eq!(header1.section_type, StateSection::Globals;

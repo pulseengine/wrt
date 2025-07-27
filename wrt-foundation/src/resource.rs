@@ -36,7 +36,7 @@ use crate::{
 
 /// Resource identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceId(pub u64;
+pub struct ResourceId(pub u64);
 
 /// Resource New operation data
 #[derive(Debug, Clone)]
@@ -287,7 +287,7 @@ where
             ResourceRepr::Aggregate(_) => DISCRIMINANT_RESOURCE_REPR_AGGREGATE,
             ResourceRepr::Opaque => DISCRIMINANT_RESOURCE_REPR_OPAQUE,
         };
-        checksum.update(discriminant_byte;
+        checksum.update(&[discriminant_byte]);
 
         match self {
             ResourceRepr::Primitive(vt) => vt.update_checksum(checksum),
@@ -418,9 +418,9 @@ where
     Option<WasmName<MAX_WASM_NAME_LENGTH, P>>: Checksummable, // Assuming WasmName is Checksummable
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.id.update_checksum(checksum;
-        self.repr.update_checksum(checksum;
-        self.name.update_checksum(checksum;
+        self.id.update_checksum(checksum);
+        self.repr.update_checksum(checksum);
+        self.name.update_checksum(checksum);
         // verification_level is metadata, not usually part of checksummed data
     }
 }
@@ -479,7 +479,7 @@ pub struct ResourceItem<P: MemoryProvider + Default + Clone + Eq> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ResourceTableIdx(pub u32;
+pub struct ResourceTableIdx(pub u32);
 
 impl ToBytes for ResourceTableIdx {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
@@ -562,23 +562,23 @@ mod kani_proofs {
     /// Verify that ResourceId creation and equality work correctly
     #[kani::proof]
     fn verify_resource_id_operations() {
-        let id1 = ResourceId(42;
-        let id2 = ResourceId(42;
-        let id3 = ResourceId(43;
+        let id1 = ResourceId(42);
+        let id2 = ResourceId(42);
+        let id3 = ResourceId(43);
         
         // Same values should be equal
-        assert_eq!(id1, id2;
-        assert_ne!(id1, id3;
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
         
         // Hash should be consistent
         use core::hash::{Hash, Hasher};
-        let mut hasher1 = core::hash::SipHasher::new);
-        let mut hasher2 = core::hash::SipHasher::new);
+        let mut hasher1 = core::hash::SipHasher::new();
+        let mut hasher2 = core::hash::SipHasher::new();
         
-        id1.hash(&mut hasher1;
-        id2.hash(&mut hasher2;
+        id1.hash(&mut hasher1);
+        id2.hash(&mut hasher2);
         
-        assert_eq!(hasher1.finish(), hasher2.finish);
+        assert_eq!(hasher1.finish(), hasher2.finish());
     }
     
     /// Verify resource operation permission checking
@@ -590,14 +590,14 @@ mod kani_proofs {
         let create_op = ResourceOperation::Create;
         
         // Read operations
-        assert!(read_op.requires_read();
-        assert!(!read_op.requires_write();
-        assert!(execute_op.requires_read();
+        assert!(read_op.requires_read());
+        assert!(!read_op.requires_write());
+        assert!(execute_op.requires_read());
         
         // Write operations
-        assert!(write_op.requires_write();
-        assert!(!write_op.requires_read();
-        assert!(create_op.requires_write();
+        assert!(write_op.requires_write());
+        assert!(!write_op.requires_read());
+        assert!(create_op.requires_write());
         
         // Operations should be consistent
         for op in [
@@ -611,8 +611,8 @@ mod kani_proofs {
         ] {
             // No operation should require both read and write simultaneously
             // (unless explicitly designed that way)
-            let read_req = op.requires_read);
-            let write_req = op.requires_write);
+            let read_req = op.requires_read();
+            let write_req = op.requires_write();
             
             // At least one permission should be required
             assert!(read_req || write_req);
@@ -623,37 +623,37 @@ mod kani_proofs {
     #[kani::proof]
     fn verify_resource_type_serialization() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::SmallProvider::default());
+        let provider = crate::memory_sizing::SmallProvider::default();
         
         // Test primitive resource type
-        let primitive = ResourceType::<crate::memory_sizing::SmallProvider>::Primitive(ValueType::I32;
+        let primitive = ResourceType::<crate::memory_sizing::SmallProvider>::Primitive(ValueType::I32);
         
         // Serialize
         let mut buffer = [0u8; 256];
-        let mut write_stream = WriteStream::new(&mut buffer[..];
-        primitive.to_bytes_with_provider(&mut write_stream, &provider).unwrap());
+        let mut write_stream = WriteStream::new(&mut buffer[..]);
+        primitive.to_bytes_with_provider(&mut write_stream, &provider).unwrap();
         
         // Deserialize
-        let mut read_stream = ReadStream::new(&buffer[..write_stream.position()];
-        let deserialized = ResourceType::from_bytes_with_provider(&mut read_stream, &provider).unwrap());
+        let mut read_stream = ReadStream::new(&buffer[..write_stream.position()]);
+        let deserialized = ResourceType::from_bytes_with_provider(&mut read_stream, &provider).unwrap();
         
         // Should be equal
-        assert_eq!(primitive, deserialized;
+        assert_eq!(primitive, deserialized);
     }
     
     /// Verify resource handle uniqueness and validity
     #[kani::proof]
     fn verify_resource_handle_properties() {
-        let handle1 = ResourceHandle::new);
-        let handle2 = ResourceHandle::new);
+        let handle1 = ResourceHandle::new();
+        let handle2 = ResourceHandle::new();
         
         // Handles should be unique (assuming monotonic ID generation)
         // This depends on implementation details
-        assert_ne!(handle1.id(), handle2.id);
+        assert_ne!(handle1.id(), handle2.id());
         
         // Handles should be valid when created
-        assert!(handle1.is_valid();
-        assert!(handle2.is_valid();
+        assert!(handle1.is_valid());
+        assert!(handle2.is_valid());
     }
     
     /// Verify resource bounds checking
@@ -661,60 +661,60 @@ mod kani_proofs {
     fn verify_resource_bounds_checking() {
         const MAX_RESOURCES: usize = 16;
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::MediumProvider::default());
+        let provider = crate::memory_sizing::MediumProvider::default();
         
         // Create a resource collection with bounded capacity
         let mut resources: BoundedVec<ResourceId, MAX_RESOURCES, _> = 
-            BoundedVec::new(provider).unwrap());
+            BoundedVec::new(provider).unwrap();
         
         // Fill to capacity
         for i in 0..MAX_RESOURCES {
-            let id = ResourceId(i as u64;
+            let id = ResourceId(i as u64);
             assert!(resources.push(id).is_ok());
         }
         
         // Should be at capacity
-        assert!(resources.is_full();
-        assert_eq!(resources.len(), MAX_RESOURCES;
+        assert!(resources.is_full());
+        assert_eq!(resources.len(), MAX_RESOURCES);
         
         // Adding more should fail
-        let overflow_id = ResourceId(MAX_RESOURCES as u64;
-        assert!(resources.push(overflow_id).is_err();
+        let overflow_id = ResourceId(MAX_RESOURCES as u64);
+        assert!(resources.push(overflow_id).is_err());
         
         // Length should remain unchanged
-        assert_eq!(resources.len(), MAX_RESOURCES;
+        assert_eq!(resources.len(), MAX_RESOURCES);
     }
     
     /// Verify resource access pattern safety
     #[kani::proof]
     fn verify_resource_access_safety() {
         // Note: Using default here is safe in Kani proofs for verification purposes
-        let provider = crate::memory_sizing::SmallProvider::default());
+        let provider = crate::memory_sizing::SmallProvider::default();
         let mut resources: BoundedVec<ResourceHandle, 8, _> = 
-            BoundedVec::new(provider).unwrap());
+            BoundedVec::new(provider).unwrap();
         
         // Add some resources
-        let handle1 = ResourceHandle::new);
-        let handle2 = ResourceHandle::new);
+        let handle1 = ResourceHandle::new();
+        let handle2 = ResourceHandle::new();
         
-        resources.push(handle1).unwrap());
-        resources.push(handle2).unwrap());
+        resources.push(handle1).unwrap();
+        resources.push(handle2).unwrap();
         
         // Valid access
-        assert!(resources.get(0).unwrap().is_some();
-        assert!(resources.get(1).unwrap().is_some();
+        assert!(resources.get(0).unwrap().is_some());
+        assert!(resources.get(1).unwrap().is_some());
         
         // Invalid access returns None safely
-        assert!(resources.get(2).unwrap().is_none();
-        assert!(resources.get(100).unwrap().is_none();
+        assert!(resources.get(2).unwrap().is_none());
+        assert!(resources.get(100).unwrap().is_none());
         
         // Remove a resource
-        let removed = resources.pop().unwrap());
-        assert!(removed.is_some();
+        let removed = resources.pop().unwrap();
+        assert!(removed.is_some());
         assert_eq!(resources.len(), 1);
         
         // Access patterns should still be safe
-        assert!(resources.get(0).unwrap().is_some();
-        assert!(resources.get(1).unwrap().is_none();
+        assert!(resources.get(0).unwrap().is_some());
+        assert!(resources.get(1).unwrap().is_none());
     }
 }

@@ -60,14 +60,14 @@ impl MemoryFactory {
     ) -> Result<NoStdProvider<N>> {
         // Verify allocation capability
         let operation = MemoryOperation::Allocate { size: N };
-        let verification_result = context.verify_operation(crate_id, &operation;
+        let verification_result = context.verify_operation(crate_id, &operation);
 
         // Record safety monitoring events
         with_safety_monitor(|monitor| {
             match &verification_result {
                 Ok(_) => {
                     // Record successful allocation
-                    monitor.record_allocation(N;
+                    monitor.record_allocation(N);
                     // Record telemetry for successful allocation
                     telemetry::record_event(
                         Severity::Info,
@@ -75,12 +75,12 @@ impl MemoryFactory {
                         event_codes::MEM_ALLOC_SUCCESS,
                         N as u64,
                         crate_id as u64,
-                    ;
+                    );
                 }
                 Err(_) => {
                     // Record allocation failure and capability violation
-                    monitor.record_allocation_failure(N;
-                    monitor.record_capability_violation(crate_id;
+                    monitor.record_allocation_failure(N);
+                    monitor.record_capability_violation(crate_id);
                     // Record telemetry for allocation failure
                     telemetry::record_event(
                         Severity::Error,
@@ -88,7 +88,7 @@ impl MemoryFactory {
                         event_codes::MEM_ALLOC_FAILURE,
                         N as u64,
                         crate_id as u64,
-                    ;
+                    );
                     // Record capability violation
                     telemetry::record_event(
                         Severity::Critical,
@@ -96,10 +96,10 @@ impl MemoryFactory {
                         event_codes::CAP_VIOLATION,
                         N as u64,
                         crate_id as u64,
-                    ;
+                    );
                 }
             }
-        };
+        });
 
         // Return verification result
         verification_result?;
@@ -143,7 +143,7 @@ impl MemoryFactory {
         crate_id: CrateId,
     ) -> Result<CapabilityAwareProvider<NoStdProvider<N>>> {
         // Get the capability for this crate
-        let capability_result = context.get_capability(crate_id;
+        let capability_result = context.get_capability(crate_id);
 
         // Verify allocation operation
         let operation = MemoryOperation::Allocate { size: N };
@@ -157,15 +157,15 @@ impl MemoryFactory {
             match &verification_result {
                 Ok(_) => {
                     // Record successful allocation
-                    monitor.record_allocation(N;
+                    monitor.record_allocation(N);
                 }
                 Err(_) => {
                     // Record allocation failure and capability violation
-                    monitor.record_allocation_failure(N;
-                    monitor.record_capability_violation(crate_id;
+                    monitor.record_allocation_failure(N);
+                    monitor.record_capability_violation(crate_id);
                 }
             }
-        };
+        });
 
         // Return verification result
         let capability = capability_result?;
@@ -173,7 +173,7 @@ impl MemoryFactory {
 
         // Create the underlying provider directly to avoid circular dependency
         // The capability verification above ensures this allocation is authorized
-        let provider = NoStdProvider::<N>::default());
+        let provider = NoStdProvider::<N>::default();
 
         // Wrap with capability verification
         Ok(CapabilityAwareProvider::new(
@@ -218,7 +218,7 @@ impl MemoryFactory {
         crate_id: CrateId,
         required_verification_level: crate::verification::VerificationLevel,
     ) -> Result<NoStdProvider<N>> {
-        let capability_result = context.get_capability(crate_id;
+        let capability_result = context.get_capability(crate_id);
         
         // Check verification levels and perform allocation verification
         let final_result = match &capability_result {
@@ -242,15 +242,15 @@ impl MemoryFactory {
             match &final_result {
                 Ok(_) => {
                     // Record successful allocation
-                    monitor.record_allocation(N;
+                    monitor.record_allocation(N);
                 }
                 Err(_) => {
                     // Record allocation failure and capability violation
-                    monitor.record_allocation_failure(N;
-                    monitor.record_capability_violation(crate_id;
+                    monitor.record_allocation_failure(N);
+                    monitor.record_capability_violation(crate_id);
                 }
             }
-        };
+        });
 
         // Return verification result
         final_result?;
@@ -268,7 +268,7 @@ impl MemoryFactory {
     /// * `SafetyReport` - Current safety metrics including health score
     pub fn get_safety_report() -> crate::safety_monitor::SafetyReport {
         with_safety_monitor(|monitor| {
-            let report = monitor.get_safety_report);
+            let report = monitor.get_safety_report();
             
             // Record telemetry for health status
             if report.health_score < 80 {
@@ -279,7 +279,7 @@ impl MemoryFactory {
                     event_codes::SAFETY_HEALTH_DEGRADED,
                     report.health_score as u64,
                     critical_violations,
-                ;
+                );
             }
             
             report
@@ -311,7 +311,7 @@ impl MemoryFactory {
     /// * `size` - Size of memory being deallocated
     pub fn record_deallocation(size: usize) {
         with_safety_monitor(|monitor| {
-            monitor.record_deallocation(size;
+            monitor.record_deallocation(size);
             // Record telemetry for deallocation
             telemetry::record_event(
                 Severity::Info,
@@ -319,8 +319,8 @@ impl MemoryFactory {
                 event_codes::MEMORY_DEALLOCATION,
                 size as u64,
                 0, // No specific crate context for manual deallocation
-            ;
-        };
+            );
+        });
     }
 
     /// Example demonstrating integrated safety monitoring and telemetry
@@ -342,19 +342,19 @@ impl MemoryFactory {
     ///
     /// // Check system health
     /// if !MemoryFactory::is_system_healthy() {
-    ///     let report = MemoryFactory::get_safety_report);
-    ///     eprintln!("System health degraded: score={}", report.health_score;
+    ///     let report = MemoryFactory::get_safety_report();
+    ///     eprintln!("System health degraded: score={}", report.health_score)));
     /// }
     ///
     /// // Manual deallocation tracking
-    /// MemoryFactory::record_deallocation(4096;
+    /// MemoryFactory::record_deallocation(4096);
     ///
     /// // Get comprehensive safety metrics
-    /// let report = MemoryFactory::get_safety_report);
+    /// let report = MemoryFactory::get_safety_report();
     /// println!("Allocations: {}, Failures: {}, Health: {}",
     ///          report.total_allocations,
     ///          report.failed_allocations,
-    ///          report.health_score;
+    ///          report.health_score);
     /// # Ok::<(), wrt_foundation::Error>(())
     /// ```
     #[cfg(doc)]
@@ -387,17 +387,17 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset);
-        };
+            monitor.reset();
+        });
 
         // Initial state should be healthy
-        assert!(MemoryFactory::is_system_healthy();
+        assert!(MemoryFactory::is_system_healthy());
         assert_eq!(MemoryFactory::get_critical_violations(), 0);
 
         // Test safety monitoring access
-        let initial_report = MemoryFactory::get_safety_report);
+        let initial_report = MemoryFactory::get_safety_report();
         assert_eq!(initial_report.total_allocations, 0);
-        assert_eq!(initial_report.health_score, 100;
+        assert_eq!(initial_report.health_score, 100);
     }
 
     #[test]
@@ -405,31 +405,31 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset);
-        };
+            monitor.reset();
+        });
 
         // Create a capability context for testing
         use crate::verification::VerificationLevel;
         use crate::capabilities::MemoryCapabilityContext;
-        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false;
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
         
         // Register a capability for testing
-        let _ = context.register_dynamic_capability(CrateId::Foundation, 4096;
+        let _ = context.register_dynamic_capability(CrateId::Foundation, 4096);
 
         // Test successful allocation tracking
-        let result = MemoryFactory::create_with_context::<1024>(&context, CrateId::Foundation;
+        let result = MemoryFactory::create_with_context::<1024>(&context, CrateId::Foundation);
         assert!(result.is_ok());
 
         // Verify safety monitoring recorded the allocation
-        let report = MemoryFactory::get_safety_report);
+        let report = MemoryFactory::get_safety_report();
         assert_eq!(report.total_allocations, 1);
         assert_eq!(report.failed_allocations, 0);
-        assert_eq!(report.current_memory_bytes, 1024;
-        assert!(MemoryFactory::is_system_healthy();
+        assert_eq!(report.current_memory_bytes, 1024);
+        assert!(MemoryFactory::is_system_healthy());
 
         // Test deallocation tracking
-        MemoryFactory::record_deallocation(1024;
-        let report = MemoryFactory::get_safety_report);
+        MemoryFactory::record_deallocation(1024);
+        let report = MemoryFactory::get_safety_report();
         assert_eq!(report.current_memory_bytes, 0);
     }
 
@@ -438,24 +438,24 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset);
-        };
+            monitor.reset();
+        });
 
         // Create a capability context with no capabilities
         use crate::verification::VerificationLevel;
         use crate::capabilities::MemoryCapabilityContext;
-        let context = MemoryCapabilityContext::new(VerificationLevel::Standard, false;
+        let context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
 
         // Test failed allocation tracking
-        let result = MemoryFactory::create_with_context::<1024>(&context, CrateId::Foundation;
-        assert!(result.is_err();
+        let result = MemoryFactory::create_with_context::<1024>(&context, CrateId::Foundation);
+        assert!(result.is_err());
 
         // Verify safety monitoring recorded the failure
-        let report = MemoryFactory::get_safety_report);
+        let report = MemoryFactory::get_safety_report();
         assert_eq!(report.total_allocations, 0); // No successful allocations
         assert_eq!(report.failed_allocations, 1);
         assert_eq!(report.capability_violations, 1);
-        assert!(report.health_score < 100)); // Health should be degraded
+        assert!(report.health_score < 100); // Health should be degraded
 
         // System should still be functional but with recorded violations
         assert_eq!(MemoryFactory::get_critical_violations(), 1);
@@ -466,27 +466,27 @@ mod tests {
         // Reset monitor for clean test state
         with_safety_monitor(|monitor| {
             #[cfg(test)]
-            monitor.reset);
-        };
+            monitor.reset();
+        });
 
         // Create a capability context with low verification level
         use crate::verification::VerificationLevel;
         use crate::capabilities::MemoryCapabilityContext;
-        let mut context = MemoryCapabilityContext::new(VerificationLevel::Basic, false;
+        let mut context = MemoryCapabilityContext::new(VerificationLevel::Basic, false);
         
         // Register a basic capability
-        let _ = context.register_dynamic_capability(CrateId::Foundation, 4096;
+        let _ = context.register_dynamic_capability(CrateId::Foundation, 4096);
 
         // Test that requesting higher verification level fails and is tracked
         let result = MemoryFactory::create_verified_with_context::<1024>(
             &context,
             CrateId::Foundation,
             VerificationLevel::Redundant
-        ;
-        assert!(result.is_err();
+        );
+        assert!(result.is_err());
 
         // Verify safety monitoring recorded the violation
-        let report = MemoryFactory::get_safety_report);
+        let report = MemoryFactory::get_safety_report();
         assert_eq!(report.failed_allocations, 1);
         assert_eq!(report.capability_violations, 1);
     }

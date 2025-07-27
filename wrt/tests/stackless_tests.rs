@@ -47,7 +47,7 @@ fn test_direct_memory_operations() -> Result<()> {
 
     // Parse the WAT to WASM binary
     let wasm = wat::parse_str(wat_code).unwrap();
-    println!("Successfully parsed WAT string to WASM binary");
+    println!("Successfully parsed WAT string to WASM binary"));
 
     // Create a new module
     let module = wrt::Module::new()?.load_from_binary(&wasm)?;
@@ -56,7 +56,7 @@ fn test_direct_memory_operations() -> Result<()> {
         "Successfully loaded module with {} memory definitions",
         module.memories.read().unwrap().len()
     );
-    println!("Memory types: {:?}", module.memories);
+    println!("Memory types: {:?}", module.memories));
     println!(
         "Exports: {}",
         module
@@ -88,10 +88,10 @@ fn test_direct_memory_operations() -> Result<()> {
     // Manual checks to diagnose the issue
     {
         let instance = &engine.instances[instance_idx as usize];
-        println!("Created instance with {} memories", instance.memories.len());
-        println!("Instance has {} memories", instance.memories.len());
+        println!("Created instance with {} memories", instance.memories.len()));
+        println!("Instance has {} memories", instance.memories.len()));
         if !instance.memories.is_empty() {
-            println!("Memory data around address 100 before any operations:");
+            println!("Memory data around address 100 before any operations:"));
             let start = if 100 >= 4 { 96 } else { 0 };
             for i in start..start + 12 {
                 println!(
@@ -110,7 +110,7 @@ fn test_direct_memory_operations() -> Result<()> {
             // Set the value directly in memory
             let value: i32 = 42;
             let bytes = value.to_le_bytes();
-            println!("Storing bytes: {:?}", bytes);
+            println!("Storing bytes: {:?}", bytes));
             // Add write lock
             let mut data = instance.memories[0].data.write().unwrap();
             data[100] = bytes[0];
@@ -119,10 +119,10 @@ fn test_direct_memory_operations() -> Result<()> {
             data[103] = bytes[3];
             drop(data); // Release write lock
 
-            println!("Manually set memory at address 100 to value 42");
+            println!("Manually set memory at address 100 to value 42"));
 
             // Verify the value was set
-            println!("Memory after:");
+            println!("Memory after:"));
             for i in 96..108 {
                 // Add read lock
                 println!(
@@ -139,9 +139,9 @@ fn test_direct_memory_operations() -> Result<()> {
     }
 
     // Call load directly to get the value from memory
-    println!("Calling load function directly");
+    println!("Calling load function directly"));
     let load_result = engine.execute(instance_idx, 1, vec![])?;
-    println!("Load result: {:?}", load_result);
+    println!("Load result: {:?}", load_result));
 
     // Verify the loaded value is correct
     if let Some(wrt::Value::I32(loaded_value)) = load_result.first() {
@@ -151,7 +151,7 @@ fn test_direct_memory_operations() -> Result<()> {
                 loaded_value
             )));
         }
-        println!("Successfully loaded the correct value: {}", loaded_value);
+        println!("Successfully loaded the correct value: {}", loaded_value));
     } else {
         return Err(wrt::Error::Execution(
             "Load did not return an i32 value".into(),

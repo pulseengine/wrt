@@ -58,20 +58,20 @@ impl MemoryType {
             MemoryType::Linear { min, max } => {
                 if let Some(max_val) = max {
                     if min > max_val {
-                        return Err(Error::validation_error("Linear memory minimum exceeds maximum";
+                        return Err(Error::validation_error("Linear memory minimum exceeds maximum"));
                     }
                     if *max_val > (1 << 16) {
-                        return Err(Error::validation_error("Linear memory maximum exceeds 64K pages";
+                        return Err(Error::validation_error("Linear memory maximum exceeds 64K pages"));
                     }
                 }
                 Ok(())
             }
             MemoryType::Shared { min, max } => {
                 if min > max {
-                    return Err(Error::validation_error("Shared memory minimum exceeds maximum";
+                    return Err(Error::validation_error("Shared memory minimum exceeds maximum"));
                 }
                 if *max > (1 << 16) {
-                    return Err(Error::validation_error("Shared memory maximum exceeds 64K pages";
+                    return Err(Error::validation_error("Shared memory maximum exceeds 64K pages"));
                 }
                 // Shared memory requires maximum to be specified
                 Ok(())
@@ -177,14 +177,14 @@ impl core::hash::Hash for MemoryType {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         match self {
             MemoryType::Linear { min, max } => {
-                0u8.hash(state;
-                min.hash(state;
-                max.hash(state;
+                0u8.hash(state);
+                min.hash(state);
+                max.hash(state);
             }
             MemoryType::Shared { min, max } => {
-                1u8.hash(state;
-                min.hash(state;
-                max.hash(state;
+                1u8.hash(state);
+                min.hash(state);
+                max.hash(state);
             }
         }
     }
@@ -198,20 +198,20 @@ impl Validatable for MemoryType {
             MemoryType::Linear { min, max } => {
                 if let Some(max_val) = max {
                     if min > max_val {
-                        return Err(Error::validation_error("Linear memory minimum exceeds maximum";
+                        return Err(Error::validation_error("Linear memory minimum exceeds maximum"));
                     }
                     if *max_val > (1 << 16) {
-                        return Err(Error::validation_error("Linear memory maximum exceeds 64K pages";
+                        return Err(Error::validation_error("Linear memory maximum exceeds 64K pages"));
                     }
                 }
                 Ok(())
             }
             MemoryType::Shared { min, max } => {
                 if min > max {
-                    return Err(Error::validation_error("Shared memory minimum exceeds maximum";
+                    return Err(Error::validation_error("Shared memory minimum exceeds maximum"));
                 }
                 if *max > (1 << 16) {
-                    return Err(Error::validation_error("Shared memory maximum exceeds 64K pages";
+                    return Err(Error::validation_error("Shared memory maximum exceeds 64K pages"));
                 }
                 Ok(())
             }
@@ -271,7 +271,7 @@ impl SharedMemorySegment {
         memory_type.validate()?;
 
         if !memory_type.is_shared() && atomic_capable {
-            return Err(Error::validation_error("Atomic operations require shared memory";
+            return Err(Error::validation_error("Atomic operations require shared memory"));
         }
 
         Ok(Self { memory_type, access, offset, size, atomic_capable })
@@ -328,11 +328,11 @@ impl SharedMemoryManager {
         {
             for existing in &self.segments {
                 if segment.overlaps_with(existing) {
-                    return Err(Error::validation_error("Memory segment overlaps with existing segment";
+                    return Err(Error::validation_error("Memory segment overlaps with existing segment"));
                 }
             }
 
-            let id = self.segments.len);
+            let id = self.segments.len();
             self.segments.push(segment);
             self.stats.registered_segments += 1;
             Ok(id)
@@ -342,7 +342,7 @@ impl SharedMemoryManager {
             for existing_slot in &self.segments {
                 if let Some(existing) = existing_slot {
                     if segment.overlaps_with(existing) {
-                        return Err(Error::validation_error("Memory segment overlaps with existing segment";
+                        return Err(Error::validation_error("Memory segment overlaps with existing segment"));
                     }
                 }
             }
@@ -350,9 +350,9 @@ impl SharedMemoryManager {
             // Find empty slot
             for (id, slot) in self.segments.iter_mut().enumerate() {
                 if slot.is_none() {
-                    *slot = Some(segment;
+                    *slot = Some(segment);
                     self.stats.registered_segments += 1;
-                    return Ok(id;
+                    return Ok(id);
                 }
             }
 
@@ -465,14 +465,14 @@ mod tests {
     fn test_memory_type_validation() {
         let linear = MemoryType::Linear { min: 1, max: Some(10) };
         assert!(linear.validate().is_ok());
-        assert!(!linear.is_shared();
+        assert!(!linear.is_shared());
 
         let shared = MemoryType::Shared { min: 1, max: 10 };
         assert!(shared.validate().is_ok());
-        assert!(shared.is_shared();
+        assert!(shared.is_shared());
 
         let invalid = MemoryType::Linear { min: 10, max: Some(5) };
-        assert!(invalid.validate().is_err();
+        assert!(invalid.validate().is_err());
     }
 
     #[test]
@@ -481,9 +481,9 @@ mod tests {
         let linear2 = MemoryType::Linear { min: 2, max: Some(20) };
         let shared = MemoryType::Shared { min: 1, max: 10 };
 
-        assert!(linear1.is_compatible_with(&linear2);
-        assert!(!linear1.is_compatible_with(&shared);
-        assert!(!shared.is_compatible_with(&linear1);
+        assert!(linear1.is_compatible_with(&linear2));
+        assert!(!linear1.is_compatible_with(&shared));
+        assert!(!shared.is_compatible_with(&linear1));
     }
 
     #[test]
@@ -496,16 +496,16 @@ mod tests {
             0x1000,
             true,
         )
-        .unwrap());
+        .unwrap();
 
-        assert!(segment.contains_address(0x1500);
-        assert!(!segment.contains_address(0x500);
-        assert!(segment.allows_atomic_at(0x1500);
+        assert!(segment.contains_address(0x1500));
+        assert!(!segment.contains_address(0x500));
+        assert!(segment.allows_atomic_at(0x1500));
     }
 
     #[test]
     fn test_shared_memory_manager() {
-        let mut manager = SharedMemoryManager::new);
+        let mut manager = SharedMemoryManager::new();
 
         let segment1 = SharedMemorySegment::new(
             MemoryType::Shared { min: 1, max: 10 },
@@ -514,7 +514,7 @@ mod tests {
             0x1000,
             true,
         )
-        .unwrap());
+        .unwrap();
 
         let segment2 = SharedMemorySegment::new(
             MemoryType::Shared { min: 1, max: 10 },
@@ -523,29 +523,29 @@ mod tests {
             0x1000,
             false,
         )
-        .unwrap());
+        .unwrap();
 
         assert!(manager.register_segment(segment1).is_ok());
         assert!(manager.register_segment(segment2).is_ok());
 
-        assert!(manager.allows_atomic_at(0x1500);
-        assert!(!manager.allows_atomic_at(0x3500);
+        assert!(manager.allows_atomic_at(0x1500));
+        assert!(!manager.allows_atomic_at(0x3500));
 
         assert!(manager.validate_access(0x1500, SharedMemoryAccess::ReadWrite).is_ok());
         assert!(manager.validate_access(0x3500, SharedMemoryAccess::ReadOnly).is_ok());
-        assert!(manager.validate_access(0x3500, SharedMemoryAccess::ReadWrite).is_err();
+        assert!(manager.validate_access(0x3500, SharedMemoryAccess::ReadWrite).is_err());
     }
 
     #[test]
     fn test_memory_type_serialization() {
         let linear = MemoryType::Linear { min: 1, max: Some(10) };
-        let bytes = linear.to_bytes().unwrap());
-        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap());
-        assert_eq!(linear, deserialized;
+        let bytes = linear.to_bytes().unwrap();
+        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap();
+        assert_eq!(linear, deserialized);
 
         let shared = MemoryType::Shared { min: 2, max: 20 };
-        let bytes = shared.to_bytes().unwrap());
-        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap());
-        assert_eq!(shared, deserialized;
+        let bytes = shared.to_bytes().unwrap();
+        let (deserialized, _) = MemoryType::from_bytes(&bytes).unwrap();
+        assert_eq!(shared, deserialized);
     }
 }

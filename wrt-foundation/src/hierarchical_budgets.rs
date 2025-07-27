@@ -55,13 +55,13 @@ impl SubBudget {
 
     /// Try to allocate from this sub-budget
     pub fn try_allocate(&self, size: usize) -> Result<()> {
-        let current = self.allocated.load(Ordering::Acquire;
+        let current = self.allocated.load(Ordering::Acquire);
         let new_total = current.checked_add(size).ok_or_else(|| {
             Error::memory_error("Allocation would overflow")
         })?;
 
         if new_total > self.max_allocation {
-            return Err(memory_limit_exceeded_error("Sub-budget exceeded";
+            return Err(memory_limit_exceeded_error("Sub-budget exceeded"));
         }
 
         // Try atomic update
@@ -78,15 +78,15 @@ impl SubBudget {
 
     /// Return allocation to this sub-budget
     pub fn deallocate(&self, size: usize) -> Result<()> {
-        let current = self.allocated.load(Ordering::Acquire;
+        let current = self.allocated.load(Ordering::Acquire);
         if current < size {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Attempted to deallocate more than was allocated";
+                "Attempted to deallocate more than was allocated"));
         }
 
-        self.allocated.store(current - size, Ordering::Release;
+        self.allocated.store(current - size, Ordering::Release);
         Ok(())
     }
 
@@ -132,20 +132,20 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
         priority: MemoryPriority,
     ) -> Result<usize> {
         if allocation > self.total_budget {
-            return Err(memory_limit_exceeded_error("Sub-budget exceeds total budget";
+            return Err(memory_limit_exceeded_error("Sub-budget exceeds total budget"));
         }
 
-        let count = self.active_count.load(Ordering::Acquire;
+        let count = self.active_count.load(Ordering::Acquire);
         if count >= MAX_SUB_BUDGETS {
-            return Err(memory_limit_exceeded_error("Maximum sub-budgets reached";
+            return Err(memory_limit_exceeded_error("Maximum sub-budgets reached"));
         }
 
         // Find empty slot
         for (i, slot) in self.sub_budgets.iter_mut().enumerate() {
             if slot.is_none() {
-                *slot = Some(SubBudget::new(name, allocation, priority;
-                self.active_count.store(count + 1, Ordering::Release;
-                return Ok(i;
+                *slot = Some(SubBudget::new(name, allocation, priority));
+                self.active_count.store(count + 1, Ordering::Release);
+                return Ok(i);
             }
         }
 
@@ -166,7 +166,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
             if let Some(budget) = sub_budget {
                 if budget.priority <= min_priority && budget.available() >= size {
                     if best_idx.is_none() || budget.priority < best_priority {
-                        best_idx = Some(i;
+                        best_idx = Some(i);
                         best_priority = budget.priority;
                     }
                 }
@@ -196,7 +196,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
             return Err(Error::new(
                 ErrorCategory::Capacity,
                 codes::OUT_OF_BOUNDS_ERROR,
-                "Sub-budget index out of bounds";
+                "Sub-budget index out of bounds"));
         }
 
         if let Some(sub_budget) = &self.sub_budgets[sub_budget_idx] {
@@ -220,7 +220,7 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
 
         for sub_budget in &self.sub_budgets {
             if let Some(budget) = sub_budget {
-                let allocated = budget.current_allocation);
+                let allocated = budget.current_allocation();
                 stats.total_allocated += allocated;
                 stats.sub_budget_count += 1;
 
@@ -322,7 +322,7 @@ impl<const N: usize> Drop for HierarchicalGuard<N> {
         unsafe {
             if !self.budget.is_null() {
                 // Intentionally ignore errors in Drop to avoid panic
-                let _ = (*self.budget).deallocate(self.sub_budget_idx, N;
+                let _ = (*self.budget).deallocate(self.sub_budget_idx, N);
             }
         }
     }
@@ -334,29 +334,29 @@ mod tests {
 
     #[test]
     fn test_sub_budget() {
-        let sub_budget = SubBudget::new("test", 1024, MemoryPriority::Normal;
+        let sub_budget = SubBudget::new("test", 1024, MemoryPriority::Normal);
 
-        assert_eq!(sub_budget.available(), 1024;
+        assert_eq!(sub_budget.available(), 1024);
 
-        sub_budget.try_allocate(512).unwrap());
-        assert_eq!(sub_budget.current_allocation(), 512;
-        assert_eq!(sub_budget.available(), 512;
+        sub_budget.try_allocate(512).unwrap();
+        assert_eq!(sub_budget.current_allocation(), 512);
+        assert_eq!(sub_budget.available(), 512);
 
-        sub_budget.deallocate(256).unwrap());
-        assert_eq!(sub_budget.current_allocation(), 256;
+        sub_budget.deallocate(256).unwrap();
+        assert_eq!(sub_budget.current_allocation(), 256);
     }
 
     #[test]
     fn test_hierarchical_budget() {
-        crate::memory_init::MemoryInitializer::initialize().unwrap());
+        crate::memory_init::MemoryInitializer::initialize().unwrap();
 
-        let mut budget = HierarchicalBudget::<4>::new(CrateId::Component, 4096;
+        let mut budget = HierarchicalBudget::<4>::new(CrateId::Component, 4096);
 
-        let idx1 = budget.add_sub_budget("critical", 1024, MemoryPriority::Critical).unwrap());
-        let idx2 = budget.add_sub_budget("normal", 2048, MemoryPriority::Normal).unwrap());
+        let idx1 = budget.add_sub_budget("critical", 1024, MemoryPriority::Critical).unwrap();
+        let idx2 = budget.add_sub_budget("normal", 2048, MemoryPriority::Normal).unwrap();
 
-        let stats = budget.get_statistics);
-        assert_eq!(stats.sub_budget_count, 2;
-        assert_eq!(stats.total_budget, 4096;
+        let stats = budget.get_statistics();
+        assert_eq!(stats.sub_budget_count, 2);
+        assert_eq!(stats.total_budget, 4096);
     }
 }

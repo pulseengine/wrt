@@ -72,11 +72,11 @@ impl AllocRuntime {
         let memory_used = module_data.len);
         
         if fuel_used > self.config.max_fuel {
-            return Err("Fuel limit exceeded".to_string();
+            return Err("Fuel limit exceeded".to_string());
         }
         
         if memory_used > self.config.max_memory {
-            return Err("Memory limit exceeded".to_string();
+            return Err("Memory limit exceeded".to_string());
         }
         
         self.stats.modules_executed += 1;

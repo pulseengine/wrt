@@ -95,37 +95,37 @@ impl MemoryOperationBuilder {
 
     /// Set this as a read operation
     pub fn read(mut self, offset: usize, len: usize) -> Self {
-        self.operation_type = Some(MemoryOperationType::Read;
-        self.offset = Some(offset;
-        self.length = Some(len;
+        self.operation_type = Some(MemoryOperationType::Read);
+        self.offset = Some(offset);
+        self.length = Some(len);
         self
     }
 
     /// Set this as a write operation
     pub fn write(mut self, offset: usize, len: usize) -> Self {
-        self.operation_type = Some(MemoryOperationType::Write;
-        self.offset = Some(offset;
-        self.length = Some(len;
+        self.operation_type = Some(MemoryOperationType::Write);
+        self.offset = Some(offset);
+        self.length = Some(len);
         self
     }
 
     /// Set this as an allocation operation
     pub fn allocate(mut self, size: usize) -> Self {
-        self.operation_type = Some(MemoryOperationType::Allocate;
-        self.size = Some(size;
+        self.operation_type = Some(MemoryOperationType::Allocate);
+        self.size = Some(size);
         self
     }
 
     /// Set this as a deallocation operation
     pub fn deallocate(mut self) -> Self {
-        self.operation_type = Some(MemoryOperationType::Deallocate;
+        self.operation_type = Some(MemoryOperationType::Deallocate);
         self
     }
 
     /// Set this as a delegation operation
     pub fn delegate(mut self, mask: CapabilityMask) -> Self {
-        self.operation_type = Some(MemoryOperationType::Delegate;
-        self.mask = Some(mask;
+        self.operation_type = Some(MemoryOperationType::Delegate);
+        self.mask = Some(mask);
         self
     }
 
@@ -195,7 +195,7 @@ impl CapabilityVerifier {
         operation: &MemoryOperation,
     ) -> Result<()> {
         if !operation.requires_capability(mask) {
-            return Err(Error::capability_violation("Capability mask does not allow operation";
+            return Err(Error::capability_violation("Capability mask does not allow operation"));
         }
         Ok(())
     }
@@ -290,12 +290,12 @@ mod tests {
 
     #[test]
     fn test_memory_operation_builder() {
-        let operation = MemoryOperationBuilder::new().read(100, 50).build().unwrap());
+        let operation = MemoryOperationBuilder::new().read(100, 50).build().unwrap();
 
         match operation {
             MemoryOperation::Read { offset, len } => {
-                assert_eq!(offset, 100;
-                assert_eq!(len, 50;
+                assert_eq!(offset, 100);
+                assert_eq!(len, 50);
             }
             _ => panic!("Expected read operation"),
         }
@@ -303,34 +303,34 @@ mod tests {
 
     #[test]
     fn test_capability_verifier() {
-        let full_mask = CapabilityMask::all);
-        let read_only_mask = CapabilityMask::read_only);
+        let full_mask = CapabilityMask::all();
+        let read_only_mask = CapabilityMask::read_only();
 
-        assert!(CapabilityVerifier::are_masks_compatible(&full_mask, &read_only_mask);
-        assert!(!CapabilityVerifier::are_masks_compatible(&read_only_mask, &full_mask);
+        assert!(CapabilityVerifier::are_masks_compatible(&full_mask, &read_only_mask));
+        assert!(!CapabilityVerifier::are_masks_compatible(&read_only_mask, &full_mask));
     }
 
     #[test]
     fn test_memory_stats() {
-        let mut stats = CapabilityMemoryStats::new);
+        let mut stats = CapabilityMemoryStats::new();
 
         let read_op = MemoryOperation::Read { offset: 0, len: 100 };
-        stats.record_operation(&read_op;
+        stats.record_operation(&read_op);
 
         assert_eq!(stats.total_operations, 1);
         assert_eq!(stats.read_operations, 1);
-        assert_eq!(stats.violation_rate(), 0.0;
+        assert_eq!(stats.violation_rate(), 0.0);
 
-        stats.record_violation);
-        assert_eq!(stats.violation_rate(), 100.0;
+        stats.record_violation();
+        assert_eq!(stats.violation_rate(), 100.0);
     }
 
     #[test]
     fn test_mask_intersection() {
-        let mask1 = CapabilityMask::all);
-        let mask2 = CapabilityMask::read_only);
+        let mask1 = CapabilityMask::all();
+        let mask2 = CapabilityMask::read_only();
 
-        let intersection = CapabilityVerifier::intersect_masks(&mask1, &mask2;
+        let intersection = CapabilityVerifier::intersect_masks(&mask1, &mask2);
 
         assert!(intersection.read);
         assert!(!intersection.write);

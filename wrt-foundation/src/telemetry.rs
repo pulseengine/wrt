@@ -126,7 +126,7 @@ impl<const N: usize> TelemetryBuffer<N> {
     /// Create a new telemetry buffer
     pub const fn new() -> Self {
         // Use a const block to initialize the array
-        const INIT: AtomicU64 = AtomicU64::new(0;
+        const INIT: AtomicU64 = AtomicU64::new(0);
         Self {
             events: [INIT; N],
             write_pos: AtomicU64::new(0),
@@ -142,14 +142,14 @@ impl<const N: usize> TelemetryBuffer<N> {
             | ((event.category as u64) << 48)
             | ((event.event_code as u64) << 32)
             | (((event.context1 & 0xFFFF) as u64) << 16)
-            | ((event.context2 & 0xFFFF) as u64;
+            | ((event.context2 & 0xFFFF) as u64);
         
         // Get write position
         let pos = self.write_pos.fetch_add(1, Ordering::Relaxed) % N as u64;
         
         // Store event atomically
-        self.events[pos as usize].store(packed, Ordering::Relaxed;
-        self.event_count.fetch_add(1, Ordering::Relaxed;
+        self.events[pos as usize].store(packed, Ordering::Relaxed);
+        self.event_count.fetch_add(1, Ordering::Relaxed);
     }
     
     /// Get number of events recorded
@@ -180,7 +180,7 @@ impl TelemetryConfig {
     
     /// Enable or disable telemetry
     pub fn set_enabled(&self, enabled: bool) {
-        self.enabled.store(enabled, Ordering::Relaxed;
+        self.enabled.store(enabled, Ordering::Relaxed);
     }
     
     /// Check if telemetry is enabled
@@ -190,7 +190,7 @@ impl TelemetryConfig {
     
     /// Set minimum severity level
     pub fn set_min_severity(&self, severity: Severity) {
-        self.min_severity.store(severity as u8, Ordering::Relaxed;
+        self.min_severity.store(severity as u8, Ordering::Relaxed);
     }
     
     /// Check if event should be recorded
@@ -205,10 +205,10 @@ impl TelemetryConfig {
 }
 
 /// Global telemetry buffer (1024 events)
-static TELEMETRY_BUFFER: TelemetryBuffer<1024> = TelemetryBuffer::new);
+static TELEMETRY_BUFFER: TelemetryBuffer<1024> = TelemetryBuffer::new();
 
 /// Global telemetry configuration
-static TELEMETRY_CONFIG: TelemetryConfig = TelemetryConfig::new);
+static TELEMETRY_CONFIG: TelemetryConfig = TelemetryConfig::new();
 
 /// Record a telemetry event
 pub fn record_event(
@@ -227,7 +227,7 @@ pub fn record_event(
             context1,
             context2,
         };
-        TELEMETRY_BUFFER.record(&event;
+        TELEMETRY_BUFFER.record(&event);
     }
 }
 
@@ -273,8 +273,8 @@ macro_rules! telemetry_critical {
 
 /// Initialize telemetry system
 pub fn init_telemetry(enabled: bool, min_severity: Severity) {
-    TELEMETRY_CONFIG.set_enabled(enabled;
-    TELEMETRY_CONFIG.set_min_severity(min_severity;
+    TELEMETRY_CONFIG.set_enabled(enabled);
+    TELEMETRY_CONFIG.set_min_severity(min_severity);
     
     // Record initialization event
     record_event(
@@ -283,7 +283,7 @@ pub fn init_telemetry(enabled: bool, min_severity: Severity) {
         event_codes::LIFECYCLE_INIT,
         enabled as u64,
         min_severity as u64,
-    ;
+    );
 }
 
 /// Get telemetry statistics
@@ -312,7 +312,7 @@ mod tests {
     
     #[test]
     fn test_telemetry_recording() {
-        init_telemetry(true, Severity::Debug;
+        init_telemetry(true, Severity::Debug);
         
         let initial_count = get_telemetry_stats().events_recorded;
         
@@ -323,7 +323,7 @@ mod tests {
             event_codes::MEM_ALLOC_SUCCESS,
             1024,
             0,
-        ;
+        );
         
         record_event(
             Severity::Error,
@@ -331,16 +331,16 @@ mod tests {
             event_codes::MEM_ALLOC_FAILURE,
             2048,
             12, // error code
-        ;
+        );
         
-        let stats = get_telemetry_stats);
+        let stats = get_telemetry_stats();
         assert!(stats.events_recorded > initial_count);
         assert!(stats.telemetry_enabled);
     }
     
     #[test]
     fn test_severity_filtering() {
-        init_telemetry(true, Severity::Warning;
+        init_telemetry(true, Severity::Warning);
         
         let initial_count = get_telemetry_stats().events_recorded;
         
@@ -351,7 +351,7 @@ mod tests {
             event_codes::PERF_SLOW_OP,
             100,
             0,
-        ;
+        );
         
         // This should be recorded (Error > Warning)
         record_event(
@@ -360,15 +360,15 @@ mod tests {
             event_codes::SAFETY_VIOLATION,
             0,
             0,
-        ;
+        );
         
-        let stats = get_telemetry_stats);
-        assert_eq!(stats.events_recorded, initial_count + 1;
+        let stats = get_telemetry_stats();
+        assert_eq!(stats.events_recorded, initial_count + 1);
     }
     
     #[test]
     fn test_telemetry_disabled() {
-        init_telemetry(false, Severity::Trace;
+        init_telemetry(false, Severity::Trace);
         
         let initial_count = get_telemetry_stats().events_recorded;
         
@@ -379,10 +379,10 @@ mod tests {
             event_codes::ERROR_FATAL,
             0,
             0,
-        ;
+        );
         
-        let stats = get_telemetry_stats);
-        assert_eq!(stats.events_recorded, initial_count;
+        let stats = get_telemetry_stats();
+        assert_eq!(stats.events_recorded, initial_count);
         assert!(!stats.telemetry_enabled);
     }
 }

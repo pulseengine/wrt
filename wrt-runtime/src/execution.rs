@@ -229,7 +229,7 @@ impl InstrumentationPoint {
         let bounded_point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
             point_type,
             provider.clone()
-        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", provider).unwrap());
+        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", provider).unwrap();
         Ok(Self {
             location,
             point_type: bounded_point_type,

@@ -80,14 +80,14 @@ fn test_wast_directive(
             let binary = wast_module.encode().map_err(|e| Error::Parse(e.to_string()))?;
 
             // Debug output
-            println!("Binary: {:02x?}", binary);
+            println!("Binary: {:02x?}", binary));
 
             // Create and load the WRT module
             let mut wrt_module = Module::new()?;
             let loaded_module = wrt_module.load_from_binary(&binary)?;
 
             // Debug output
-            println!("Module exports: {:?}", loaded_module.exports);
+            println!("Module exports: {:?}", loaded_module.exports));
 
             // Instantiate the module
             let instance_idx = engine.instantiate(loaded_module)?;
@@ -106,18 +106,18 @@ fn test_wast_directive(
             match exec {
                 WastExecute::Invoke(invoke) => {
                     let args: Result<Vec<Value>, _> =
-                        invoke.args.iter().map(convert_wast_arg_core).collect();
+                        invoke.args.iter().map(convert_wast_arg_core).collect());
                     let args = args?;
-                    println!("DEBUG: Invoking {} with args: {:?}", invoke.name, args;
+                    println!("DEBUG: Invoking {} with args: {:?}", invoke.name, args));
 
                     let expected: Result<Vec<Value>, _> =
-                        results.iter().map(convert_wast_ret_core).collect();
+                        results.iter().map(convert_wast_ret_core).collect());
                     let expected = expected?;
-                    println!("DEBUG: Expected result: {:?}", expected;
+                    println!("DEBUG: Expected result: {:?}", expected));
 
                     // Execute the function and compare results
                     let actual = engine.invoke_export(invoke.name, &args)?;
-                    println!("DEBUG: Actual result: {:?}", actual;
+                    println!("DEBUG: Actual result: {:?}", actual));
 
                     // Special handling for NaN values
                     let mut values_match = true;
@@ -138,7 +138,7 @@ fn test_wast_directive(
                         values_match = false;
                     }
 
-                    println!("DEBUG: Comparison: values match is {}", values_match);
+                    println!("DEBUG: Comparison: values match is {}", values_match));
 
                     assert!(
                         values_match,
@@ -208,8 +208,8 @@ fn test_wast_file(path: &Path) -> Result<(), Error> {
 
 /// Load tests from the wast_passed.md file
 fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
-    println!("Loading tests from wast_passed.md...";
-    let mut passing_tests = std::collections::HashSet::new);
+    println!("Loading tests from wast_passed.md...");
+    let mut passing_tests = std::collections::HashSet::new();
 
     // Get the path to the cargo manifest directory (wrt/)
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -218,13 +218,13 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
     let workspace_root = manifest_dir.parent().unwrap_or(&manifest_dir);
 
     // Construct the path to wast_passed.md in the workspace root
-    let passed_file = workspace_root.join("wast_passed.md";
+    let passed_file = workspace_root.join("wast_passed.md");
 
-    println!("Looking for wast_passed.md at: {}", passed_file.display();
+    println!("Looking for wast_passed.md at: {}", passed_file.display()));
 
     // Return empty set if file doesn't exist
     if !passed_file.exists() {
-        println!("wast_passed.md file not found at workspace root. No tests will be run.");
+        println!("wast_passed.md file not found at workspace root. No tests will be run."));
         return passing_tests;
     }
 
@@ -232,11 +232,11 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
     let mut content = String::new();
     if let Ok(mut file) = std::fs::File::open(&passed_file) {
         if std::io::Read::read_to_string(&mut file, &mut content).is_err() {
-            println!("Failed to read wast_passed.md file. No tests will be run.");
+            println!("Failed to read wast_passed.md file. No tests will be run."));
             return passing_tests;
         }
     } else {
-        println!("Failed to open wast_passed.md file. No tests will be run.");
+        println!("Failed to open wast_passed.md file. No tests will be run."));
         return passing_tests;
     }
 
@@ -245,11 +245,11 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
         if line.starts_with("- `") && line.contains("` - ") {
             let path_str = line[3..line.find("` - ").unwrap()].trim();
             passing_tests.insert(PathBuf::from(path_str));
-            println!("  Added test: {}", path_str);
+            println!("  Added test: {}", path_str));
         }
     }
 
-    println!("Loaded {} tests from wast_passed.md", passing_tests.len);
+    println!("Loaded {} tests from wast_passed.md", passing_tests.len));
 
     // Another potential issue: relative paths in wast_passed.md are relative to the
     // workspace root Let's make sure we're using absolute paths by resolving
@@ -272,36 +272,36 @@ fn test_wast_files() -> Result<(), Error> {
     let workspace_root = manifest_dir.parent().unwrap_or(&manifest_dir);
 
     // Use the path relative to workspace root
-    let test_dir = workspace_root.join("wrt/testsuite";
+    let test_dir = workspace_root.join("wrt/testsuite");
 
     if !test_dir.exists() {
-        println!("No testsuite directory found at: {}", test_dir.display();
-        println!("Checking external testsuite...";
+        println!("No testsuite directory found at: {}", test_dir.display()));
+        println!("Checking external testsuite..."));
 
         // Try the external testsuite path
-        let external_dir = workspace_root.join("external/testsuite";
+        let external_dir = workspace_root.join("external/testsuite");
         if !external_dir.exists() {
-            println!("No external testsuite found either. Skipping WAST tests.";
+            println!("No external testsuite found either. Skipping WAST tests."));
             return Ok();
         }
 
-        return test_external_testsuite(&external_dir;
+        return test_external_testsuite(&external_dir);
     }
 
     // Print the path and if it exists for debugging
-    println!("Checking testsuite at path: {}", test_dir.display();
-    println!("Directory exists: {}", test_dir.exists);
+    println!("Checking testsuite at path: {}", test_dir.display());
+    println!("Directory exists: {}", test_dir.exists));
 
     // Load the list of passing tests from wast_passed.md
     let passing_tests = load_passing_tests);
 
     // Create a new WAST test runner
-    let mut runner = WastTestRunner::new);
+    let mut runner = WastTestRunner::new();
 
     // If there are no passing tests, run a small subset for testing
     if passing_tests.is_empty() {
-        println!("No tests specified in wast_passed.md, running basic test subset";
-        return run_basic_wast_tests(&mut runner, &test_dir;
+        println!("No tests specified in wast_passed.md, running basic test subset"));
+        return run_basic_wast_tests(&mut runner, &test_dir);
     }
 
     // Track test execution
@@ -316,9 +316,9 @@ fn test_wast_files() -> Result<(), Error> {
             let rel_display_path = test_path
                 .strip_prefix(workspace_root)
                 .map(|p| p.to_path_buf())
-                .unwrap_or_else(|_| test_path.clone();
+                .unwrap_or_else(|_| test_path.clone());
 
-            println!("Running test {}: {}", tests_run, rel_display_path.display();
+            println!("Running test {}: {}", tests_run, rel_display_path.display()));
 
             match runner.run_wast_file(&test_path) {
                 Ok(stats) => {
@@ -327,13 +327,13 @@ fn test_wast_files() -> Result<(), Error> {
                         rel_display_path.display(),
                         stats.passed,
                         stats.failed
-                    ;
+                    );
                     if stats.failed == 0 {
                         tests_passed += 1;
                     }
                 },
                 Err(e) => {
-                    println!("❌ FAIL: {} - {}", rel_display_path.display(), e;
+                    println!("❌ FAIL: {} - {}", rel_display_path.display(), e));
                 },
             }
         }
@@ -343,17 +343,17 @@ fn test_wast_files() -> Result<(), Error> {
         "Tests completed: {} passed, {} failed",
         tests_passed,
         tests_run - tests_passed
-    ;
-    println!("Runner stats: {:?}", runner.stats;
+    );
+    println!("Runner stats: {:?}", runner.stats));
 
     Ok(())
 }
 
 /// Test the external testsuite with a subset of files
 fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
-    println!("Testing external testsuite at: {}", testsuite_dir.display();
+    println!("Testing external testsuite at: {}", testsuite_dir.display()));
 
-    let mut runner = WastTestRunner::new);
+    let mut runner = WastTestRunner::new();
 
     // Basic test files that should work with minimal implementation
     let basic_tests = [
@@ -369,27 +369,27 @@ fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
     let mut tests_passed = 0;
 
     for test_file in &basic_tests {
-        let test_path = testsuite_dir.join(test_file;
+        let test_path = testsuite_dir.join(test_file);
         if test_path.exists() {
             tests_run += 1;
-            println!("Running external test {}: {}", tests_run, test_file;
+            println!("Running external test {}: {}", tests_run, test_file));
 
             match runner.run_wast_file(&test_path) {
                 Ok(stats) => {
                     println!(
                         "✅ {} - {} directives passed, {} failed",
                         test_file, stats.passed, stats.failed
-                    ;
+                    );
                     if stats.failed == 0 {
                         tests_passed += 1;
                     }
                 },
                 Err(e) => {
-                    println!("❌ {} - Error: {}", test_file, e;
+                    println!("❌ {} - Error: {}", test_file, e));
                 },
             }
         } else {
-            println!("⚠️  Test file not found: {}", test_file;
+            println!("⚠️  Test file not found: {}", test_file));
         }
     }
 
@@ -397,8 +397,8 @@ fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
         "External testsuite: {} files passed, {} failed",
         tests_passed,
         tests_run - tests_passed
-    ;
-    println!("Final runner stats: {:?}", runner.stats;
+    );
+    println!("Final runner stats: {:?}", runner.stats));
 
     Ok(())
 }
@@ -410,7 +410,7 @@ fn run_basic_wast_tests(runner: &mut WastTestRunner, test_dir: &Path) -> Result<
 
     // List available files and pick a few basic ones
     if let Ok(entries) = fs::read_dir(test_dir) {
-        let mut available_files = Vec::new();
+        let mut available_files = Vec::new());
         for entry in entries {
             if let Ok(entry) = entry {
                 if entry.path().extension().is_some_and(|ext| ext == "wast") {
@@ -424,7 +424,7 @@ fn run_basic_wast_tests(runner: &mut WastTestRunner, test_dir: &Path) -> Result<
         for path in available_files.iter().take(5) {
             tests_run += 1;
             let file_name = path.file_name().unwrap().to_string_lossy();
-            println!("Running basic test {}: {}", tests_run, file_name);
+            println!("Running basic test {}: {}", tests_run, file_name));
 
             match runner.run_wast_file(path) {
                 Ok(stats) => {
@@ -437,7 +437,7 @@ fn run_basic_wast_tests(runner: &mut WastTestRunner, test_dir: &Path) -> Result<
                     }
                 },
                 Err(e) => {
-                    println!("❌ {} - {}", file_name, e);
+                    println!("❌ {} - {}", file_name, e));
                 },
             }
         }

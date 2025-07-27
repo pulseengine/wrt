@@ -85,7 +85,7 @@ fn test_bitwise_operations() -> Result<()> {
             a, b, expected_xor, result
         );
 
-        println!("---");
+        println!("---"));
     }
 
     Ok(())

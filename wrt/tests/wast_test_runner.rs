@@ -226,7 +226,7 @@ impl WastTestRunner {
         let loaded_module = wrt_module.load_from_binary(&binary)?;
 
         // Store as current module
-        self.current_module = Some(loaded_module.clone();
+        self.current_module = Some(loaded_module.clone());
 
         // Instantiate the module
         engine.instantiate(loaded_module)?;
@@ -251,11 +251,11 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect();
+                    invoke.args.iter().map(convert_wast_arg_core).collect());
                 let args = args?;
 
                 let expected: Result<Vec<Value>, _> =
-                    results.iter().map(convert_wast_ret_core).collect();
+                    results.iter().map(convert_wast_ret_core).collect());
                 let expected = expected?;
 
                 // Execute the function and compare results
@@ -268,7 +268,7 @@ impl WastTestRunner {
                         "Result count mismatch: expected {}, got {}",
                         expected.len(),
                         actual.len()
-                    );
+                    )));
                 }
 
                 for (i, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
@@ -277,7 +277,7 @@ impl WastTestRunner {
                         return Err(Error::Validation(format!(
                             "Result mismatch at index {}: expected {:?}, got {:?}",
                             i, e, a
-                        );
+                        )));
                     }
                 }
 
@@ -310,7 +310,7 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect();
+                    invoke.args.iter().map(convert_wast_arg_core).collect());
                 let args = args?;
 
                 // Execute and expect a trap
@@ -324,8 +324,8 @@ impl WastTestRunner {
                     },
                     Err(error) => {
                         // Check if the error message matches expectations
-                        let error_msg = error.to_string().to_lowercase);
-                        let expected_msg = expected_message.to_lowercase);
+                        let error_msg = error.to_string().to_lowercase();
+                        let expected_msg = expected_message.to_lowercase();
 
                         if error_msg.contains(&expected_msg)
                             || contains_trap_keyword(&error_msg, &expected_msg)
@@ -377,8 +377,8 @@ impl WastTestRunner {
                         )))
                     },
                     Err(error) => {
-                        let error_msg = error.to_string().to_lowercase);
-                        let expected_msg = expected_message.to_lowercase);
+                        let error_msg = error.to_string().to_lowercase();
+                        let expected_msg = expected_message.to_lowercase();
 
                         if error_msg.contains(&expected_msg)
                             || contains_validation_keyword(&error_msg, &expected_msg)
@@ -402,8 +402,8 @@ impl WastTestRunner {
             },
             Err(encode_error) => {
                 // Encoding failed, which is also acceptable for invalid modules
-                let error_msg = encode_error.to_string().to_lowercase);
-                let expected_msg = expected_message.to_lowercase);
+                let error_msg = encode_error.to_string().to_lowercase();
+                let expected_msg = expected_message.to_lowercase();
 
                 if error_msg.contains(&expected_msg)
                     || contains_validation_keyword(&error_msg, &expected_msg)
@@ -444,8 +444,8 @@ impl WastTestRunner {
                 )))
             },
             Err(encode_error) => {
-                let error_msg = encode_error.to_string().to_lowercase);
-                let expected_msg = expected_message.to_lowercase);
+                let error_msg = encode_error.to_string().to_lowercase();
+                let expected_msg = expected_message.to_lowercase();
 
                 if error_msg.contains(&expected_msg)
                     || contains_malformed_keyword(&error_msg, &expected_msg)
@@ -482,7 +482,7 @@ impl WastTestRunner {
                 match Module::new().and_then(|mut m| m.load_from_binary(&binary)) {
                     Ok(module) => {
                         // Try to instantiate - should fail at linking
-                        let mut engine = StacklessEngine::new);
+                        let mut engine = StacklessEngine::new();
                         match engine.instantiate(module) {
                             Ok(_) => {
                                 self.stats.failed += 1;
@@ -492,8 +492,8 @@ impl WastTestRunner {
                                 )))
                             },
                             Err(error) => {
-                                let error_msg = error.to_string().to_lowercase);
-                                let expected_msg = expected_message.to_lowercase);
+                                let error_msg = error.to_string().to_lowercase();
+                                let expected_msg = expected_message.to_lowercase();
 
                                 if error_msg.contains(&expected_msg)
                                     || contains_linking_keyword(&error_msg, &expected_msg)
@@ -517,8 +517,8 @@ impl WastTestRunner {
                     },
                     Err(error) => {
                         // Module loading failed, which might also indicate unlinkable
-                        let error_msg = error.to_string().to_lowercase);
-                        let expected_msg = expected_message.to_lowercase);
+                        let error_msg = error.to_string().to_lowercase();
+                        let expected_msg = expected_message.to_lowercase();
 
                         if error_msg.contains(&expected_msg)
                             || contains_linking_keyword(&error_msg, &expected_msg)
@@ -562,11 +562,11 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect();
+                    invoke.args.iter().map(convert_wast_arg_core).collect());
                 let args = args?;
 
                 // Set resource limits before execution
-                engine.set_fuel(Some(self.resource_limits.max_execution_steps;
+                engine.set_fuel(Some(self.resource_limits.max_execution_steps));
 
                 // Execute and expect resource exhaustion
                 match engine.invoke_export(invoke.name, &args) {
@@ -578,8 +578,8 @@ impl WastTestRunner {
                         )))
                     },
                     Err(error) => {
-                        let error_msg = error.to_string().to_lowercase);
-                        let expected_msg = expected_message.to_lowercase);
+                        let error_msg = error.to_string().to_lowercase();
+                        let expected_msg = expected_message.to_lowercase();
 
                         if error_msg.contains(&expected_msg)
                             || contains_exhaustion_keyword(&error_msg, &expected_msg)
@@ -621,14 +621,14 @@ impl WastTestRunner {
         // Register the current module if available (std only)
         #[cfg(feature = "std")]
         if let Some(ref module) = self.current_module {
-            self.module_registry.insert(name.to_string(), module.clone();
+            self.module_registry.insert(name.to_string(), module.clone());
             self.stats.passed += 1;
             return Ok(WastDirectiveInfo {
                 test_type:             WastTestType::Integration,
                 directive_name:        "register".to_string(),
                 requires_module_state: true,
                 modifies_engine_state: true,
-            };
+            });
         }
 
         #[cfg(not(feature = "std"))]
@@ -642,7 +642,7 @@ impl WastTestRunner {
                     directive_name:        "register".to_string(),
                     requires_module_state: true,
                     modifies_engine_state: true,
-                };
+                });
             }
         }
 
@@ -661,7 +661,7 @@ impl WastTestRunner {
         match exec {
             WastExecute::Invoke(invoke) => {
                 let args: Result<Vec<Value>, _> =
-                    invoke.args.iter().map(convert_wast_arg_core).collect();
+                    invoke.args.iter().map(convert_wast_arg_core).collect());
                 let args = args?;
 
                 // Execute the function (result is discarded)
@@ -697,7 +697,7 @@ impl WastTestRunner {
             .map_err(|e| Error::Parse(format!("Failed to parse WAST: {}", e)))?;
 
         let module = Module::new()?;
-        let mut engine = StacklessEngine::new);
+        let mut engine = StacklessEngine::new();
 
         for mut directive in wast.directives {
             match self.execute_directive(&mut engine, &mut directive) {
@@ -705,7 +705,7 @@ impl WastTestRunner {
                     // Test passed, stats already updated in execute_directive
                 },
                 Err(e) => {
-                    eprintln!("WAST directive failed: {}", e;
+                    eprintln!("WAST directive failed: {}", e)));
                     // Error stats already updated in execute_directive
                 },
             }
@@ -723,7 +723,7 @@ impl WastTestRunner {
             .map_err(|e| Error::Parse(format!("Failed to parse WAST: {}", e)))?;
 
         let module = Module::new()?;
-        let mut engine = StacklessEngine::new);
+        let mut engine = StacklessEngine::new();
 
         for mut directive in wast.directives {
             match self.execute_directive(&mut engine, &mut directive) {
@@ -733,7 +733,7 @@ impl WastTestRunner {
                 Err(e) => {
                     // In no_std mode, we can't use eprintln!, so we just continue
                     #[cfg(feature = "std")]
-                    eprintln!("WAST directive failed: {}", e;
+                    eprintln!("WAST directive failed: {}", e)));
                     // Error stats already updated in execute_directive
                 },
             }
@@ -903,7 +903,7 @@ impl Default for WastTestRunner {
 /// Register WAST tests from the external testsuite (std only)
 #[cfg(feature = "std")]
 pub fn register_wast_tests() {
-    let registry = TestRegistry::global);
+    let registry = TestRegistry::global();
 
     // Register a test suite for WAST file execution
     let test_case = wrt_test_registry::TestCaseImpl {
@@ -918,7 +918,7 @@ pub fn register_wast_tests() {
     };
 
     if let Err(e) = registry.register(Box::new(test_case)) {
-        eprintln!("Failed to register WAST tests: {}", e;
+        eprintln!("Failed to register WAST tests: {}", e)));
     }
 }
 
@@ -932,12 +932,12 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
         },
     };
 
-    let testsuite_dir = Path::new(&testsuite_path;
+    let testsuite_dir = Path::new(&testsuite_path);
     if !testsuite_dir.exists() {
         return wrt_test_registry::TestResult::Ok();
     }
 
-    let mut runner = WastTestRunner::new);
+    let mut runner = WastTestRunner::new();
     let mut total_files = 0;
     let mut failed_files = 0;
 
@@ -952,7 +952,7 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
     ];
 
     for file_name in &test_files {
-        let file_path = testsuite_dir.join(file_name;
+        let file_path = testsuite_dir.join(file_name);
         if file_path.exists() {
             total_files += 1;
             match runner.run_wast_file(&file_path) {
@@ -960,10 +960,10 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
                     println!(
                         "✓ {} - {} passed, {} failed",
                         file_name, stats.passed, stats.failed
-                    ;
+                    );
                 },
                 Err(e) => {
-                    eprintln!("✗ {} - Error: {}", file_name, e;
+                    eprintln!("✗ {} - Error: {}", file_name, e)));
                     failed_files += 1;
                 },
             }
@@ -971,7 +971,7 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
     }
 
     if failed_files == 0 {
-        println!("All {} WAST files processed successfully", total_files;
+        println!("All {} WAST files processed successfully", total_files));
         wrt_test_registry::TestResult::Ok(())
     } else {
         wrt_test_registry::TestResult::Err(format!(
@@ -994,47 +994,47 @@ mod tests {
 
     #[test]
     fn test_wast_runner_creation() {
-        let runner = WastTestRunner::new);
+        let runner = WastTestRunner::new();
         assert_eq!(runner.stats.passed, 0);
         assert_eq!(runner.stats.failed, 0);
     }
 
     #[test]
     fn test_resource_limits_default() {
-        let limits = ResourceLimits::default());
-        assert_eq!(limits.max_stack_depth, 1024;
-        assert_eq!(limits.max_memory_size, 64 * 1024 * 1024;
+        let limits = ResourceLimits::default();
+        assert_eq!(limits.max_stack_depth, 1024);
+        assert_eq!(limits.max_memory_size, 64 * 1024 * 1024);
     }
 
     #[test]
     fn test_value_comparison() {
         // Test exact values
-        assert!(compare_wasm_values(&Value::I32(42), &Value::I32(42));
-        assert!(!compare_wasm_values(&Value::I32(42), &Value::I32(43));
+        assert!(compare_wasm_values(&Value::I32(42), &Value::I32(42)));
+        assert!(!compare_wasm_values(&Value::I32(42), &Value::I32(43)));
 
         // Test NaN handling
         assert!(compare_wasm_values(
             &Value::F32(f32::NAN),
             &Value::F32(f32::NAN)
-        ;
+        ));
         assert!(!compare_wasm_values(
             &Value::F32(1.0),
             &Value::F32(f32::NAN)
-        ;
+        ));
 
         // Test tolerance for floats
         assert!(compare_wasm_values(
             &Value::F32(1.0),
             &Value::F32(1.0000001)
-        ;
+        ));
     }
 
     #[test]
     fn test_error_keyword_detection() {
-        assert!(contains_trap_keyword("divide by zero", "");
-        assert!(contains_validation_keyword("type mismatch error", "");
-        assert!(contains_malformed_keyword("unexpected end of input", "");
-        assert!(contains_linking_keyword("unknown import module", "");
-        assert!(contains_exhaustion_keyword("stack overflow detected", "");
+        assert!(contains_trap_keyword("divide by zero", ""));
+        assert!(contains_validation_keyword("type mismatch error", ""));
+        assert!(contains_malformed_keyword("unexpected end of input", ""));
+        assert!(contains_linking_keyword("unknown import module", ""));
+        assert!(contains_exhaustion_keyword("stack overflow detected", ""));
     }
 }

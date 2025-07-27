@@ -80,9 +80,9 @@ where
     V: Clone + PartialEq + Eq + Checksummable,
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.key.update_checksum(checksum;
-        self.value.update_checksum(checksum;
-        self.hash.update_checksum(checksum;
+        self.key.update_checksum(checksum);
+        self.value.update_checksum(checksum);
+        self.hash.update_checksum(checksum);
     }
 }
 
@@ -187,8 +187,8 @@ where
     {
         if self.is_full() {
             // Check if the key already exists
-            let hash = self.hash_key(&key;
-            let index = self.initial_index(hash;
+            let hash = self.hash_key(&key);
+            let index = self.initial_index(hash);
 
             for i in 0..N {
                 let actual_index = (index + i) % N;
@@ -200,17 +200,17 @@ where
                         let mut entry = entry.clone();
                         entry.value = value;
                         self.entries.set(actual_index, Some(entry))?;
-                        return Ok(Some(old_value;
+                        return Ok(Some(old_value));
                     }
                 }
             }
 
             // Map is full and key doesn't exist
-            return Err(crate::Error::capacity_error("SimpleHashMap is full";
+            return Err(crate::Error::capacity_error("SimpleHashMap is full"));
         }
 
-        let hash = self.hash_key(&key;
-        let index = self.initial_index(hash;
+        let hash = self.hash_key(&key);
+        let index = self.initial_index(hash);
 
         // Find the slot for this key (either empty or matching key)
         for i in 0..N {
@@ -223,14 +223,14 @@ where
                     let mut entry = entry.clone();
                     entry.value = value;
                     self.entries.set(actual_index, Some(entry))?;
-                    return Ok(Some(old_value;
+                    return Ok(Some(old_value));
                 }
                 None => {
                     // Empty slot, insert new entry
                     let entry = Entry { key, value, hash };
                     self.entries.set(actual_index, Some(entry))?;
                     self.len += 1;
-                    return Ok(None;
+                    return Ok(None);
                 }
                 _ => {
                     // Occupied by a different key, try next slot
@@ -249,19 +249,19 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = self.hash_key(key;
-        let index = self.initial_index(hash;
+        let hash = self.hash_key(key);
+        let index = self.initial_index(hash);
 
         for i in 0..N {
             let actual_index = (index + i) % N;
 
             match self.entries.get(actual_index)? {
                 Some(entry) if entry.hash == hash && entry.key.borrow() == key => {
-                    return Ok(Some(entry.value;
+                    return Ok(Some(entry.value));
                 }
                 None => {
                     // Empty slot, key doesn't exist
-                    return Ok(None;
+                    return Ok(None);
                 }
                 _ => {
                     // Occupied by a different key, try next slot
@@ -280,8 +280,8 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = self.hash_key(key;
-        let index = self.initial_index(hash;
+        let hash = self.hash_key(key);
+        let index = self.initial_index(hash);
 
         for i in 0..N {
             let actual_index = (index + i) % N;
@@ -291,11 +291,11 @@ where
                     let value = entry.value.clone();
                     self.entries.set(actual_index, None)?;
                     self.len -= 1;
-                    return Ok(Some(value;
+                    return Ok(Some(value));
                 }
                 None => {
                     // Empty slot, key doesn't exist
-                    return Ok(None;
+                    return Ok(None);
                 }
                 _ => {
                     // Occupied by a different key, try next slot
@@ -329,33 +329,33 @@ mod tests {
         let mut map = SimpleHashMap::<u32, i32, 8, NoStdProvider<512>>::new(provider)?;
 
         // Test insertion
-        assert!(map.insert(1, 100)?.is_none();
-        assert!(map.insert(2, 200)?.is_none();
-        assert!(map.insert(3, 300)?.is_none();
+        assert!(map.insert(1, 100)?.is_none());
+        assert!(map.insert(2, 200)?.is_none());
+        assert!(map.insert(3, 300)?.is_none());
 
         // Test get
-        assert_eq!(map.get(&1)?, Some(100;
-        assert_eq!(map.get(&2)?, Some(200;
-        assert_eq!(map.get(&3)?, Some(300;
-        assert_eq!(map.get(&4)?, None;
+        assert_eq!(map.get(&1)?, Some(100));
+        assert_eq!(map.get(&2)?, Some(200));
+        assert_eq!(map.get(&3)?, Some(300));
+        assert_eq!(map.get(&4)?, None);
 
         // Test replacing a value
-        assert_eq!(map.insert(1, 1000)?, Some(100;
-        assert_eq!(map.get(&1)?, Some(1000;
+        assert_eq!(map.insert(1, 1000)?, Some(100));
+        assert_eq!(map.get(&1)?, Some(1000));
 
         // Test removing a value
-        assert_eq!(map.remove(&2)?, Some(200;
-        assert_eq!(map.get(&2)?, None;
+        assert_eq!(map.remove(&2)?, Some(200));
+        assert_eq!(map.get(&2)?, None);
 
         // Test len and is_empty
-        assert_eq!(map.len(), 2;
-        assert!(!map.is_empty();
+        assert_eq!(map.len(), 2);
+        assert!(!map.is_empty());
 
         // Test clear
         map.clear()?;
         assert_eq!(map.len(), 0);
-        assert!(map.is_empty();
-        assert_eq!(map.get(&1)?, None;
+        assert!(map.is_empty());
+        assert_eq!(map.get(&1)?, None);
         Ok(())
     }
 
@@ -365,19 +365,19 @@ mod tests {
         let mut map = SimpleHashMap::<i32, i32, 4, NoStdProvider<256>>::new(provider)?;
 
         // Fill the map
-        assert!(map.insert(1, 10)?.is_none();
-        assert!(map.insert(2, 20)?.is_none();
-        assert!(map.insert(3, 30)?.is_none();
-        assert!(map.insert(4, 40)?.is_none();
+        assert!(map.insert(1, 10)?.is_none());
+        assert!(map.insert(2, 20)?.is_none());
+        assert!(map.insert(3, 30)?.is_none());
+        assert!(map.insert(4, 40)?.is_none());
 
         // Map is full
-        assert!(map.is_full();
+        assert!(map.is_full());
 
         // Can replace existing keys
-        assert_eq!(map.insert(1, 100)?, Some(10;
+        assert_eq!(map.insert(1, 100)?, Some(10));
 
         // But can't add new keys
-        assert!(map.insert(5, 50).is_err();
+        assert!(map.insert(5, 50).is_err());
         Ok(())
     }
 }

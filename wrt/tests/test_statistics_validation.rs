@@ -68,23 +68,23 @@ mod statistics_tests {
             let expected_failures = self.expected_failures.load(Ordering::Relaxed);
             let skipped = self.skipped.load(Ordering::Relaxed);
 
-            println!("\n╔══════════════════════════════════════════════════════╗");
-            println!("║          Enhanced Test Statistics Report              ║");
-            println!("╠══════════════════════════════════════════════════════╣");
+            println!("\n╔══════════════════════════════════════════════════════╗"));
+            println!("║          Enhanced Test Statistics Report              ║"));
+            println!("╠══════════════════════════════════════════════════════╣"));
 
-            println!("║ Real Execution Tests:                                ║");
+            println!("║ Real Execution Tests:                                ║"));
             println!(
                 "║   Attempted: {:6} | Passed: {:6} | Failed: {:6} ║",
                 real_exec_total, real_exec_passed, real_exec_failed
             );
 
-            println!("║ Validation Tests:                                    ║");
+            println!("║ Validation Tests:                                    ║"));
             println!(
                 "║   Attempted: {:6} | Passed: {:6} | Failed: {:6} ║",
                 validation_total, validation_passed, validation_failed
             );
 
-            println!("║ Other Categories:                                    ║");
+            println!("║ Other Categories:                                    ║"));
             println!(
                 "║   Auto-passed: {:6}                                ║",
                 auto_passed
@@ -106,8 +106,8 @@ mod statistics_tests {
                 0.0
             };
 
-            println!("╠══════════════════════════════════════════════════════╣");
-            println!("║ Summary:                                             ║");
+            println!("╠══════════════════════════════════════════════════════╣"));
+            println!("║ Summary:                                             ║"));
             println!(
                 "║   Total tests: {:6}                                ║",
                 total_all
@@ -121,7 +121,7 @@ mod statistics_tests {
                 "║   Real pass rate: {:.1}%                             ║",
                 real_pass_rate
             );
-            println!("╚══════════════════════════════════════════════════════╝");
+            println!("╚══════════════════════════════════════════════════════╝"));
 
             // Validation checks
             if auto_passed > 0 {
@@ -139,7 +139,7 @@ mod statistics_tests {
             }
 
             if total_real_tests == 0 {
-                println!("\n❌ Error: No real tests were executed!");
+                println!("\n❌ Error: No real tests were executed!"));
             }
         }
     }
@@ -171,7 +171,7 @@ mod statistics_tests {
         match engine.load_module(Some("add_test"), &real_test_wasm) {
             Ok(_) => {
                 stats.real_execution_passed.fetch_add(1, Ordering::Relaxed);
-                println!("✓ Real execution: add function loaded successfully");
+                println!("✓ Real execution: add function loaded successfully"));
             },
             Err(_) => {
                 stats.real_execution_failed.fetch_add(1, Ordering::Relaxed);
@@ -196,7 +196,7 @@ mod statistics_tests {
                 Err(_) => {
                     stats.validation_failed.fetch_add(1, Ordering::Relaxed);
                     stats.expected_failures.fetch_add(1, Ordering::Relaxed);
-                    println!("✓ Validation test: Invalid module correctly rejected");
+                    println!("✓ Validation test: Invalid module correctly rejected"));
                 },
             },
             Err(_) => {
@@ -207,11 +207,11 @@ mod statistics_tests {
 
         // Simulate auto-passes (tests that report success without real execution)
         stats.auto_passed.fetch_add(10, Ordering::Relaxed);
-        println!("⚠️  Simulated 10 auto-passed tests");
+        println!("⚠️  Simulated 10 auto-passed tests"));
 
         // Simulate skipped tests
         stats.skipped.fetch_add(5, Ordering::Relaxed);
-        println!("⚠️  Simulated 5 skipped tests");
+        println!("⚠️  Simulated 5 skipped tests"));
 
         // Print the detailed report
         stats.print_detailed_report();
@@ -230,7 +230,7 @@ mod statistics_tests {
     /// Test that measures actual vs reported statistics
     #[test]
     fn test_statistics_accuracy() {
-        println!("\n=== Testing Statistics Accuracy ===\n");
+        println!("\n=== Testing Statistics Accuracy ===\n"));
 
         let mut actual_tests_run = 0;
         let mut actual_passes = 0;
@@ -263,31 +263,31 @@ mod statistics_tests {
                     Ok(_) => {
                         actual_passes += 1;
                         if !should_pass {
-                            println!("❌ {} passed but should have failed", name);
+                            println!("❌ {} passed but should have failed", name));
                         } else {
-                            println!("✓ {} passed as expected", name);
+                            println!("✓ {} passed as expected", name));
                         }
                     },
                     Err(e) => {
                         actual_failures += 1;
                         if should_pass {
-                            println!("❌ {} failed but should have passed: {}", name, e);
+                            println!("❌ {} failed but should have passed: {}", name, e));
                         } else {
-                            println!("✓ {} failed as expected: {}", name, e);
+                            println!("✓ {} failed as expected: {}", name, e));
                         }
                     },
                 },
                 Err(e) => {
                     actual_failures += 1;
-                    println!("⚠️  {} failed to parse: {}", name, e);
+                    println!("⚠️  {} failed to parse: {}", name, e));
                 },
             }
         }
 
-        println!("\nActual Statistics:");
-        println!("  Tests run: {}", actual_tests_run);
-        println!("  Passes: {}", actual_passes);
-        println!("  Failures: {}", actual_failures);
+        println!("\nActual Statistics:"));
+        println!("  Tests run: {}", actual_tests_run));
+        println!("  Passes: {}", actual_passes));
+        println!("  Failures: {}", actual_failures));
         println!(
             "  Success rate: {:.1}%",
             (actual_passes as f64 / actual_tests_run as f64) * 100.0
@@ -303,7 +303,7 @@ mod statistics_tests {
     /// Test coverage analysis
     #[test]
     fn test_coverage_analysis() {
-        println!("\n=== Test Coverage Analysis ===");
+        println!("\n=== Test Coverage Analysis ==="));
 
         // Categories of WASM features to test
         let feature_categories = vec![
@@ -340,7 +340,7 @@ mod statistics_tests {
         let mut auto_passed_features = 0;
 
         for (category, features) in feature_categories {
-            println!("\n{} Coverage:", category);
+            println!("\n{} Coverage:", category));
             for feature in features {
                 total_features += 1;
 
@@ -351,12 +351,12 @@ mod statistics_tests {
 
                 if is_auto_passed {
                     auto_passed_features += 1;
-                    println!("  {} - ⚠️  AUTO-PASSED (not really tested)", feature);
+                    println!("  {} - ⚠️  AUTO-PASSED (not really tested)", feature));
                 } else if is_tested {
                     tested_features += 1;
-                    println!("  {} - ✓ TESTED", feature);
+                    println!("  {} - ✓ TESTED", feature));
                 } else {
-                    println!("  {} - ❌ NOT TESTED", feature);
+                    println!("  {} - ❌ NOT TESTED", feature));
                 }
             }
         }
@@ -365,16 +365,16 @@ mod statistics_tests {
         let reported_coverage =
             ((tested_features + auto_passed_features) as f64 / total_features as f64) * 100.0;
 
-        println!("\n=== Coverage Summary ===");
-        println!("Total features: {}", total_features);
-        println!("Really tested: {} ({:.1}%)", tested_features, real_coverage);
+        println!("\n=== Coverage Summary ==="));
+        println!("Total features: {}", total_features));
+        println!("Really tested: {} ({:.1}%)", tested_features, real_coverage));
         println!(
             "Auto-passed: {} ({:.1}%)",
             auto_passed_features,
             (auto_passed_features as f64 / total_features as f64) * 100.0
         );
-        println!("Reported coverage: {:.1}%", reported_coverage);
-        println!("Real coverage: {:.1}%", real_coverage);
+        println!("Reported coverage: {:.1}%", reported_coverage));
+        println!("Real coverage: {:.1}%", real_coverage));
 
         if auto_passed_features > 0 {
             println!(

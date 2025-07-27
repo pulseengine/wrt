@@ -79,18 +79,18 @@
 //! };
 //!
 //! // Create a new memory instance
-//! let mut memory = Memory::new(mem_type).unwrap());
+//! let mut memory = Memory::new(mem_type).unwrap();
 //!
 //! // Write data to memory
-//! memory.write(0, &[1, 2, 3, 4]).unwrap());
+//! memory.write(0, &[1, 2, 3, 4]).unwrap();
 //!
 //! // Read data from memory
 //! let mut buffer = [0; 4];
-//! memory.read(0, &mut buffer).unwrap());
+//! memory.read(0, &mut buffer).unwrap();
 //! assert_eq!(buffer, [1, 2, 3, 4];
 //!
 //! // Grow memory by 1 page
-//! let old_size = memory.grow(1).unwrap());
+//! let old_size = memory.grow(1).unwrap();
 //! assert_eq!(old_size, 1); // Previous size was 1 page
 //! ```
 
@@ -396,7 +396,7 @@ impl Default for Memory {
             // If we can't create default memory, create a minimal fallback
             // Log the error if logging is available
             #[cfg(feature = "std")]
-            eprintln!("Warning: Failed to create default memory: {}. Creating minimal fallback.", e;
+            eprintln!("Warning: Failed to create default memory: {}. Creating minimal fallback.", e));
             
             // Create minimal memory with zero pages
             let minimal_type = MemoryType {
@@ -608,7 +608,7 @@ impl Memory {
         // memory integrity is verified during the operation
         let data_size = self.data.size);
         if data_size == 0 {
-            return Ok(std::vec::Vec::new);
+            return Ok(std::vec::Vec::new());
         }
 
         // Get a safe slice over the entire memory
@@ -1344,9 +1344,9 @@ impl Memory {
             let fill_buffer = vec![val; chunk_size];
             #[cfg(all(not(feature = "std"), not(feature = "std")))]
             let fill_buffer = {
-                let mut buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, SmallMemoryProvider> = wrt_foundation::bounded::BoundedVec::new(SmallMemoryProvider::default()).unwrap());
+                let mut buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, SmallMemoryProvider> = wrt_foundation::bounded::BoundedVec::new(SmallMemoryProvider::default()).unwrap();
                 for _ in 0..chunk_size {
-                    buffer.push(val).unwrap());
+                    buffer.push(val).unwrap();
                 }
                 buffer
             };
@@ -2137,7 +2137,7 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
-            return Ok(std::vec::Vec::new);
+            return Ok(std::vec::Vec::new());
         }
 
         // Convert to usize and check for overflow
@@ -2158,9 +2158,9 @@ impl MemoryOperations for Memory {
         let mut buffer = vec![0u8; len_usize];
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let mut buffer = {
-            let mut buf = wrt_foundation::bounded::BoundedVec::new);
+            let mut buf = wrt_foundation::bounded::BoundedVec::new());
             for _ in 0..len_usize {
-                buf.push(0u8).unwrap());
+                buf.push(0u8).unwrap();
             }
             buf
         };
@@ -2568,7 +2568,7 @@ mod tests {
     #[test]
     fn test_memory_creation() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let memory = Memory::new(mem_type).unwrap());
+        let memory = Memory::new(mem_type).unwrap();
         assert_eq!(memory.size(), 1);
         assert_eq!(memory.size_in_bytes(), PAGE_SIZE;
     }
@@ -2576,8 +2576,8 @@ mod tests {
     #[test]
     fn test_memory_grow() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory = Memory::new(mem_type).unwrap());
-        let old_size = memory.grow(1).unwrap());
+        let mut memory = Memory::new(mem_type).unwrap();
+        let old_size = memory.grow(1).unwrap();
         assert_eq!(old_size, 1);
         assert_eq!(memory.size(), 2;
         assert_eq!(memory.size_in_bytes(), 2 * PAGE_SIZE;
@@ -2586,35 +2586,35 @@ mod tests {
     #[test]
     fn test_memory_read_write() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory = Memory::new(mem_type).unwrap());
+        let mut memory = Memory::new(mem_type).unwrap();
         let data = [1, 2, 3, 4];
-        memory.write(0, &data).unwrap());
+        memory.write(0, &data).unwrap();
         let mut buffer = [0; 4];
-        memory.read(0, &mut buffer).unwrap());
+        memory.read(0, &mut buffer).unwrap();
         assert_eq!(buffer, data;
     }
 
     #[test]
     fn test_memory_get_set_byte() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory = Memory::new(mem_type).unwrap());
-        memory.set_byte(0, 42).unwrap());
+        let mut memory = Memory::new(mem_type).unwrap();
+        memory.set_byte(0, 42).unwrap();
         assert_eq!(memory.get_byte(0).unwrap(), 42;
     }
 
     #[test]
     fn test_memory_peak_usage() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory = Memory::new(mem_type).unwrap());
+        let mut memory = Memory::new(mem_type).unwrap();
         assert_eq!(memory.peak_memory(), PAGE_SIZE;
-        memory.grow(1).unwrap());
+        memory.grow(1).unwrap();
         assert_eq!(memory.peak_memory(), 2 * PAGE_SIZE;
     }
 
     #[test]
     fn test_alignment_check() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let memory = Memory::new(mem_type).unwrap());
+        let memory = Memory::new(mem_type).unwrap();
         assert!(memory.check_alignment(0, 4, 4).is_ok());
         assert!(memory.check_alignment(1, 4, 4).is_err();
     }
@@ -2622,24 +2622,24 @@ mod tests {
     #[test]
     fn test_memory_access_tracking() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory = Memory::new(mem_type).unwrap());
+        let mut memory = Memory::new(mem_type).unwrap();
 
         // Test single byte access
-        memory.set_byte(0, 42).unwrap());
+        memory.set_byte(0, 42).unwrap();
         assert_eq!(memory.max_access_size(), 1);
         assert_eq!(memory.last_access_offset(), 0);
         assert_eq!(memory.last_access_length(), 1);
 
         // Test multi-byte access
         let data = [1, 2, 3, 4];
-        memory.write(10, &data).unwrap());
+        memory.write(10, &data).unwrap();
         assert_eq!(memory.max_access_size(), 4;
         assert_eq!(memory.last_access_offset(), 10;
         assert_eq!(memory.last_access_length(), 4;
 
         // Test read access
         let mut buffer = [0; 2];
-        memory.read(20, &mut buffer).unwrap());
+        memory.read(20, &mut buffer).unwrap();
         assert_eq!(memory.max_access_size(), 4); // Still 4 from previous write
         assert_eq!(memory.last_access_offset(), 20;
         assert_eq!(memory.last_access_length(), 2;
@@ -2648,15 +2648,15 @@ mod tests {
     #[test]
     fn test_memory_copy_tracking() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory1 = Memory::new(mem_type.clone()).unwrap());
-        let mut memory2 = Memory::new(mem_type).unwrap());
+        let mut memory1 = Memory::new(mem_type.clone()).unwrap();
+        let mut memory2 = Memory::new(mem_type).unwrap();
 
         // Initialize source memory
         let data = [1, 2, 3, 4];
-        memory1.write(0, &data).unwrap());
+        memory1.write(0, &data).unwrap();
 
         // Copy between memories
-        memory2.copy_within_or_between(Arc::new(memory1.clone()), 0, 0, 4).unwrap());
+        memory2.copy_within_or_between(Arc::new(memory1.clone()), 0, 0, 4).unwrap();
 
         // Check access tracking
         assert_eq!(memory1.max_access_size(), 4;
@@ -2671,10 +2671,10 @@ mod tests {
     #[test]
     fn test_memory_fill_tracking() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory = Memory::new(mem_type).unwrap());
+        let mut memory = Memory::new(mem_type).unwrap();
 
         // Fill memory region
-        memory.fill(0, 42, 10).unwrap());
+        memory.fill(0, 42, 10).unwrap();
 
         // Check access tracking
         assert_eq!(memory.max_access_size(), 10;
@@ -2685,11 +2685,11 @@ mod tests {
     #[test]
     fn test_memory_init_tracking() {
         let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
-        let mut memory = Memory::new(mem_type).unwrap());
+        let mut memory = Memory::new(mem_type).unwrap();
 
         // Initialize memory region
         let data = [1, 2, 3, 4, 5];
-        memory.init(0, &data, 0, 5).unwrap());
+        memory.init(0, &data, 0, 5).unwrap();
 
         // Check access tracking
         assert_eq!(memory.max_access_size(), 5;
@@ -2735,9 +2735,9 @@ mod tests {
 
         // Print safety stats
         #[cfg(feature = "std")]
-        println!("{}", memory.safety_stats);
+        println!("{}", memory.safety_stats));
         #[cfg(not(feature = "std"))]
-        println!("{}", memory.safety_stats()?.as_str().unwrap_or("";
+        println!("{}", memory.safety_stats()?.as_str().unwrap_or("");
 
         Ok(())
     }

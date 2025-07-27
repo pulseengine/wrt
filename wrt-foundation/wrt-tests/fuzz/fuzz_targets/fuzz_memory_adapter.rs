@@ -125,7 +125,7 @@ fuzz_target!(|input: FuzzInput| {
                                 if integrity_result.is_ok() {
                                     // If corruption isn't detected with full verification,
                                     // it might indicate a problem
-                                    eprintln!("WARNING: Corruption not detected at offset {}!", offset;
+                                    eprintln!("WARNING: Corruption not detected at offset {}!", offset));
                                 }
                             }
                         }

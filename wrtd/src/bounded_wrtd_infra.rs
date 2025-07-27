@@ -3,14 +3,22 @@
 //! This module provides bounded alternatives for daemon collections
 //! to ensure static memory allocation throughout the daemon operations.
 
-
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     bounded_collections::BoundedMap as BoundedHashMap,
-    safe_memory::NoStdProvider,
     capabilities::CapabilityAwareProvider,
-    capability_context, safe_capability_alloc, CrateId,
-    traits::{Checksummable, ToBytes, FromBytes},
+    capability_context,
+    safe_capability_alloc,
+    safe_memory::NoStdProvider,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
+    CrateId,
     WrtResult,
 };
 
@@ -120,47 +128,31 @@ pub type BoundedEnvVarName = BoundedString<MAX_ENV_VAR_NAME_LEN, WrtdProvider>;
 pub type BoundedEnvVarValue = BoundedString<MAX_ENV_VAR_VALUE_LEN, WrtdProvider>;
 
 /// Bounded map for daemon services
-pub type BoundedServiceMap<V> = BoundedHashMap<
-    BoundedServiceName,
-    V,
-    MAX_DAEMON_SERVICES,
-    WrtdProvider
->;
+pub type BoundedServiceMap<V> =
+    BoundedHashMap<BoundedServiceName, V, MAX_DAEMON_SERVICES, WrtdProvider>;
 
 /// Bounded map for active connections
-pub type BoundedConnectionMap<V> = BoundedHashMap<
-    BoundedConnectionId,
-    V,
-    MAX_ACTIVE_CONNECTIONS,
-    WrtdProvider
->;
+pub type BoundedConnectionMap<V> =
+    BoundedHashMap<BoundedConnectionId, V, MAX_ACTIVE_CONNECTIONS, WrtdProvider>;
 
 /// Bounded map for service configurations
-pub type BoundedConfigMap = BoundedHashMap<
-    BoundedConfigKey,
-    BoundedConfigValue,
-    MAX_SERVICE_CONFIGS,
-    WrtdProvider
->;
+pub type BoundedConfigMap =
+    BoundedHashMap<BoundedConfigKey, BoundedConfigValue, MAX_SERVICE_CONFIGS, WrtdProvider>;
 
 /// Bounded map for runtime processes
 pub type BoundedProcessMap<V> = BoundedHashMap<
     u32, // Process ID
     V,
     MAX_RUNTIME_PROCESSES,
-    WrtdProvider
+    WrtdProvider,
 >;
 
 /// Bounded map for environment variables
-pub type BoundedEnvMap = BoundedHashMap<
-    BoundedEnvVarName,
-    BoundedEnvVarValue,
-    MAX_ENV_VARS,
-    WrtdProvider
->;
+pub type BoundedEnvMap =
+    BoundedHashMap<BoundedEnvVarName, BoundedEnvVarValue, MAX_ENV_VARS, WrtdProvider>;
 
 /// Create a new bounded daemon service vector
-pub fn new_daemon_service_vec<T>() -> WrtResult<BoundedDaemonServiceVec<T>> 
+pub fn new_daemon_service_vec<T>() -> WrtResult<BoundedDaemonServiceVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -169,7 +161,7 @@ where
 }
 
 /// Create a new bounded connection vector
-pub fn new_connection_vec<T>() -> WrtResult<BoundedConnectionVec<T>> 
+pub fn new_connection_vec<T>() -> WrtResult<BoundedConnectionVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -178,7 +170,7 @@ where
 }
 
 /// Create a new bounded service config vector
-pub fn new_service_config_vec<T>() -> WrtResult<BoundedServiceConfigVec<T>> 
+pub fn new_service_config_vec<T>() -> WrtResult<BoundedServiceConfigVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -187,7 +179,7 @@ where
 }
 
 /// Create a new bounded process vector
-pub fn new_process_vec<T>() -> WrtResult<BoundedProcessVec<T>> 
+pub fn new_process_vec<T>() -> WrtResult<BoundedProcessVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -196,7 +188,7 @@ where
 }
 
 /// Create a new bounded log entry vector
-pub fn new_log_entry_vec<T>() -> WrtResult<BoundedLogEntryVec<T>> 
+pub fn new_log_entry_vec<T>() -> WrtResult<BoundedLogEntryVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -207,8 +199,9 @@ where
 /// Create a new bounded service name
 pub fn new_service_name() -> WrtResult<BoundedServiceName> {
     let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider)
-        .map_err(|_| wrt_error::Error::runtime_execution_error("
+    BoundedString::from_str("", provider).map_err(|_| {
+        wrt_error::Error::runtime_execution_error(
+            "
         ))
 }
 
@@ -218,14 +211,17 @@ pub fn bounded_service_name_from_str(s: &str) -> WrtResult<BoundedServiceName> {
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "))
+            ",
+        )
+    })
 }
 
 /// Create a new bounded configuration key
 pub fn new_config_key() -> WrtResult<BoundedConfigKey> {
     let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider)
-        .map_err(|_| wrt_error::Error::runtime_execution_error("
+    BoundedString::from_str("", provider).map_err(|_| {
+        wrt_error::Error::runtime_execution_error(
+            "
         ))
 }
 
@@ -235,14 +231,17 @@ pub fn bounded_config_key_from_str(s: &str) -> WrtResult<BoundedConfigKey> {
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "))
+            ",
+        )
+    })
 }
 
 /// Create a new bounded configuration value
 pub fn new_config_value() -> WrtResult<BoundedConfigValue> {
     let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider)
-        .map_err(|_| wrt_error::Error::runtime_execution_error("
+    BoundedString::from_str("", provider).map_err(|_| {
+        wrt_error::Error::runtime_execution_error(
+            "
         ))
 }
 
@@ -252,14 +251,17 @@ pub fn bounded_config_value_from_str(s: &str) -> WrtResult<BoundedConfigValue> {
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "))
+            ",
+        )
+    })
 }
 
 /// Create a new bounded log message
 pub fn new_log_message() -> WrtResult<BoundedLogMessage> {
     let provider = create_wrtd_provider()?;
-    BoundedString::from_str("", provider)
-        .map_err(|_| wrt_error::Error::runtime_execution_error("
+    BoundedString::from_str("", provider).map_err(|_| {
+        wrt_error::Error::runtime_execution_error(
+            "
         ))
 }
 
@@ -269,11 +271,13 @@ pub fn bounded_log_message_from_str(s: &str) -> WrtResult<BoundedLogMessage> {
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_error::Error::new(wrt_error::ErrorCategory::Resource,
             wrt_foundation::codes::ALLOCATION_FAILED,
-            "))
+            ",
+        )
+    })
 }
 
 /// Create a new bounded service map
-pub fn new_service_map<V>() -> WrtResult<BoundedServiceMap<V>> 
+pub fn new_service_map<V>() -> WrtResult<BoundedServiceMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {

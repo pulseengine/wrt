@@ -83,7 +83,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         assert!(matches!(inst, Instruction::Nop);
     }
     
@@ -94,7 +94,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         assert!(matches!(inst, Instruction::Unreachable);
     }
     
@@ -105,7 +105,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         match inst {
             Instruction::I32Const(val) => assert_eq!(val, 127),
             _ => panic!("Expected I32Const instruction"),
@@ -119,7 +119,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         match inst {
             Instruction::I64Const(val) => assert_eq!(val, 100),
             _ => panic!("Expected I64Const instruction"),
@@ -133,7 +133,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         match inst {
             Instruction::LocalGet(idx) => assert_eq!(idx, 2),
             _ => panic!("Expected LocalGet instruction"),
@@ -147,7 +147,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         match inst {
             Instruction::LocalSet(idx) => assert_eq!(idx, 3),
             _ => panic!("Expected LocalSet instruction"),
@@ -161,7 +161,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         assert!(matches!(inst, Instruction::I32Add);
     }
     
@@ -172,7 +172,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         assert!(matches!(inst, Instruction::Return);
     }
     
@@ -183,7 +183,7 @@ mod tests {
             position: 0,
         };
         
-        let inst = parse_instruction(&mut ctx).unwrap());
+        let inst = parse_instruction(&mut ctx).unwrap();
         assert!(matches!(inst, Instruction::End);
     }
     

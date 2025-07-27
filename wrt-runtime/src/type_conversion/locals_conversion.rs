@@ -66,7 +66,7 @@ pub fn convert_locals_to_bounded(
 pub fn expand_locals_to_flat(
     bounded_locals: &BoundedVec<LocalEntry, 64, RuntimeProvider>
 ) -> Result<Vec<ValueType>> {
-    let mut flat_locals = Vec::new);
+    let mut flat_locals = Vec::new());
     
     for local_entry in bounded_locals.iter() {
         for _ in 0..local_entry.count {
@@ -84,15 +84,15 @@ mod tests {
     
     #[test]
     fn test_convert_empty_locals() {
-        let locals = Vec::new);
-        let result = convert_locals_to_bounded(&locals).unwrap());
+        let locals = Vec::new());
+        let result = convert_locals_to_bounded(&locals).unwrap();
         assert_eq!(result.len(), 0);
     }
     
     #[test] 
     fn test_convert_single_type_group() {
         let locals = vec![ValueType::I32, ValueType::I32, ValueType::I32];
-        let result = convert_locals_to_bounded(&locals).unwrap());
+        let result = convert_locals_to_bounded(&locals).unwrap();
         
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].count, 3;
@@ -106,7 +106,7 @@ mod tests {
             ValueType::F64, 
             ValueType::I32
         ];
-        let result = convert_locals_to_bounded(&locals).unwrap());
+        let result = convert_locals_to_bounded(&locals).unwrap();
         
         assert_eq!(result.len(), 3;
         
@@ -128,8 +128,8 @@ mod tests {
             ValueType::I64
         ];
         
-        let bounded = convert_locals_to_bounded(&original).unwrap());
-        let expanded = expand_locals_to_flat(&bounded).unwrap());
+        let bounded = convert_locals_to_bounded(&original).unwrap();
+        let expanded = expand_locals_to_flat(&bounded).unwrap();
         
         assert_eq!(original, expanded;
     }

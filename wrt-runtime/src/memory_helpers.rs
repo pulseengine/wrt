@@ -241,7 +241,7 @@ impl ArcMemoryExt for Arc<Memory> {
     fn read_exact(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Early return for zero-length reads
         if len == 0 {
-            return Ok(Vec::new);
+            return Ok(Vec::new());
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer
@@ -251,7 +251,7 @@ impl ArcMemoryExt for Arc<Memory> {
         let data = safe_slice.data()?;
 
         // Create a Vec from the verified slice data
-        let mut buffer = Vec::new);
+        let mut buffer = Vec::new());
         for &byte in data {
             buffer.push(byte);
         }
@@ -643,14 +643,14 @@ mod tests {
     fn test_write_via_callback() -> Result<()> {
         let memory_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
-        let memory = Arc::new(Memory::new(memory_type).unwrap());
+        let memory = Arc::new(Memory::new(memory_type).unwrap();
         let test_data = [1, 2, 3, 4, 5];
 
         // Write data
-        memory.write_via_callback(0, &test_data).unwrap());
+        memory.write_via_callback(0, &test_data).unwrap();
 
         // Read it back to verify
-        let buffer = memory.buffer().unwrap());
+        let buffer = memory.buffer().unwrap();
         for (i, &byte) in test_data.iter().enumerate() {
             assert_eq!(buffer[i], byte;
         }
@@ -661,11 +661,11 @@ mod tests {
     fn test_grow_via_callback() -> Result<()> {
         let memory_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
-        let memory = Arc::new(Memory::new(memory_type).unwrap());
+        let memory = Arc::new(Memory::new(memory_type).unwrap();
         let initial_size = memory.size);
 
         // Grow memory
-        let previous_size = memory.grow_via_callback(1).unwrap());
+        let previous_size = memory.grow_via_callback(1).unwrap();
 
         // Verify growth
         assert_eq!(previous_size, initial_size;

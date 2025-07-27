@@ -217,16 +217,16 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Val
             ValType::Variant(cases) => cases.update_checksum(checksum),
             ValType::List(element_type_ref) => element_type_ref.update_checksum(checksum),
             ValType::FixedList(element_type_ref, len) => {
-                element_type_ref.update_checksum(checksum;
-                len.update_checksum(checksum;
+                element_type_ref.update_checksum(checksum);
+                len.update_checksum(checksum);
             }
             ValType::Tuple(elements) => elements.update_checksum(checksum),
             ValType::Flags(names) => names.update_checksum(checksum),
             ValType::Enum(names) => names.update_checksum(checksum),
             ValType::Option(type_ref) => type_ref.update_checksum(checksum),
             ValType::Result { ok, err } => {
-                ok.update_checksum(checksum;
-                err.update_checksum(checksum;
+                ok.update_checksum(checksum);
+                err.update_checksum(checksum);
             }
             ValType::Own(id) | ValType::Borrow(id) => id.update_checksum(checksum),
         }
@@ -494,121 +494,121 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Com
         match self {
             ComponentValue::Void => checksum.update_slice(&[0]),
             ComponentValue::Bool(v) => {
-                checksum.update_slice(&[1];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[1]);
+                v.update_checksum(checksum);
             }
             ComponentValue::S8(v) => {
-                checksum.update_slice(&[2];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[2]);
+                v.update_checksum(checksum);
             }
             ComponentValue::U8(v) => {
-                checksum.update_slice(&[3];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[3]);
+                v.update_checksum(checksum);
             }
             ComponentValue::S16(v) => {
-                checksum.update_slice(&[4];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[4]);
+                v.update_checksum(checksum);
             }
             ComponentValue::U16(v) => {
-                checksum.update_slice(&[5];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[5]);
+                v.update_checksum(checksum);
             }
             ComponentValue::S32(v) => {
-                checksum.update_slice(&[6];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[6]);
+                v.update_checksum(checksum);
             }
             ComponentValue::U32(v) => {
-                checksum.update_slice(&[7];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[7]);
+                v.update_checksum(checksum);
             }
             ComponentValue::S64(v) => {
-                checksum.update_slice(&[8];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[8]);
+                v.update_checksum(checksum);
             }
             ComponentValue::U64(v) => {
-                checksum.update_slice(&[9];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[9]);
+                v.update_checksum(checksum);
             }
             ComponentValue::F32(v) => {
-                checksum.update_slice(&[10];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[10]);
+                v.update_checksum(checksum);
             } // v is FloatBits32
             ComponentValue::F64(v) => {
-                checksum.update_slice(&[11];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[11]);
+                v.update_checksum(checksum);
             } // v is FloatBits64
             ComponentValue::Char(v) => {
-                checksum.update_slice(&[12];
-                (*v as u32).update_checksum(checksum;
+                checksum.update_slice(&[12]);
+                (*v as u32).update_checksum(checksum);
             } // Checksum char as u32
             #[cfg(feature = "std")]
             ComponentValue::String(s) => {
-                checksum.update_slice(&[13];
-                s.update_checksum(checksum;
+                checksum.update_slice(&[13]);
+                s.update_checksum(checksum);
             }
             #[cfg(not(any(feature = "std")))]
             ComponentValue::String(s) => {
-                checksum.update_slice(&[13];
-                s.update_checksum(checksum;
+                checksum.update_slice(&[13]);
+                s.update_checksum(checksum);
             } // BoundedString
             ComponentValue::List(v) => {
-                checksum.update_slice(&[14];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[14]);
+                v.update_checksum(checksum);
             }
             ComponentValue::FixedList(v, len) => {
-                checksum.update_slice(&[15];
-                v.update_checksum(checksum;
-                len.update_checksum(checksum;
+                checksum.update_slice(&[15]);
+                v.update_checksum(checksum);
+                len.update_checksum(checksum);
             }
             ComponentValue::Record(v) => {
-                checksum.update_slice(&[16];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[16]);
+                v.update_checksum(checksum);
             }
             ComponentValue::Variant(name, opt_v) => {
-                checksum.update_slice(&[17];
-                name.update_checksum(checksum;
-                opt_v.update_checksum(checksum;
+                checksum.update_slice(&[17]);
+                name.update_checksum(checksum);
+                opt_v.update_checksum(checksum);
             }
             ComponentValue::Tuple(v) => {
-                checksum.update_slice(&[18];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[18]);
+                v.update_checksum(checksum);
             }
             ComponentValue::Flags(v) => {
-                checksum.update_slice(&[19];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[19]);
+                v.update_checksum(checksum);
             }
             ComponentValue::Enum(name) => {
-                checksum.update_slice(&[20];
-                name.update_checksum(checksum;
+                checksum.update_slice(&[20]);
+                name.update_checksum(checksum);
             }
             ComponentValue::Option(opt_v) => {
-                checksum.update_slice(&[21];
-                opt_v.update_checksum(checksum;
+                checksum.update_slice(&[21]);
+                opt_v.update_checksum(checksum);
             }
             ComponentValue::Result(res) => {
-                checksum.update_slice(&[22];
+                checksum.update_slice(&[22]);
                 match res {
                     Ok(ok_v) => {
-                        checksum.update_slice(&[0];
-                        ok_v.update_checksum(checksum;
+                        checksum.update_slice(&[0]);
+                        ok_v.update_checksum(checksum);
                     }
                     Err(err_v) => {
-                        checksum.update_slice(&[1];
-                        err_v.update_checksum(checksum;
+                        checksum.update_slice(&[1]);
+                        err_v.update_checksum(checksum);
                     }
                 }
             }
             ComponentValue::Own(handle) => {
-                checksum.update_slice(&[23];
-                handle.update_checksum(checksum;
+                checksum.update_slice(&[23]);
+                handle.update_checksum(checksum);
             }
             ComponentValue::Borrow(handle) => {
-                checksum.update_slice(&[24];
-                handle.update_checksum(checksum;
+                checksum.update_slice(&[24]);
+                handle.update_checksum(checksum);
             }
             ComponentValue::ErrorContext(v) => {
-                checksum.update_slice(&[25];
-                v.update_checksum(checksum;
+                checksum.update_slice(&[25]);
+                v.update_checksum(checksum);
             }
         }
     }
@@ -966,7 +966,7 @@ pub fn serialize_component_values<
             }
             // Add more types as needed for intercept functionality
             _ => {
-                return Err(Error::runtime_execution_error("Unsupported component value type for serialization";
+                return Err(Error::runtime_execution_error("Unsupported component value type for serialization"));
             }
         }
     }
@@ -983,7 +983,7 @@ where
     P: Default + Clone + PartialEq + Eq, // Added all required trait bounds
 {
     if types.is_empty() && !data.is_empty() {
-        return Err(Error::runtime_execution_error("Cannot deserialize values: data provided but no types specified";
+        return Err(Error::runtime_execution_error("Cannot deserialize values: data provided but no types specified"));
     }
 
     let mut values = BoundedVec::<ComponentValue<P>, MAX_DESERIALIZED_VALUES, P>::new(P::default())
@@ -995,7 +995,7 @@ where
             // If we run out of data but still have types, it's an error (unless types are
             // all Void?) For simplicity, consider this an error. More nuanced
             // handling might be needed.
-            return Err(decoding_error("Insufficient data for all specified types";
+            return Err(decoding_error("Insufficient data for all specified types"));
         }
 
         // Here we'd ideally use ValType to guide deserialization, especially for
@@ -1006,10 +1006,10 @@ where
         let slice = crate::safe_memory::Slice::new(&data[offset..]).map_err(|_e| {
             Error::runtime_execution_error("Failed to create slice for deserialization")
         })?;
-        let mut reader = crate::traits::ReadStream::new(slice;
+        let mut reader = crate::traits::ReadStream::new(slice);
         match ComponentValue::<P>::from_bytes_with_provider(&mut reader, &P::default()) {
             Ok(cv) => {
-                let bytes_read = reader.position);
+                let bytes_read = reader.position();
                 // TODO: Validate `cv` against `value_type` here.
                 // This is a crucial step for safety and correctness.
                 // Temporarily commenting out until matches_type method is implemented
@@ -1022,14 +1022,14 @@ where
             }
             Err(e) => {
                 // Convert SerializationError to wrt_error::Error
-                return Err(Error::runtime_execution_error("Failed to deserialize component value";
+                return Err(Error::runtime_execution_error("Failed to deserialize component value"));
             }
         }
     }
 
     if offset != data.len() {
         // If there's leftover data after deserializing all typed values
-        return Err(decoding_error("Unexpected extra data after deserializing all values";
+        return Err(decoding_error("Unexpected extra data after deserializing all values"));
     }
 
     Ok(values)
@@ -1078,7 +1078,7 @@ mod tests {
         // they don't involve ValueRef. However, matches_type now
         // requires the store. let provider =
         // crate::NoStdProvider::<1024>::new().unwrap()); // Example provider
-        // let store = ComponentValueStore::new(provider).unwrap());
+        // let store = ComponentValueStore::new(provider).unwrap();
 
         // let bool_value = ComponentValue::Bool(true;
         // let int_value = ComponentValue::S32(42;

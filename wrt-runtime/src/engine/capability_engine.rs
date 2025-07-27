@@ -221,7 +221,7 @@ impl CapabilityAwareEngine {
         let instances = BoundedMap::new(instances_provider)?;
 
         // Create the inner stackless engine
-        let inner_engine = StacklessEngine::new);
+        let inner_engine = StacklessEngine::new();
         
         Ok(Self {
             inner: inner_engine,
@@ -384,7 +384,7 @@ impl CapabilityEngine for CapabilityAwareEngine {
         let runtime_module = Module::from_wrt_module(&decoded)?;
 
         // Create and store with unique handle
-        let handle = ModuleHandle::new);
+        let handle = ModuleHandle::new();
         self.modules.insert(handle, runtime_module)?;
 
         Ok(handle)
@@ -457,7 +457,7 @@ impl CapabilityAwareEngine {
             .get(&instance_handle)?
             .ok_or_else(|| Error::resource_not_found("Instance not found"))?;
 
-        let mut functions = Vec::new);
+        let mut functions = Vec::new());
         // TODO: BoundedMap doesn't support iteration, so we can't list all exports
         // For now, return an empty list as a placeholder
         // In a real implementation, we'd need an iterator interface on BoundedMap
@@ -506,8 +506,8 @@ mod tests {
 
     #[test]
     fn test_module_handle_creation() {
-        let handle1 = ModuleHandle::new);
-        let handle2 = ModuleHandle::new);
+        let handle1 = ModuleHandle::new();
+        let handle2 = ModuleHandle::new();
         assert_ne!(handle1, handle2;
     }
 

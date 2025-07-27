@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn test_execution_stats_creation() {
-        let stats = ExecutionStats::new);
+        let stats = ExecutionStats::new();
         assert_eq!(stats.instructions_executed, 0);
         assert_eq!(stats.memory_usage, 0);
         assert_eq!(stats.max_stack_depth, 0);
@@ -24,7 +24,7 @@ mod tests {
 
     #[test]
     fn test_execution_stats_reset() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         // Modify some values
         stats.instructions_executed = 100;
@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn test_increment_instructions() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.increment_instructions(10;
         assert_eq!(stats.instructions_executed, 10;
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_increment_instructions_overflow_protection() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         stats.instructions_executed = u64::MAX - 5;
         
         // Should use saturating add to prevent overflow
@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn test_update_memory_usage() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.update_memory_usage(1024;
         assert_eq!(stats.memory_usage, 1024;
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_update_memory_usage_overflow_protection() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         stats.memory_usage = usize::MAX - 100;
         
         // Should use saturating add to prevent overflow
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn test_update_stack_depth() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.update_stack_depth(5;
         assert_eq!(stats.max_stack_depth, 5;
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn test_increment_function_calls() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.increment_function_calls(1;
         assert_eq!(stats.function_calls, 1);
@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_increment_memory_reads() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.increment_memory_reads(10;
         assert_eq!(stats.memory_reads, 10;
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_increment_memory_writes() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.increment_memory_writes(7;
         assert_eq!(stats.memory_writes, 7;
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_update_execution_time() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.update_execution_time(1000;
         assert_eq!(stats.execution_time_us, 1000;
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_consume_gas() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         stats.gas_limit = 1000;
         
         // Normal consumption
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_consume_gas_overflow_protection() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         stats.gas_limit = 1000;
         stats.gas_used = u64::MAX - 100;
         
@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_consume_gas_exceeds_limit() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         stats.gas_limit = 1000;
         stats.gas_used = 900;
         
@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_update_simd_operations() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.update_simd_operations(5;
         assert_eq!(stats.simd_operations_executed, 5;
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_update_simd_operations_overflow_protection() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         stats.simd_operations_executed = u64::MAX - 10;
         
         // Should use saturating add
@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_set_gas_limit() {
-        let mut stats = ExecutionStats::new);
+        let mut stats = ExecutionStats::new();
         
         stats.set_gas_limit(5000;
         assert_eq!(stats.gas_limit, 5000;

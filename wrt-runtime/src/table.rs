@@ -77,7 +77,7 @@ pub struct Table {
 
 impl Clone for Table {
     fn clone(&self) -> Self {
-        let mut new_elements: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider> = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap());
+        let mut new_elements: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider> = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
         // Note: BoundedVec doesn't have set_verification_level method
         for i in 0..self.elements.len() {
             // Use BoundedVec get method for safe access
@@ -108,8 +108,8 @@ impl PartialEq for Table {
         }
         for i in 0..self.elements.len() {
             // Use get() method instead of direct indexing for BoundedVec
-            let self_elem = self.elements.get(i).unwrap());
-            let other_elem = other.elements.get(i).unwrap());
+            let self_elem = self.elements.get(i).unwrap();
+            let other_elem = other.elements.get(i).unwrap();
             if self_elem != other_elem {
                 return false;
             }
@@ -435,7 +435,7 @@ impl Table {
         }
 
         // Create temporary stack to store elements during copy
-        let mut temp_vec: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider> = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap());
+        let mut temp_vec: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider> = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
         // Note: verification level handled by provider
 
         // Read source elements into temporary stack
@@ -444,7 +444,7 @@ impl Table {
         }
 
         // Create a new stack for the full result
-        let mut result_vec: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider> = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap());
+        let mut result_vec: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, TableProvider> = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
         // Note: verification level handled by provider
 
         // Copy elements with the updated values
@@ -482,7 +482,7 @@ impl Table {
         }
 
         // Create a new stack with the filled elements
-        let mut result_vec = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap());
+        let mut result_vec = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
 
         // Copy elements with fill applied
         for i in 0..self.elements.len() {
@@ -533,7 +533,7 @@ impl Table {
         self.elements.get(idx)?; // Verify access is valid
 
         // Create temporary stack to hold all elements
-        let mut temp_vec = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap());
+        let mut temp_vec = wrt_foundation::bounded::BoundedVec::new(TableProvider::default()).unwrap();
         // Note: verification level handled by provider
 
         // Copy elements, replacing the one at idx
@@ -668,7 +668,7 @@ impl TableManager {
     /// Add a table to the manager
     pub fn add_table(&mut self, table: Table) -> u32 {
         let index = self.tables.len() as u32;
-        self.tables.push(table).expect("Failed to add table to manager");
+        self.tables.push(table).expect("Failed to add table to manager"));
         index
     }
     
@@ -732,13 +732,13 @@ mod tests {
     fn test_table_creation() {
         let table_type = create_test_table_type(10, Some(20;
         let init_value = Value::func_ref(None;
-        let table = Table::new(table_type.clone()).unwrap());
+        let table = Table::new(table_type.clone()).unwrap();
 
         assert_eq!(table.ty, table_type;
         assert_eq!(table.size(), 10;
 
         for i in 0..10 {
-            let value = table.get(i).unwrap());
+            let value = table.get(i).unwrap();
             assert_eq!(value, None); // Default initialized to None
         }
     }
@@ -746,14 +746,14 @@ mod tests {
     #[test]
     fn test_table_get_set() {
         let table_type = create_test_table_type(5, Some(10;
-        let mut table = Table::new(table_type).unwrap());
+        let mut table = Table::new(table_type).unwrap();
 
         let func_idx = 42;
         let new_value = Value::func_ref(Some(func_idx;
-        table.set(3, Some(new_value.clone())).unwrap());
+        table.set(3, Some(new_value.clone())).unwrap();
 
         // Get it back
-        let retrieved = table.get(3).unwrap());
+        let retrieved = table.get(3).unwrap();
         assert_eq!(retrieved, Some(new_value;
 
         // Try to get out of bounds
@@ -772,9 +772,9 @@ mod tests {
     #[test]
     fn test_table_grow() {
         let table_type = create_test_table_type(5, Some(10;
-        let mut table = Table::new(table_type).unwrap());
+        let mut table = Table::new(table_type).unwrap();
 
-        let old_size = table.grow(3, Value::func_ref(None)).unwrap());
+        let old_size = table.grow(3, Value::func_ref(None)).unwrap();
         assert_eq!(old_size, 5;
         assert_eq!(table.size(), 8;
 
@@ -786,12 +786,12 @@ mod tests {
     #[test]
     fn test_table_func_set() {
         let table_type = create_test_table_type(5, Some(10;
-        let mut table = Table::new(table_type).unwrap());
+        let mut table = Table::new(table_type).unwrap();
 
         let func_idx = 42;
-        table.set_func(3, func_idx).unwrap());
+        table.set_func(3, func_idx).unwrap();
 
-        let retrieved = table.get(3).unwrap());
+        let retrieved = table.get(3).unwrap();
         assert_eq!(retrieved, Some(Value::func_ref(Some(func_idx));
 
         let result = table.set_func(10, 0);
@@ -801,13 +801,13 @@ mod tests {
     #[test]
     fn test_table_init() {
         let table_type = create_test_table_type(5, Some(10;
-        let mut table = Table::new(table_type).unwrap());
+        let mut table = Table::new(table_type).unwrap();
 
         let init_values = vec![Some(Value::func_ref(None)); 3];
-        table.init(0, &init_values).unwrap());
+        table.init(0, &init_values).unwrap();
 
         for i in 0..3 {
-            let retrieved = table.get(i).unwrap());
+            let retrieved = table.get(i).unwrap();
             assert_eq!(retrieved, Some(Value::func_ref(None);
         }
 
@@ -818,19 +818,19 @@ mod tests {
     #[test]
     fn test_table_copy() {
         let table_type = create_test_table_type(5, Some(10;
-        let mut table = Table::new(table_type.clone()).unwrap());
+        let mut table = Table::new(table_type.clone()).unwrap();
 
         // Initialize source values
         for i in 0..3 {
-            table.set(i, Some(Value::func_ref(Some(i)))).unwrap());
+            table.set(i, Some(Value::func_ref(Some(i)))).unwrap();
         }
 
         // Copy values
-        table.copy_elements(2, 0, 3).unwrap());
+        table.copy_elements(2, 0, 3).unwrap();
 
         // Check copied values
         for i in 0..3 {
-            let retrieved = table.get(i + 2).unwrap());
+            let retrieved = table.get(i + 2).unwrap();
             assert_eq!(retrieved, Some(Value::func_ref(Some(i));
         }
 
@@ -842,15 +842,15 @@ mod tests {
     #[test]
     fn test_table_fill() {
         let table_type = create_test_table_type(5, Some(10;
-        let mut table = Table::new(table_type).unwrap());
+        let mut table = Table::new(table_type).unwrap();
 
         // Fill a range with a value
         let fill_value = Some(Value::func_ref(Some(42);
-        table.fill_elements(1, fill_value.clone(), 3).unwrap());
+        table.fill_elements(1, fill_value.clone(), 3).unwrap();
 
         // Check filled values
         for i in 1..4 {
-            let retrieved = table.get(i).unwrap());
+            let retrieved = table.get(i).unwrap();
             assert_eq!(retrieved, fill_value.clone();
         }
 
@@ -970,7 +970,7 @@ mod tests {
         assert_eq!(table.get(2)?, fill_value;
 
         // Print safety stats
-        println!("{}", table.safety_stats);
+        println!("{}", table.safety_stats));
 
         Ok(())
     }

@@ -43,7 +43,7 @@ impl HeapProvider {
     /// Create a new heap provider with specified capacity and verification level
     pub fn new_with_verification(capacity: usize, verification_level: VerificationLevel) -> Result<Self> {
         // Allocate on heap
-        let mut data = Vec::new);
+        let mut data = Vec::new());
         data.try_reserve_exact(capacity)
             .map_err(|_| Error::memory_error("Failed to allocate heap memory"))?;
         data.resize(capacity, 0);
@@ -69,27 +69,27 @@ impl Provider for HeapProvider {
     
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
         self.verify_access(offset, len)?;
-        self.access_count.fetch_add(1, Ordering::Relaxed;
-        self.last_access_offset.store(offset, Ordering::Relaxed;
-        self.last_access_length.store(len, Ordering::Relaxed;
+        self.access_count.fetch_add(1, Ordering::Relaxed);
+        self.last_access_offset.store(offset, Ordering::Relaxed);
+        self.last_access_length.store(len, Ordering::Relaxed);
         
         Slice::with_verification_level(&self.data[offset..offset + len], self.verification_level)
     }
     
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         self.verify_access(offset, data.len())?;
-        self.access_count.fetch_add(1, Ordering::Relaxed;
-        self.last_access_offset.store(offset, Ordering::Relaxed;
-        self.last_access_length.store(data.len(), Ordering::Relaxed;
+        self.access_count.fetch_add(1, Ordering::Relaxed);
+        self.last_access_offset.store(offset, Ordering::Relaxed);
+        self.last_access_length.store(data.len(), Ordering::Relaxed);
         
-        self.data[offset..offset + data.len()].copy_from_slice(data;
-        self.used = core::cmp::max(self.used, offset + data.len);
+        self.data[offset..offset + data.len()].copy_from_slice(data);
+        self.used = core::cmp::max(self.used, offset + data.len());
         Ok(())
     }
     
     fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
         if offset.checked_add(len).map_or(true, |end| end > self.data.len()) {
-            return Err(Error::memory_out_of_bounds("Access out of bounds";
+            return Err(Error::memory_out_of_bounds("Access out of bounds"));
         }
         Ok(())
     }
@@ -105,7 +105,7 @@ impl Provider for HeapProvider {
     fn verify_integrity(&self) -> Result<()> {
         // Basic integrity check
         if self.used > self.data.len() {
-            return Err(Error::validation_error("Corrupted state: used > capacity";
+            return Err(Error::validation_error("Corrupted state: used > capacity"));
         }
         Ok(())
     }
@@ -129,7 +129,7 @@ impl Provider for HeapProvider {
     
     fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>> {
         self.verify_access(offset, len)?;
-        self.used = core::cmp::max(self.used, offset + len;
+        self.used = core::cmp::max(self.used, offset + len);
         SliceMut::with_verification_level(
             &mut self.data[offset..offset + len],
             self.verification_level,
@@ -140,16 +140,16 @@ impl Provider for HeapProvider {
         self.verify_access(src_offset, len)?;
         self.verify_access(dst_offset, len)?;
         
-        self.data.copy_within(src_offset..src_offset + len, dst_offset;
-        self.used = core::cmp::max(self.used, dst_offset + len;
+        self.data.copy_within(src_offset..src_offset + len, dst_offset);
+        self.used = core::cmp::max(self.used, dst_offset + len);
         Ok(())
     }
     
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
         if byte_offset > self.data.len() {
-            return Err(Error::memory_error("Offset exceeds capacity";
+            return Err(Error::memory_error("Offset exceeds capacity"));
         }
-        self.used = core::cmp::max(self.used, byte_offset;
+        self.used = core::cmp::max(self.used, byte_offset);
         Ok(())
     }
     
@@ -199,10 +199,10 @@ impl Allocator for HeapProvider {
 
 impl Clone for HeapProvider {
     fn clone(&self) -> Self {
-        let mut data = Vec::new);
+        let mut data = Vec::new());
         data.try_reserve_exact(self.data.len())
             .expect("Failed to allocate for clone");
-        data.extend_from_slice(&self.data;
+        data.extend_from_slice(&self.data);
         
         Self {
             data,

@@ -5,7 +5,7 @@ use wrt_foundation::*;
 #[test]
 fn test_basic_managed_allocation() {
     // Test the core safe_managed_alloc! macro
-    let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
+    let guard = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
     let provider = guard.provider);
 
     // Verify provider works
@@ -15,7 +15,7 @@ fn test_basic_managed_allocation() {
     assert_eq!(provider.capacity(), 1024;
 
     // Test provider can be used for memory operations
-    let slice = provider.borrow_slice(0, 10).unwrap());
+    let slice = provider.borrow_slice(0, 10).unwrap();
     assert_eq!(slice.len(), 10;
 
     // Verify the guard itself
@@ -26,8 +26,8 @@ fn test_basic_managed_allocation() {
 fn test_auto_provider_macro() {
     // Test auto-sizing macros
     let _guard1 =
-        auto_provider!(CrateId::Foundation, typical_usage: "bounded_collections").unwrap());
-    let _guard2 = auto_provider!(CrateId::Component).unwrap());
+        auto_provider!(CrateId::Foundation, typical_usage: "bounded_collections").unwrap();
+    let _guard2 = auto_provider!(CrateId::Component).unwrap();
 }
 
 #[test]
@@ -36,7 +36,7 @@ fn test_monitoring_basics() {
     monitoring::MEMORY_MONITOR.reset);
 
     // Make an allocation
-    let _guard = safe_managed_alloc!(512, CrateId::Foundation).unwrap());
+    let _guard = safe_managed_alloc!(512, CrateId::Foundation).unwrap();
 
     // Check basic monitoring
     let stats = monitoring::convenience::global_stats);

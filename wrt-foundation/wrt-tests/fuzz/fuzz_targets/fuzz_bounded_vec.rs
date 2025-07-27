@@ -110,7 +110,7 @@ fuzz_target!(|input: FuzzInput| {
                             if validation_result.is_ok() {
                                 // If corruption isn't detected, it might indicate a problem
                                 // We'll log this (in a real system this would be more robust)
-                                eprintln!("WARNING: Corruption not detected!";
+                                eprintln!("WARNING: Corruption not detected!"));
                             }
                         }
                     }

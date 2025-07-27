@@ -43,7 +43,7 @@ mod tests {
             cmd.arg(arg);
         }
 
-        let output = cmd.output().expect("Failed to execute wrtd");
+        let output = cmd.output().expect("Failed to execute wrtd"));
         let success = output.status.success();
         let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
         let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
@@ -59,7 +59,7 @@ mod tests {
             .join("tests/fixtures/std-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Test basic std functionality
         let (success, stdout, stderr) = run_wrtd_with_mode(
@@ -70,8 +70,8 @@ mod tests {
             &["--stats"],
         );
 
-        println!("STDOUT: {}", stdout);
-        println!("STDERR: {}", stderr);
+        println!("STDOUT: {}", stdout));
+        println!("STDERR: {}", stderr));
 
         assert!(success, "std mode execution should succeed");
         assert!(stdout.contains("Runtime mode: Std"));
@@ -85,7 +85,7 @@ mod tests {
             .join("tests/fixtures/alloc-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Binary std/no_std choice
         let (success, stdout, stderr) = run_wrtd_with_mode(
@@ -96,8 +96,8 @@ mod tests {
             &["--stats", "--validate-mode"],
         );
 
-        println!("STDOUT: {}", stdout);
-        println!("STDERR: {}", stderr);
+        println!("STDOUT: {}", stdout));
+        println!("STDERR: {}", stderr));
 
         assert!(success, "alloc mode execution should succeed");
         assert!(stdout.contains("Runtime mode: Alloc"));
@@ -112,7 +112,7 @@ mod tests {
             .join("tests/fixtures/nostd-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Test basic arithmetic
         let (success, stdout, stderr) = run_wrtd_with_mode(
@@ -123,8 +123,8 @@ mod tests {
             &["--stats", "--validate-mode"],
         );
 
-        println!("STDOUT: {}", stdout);
-        println!("STDERR: {}", stderr);
+        println!("STDOUT: {}", stdout));
+        println!("STDERR: {}", stderr));
 
         assert!(success, "no_std mode execution should succeed");
         assert!(stdout.contains("Runtime mode: NoStd"));
@@ -139,7 +139,7 @@ mod tests {
             .join("tests/fixtures/nostd-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         let (success, stdout, stderr) = run_wrtd_with_mode(
             &test_wasm,
@@ -149,8 +149,8 @@ mod tests {
             &["--stats"],
         );
 
-        println!("STDOUT: {}", stdout);
-        println!("STDERR: {}", stderr);
+        println!("STDOUT: {}", stdout));
+        println!("STDERR: {}", stderr));
 
         assert!(
             success,
@@ -166,7 +166,7 @@ mod tests {
             .join("tests/fixtures/nostd-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Try to use excessive fuel with no_std mode (should fail validation)
         let (success, stdout, stderr) = run_wrtd_with_mode(
@@ -177,8 +177,8 @@ mod tests {
             &["--validate-mode"],
         );
 
-        println!("STDOUT: {}", stdout);
-        println!("STDERR: {}", stderr);
+        println!("STDOUT: {}", stdout));
+        println!("STDERR: {}", stderr));
 
         // Should fail due to fuel limit validation
         assert!(
@@ -196,7 +196,7 @@ mod tests {
             .join("tests/fixtures/nostd-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Try to use large buffer with no_std mode (should fail validation)
         let (success, stdout, stderr) = run_wrtd_with_mode(
@@ -207,8 +207,8 @@ mod tests {
             &["--validate-mode", "--buffer-size", "2000000"], // 2MB > 1MB limit
         );
 
-        println!("STDOUT: {}", stdout);
-        println!("STDERR: {}", stderr);
+        println!("STDOUT: {}", stdout));
+        println!("STDERR: {}", stderr));
 
         // Should fail due to buffer size validation
         assert!(
@@ -226,14 +226,14 @@ mod tests {
             .join("tests/fixtures/std-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Test std mode capabilities
         let (success, stdout, stderr) =
             run_wrtd_with_mode(&test_wasm, "std", None, None, &["--show-capabilities"]);
 
-        println!("STD Capabilities STDOUT: {}", stdout);
-        println!("STD Capabilities STDERR: {}", stderr);
+        println!("STD Capabilities STDOUT: {}", stdout));
+        println!("STD Capabilities STDERR: {}", stderr));
 
         assert!(success, "Showing std capabilities should succeed");
         assert!(stdout.contains("Runtime Capabilities for Std Mode"));
@@ -245,8 +245,8 @@ mod tests {
         let (success, stdout, stderr) =
             run_wrtd_with_mode(&test_wasm, "no-std", None, None, &["--show-capabilities"]);
 
-        println!("NoStd Capabilities STDOUT: {}", stdout);
-        println!("NoStd Capabilities STDERR: {}", stderr);
+        println!("NoStd Capabilities STDOUT: {}", stdout));
+        println!("NoStd Capabilities STDERR: {}", stderr));
 
         assert!(success, "Showing no_std capabilities should succeed");
         assert!(stdout.contains("Runtime Capabilities for NoStd Mode"));
@@ -265,7 +265,7 @@ mod tests {
             .join("tests/fixtures/nostd-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Test std mode
         let (success_std, stdout_std, _) = run_wrtd_with_mode(
@@ -301,7 +301,7 @@ mod tests {
             .join("tests/fixtures/alloc-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string();
+            .to_string());
 
         // Binary std/no_std choice
         let strategies = ["zero-copy", "bounded-copy", "full-isolation"];
@@ -315,8 +315,8 @@ mod tests {
                 &["--memory-strategy", strategy, "--validate-mode"],
             );
 
-            println!("Strategy {} STDOUT: {}", strategy, stdout);
-            println!("Strategy {} STDERR: {}", strategy, stderr);
+            println!("Strategy {} STDOUT: {}", strategy, stdout));
+            println!("Strategy {} STDERR: {}", strategy, stderr));
 
             assert!(
                 success,

@@ -564,7 +564,7 @@ impl StacklessEngine {
     
     /// Create a new stackless execution engine with a module
     pub fn new_with_module(module: crate::module::Module) -> Result<Self> {
-        let mut engine = Self::new);
+        let mut engine = Self::new();
         let instance_idx = engine.instantiate(module)?;
         
         // Initialize the execution stack with the instantiated module
@@ -685,7 +685,7 @@ impl StacklessEngine {
     
     /// Collect results from the operand stack
     fn collect_results(&mut self) -> Result<Vec<Value>> {
-        let mut results = Vec::new);
+        let mut results = Vec::new());
         
         // Get the function type to determine expected results
         if let Some(current_module) = &self.current_module {
@@ -2617,7 +2617,7 @@ impl StacklessEngine {
         // Read vector length
         let len = self.read_leb128_u32(code)?;
         
-        let mut targets = Vec::new);
+        let mut targets = Vec::new());
         for _ in 0..len {
             let target = self.read_leb128_u32(code)?;
             targets.push(target);
@@ -3995,7 +3995,7 @@ impl ControlContext for StacklessEngine {
     /// Branch to a specific label
     fn branch(&mut self, target: BranchTarget) -> Result<()> {
         // Collect values to keep based on branch target arity
-        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
+        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         
         // Get the label we're branching to
         if let Ok(label) = self.exec_stack.labels.get(target.label_idx as usize) {
@@ -4028,7 +4028,7 @@ impl ControlContext for StacklessEngine {
     /// Return from the current function
     fn return_function(&mut self) -> Result<()> {
         // Collect return values based on function signature
-        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
+        let mut values = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         
         // Get function type to determine return arity
         if let Some(current_module) = &self.current_module {
@@ -4063,7 +4063,7 @@ impl ControlContext for StacklessEngine {
         self.stats.function_calls += 1;
         
         // Collect arguments based on function signature
-        let mut args = BoundedVec::new(DefaultMemoryProvider::default()).unwrap());
+        let mut args = BoundedVec::new(DefaultMemoryProvider::default()).unwrap();
         
         // Get function type to determine parameter arity
         if let Some(current_module) = &self.current_module {

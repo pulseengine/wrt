@@ -161,7 +161,7 @@ mod tests {
         // Test the CapabilityGuardedProvider directly using the new MemoryFactory
         use crate::capabilities::MemoryFactory;
         
-        let provider = MemoryFactory::create::<1024>(CrateId::Foundation).unwrap());
+        let provider = MemoryFactory::create::<1024>(CrateId::Foundation).unwrap();
         
         // Test basic provider properties
         assert_eq!(provider.size(), 1024);

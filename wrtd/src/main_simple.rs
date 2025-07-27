@@ -115,12 +115,12 @@ pub mod std_runtime {
             };
             
             if self.config.verbose {
-                println!("Loaded module: {} bytes", module_bytes.len);
+                println!("Loaded module: {} bytes", module_bytes.len));
             }
             
             // Cache the module
             {
-                let mut cache = self.module_cache.lock().unwrap());
+                let mut cache = self.module_cache.lock().unwrap();
                 cache.insert(module_path.to_string(), module_bytes.clone();
             }
             
@@ -138,7 +138,7 @@ pub mod std_runtime {
             
             // Update stats
             {
-                let mut stats = self.stats.lock().unwrap());
+                let mut stats = self.stats.lock().unwrap();
                 stats.modules_executed += 1;
                 stats.fuel_consumed += fuel_used;
                 stats.peak_memory = stats.peak_memory.max(memory_used;
@@ -162,12 +162,12 @@ pub mod std_runtime {
     
     /// Main function for std runtime
     pub fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-        println!("WRT Daemon - Standard Runtime Mode";
-        println!("=================================";
+        println!("WRT Daemon - Standard Runtime Mode");
+        println!("=================================");
         
-        let args: Vec<String> = env::args().collect();
+        let args: Vec<String> = env::args().collect());
         if args.len() < 3 {
-            println!("Usage: {} <module.wasm> <function>", args[0];
+            println!("Usage: {} <module.wasm> <function>", args[0]);
             return Ok();
         }
         
@@ -184,13 +184,13 @@ pub mod std_runtime {
         
         match runtime.execute_module(module_path, function) {
             Ok(result) => {
-                println!("✓ {}", result;
+                println!("✓ {}", result);
                 let stats = runtime.stats);
                 println!("📊 Stats: {} modules, {} fuel, {}KB peak memory", 
                         stats.modules_executed, stats.fuel_consumed, stats.peak_memory / 1024;
             }
             Err(e) => {
-                eprintln!("✗ Error: {}", e;
+                eprintln!("✗ Error: {}", e));
                 std::process::exit(1;
             }
         }
@@ -232,11 +232,11 @@ pub mod alloc_runtime {
             let memory_used = module_data.len);
             
             if fuel_used > self.config.max_fuel {
-                return Err("Fuel limit exceeded".to_string();
+                return Err("Fuel limit exceeded".to_string());
             }
             
             if memory_used > self.config.max_memory {
-                return Err("Memory limit exceeded".to_string();
+                return Err("Memory limit exceeded".to_string());
             }
             
             // Update stats

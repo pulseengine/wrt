@@ -80,7 +80,7 @@ mod budget_enforcement_integration_tests {
         // Each crate should have its own budget
         let crates = [CrateId::Runtime, CrateId::Component, CrateId::Decoder, CrateId::Format];
 
-        let mut providers = Vec::new);
+        let mut providers = Vec::new());
 
         // Allocate from each crate
         for &crate_id in &crates {
@@ -121,7 +121,7 @@ mod budget_enforcement_integration_tests {
         let budget = stats.budget_limit;
 
         // Try to allocate more than the budget allows
-        let mut allocations = Vec::new);
+        let mut allocations = Vec::new());
         let allocation_size = 65536; // 64KB chunks
 
         // Allocate until we hit the limit
@@ -190,7 +190,7 @@ mod budget_enforcement_integration_tests {
 
         // Test shared pool limits
         let pool_size = stats.total_size;
-        let mut shared_allocations = Vec::new);
+        let mut shared_allocations = Vec::new());
 
         // Try to exhaust shared pool
         let chunk_size = 4096;
@@ -213,7 +213,7 @@ mod budget_enforcement_integration_tests {
         init_test_env()?;
 
         // Allocate significant memory to trigger alerts
-        let mut providers = Vec::new);
+        let mut providers = Vec::new());
 
         // Allocate 70% of Runtime budget
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime)?;
@@ -287,7 +287,7 @@ mod budget_enforcement_integration_tests {
 
         // Verify snapshot contains data
         assert!(snapshot.total_allocated > 0);
-        assert!(!snapshot.crate_usage.is_empty();
+        assert!(!snapshot.crate_usage.is_empty());
         assert!(snapshot.crate_usage.len() >= 3);
 
         // Check access pattern analysis
@@ -326,7 +326,7 @@ mod budget_enforcement_integration_tests {
             // Re-initialize for platform
             init_test_env()?;
 
-            let discovery = PlatformDiscovery::new);
+            let discovery = PlatformDiscovery::new();
             let caps = discovery.discover_extended()?;
 
             // Verify platform-appropriate limits
@@ -438,14 +438,14 @@ mod budget_enforcement_integration_tests {
 
         // Wait for all threads
         for handle in handles {
-            handle.join().unwrap());
+            handle.join().unwrap();
         }
 
         let total_success = success_count.load(Ordering::Relaxed;
         let total_fail = fail_count.load(Ordering::Relaxed;
 
         // Verify results
-        println!("Concurrent test: {} success, {} failed", total_success, total_fail;
+        println!("Concurrent test: {} success, {} failed", total_success, total_fail);
         assert!(total_success > 0, "No successful allocations");
 
         // Verify final state is consistent

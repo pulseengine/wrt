@@ -58,7 +58,7 @@ pub trait Checksummable {
     /// How a type is converted to bytes for checksumming is specific to its
     /// implementation. For complex types, this should be a defined, stable
     /// serialization.
-    fn update_checksum(&self, checksum: &mut crate::verification::Checksum;
+    fn update_checksum(&self, checksum: &mut crate::verification::Checksum);
 }
 
 /// Trait for types that can be converted to/from little-endian byte
@@ -102,14 +102,14 @@ impl_checksummable_for_primitive! {
 
 impl Checksummable for bool {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-        checksum.update_slice(&[if *self { 1u8 } else { 0u8 }];
+        checksum.update_slice(&[if *self { 1u8 } else { 0u8 }]);
     }
 }
 
 // For slices of checksummable types, one might iterate, or for &[u8] directly:
 impl Checksummable for &[u8] {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-        checksum.update_slice(self;
+        checksum.update_slice(self);
     }
 }
 
@@ -161,7 +161,7 @@ pub trait ToBytes: Sized {
     /// provider. Requires `DefaultMemoryProvider` to be available.
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default());
+        let default_provider = DefaultMemoryProvider::default();
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -180,7 +180,7 @@ pub trait FromBytes: Sized {
     /// available.
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default());
+        let default_provider = DefaultMemoryProvider::default();
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -238,7 +238,7 @@ impl fmt::Display for SerializationError {
 // Implement ToBytes/FromBytes for primitives
 
 macro_rules! impl_bytes_for_primitive {
-    ($($T:ty => $read_method:ident, $write_method:ident);* $);)?) => {
+    ($($T:ty => $read_method:ident, $write_method:ident);*) => {
         $(
             impl ToBytes for $T {
                 fn serialized_size(&self) -> usize {
@@ -282,7 +282,7 @@ impl_bytes_for_primitive! {
     f32 => read_f32_le, write_f32_le;
     f64 => read_f64_le, write_f64_le;
     usize => read_usize_le, write_usize_le;
-    isize => read_isize_le, write_isize_le;
+    isize => read_isize_le, write_isize_le
 }
 
 // Corrected ToBytes for bool
@@ -417,10 +417,10 @@ macro_rules! impl_little_endian_for_primitive {
                 if bytes.len() < $size {
                     return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
                         wrt_error::codes::BUFFER_TOO_SMALL,
-                        "Insufficient bytes for little-endian conversion";
+                        "Insufficient bytes for little-endian conversion"));
                 }
                 let mut arr = [0u8; $size];
-                arr.copy_from_slice(&bytes[..$size];
+                arr.copy_from_slice(&bytes[..$size]);
                 Ok(<$T>::from_le_bytes(arr))
             }
 
@@ -432,7 +432,7 @@ macro_rules! impl_little_endian_for_primitive {
 }
 
 impl_little_endian_for_primitive! {
-    i8, 1); u8, 1); i16, 2; u16, 2; i32, 4; u32, 4; i64, 8; u64, 8; f32, 4; f64, 8
+    i8, 1; u8, 1; i16, 2; u16, 2; i32, 4; u32, 4; i64, 8; u64, 8; f32, 4; f64, 8
     // V128 is handled separately if/when defined and LittleEndian is implemented for it.
     // bool is handled by its specific ToBytes/FromBytes impls, not LittleEndian trait.
 }
@@ -509,8 +509,8 @@ where
     B: Checksummable,
 {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-        self.0.update_checksum(checksum;
-        self.1.update_checksum(checksum;
+        self.0.update_checksum(checksum);
+        self.1.update_checksum(checksum);
     }
 }
 
@@ -775,7 +775,7 @@ impl<'a> ReadStream<'a> {
     fn read_le_bytes_into_array<const N: usize>(&mut self) -> WrtResult<[u8; N]> {
         self.ensure_data(N)?;
         let mut arr = [0u8; N];
-        arr.copy_from_slice(&self.buffer.data()?[self.position..self.position + N];
+        arr.copy_from_slice(&self.buffer.data()?[self.position..self.position + N]);
         self.position += N;
         Ok(arr)
     }
@@ -843,8 +843,8 @@ impl<'a> ReadStream<'a> {
     /// Reads a slice of bytes from the stream.
     pub fn read_exact(&mut self, buf: &mut [u8]) -> WrtResult<()> {
         self.ensure_data(buf.len())?;
-        buf.copy_from_slice(&self.buffer.data()?[self.position..self.position + buf.len()];
-        self.position += buf.len);
+        buf.copy_from_slice(&self.buffer.data()?[self.position..self.position + buf.len()]);
+        self.position += buf.len();
         Ok(())
     }
 
@@ -912,7 +912,7 @@ impl<'a> WriteStream<'a> {
     // Helper for writing little-endian integers
     fn write_le_bytes_from_array<const N: usize>(&mut self, bytes: [u8; N]) -> WrtResult<()> {
         self.ensure_capacity(N)?;
-        self.buffer.data_mut()?[self.position..self.position + N].copy_from_slice(&bytes;
+        self.buffer.data_mut()?[self.position..self.position + N].copy_from_slice(&bytes);
         self.position += N;
         Ok(())
     }
@@ -975,8 +975,8 @@ impl<'a> WriteStream<'a> {
     /// Writes an entire slice of bytes into the stream.
     pub fn write_all(&mut self, bytes: &[u8]) -> WrtResult<()> {
         self.ensure_capacity(bytes.len())?;
-        self.buffer.data_mut()?[self.position..self.position + bytes.len()].copy_from_slice(bytes;
-        self.position += bytes.len);
+        self.buffer.data_mut()?[self.position..self.position + bytes.len()].copy_from_slice(bytes);
+        self.position += bytes.len();
         Ok(())
     }
 
@@ -1025,7 +1025,7 @@ impl<T: Checksummable> Checksummable for Option<T> {
         match self {
             Some(val) => {
                 checksum.update(1u8); // Discriminant for Some
-                val.update_checksum(checksum;
+                val.update_checksum(checksum);
             }
             None => {
                 checksum.update(0u8); // Discriminant for None
@@ -1047,7 +1047,7 @@ impl ToBytes for alloc::string::String {
         writer: &mut WriteStream<'a>,
         provider: &PStream,
     ) -> WrtResult<()> {
-        let bytes = self.as_bytes);
+        let bytes = self.as_bytes();
         (bytes.len() as u32).to_bytes_with_provider(writer, provider)?;
         writer.write_all(bytes).map_err(|_e| {
             WrtError::runtime_execution_error("Failed to write String data to stream")
@@ -1082,7 +1082,7 @@ pub trait Validatable {
     fn validation_level(&self) -> crate::verification::VerificationLevel;
 
     /// Set the validation level for this object
-    fn set_validation_level(&mut self, level: crate::verification::VerificationLevel;
+    fn set_validation_level(&mut self, level: crate::verification::VerificationLevel);
 }
 
 /// Trait for types that maintain checksums for validation
@@ -1094,7 +1094,7 @@ pub trait Checksummed {
     ///
     /// This is useful when verification level changes from `None`
     /// or after operations that bypass normal checksum updates.
-    fn recalculate_checksum(&mut self;
+    fn recalculate_checksum(&mut self);
 
     /// Verify the integrity by comparing stored vs calculated checksums
     ///

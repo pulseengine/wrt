@@ -14,7 +14,7 @@ mod real_execution_tests {
     /// Test basic arithmetic to verify real computation
     #[test]
     fn test_i32_add_real_execution() {
-        println!("\n=== Testing i32.add Real Execution ===");
+        println!("\n=== Testing i32.add Real Execution ==="));
 
         // Create a WASM module that adds two numbers
         let wasm = wat::parse_str(
@@ -29,10 +29,10 @@ mod real_execution_tests {
             )
         "#,
         )
-        .expect("Failed to parse WAT");
+        .expect("Failed to parse WAT"));
 
         let engine = StacklessEngine::new();
-        engine.load_module(Some("add_test"), &wasm).expect("Failed to load module");
+        engine.load_module(Some("add_test"), &wasm).expect("Failed to load module"));
 
         // Test various additions to prove real execution
         let test_cases = vec![
@@ -56,7 +56,7 @@ mod real_execution_tests {
                         expected,
                         result[0]
                     );
-                    println!("✓ {} + {} = {} (correct)", a, b, expected);
+                    println!("✓ {} + {} = {} (correct)", a, b, expected));
                 },
                 Err(e) => panic!("Function call failed: {}", e),
             }
@@ -66,7 +66,7 @@ mod real_execution_tests {
     /// Test multiplication to verify it's not just returning defaults
     #[test]
     fn test_i32_mul_real_execution() {
-        println!("\n=== Testing i32.mul Real Execution ===");
+        println!("\n=== Testing i32.mul Real Execution ==="));
 
         let wasm = wat::parse_str(
             r#"
@@ -80,10 +80,10 @@ mod real_execution_tests {
             )
         "#,
         )
-        .expect("Failed to parse WAT");
+        .expect("Failed to parse WAT"));
 
         let engine = StacklessEngine::new();
-        engine.load_module(Some("mul_test"), &wasm).expect("Failed to load module");
+        engine.load_module(Some("mul_test"), &wasm).expect("Failed to load module"));
 
         let test_cases = vec![(3, 4, 12), (7, 8, 56), (0, 100, 0), (-2, 5, -10)];
 
@@ -99,7 +99,7 @@ mod real_execution_tests {
                         expected,
                         result[0]
                     );
-                    println!("✓ {} * {} = {} (correct)", a, b, expected);
+                    println!("✓ {} * {} = {} (correct)", a, b, expected));
                 },
                 Err(e) => panic!("Function call failed: {}", e),
             }
@@ -109,7 +109,7 @@ mod real_execution_tests {
     /// Test complex computation to ensure real execution
     #[test]
     fn test_complex_computation() {
-        println!("\n=== Testing Complex Computation ===");
+        println!("\n=== Testing Complex Computation ==="));
 
         let wasm = wat::parse_str(
             r#"
@@ -128,10 +128,10 @@ mod real_execution_tests {
             )
         "#,
         )
-        .expect("Failed to parse WAT");
+        .expect("Failed to parse WAT"));
 
         let engine = StacklessEngine::new();
-        engine.load_module(Some("complex_test"), &wasm).expect("Failed to load module");
+        engine.load_module(Some("complex_test"), &wasm).expect("Failed to load module"));
 
         // Test: (5 + 3) * 2 - 5 = 16 - 5 = 11
         match engine.call_function("complex", &[Value::I32(5), Value::I32(3), Value::I32(2)]) {
@@ -142,7 +142,7 @@ mod real_execution_tests {
                     "Expected (5 + 3) * 2 - 5 = 11, but got {:?}",
                     result[0]
                 );
-                println!("✓ (5 + 3) * 2 - 5 = 11 (correct)");
+                println!("✓ (5 + 3) * 2 - 5 = 11 (correct)"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -156,7 +156,7 @@ mod real_execution_tests {
                     "Expected (10 + 20) * 3 - 10 = 80, but got {:?}",
                     result[0]
                 );
-                println!("✓ (10 + 20) * 3 - 10 = 80 (correct)");
+                println!("✓ (10 + 20) * 3 - 10 = 80 (correct)"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -165,7 +165,7 @@ mod real_execution_tests {
     /// Test local variables to ensure state is maintained
     #[test]
     fn test_local_variables() {
-        println!("\n=== Testing Local Variables ===");
+        println!("\n=== Testing Local Variables ==="));
 
         let wasm = wat::parse_str(
             r#"
@@ -182,10 +182,10 @@ mod real_execution_tests {
             )
         "#,
         )
-        .expect("Failed to parse WAT");
+        .expect("Failed to parse WAT"));
 
         let engine = StacklessEngine::new();
-        engine.load_module(Some("locals_test"), &wasm).expect("Failed to load module");
+        engine.load_module(Some("locals_test"), &wasm).expect("Failed to load module"));
 
         match engine.call_function("locals_test", &[Value::I32(5)]) {
             Ok(result) => {
@@ -195,7 +195,7 @@ mod real_execution_tests {
                     "Expected 5 + 10 = 15 stored in local, but got {:?}",
                     result[0]
                 );
-                println!("✓ Local variable correctly stores and retrieves value: 15");
+                println!("✓ Local variable correctly stores and retrieves value: 15"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -204,7 +204,7 @@ mod real_execution_tests {
     /// Test control flow to ensure proper execution
     #[test]
     fn test_control_flow() {
-        println!("\n=== Testing Control Flow ===");
+        println!("\n=== Testing Control Flow ==="));
 
         let wasm = wat::parse_str(
             r#"
@@ -223,16 +223,16 @@ mod real_execution_tests {
             )
         "#,
         )
-        .expect("Failed to parse WAT");
+        .expect("Failed to parse WAT"));
 
         let engine = StacklessEngine::new();
-        engine.load_module(Some("control_test"), &wasm).expect("Failed to load module");
+        engine.load_module(Some("control_test"), &wasm).expect("Failed to load module"));
 
         // Test max(10, 5) = 10
         match engine.call_function("max", &[Value::I32(10), Value::I32(5)]) {
             Ok(result) => {
                 assert_eq!(result[0], Value::I32(10), "Expected max(10, 5) = 10");
-                println!("✓ max(10, 5) = 10 (correct branch taken)");
+                println!("✓ max(10, 5) = 10 (correct branch taken)"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -241,7 +241,7 @@ mod real_execution_tests {
         match engine.call_function("max", &[Value::I32(3), Value::I32(7)]) {
             Ok(result) => {
                 assert_eq!(result[0], Value::I32(7), "Expected max(3, 7) = 7");
-                println!("✓ max(3, 7) = 7 (correct branch taken)");
+                println!("✓ max(3, 7) = 7 (correct branch taken)"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -250,7 +250,7 @@ mod real_execution_tests {
     /// Test loop execution
     #[test]
     fn test_loop_execution() {
-        println!("\n=== Testing Loop Execution ===");
+        println!("\n=== Testing Loop Execution ==="));
 
         let wasm = wat::parse_str(
             r#"
@@ -286,16 +286,16 @@ mod real_execution_tests {
             )
         "#,
         )
-        .expect("Failed to parse WAT");
+        .expect("Failed to parse WAT"));
 
         let engine = StacklessEngine::new();
-        engine.load_module(Some("loop_test"), &wasm).expect("Failed to load module");
+        engine.load_module(Some("loop_test"), &wasm).expect("Failed to load module"));
 
         // Test factorial(5) = 120
         match engine.call_function("factorial", &[Value::I32(5)]) {
             Ok(result) => {
                 assert_eq!(result[0], Value::I32(120), "Expected factorial(5) = 120");
-                println!("✓ factorial(5) = 120 (loop executed correctly)");
+                println!("✓ factorial(5) = 120 (loop executed correctly)"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -304,7 +304,7 @@ mod real_execution_tests {
         match engine.call_function("factorial", &[Value::I32(6)]) {
             Ok(result) => {
                 assert_eq!(result[0], Value::I32(720), "Expected factorial(6) = 720");
-                println!("✓ factorial(6) = 720 (loop executed correctly)");
+                println!("✓ factorial(6) = 720 (loop executed correctly)"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -313,7 +313,7 @@ mod real_execution_tests {
     /// Test memory operations
     #[test]
     fn test_memory_operations() {
-        println!("\n=== Testing Memory Operations ===");
+        println!("\n=== Testing Memory Operations ==="));
 
         let wasm = wat::parse_str(
             r#"
@@ -334,16 +334,16 @@ mod real_execution_tests {
             )
         "#,
         )
-        .expect("Failed to parse WAT");
+        .expect("Failed to parse WAT"));
 
         let engine = StacklessEngine::new();
-        engine.load_module(Some("memory_test"), &wasm).expect("Failed to load module");
+        engine.load_module(Some("memory_test"), &wasm).expect("Failed to load module"));
 
         // Store and load value 42 at address 0
         match engine.call_function("memory_test", &[Value::I32(0), Value::I32(42)]) {
             Ok(result) => {
                 assert_eq!(result[0], Value::I32(42), "Expected to load 42 from memory");
-                println!("✓ Memory store/load works correctly: stored 42, loaded 42");
+                println!("✓ Memory store/load works correctly: stored 42, loaded 42"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -356,7 +356,7 @@ mod real_execution_tests {
                     Value::I32(12345),
                     "Expected to load 12345 from memory"
                 );
-                println!("✓ Memory store/load works correctly: stored 12345, loaded 12345");
+                println!("✓ Memory store/load works correctly: stored 12345, loaded 12345"));
             },
             Err(e) => panic!("Function call failed: {}", e),
         }
@@ -365,12 +365,12 @@ mod real_execution_tests {
     /// Summary test that proves real execution
     #[test]
     fn test_execution_summary() {
-        println!("\n=== EXECUTION VERIFICATION SUMMARY ===");
-        println!("✅ All tests pass, proving that StacklessEngine:");
-        println!("   - Performs real arithmetic operations (not default values)");
-        println!("   - Maintains proper state in locals and memory");
-        println!("   - Executes control flow correctly (if/else, loops)");
-        println!("   - Handles complex computations accurately");
-        println!("\n🎯 CONCLUSION: StacklessEngine DOES execute real WASM instructions!");
+        println!("\n=== EXECUTION VERIFICATION SUMMARY ==="));
+        println!("✅ All tests pass, proving that StacklessEngine:"));
+        println!("   - Performs real arithmetic operations (not default values)"));
+        println!("   - Maintains proper state in locals and memory"));
+        println!("   - Executes control flow correctly (if/else, loops)"));
+        println!("   - Handles complex computations accurately"));
+        println!("\n🎯 CONCLUSION: StacklessEngine DOES execute real WASM instructions!"));
     }
 }

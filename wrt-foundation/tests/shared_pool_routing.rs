@@ -87,7 +87,7 @@ mod shared_pool_routing_tests {
         setup_with_small_shared_pool()?;
 
         // Exhaust the shared pool
-        let mut allocations = Vec::new);
+        let mut allocations = Vec::new());
 
         // Keep allocating until shared pool is exhausted
         loop {
@@ -125,7 +125,7 @@ mod shared_pool_routing_tests {
         BudgetAwareProviderFactory::initialize_dynamic_budgets(dynamic_config)?;
 
         // Exhaust one crate's budget
-        let mut runtime_allocations = Vec::new);
+        let mut runtime_allocations = Vec::new());
         while let Ok(provider) = BudgetProvider::<{ 64 * 1024 }>::new(CrateId::Runtime) {
             runtime_allocations.push(provider);
             if runtime_allocations.len() > 100 {
@@ -141,11 +141,11 @@ mod shared_pool_routing_tests {
         match borrowed_result {
             Ok(_) => {
                 // Emergency borrowing worked
-                println!("Emergency borrowing succeeded";
+                println!("Emergency borrowing succeeded");
             }
             Err(_) => {
                 // Emergency borrowing couldn't find available budget
-                println!("Emergency borrowing failed - no available budget";
+                println!("Emergency borrowing failed - no available budget");
             }
         }
 
@@ -253,7 +253,7 @@ mod shared_pool_routing_tests {
         // Test different allocation patterns
 
         // Pattern 1: Many small allocations (should use shared pool efficiently)
-        let mut small_allocations = Vec::new);
+        let mut small_allocations = Vec::new());
         for i in 0..10 {
             let provider = BudgetProvider::<1024>::new(CrateId::Decoder)?;
             small_allocations.push(BoundedVec::<u8, 100, _>::new(provider)?;
@@ -283,7 +283,7 @@ mod shared_pool_routing_tests {
         // Create usage patterns that would trigger recommendations
 
         // High utilization in Runtime
-        let mut runtime_providers = Vec::new);
+        let mut runtime_providers = Vec::new());
         for _ in 0..20 {
             if let Ok(provider) = BudgetProvider::<{ 128 * 1024 }>::new(CrateId::Runtime) {
                 runtime_providers.push(provider);
@@ -299,12 +299,12 @@ mod shared_pool_routing_tests {
         let recommendations = BudgetAwareProviderFactory::get_recommendations()?;
 
         // Should have recommendations for high and low utilization
-        assert!(!recommendations.is_empty();
+        assert!(!recommendations.is_empty());
 
         for rec in &recommendations {
             assert!(rec.estimated_impact <= 100);
             assert!(rec.difficulty >= 1 && rec.difficulty <= 5);
-            assert!(!rec.description.is_empty();
+            assert!(!rec.description.is_empty());
         }
 
         Ok(())

@@ -644,7 +644,7 @@ mod tests {
     #[test]
     fn test_thread_manager_creation() {
         let config = ThreadConfig::default());
-        let manager = ThreadManager::new(config).unwrap());
+        let manager = ThreadManager::new(config).unwrap();
         assert_eq!(manager.thread_count(), 0);
         assert_eq!(manager.active_thread_count(), 0);
     }
@@ -654,19 +654,19 @@ mod tests {
     fn test_thread_spawning() {
         let mut manager = ThreadManager::default());
         
-        let thread_id = manager.spawn_thread(42, Some(2 * 1024 * 1024), None).unwrap());
+        let thread_id = manager.spawn_thread(42, Some(2 * 1024 * 1024), None).unwrap();
         assert_eq!(thread_id, 1);
         assert_eq!(manager.thread_count(), 1);
         assert_eq!(manager.active_thread_count(), 1);
         
-        let info = manager.get_thread_info(thread_id).unwrap());
+        let info = manager.get_thread_info(thread_id).unwrap();
         assert_eq!(info.function_index, 42;
         assert_eq!(info.stack_size, 2 * 1024 * 1024;
     }
     
     #[test]
     fn test_thread_stats() {
-        let mut stats = ThreadExecutionStats::new);
+        let mut stats = ThreadExecutionStats::new();
         stats.record_instruction);
         stats.record_function_call);
         stats.record_atomic_operation);
@@ -680,7 +680,7 @@ mod tests {
     
     #[test]
     fn test_manager_stats() {
-        let stats = ThreadManagerStats::new);
+        let stats = ThreadManagerStats::new();
         assert_eq!(stats.success_rate(), 0.0;
         assert!(!stats.is_healthy();
     }

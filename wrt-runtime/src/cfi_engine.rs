@@ -857,7 +857,7 @@ impl CfiExecutionEngine {
 
         // Log violation details (in real implementation)
         #[cfg(feature = "std")]
-        eprintln!("CFI Violation detected: {:?}", violation_type;
+        eprintln!("CFI Violation detected: {:?}", violation_type));
 
         // Apply violation policy
         match self.violation_policy {
@@ -1148,7 +1148,7 @@ mod tests {
     #[test]
     fn test_cfi_engine_creation() {
         let protection = CfiControlFlowProtection::default());
-        let engine = CfiExecutionEngine::new(protection).expect("Ok");
+        let engine = CfiExecutionEngine::new(protection).expect("Ok"));
 
         assert_eq!(engine.violation_policy, CfiViolationPolicy::ReturnError;
         assert_eq!(engine.statistics.instructions_protected, 0);
@@ -1159,7 +1159,7 @@ mod tests {
     fn test_cfi_engine_with_policy() {
         let protection = CfiControlFlowProtection::default());
         let policy = CfiViolationPolicy::LogAndContinue;
-        let engine = CfiExecutionEngine::new_with_policy(protection, policy).expect("Ok");
+        let engine = CfiExecutionEngine::new_with_policy(protection, policy).expect("Ok"));
 
         assert_eq!(engine.violation_policy, CfiViolationPolicy::LogAndContinue;
     }
@@ -1176,7 +1176,7 @@ mod tests {
     fn test_cfi_violation_handling() {
         let protection = CfiControlFlowProtection::default());
         let mut engine =
-            CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue).expect("Ok");
+            CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue).expect("Ok"));
 
         let initial_violations = engine.statistics.violations_detected;
         engine.handle_cfi_violation(CfiViolationType::ShadowStackMismatch;

@@ -19,12 +19,12 @@ use wrt_instructions::simd_ops::SimdOp;
 use wrt_error::Result;
 
 fn main() -> Result<()> {
-    println!("🚀 SIMD Execution Integration Demo");
-    println!("==================================");
+    println!("🚀 SIMD Execution Integration Demo"));
+    println!("=================================="));
     
     // Create a stackless engine for demonstration
-    let mut engine = StacklessEngine::new);
-    let adapter = SimdExecutionAdapter::new);
+    let mut engine = StacklessEngine::new();
+    let adapter = SimdExecutionAdapter::new();
     
     // Demonstrate SIMD operation integration
     demonstrate_simd_arithmetic(&adapter, &mut engine)?;
@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     demonstrate_simd_lane_operations(&adapter, &mut engine)?;
     demonstrate_execution_statistics(&engine;
     
-    println!("\n✅ SIMD execution integration demo completed successfully!");
+    println!("\n✅ SIMD execution integration demo completed successfully!"));
     Ok(())
 }
 
@@ -41,8 +41,8 @@ fn demonstrate_simd_arithmetic(
     adapter: &SimdExecutionAdapter,
     engine: &mut StacklessEngine,
 ) -> Result<()> {
-    println!("\n📊 Demonstrating SIMD Arithmetic Operations";
-    println!("--------------------------------------------";
+    println!("\n📊 Demonstrating SIMD Arithmetic Operations");
+    println!("--------------------------------------------");
     
     // Create sample V128 vectors for arithmetic
     let vector1_bytes = [
@@ -62,33 +62,33 @@ fn demonstrate_simd_arithmetic(
     let v128_2 = Value::V128(V128::from_bytes(vector2_bytes;
     
     // Push operands onto the engine's stack
-    engine.exec_stack.values.push(v128_1.clone()).unwrap());
-    engine.exec_stack.values.push(v128_2.clone()).unwrap());
+    engine.exec_stack.values.push(v128_1.clone()).unwrap();
+    engine.exec_stack.values.push(v128_2.clone()).unwrap();
     
     // Execute I32x4 addition
     let add_op = SimdOp::I32x4Add;
     adapter.execute_simd_with_engine(&add_op, engine)?;
     
     // Check result
-    let result = engine.exec_stack.values.pop().unwrap().unwrap());
+    let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(result_v128) = result {
-        println!("✓ I32x4 Add executed successfully";
-        println!("  Result vector: {:?}", result_v128.bytes);
+        println!("✓ I32x4 Add executed successfully");
+        println!("  Result vector: {:?}", result_v128.bytes));
     } else {
-        println!("✗ Unexpected result type";
+        println!("✗ Unexpected result type");
     }
     
     // Demonstrate I32x4 multiplication
-    engine.exec_stack.values.push(v128_1).unwrap());
-    engine.exec_stack.values.push(v128_2).unwrap());
+    engine.exec_stack.values.push(v128_1).unwrap();
+    engine.exec_stack.values.push(v128_2).unwrap();
     
     let mul_op = SimdOp::I32x4Mul;
     adapter.execute_simd_with_engine(&mul_op, engine)?;
     
-    let result = engine.exec_stack.values.pop().unwrap().unwrap());
+    let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(result_v128) = result {
-        println!("✓ I32x4 Mul executed successfully";
-        println!("  Result vector: {:?}", result_v128.bytes);
+        println!("✓ I32x4 Mul executed successfully");
+        println!("  Result vector: {:?}", result_v128.bytes));
     }
     
     Ok(())
@@ -99,12 +99,12 @@ fn demonstrate_simd_load_store(
     adapter: &SimdExecutionAdapter,
     engine: &mut StacklessEngine,
 ) -> Result<()> {
-    println!("\n💾 Demonstrating SIMD Load/Store Operations";
-    println!("--------------------------------------------";
+    println!("\n💾 Demonstrating SIMD Load/Store Operations");
+    println!("--------------------------------------------");
     
     // Simulate a memory address for load operation
     let memory_address = Value::I32(0x1000;
-    engine.exec_stack.values.push(memory_address).unwrap());
+    engine.exec_stack.values.push(memory_address).unwrap();
     
     // Note: This would fail in a real scenario without proper memory setup,
     // but demonstrates the integration pattern
@@ -112,10 +112,10 @@ fn demonstrate_simd_load_store(
     
     match adapter.execute_simd_with_engine(&load_op, engine) {
         Ok(_) => {
-            println!("✓ V128 Load operation processed (would need memory setup for real execution)";
+            println!("✓ V128 Load operation processed (would need memory setup for real execution)");
         }
         Err(e) => {
-            println!("⚠ V128 Load failed as expected without memory: {}", e;
+            println!("⚠ V128 Load failed as expected without memory: {}", e);
             // This is expected in this demo without proper memory setup
         }
     }
@@ -124,17 +124,17 @@ fn demonstrate_simd_load_store(
     let vector_to_store = Value::V128(V128::from_bytes([42u8); 16];
     let store_address = Value::I32(0x2000;
     
-    engine.exec_stack.values.push(store_address).unwrap());
-    engine.exec_stack.values.push(vector_to_store).unwrap());
+    engine.exec_stack.values.push(store_address).unwrap();
+    engine.exec_stack.values.push(vector_to_store).unwrap();
     
     let store_op = SimdOp::V128Store { offset: 0, align: 16 };
     
     match adapter.execute_simd_with_engine(&store_op, engine) {
         Ok(_) => {
-            println!("✓ V128 Store operation processed";
+            println!("✓ V128 Store operation processed");
         }
         Err(e) => {
-            println!("⚠ V128 Store failed as expected without memory: {}", e;
+            println!("⚠ V128 Store failed as expected without memory: {}", e);
         }
     }
     
@@ -146,8 +146,8 @@ fn demonstrate_simd_lane_operations(
     adapter: &SimdExecutionAdapter,
     engine: &mut StacklessEngine,
 ) -> Result<()> {
-    println!("\n🎯 Demonstrating SIMD Lane Operations";
-    println!("-------------------------------------";
+    println!("\n🎯 Demonstrating SIMD Lane Operations");
+    println!("-------------------------------------");
     
     // Create a test vector
     let test_vector = Value::V128(V128::from_bytes([
@@ -155,42 +155,42 @@ fn demonstrate_simd_lane_operations(
     ];
     
     // Demonstrate lane extraction
-    engine.exec_stack.values.push(test_vector.clone()).unwrap());
+    engine.exec_stack.values.push(test_vector.clone()).unwrap();
     
     let extract_op = SimdOp::I8x16ExtractLaneU { lane: 5 };
     adapter.execute_simd_with_engine(&extract_op, engine)?;
     
-    let extracted = engine.exec_stack.values.pop().unwrap().unwrap());
+    let extracted = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::I32(lane_value) = extracted {
-        println!("✓ I8x16 ExtractLaneU executed successfully";
-        println!("  Extracted lane 5 value: {}", lane_value;
+        println!("✓ I8x16 ExtractLaneU executed successfully");
+        println!("  Extracted lane 5 value: {}", lane_value);
     }
     
     // Demonstrate splat operation
     let splat_value = Value::I32(255;
-    engine.exec_stack.values.push(splat_value).unwrap());
+    engine.exec_stack.values.push(splat_value).unwrap();
     
     let splat_op = SimdOp::I8x16Splat;
     adapter.execute_simd_with_engine(&splat_op, engine)?;
     
-    let result = engine.exec_stack.values.pop().unwrap().unwrap());
+    let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(splat_result) = result {
-        println!("✓ I8x16 Splat executed successfully";
-        println!("  Splat result: {:?}", splat_result.bytes);
+        println!("✓ I8x16 Splat executed successfully");
+        println!("  Splat result: {:?}", splat_result.bytes));
     }
     
     // Demonstrate replace lane
-    engine.exec_stack.values.push(test_vector).unwrap());
+    engine.exec_stack.values.push(test_vector).unwrap();
     let replace_value = Value::I32(99;
-    engine.exec_stack.values.push(replace_value).unwrap());
+    engine.exec_stack.values.push(replace_value).unwrap();
     
     let replace_op = SimdOp::I8x16ReplaceLane { lane: 7 };
     adapter.execute_simd_with_engine(&replace_op, engine)?;
     
-    let result = engine.exec_stack.values.pop().unwrap().unwrap());
+    let result = engine.exec_stack.values.pop().unwrap().unwrap();
     if let Value::V128(replace_result) = result {
-        println!("✓ I8x16 ReplaceLane executed successfully";
-        println!("  Replace result: {:?}", replace_result.bytes);
+        println!("✓ I8x16 ReplaceLane executed successfully");
+        println!("  Replace result: {:?}", replace_result.bytes));
     }
     
     Ok(())
@@ -198,18 +198,18 @@ fn demonstrate_simd_lane_operations(
 
 /// Demonstrate execution statistics tracking
 fn demonstrate_execution_statistics(engine: &StacklessEngine) {
-    println!("\n📈 Execution Statistics";
-    println!("----------------------";
+    println!("\n📈 Execution Statistics");
+    println!("----------------------");
     
     let stats = engine.stats);
-    println!("Instructions executed: {}", stats.instructions_executed;
-    println!("Function calls: {}", stats.function_calls;
-    println!("SIMD operations executed: {}", stats.simd_operations_executed;
-    println!("Memory usage: {} bytes", stats.memory_usage;
-    println!("Max stack depth: {}", stats.max_stack_depth;
+    println!("Instructions executed: {}", stats.instructions_executed);
+    println!("Function calls: {}", stats.function_calls);
+    println!("SIMD operations executed: {}", stats.simd_operations_executed);
+    println!("Memory usage: {} bytes", stats.memory_usage);
+    println!("Max stack depth: {}", stats.max_stack_depth);
     
     if stats.simd_operations_executed > 0 {
-        println!("✅ SIMD execution statistics are being tracked correctly!";
+        println!("✅ SIMD execution statistics are being tracked correctly!");
     }
 }
 
@@ -219,15 +219,15 @@ mod tests {
     
     #[test]
     fn test_simd_adapter_integration() {
-        let adapter = SimdExecutionAdapter::new);
-        let mut engine = StacklessEngine::new);
+        let adapter = SimdExecutionAdapter::new();
+        let mut engine = StacklessEngine::new();
         
         // Test basic adapter functionality
         let initial_simd_count = engine.stats().simd_operations_executed;
         
         // Create a simple SIMD operation
         let vector = Value::V128(V128::from_bytes([1u8); 16];
-        engine.exec_stack.values.push(vector).unwrap());
+        engine.exec_stack.values.push(vector).unwrap();
         
         let neg_op = SimdOp::I8x16Neg;
         let result = adapter.execute_simd_with_engine(&neg_op, &mut engine;
@@ -248,7 +248,7 @@ mod tests {
     
     #[test]
     fn test_operand_count_validation() {
-        let adapter = SimdExecutionAdapter::new);
+        let adapter = SimdExecutionAdapter::new();
         
         // Test operand count calculations
         assert_eq!(adapter.get_operand_count(&SimdOp::I32x4Add), 2;

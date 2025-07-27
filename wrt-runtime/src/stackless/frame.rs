@@ -235,7 +235,7 @@ impl StacklessFrame {
 
         #[cfg(feature = "std")]
         let mut locals_vec = {
-            let mut vec = Vec::new);
+            let mut vec = Vec::new());
             for value in invocation_inputs.iter() {
                 vec.push(value.clone();
             }
@@ -5516,7 +5516,7 @@ impl StacklessFrame {
         // segments store their items. If Element.items are already `Value` or
         // `Option<Value>`, this is simpler. Let's assume Element stores func
         // indices as u32.
-        let mut items_to_init: Vec<Option<Value>> = Vec::new);
+        let mut items_to_init: Vec<Option<Value>> = Vec::new());
         for i in 0..n {
             let idx = (src_offset + i) as usize;
             let item = segment.items.get(idx).map_err(|_| {
@@ -5649,13 +5649,13 @@ impl StacklessFrame {
         let n: u32 = n_val
             .and_then(|v| v.as_i32())
             .ok_or_else(|| Error::type_error("memory.init len not i32"))?
-            .try_into().unwrap());
+            .try_into().unwrap();
         let src_offset: u32 = src_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
             Error::type_error("memory.init src_offset not i32")
-        })?.try_into().unwrap());
+        })?.try_into().unwrap();
         let dst_offset: u32 = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
             Error::type_error("memory.init dst_offset not i32")
-        })?.try_into().unwrap());
+        })?.try_into().unwrap();
 
         let memory = self.module_instance.memory(mem_idx)?;
         let data_segment =
@@ -5708,13 +5708,13 @@ impl StacklessFrame {
         let n: u32 = n_val
             .and_then(|v| v.as_i32())
             .ok_or_else(|| Error::type_error("memory.copy len not i32"))?
-            .try_into().unwrap());
+            .try_into().unwrap();
         let src_offset: u32 = src_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
             Error::type_error("memory.copy src_offset not i32")
-        })?.try_into().unwrap());
+        })?.try_into().unwrap();
         let dst_offset: u32 = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
             Error::type_error("memory.copy dst_offset not i32")
-        })?.try_into().unwrap());
+        })?.try_into().unwrap();
 
         let dst_memory = self.module_instance.memory(dst_mem_idx)?;
         let src_memory = if dst_mem_idx == src_mem_idx {
@@ -5802,14 +5802,14 @@ impl StacklessFrame {
         let n: u32 = n_val
             .and_then(|v| v.as_i32())
             .ok_or_else(|| Error::type_error("memory.fill len not i32"))?
-            .try_into().unwrap());
+            .try_into().unwrap();
         let val_to_fill_byte = val_to_fill_val
             .and_then(|v| v.as_i32())
             .ok_or_else(|| Error::type_error("memory.fill value not i32"))?
             as u8; // Value must be i32, truncated to u8
         let dst_offset: u32 = dst_offset_val.and_then(|v| v.as_i32()).ok_or_else(|| {
             Error::type_error("memory.fill dst_offset not i32")
-        })?.try_into().unwrap());
+        })?.try_into().unwrap();
 
         let memory = self.module_instance.memory(mem_idx)?;
         if dst_offset.checked_add(n).map_or(true, |end| end as usize > memory.size_bytes()) {
@@ -5861,7 +5861,7 @@ impl StacklessFrame {
     ) -> Result<ControlFlow> {
         // TODO: SIMD execution not yet implemented
         // Create SIMD execution adapter
-        // let adapter = SimdExecutionAdapter::new);
+        // let adapter = SimdExecutionAdapter::new();
         
         // Execute the SIMD operation
         // adapter.execute_simd_with_engine(simd_op, engine)?;

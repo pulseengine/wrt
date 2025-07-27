@@ -47,16 +47,16 @@
 //! use wrt_foundation::safety_system::{SafetyContext, AsilLevel, SafetyStandard, UniversalSafetyContext};
 //!
 //! // Traditional ASIL-only context
-//! const ASIL_CTX: SafetyContext = SafetyContext::new(AsilLevel::AsilC;
+//! const ASIL_CTX: SafetyContext = SafetyContext::new(AsilLevel::AsilC);
 //!
 //! // Multi-standard context
 //! const MULTI_CTX: UniversalSafetyContext = UniversalSafetyContext::new(
 //!     SafetyStandard::Iso26262(AsilLevel::AsilC)
-//! ;
+//! );
 //!
 //! // Cross-standard conversion
-//! let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC;
-//! let equivalent_dal = asil_c.convert_to(SafetyStandardType::Do178c;
+//! let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC);
+//! let equivalent_dal = asil_c.convert_to(SafetyStandardType::Do178c);
 //! ```
 
 use core::sync::atomic::{AtomicU8, Ordering};
@@ -317,7 +317,7 @@ pub enum SafetyStandard {
 /// - REQ_SAFETY_COMPARE_001: Cross-standard safety level comparison
 /// - REQ_SAFETY_NORMALIZE_001: Normalization of safety levels to 0-1000 scale
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SeverityScore(u16;
+pub struct SeverityScore(u16);
 
 /// Error types for safety operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -332,9 +332,9 @@ pub enum SafetyError {
 
 impl SeverityScore {
     /// Minimum severity score (no safety requirements)
-    pub const MIN: Self = Self(0;
+    pub const MIN: Self = Self(0);
     /// Maximum severity score (highest safety requirements)
-    pub const MAX: Self = Self(1000;
+    pub const MAX: Self = Self(1000);
 
     /// Create a new severity score
     ///
@@ -500,11 +500,11 @@ pub trait SafetyStandardConversion {
     /// use wrt_foundation::safety_system::*;
     ///
     /// // QM cannot convert to medical - medical devices need safety classification
-    /// let qm = SafetyStandard::Iso26262(AsilLevel::QM;
-    /// assert!(qm.convert_to(SafetyStandardType::Iec62304).is_none();
+    /// let qm = SafetyStandard::Iso26262(AsilLevel::QM);
+    /// assert!(qm.convert_to(SafetyStandardType::Iec62304).is_none());
     ///
     /// // Industrial systems don't have "no safety" level
-    /// assert!(qm.convert_to(SafetyStandardType::Iec61508).is_none();
+    /// assert!(qm.convert_to(SafetyStandardType::Iec61508).is_none());
     /// ```
     fn convert_to(&self, target_standard: SafetyStandardType) -> Option<SafetyStandard>;
 
@@ -528,7 +528,7 @@ pub trait SafetyStandardConversion {
 
 impl SafetyStandardConversion for SafetyStandard {
     fn convert_to(&self, target: SafetyStandardType) -> Option<SafetyStandard> {
-        let severity = self.severity_score);
+        let severity = self.severity_score();
 
         match target {
             SafetyStandardType::Iso26262 => {
@@ -672,7 +672,7 @@ impl SafetyContext {
     /// ```rust
     /// use wrt_foundation::safety_system::{SafetyContext, AsilLevel};
     ///
-    /// const SAFETY_CTX: SafetyContext = SafetyContext::new(AsilLevel::AsilC;
+    /// const SAFETY_CTX: SafetyContext = SafetyContext::new(AsilLevel::AsilC);
     /// ```
     pub const fn new(compile_time: AsilLevel) -> Self {
         Self {
@@ -689,10 +689,10 @@ impl SafetyContext {
     ///
     /// The effective ASIL level currently in effect.
     pub fn effective_asil(&self) -> AsilLevel {
-        let runtime_level = self.runtime_asil.load(Ordering::Acquire;
+        let runtime_level = self.runtime_asil.load(Ordering::Acquire);
         let compile_level = self.compile_time_asil as u8;
 
-        let effective_level = runtime_level.max(compile_level;
+        let effective_level = runtime_level.max(compile_level);
 
         // Safe to unwrap because we only store valid ASIL values
         match effective_level {
@@ -738,23 +738,23 @@ impl SafetyContext {
     /// ```rust
     /// use wrt_foundation::safety_system::{SafetyContext, AsilLevel};
     ///
-    /// let ctx = SafetyContext::new(AsilLevel::AsilB;
+    /// let ctx = SafetyContext::new(AsilLevel::AsilB);
     ///
     /// // This succeeds - upgrading to higher safety level
     /// assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilC).is_ok());
     ///
     /// // This fails - cannot downgrade below compile-time level
-    /// assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilA).is_err();
+    /// assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilA).is_err());
     /// ```
     pub fn upgrade_runtime_asil(&self, new_level: AsilLevel) -> WrtResult<()> {
         let new_level_u8 = new_level as u8;
         let compile_level_u8 = self.compile_time_asil as u8;
 
         if new_level_u8 < compile_level_u8 {
-            return Err(Error::safety_violation("Cannot downgrade ASIL below compile-time level";
+            return Err(Error::safety_violation("Cannot downgrade ASIL below compile-time level"));
         }
 
-        self.runtime_asil.store(new_level_u8, Ordering::Release;
+        self.runtime_asil.store(new_level_u8, Ordering::Release);
         Ok(())
     }
 
@@ -770,7 +770,7 @@ impl SafetyContext {
         let count = self.violation_count.fetch_add(1, Ordering::AcqRel) + 1;
 
         // Trigger safety actions based on ASIL level
-        let effective = self.effective_asil);
+        let effective = self.effective_asil();
         match effective {
             AsilLevel::QM => {
                 // No action required
@@ -779,14 +779,14 @@ impl SafetyContext {
                 // Log violation for audit
                 #[cfg(feature = "std")]
                 {
-                    eprintln!("Safety violation #{} detected at {}", count, effective;
+                    eprintln!("Safety violation #{} detected at {}", count, effective);
                 }
             }
             AsilLevel::AsilC | AsilLevel::AsilD => {
                 // For high ASIL levels, consider immediate protective actions
                 #[cfg(feature = "std")]
                 {
-                    eprintln!("CRITICAL: Safety violation #{} detected at {}", count, effective;
+                    eprintln!("CRITICAL: Safety violation #{} detected at {}", count, effective);
                 }
 
                 // In a real implementation, this might trigger:
@@ -813,8 +813,8 @@ impl SafetyContext {
     ///
     /// `true` if verification should be performed, `false` otherwise.
     pub fn should_verify(&self) -> bool {
-        let effective = self.effective_asil);
-        let frequency = effective.verification_frequency);
+        let effective = self.effective_asil();
+        let frequency = effective.verification_frequency();
 
         if frequency == 0 {
             return false; // QM level - no verification required
@@ -831,9 +831,9 @@ impl SafetyContext {
     /// This should only be called during system initialization or controlled
     /// test scenarios.
     pub fn reset(&self) {
-        self.runtime_asil.store(self.compile_time_asil as u8, Ordering::Release;
-        self.violation_count.store(0, Ordering::Release;
-        self.operation_count.store(0, Ordering::Release;
+        self.runtime_asil.store(self.compile_time_asil as u8, Ordering::Release);
+        self.violation_count.store(0, Ordering::Release);
+        self.operation_count.store(0, Ordering::Release);
     }
 
     /// Check if the context is in a safe state
@@ -841,15 +841,15 @@ impl SafetyContext {
     /// A context is considered unsafe if it has too many violations relative
     /// to the ASIL requirements.
     pub fn is_safe(&self) -> bool {
-        let violations = self.violation_count);
-        let operations = self.operation_count.load(Ordering::Acquire;
+        let violations = self.violation_count.load(Ordering::Acquire);
+        let operations = self.operation_count.load(Ordering::Acquire);
 
         if operations == 0 {
             return true; // No operations yet
         }
 
         let error_rate = violations as f64 / operations as f64;
-        let max_rate = self.effective_asil().max_error_rate);
+        let max_rate = self.effective_asil().max_error_rate();
 
         error_rate <= max_rate
     }
@@ -929,7 +929,7 @@ impl UniversalSafetyContext {
     ///
     /// const CTX: UniversalSafetyContext = UniversalSafetyContext::new(
     ///     SafetyStandard::Iso26262(AsilLevel::AsilC)
-    /// ;
+    /// );
     /// ```
     pub const fn new(primary: SafetyStandard) -> Self {
         Self {
@@ -954,8 +954,8 @@ impl UniversalSafetyContext {
     pub fn add_secondary_standard(&mut self, standard: SafetyStandard) -> WrtResult<()> {
         for slot in &mut self.secondary_standards {
             if slot.is_none() {
-                *slot = Some(standard;
-                self.update_effective_severity);
+                *slot = Some(standard);
+                self.update_effective_severity();
                 return Ok();
             }
         }
@@ -972,8 +972,8 @@ impl UniversalSafetyContext {
     /// Returns `true` if the effective severity is greater than or equal to
     /// the required standard's severity.
     pub fn can_handle(&self, required: SafetyStandard) -> bool {
-        let effective = self.effective_severity);
-        let required_severity = required.severity_score);
+        let effective = self.effective_severity();
+        let required_severity = required.severity_score();
         effective >= required_severity
     }
 
@@ -998,7 +998,7 @@ impl UniversalSafetyContext {
         let count = self.violation_count.fetch_add(1, Ordering::AcqRel) + 1;
 
         // Trigger safety actions based on severity
-        let effective_severity = self.effective_severity);
+        let effective_severity = self.effective_severity();
 
         #[cfg(feature = "std")]
         {
@@ -1010,25 +1010,25 @@ impl UniversalSafetyContext {
                     eprintln!(
                         "Safety violation #{} detected (severity: {})",
                         count, effective_severity
-                    ;
+                    );
                 }
                 501..=800 => {
                     eprintln!(
                         "HIGH SEVERITY: Safety violation #{} detected (severity: {})",
                         count, effective_severity
-                    ;
+                    );
                 }
                 801..=1000 => {
                     eprintln!(
                         "CRITICAL: Safety violation #{} detected (severity: {})",
                         count, effective_severity
-                    ;
+                    );
                 }
                 _ => {
                     eprintln!(
                         "UNKNOWN SEVERITY: Safety violation #{} detected (severity: {})",
                         count, effective_severity
-                    ;
+                    );
                 }
             }
         }
@@ -1046,7 +1046,7 @@ impl UniversalSafetyContext {
     /// Based on the effective severity level, this determines whether verification
     /// should be performed for the current operation.
     pub fn should_verify(&self) -> bool {
-        let effective_severity = self.effective_severity);
+        let effective_severity = self.effective_severity();
 
         // Determine frequency based on severity
         let frequency = match effective_severity.value() {
@@ -1068,18 +1068,18 @@ impl UniversalSafetyContext {
 
     /// Update effective severity based on all standards
     fn update_effective_severity(&self) {
-        let mut max_severity = self.primary_standard.severity_score().value);
+        let mut max_severity = self.primary_standard.severity_score().value();
 
         for standard_opt in &self.secondary_standards {
             if let Some(standard) = standard_opt {
-                let severity = standard.severity_score().value);
+                let severity = standard.severity_score().value();
                 if severity > max_severity {
                     max_severity = severity;
                 }
             }
         }
 
-        self.runtime_state.store(max_severity, Ordering::Release;
+        self.runtime_state.store(max_severity, Ordering::Release);
     }
 
     /// Reset the safety context (for testing or system restart)
@@ -1088,9 +1088,9 @@ impl UniversalSafetyContext {
     /// This should only be called during system initialization or controlled
     /// test scenarios.
     pub fn reset(&self) {
-        self.runtime_state.store(self.primary_standard.severity_score().value(), Ordering::Release;
-        self.violation_count.store(0, Ordering::Release;
-        self.operation_count.store(0, Ordering::Release;
+        self.runtime_state.store(self.primary_standard.severity_score().value(), Ordering::Release);
+        self.violation_count.store(0, Ordering::Release);
+        self.operation_count.store(0, Ordering::Release);
     }
 
     /// Check if the context is in a safe state
@@ -1098,8 +1098,8 @@ impl UniversalSafetyContext {
     /// A context is considered unsafe if it has too many violations relative
     /// to the effective severity requirements.
     pub fn is_safe(&self) -> bool {
-        let violations = self.violation_count);
-        let operations = self.operation_count.load(Ordering::Acquire;
+        let violations = self.violation_count.load(Ordering::Acquire);
+        let operations = self.operation_count.load(Ordering::Acquire);
 
         if operations == 0 {
             return true; // No operations yet
@@ -1128,14 +1128,14 @@ impl UniversalSafetyContext {
         &self,
         target: SafetyStandardType,
     ) -> Option<UniversalSafetyContext> {
-        let effective_severity = self.effective_severity);
+        let effective_severity = self.effective_severity();
 
         // Find equivalent level in target standard
         let target_standard = SafetyStandard::Iso26262(AsilLevel::QM) // Dummy value
             .convert_to(target)?;
 
         // Create new context with target as primary
-        let mut new_context = Self::new(target_standard;
+        let mut new_context = Self::new(target_standard);
 
         // Ensure effective severity is at least as high as current
         if target_standard.severity_score() < effective_severity {
@@ -1143,7 +1143,7 @@ impl UniversalSafetyContext {
             if let Some(backup_standard) =
                 self.primary_standard.convert_to(SafetyStandardType::Iso26262)
             {
-                let _ = new_context.add_secondary_standard(backup_standard;
+                let _ = new_context.add_secondary_standard(backup_standard);
             }
         }
 
@@ -1179,8 +1179,8 @@ impl<'a> SafetyGuard<'a> {
     pub fn new(context: &'a SafetyContext, operation_name: &'static str) -> WrtResult<Self> {
         // Check if the context is in a safe state
         if !context.is_safe() {
-            context.record_violation);
-            return Err(Error::safety_violation("Safety context is not in a safe state";
+            context.record_violation();
+            return Err(Error::safety_violation("Safety context is not in a safe state"));
         }
 
         Ok(Self {
@@ -1208,7 +1208,7 @@ impl<'a> SafetyGuard<'a> {
     {
         if self.context.should_verify() {
             verifier().map_err(|_| {
-                self.context.record_violation);
+                self.context.record_violation();
                 Error::verification_failed("Safety verification failed")
             })?;
         }
@@ -1219,9 +1219,9 @@ impl<'a> SafetyGuard<'a> {
     pub fn complete(self) -> WrtResult<()> {
         #[cfg(feature = "std")]
         {
-            let duration = self.start_time.elapsed().unwrap_or_default);
+            let duration = self.start_time.elapsed().unwrap_or_default();
             if self.context.effective_asil().requires_runtime_verification() {
-                println!("Operation '{}' completed in {:?}", self.operation_name, duration;
+                println!("Operation '{}' completed in {:?}", self.operation_name, duration);
             }
         }
         Ok(())
@@ -1234,15 +1234,15 @@ impl<'a> Drop for SafetyGuard<'a> {
         #[cfg(feature = "std")]
         {
             if std::thread::panicking() {
-                self.context.record_violation);
-                eprintln!("Safety guard for '{}' dropped during panic", self.operation_name;
+                self.context.record_violation();
+                eprintln!("Safety guard for '{}' dropped during panic", self.operation_name);
             }
         }
         #[cfg(not(feature = "std"))]
         {
             // In no_std, we can't detect panicking, so we assume it might be an error
             // This is a conservative approach for safety-critical environments
-            self.context.record_violation);
+            self.context.record_violation();
         }
     }
 }
@@ -1266,7 +1266,7 @@ impl<'a> SafeMemoryAllocation<'a> {
     /// * `data` - The allocated memory slice
     /// * `context` - The safety context for verification
     pub fn new(data: &'a mut [u8], context: &'a SafetyContext) -> WrtResult<Self> {
-        let checksum = Self::calculate_checksum(data;
+        let checksum = Self::calculate_checksum(data);
 
         Ok(Self { data, context, checksum })
     }
@@ -1279,10 +1279,10 @@ impl<'a> SafeMemoryAllocation<'a> {
     /// Verify memory integrity
     pub fn verify_integrity(&self) -> WrtResult<()> {
         if self.context.effective_asil().requires_memory_protection() {
-            let current_checksum = Self::calculate_checksum(self.data;
+            let current_checksum = Self::calculate_checksum(self.data);
             if current_checksum != self.checksum {
-                self.context.record_violation);
-                return Err(Error::memory_error("Memory corruption detected";
+                self.context.record_violation();
+                return Err(Error::memory_error("Memory corruption detected"));
             }
         }
         Ok(())
@@ -1302,7 +1302,7 @@ impl<'a> SafeMemoryAllocation<'a> {
     /// Update the checksum after modifying data
     pub fn update_checksum(&mut self) {
         if self.context.effective_asil().requires_memory_protection() {
-            self.checksum = Self::calculate_checksum(self.data;
+            self.checksum = Self::calculate_checksum(self.data);
         }
     }
 }
@@ -1405,7 +1405,7 @@ macro_rules! assert_standard_compatibility {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iso26262(
                 $crate::safety_system::AsilLevel::$level,
-            ;
+            );
             // Note: This would need const evaluation support for full compile-time checking
             // For now, this serves as documentation and type checking
         };
@@ -1414,35 +1414,35 @@ macro_rules! assert_standard_compatibility {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Do178c(
                 $crate::safety_system::DalLevel::$level,
-            ;
+            );
         };
     };
     ($ctx:expr, Iec61508($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iec61508(
                 $crate::safety_system::SilLevel::$level,
-            ;
+            );
         };
     };
     ($ctx:expr, Iec62304($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iec62304(
                 $crate::safety_system::MedicalClass::$level,
-            ;
+            );
         };
     };
     ($ctx:expr, En50128($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::En50128(
                 $crate::safety_system::RailwaySil::$level,
-            ;
+            );
         };
     };
     ($ctx:expr, Iso25119($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iso25119(
                 $crate::safety_system::AgricultureLevel::$level,
-            ;
+            );
         };
     };
 }
@@ -1466,85 +1466,85 @@ mod tests {
 
     #[test]
     fn test_asil_level_properties() {
-        assert!(!AsilLevel::QM.requires_memory_protection();
-        assert!(!AsilLevel::AsilA.requires_memory_protection();
-        assert!(!AsilLevel::AsilB.requires_memory_protection();
-        assert!(AsilLevel::AsilC.requires_memory_protection();
-        assert!(AsilLevel::AsilD.requires_memory_protection();
+        assert!(!AsilLevel::QM.requires_memory_protection());
+        assert!(!AsilLevel::AsilA.requires_memory_protection());
+        assert!(!AsilLevel::AsilB.requires_memory_protection());
+        assert!(AsilLevel::AsilC.requires_memory_protection());
+        assert!(AsilLevel::AsilD.requires_memory_protection());
 
-        assert!(!AsilLevel::QM.requires_cfi();
-        assert!(!AsilLevel::AsilA.requires_cfi();
-        assert!(!AsilLevel::AsilB.requires_cfi();
-        assert!(AsilLevel::AsilC.requires_cfi();
-        assert!(AsilLevel::AsilD.requires_cfi();
+        assert!(!AsilLevel::QM.requires_cfi());
+        assert!(!AsilLevel::AsilA.requires_cfi());
+        assert!(!AsilLevel::AsilB.requires_cfi());
+        assert!(AsilLevel::AsilC.requires_cfi());
+        assert!(AsilLevel::AsilD.requires_cfi());
 
-        assert!(!AsilLevel::QM.requires_redundancy();
-        assert!(!AsilLevel::AsilA.requires_redundancy();
-        assert!(!AsilLevel::AsilB.requires_redundancy();
-        assert!(!AsilLevel::AsilC.requires_redundancy();
-        assert!(AsilLevel::AsilD.requires_redundancy();
+        assert!(!AsilLevel::QM.requires_redundancy());
+        assert!(!AsilLevel::AsilA.requires_redundancy());
+        assert!(!AsilLevel::AsilB.requires_redundancy());
+        assert!(!AsilLevel::AsilC.requires_redundancy());
+        assert!(AsilLevel::AsilD.requires_redundancy());
     }
 
     #[test]
     fn test_safety_context_creation() {
-        let ctx = SafetyContext::new(AsilLevel::AsilC;
-        assert_eq!(ctx.compile_time_asil, AsilLevel::AsilC;
-        assert_eq!(ctx.effective_asil(), AsilLevel::AsilC;
+        let ctx = SafetyContext::new(AsilLevel::AsilC);
+        assert_eq!(ctx.compile_time_asil, AsilLevel::AsilC);
+        assert_eq!(ctx.effective_asil(), AsilLevel::AsilC);
         assert_eq!(ctx.violation_count(), 0);
     }
 
     #[test]
     fn test_safety_context_upgrade() {
-        let ctx = SafetyContext::new(AsilLevel::AsilB;
+        let ctx = SafetyContext::new(AsilLevel::AsilB);
 
         // Should be able to upgrade
         assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilD).is_ok());
-        assert_eq!(ctx.effective_asil(), AsilLevel::AsilD;
+        assert_eq!(ctx.effective_asil(), AsilLevel::AsilD);
 
         // Should not be able to downgrade below compile-time level
-        assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilA).is_err();
+        assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilA).is_err());
         assert_eq!(ctx.effective_asil(), AsilLevel::AsilD); // Should remain unchanged
     }
 
     #[test]
     fn test_safety_context_violations() {
-        let ctx = SafetyContext::new(AsilLevel::AsilA;
+        let ctx = SafetyContext::new(AsilLevel::AsilA);
 
         assert_eq!(ctx.violation_count(), 0);
-        assert!(ctx.is_safe();
+        assert!(ctx.is_safe());
 
-        let count1 = ctx.record_violation);
+        let count1 = ctx.record_violation();
         assert_eq!(count1, 1);
         assert_eq!(ctx.violation_count(), 1);
 
-        let count2 = ctx.record_violation);
-        assert_eq!(count2, 2;
-        assert_eq!(ctx.violation_count(), 2;
+        let count2 = ctx.record_violation();
+        assert_eq!(count2, 2);
+        assert_eq!(ctx.violation_count(), 2);
     }
 
     #[test]
     fn test_safety_context_verification() {
-        let ctx = SafetyContext::new(AsilLevel::AsilD;
+        let ctx = SafetyContext::new(AsilLevel::AsilD);
 
         // AsilD requires verification every operation
-        assert!(ctx.should_verify();
-        assert!(ctx.should_verify();
-        assert!(ctx.should_verify();
+        assert!(ctx.should_verify());
+        assert!(ctx.should_verify());
+        assert!(ctx.should_verify());
 
-        let ctx_qm = SafetyContext::new(AsilLevel::QM;
+        let ctx_qm = SafetyContext::new(AsilLevel::QM);
 
         // QM requires no verification
-        assert!(!ctx_qm.should_verify();
-        assert!(!ctx_qm.should_verify();
-        assert!(!ctx_qm.should_verify();
+        assert!(!ctx_qm.should_verify());
+        assert!(!ctx_qm.should_verify());
+        assert!(!ctx_qm.should_verify());
     }
 
     #[test]
     fn test_safety_guard() -> WrtResult<()> {
-        let ctx = SafetyContext::new(AsilLevel::AsilB;
+        let ctx = SafetyContext::new(AsilLevel::AsilB);
 
         let guard = SafetyGuard::new(&ctx, "test_operation")?;
-        assert_eq!(guard.operation_name(), "test_operation";
+        assert_eq!(guard.operation_name(), "test_operation");
 
         // Verify that verification works
         guard.verify_if_required(|| Ok(()))?;
@@ -1555,7 +1555,7 @@ mod tests {
 
     #[test]
     fn test_safe_memory_allocation() -> WrtResult<()> {
-        let ctx = SafetyContext::new(AsilLevel::AsilC;
+        let ctx = SafetyContext::new(AsilLevel::AsilC);
         let mut data = [1u8, 2u8, 3u8, 4u8];
 
         let mut allocation = SafeMemoryAllocation::new(&mut data, &ctx)?;
@@ -1568,7 +1568,7 @@ mod tests {
             let data_mut = allocation.data_mut()?;
             data_mut[0] = 10;
         }
-        allocation.update_checksum);
+        allocation.update_checksum();
 
         // Should still verify successfully
         allocation.verify_integrity()?;
@@ -1578,28 +1578,28 @@ mod tests {
 
     #[test]
     fn test_safety_context_macro() {
-        let ctx = safety_context!(AsilC;
-        assert_eq!(ctx.effective_asil(), AsilLevel::AsilC;
+        let ctx = safety_context!(AsilC);
+        assert_eq!(ctx.effective_asil(), AsilLevel::AsilC);
     }
 
     #[test]
     fn test_safety_guarded_macro() -> WrtResult<()> {
-        let ctx = SafetyContext::new(AsilLevel::AsilA;
+        let ctx = SafetyContext::new(AsilLevel::AsilA);
 
-        let result = safety_guarded!(&ctx, "test_macro_operation", { 42 };
+        let result = safety_guarded!(&ctx, "test_macro_operation", { 42 });
 
-        assert_eq!(result, 42;
+        assert_eq!(result, 42);
         Ok(())
     }
 
     #[test]
     #[cfg(any(feature = "std", feature = "alloc"))]
     fn test_asil_level_display() {
-        assert_eq!(format!("{}", AsilLevel::QM), "QM";
-        assert_eq!(format!("{}", AsilLevel::AsilA), "ASIL-A";
-        assert_eq!(format!("{}", AsilLevel::AsilB), "ASIL-B";
-        assert_eq!(format!("{}", AsilLevel::AsilC), "ASIL-C";
-        assert_eq!(format!("{}", AsilLevel::AsilD), "ASIL-D";
+        assert_eq!(format!("{}", AsilLevel::QM), "QM");
+        assert_eq!(format!("{}", AsilLevel::AsilA), "ASIL-A");
+        assert_eq!(format!("{}", AsilLevel::AsilB), "ASIL-B");
+        assert_eq!(format!("{}", AsilLevel::AsilC), "ASIL-C");
+        assert_eq!(format!("{}", AsilLevel::AsilD), "ASIL-D");
     }
 
     // ========================================================================
@@ -1610,101 +1610,101 @@ mod tests {
     fn test_safety_standard_severity_scores() {
         // Test ASIL mapping
         assert_eq!(SafetyStandard::Iso26262(AsilLevel::QM).severity_score().value(), 0);
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilA).severity_score().value(), 250;
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilC).severity_score().value(), 750;
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilD).severity_score().value(), 1000;
+        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilA).severity_score().value(), 250);
+        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilC).severity_score().value(), 750);
+        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilD).severity_score().value(), 1000);
 
         // Test DAL mapping
         assert_eq!(SafetyStandard::Do178c(DalLevel::DalE).severity_score().value(), 0);
-        assert_eq!(SafetyStandard::Do178c(DalLevel::DalA).severity_score().value(), 1000;
+        assert_eq!(SafetyStandard::Do178c(DalLevel::DalA).severity_score().value(), 1000);
 
         // Test SIL mapping
-        assert_eq!(SafetyStandard::Iec61508(SilLevel::Sil1).severity_score().value(), 250;
-        assert_eq!(SafetyStandard::Iec61508(SilLevel::Sil4).severity_score().value(), 1000;
+        assert_eq!(SafetyStandard::Iec61508(SilLevel::Sil1).severity_score().value(), 250);
+        assert_eq!(SafetyStandard::Iec61508(SilLevel::Sil4).severity_score().value(), 1000);
     }
 
     #[test]
     fn test_safety_standard_conversion() {
-        let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC;
+        let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC);
 
         // Convert to DAL
-        let dal_equivalent = asil_c.convert_to(SafetyStandardType::Do178c).unwrap());
+        let dal_equivalent = asil_c.convert_to(SafetyStandardType::Do178c).unwrap();
         if let SafetyStandard::Do178c(level) = dal_equivalent {
             assert_eq!(level, DalLevel::DalB); // 750 severity maps to DAL-B
         } else {
-            panic!("Conversion failed";
+            panic!("Conversion failed");
         }
 
         // Convert to SIL
-        let sil_equivalent = asil_c.convert_to(SafetyStandardType::Iec61508).unwrap());
+        let sil_equivalent = asil_c.convert_to(SafetyStandardType::Iec61508).unwrap();
         if let SafetyStandard::Iec61508(level) = sil_equivalent {
             assert_eq!(level, SilLevel::Sil3); // 750 severity maps to SIL-3
         } else {
-            panic!("Conversion failed";
+            panic!("Conversion failed");
         }
     }
 
     #[test]
     fn test_safety_standard_compatibility() {
-        let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC;
-        let asil_b = SafetyStandard::Iso26262(AsilLevel::AsilB;
-        let dal_b = SafetyStandard::Do178c(DalLevel::DalB;
+        let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC);
+        let asil_b = SafetyStandard::Iso26262(AsilLevel::AsilB);
+        let dal_b = SafetyStandard::Do178c(DalLevel::DalB);
 
         // ASIL-C should be compatible with ASIL-B (higher can handle lower)
-        assert!(asil_c.is_compatible_with(&asil_b);
-        assert!(!asil_b.is_compatible_with(&asil_c);
+        assert!(asil_c.is_compatible_with(&asil_b));
+        assert!(!asil_b.is_compatible_with(&asil_c));
 
         // ASIL-C should be compatible with DAL-B (similar severity)
-        assert!(asil_c.is_compatible_with(&dal_b);
+        assert!(asil_c.is_compatible_with(&dal_b));
     }
 
     #[test]
     fn test_universal_safety_context_creation() {
-        let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilC;
-        assert_eq!(ctx.primary_standard(), SafetyStandard::Iso26262(AsilLevel::AsilC;
-        assert_eq!(ctx.effective_severity().value(), 750;
+        let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilC));
+        assert_eq!(ctx.primary_standard(), SafetyStandard::Iso26262(AsilLevel::AsilC));
+        assert_eq!(ctx.effective_severity().value(), 750);
         assert_eq!(ctx.violation_count(), 0);
     }
 
     #[test]
     fn test_universal_safety_context_secondary_standards() -> WrtResult<()> {
-        let mut ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilB;
+        let mut ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilB));
 
         // Add higher severity secondary standard
         ctx.add_secondary_standard(SafetyStandard::Do178c(DalLevel::DalA))?;
 
         // Effective severity should be the highest (DAL-A = 1000)
-        assert_eq!(ctx.effective_severity().value(), 1000;
+        assert_eq!(ctx.effective_severity().value(), 1000);
 
         // Should be able to handle both standards
-        assert!(ctx.can_handle(SafetyStandard::Iso26262(AsilLevel::AsilB));
-        assert!(ctx.can_handle(SafetyStandard::Do178c(DalLevel::DalA));
+        assert!(ctx.can_handle(SafetyStandard::Iso26262(AsilLevel::AsilB)));
+        assert!(ctx.can_handle(SafetyStandard::Do178c(DalLevel::DalA)));
 
         Ok(())
     }
 
     #[test]
     fn test_universal_safety_context_verification() {
-        let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilD;
+        let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilD));
 
         // ASIL-D (severity 1000) should require verification every operation
-        assert!(ctx.should_verify();
-        assert!(ctx.should_verify();
+        assert!(ctx.should_verify());
+        assert!(ctx.should_verify());
 
-        let ctx_qm = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::QM;
+        let ctx_qm = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::QM));
 
         // QM (severity 0) should require no verification
-        assert!(!ctx_qm.should_verify();
+        assert!(!ctx_qm.should_verify());
     }
 
     #[test]
     fn test_universal_safety_context_violations() {
-        let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilB;
+        let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilB));
 
         assert_eq!(ctx.violation_count(), 0);
-        assert!(ctx.is_safe();
+        assert!(ctx.is_safe());
 
-        let count1 = ctx.record_violation);
+        let count1 = ctx.record_violation();
         assert_eq!(count1, 1);
         assert_eq!(ctx.violation_count(), 1);
     }
@@ -1712,9 +1712,9 @@ mod tests {
     #[test]
     #[cfg(any(feature = "std", feature = "alloc"))]
     fn test_safety_standard_display() {
-        assert_eq!(format!("{}", SafetyStandard::Iso26262(AsilLevel::AsilC)), "ISO 26262 ASIL-C";
-        assert_eq!(format!("{}", SafetyStandard::Do178c(DalLevel::DalB)), "DO-178C DAL-B";
-        assert_eq!(format!("{}", SafetyStandard::Iec61508(SilLevel::Sil3)), "IEC 61508 SIL-3";
+        assert_eq!(format!("{}", SafetyStandard::Iso26262(AsilLevel::AsilC)), "ISO 26262 ASIL-C");
+        assert_eq!(format!("{}", SafetyStandard::Do178c(DalLevel::DalB)), "DO-178C DAL-B");
+        assert_eq!(format!("{}", SafetyStandard::Iec61508(SilLevel::Sil3)), "IEC 61508 SIL-3");
     }
 
     #[test]
@@ -1722,41 +1722,41 @@ mod tests {
         assert!(SeverityScore::new(0).is_ok());
         assert!(SeverityScore::new(500).is_ok());
         assert!(SeverityScore::new(1000).is_ok());
-        assert!(SeverityScore::new(1001).is_err();
+        assert!(SeverityScore::new(1001).is_err());
     }
 
     #[test]
     fn test_universal_safety_context_macro() {
-        let ctx = universal_safety_context!(Iso26262(AsilC;
-        assert_eq!(ctx.primary_standard(), SafetyStandard::Iso26262(AsilLevel::AsilC;
+        let ctx = universal_safety_context!(Iso26262(AsilC));
+        assert_eq!(ctx.primary_standard(), SafetyStandard::Iso26262(AsilLevel::AsilC));
 
-        let ctx_dal = universal_safety_context!(Do178c(DalB;
-        assert_eq!(ctx_dal.primary_standard(), SafetyStandard::Do178c(DalLevel::DalB;
+        let ctx_dal = universal_safety_context!(Do178c(DalB));
+        assert_eq!(ctx_dal.primary_standard(), SafetyStandard::Do178c(DalLevel::DalB));
     }
 
     #[test]
     fn test_minimum_asil_equivalent() {
-        let dal_a = SafetyStandard::Do178c(DalLevel::DalA;
-        assert_eq!(dal_a.minimum_asil_equivalent(), AsilLevel::AsilD;
+        let dal_a = SafetyStandard::Do178c(DalLevel::DalA);
+        assert_eq!(dal_a.minimum_asil_equivalent(), AsilLevel::AsilD);
 
-        let sil_2 = SafetyStandard::Iec61508(SilLevel::Sil2;
-        assert_eq!(sil_2.minimum_asil_equivalent(), AsilLevel::AsilB;
+        let sil_2 = SafetyStandard::Iec61508(SilLevel::Sil2);
+        assert_eq!(sil_2.minimum_asil_equivalent(), AsilLevel::AsilB);
 
-        let class_a = SafetyStandard::Iec62304(MedicalClass::ClassA;
-        assert_eq!(class_a.minimum_asil_equivalent(), AsilLevel::AsilA;
+        let class_a = SafetyStandard::Iec62304(MedicalClass::ClassA);
+        assert_eq!(class_a.minimum_asil_equivalent(), AsilLevel::AsilA);
     }
 
     #[test]
     fn test_cross_standard_edge_cases() {
         // Test conversion from standards that don't have "no safety" levels
-        let sil_1 = SafetyStandard::Iec61508(SilLevel::Sil1;
-        let converted_to_iso = sil_1.convert_to(SafetyStandardType::Iso26262;
-        assert!(converted_to_iso.is_some();
+        let sil_1 = SafetyStandard::Iec61508(SilLevel::Sil1);
+        let converted_to_iso = sil_1.convert_to(SafetyStandardType::Iso26262);
+        assert!(converted_to_iso.is_some());
 
         // Test conversion to standards that require safety classification
-        let qm = SafetyStandard::Iso26262(AsilLevel::QM;
-        let converted_to_medical = qm.convert_to(SafetyStandardType::Iec62304;
-        assert!(converted_to_medical.is_none())); // Medical devices must have some safety class
+        let qm = SafetyStandard::Iso26262(AsilLevel::QM);
+        let converted_to_medical = qm.convert_to(SafetyStandardType::Iec62304);
+        assert!(converted_to_medical.is_none()); // Medical devices must have some safety class
     }
 
     #[test]
@@ -1773,8 +1773,8 @@ mod tests {
 
         let mut severity_scores: Vec<_> =
             standards.iter().map(|s| s.severity_score().value()).collect();
-        severity_scores.sort);
+        severity_scores.sort();
 
-        assert_eq!(severity_scores, vec![0, 200, 250, 750, 1000];
+        assert_eq!(severity_scores, vec![0, 200, 250, 750, 1000]);
     }
 }

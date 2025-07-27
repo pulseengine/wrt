@@ -79,20 +79,20 @@ where
 
     /// Creates a new `BoundedQueue` with a specific verification level.
     pub fn with_verification_level(provider_arg: P, level: VerificationLevel) -> WrtResult<Self> {
-        let item_serialized_size = T::default().serialized_size);
+        let item_serialized_size = T::default().serialized_size();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             return Err(Error::new_static(
                 ErrorCategory::Initialization,
                 codes::INITIALIZATION_ERROR,
                 "Cannot create BoundedQueue with zero-sized items and non-zero element count",
-            ;
+            ));
         }
 
-        let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size;
-        let handler = SafeMemoryHandler::new(provider_arg;
+        let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size);
+        let handler = SafeMemoryHandler::new(provider_arg);
 
         // Record creation operation
-        record_global_operation(OperationType::CollectionCreate, level;
+        record_global_operation(OperationType::CollectionCreate, level);
 
         Ok(Self {
             handler,
@@ -115,14 +115,14 @@ where
         }
 
         let physical_index = self.tail % N_ELEMENTS;
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
         // Create a buffer to hold serialized data
         let mut item_bytes_buffer = [0u8; 256]; // Fixed size for simplicity
-        let item_size = item.serialized_size);
+        let item_size = item.serialized_size();
 
         if item_size > item_bytes_buffer.len() {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         if item_size == 0 {
@@ -131,7 +131,7 @@ where
             self.tail = (self.tail + 1) % (N_ELEMENTS * 2); // Use twice the capacity to track wrapping
 
             if self.verification_level >= VerificationLevel::Full {
-                item.update_checksum(&mut self.checksum;
+                item.update_checksum(&mut self.checksum);
             }
 
             return Ok();
@@ -139,7 +139,7 @@ where
 
         // Serialize the item
         let slice_mut = SliceMut::new(&mut item_bytes_buffer[..item_size])?;
-        let mut write_stream = WriteStream::new(slice_mut;
+        let mut write_stream = WriteStream::new(slice_mut);
         item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(|e| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
@@ -156,10 +156,10 @@ where
         self.tail = (self.tail + 1) % (N_ELEMENTS * 2); // Use twice the capacity to track wrapping
 
         // Record the operation and update checksums if needed
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         if self.verification_level >= VerificationLevel::Full {
-            item.update_checksum(&mut self.checksum;
+            item.update_checksum(&mut self.checksum);
         }
 
         Ok(())
@@ -170,27 +170,27 @@ where
     /// Returns `None` if the queue is empty.
     pub fn dequeue(&mut self) -> Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
 
         let physical_index = self.head % N_ELEMENTS;
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
         // Update queue state before reading (prevents double-dequeue issues)
         self.length -= 1;
         self.head = (self.head + 1) % (N_ELEMENTS * 2); // Use twice the capacity to track wrapping
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         if self.item_serialized_size == 0 {
             // ZST handling
-            let item = T::default());
+            let item = T::default();
 
             if self.verification_level >= VerificationLevel::Full {
-                self.recalculate_checksum);
+                self.recalculate_checksum();
             }
 
-            return Ok(Some(item;
+            return Ok(Some(item));
         }
 
         // Read the serialized data
@@ -200,7 +200,7 @@ where
             })?;
 
         // Deserialize the item
-        let mut read_stream = ReadStream::new(slice_view;
+        let mut read_stream = ReadStream::new(slice_view);
         let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
             |_| {
                 BoundedError::runtime_execution_error("Operation failed")
@@ -209,7 +209,7 @@ where
 
         // Update checksums if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
 
         Ok(Some(item))
@@ -220,17 +220,17 @@ where
     /// Returns `None` if the queue is empty.
     pub fn peek(&self) -> Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
 
         let physical_index = self.head % N_ELEMENTS;
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         if self.item_serialized_size == 0 {
             // ZST handling
-            return Ok(Some(T::default();
+            return Ok(Some(T::default()));
         }
 
         // Read the serialized data
@@ -240,7 +240,7 @@ where
             })?;
 
         // Deserialize the item
-        let mut read_stream = ReadStream::new(slice_view;
+        let mut read_stream = ReadStream::new(slice_view);
         let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
             |_| {
                 BoundedError::runtime_execution_error("Operation failed")
@@ -278,17 +278,17 @@ where
     /// Sets the verification level.
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
-        self.handler.set_verification_level(level;
+        self.handler.set_verification_level(level);
     }
 
     /// Recalculates the checksum for the entire queue.
     fn recalculate_checksum(&mut self) {
-        self.checksum.reset);
+        self.checksum.reset();
 
         if self.item_serialized_size == 0 {
             // ZST handling
             for _ in 0..self.length {
-                T::default().update_checksum(&mut self.checksum;
+                T::default().update_checksum(&mut self.checksum);
             }
             return;
         }
@@ -298,21 +298,21 @@ where
 
         for _ in 0..self.length {
             let physical_index = current_index % N_ELEMENTS;
-            let offset = physical_index.saturating_mul(self.item_serialized_size;
+            let offset = physical_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 if let Ok(item) =
                     T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 {
-                    item.update_checksum(&mut self.checksum;
+                    item.update_checksum(&mut self.checksum);
                 }
             }
 
-            current_index = (current_index + 1) % (N_ELEMENTS * 2;
+            current_index = (current_index + 1) % (N_ELEMENTS * 2);
         }
 
-        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level;
+        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level);
     }
 
     /// Verifies the integrity of the queue using its checksum.
@@ -323,26 +323,26 @@ where
 
         if self.item_serialized_size == 0 && self.length > 0 {
             // ZST handling
-            let mut temp_checksum = Checksum::new);
+            let mut temp_checksum = Checksum::new();
             for _ in 0..self.length {
-                T::default().update_checksum(&mut temp_checksum;
+                T::default().update_checksum(&mut temp_checksum);
             }
             return temp_checksum == self.checksum;
         }
 
-        let mut current_checksum = Checksum::new);
+        let mut current_checksum = Checksum::new();
         let mut current_index = self.head;
 
         for _ in 0..self.length {
             let physical_index = current_index % N_ELEMENTS;
-            let offset = physical_index.saturating_mul(self.item_serialized_size;
+            let offset = physical_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 if let Ok(item) =
                     T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 {
-                    item.update_checksum(&mut current_checksum;
+                    item.update_checksum(&mut current_checksum);
                 } else {
                     return false; // Deserialization failure
                 }
@@ -350,7 +350,7 @@ where
                 return false; // Slice access failure
             }
 
-            current_index = (current_index + 1) % (N_ELEMENTS * 2;
+            current_index = (current_index + 1) % (N_ELEMENTS * 2);
         }
 
         current_checksum == self.checksum
@@ -402,7 +402,7 @@ where
                 if entry.0 == key {
                     // Update existing entry
                     let old_value = entry.1.clone();
-                    let new_entry = (key, value;
+                    let new_entry = (key, value);
 
                     // Replace the entry in our vector
                     // Note: This is inefficient as we're removing and adding, but it's simple
@@ -410,7 +410,7 @@ where
                     self.entries.remove(i)?;
                     self.entries.push(new_entry)?;
 
-                    return Ok(Some(old_value;
+                    return Ok(Some(old_value));
                 }
             }
         }
@@ -432,7 +432,7 @@ where
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if &entry.0 == key {
-                    return Ok(Some(entry.1.clone();
+                    return Ok(Some(entry.1.clone()));
                 }
             }
         }
@@ -449,7 +449,7 @@ where
                 if &entry.0 == key {
                     let removed_entry = entry.clone();
                     self.entries.remove(i)?;
-                    return Ok(Some(removed_entry.1;
+                    return Ok(Some(removed_entry.1));
                 }
             }
         }
@@ -462,7 +462,7 @@ where
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if &entry.0 == key {
-                    return Ok(true;
+                    return Ok(true);
                 }
             }
         }
@@ -605,7 +605,7 @@ where
         match self.map.get(&self.key)? {
             Some(value) => Ok(value),
             None => {
-                let default = f);
+                let default = f();
                 self.map.insert(self.key, default.clone())?;
                 Ok(default)
             }
@@ -653,7 +653,7 @@ where
     pub fn insert(&mut self, value: T) -> Result<bool, BoundedError> {
         // Check if the element already exists
         if self.contains(&value)? {
-            return Ok(false;
+            return Ok(false);
         }
 
         // Element doesn't exist, insert it
@@ -671,7 +671,7 @@ where
         for i in 0..self.elements.len() {
             if let Ok(element) = self.elements.get(i) {
                 if &element == value {
-                    return Ok(true;
+                    return Ok(true);
                 }
             }
         }
@@ -688,7 +688,7 @@ where
             if let Ok(element) = self.elements.get(i) {
                 if &element == value {
                     self.elements.remove(i)?;
-                    return Ok(true;
+                    return Ok(true);
                 }
             }
         }
@@ -779,20 +779,20 @@ where
 
     /// Creates a new `BoundedDeque` with a specific verification level.
     pub fn with_verification_level(provider_arg: P, level: VerificationLevel) -> WrtResult<Self> {
-        let item_serialized_size = T::default().serialized_size);
+        let item_serialized_size = T::default().serialized_size();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             return Err(Error::new_static(
                 ErrorCategory::Initialization,
                 codes::INITIALIZATION_ERROR,
                 "Cannot create BoundedDeque with zero-sized items and non-zero element count",
-            ;
+            ));
         }
 
-        let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size;
-        let handler = SafeMemoryHandler::new(provider_arg;
+        let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size);
+        let handler = SafeMemoryHandler::new(provider_arg);
 
         // Record creation operation
-        record_global_operation(OperationType::CollectionCreate, level;
+        record_global_operation(OperationType::CollectionCreate, level);
 
         Ok(Self {
             handler,
@@ -818,14 +818,14 @@ where
         self.front = if self.front == 0 { N_ELEMENTS - 1 } else { self.front - 1 };
 
         let physical_index = self.front;
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
         // Create a buffer to hold serialized data
         let mut item_bytes_buffer = [0u8; 256]; // Fixed size for simplicity
-        let item_size = item.serialized_size);
+        let item_size = item.serialized_size();
 
         if item_size > item_bytes_buffer.len() {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         if item_size == 0 {
@@ -833,7 +833,7 @@ where
             self.length += 1;
 
             if self.verification_level >= VerificationLevel::Full {
-                item.update_checksum(&mut self.checksum;
+                item.update_checksum(&mut self.checksum);
             }
 
             return Ok();
@@ -841,7 +841,7 @@ where
 
         // Serialize the item
         let slice_mut = SliceMut::new(&mut item_bytes_buffer[..item_size])?;
-        let mut write_stream = WriteStream::new(slice_mut;
+        let mut write_stream = WriteStream::new(slice_mut);
         item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(|e| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
@@ -862,10 +862,10 @@ where
         }
 
         // Record the operation and update checksums if needed
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         if self.verification_level >= VerificationLevel::Full {
-            item.update_checksum(&mut self.checksum;
+            item.update_checksum(&mut self.checksum);
         }
 
         Ok(())
@@ -880,16 +880,16 @@ where
         }
 
         let physical_index = self.back;
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
         // Create a buffer to hold serialized data
         let mut item_bytes_buffer = [0u8; 256]; // Fixed size for simplicity
-        let item_size = item.serialized_size);
+        let item_size = item.serialized_size();
 
         if item_size > item_bytes_buffer.len() {
             return Err(BoundedError::new(
                 BoundedErrorKind::ItemTooLarge,
-                "Item size exceeds buffer capacity";
+                "Item size exceeds buffer capacity"));
         }
 
         if item_size == 0 {
@@ -905,7 +905,7 @@ where
             }
 
             if self.verification_level >= VerificationLevel::Full {
-                item.update_checksum(&mut self.checksum;
+                item.update_checksum(&mut self.checksum);
             }
 
             return Ok();
@@ -913,7 +913,7 @@ where
 
         // Serialize the item
         let slice_mut = SliceMut::new(&mut item_bytes_buffer[..item_size])?;
-        let mut write_stream = WriteStream::new(slice_mut;
+        let mut write_stream = WriteStream::new(slice_mut);
         item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(|e| {
             BoundedError::runtime_execution_error("Failed to serialize item")
         })?;
@@ -935,10 +935,10 @@ where
         }
 
         // Record the operation and update checksums if needed
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         if self.verification_level >= VerificationLevel::Full {
-            item.update_checksum(&mut self.checksum;
+            item.update_checksum(&mut self.checksum);
         }
 
         Ok(())
@@ -949,11 +949,11 @@ where
     /// Returns `None` if the deque is empty.
     pub fn pop_front(&mut self) -> Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
 
         let physical_index = self.front;
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
         // Read the item before updating deque state
         let item = if self.item_serialized_size == 0 {
@@ -967,7 +967,7 @@ where
                 })?;
 
             // Deserialize the item
-            let mut read_stream = ReadStream::new(slice_view;
+            let mut read_stream = ReadStream::new(slice_view);
             let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 .map_err(|_| {
                     BoundedError::new(
@@ -985,11 +985,11 @@ where
         }
 
         // Record operation
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Update checksums if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
 
         Ok(Some(item))
@@ -1000,13 +1000,13 @@ where
     /// Returns `None` if the deque is empty.
     pub fn pop_back(&mut self) -> Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
 
         // Calculate the physical index for the back element
         let physical_index = if self.back == 0 { N_ELEMENTS - 1 } else { self.back - 1 };
 
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
         // Read the item before updating deque state
         let item = if self.item_serialized_size == 0 {
@@ -1020,7 +1020,7 @@ where
                 })?;
 
             // Deserialize the item
-            let mut read_stream = ReadStream::new(slice_view;
+            let mut read_stream = ReadStream::new(slice_view);
             let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 .map_err(|_| {
                     BoundedError::new(
@@ -1038,11 +1038,11 @@ where
         }
 
         // Record operation
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Update checksums if needed
         if self.verification_level >= VerificationLevel::Full {
-            self.recalculate_checksum);
+            self.recalculate_checksum();
         }
 
         Ok(Some(item))
@@ -1054,17 +1054,17 @@ where
     /// Returns `None` if the deque is empty.
     pub fn front(&self) -> Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
 
         let physical_index = self.front;
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         if self.item_serialized_size == 0 {
             // ZST handling
-            return Ok(Some(T::default();
+            return Ok(Some(T::default()));
         }
 
         // Read the serialized data
@@ -1074,7 +1074,7 @@ where
             })?;
 
         // Deserialize the item
-        let mut read_stream = ReadStream::new(slice_view;
+        let mut read_stream = ReadStream::new(slice_view);
         let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
             |_| {
                 BoundedError::new(
@@ -1092,19 +1092,19 @@ where
     /// Returns `None` if the deque is empty.
     pub fn back(&self) -> Result<Option<T>, BoundedError> {
         if self.is_empty() {
-            return Ok(None;
+            return Ok(None);
         }
 
         // Calculate the physical index for the back element
         let physical_index = if self.back == 0 { N_ELEMENTS - 1 } else { self.back - 1 };
 
-        let offset = physical_index.saturating_mul(self.item_serialized_size;
+        let offset = physical_index.saturating_mul(self.item_serialized_size);
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         if self.item_serialized_size == 0 {
             // ZST handling
-            return Ok(Some(T::default();
+            return Ok(Some(T::default()));
         }
 
         // Read the serialized data
@@ -1114,7 +1114,7 @@ where
             })?;
 
         // Deserialize the item
-        let mut read_stream = ReadStream::new(slice_view;
+        let mut read_stream = ReadStream::new(slice_view);
         let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
             |_| {
                 BoundedError::new(
@@ -1154,7 +1154,7 @@ where
     /// Sets the verification level.
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
-        self.handler.set_verification_level(level;
+        self.handler.set_verification_level(level);
     }
 
     /// Clears the deque, removing all elements.
@@ -1165,17 +1165,17 @@ where
         self.back = 0;
 
         // Record operation
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Reset checksum
-        self.checksum = Checksum::new);
+        self.checksum = Checksum::new();
 
         Ok(())
     }
 
     /// Recalculates the checksum for the entire deque.
     fn recalculate_checksum(&mut self) {
-        self.checksum.reset);
+        self.checksum.reset();
 
         if self.length == 0 || self.item_serialized_size == 0 {
             return;
@@ -1184,21 +1184,21 @@ where
         let mut current_index = self.front;
 
         for _ in 0..self.length {
-            let offset = current_index.saturating_mul(self.item_serialized_size;
+            let offset = current_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 if let Ok(item) =
                     T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 {
-                    item.update_checksum(&mut self.checksum;
+                    item.update_checksum(&mut self.checksum);
                 }
             }
 
             current_index = (current_index + 1) % N_ELEMENTS;
         }
 
-        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level;
+        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level);
     }
 
     /// Verifies the integrity of the deque using its checksum.
@@ -1207,12 +1207,12 @@ where
             return true;
         }
 
-        let mut current_checksum = Checksum::new);
+        let mut current_checksum = Checksum::new();
 
         if self.item_serialized_size == 0 {
             // ZST handling
             for _ in 0..self.length {
-                T::default().update_checksum(&mut current_checksum;
+                T::default().update_checksum(&mut current_checksum);
             }
             return current_checksum == self.checksum;
         }
@@ -1220,14 +1220,14 @@ where
         let mut current_index = self.front;
 
         for _ in 0..self.length {
-            let offset = current_index.saturating_mul(self.item_serialized_size;
+            let offset = current_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                let mut read_stream = ReadStream::new(slice_view;
+                let mut read_stream = ReadStream::new(slice_view);
                 if let Ok(item) =
                     T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
                 {
-                    item.update_checksum(&mut current_checksum;
+                    item.update_checksum(&mut current_checksum);
                 } else {
                     return false; // Deserialization failure
                 }
@@ -1264,11 +1264,11 @@ impl<const N_BITS: usize> Default for BoundedBitSet<N_BITS> {
     fn default() -> Self {
         // Calculate storage size (N_BITS/32 rounded up)
         let storage_size = (N_BITS + 31) / 32;
-        let mut storage = Vec::with_capacity(storage_size;
+        let mut storage = Vec::with_capacity(storage_size);
 
         // Initialize with zeros and default checksums
         for _ in 0..storage_size {
-            storage.push((0, Checksum::default();
+            storage.push((0, Checksum::default()));
         }
 
         Self { storage, count: 0, verification_level: VerificationLevel::default() }
@@ -1286,11 +1286,11 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     pub fn with_verification_level(level: VerificationLevel) -> Self {
         // Calculate storage size (N_BITS/32 rounded up)
         let storage_size = (N_BITS + 31) / 32;
-        let mut storage = Vec::with_capacity(storage_size;
+        let mut storage = Vec::with_capacity(storage_size);
 
         // Initialize with zeros and default checksums
         for _ in 0..storage_size {
-            storage.push((0, Checksum::default();
+            storage.push((0, Checksum::default()));
         }
 
         Self { storage, count: 0, verification_level: level }
@@ -1302,20 +1302,20 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// Returns an error if the index is out of bounds.
     pub fn set(&mut self, index: usize) -> Result<bool, BoundedError> {
         if index >= N_BITS {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         let storage_index = index / 32;
         let bit_position = index % 32;
         let bit_mask = 1 << bit_position;
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         if storage_index >= self.storage.len() {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
                 ")",
-            ;
+            ));
         }
 
         let (bits, checksum) = &mut self.storage[storage_index];
@@ -1331,8 +1331,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
             if self.verification_level >= VerificationLevel::Full {
                 // Update the checksum only for the affected chunk
-                checksum.reset);
-                (*bits).update_checksum(checksum;
+                checksum.reset();
+                (*bits).update_checksum(checksum);
             }
         }
 
@@ -1345,20 +1345,20 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// Returns an error if the index is out of bounds.
     pub fn clear(&mut self, index: usize) -> Result<bool, BoundedError> {
         if index >= N_BITS {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         let storage_index = index / 32;
         let bit_position = index % 32;
         let bit_mask = 1 << bit_position;
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         if storage_index >= self.storage.len() {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
                 ")",
-            ;
+            ));
         }
 
         let (bits, checksum) = &mut self.storage[storage_index];
@@ -1374,8 +1374,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
             if self.verification_level >= VerificationLevel::Full {
                 // Update the checksum only for the affected chunk
-                checksum.reset);
-                (*bits).update_checksum(checksum;
+                checksum.reset();
+                (*bits).update_checksum(checksum);
             }
         }
 
@@ -1387,20 +1387,20 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// Returns an error if the index is out of bounds.
     pub fn contains(&self, index: usize) -> Result<bool, BoundedError> {
         if index >= N_BITS {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         let storage_index = index / 32;
         let bit_position = index % 32;
         let bit_mask = 1 << bit_position;
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         if storage_index >= self.storage.len() {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
                 ")",
-            ;
+            ));
         }
 
         // Check if the bit is set
@@ -1413,20 +1413,20 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// (0). Returns an error if the index is out of bounds.
     pub fn toggle(&mut self, index: usize) -> Result<bool, BoundedError> {
         if index >= N_BITS {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
         let storage_index = index / 32;
         let bit_position = index % 32;
         let bit_mask = 1 << bit_position;
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         if storage_index >= self.storage.len() {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
                 ")",
-            ;
+            ));
         }
 
         let (bits, checksum) = &mut self.storage[storage_index];
@@ -1444,8 +1444,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
         if self.verification_level >= VerificationLevel::Full {
             // Update the checksum only for the affected chunk
-            checksum.reset);
-            (*bits).update_checksum(checksum;
+            checksum.reset();
+            (*bits).update_checksum(checksum);
         }
 
         Ok(is_set)
@@ -1487,13 +1487,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             *bits = 0;
 
             if self.verification_level >= VerificationLevel::Full {
-                checksum.reset);
-                (*bits).update_checksum(checksum;
+                checksum.reset();
+                (*bits).update_checksum(checksum);
             }
         }
 
         self.count = 0;
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
     }
 
     /// Sets all bits in the bit set to 1.
@@ -1502,8 +1502,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             *bits = !0; // All bits set to 1
 
             if self.verification_level >= VerificationLevel::Full {
-                checksum.reset);
-                (*bits).update_checksum(checksum;
+                checksum.reset();
+                (*bits).update_checksum(checksum);
             }
         }
 
@@ -1522,13 +1522,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
             if self.verification_level >= VerificationLevel::Full {
                 // Update checksum for the last chunk
-                self.storage[last_index].1.reset);
+                self.storage[last_index].1.reset();
                 let value = self.storage[last_index].0;
-                value.update_checksum(&mut self.storage[last_index].1;
+                value.update_checksum(&mut self.storage[last_index].1);
             }
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
     }
 
     /// Verifies the integrity of the bit set using its checksums.
@@ -1539,8 +1539,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
         // Verify each chunk's checksum
         for (bits, stored_checksum) in &self.storage {
-            let mut current_checksum = Checksum::new);
-            (*bits).update_checksum(&mut current_checksum;
+            let mut current_checksum = Checksum::new();
+            (*bits).update_checksum(&mut current_checksum);
 
             if current_checksum != *stored_checksum {
                 return false;
@@ -1549,7 +1549,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
         // Verify the count is correct
         let calculated_count =
-            self.storage.iter().map(|(bits, _)| bits.count_ones() as usize).sum::<usize>);
+            self.storage.iter().map(|(bits, _)| bits.count_ones() as usize).sum::<usize>();
 
         calculated_count == self.count
     }
@@ -1564,27 +1564,27 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut a = BoundedBitSet::<8>::new);
-    /// a.set(0).unwrap());
-    /// a.set(2).unwrap());
-    /// a.set(4).unwrap());
+    /// let mut a = BoundedBitSet::<8>::new();
+    /// a.set(0).unwrap();
+    /// a.set(2).unwrap();
+    /// a.set(4).unwrap();
     ///
-    /// let mut b = BoundedBitSet::<8>::new);
-    /// b.set(0).unwrap());
-    /// b.set(1).unwrap());
-    /// b.set(4).unwrap());
+    /// let mut b = BoundedBitSet::<8>::new();
+    /// b.set(0).unwrap();
+    /// b.set(1).unwrap();
+    /// b.set(4).unwrap();
     ///
-    /// a.bitand_with(&b;
+    /// a.bitand_with(&b);
     ///
-    /// assert!(a.contains(0).unwrap());
-    /// assert!(!a.contains(1).unwrap());
-    /// assert!(!a.contains(2).unwrap());
-    /// assert!(a.contains(4).unwrap());
+    /// assert!(a.contains(0).unwrap();
+    /// assert!(!a.contains(1).unwrap();
+    /// assert!(!a.contains(2).unwrap();
+    /// assert!(a.contains(4).unwrap();
     /// ```
     pub fn bitand_with(&mut self, other: &Self) {
         let mut new_count = 0;
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         for (i, (bits, checksum)) in self.storage.iter_mut().enumerate() {
             if i < other.storage.len() {
@@ -1597,8 +1597,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
                 if self.verification_level >= VerificationLevel::Full {
                     // Update the checksum
-                    checksum.reset);
-                    (*bits).update_checksum(checksum;
+                    checksum.reset();
+                    (*bits).update_checksum(checksum);
                 }
             }
         }
@@ -1616,24 +1616,24 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut a = BoundedBitSet::<8>::new);
-    /// a.set(0).unwrap());
-    /// a.set(2).unwrap());
+    /// let mut a = BoundedBitSet::<8>::new();
+    /// a.set(0).unwrap();
+    /// a.set(2).unwrap();
     ///
-    /// let mut b = BoundedBitSet::<8>::new);
-    /// b.set(1).unwrap());
-    /// b.set(2).unwrap());
+    /// let mut b = BoundedBitSet::<8>::new();
+    /// b.set(1).unwrap();
+    /// b.set(2).unwrap();
     ///
     /// a.bitor_with(&b;
     ///
-    /// assert!(a.contains(0).unwrap());
-    /// assert!(a.contains(1).unwrap());
-    /// assert!(a.contains(2).unwrap());
+    /// assert!(a.contains(0).unwrap();
+    /// assert!(a.contains(1).unwrap();
+    /// assert!(a.contains(2).unwrap();
     /// ```
     pub fn bitor_with(&mut self, other: &Self) {
         let mut new_count = 0;
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         for (i, (bits, checksum)) in self.storage.iter_mut().enumerate() {
             if i < other.storage.len() {
@@ -1646,8 +1646,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
                 if self.verification_level >= VerificationLevel::Full {
                     // Update the checksum
-                    checksum.reset);
-                    (*bits).update_checksum(checksum;
+                    checksum.reset();
+                    (*bits).update_checksum(checksum);
                 }
             }
         }
@@ -1665,24 +1665,24 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut a = BoundedBitSet::<8>::new);
-    /// a.set(0).unwrap());
-    /// a.set(2).unwrap());
+    /// let mut a = BoundedBitSet::<8>::new();
+    /// a.set(0).unwrap();
+    /// a.set(2).unwrap();
     ///
-    /// let mut b = BoundedBitSet::<8>::new);
-    /// b.set(1).unwrap());
-    /// b.set(2).unwrap());
+    /// let mut b = BoundedBitSet::<8>::new();
+    /// b.set(1).unwrap();
+    /// b.set(2).unwrap();
     ///
     /// a.bitxor_with(&b;
     ///
-    /// assert!(a.contains(0).unwrap());
-    /// assert!(a.contains(1).unwrap());
-    /// assert!(!a.contains(2).unwrap());
+    /// assert!(a.contains(0).unwrap();
+    /// assert!(a.contains(1).unwrap();
+    /// assert!(!a.contains(2).unwrap();
     /// ```
     pub fn bitxor_with(&mut self, other: &Self) {
         let mut new_count = 0;
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         for (i, (bits, checksum)) in self.storage.iter_mut().enumerate() {
             if i < other.storage.len() {
@@ -1695,8 +1695,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
                 if self.verification_level >= VerificationLevel::Full {
                     // Update the checksum
-                    checksum.reset);
-                    (*bits).update_checksum(checksum;
+                    checksum.reset();
+                    (*bits).update_checksum(checksum);
                 }
             }
         }
@@ -1714,23 +1714,23 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<8>::new);
-    /// bitset.set(1).unwrap());
-    /// bitset.set(3).unwrap());
+    /// let mut bitset = BoundedBitSet::<8>::new();
+    /// bitset.set(1).unwrap();
+    /// bitset.set(3).unwrap();
     ///
     /// bitset.bitnot(feature = "std";
     ///
-    /// assert!(bitset.contains(0).unwrap());
-    /// assert!(!bitset.contains(1).unwrap());
-    /// assert!(bitset.contains(2).unwrap());
-    /// assert!(!bitset.contains(3).unwrap());
-    /// assert!(bitset.contains(4).unwrap());
-    /// assert!(bitset.contains(5).unwrap());
-    /// assert!(bitset.contains(6).unwrap());
-    /// assert!(bitset.contains(7).unwrap());
+    /// assert!(bitset.contains(0).unwrap();
+    /// assert!(!bitset.contains(1).unwrap();
+    /// assert!(bitset.contains(2).unwrap();
+    /// assert!(!bitset.contains(3).unwrap();
+    /// assert!(bitset.contains(4).unwrap();
+    /// assert!(bitset.contains(5).unwrap();
+    /// assert!(bitset.contains(6).unwrap();
+    /// assert!(bitset.contains(7).unwrap();
     /// ```
     pub fn bitnot(&mut self) {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Calculate the total number of full u32 chunks needed
         let full_chunks = N_BITS / 32;
@@ -1751,13 +1751,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
             if self.verification_level >= VerificationLevel::Full {
                 // Update the checksum
-                checksum.reset);
-                (*bits).update_checksum(checksum;
+                checksum.reset();
+                (*bits).update_checksum(checksum);
             }
         }
 
         // Recalculate the count of set bits
-        self.count = self.storage.iter().map(|(bits, _)| bits.count_ones() as usize).sum);
+        self.count = self.storage.iter().map(|(bits, _)| bits.count_ones() as usize).sum();
     }
 
     /// Returns the index of the first set bit, or `None` if no bits are set.
@@ -1767,17 +1767,17 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
-    /// assert_eq!(bitset.first_set_bit(), None;
+    /// let mut bitset = BoundedBitSet::<100>::new();
+    /// assert_eq!(bitset.first_set_bit(), None);
     ///
-    /// bitset.set(42).unwrap());
-    /// assert_eq!(bitset.first_set_bit(), Some(42;
+    /// bitset.set(42).unwrap();
+    /// assert_eq!(bitset.first_set_bit(), Some(42));
     ///
-    /// bitset.set(10).unwrap());
+    /// bitset.set(10).unwrap();
     /// assert_eq!(bitset.first_set_bit(), Some(10)); // Returns the lowest index
     /// ```
     pub fn first_set_bit(&self) -> Option<usize> {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         for (chunk_index, (bits, _)) in self.storage.iter().enumerate() {
             if *bits != 0 {
@@ -1787,7 +1787,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
                 // Ensure the index is within bounds
                 if index < N_BITS {
-                    return Some(index;
+                    return Some(index);
                 }
             }
         }
@@ -1803,15 +1803,15 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap());
-    /// bitset.set(20).unwrap());
-    /// bitset.set(30).unwrap());
+    /// let mut bitset = BoundedBitSet::<100>::new();
+    /// bitset.set(10).unwrap();
+    /// bitset.set(20).unwrap();
+    /// bitset.set(30).unwrap();
     ///
-    /// assert_eq!(bitset.next_set_bit(0), Some(10;
-    /// assert_eq!(bitset.next_set_bit(10), Some(10;
-    /// assert_eq!(bitset.next_set_bit(11), Some(20;
-    /// assert_eq!(bitset.next_set_bit(25), Some(30;
+    /// assert_eq!(bitset.next_set_bit(0), Some(10));
+    /// assert_eq!(bitset.next_set_bit(10), Some(10));
+    /// assert_eq!(bitset.next_set_bit(11), Some(20));
+    /// assert_eq!(bitset.next_set_bit(25), Some(30));
     /// assert_eq!(bitset.next_set_bit(31), None;
     /// ```
     pub fn next_set_bit(&self, from_index: usize) -> Option<usize> {
@@ -1819,7 +1819,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             return None;
         }
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Calculate the chunk and bit position for the starting index
         let start_chunk = from_index / 32;
@@ -1827,12 +1827,12 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
         // Check the first chunk, masking out bits before the start_bit
         if start_chunk < self.storage.len() {
-            let masked_bits = self.storage[start_chunk].0 & (!0u32 << start_bit;
+            let masked_bits = self.storage[start_chunk].0 & (!0u32 << start_bit);
             if masked_bits != 0 {
                 let bit_pos = masked_bits.trailing_zeros() as usize;
                 let index = start_chunk * 32 + bit_pos;
                 if index < N_BITS {
-                    return Some(index;
+                    return Some(index);
                 }
             }
         }
@@ -1844,7 +1844,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
                 let bit_pos = bits.trailing_zeros() as usize;
                 let index = chunk_index * 32 + bit_pos;
                 if index < N_BITS {
-                    return Some(index;
+                    return Some(index);
                 }
             }
         }
@@ -1860,18 +1860,18 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
+    /// let mut bitset = BoundedBitSet::<100>::new();
     /// bitset.set_all(); // Set all bits to 1
     /// assert_eq!(bitset.first_clear_bit(), None;
     ///
-    /// bitset.clear(42).unwrap());
-    /// assert_eq!(bitset.first_clear_bit(), Some(42;
+    /// bitset.clear(42).unwrap();
+    /// assert_eq!(bitset.first_clear_bit(), Some(42));
     ///
-    /// bitset.clear(10).unwrap());
+    /// bitset.clear(10).unwrap();
     /// assert_eq!(bitset.first_clear_bit(), Some(10)); // Returns the lowest index
     /// ```
     pub fn first_clear_bit(&self) -> Option<usize> {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         for (chunk_index, (bits, _)) in self.storage.iter().enumerate() {
             if *bits != !0u32 {
@@ -1882,7 +1882,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
                 // Ensure the index is within bounds
                 if index < N_BITS {
-                    return Some(index;
+                    return Some(index);
                 }
             }
         }
@@ -1898,16 +1898,16 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
+    /// let mut bitset = BoundedBitSet::<100>::new();
     /// bitset.set_all(); // Set all bits to 1
-    /// bitset.clear(10).unwrap());
-    /// bitset.clear(20).unwrap());
-    /// bitset.clear(30).unwrap());
+    /// bitset.clear(10).unwrap();
+    /// bitset.clear(20).unwrap();
+    /// bitset.clear(30).unwrap();
     ///
-    /// assert_eq!(bitset.next_clear_bit(0), Some(10;
-    /// assert_eq!(bitset.next_clear_bit(10), Some(10;
-    /// assert_eq!(bitset.next_clear_bit(11), Some(20;
-    /// assert_eq!(bitset.next_clear_bit(25), Some(30;
+    /// assert_eq!(bitset.next_clear_bit(0), Some(10));
+    /// assert_eq!(bitset.next_clear_bit(10), Some(10));
+    /// assert_eq!(bitset.next_clear_bit(11), Some(20));
+    /// assert_eq!(bitset.next_clear_bit(25), Some(30));
     /// assert_eq!(bitset.next_clear_bit(31), None); // Assuming all bits beyond 30 are set
     /// ```
     /// Sets multiple bits in one operation.
@@ -1921,23 +1921,23 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
+    /// let mut bitset = BoundedBitSet::<100>::new();
     /// let indices = [10, 20, 30, 20]; // Note: 20 appears twice
     ///
     /// assert_eq!(bitset.set_multiple(&indices).unwrap(), 3); // Only 3 bits were newly set
-    /// assert!(bitset.contains(10).unwrap());
-    /// assert!(bitset.contains(20).unwrap());
-    /// assert!(bitset.contains(30).unwrap());
+    /// assert!(bitset.contains(10).unwrap();
+    /// assert!(bitset.contains(20).unwrap();
+    /// assert!(bitset.contains(30).unwrap();
     /// ```
     pub fn set_multiple(&mut self, indices: &[usize]) -> Result<usize, BoundedError> {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         let mut bits_changed = 0;
-        let mut modified_chunks = Vec::new);
+        let mut modified_chunks = Vec::new();
 
         for &index in indices {
             if index >= N_BITS {
-                return Err(BoundedError::runtime_execution_error("Index out of bounds";
+                return Err(BoundedError::runtime_execution_error("Index out of bounds"));
             }
 
             let storage_index = index / 32;
@@ -1948,7 +1948,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
                 return Err(BoundedError::new(
                     BoundedErrorKind::SliceError,
                     "Index out of bounds",
-                ;
+                ));
             }
 
             let (bits, _) = &mut self.storage[storage_index];
@@ -1975,8 +1975,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             if self.verification_level >= VerificationLevel::Full {
                 for &chunk_index in &modified_chunks {
                     let (bits, checksum) = &mut self.storage[chunk_index];
-                    checksum.reset);
-                    (*bits).update_checksum(checksum;
+                    checksum.reset();
+                    (*bits).update_checksum(checksum);
                 }
             }
         }
@@ -1995,25 +1995,25 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
+    /// let mut bitset = BoundedBitSet::<100>::new();
     /// bitset.set_all(); // Set all bits to 1
     ///
     /// let indices = [10, 20, 30, 20]; // Note: 20 appears twice
     ///
     /// assert_eq!(bitset.clear_multiple(&indices).unwrap(), 3); // Only 3 bits were newly cleared
-    /// assert!(!bitset.contains(10).unwrap());
-    /// assert!(!bitset.contains(20).unwrap());
-    /// assert!(!bitset.contains(30).unwrap());
+    /// assert!(!bitset.contains(10).unwrap();
+    /// assert!(!bitset.contains(20).unwrap();
+    /// assert!(!bitset.contains(30).unwrap();
     /// ```
     pub fn clear_multiple(&mut self, indices: &[usize]) -> Result<usize, BoundedError> {
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         let mut bits_changed = 0;
-        let mut modified_chunks = Vec::new);
+        let mut modified_chunks = Vec::new();
 
         for &index in indices {
             if index >= N_BITS {
-                return Err(BoundedError::runtime_execution_error("Index out of bounds";
+                return Err(BoundedError::runtime_execution_error("Index out of bounds"));
             }
 
             let storage_index = index / 32;
@@ -2024,7 +2024,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
                 return Err(BoundedError::new(
                     BoundedErrorKind::SliceError,
                     "Index out of bounds",
-                ;
+                ));
             }
 
             let (bits, _) = &mut self.storage[storage_index];
@@ -2051,8 +2051,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             if self.verification_level >= VerificationLevel::Full {
                 for &chunk_index in &modified_chunks {
                     let (bits, checksum) = &mut self.storage[chunk_index];
-                    checksum.reset);
-                    (*bits).update_checksum(checksum;
+                    checksum.reset();
+                    (*bits).update_checksum(checksum);
                 }
             }
         }
@@ -2072,7 +2072,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
+    /// let mut bitset = BoundedBitSet::<100>::new();
     ///
     /// // Set bits 10-20 (inclusive) to 1
     /// assert_eq!(bitset.set_range(10, 21, true).unwrap(), 11;
@@ -2082,10 +2082,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     ///
     /// // Verify state
     /// for i in 10..15 {
-    ///     assert!(bitset.contains(i).unwrap());
+    ///     assert!(bitset.contains(i).unwrap();
     /// }
     /// for i in 15..26 {
-    ///     assert!(!bitset.contains(i).unwrap());
+    ///     assert!(!bitset.contains(i).unwrap();
     /// }
     /// ```
     pub fn set_range(
@@ -2095,13 +2095,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         value: bool,
     ) -> Result<usize, BoundedError> {
         if start_index >= N_BITS || end_index > N_BITS || start_index >= end_index {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
-        record_global_operation(OperationType::CollectionWrite, self.verification_level;
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         let mut bits_changed = 0;
-        let mut modified_chunks = Vec::new);
+        let mut modified_chunks = Vec::new();
 
         // Calculate which chunks are affected
         let start_chunk = start_index / 32;
@@ -2112,7 +2112,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
                 return Err(BoundedError::new(
                     BoundedErrorKind::SliceError,
                     "Index out of bounds",
-                ;
+                ));
             }
 
             let (bits, _) = &mut self.storage[chunk_index];
@@ -2165,8 +2165,8 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             if self.verification_level >= VerificationLevel::Full {
                 for &chunk_index in &modified_chunks {
                     let (bits, checksum) = &mut self.storage[chunk_index];
-                    checksum.reset);
-                    (*bits).update_checksum(checksum;
+                    checksum.reset();
+                    (*bits).update_checksum(checksum);
                 }
             }
         }
@@ -2185,13 +2185,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap());
-    /// bitset.set(20).unwrap());
-    /// bitset.set(30).unwrap());
+    /// let mut bitset = BoundedBitSet::<100>::new();
+    /// bitset.set(10).unwrap();
+    /// bitset.set(20).unwrap();
+    /// bitset.set(30).unwrap();
     ///
-    /// assert_eq!(bitset.lowest_set_bit_in_range(0, 100).unwrap(), Some(10;
-    /// assert_eq!(bitset.lowest_set_bit_in_range(15, 35).unwrap(), Some(20;
+    /// assert_eq!(bitset.lowest_set_bit_in_range(0, 100).unwrap(), Some(10));
+    /// assert_eq!(bitset.lowest_set_bit_in_range(15, 35).unwrap(), Some(20));
     /// assert_eq!(bitset.lowest_set_bit_in_range(31, 50).unwrap(), None;
     /// ```
     pub fn lowest_set_bit_in_range(
@@ -2200,14 +2200,14 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         end_index: usize,
     ) -> Result<Option<usize>, BoundedError> {
         if start_index >= N_BITS || end_index > N_BITS || start_index >= end_index {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Fast path: if no bits are set, return None
         if self.count == 0 {
-            return Ok(None;
+            return Ok(None);
         }
 
         // Start at start_index and check each bit until we find one that's set
@@ -2215,7 +2215,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         while current < end_index {
             if let Some(next_set) = self.next_set_bit(current) {
                 if next_set < end_index {
-                    return Ok(Some(next_set;
+                    return Ok(Some(next_set));
                 }
                 break; // Next set bit is beyond our range
             }
@@ -2236,13 +2236,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap());
-    /// bitset.set(20).unwrap());
-    /// bitset.set(30).unwrap());
+    /// let mut bitset = BoundedBitSet::<100>::new();
+    /// bitset.set(10).unwrap();
+    /// bitset.set(20).unwrap();
+    /// bitset.set(30).unwrap();
     ///
-    /// assert_eq!(bitset.highest_set_bit_in_range(0, 100).unwrap(), Some(30;
-    /// assert_eq!(bitset.highest_set_bit_in_range(15, 25).unwrap(), Some(20;
+    /// assert_eq!(bitset.highest_set_bit_in_range(0, 100).unwrap(), Some(30));
+    /// assert_eq!(bitset.highest_set_bit_in_range(15, 25).unwrap(), Some(20));
     /// assert_eq!(bitset.highest_set_bit_in_range(31, 50).unwrap(), None;
     /// ```
     pub fn highest_set_bit_in_range(
@@ -2253,14 +2253,14 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         if start_index >= N_BITS || end_index > N_BITS || start_index >= end_index {
             return Err(BoundedError::new(
                 BoundedErrorKind::SliceError,
-                "Invalid slice range";
+                "Invalid slice range"));
         }
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Fast path: if no bits are set, return None
         if self.count == 0 {
-            return Ok(None;
+            return Ok(None);
         }
 
         // Calculate which chunks are affected
@@ -2303,7 +2303,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
                 // Double-check that it's within our range
                 if absolute_index >= start_index && absolute_index < end_index {
-                    return Ok(Some(absolute_index;
+                    return Ok(Some(absolute_index));
                 }
             }
         }
@@ -2320,17 +2320,17 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
+    /// let mut bitset = BoundedBitSet::<100>::new();
     /// assert_eq!(bitset.trailing_zeros(), 100); // All bits are 0
     ///
-    /// bitset.set(10).unwrap());
+    /// bitset.set(10).unwrap();
     /// assert_eq!(bitset.trailing_zeros(), 10;
     ///
-    /// bitset.set(0).unwrap());
+    /// bitset.set(0).unwrap();
     /// assert_eq!(bitset.trailing_zeros(), 0);
     /// ```
     pub fn trailing_zeros(&self) -> usize {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Fast path: if all bits are set, return 0
         if self.count == N_BITS {
@@ -2364,17 +2364,17 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
+    /// let mut bitset = BoundedBitSet::<100>::new();
     /// assert_eq!(bitset.leading_zeros(), 100); // All bits are 0
     ///
-    /// bitset.set(50).unwrap());
+    /// bitset.set(50).unwrap();
     /// assert_eq!(bitset.leading_zeros(), 49); // Bits 51-99 are unset
     ///
-    /// bitset.set(99).unwrap());
+    /// bitset.set(99).unwrap();
     /// assert_eq!(bitset.leading_zeros(), 0);
     /// ```
     pub fn leading_zeros(&self) -> usize {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Fast path: if all bits are set, return 0
         if self.count == N_BITS {
@@ -2395,11 +2395,11 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
                 let leading_in_chunk = bits.leading_zeros() as usize;
 
                 // Calculate how many bits are in the higher chunks and add them
-                let bits_in_higher_chunks = N_BITS - ((chunk_index + 1) * 32;
+                let bits_in_higher_chunks = N_BITS - ((chunk_index + 1) * 32);
                 let leading_zeros = leading_in_chunk + bits_in_higher_chunks;
 
                 // Ensure we don't return more than N_BITS due to rounding
-                return core::cmp::min(leading_zeros, N_BITS;
+                return core::cmp::min(leading_zeros, N_BITS);
             }
         }
 
@@ -2418,11 +2418,11 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(0).unwrap());
-    /// bitset.set(1).unwrap());
-    /// bitset.set(4).unwrap());
-    /// bitset.set(5).unwrap());
+    /// let mut bitset = BoundedBitSet::<100>::new();
+    /// bitset.set(0).unwrap();
+    /// bitset.set(1).unwrap();
+    /// bitset.set(4).unwrap();
+    /// bitset.set(5).unwrap();
     ///
     /// assert_eq!(bitset.find_clear_sequence(2).unwrap(), Some(2)); // Bits 2-3 are clear
     /// assert_eq!(bitset.find_clear_sequence(3).unwrap(), Some(6)); // Bits 6-8 are clear
@@ -2431,19 +2431,19 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     pub fn find_clear_sequence(&self, length: usize) -> Result<Option<usize>, BoundedError> {
         if length == 0 || length > N_BITS {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Fast path: if all bits are clear, return 0
         if self.count == 0 {
-            return Ok(Some(0;
+            return Ok(Some(0));
         }
 
         // Fast path: if not enough bits are clear, return None
         if self.count > N_BITS - length {
-            return Ok(None;
+            return Ok(None);
         }
 
         // Search for a sequence of clear bits
@@ -2463,7 +2463,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
                     // Check if we've found a sequence of sufficient length
                     if consecutive_clear == length {
-                        return Ok(Some(start;
+                        return Ok(Some(start));
                     }
                 }
                 Err(e) => return Err(e),
@@ -2484,17 +2484,17 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<8>::new);
-    /// bitset.set(1).unwrap());
-    /// bitset.set(3).unwrap());
-    /// bitset.set(5).unwrap());
+    /// let mut bitset = BoundedBitSet::<8>::new();
+    /// bitset.set(1).unwrap();
+    /// bitset.set(3).unwrap();
+    /// bitset.set(5).unwrap();
     ///
     /// // Bits 1, 3, and 5 are set (indexed from 0)
     /// assert_eq!(bitset.to_binary_string(), "00000000 00000000 00000000 00101010";
     /// ```
     #[cfg(feature = "std")]
     pub fn to_binary_string(&self) -> String {
-        let mut result = String::with_capacity(N_BITS;
+        let mut result = String::with_capacity(N_BITS);
 
         // Add each bit to the string, starting from the most significant bit
         for i in (0..N_BITS).rev() {
@@ -2511,7 +2511,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             return None;
         }
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         // Calculate the chunk and bit position for the starting index
         let start_chunk = from_index / 32;
@@ -2520,12 +2520,12 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         // Check the first chunk, masking out bits before the start_bit
         if start_chunk < self.storage.len() {
             let inverted = !self.storage[start_chunk].0;
-            let masked_bits = inverted & (!0u32 << start_bit;
+            let masked_bits = inverted & (!0u32 << start_bit);
             if masked_bits != 0 {
                 let bit_pos = masked_bits.trailing_zeros() as usize;
                 let index = start_chunk * 32 + bit_pos;
                 if index < N_BITS {
-                    return Some(index;
+                    return Some(index);
                 }
             }
         }
@@ -2537,7 +2537,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
                 let bit_pos = inverted.trailing_zeros() as usize;
                 let index = chunk_index * 32 + bit_pos;
                 if index < N_BITS {
-                    return Some(index;
+                    return Some(index);
                 }
             }
         }
@@ -2555,10 +2555,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap());
-    /// bitset.set(20).unwrap());
-    /// bitset.set(30).unwrap());
+    /// let mut bitset = BoundedBitSet::<100>::new();
+    /// bitset.set(10).unwrap();
+    /// bitset.set(20).unwrap();
+    /// bitset.set(30).unwrap();
     ///
     /// assert_eq!(bitset.count_bits_in_range(0, 100).unwrap(), 3;
     /// assert_eq!(bitset.count_bits_in_range(0, 15).unwrap(), 1);
@@ -2571,10 +2571,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
         end_index: usize,
     ) -> Result<usize, BoundedError> {
         if start_index >= N_BITS || end_index > N_BITS || start_index >= end_index {
-            return Err(BoundedError::runtime_execution_error("Operation failed";
+            return Err(BoundedError::runtime_execution_error("Operation failed"));
         }
 
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         let mut count = 0;
 
@@ -2615,7 +2615,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             // Process last chunk (partial)
             let end_bit = end_index % 32;
             if end_bit > 0 {
-                let mask = !0u32 >> (32 - end_bit;
+                let mask = !0u32 >> (32 - end_bit);
                 let bits = self.storage[end_chunk].0 & mask;
                 count += bits.count_ones() as usize;
             }
@@ -2631,16 +2631,16 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut a = BoundedBitSet::<100>::new);
-    /// a.set(10).unwrap());
-    /// a.set(20).unwrap());
+    /// let mut a = BoundedBitSet::<100>::new();
+    /// a.set(10).unwrap();
+    /// a.set(20).unwrap();
     ///
     /// let b = a.clone_bitset);
-    /// assert!(b.contains(10).unwrap());
-    /// assert!(b.contains(20).unwrap());
+    /// assert!(b.contains(10).unwrap();
+    /// assert!(b.contains(20).unwrap();
     /// ```
     pub fn clone_bitset(&self) -> Self {
-        let mut clone = Self::with_verification_level(self.verification_level;
+        let mut clone = Self::with_verification_level(self.verification_level);
 
         // Copy the storage and count
         clone.storage = self.storage.clone();
@@ -2659,20 +2659,20 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut a = BoundedBitSet::<100>::new);
-    /// a.set(10).unwrap());
-    /// a.set(20).unwrap());
+    /// let mut a = BoundedBitSet::<100>::new();
+    /// a.set(10).unwrap();
+    /// a.set(20).unwrap();
     ///
-    /// let mut b = BoundedBitSet::<100>::new);
-    /// b.set(10).unwrap());
-    /// b.set(20).unwrap());
-    /// b.set(30).unwrap());
+    /// let mut b = BoundedBitSet::<100>::new();
+    /// b.set(10).unwrap();
+    /// b.set(20).unwrap();
+    /// b.set(30).unwrap();
     ///
     /// assert!(a.is_subset_of(&b);
     /// assert!(!b.is_subset_of(&a);
     /// ```
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        record_global_operation(OperationType::CollectionRead, self.verification_level;
+        record_global_operation(OperationType::CollectionRead, self.verification_level);
 
         for (i, (bits, _)) in self.storage.iter().enumerate() {
             if i < other.storage.len() {
@@ -2696,13 +2696,13 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<100>::new);
-    /// bitset.set(10).unwrap());
-    /// bitset.set(20).unwrap());
-    /// bitset.set(30).unwrap());
+    /// let mut bitset = BoundedBitSet::<100>::new();
+    /// bitset.set(10).unwrap();
+    /// bitset.set(20).unwrap();
+    /// bitset.set(30).unwrap();
     ///
-    /// let indices: Vec<usize> = bitset.iter_ones().collect();
-    /// assert_eq!(indices, vec![10, 20, 30];
+    /// let indices: Vec<usize> = bitset.iter_ones().collect());
+    /// assert_eq!(indices, vec![10, 20, 30]);
     /// ```
     pub fn iter_ones(&self) -> BitSetOnesIterator<N_BITS> {
         BitSetOnesIterator { bitset: self, next_index: 0 }
@@ -2715,12 +2715,12 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// ```
     /// use wrt_foundation::BoundedBitSet;
     ///
-    /// let mut bitset = BoundedBitSet::<5>::new);
-    /// bitset.set(1).unwrap());
-    /// bitset.set(3).unwrap());
+    /// let mut bitset = BoundedBitSet::<5>::new();
+    /// bitset.set(1).unwrap();
+    /// bitset.set(3).unwrap();
     ///
-    /// let indices: Vec<usize> = bitset.iter_zeros().collect();
-    /// assert_eq!(indices, vec![0, 2, 4];
+    /// let indices: Vec<usize> = bitset.iter_zeros().collect());
+    /// assert_eq!(indices, vec![0, 2, 4]);
     /// ```
     pub fn iter_zeros(&self) -> BitSetZerosIterator<N_BITS> {
         BitSetZerosIterator { bitset: self, next_index: 0 }
@@ -2850,7 +2850,7 @@ impl<'a, const N_BITS: usize> Iterator for BitSetOnesIterator<'a, N_BITS> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result = self.bitset.next_set_bit(self.next_index;
+        let result = self.bitset.next_set_bit(self.next_index);
         if let Some(index) = result {
             self.next_index = index + 1;
         }
@@ -2862,7 +2862,7 @@ impl<'a, const N_BITS: usize> Iterator for BitSetOnesIterator<'a, N_BITS> {
         let remaining = self
             .bitset
             .count
-            .saturating_sub(self.bitset.count_bits_in_range(0, self.next_index).unwrap_or(0;
+            .saturating_sub(self.bitset.count_bits_in_range(0, self.next_index).unwrap_or(0));
         (remaining, Some(remaining))
     }
 }
@@ -2879,7 +2879,7 @@ impl<'a, const N_BITS: usize> Iterator for BitSetZerosIterator<'a, N_BITS> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result = self.bitset.next_clear_bit(self.next_index;
+        let result = self.bitset.next_clear_bit(self.next_index);
         if let Some(index) = result {
             self.next_index = index + 1;
         }
@@ -2891,9 +2891,9 @@ impl<'a, const N_BITS: usize> Iterator for BitSetZerosIterator<'a, N_BITS> {
         let ones_remaining = self
             .bitset
             .count
-            .saturating_sub(self.bitset.count_bits_in_range(0, self.next_index).unwrap_or(0;
-        let total_remaining = N_BITS.saturating_sub(self.next_index;
-        let zeros_remaining = total_remaining.saturating_sub(ones_remaining;
+            .saturating_sub(self.bitset.count_bits_in_range(0, self.next_index).unwrap_or(0));
+        let total_remaining = N_BITS.saturating_sub(self.next_index);
+        let zeros_remaining = total_remaining.saturating_sub(ones_remaining);
         (zeros_remaining, Some(zeros_remaining))
     }
 }
@@ -2938,12 +2938,12 @@ impl<const N_BITS: usize> Eq for BoundedBitSet<N_BITS> {}
 #[cfg(feature = "std")]
 impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        N_BITS.hash(state;
-        self.count.hash(state;
+        N_BITS.hash(state);
+        self.count.hash(state);
 
         // Only hash the actual bit data, not the checksums
         for (bits, _) in &self.storage {
-            bits.hash(state;
+            bits.hash(state);
         }
     }
 }
@@ -2953,12 +2953,12 @@ impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
 impl<const N_BITS: usize> Checksummable for BoundedBitSet<N_BITS> {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Update with capacity and count
-        (N_BITS as u32).update_checksum(checksum;
-        (self.count as u32).update_checksum(checksum;
+        (N_BITS as u32).update_checksum(checksum);
+        (self.count as u32).update_checksum(checksum);
 
         // Update with all bit chunks
         for (bits, _) in &self.storage {
-            (*bits).update_checksum(checksum;
+            (*bits).update_checksum(checksum);
         }
     }
 }
@@ -2990,7 +2990,7 @@ impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
 
     #[cfg(feature = "default-provider")]
     fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
-        let default_provider = DefaultMemoryProvider::default());
+        let default_provider = DefaultMemoryProvider::default();
         self.to_bytes_with_provider(writer, &default_provider)
     }
 }
@@ -3013,7 +3013,7 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
         let num_chunks = reader.read_u32_le()? as usize;
 
         // Create empty bitset with the specified verification level
-        let mut bitset = Self::with_verification_level(verification_level;
+        let mut bitset = Self::with_verification_level(verification_level);
 
         // Calculate expected number of chunks based on N_BITS
         let expected_chunks = (N_BITS + 31) / 32;
@@ -3024,23 +3024,23 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
                 "Invalid number of chunks in BoundedBitSet serialization",
-            ;
+            ));
         }
 
         // Reset storage to ensure we have the right capacity
-        bitset.storage.clear);
+        bitset.storage.clear();
 
         // Read each chunk's bits and generate new checksums
         for _ in 0..num_chunks {
             let bits = reader.read_u32_le()?;
-            let mut chunk_checksum = Checksum::new);
-            bits.update_checksum(&mut chunk_checksum;
-            bitset.storage.push((bits, chunk_checksum);
+            let mut chunk_checksum = Checksum::new();
+            bits.update_checksum(&mut chunk_checksum);
+            bitset.storage.push((bits, chunk_checksum));
         }
 
         // Add empty chunks if needed
         while bitset.storage.len() < expected_chunks {
-            bitset.storage.push((0, Checksum::default();
+            bitset.storage.push((0, Checksum::default()));
         }
 
         // Set the count (total number of set bits)
@@ -3048,14 +3048,14 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
 
         // Validate that the count matches the actual number of set bits
         let calculated_count =
-            bitset.storage.iter().map(|(bits, _)| bits.count_ones() as usize).sum::<usize>);
+            bitset.storage.iter().map(|(bits, _)| bits.count_ones() as usize).sum::<usize>();
 
         if calculated_count != count {
             return Err(Error::new_static(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
                 "Count mismatch in BoundedBitSet deserialization",
-            ;
+            ));
         }
 
         Ok(bitset)
@@ -3063,7 +3063,7 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
 
     #[cfg(feature = "default-provider")]
     fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
-        let default_provider = DefaultMemoryProvider::default());
+        let default_provider = DefaultMemoryProvider::default();
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
@@ -3087,92 +3087,92 @@ mod tests {
     // Test BoundedQueue
     #[test]
     fn test_bounded_queue() {
-        init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
-        let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap());
+        init_test_memory_system();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test enqueue
         for i in 0..5 {
-            queue.enqueue(i).unwrap());
+            queue.enqueue(i).unwrap();
         }
 
         // Test full queue
-        assert!(queue.is_full();
-        assert_eq!(queue.enqueue(5).unwrap_err().kind, BoundedErrorKind::CapacityExceeded;
+        assert!(queue.is_full());
+        assert_eq!(queue.enqueue(5).unwrap_err().kind, BoundedErrorKind::CapacityExceeded);
 
         // Test dequeue
         for i in 0..5 {
-            assert_eq!(queue.dequeue().unwrap(), Some(i;
+            assert_eq!(queue.dequeue().unwrap(), Some(i));
         }
 
         // Test empty queue
-        assert!(queue.is_empty();
-        assert_eq!(queue.dequeue().unwrap(), None;
+        assert!(queue.is_empty());
+        assert_eq!(queue.dequeue().unwrap(), None);
 
         // Test wrap-around behavior
         for i in 0..3 {
-            queue.enqueue(i).unwrap());
+            queue.enqueue(i).unwrap();
         }
 
-        assert_eq!(queue.dequeue().unwrap(), Some(0;
-        assert_eq!(queue.dequeue().unwrap(), Some(1;
+        assert_eq!(queue.dequeue().unwrap(), Some(0));
+        assert_eq!(queue.dequeue().unwrap(), Some(1));
 
-        queue.enqueue(3).unwrap());
-        queue.enqueue(4).unwrap());
-        queue.enqueue(5).unwrap());
+        queue.enqueue(3).unwrap();
+        queue.enqueue(4).unwrap();
+        queue.enqueue(5).unwrap();
 
-        assert_eq!(queue.dequeue().unwrap(), Some(2;
-        assert_eq!(queue.dequeue().unwrap(), Some(3;
-        assert_eq!(queue.dequeue().unwrap(), Some(4;
-        assert_eq!(queue.dequeue().unwrap(), Some(5;
-        assert_eq!(queue.dequeue().unwrap(), None;
+        assert_eq!(queue.dequeue().unwrap(), Some(2));
+        assert_eq!(queue.dequeue().unwrap(), Some(3));
+        assert_eq!(queue.dequeue().unwrap(), Some(4));
+        assert_eq!(queue.dequeue().unwrap(), Some(5));
+        assert_eq!(queue.dequeue().unwrap(), None);
     }
 
     // Test BoundedMap
     #[test]
     fn test_bounded_map() {
-        init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
-        let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap());
+        init_test_memory_system();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
-        assert_eq!(map.insert(1, 10).unwrap(), None;
-        assert_eq!(map.insert(2, 20).unwrap(), None;
-        assert_eq!(map.insert(3, 30).unwrap(), None;
+        assert_eq!(map.insert(1, 10).unwrap(), None);
+        assert_eq!(map.insert(2, 20).unwrap(), None);
+        assert_eq!(map.insert(3, 30).unwrap(), None);
 
         // Test full map
-        assert!(map.is_full();
-        assert_eq!(map.insert(4, 40).unwrap_err().kind, BoundedErrorKind::CapacityExceeded;
+        assert!(map.is_full());
+        assert_eq!(map.insert(4, 40).unwrap_err().kind, BoundedErrorKind::CapacityExceeded);
 
         // Test get
-        assert_eq!(map.get(&1).unwrap(), Some(10;
-        assert_eq!(map.get(&2).unwrap(), Some(20;
-        assert_eq!(map.get(&3).unwrap(), Some(30;
-        assert_eq!(map.get(&4).unwrap(), None;
+        assert_eq!(map.get(&1).unwrap(), Some(10));
+        assert_eq!(map.get(&2).unwrap(), Some(20));
+        assert_eq!(map.get(&3).unwrap(), Some(30));
+        assert_eq!(map.get(&4).unwrap(), None);
 
         // Test update existing key
-        assert_eq!(map.insert(2, 25).unwrap(), Some(20;
-        assert_eq!(map.get(&2).unwrap(), Some(25;
+        assert_eq!(map.insert(2, 25).unwrap(), Some(20));
+        assert_eq!(map.get(&2).unwrap(), Some(25));
 
         // Test remove
-        assert_eq!(map.remove(&2).unwrap(), Some(25;
-        assert_eq!(map.get(&2).unwrap(), None;
+        assert_eq!(map.remove(&2).unwrap(), Some(25));
+        assert_eq!(map.get(&2).unwrap(), None);
 
         // Test contains_key
         assert!(map.contains_key(&1).unwrap());
         assert!(!map.contains_key(&2).unwrap());
 
         // Test clear
-        map.clear().unwrap());
-        assert!(map.is_empty();
+        map.clear().unwrap();
+        assert!(map.is_empty());
     }
 
     // Test BoundedSet
     #[test]
     fn test_bounded_set() {
-        init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
-        let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap());
+        init_test_memory_system();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
         assert!(set.insert(1).unwrap());
@@ -3180,8 +3180,8 @@ mod tests {
         assert!(set.insert(3).unwrap());
 
         // Test full set
-        assert!(set.is_full();
-        assert_eq!(set.insert(4).unwrap_err().kind, BoundedErrorKind::CapacityExceeded;
+        assert!(set.is_full());
+        assert_eq!(set.insert(4).unwrap_err().kind, BoundedErrorKind::CapacityExceeded);
 
         // Test contains
         assert!(set.contains(&1).unwrap());
@@ -3197,59 +3197,59 @@ mod tests {
         assert!(!set.contains(&2).unwrap());
 
         // Test clear
-        set.clear().unwrap());
-        assert!(set.is_empty();
+        set.clear().unwrap();
+        assert!(set.is_empty());
     }
 
     // Test BoundedDeque
     #[test]
     fn test_bounded_deque() {
-        init_test_memory_system);
-        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap());
-        let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap());
+        init_test_memory_system();
+        let provider = safe_managed_alloc!(1024, CrateId::Foundation).unwrap();
+        let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test push_back
         for i in 0..3 {
-            deque.push_back(i).unwrap());
+            deque.push_back(i).unwrap();
         }
 
         // Test push_front
-        deque.push_front(10).unwrap());
-        deque.push_front(20).unwrap());
+        deque.push_front(10).unwrap();
+        deque.push_front(20).unwrap();
 
         // Test full deque
-        assert!(deque.is_full();
-        assert_eq!(deque.push_back(5).unwrap_err().kind, BoundedErrorKind::CapacityExceeded;
-        assert_eq!(deque.push_front(5).unwrap_err().kind, BoundedErrorKind::CapacityExceeded;
+        assert!(deque.is_full());
+        assert_eq!(deque.push_back(5).unwrap_err().kind, BoundedErrorKind::CapacityExceeded);
+        assert_eq!(deque.push_front(5).unwrap_err().kind, BoundedErrorKind::CapacityExceeded);
 
         // Test front and back
-        assert_eq!(deque.front().unwrap(), Some(20;
-        assert_eq!(deque.back().unwrap(), Some(2;
+        assert_eq!(deque.front().unwrap(), Some(20));
+        assert_eq!(deque.back().unwrap(), Some(2));
 
         // Test pop_front and pop_back
-        assert_eq!(deque.pop_front().unwrap(), Some(20;
-        assert_eq!(deque.pop_back().unwrap(), Some(2;
-        assert_eq!(deque.pop_front().unwrap(), Some(10;
-        assert_eq!(deque.pop_back().unwrap(), Some(1;
-        assert_eq!(deque.pop_front().unwrap(), Some(0;
+        assert_eq!(deque.pop_front().unwrap(), Some(20));
+        assert_eq!(deque.pop_back().unwrap(), Some(2));
+        assert_eq!(deque.pop_front().unwrap(), Some(10));
+        assert_eq!(deque.pop_back().unwrap(), Some(1));
+        assert_eq!(deque.pop_front().unwrap(), Some(0));
 
         // Test empty deque
-        assert!(deque.is_empty();
-        assert_eq!(deque.pop_front().unwrap(), None;
-        assert_eq!(deque.pop_back().unwrap(), None;
+        assert!(deque.is_empty());
+        assert_eq!(deque.pop_front().unwrap(), None);
+        assert_eq!(deque.pop_back().unwrap(), None);
 
         // Test clear
-        deque.push_back(1).unwrap());
-        deque.push_back(2).unwrap());
-        deque.clear().unwrap());
-        assert!(deque.is_empty();
+        deque.push_back(1).unwrap();
+        deque.push_back(2).unwrap();
+        deque.clear().unwrap();
+        assert!(deque.is_empty());
     }
 
     // Test BoundedBitSet
     #[test]
     #[cfg(feature = "std")]
     fn test_bounded_bit_set() {
-        let mut bit_set = BoundedBitSet::<100>::new);
+        let mut bit_set = BoundedBitSet::<100>::new();
 
         // Test set
         assert!(bit_set.set(10).unwrap());
@@ -3273,26 +3273,26 @@ mod tests {
         assert!(!bit_set.clear(50).unwrap());
 
         // Test toggle
-        assert!(!bit_set.toggle(50).unwrap())); // Now set
+        assert!(!bit_set.toggle(50).unwrap()); // Now set
         assert!(bit_set.contains(50).unwrap());
 
-        assert!(bit_set.toggle(50).unwrap())); // Now cleared
+        assert!(bit_set.toggle(50).unwrap()); // Now cleared
         assert!(!bit_set.contains(50).unwrap());
 
         // Test set_all and clear_all
-        bit_set.set_all);
-        assert_eq!(bit_set.len(), 100;
-        assert!(bit_set.is_full();
+        bit_set.set_all();
+        assert_eq!(bit_set.len(), 100);
+        assert!(bit_set.is_full());
 
-        bit_set.clear_all);
+        bit_set.clear_all();
         assert_eq!(bit_set.len(), 0);
-        assert!(bit_set.is_empty();
+        assert!(bit_set.is_empty());
 
         // Test out of bounds access
-        assert!(bit_set.set(100).is_err();
-        assert!(bit_set.clear(100).is_err();
-        assert!(bit_set.contains(100).is_err();
-        assert!(bit_set.toggle(100).is_err();
+        assert!(bit_set.set(100).is_err());
+        assert!(bit_set.clear(100).is_err());
+        assert!(bit_set.contains(100).is_err());
+        assert!(bit_set.toggle(100).is_err());
     }
 }
 
@@ -3321,7 +3321,7 @@ where
         // Clone all entries
         for i in 0..self.entries.len() {
             if let Ok((k, v)) = self.entries.get(i) {
-                drop(new_map.insert(k, v;
+                drop(new_map.insert(k, v));
             }
         }
 
@@ -3371,8 +3371,8 @@ where
         checksum.update_slice(&(self.len() as u32).to_le_bytes);
         for i in 0..self.entries.len() {
             if let Ok((k, v)) = self.entries.get(i) {
-                k.update_checksum(checksum;
-                v.update_checksum(checksum;
+                k.update_checksum(checksum);
+                v.update_checksum(checksum);
             }
         }
     }
@@ -3427,7 +3427,7 @@ where
         for _ in 0..len.min(N_ELEMENTS) {
             let k = K::from_bytes_with_provider(reader, provider)?;
             let v = V::from_bytes_with_provider(reader, provider)?;
-            drop(map.insert(k, v;
+            drop(map.insert(k, v));
         }
 
         Ok(map)

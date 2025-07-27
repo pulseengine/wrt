@@ -26,7 +26,7 @@ mod tests {
         let result = provider.borrow_slice(0, 10;
         assert!(result.is_err();
         
-        let result = provider.acquire_memory(std::alloc::Layout::from_size_align(1024, 8).unwrap());
+        let result = provider.acquire_memory(std::alloc::Layout::from_size_align(1024, 8).unwrap();
         assert!(result.is_err();
     }
 
@@ -40,7 +40,7 @@ mod tests {
     #[test]
     fn test_safe_memory_adapter_basic_operations() {
         let mem_type = create_test_memory_type);
-        let adapter = SafeMemoryAdapter::new(mem_type).unwrap());
+        let adapter = SafeMemoryAdapter::new(mem_type).unwrap();
         
         // Test size
         let size = adapter.size);
@@ -60,14 +60,14 @@ mod tests {
         let read_result = adapter.read_exact(0, test_data.len() as u32;
         assert!(read_result.is_ok());
         
-        let read_data = read_result.unwrap());
+        let read_data = read_result.unwrap();
         assert_eq!(read_data.as_slice(), &test_data[..];
     }
 
     #[test]
     fn test_safe_memory_adapter_bounds_checking() {
         let mem_type = create_test_memory_type);
-        let adapter = SafeMemoryAdapter::new(mem_type).unwrap());
+        let adapter = SafeMemoryAdapter::new(mem_type).unwrap();
         
         // Test out of bounds read
         let oob_read = adapter.read_exact(65536, 1);
@@ -88,10 +88,10 @@ mod tests {
     #[test]
     fn test_safe_memory_adapter_growth() {
         let mem_type = create_test_memory_type);
-        let adapter = SafeMemoryAdapter::new(mem_type).unwrap());
+        let adapter = SafeMemoryAdapter::new(mem_type).unwrap();
         
         // Initial size
-        let initial_size = adapter.size().unwrap());
+        let initial_size = adapter.size().unwrap();
         assert_eq!(initial_size, 1);
         
         // Grow by 1 page
@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(prev_size.unwrap(), 1);
         
         // New size should be 2 pages
-        let new_size = adapter.size().unwrap());
+        let new_size = adapter.size().unwrap();
         assert_eq!(new_size, 2;
         
         // Can now write to the new page

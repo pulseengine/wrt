@@ -121,7 +121,7 @@ impl PlatformAwareRuntime {
     /// Create new platform-aware runtime using platform discovery
     #[cfg(feature = "std")]
     pub fn new() -> Result<Self> {
-        let mut discoverer = PlatformLimitDiscoverer::new);
+        let mut discoverer = PlatformLimitDiscoverer::new();
         let limits = discoverer.discover().map_err(|e| {
             Error::runtime_execution_error("Platform limit discovery failed")
         })?;
@@ -519,18 +519,18 @@ mod tests {
 
     #[test]
     fn test_platform_runtime_creation() {
-        let runtime = PlatformAwareRuntime::new);
+        let runtime = PlatformAwareRuntime::new();
         assert!(runtime.is_ok());
     }
     
     #[test]
     fn test_platform_runtime_with_limits() {
-        let mut discoverer = PlatformLimitDiscoverer::new);
+        let mut discoverer = PlatformLimitDiscoverer::new();
         if let Ok(limits) = discoverer.discover_limits() {
             let runtime = PlatformAwareRuntime::new_with_limits(limits.clone();
             assert!(runtime.is_ok());
             
-            let runtime = runtime.unwrap());
+            let runtime = runtime.unwrap();
             assert_eq!(runtime.platform_limits.platform_id, limits.platform_id;
         }
     }

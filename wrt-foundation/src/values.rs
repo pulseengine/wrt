@@ -90,7 +90,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> De
     for StructRef<P>
 {
     fn default() -> Self {
-        let provider = P::default());
+        let provider = P::default();
         Self::new(0, provider).expect("Default StructRef creation failed")
     }
 }
@@ -162,7 +162,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> De
     for ArrayRef<P>
 {
     fn default() -> Self {
-        let provider = P::default());
+        let provider = P::default();
         Self::new(0, provider).expect("Default ArrayRef creation failed")
     }
 }
@@ -240,7 +240,7 @@ pub struct V128 {
 impl V128 {
     /// Create a new v128 value from 16 bytes
     #[must_use]
-    pub fn new(bytes: [u8); 16]) -> Self {
+    pub fn new(bytes: [u8; 16]) -> Self {
         Self { bytes }
     }
 
@@ -260,7 +260,7 @@ impl AsRef<[u8]> for V128 {
 // Create a helper function for creating a v128 value
 /// Helper function to create a new V128 value
 #[must_use]
-pub fn v128(bytes: [u8); 16]) -> V128 {
+pub fn v128(bytes: [u8; 16]) -> V128 {
     V128::new(bytes)
 }
 
@@ -493,7 +493,7 @@ impl Value {
     pub fn into_i32_from_f32(self) -> WrtResult<i32> {
         match self {
             Value::F32(f_val) => {
-                let f = f_val.value);
+                let f = f_val.value();
                 if f.is_nan() || f.is_infinite() {
                     Err(Error::type_error(")",
                     ))
@@ -514,7 +514,7 @@ impl Value {
     pub fn into_i64_from_f64(self) -> WrtResult<i64> {
         match self {
             Value::F64(f_val) => {
-                let f = f_val.value);
+                let f = f_val.value();
                 if f.is_nan() || f.is_infinite() {
                     Err(Error::type_error("Invalid f64 to i64 conversion (NaN/Inf)",
                     ))
@@ -569,7 +569,7 @@ impl Value {
         match ty {
             ValueType::I32 => {
                 if bytes.len() < 4 {
-                    return Err(Error::parse_error("Insufficient bytes for I32";
+                    return Err(Error::parse_error("Insufficient bytes for I32"));
                 }
                 Ok(Value::I32(i32::from_le_bytes(bytes[0..4].try_into().map_err(|_| {
                     Error::runtime_execution_error("Failed to convert bytes to i32")
@@ -577,7 +577,7 @@ impl Value {
             }
             ValueType::I64 => {
                 if bytes.len() < 8 {
-                    return Err(Error::parse_error("Insufficient bytes for I64";
+                    return Err(Error::parse_error("Insufficient bytes for I64"));
                 }
                 Ok(Value::I64(i64::from_le_bytes(bytes[0..8].try_into().map_err(|_| {
                     Error::runtime_execution_error("Failed to convert bytes to i64")
@@ -585,7 +585,7 @@ impl Value {
             }
             ValueType::F32 => {
                 if bytes.len() < 4 {
-                    return Err(Error::parse_error("Insufficient bytes for F32";
+                    return Err(Error::parse_error("Insufficient bytes for F32"));
                 }
                 Ok(Value::F32(FloatBits32(u32::from_le_bytes(bytes[0..4].try_into().map_err(
                     |_| {
@@ -595,7 +595,7 @@ impl Value {
             }
             ValueType::F64 => {
                 if bytes.len() < 8 {
-                    return Err(Error::parse_error("Insufficient bytes for F64";
+                    return Err(Error::parse_error("Insufficient bytes for F64"));
                 }
                 Ok(Value::F64(FloatBits64(u64::from_le_bytes(bytes[0..8].try_into().map_err(
                     |_| {
@@ -605,10 +605,10 @@ impl Value {
             }
             ValueType::V128 | ValueType::I16x8 => {
                 if bytes.len() < 16 {
-                    return Err(Error::parse_error("Insufficient bytes for V128/I16x8";
+                    return Err(Error::parse_error("Insufficient bytes for V128/I16x8"));
                 }
                 let mut arr = [0u8; 16];
-                arr.copy_from_slice(&bytes[0..16];
+                arr.copy_from_slice(&bytes[0..16]);
                 if *ty == ValueType::V128 {
                     Ok(Value::V128(V128 { bytes: arr }))
                 } else {
@@ -617,22 +617,22 @@ impl Value {
             }
             ValueType::FuncRef => {
                 if bytes.len() < 4 {
-                    return Err(Error::parse_error("Insufficient bytes for FuncRef";
+                    return Err(Error::parse_error("Insufficient bytes for FuncRef"));
                 }
                 let idx = u32::from_le_bytes(bytes[0..4].try_into().map_err(|_| {
                     Error::runtime_execution_error("Failed to convert bytes to FuncRef index")
-                })?;
+                })??);
                 // Assuming 0 or a specific pattern might mean None, for now, always Some.
                 // The interpretation of the index (e.g. if 0 means null) is context-dependent.
                 Ok(Value::FuncRef(Some(FuncRef::from_index(idx))))
             }
             ValueType::ExternRef => {
                 if bytes.len() < 4 {
-                    return Err(Error::parse_error("Insufficient bytes for ExternRef";
+                    return Err(Error::parse_error("Insufficient bytes for ExternRef"));
                 }
                 let idx = u32::from_le_bytes(bytes[0..4].try_into().map_err(|_| {
                     Error::runtime_execution_error("Failed to convert bytes to ExternRef index")
-                })?;
+                })?);
                 Ok(Value::ExternRef(Some(ExternRef { index: idx })))
             }
             ValueType::StructRef(_) => {
@@ -692,7 +692,7 @@ impl LittleEndian for V128 {
         if bytes.len() != 16 {
             return Err(Error::runtime_execution_error(
                 "V128 requires exactly 16 bytes"
-            ;
+            ));
         }
         let arr: [u8; 16] = bytes.try_into().map_err(|_| {
             Error::new(
@@ -710,7 +710,7 @@ impl LittleEndian for V128 {
 
 impl Checksummable for V128 {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&self.bytes;
+        checksum.update_slice(&self.bytes);
     }
 }
 
@@ -741,7 +741,7 @@ impl FromBytes for V128 {
 
 impl Checksummable for FuncRef {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.index.update_checksum(checksum;
+        self.index.update_checksum(checksum);
     }
 }
 
@@ -771,7 +771,7 @@ impl FromBytes for FuncRef {
 
 impl Checksummable for ExternRef {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.index.update_checksum(checksum;
+        self.index.update_checksum(checksum);
     }
 }
 
@@ -814,7 +814,7 @@ impl Checksummable for Value {
             Value::StructRef(_) => 9u8, // Struct reference
             Value::ArrayRef(_) => 10u8, // Array reference
         };
-        checksum.update(discriminant_byte;
+        checksum.update(discriminant_byte);
 
         match self {
             Value::I32(v) => v.update_checksum(checksum),
@@ -985,8 +985,8 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ch
     for StructRef<P>
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.type_index.update_checksum(checksum;
-        self.fields.update_checksum(checksum;
+        self.type_index.update_checksum(checksum);
+        self.fields.update_checksum(checksum);
     }
 }
 
@@ -1036,8 +1036,8 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ch
     for ArrayRef<P>
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.type_index.update_checksum(checksum;
-        self.elements.update_checksum(checksum;
+        self.type_index.update_checksum(checksum);
+        self.elements.update_checksum(checksum);
     }
 }
 
@@ -1090,89 +1090,89 @@ mod tests {
 
     #[test]
     fn test_value_type() {
-        assert_eq!(Value::I32(0).value_type(), ValueType::I32;
-        assert_eq!(Value::I64(0).value_type(), ValueType::I64;
-        assert_eq!(Value::F32(FloatBits32(0)).value_type(), ValueType::F32;
-        assert_eq!(Value::F64(FloatBits64(0)).value_type(), ValueType::F64;
-        assert_eq!(Value::V128(V128::zero()).value_type(), ValueType::V128;
-        assert_eq!(Value::I16x8(V128::zero()).value_type(), ValueType::I16x8;
-        assert_eq!(Value::FuncRef(None).value_type(), ValueType::FuncRef;
-        assert_eq!(Value::ExternRef(None).value_type(), ValueType::ExternRef;
-        assert_eq!(Value::Ref(0).value_type(), ValueType::I32;
+        assert_eq!(Value::I32(0).value_type(), ValueType::I32);
+        assert_eq!(Value::I64(0).value_type(), ValueType::I64);
+        assert_eq!(Value::F32(FloatBits32(0)).value_type(), ValueType::F32);
+        assert_eq!(Value::F64(FloatBits64(0)).value_type(), ValueType::F64);
+        assert_eq!(Value::V128(V128::zero()).value_type(), ValueType::V128);
+        assert_eq!(Value::I16x8(V128::zero()).value_type(), ValueType::I16x8);
+        assert_eq!(Value::FuncRef(None).value_type(), ValueType::FuncRef);
+        assert_eq!(Value::ExternRef(None).value_type(), ValueType::ExternRef);
+        assert_eq!(Value::Ref(0).value_type(), ValueType::I32);
     }
 
     #[test]
     fn test_value_matches_type() {
-        assert!(Value::I32(0).matches_type(&ValueType::I32);
-        assert!(!Value::I32(0).matches_type(&ValueType::I64);
-        assert!(Value::V128(V128::zero()).matches_type(&ValueType::V128);
-        assert!(Value::I16x8(V128::zero()).matches_type(&ValueType::I16x8);
-        assert!(!Value::V128(V128::zero()).matches_type(&ValueType::I32);
-        assert!(Value::Ref(1).matches_type(&ValueType::I32);
-        assert!(Value::Ref(1).matches_type(&ValueType::I32);
+        assert!(Value::I32(0).matches_type(&ValueType::I32));
+        assert!(!Value::I32(0).matches_type(&ValueType::I64));
+        assert!(Value::V128(V128::zero()).matches_type(&ValueType::V128));
+        assert!(Value::I16x8(V128::zero()).matches_type(&ValueType::I16x8));
+        assert!(!Value::V128(V128::zero()).matches_type(&ValueType::I32));
+        assert!(Value::Ref(1).matches_type(&ValueType::I32));
+        assert!(Value::Ref(1).matches_type(&ValueType::I32));
     }
 
     #[test]
     #[cfg(feature = "std")]
     fn test_little_endian_conversion() {
-        let val_i32 = Value::I32(0x1234_5678;
-        let bytes_i32 = val_i32.to_le_bytes().unwrap());
-        assert_eq!(bytes_i32, vec![0x78, 0x56, 0x34, 0x12];
-        let recovered_i32 = Value::from_le_bytes(&bytes_i32, &ValueType::I32).unwrap());
-        assert_eq!(val_i32, recovered_i32;
+        let val_i32 = Value::I32(0x1234_5678);
+        let bytes_i32 = val_i32.to_le_bytes().unwrap();
+        assert_eq!(bytes_i32, vec![0x78, 0x56, 0x34, 0x12]);
+        let recovered_i32 = Value::from_le_bytes(&bytes_i32, &ValueType::I32).unwrap();
+        assert_eq!(val_i32, recovered_i32);
 
         let bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-        let val_v128 = Value::V128(V128::new(bytes;
-        let bytes_v128 = val_v128.to_le_bytes().unwrap());
-        assert_eq!(bytes_v128, bytes.to_vec);
-        let recovered_v128 = Value::from_le_bytes(&bytes_v128, &ValueType::V128).unwrap());
-        assert_eq!(val_v128, recovered_v128;
+        let val_v128 = Value::V128(V128::new(bytes));
+        let bytes_v128 = val_v128.to_le_bytes().unwrap();
+        assert_eq!(bytes_v128, bytes.to_vec());
+        let recovered_v128 = Value::from_le_bytes(&bytes_v128, &ValueType::V128).unwrap();
+        assert_eq!(val_v128, recovered_v128);
 
-        let val_i16x8 = Value::I16x8(V128::new(bytes;
-        let bytes_i16x8 = val_i16x8.to_le_bytes().unwrap());
-        assert_eq!(bytes_i16x8, bytes.to_vec);
-        let recovered_i16x8 = Value::from_le_bytes(&bytes_i16x8, &ValueType::I16x8).unwrap());
-        assert_eq!(val_i16x8, recovered_i16x8;
+        let val_i16x8 = Value::I16x8(V128::new(bytes));
+        let bytes_i16x8 = val_i16x8.to_le_bytes().unwrap();
+        assert_eq!(bytes_i16x8, bytes.to_vec());
+        let recovered_i16x8 = Value::from_le_bytes(&bytes_i16x8, &ValueType::I16x8).unwrap();
+        assert_eq!(val_i16x8, recovered_i16x8);
 
-        assert!(Value::from_le_bytes(&[1, 2], &ValueType::I32).is_err();
-        assert!(Value::FuncRef(None).to_le_bytes().is_err();
+        assert!(Value::from_le_bytes(&[1, 2], &ValueType::I32).is_err());
+        assert!(Value::FuncRef(None).to_le_bytes().is_err());
     }
 
     #[test]
     fn test_default_for_type() {
-        assert_eq!(Value::default_for_type(&ValueType::I32), Value::I32(0;
-        assert_eq!(Value::default_for_type(&ValueType::I64), Value::I64(0;
-        assert_eq!(Value::default_for_type(&ValueType::F32), Value::F32(FloatBits32(0);
-        assert_eq!(Value::default_for_type(&ValueType::F64), Value::F64(FloatBits64(0);
-        assert_eq!(Value::default_for_type(&ValueType::V128), Value::V128(V128::zero();
-        assert_eq!(Value::default_for_type(&ValueType::I16x8), Value::I16x8(V128::zero();
-        assert_eq!(Value::default_for_type(&ValueType::FuncRef), Value::Ref(0;
-        assert_eq!(Value::default_for_type(&ValueType::ExternRef), Value::ExternRef(None;
-        assert_eq!(Value::default_for_type(&ValueType::Ref(RefType::Func)), Value::Ref(0;
+        assert_eq!(Value::default_for_type(&ValueType::I32), Value::I32(0));
+        assert_eq!(Value::default_for_type(&ValueType::I64), Value::I64(0));
+        assert_eq!(Value::default_for_type(&ValueType::F32), Value::F32(FloatBits32(0)));
+        assert_eq!(Value::default_for_type(&ValueType::F64), Value::F64(FloatBits64(0)));
+        assert_eq!(Value::default_for_type(&ValueType::V128), Value::V128(V128::zero()));
+        assert_eq!(Value::default_for_type(&ValueType::I16x8), Value::I16x8(V128::zero()));
+        assert_eq!(Value::default_for_type(&ValueType::FuncRef), Value::Ref(0));
+        assert_eq!(Value::default_for_type(&ValueType::ExternRef), Value::ExternRef(None));
+        assert_eq!(Value::default_for_type(&ValueType::Ref(RefType::Func)), Value::Ref(0));
     }
 
     #[test]
     fn test_partial_eq() {
-        assert_eq!(Value::I32(10), Value::I32(10;
-        assert_ne!(Value::I32(10), Value::I32(11;
-        assert_ne!(Value::I32(10), Value::I64(10;
+        assert_eq!(Value::I32(10), Value::I32(10));
+        assert_ne!(Value::I32(10), Value::I32(11));
+        assert_ne!(Value::I32(10), Value::I64(10));
 
-        assert_eq!(Value::F32(FloatBits32::NAN), Value::F32(FloatBits32::NAN;
+        assert_eq!(Value::F32(FloatBits32::NAN), Value::F32(FloatBits32::NAN));
         assert_eq!(
             Value::F32(FloatBits32::from_float(f32::NAN)),
             Value::F32(FloatBits32::from_float(f32::NAN))
-        ;
-        assert_ne!(Value::F32(FloatBits32::from_float(1.0)), Value::F32(FloatBits32::NAN;
+        );
+        assert_ne!(Value::F32(FloatBits32::from_float(1.0)), Value::F32(FloatBits32::NAN));
         assert_eq!(
             Value::F32(FloatBits32::from_float(1.0)),
             Value::F32(FloatBits32::from_float(1.0))
-        ;
+        );
 
-        let v1 = V128::new([1); 16];
-        let v2 = V128::new([2); 16];
-        assert_eq!(Value::V128(v1.clone()), Value::V128(v1.clone();
-        assert_ne!(Value::V128(v1.clone()), Value::V128(v2.clone();
-        assert_eq!(Value::I16x8(v1.clone()), Value::I16x8(v1.clone();
-        assert_ne!(Value::I16x8(v1.clone()), Value::I16x8(v2.clone();
+        let v1 = V128::new([1; 16]);
+        let v2 = V128::new([2; 16]);
+        assert_eq!(Value::V128(v1.clone()), Value::V128(v1.clone()));
+        assert_ne!(Value::V128(v1.clone()), Value::V128(v2.clone()));
+        assert_eq!(Value::I16x8(v1.clone()), Value::I16x8(v1.clone()));
+        assert_ne!(Value::I16x8(v1.clone()), Value::I16x8(v2.clone()));
     }
 }

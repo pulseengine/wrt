@@ -134,7 +134,7 @@ impl CfiProtectedEngine {
     /// Create a new CFI-protected WebAssembly execution engine
     pub fn new(config: CfiConfiguration) -> Result<Self> {
         // Create underlying stackless engine
-        let stackless_engine = StacklessEngine::new);
+        let stackless_engine = StacklessEngine::new();
 
         // Configure CFI protection based on configuration
         let protection_config = Self::build_protection_config(&config)?;

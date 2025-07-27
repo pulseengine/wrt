@@ -13,7 +13,7 @@
 mod tests {
     #[test]
     fn no_std_tests_moved_to_centralized_location() {
-        println!("No-std tests for wrt-foundation are in wrt-tests/integration/no_std/";
-        println!("Run: cargo test -p wrt-tests consolidated_no_std_tests::wrt_foundation_tests";
+        println!("No-std tests for wrt-foundation are in wrt-tests/integration/no_std/");
+        println!("Run: cargo test -p wrt-tests consolidated_no_std_tests::wrt_foundation_tests");
     }
 }

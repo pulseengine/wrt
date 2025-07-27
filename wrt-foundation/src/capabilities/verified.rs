@@ -94,7 +94,7 @@ impl<const N: usize> SafeMemoryReference<N> {
     /// # Safety Requirements (enforced at compile time)
     /// - The base buffer must be at least N bytes
     /// - The offset must be within bounds
-    fn get_safe_ptr(&self, base_buffer: &[u8); N]) -> Option<NonNull<u8>> {
+    fn get_safe_ptr(&self, base_buffer: &[u8; N]) -> Option<NonNull<u8>> {
         self.buffer_offset.and_then(|offset| {
             if offset < N {
                 NonNull::new(base_buffer.as_ptr().wrapping_add(offset) as *mut u8)
@@ -228,7 +228,7 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
         if !proofs.is_asil_d_complete() {
             return Err(Error::runtime_execution_error(
                 "ASIL-D requires all verification proofs to be present"
-            ;
+            ));
         }
 
         // Verify all proofs before creating capability
@@ -267,11 +267,11 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::BOUNDS_VIOLATION,
-                "Buffer offset exceeds capability bounds";
+                "Buffer offset exceeds capability bounds"));
         }
         
         let mut capability = Self::new(owner_crate, proofs, runtime_verification)?;
-        capability.region_base = SafeMemoryReference::with_offset(buffer_offset;
+        capability.region_base = SafeMemoryReference::with_offset(buffer_offset);
         Ok(capability)
     }
 
@@ -292,7 +292,7 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
                 if offset.saturating_add(*len) > N {
                     return Err(Error::runtime_execution_error(
                         "Read operation exceeds verified bounds"
-                    ;
+                    ));
                 }
 
                 // Additional runtime integrity checks could go here
@@ -302,14 +302,14 @@ impl<const N: usize> VerifiedMemoryCapability<N> {
                     return Err(Error::new(
                         ErrorCategory::Verification,
                         codes::BOUNDS_VIOLATION,
-                        "Write operation exceeds verified bounds";
+                        "Write operation exceeds verified bounds"));
                 }
             }
             MemoryOperation::Allocate { size } => {
                 if *size > N {
                     return Err(Error::runtime_execution_error(
                         "Allocation size exceeds verified bounds"
-                    ;
+                    ));
                 }
             }
             _ => {
@@ -329,35 +329,35 @@ impl<const N: usize> MemoryCapability for VerifiedMemoryCapability<N> {
         // First, verify against capability mask
         if !operation.requires_capability(&self.allowed_operations) {
             return Err(Error::capability_violation(
-                "Operation not supported by verified capability";
+                "Operation not supported by verified capability"));
         }
 
         // Perform formal verification checks
         match operation {
             MemoryOperation::Allocate { size } => {
                 if *size > N {
-                    return Err(Error::capability_violation("Allocation exceeds verified limit";
+                    return Err(Error::capability_violation("Allocation exceeds verified limit"));
                 }
             }
             MemoryOperation::Read { offset, len } => {
                 if offset.saturating_add(*len) > N {
                     return Err(Error::capability_violation(
                         "Read operation exceeds verified bounds",
-                    ;
+                    ));
                 }
             }
             MemoryOperation::Write { offset, len } => {
                 if offset.saturating_add(*len) > N {
                     return Err(Error::capability_violation(
                         "Write operation exceeds verified bounds",
-                    ;
+                    ));
                 }
             }
             MemoryOperation::Delegate { .. } => {
                 // ASIL-D typically doesn't allow delegation for safety reasons
                 return Err(Error::capability_violation(
                     "Capability delegation not allowed for ASIL-D verified capabilities",
-                ;
+                ));
             }
             MemoryOperation::Deallocate => {
                 // Always allowed
@@ -379,7 +379,7 @@ impl<const N: usize> MemoryCapability for VerifiedMemoryCapability<N> {
         if crate_id != self.owner_crate {
             return Err(Error::capability_violation(
                 "Crate cannot use verified capability owned by different crate",
-            ;
+            ));
         }
 
         // Create verified memory region with safe reference
@@ -390,7 +390,7 @@ impl<const N: usize> MemoryCapability for VerifiedMemoryCapability<N> {
             self.runtime_verification,
         )?;
 
-        let guard = VerifiedMemoryGuard::new(region, self;
+        let guard = VerifiedMemoryGuard::new(region, self);
 
         Ok(guard)
     }
@@ -444,12 +444,12 @@ impl<const N: usize> VerifiedMemoryRegion<N> {
         if size > N {
             return Err(Error::runtime_execution_error(
                 "Verified region size exceeds capability bounds"
-            ;
+            ));
         }
 
         let buffer = [0; N];
-        let mut integrity_checksum = Checksum::new);
-        integrity_checksum.update_slice(&buffer[..size];
+        let mut integrity_checksum = Checksum::new();
+        integrity_checksum.update_slice(&buffer[..size]);
 
         Ok(Self {
             size,
@@ -467,14 +467,14 @@ impl<const N: usize> VerifiedMemoryRegion<N> {
             return Ok();
         }
 
-        let mut current_checksum = Checksum::new);
-        current_checksum.update_slice(&self.buffer[..self.size];
+        let mut current_checksum = Checksum::new();
+        current_checksum.update_slice(&self.buffer[..self.size]);
 
         if current_checksum != self.integrity_checksum {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::INTEGRITY_VIOLATION,
-                "Buffer integrity checksum mismatch";
+                "Buffer integrity checksum mismatch"));
         }
 
         Ok(())
@@ -483,8 +483,8 @@ impl<const N: usize> VerifiedMemoryRegion<N> {
     /// Update integrity checksum after write operation
     fn update_integrity(&mut self) {
         if self.runtime_verification {
-            self.integrity_checksum = Checksum::new);
-            self.integrity_checksum.update_slice(&self.buffer[..self.size];
+            self.integrity_checksum = Checksum::new();
+            self.integrity_checksum.update_slice(&self.buffer[..self.size]);
         }
     }
 
@@ -550,14 +550,14 @@ impl<const N: usize> MemoryGuard for VerifiedMemoryGuard<N> {
         if offset.saturating_add(len) > N {
             return Err(Error::runtime_execution_error(
                 "Read operation exceeds guard bounds"
-            ;
+            ));
         }
 
         if !self.region.contains_range(offset, len) {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::BOUNDS_VIOLATION,
-                "Read range exceeds verified region bounds";
+                "Read range exceeds verified region bounds"));
         }
 
         let buffer = self.region.buffer()?;
@@ -569,21 +569,21 @@ impl<const N: usize> MemoryGuard for VerifiedMemoryGuard<N> {
         if offset.saturating_add(data.len()) > N {
             return Err(Error::runtime_execution_error(
                 "Write operation exceeds guard bounds"
-            ;
+            ));
         }
 
         if !self.region.contains_range(offset, data.len()) {
             return Err(Error::new(
                 ErrorCategory::Verification,
                 codes::BOUNDS_VIOLATION,
-                "Write range exceeds verified region bounds";
+                "Write range exceeds verified region bounds"));
         }
 
-        let buffer = self.region.buffer_mut);
-        buffer[offset..offset + data.len()].copy_from_slice(data;
+        let buffer = self.region.buffer_mut();
+        buffer[offset..offset + data.len()].copy_from_slice(data);
 
         // Update integrity checksum after write
-        self.region.update_integrity);
+        self.region.update_integrity();
 
         Ok(())
     }
@@ -617,44 +617,44 @@ mod tests {
 
     #[test]
     fn test_verified_capability_creation() {
-        let proofs = create_test_proofs);
+        let proofs = create_test_proofs();
         let capability =
-            VerifiedMemoryCapability::<1024>::new(CrateId::Foundation, proofs, true).unwrap());
+            VerifiedMemoryCapability::<1024>::new(CrateId::Foundation, proofs, true).unwrap();
 
-        assert_eq!(capability.max_allocation_size(), 1024;
-        assert_eq!(capability.verification_level(), VerificationLevel::Redundant;
-        assert!(!capability.supports_operation(MemoryOperationType::Delegate);
+        assert_eq!(capability.max_allocation_size(), 1024);
+        assert_eq!(capability.verification_level(), VerificationLevel::Redundant);
+        assert!(!capability.supports_operation(MemoryOperationType::Delegate));
     }
 
     #[test]
     fn test_verification_proofs_completeness() {
-        let incomplete_proofs = VerificationProofs::empty);
-        assert!(!incomplete_proofs.is_asil_d_complete();
+        let incomplete_proofs = VerificationProofs::empty();
+        assert!(!incomplete_proofs.is_asil_d_complete());
 
-        let complete_proofs = create_test_proofs);
-        assert!(complete_proofs.is_asil_d_complete();
+        let complete_proofs = create_test_proofs();
+        assert!(complete_proofs.is_asil_d_complete());
     }
 
     #[test]
     fn test_verified_allocation_bounds() {
-        let proofs = create_test_proofs);
+        let proofs = create_test_proofs();
         let capability =
-            VerifiedMemoryCapability::<100>::new(CrateId::Foundation, proofs, true).unwrap());
+            VerifiedMemoryCapability::<100>::new(CrateId::Foundation, proofs, true).unwrap();
 
         let valid_op = MemoryOperation::Allocate { size: 50 };
         assert!(capability.verify_access(&valid_op).is_ok());
 
         let invalid_op = MemoryOperation::Allocate { size: 200 };
-        assert!(capability.verify_access(&invalid_op).is_err();
+        assert!(capability.verify_access(&invalid_op).is_err());
     }
 
     #[test]
     fn test_delegation_not_allowed() {
-        let proofs = create_test_proofs);
+        let proofs = create_test_proofs();
         let capability =
-            VerifiedMemoryCapability::<1000>::new(CrateId::Foundation, proofs, true).unwrap());
+            VerifiedMemoryCapability::<1000>::new(CrateId::Foundation, proofs, true).unwrap();
 
-        let subset = CapabilityMask::read_only);
-        assert!(capability.delegate(subset).is_err();
+        let subset = CapabilityMask::read_only();
+        assert!(capability.delegate(subset).is_err());
     }
 }

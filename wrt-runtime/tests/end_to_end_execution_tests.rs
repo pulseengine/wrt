@@ -210,7 +210,7 @@ fn test_error_handling() -> Result<()> {
     assert!(result.is_err();
     
     // Test function call on non-existent instance  
-    let fake_handle = wrt_runtime::engine::InstanceHandle::new);
+    let fake_handle = wrt_runtime::engine::InstanceHandle::new();
     let result = engine.execute(fake_handle, "test", &[];
     assert!(result.is_err();
     

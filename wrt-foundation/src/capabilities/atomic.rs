@@ -71,12 +71,12 @@ impl<'a> CapabilityAtomicMemory<'a> {
     fn verify_atomic_access(&self, offset: usize, size: usize, alignment: usize) -> Result<()> {
         // Check bounds
         if offset + size > self.size {
-            return Err(Error::runtime_execution_error("Atomic operation address out of bounds";
+            return Err(Error::runtime_execution_error("Atomic operation address out of bounds"));
         }
         
         // Check alignment
         if offset % alignment != 0 {
-            return Err(Error::runtime_execution_error("Unaligned atomic access";
+            return Err(Error::runtime_execution_error("Unaligned atomic access"));
         }
         
         // Verify capability allows this operation
@@ -220,13 +220,13 @@ impl<'a> AtomicOperationBuilder<'a> {
     
     /// Set the capability to use
     pub fn with_capability(mut self, capability: &'a dyn AnyMemoryCapability) -> Self {
-        self.capability = Some(capability;
+        self.capability = Some(capability);
         self
     }
     
     /// Set the memory offset
     pub fn at_offset(mut self, offset: usize) -> Self {
-        self.offset = Some(offset;
+        self.offset = Some(offset);
         self
     }
     
@@ -267,27 +267,27 @@ mod tests {
     
     #[test]
     fn test_atomic_stats() {
-        let mut stats = CapabilityAtomicStats::new);
+        let mut stats = CapabilityAtomicStats::new();
         
-        stats.record_success);
-        assert_eq!(stats.success_rate(), 100.0;
+        stats.record_success();
+        assert_eq!(stats.success_rate(), 100.0);
         
-        stats.record_capability_violation);
-        assert_eq!(stats.success_rate(), 50.0;
+        stats.record_capability_violation();
+        assert_eq!(stats.success_rate(), 50.0);
         
-        stats.record_alignment_failure);
-        stats.record_bounds_violation);
+        stats.record_alignment_failure();
+        stats.record_bounds_violation();
         assert_eq!(stats.successful_operations, 1);
-        assert_eq!(stats.total_operations, 4;
+        assert_eq!(stats.total_operations, 4);
     }
     
     #[test]
     fn test_atomic_operation_builder() {
         let builder = AtomicOperationBuilder::new()
             .at_offset(100)
-            .with_ordering(Ordering::Relaxed;
+            .with_ordering(Ordering::Relaxed);
         
         // Should fail without capability
-        assert!(builder.verify().is_err();
+        assert!(builder.verify().is_err());
     }
 }

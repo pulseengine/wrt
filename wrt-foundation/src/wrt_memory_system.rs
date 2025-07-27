@@ -77,7 +77,7 @@ impl<const N: usize> ProviderFactory for SizedNoStdProviderFactory<N> {
 
     fn create_provider(&self, size: usize) -> Result<Self::Provider> {
         if size > N {
-            return Err(memory_limit_exceeded_error("Requested size exceeds provider capacity";
+            return Err(memory_limit_exceeded_error("Requested size exceeds provider capacity"));
         }
 
         #[allow(deprecated)]
@@ -129,15 +129,15 @@ mod tests {
     #[test]
     fn test_wrt_memory_system() {
         // Initialize the capability system
-        CapabilityWrtFactory::initialize_default().unwrap());
+        CapabilityWrtFactory::initialize_default().unwrap();
 
         // Create a provider using capability system
-        let guard = wrt_provider!(1024, CrateId::Component).unwrap());
-        assert_eq!(guard.size(), 1024;
+        let guard = wrt_provider!(1024, CrateId::Component).unwrap();
+        assert_eq!(guard.size(), 1024);
 
         // Verify capability-based allocation
         use crate::memory_init::get_global_capability_context;
-        let context = get_global_capability_context().unwrap());
-        assert!(context.has_capability(CrateId::Component);
+        let context = get_global_capability_context().unwrap();
+        assert!(context.has_capability(CrateId::Component));
     }
 }

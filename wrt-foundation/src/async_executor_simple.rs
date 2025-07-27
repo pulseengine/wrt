@@ -58,7 +58,7 @@ pub fn with_async<F, T>(future: F) -> Result<T, ExecutorError>
 where
     F: Future<Output = T> + core::marker::Unpin,
 {
-    let runtime = AsyncRuntime::new);
+    let runtime = AsyncRuntime::new();
     runtime.block_on(future)
 }
 
@@ -96,7 +96,7 @@ mod tests {
             42
         }
 
-        let result = with_async(test_future()).unwrap());
+        let result = with_async(test_future()).unwrap();
         assert_eq!(result, 42;
     }
 }

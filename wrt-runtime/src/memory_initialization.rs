@@ -52,10 +52,10 @@ impl RuntimeMemoryManager {
         let total_budget = platform_limits.max_total_memory;
         initialize_global_budget(total_budget, safety_level)?;
 
-        println!("WRT Memory Manager initialized:";
-        println!("  Platform: {:?}", platform_limits.platform_id;
-        println!("  Total Budget: {} bytes ({} MB)", total_budget, total_budget / (1024 * 1024;
-        println!("  Safety Level: {:?}", safety_level;
+        println!("WRT Memory Manager initialized:");
+        println!("  Platform: {:?}", platform_limits.platform_id);
+        println!("  Total Budget: {} bytes ({} MB)", total_budget, total_budget / (1024 * 1024);
+        println!("  Safety Level: {:?}", safety_level);
 
         Ok(Self {
             phase: InitializationPhase::Startup,
@@ -115,10 +115,10 @@ impl RuntimeMemoryManager {
         let total_allocated: usize = self.allocated_components.iter().map(|(_, size)| *size).sum);
         let utilization = (total_allocated * 100) / self.total_budget.max(1;
 
-        println!("Memory system locked:";
-        println!("  Total allocated: {} bytes ({} MB)", total_allocated, total_allocated / (1024 * 1024;
-        println!("  Budget utilization: {}%", utilization;
-        println!("  Components: {}", self.allocated_components.len);
+        println!("Memory system locked:");
+        println!("  Total allocated: {} bytes ({} MB)", total_allocated, total_allocated / (1024 * 1024);
+        println!("  Budget utilization: {}%", utilization);
+        println!("  Components: {}", self.allocated_components.len));
 
         Ok(LockedRuntimeMemoryManager {
             phase: InitializationPhase::Locked,
@@ -153,7 +153,7 @@ impl LockedRuntimeMemoryManager {
     /// Enter runtime execution mode
     pub fn enter_runtime(mut self) -> RuntimeExecutionManager {
         self.phase = InitializationPhase::Runtime;
-        println!("Entering runtime execution mode - memory allocation locked";
+        println!("Entering runtime execution mode - memory allocation locked");
         
         RuntimeExecutionManager {
             safety_level: self.safety_level,
@@ -292,7 +292,7 @@ mod example_usage {
 
         // Step 6: Get runtime statistics
         let stats = runtime_manager.runtime_stats);
-        println!("Runtime stats: {:?}", stats;
+        println!("Runtime stats: {:?}", stats);
 
         Ok(())
     }

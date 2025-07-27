@@ -50,7 +50,7 @@ fn safe_memory_store_benchmark(c: &mut Criterion) {
                 for i in 0..NUM_CHUNKS {
                     let offset = i * CHUNK_SIZE;
                     if offset + CHUNK_SIZE <= CAPACITY {
-                        black_box(handler.write_data(offset, black_box(&data_to_store))).unwrap());
+                        black_box(handler.write_data(offset, black_box(&data_to_store))).unwrap();
                     }
                 }
             })
@@ -77,7 +77,7 @@ fn safe_memory_load_benchmark(c: &mut Criterion) {
             SafeMemoryHandler::new(StdMemoryProvider::new(initial_data_vec.clone()), level;
         #[cfg(not(feature = "std"))]
         let mut handler = {
-            let mut provider = wrt_foundation::safe_memory::NoStdMemoryProvider::<CAPACITY>::new);
+            let mut provider = wrt_foundation::safe_memory::NoStdMemoryProvider::<CAPACITY>::new();
             provider.set_data(&initial_data_vec).unwrap_or_default(); // Populate NoStd provider
             SafeMemoryHandler::new(provider, level)
         };
@@ -88,8 +88,8 @@ fn safe_memory_load_benchmark(c: &mut Criterion) {
                 for i in 0..NUM_CHUNKS {
                     let offset = i * CHUNK_SIZE;
                     if offset + CHUNK_SIZE <= CAPACITY {
-                        let safe_slice = handler.get_slice(offset, CHUNK_SIZE).unwrap());
-                        let data_segment = safe_slice.data().unwrap());
+                        let safe_slice = handler.get_slice(offset, CHUNK_SIZE).unwrap();
+                        let data_segment = safe_slice.data().unwrap();
                         for val in data_segment.iter() {
                             sum = sum.wrapping_add(*val;
                         }

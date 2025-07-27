@@ -55,7 +55,7 @@ macro_rules! vec {
     };
     ($elem:expr; $n:expr) => {
         {
-            let mut v = Vec::new);
+            let mut v = Vec::new());
             for _ in 0..$n {
                 v.push($elem);
             }
@@ -64,7 +64,7 @@ macro_rules! vec {
     };
     ($($x:expr),*) => {
         {
-            let mut v = Vec::new);
+            let mut v = Vec::new());
             $(v.push($x);)*
             v
         }
@@ -218,7 +218,7 @@ pub trait ToString {
 impl ToString for &str {
     fn to_string(&self) -> RuntimeString {
         let provider = wrt_foundation::safe_managed_alloc!(1024, wrt_foundation::budget_aware_provider::CrateId::Runtime)
-            .expect("Failed to allocate memory for string conversion");
+            .expect("Failed to allocate memory for string conversion"));
         RuntimeString::from_str(self, provider.clone()).unwrap_or_else(|_| {
             // If conversion fails, create empty string with same provider
             RuntimeString::from_str("", provider).unwrap()

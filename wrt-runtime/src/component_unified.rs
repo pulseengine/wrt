@@ -98,7 +98,7 @@ where
             .unwrap_or_else(|e| {
                 // Log the error if logging is available
                 #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to create memory adapter during clone: {}", e;
+                eprintln!("Warning: Failed to create memory adapter during clone: {}", e));
                 
                 // Create a minimal fallback adapter
                 PlatformMemoryAdapter::new(1024 * 1024) // Try with 1MB
@@ -169,7 +169,7 @@ where
         Self::new_default().unwrap_or_else(|e| {
             // Log the error if logging is available
             #[cfg(feature = "std")]
-            eprintln!("Error creating default component instance: {}. Creating minimal fallback instance.", e;
+            eprintln!("Error creating default component instance: {}. Creating minimal fallback instance.", e));
             
             // Create a minimal instance with reduced memory requirements
             #[cfg(any(feature = "std", feature = "alloc"))]
@@ -594,8 +594,8 @@ mod tests {
     
     #[test]
     fn test_component_id_generation() {
-        let id1 = ComponentId::new);
-        let id2 = ComponentId::new);
+        let id1 = ComponentId::new();
+        let id2 = ComponentId::new();
         
         assert_ne!(id1, id2;
         assert_ne!(id1.as_u32(), id2.as_u32);
@@ -639,7 +639,7 @@ mod tests {
         let runtime = UnifiedComponentRuntime::<DefaultRuntimeProvider>::new_default);
         assert!(runtime.is_ok());
         
-        let runtime = runtime.unwrap());
+        let runtime = runtime.unwrap();
         assert_eq!(runtime.instance_count(), 0);
         assert!(runtime.can_instantiate_component(1024);
     }

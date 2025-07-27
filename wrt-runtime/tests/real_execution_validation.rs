@@ -64,7 +64,7 @@ fn test_instruction_parsing_integration() -> Result<()> {
     assert!(!function.body.is_empty(), "Function body should contain parsed instructions");
     assert!(function.body.len() > 0, "Function should have at least one instruction");
     
-    println!("✓ Function has {} parsed instructions", function.body.len);
+    println!("✓ Function has {} parsed instructions", function.body.len));
     Ok(())
 }
 
@@ -75,7 +75,7 @@ fn test_stackless_engine_execution() -> Result<()> {
     let runtime_module = Module::from_wrt_module(&decoded)?;
     
     // Create stackless engine
-    let mut engine = StacklessEngine::new);
+    let mut engine = StacklessEngine::new();
     
     // Create module instance
     let instance = ModuleInstance::new(runtime_module.clone(), 0)?;
@@ -93,7 +93,7 @@ fn test_stackless_engine_execution() -> Result<()> {
     
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 42, "15 + 27 should equal 42";
-        println!("✓ Real execution successful: 15 + 27 = {}", result;
+        println!("✓ Real execution successful: 15 + 27 = {}", result);
     } else {
         return Err(Error::runtime_error("Expected i32 result";
     }
@@ -115,7 +115,7 @@ fn test_memory_bounded_execution() -> Result<()> {
     let function = runtime_module.functions.get(0)?;
     assert!(function.body.instructions.capacity() > 0, "Instructions should use bounded collections");
     
-    println!("✓ All collections are properly bounded for ASIL-B compliance";
+    println!("✓ All collections are properly bounded for ASIL-B compliance");
     Ok(())
 }
 
@@ -125,7 +125,7 @@ fn test_multiple_function_calls() -> Result<()> {
     let decoded = decode_module(SIMPLE_ADD_WASM)?;
     let runtime_module = Module::from_wrt_module(&decoded)?;
     
-    let mut engine = StacklessEngine::new);
+    let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
     let instance_arc = Arc::new(instance;
     let _instance_idx = engine.set_current_module(instance_arc)?;
@@ -150,7 +150,7 @@ fn test_multiple_function_calls() -> Result<()> {
         }
     }
     
-    println!("✓ Multiple function calls successful";
+    println!("✓ Multiple function calls successful");
     Ok(())
 }
 
@@ -166,7 +166,7 @@ fn test_capability_based_memory_allocation() -> Result<()> {
     assert_eq!(test_vec.len(), 1);
     assert_eq!(test_vec.get(0)?, 42;
     
-    println!("✓ Capability-based memory allocation working";
+    println!("✓ Capability-based memory allocation working");
     Ok(())
 }
 
@@ -182,10 +182,10 @@ fn test_instruction_dispatch_coverage() -> Result<()> {
     // The add function should contain: local.get 0, local.get 1, i32.add, end
     assert!(function.body.len() >= 3, "Add function should have at least 3 instructions");
     
-    println!("✓ Instruction sequence parsed with {} instructions", function.body.len);
+    println!("✓ Instruction sequence parsed with {} instructions", function.body.len));
     
     // Test actual execution to verify dispatcher works
-    let mut engine = StacklessEngine::new);
+    let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
     let instance_arc = Arc::new(instance;
     let _instance_idx = engine.set_current_module(instance_arc)?;
@@ -196,7 +196,7 @@ fn test_instruction_dispatch_coverage() -> Result<()> {
     assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
         assert_eq!(*result, 18;
-        println!("✓ Instruction dispatch successful: 7 + 11 = {}", result;
+        println!("✓ Instruction dispatch successful: 7 + 11 = {}", result);
     }
     
     Ok(())
@@ -208,7 +208,7 @@ fn test_error_handling_and_bounds() -> Result<()> {
     let decoded = decode_module(SIMPLE_ADD_WASM)?;
     let runtime_module = Module::from_wrt_module(&decoded)?;
     
-    let mut engine = StacklessEngine::new);
+    let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
     let instance_arc = Arc::new(instance;
     let _instance_idx = engine.set_current_module(instance_arc)?;
@@ -233,8 +233,8 @@ fn test_asil_b_compliance_features() -> Result<()> {
     let runtime_module = Module::from_wrt_module(&decoded)?;
     
     // Verify deterministic behavior - same inputs should give same outputs
-    let mut engine1 = StacklessEngine::new);
-    let mut engine2 = StacklessEngine::new);
+    let mut engine1 = StacklessEngine::new();
+    let mut engine2 = StacklessEngine::new();
     
     let instance1 = ModuleInstance::new(runtime_module.clone(), 0)?;
     let instance2 = ModuleInstance::new(runtime_module, 1)?;
@@ -247,7 +247,7 @@ fn test_asil_b_compliance_features() -> Result<()> {
     let result2 = engine2.execute(0, 0, args)?;
     
     assert_eq!(result1, result2, "Results should be deterministic";
-    println!("✓ Deterministic execution verified for ASIL-B compliance";
+    println!("✓ Deterministic execution verified for ASIL-B compliance");
     
     Ok(())
 }

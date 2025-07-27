@@ -105,18 +105,18 @@ impl EngineFactory {
         match config.engine_type {
             EngineType::Stackless => {
                 // Create basic stackless engine for minimal overhead
-                let engine = crate::stackless::StacklessEngine::new);
+                let engine = crate::stackless::StacklessEngine::new();
                 Ok(Box::new(engine))
             }
             EngineType::CapabilityAware => {
                 // Create capability-aware engine with security checks
                 // For now using StacklessEngine as base, but with capability-aware memory provider
-                let engine = crate::stackless::StacklessEngine::new);
+                let engine = crate::stackless::StacklessEngine::new();
                 Ok(Box::new(engine))
             }
             EngineType::Wast => {
                 // Create WAST testing engine with extended testing capabilities
-                let engine = crate::stackless::StacklessEngine::new);
+                let engine = crate::stackless::StacklessEngine::new();
                 Ok(Box::new(engine))
             }
         }

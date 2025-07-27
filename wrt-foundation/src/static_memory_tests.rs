@@ -27,7 +27,7 @@ fn test_bounded_vec_capacity_enforcement() {
     let provider = TestProvider::default());
 
     // Create bounded vec with capacity 10
-    let mut vec: BoundedVec<u32, 10, TestProvider> = BoundedVec::new(provider).unwrap());
+    let mut vec: BoundedVec<u32, 10, TestProvider> = BoundedVec::new(provider).unwrap();
 
     // Should succeed for 10 items
     for i in 0..10 {
@@ -45,7 +45,7 @@ fn test_bounded_map_capacity_enforcement() {
     let provider = TestProvider::default());
 
     // Create bounded map with capacity 5
-    let mut map: BoundedMap<u32, u32, 5, TestProvider> = BoundedMap::new(provider).unwrap());
+    let mut map: BoundedMap<u32, u32, 5, TestProvider> = BoundedMap::new(provider).unwrap();
 
     // Should succeed for 5 items
     for i in 0..5 {
@@ -78,7 +78,7 @@ fn test_memory_block_static_allocation() {
     type TestProvider = NoStdProvider<4096>;
 
     // Create memory block
-    let block = BoundedMemoryBlock::<TestProvider>::new(1024, "Test block", 1).unwrap());
+    let block = BoundedMemoryBlock::<TestProvider>::new(1024, "Test block", 1).unwrap();
 
     // Verify static allocation
     assert_eq!(block.size(), 1024;
@@ -104,7 +104,7 @@ fn test_component_memory_pre_allocation() {
         SafetyLevel::default(),
         TestProvider::default(),
     )
-    .unwrap());
+    .unwrap();
 
     // Verify allocations
     assert_eq!(blocks.len(), 3;
@@ -115,8 +115,8 @@ fn test_component_memory_pre_allocation() {
 
 #[test]
 fn test_configurable_provider_bounds() {
-    let mut small_provider = SmallProvider::new);
-    let mut medium_provider = MediumProvider::new);
+    let mut small_provider = SmallProvider::new();
+    let mut medium_provider = MediumProvider::new();
 
     // Small provider should have 8KB
     assert_eq!(small_provider.total_memory(), 8192;
@@ -141,7 +141,7 @@ fn test_configurable_provider_bounds() {
 fn test_system_registry_bounded_operations() {
     type TestProvider = NoStdProvider<8192>;
 
-    let mut registry = BoundedSystemRegistry::<TestProvider>::new().unwrap());
+    let mut registry = BoundedSystemRegistry::<TestProvider>::new().unwrap();
 
     // Register components
     for i in 0..10 {
@@ -158,10 +158,10 @@ fn test_system_registry_bounded_operations() {
 fn test_event_system_bounded_queue() {
     type TestProvider = NoStdProvider<16384>;
 
-    let mut events = BoundedEventSystem::<TestProvider>::new().unwrap());
+    let mut events = BoundedEventSystem::<TestProvider>::new().unwrap();
 
     // Register handler
-    let _handler = events.register_handler(EventType::ComponentInitialized).unwrap());
+    let _handler = events.register_handler(EventType::ComponentInitialized).unwrap();
 
     // Emit events up to capacity
     for i in 0..100 {
@@ -173,7 +173,7 @@ fn test_event_system_bounded_queue() {
     }
 
     // Process events
-    let processed = events.process_events().unwrap());
+    let processed = events.process_events().unwrap();
     assert_eq!(processed, 100;
 }
 
@@ -181,10 +181,10 @@ fn test_event_system_bounded_queue() {
 fn test_memory_pool_static_blocks() {
     type TestProvider = NoStdProvider<1024>;
 
-    let mut pool = BoundedMemoryPool::<128, 8, TestProvider>::new);
+    let mut pool = BoundedMemoryPool::<128, 8, TestProvider>::new();
 
     // Allocate all blocks
-    let mut blocks = Vec::new);
+    let mut blocks = Vec::new());
     for _ in 0..8 {
         match pool.allocate() {
             Ok(block) => blocks.push(block.as_ptr()),
@@ -205,10 +205,10 @@ fn test_no_dynamic_allocation_in_critical_path() {
     let provider = TestProvider::default());
 
     // Create all collections with static capacity
-    let vec: BoundedVec<u32, 100, TestProvider> = BoundedVec::new(provider.clone()).unwrap());
-    let map: BoundedMap<u32, u32, 50, TestProvider> = BoundedMap::new(provider.clone()).unwrap());
+    let vec: BoundedVec<u32, 100, TestProvider> = BoundedVec::new(provider.clone()).unwrap();
+    let map: BoundedMap<u32, u32, 50, TestProvider> = BoundedMap::new(provider.clone()).unwrap();
     let string: BoundedString<128, TestProvider> =
-        BoundedString::from_str("test", provider).unwrap());
+        BoundedString::from_str("test", provider).unwrap();
 
     // Verify static allocation
     assert_eq!(vec.capacity(), 100;
@@ -231,7 +231,7 @@ fn test_bounded_vs_unbounded_performance() {
     let start = Instant::now);
     for _ in 0..ITERATIONS {
         let mut vec: BoundedVec<u32, 100, TestProvider> =
-            BoundedVec::new(provider.clone()).unwrap());
+            BoundedVec::new(provider.clone()).unwrap();
         for i in 0..50 {
             drop(vec.push(i);
         }
@@ -249,7 +249,7 @@ fn test_bounded_vs_unbounded_performance() {
     let unbounded_time = start.elapsed);
 
     // Bounded collections should be competitive
-    println!("Bounded time: {:?}, Unbounded time: {:?}", bounded_time, unbounded_time;
+    println!("Bounded time: {:?}, Unbounded time: {:?}", bounded_time, unbounded_time);
 
     // Allow up to 2x overhead for safety
     assert!(bounded_time.as_nanos() < unbounded_time.as_nanos() * 2);
@@ -262,37 +262,37 @@ fn test_integrated_static_memory_system() {
 
     // Initialize memory budget (would normally be done at startup)
     // Note: This is commented out as it requires global state initialization
-    // initialize_global_budget(1024 * 1024, SafetyLevel::AsilB).unwrap());
+    // initialize_global_budget(1024 * 1024, SafetyLevel::AsilB).unwrap();
 
     // Create system components
-    let mut registry = BoundedSystemRegistry::<TestProvider>::new().unwrap());
-    let mut events = BoundedEventSystem::<TestProvider>::new().unwrap());
-    let mut pool = BoundedMemoryPool::<256, 16, TestProvider>::new);
+    let mut registry = BoundedSystemRegistry::<TestProvider>::new().unwrap();
+    let mut events = BoundedEventSystem::<TestProvider>::new().unwrap();
+    let mut pool = BoundedMemoryPool::<256, 16, TestProvider>::new();
 
     // Register core components
-    registry.register_component("memory", 1, &[]).unwrap());
-    registry.register_component("events", 1, &["memory"]).unwrap());
-    registry.register_component("runtime", 1, &["memory", "events"]).unwrap());
+    registry.register_component("memory", 1, &[]).unwrap();
+    registry.register_component("events", 1, &["memory"]).unwrap();
+    registry.register_component("runtime", 1, &["memory", "events"]).unwrap();
 
     // Initialize all components
-    registry.initialize_all().unwrap());
+    registry.initialize_all().unwrap();
 
     // Allocate memory from pool
-    let block1 = pool.allocate().unwrap());
-    let block2 = pool.allocate().unwrap());
+    let block1 = pool.allocate().unwrap();
+    let block2 = pool.allocate().unwrap();
 
     // Emit events
-    events.emit_event(EventType::MemoryAllocated, "pool", b"256").unwrap());
-    events.emit_event(EventType::ComponentInitialized, "runtime", b"ready").unwrap());
+    events.emit_event(EventType::MemoryAllocated, "pool", b"256").unwrap();
+    events.emit_event(EventType::ComponentInitialized, "runtime", b"ready").unwrap();
 
     // Verify system state
     assert_eq!(pool.free_count(), 14); // 16 - 2 allocated
-    let processed = events.process_events().unwrap());
+    let processed = events.process_events().unwrap();
     assert_eq!(processed, 2;
 
     // Free memory
-    pool.free(block1).unwrap());
-    pool.free(block2).unwrap());
+    pool.free(block1).unwrap();
+    pool.free(block2).unwrap();
     assert_eq!(pool.free_count(), 16;
 }
 

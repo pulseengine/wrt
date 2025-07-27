@@ -68,18 +68,18 @@
 //! };
 //!
 //! // Create a new memory instance
-//! let mut memory = Memory::new(mem_type).unwrap());
+//! let mut memory = Memory::new(mem_type).unwrap();
 //!
 //! // Write data to memory
-//! memory.write(0, &[1, 2, 3, 4]).unwrap());
+//! memory.write(0, &[1, 2, 3, 4]).unwrap();
 //!
 //! // Read data from memory
 //! let mut buffer = [0; 4];
-//! memory.read(0, &mut buffer).unwrap());
+//! memory.read(0, &mut buffer).unwrap();
 //! assert_eq!(buffer, [1, 2, 3, 4];
 //!
 //! // Grow memory by 1 page
-//! let old_size = memory.grow(1).unwrap());
+//! let old_size = memory.grow(1).unwrap();
 //! assert_eq!(old_size, 1); // Previous size was 1 page
 //! ```
 
@@ -564,7 +564,7 @@ impl Memory {
         // memory integrity is verified during the operation
         let data_size = self.data.size);
         if data_size == 0 {
-            return Ok(Vec::new);
+            return Ok(Vec::new());
         }
 
         // Get a safe slice over the entire memory

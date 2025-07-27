@@ -279,7 +279,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         // Safety-enhanced push operation with verification
         if self.verification_level.should_verify(128) {
             // Perform pre-push integrity verification
-            self.verify_integrity().expect("ComponentRuntime integrity check failed");
+            self.verify_integrity().expect("ComponentRuntime integrity check failed"));
         }
 
         #[cfg(feature = "std")]
@@ -299,7 +299,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
         if self.verification_level.should_verify(128) {
             // Perform post-push integrity verification
-            self.verify_integrity().expect("ComponentRuntime integrity check failed after push");
+            self.verify_integrity().expect("ComponentRuntime integrity check failed after push"));
         }
     }
 
@@ -318,25 +318,25 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         let memory_data = vec![0; memory_size];
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let memory_data = {
-            let mut data = wrt_foundation::bounded::BoundedVec::new);
+            let mut data = wrt_foundation::bounded::BoundedVec::new());
             for _ in 0..memory_size.min(65536) {
-                data.push(0u8).unwrap());
+                data.push(0u8).unwrap();
             }
             data
         };
 
         // Collect host function names and types for tracking
         #[cfg(feature = "std")]
-        let mut host_function_names = Vec::new);
+        let mut host_function_names = Vec::new());
         #[cfg(all(not(feature = "std"), not(feature = "std")))]
-        let mut host_function_names = wrt_foundation::bounded::BoundedVec::new);
+        let mut host_function_names = wrt_foundation::bounded::BoundedVec::new());
 
         #[cfg(feature = "std")]
         let mut host_functions = {
             #[cfg(feature = "std")]
-            let mut map = HashMap::new);
+            let mut map = HashMap::new();
             #[cfg(not(feature = "std"))]
-            let mut map = BTreeMap::new);
+            let mut map = BTreeMap::new();
             
             for name in self.host_functions.keys() {
                 host_function_names.push(name.clone();
@@ -397,7 +397,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
             // Insert the function into the host functions map
             #[cfg(feature = "std")]
-            let name_string = name.to_string();
+            let name_string = name.to_string());
             #[cfg(not(feature = "std"))]
             let name_string = alloc::string::String::from(name;
             
@@ -431,7 +431,7 @@ impl ComponentRuntimeImpl {
     /// This is a convenience method for creating a ComponentRuntimeImpl with
     /// a specific verification level.
     pub fn with_verification_level(level: VerificationLevel) -> Self {
-        let mut runtime = Self::new);
+        let mut runtime = Self::new();
         runtime.verification_level = level;
         runtime
     }
@@ -494,7 +494,7 @@ impl ComponentInstance for ComponentInstanceImpl {
 
         // Check if this is a function that's known to the runtime
         #[cfg(feature = "std")]
-        let name_check = self.host_function_names.contains(&name.to_string();
+        let name_check = self.host_function_names.contains(&name.to_string());
         #[cfg(not(feature = "std"))]
         let name_check = self.host_function_names.contains(&alloc::string::String::from(name;
         #[cfg(all(not(feature = "std"), not(feature = "std")))]

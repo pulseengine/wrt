@@ -228,9 +228,9 @@ mod tests {
         let mut stream: ComponentStream<u32> = ComponentStream::new(StreamHandle(1), ValType::I32;
 
         // Write some values
-        stream.try_write(1).unwrap());
-        stream.try_write(2).unwrap());
-        stream.try_write(3).unwrap());
+        stream.try_write(1).unwrap();
+        stream.try_write(2).unwrap();
+        stream.try_write(3).unwrap();
 
         // Read values
         assert_eq!(stream.try_read().unwrap(), Some(1;

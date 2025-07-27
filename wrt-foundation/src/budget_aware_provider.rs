@@ -96,7 +96,7 @@ impl CrateIdentifier for CrateId {
 
 impl Checksummable for CrateId {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update(self.as_index() as u8;
+        checksum.update(self.as_index() as u8);
     }
 }
 

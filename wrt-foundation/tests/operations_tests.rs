@@ -13,7 +13,7 @@ mod tests {
 
     #[test]
     fn test_operation_counter() {
-        let counter = OperationCounter::new);
+        let counter = OperationCounter::new();
 
         // Record some operations
         counter.record_operation(OperationType::MemoryRead, VerificationLevel::Full;
@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn test_verification_level_impact() {
-        let counter = OperationCounter::new);
+        let counter = OperationCounter::new();
         let vl_off = VerificationLevel::Off;
         let vl_sampling = VerificationLevel::default(); // Sampling
         let vl_full = VerificationLevel::Full;

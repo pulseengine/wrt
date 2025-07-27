@@ -40,7 +40,7 @@ mod tests {
         };
 
         // Create handles
-        let module = ModuleHandle::new);
+        let module = ModuleHandle::new();
         let instance = InstanceHandle::from_index(0;
 
         // Use the handles to ensure they're not optimized away

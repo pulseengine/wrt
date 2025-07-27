@@ -332,7 +332,7 @@ mod tests {
         let adapter = PlatformMemoryAdapter::<DefaultRuntimeProvider>::new(1024 * 1024;
         assert!(adapter.is_ok());
         
-        let adapter = adapter.unwrap());
+        let adapter = adapter.unwrap();
         assert_eq!(adapter.total_memory(), 1024 * 1024;
         assert_eq!(adapter.available_memory(), 1024 * 1024;
     }

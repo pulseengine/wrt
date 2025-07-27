@@ -359,7 +359,7 @@ mod tests {
         }
         initialize_runtime_memory_config()?;
         
-        let mut manager = RuntimeMemoryManager::new);
+        let mut manager = RuntimeMemoryManager::new();
         
         // Get providers for different use cases
         let _func_provider = manager.get_provider(MemoryUseCase::FunctionLocals)?;

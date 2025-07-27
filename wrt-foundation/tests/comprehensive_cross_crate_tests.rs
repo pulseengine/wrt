@@ -77,14 +77,14 @@ impl TestMemoryStrategy {
 
     fn allocate(&self, size: usize) -> WrtResult<usize> {
         let id = self.allocation_count.fetch_add(1, Ordering::SeqCst;
-        let mut allocs = self.allocations.lock().unwrap());
+        let mut allocs = self.allocations.lock().unwrap();
         allocs.insert(id, vec![0u8); size];
         self.total_bytes.fetch_add(size, Ordering::SeqCst;
         Ok(id)
     }
 
     fn deallocate(&self, id: usize) -> WrtResult<()> {
-        let mut allocs = self.allocations.lock().unwrap());
+        let mut allocs = self.allocations.lock().unwrap();
         if let Some(data) = allocs.remove(&id) {
             self.total_bytes.fetch_sub(data.len(), Ordering::SeqCst;
             Ok(())
@@ -107,7 +107,7 @@ mod resource_handle_tests {
         let _ = memory_system_initializer::presets::development);
 
         // Create resource in Runtime crate
-        let mut resource = ResourceHandle::new(1, CrateId::Runtime, 1024).unwrap());
+        let mut resource = ResourceHandle::new(1, CrateId::Runtime, 1024).unwrap();
 
         // Attempt to transfer to Component crate should fail
         let result = resource.transfer_to(CrateId::Component;
@@ -121,21 +121,21 @@ mod resource_handle_tests {
     fn test_resource_lifetime_tracking() {
         let _ = memory_system_initializer::presets::development);
 
-        let initial_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+        let initial_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         let initial_usage = initial_stats.allocated_bytes;
 
         {
             // Create resources that will be dropped
-            let _r1 = ResourceHandle::new(1, CrateId::Runtime, 1024).unwrap());
-            let _r2 = ResourceHandle::new(2, CrateId::Runtime, 2048).unwrap());
+            let _r1 = ResourceHandle::new(1, CrateId::Runtime, 1024).unwrap();
+            let _r2 = ResourceHandle::new(2, CrateId::Runtime, 2048).unwrap();
 
             let during_stats =
-                BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+                BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
             assert!(during_stats.allocated_bytes > initial_usage);
         }
 
         // Resources should be cleaned up after drop
-        let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+        let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         assert_eq!(final_stats.allocated_bytes, initial_usage;
 
         let _ = memory_system_initializer::complete_global_memory_initialization);
@@ -181,12 +181,12 @@ mod component_interaction_tests {
         let _ = memory_system_initializer::presets::development);
 
         // Create component instances in different crates
-        let comp1 = ComponentInstance::new(1, CrateId::Component).unwrap());
-        let comp2 = ComponentInstance::new(2, CrateId::Runtime).unwrap());
+        let comp1 = ComponentInstance::new(1, CrateId::Component).unwrap();
+        let comp2 = ComponentInstance::new(2, CrateId::Runtime).unwrap();
 
         // Verify budget is tracked separately
-        let comp_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component).unwrap());
-        let runtime_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+        let comp_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component).unwrap();
+        let runtime_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
 
         assert!(comp_stats.allocated_bytes > 0);
         assert!(runtime_stats.allocated_bytes > 0);
@@ -200,7 +200,7 @@ mod component_interaction_tests {
         let _ = memory_system_initializer::presets::development);
 
         // Simulate canonical ABI memory operations
-        let provider = BudgetProvider::<4096>::new(CrateId::Component).unwrap());
+        let provider = BudgetProvider::<4096>::new(CrateId::Component).unwrap();
         let mut buffer = vec![0u8; 256];
 
         // Simulate canonical lifting/lowering
@@ -209,7 +209,7 @@ mod component_interaction_tests {
         }
 
         // Verify memory is properly tracked
-        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component).unwrap());
+        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component).unwrap();
         assert!(stats.allocated_bytes >= 4096);
 
         let _ = memory_system_initializer::complete_global_memory_initialization);
@@ -220,7 +220,7 @@ mod error_propagation_tests {
     use super::*;
 
     fn allocate_until_exhausted(crate_id: CrateId) -> WrtResult<Vec<BudgetProvider<1024>>> {
-        let mut providers = Vec::new);
+        let mut providers = Vec::new());
         loop {
             match BudgetProvider::<1024>::new(crate_id) {
                 Ok(p) => providers.push(p),
@@ -240,12 +240,12 @@ mod error_propagation_tests {
         let _ = memory_system_initializer::presets::development);
 
         // Exhaust Runtime crate budget
-        let providers = allocate_until_exhausted(CrateId::Runtime).unwrap());
-        assert!(!providers.is_empty();
+        let providers = allocate_until_exhausted(CrateId::Runtime).unwrap();
+        assert!(!providers.is_empty());
 
         // Verify other crates can still allocate
-        let component_provider = BudgetProvider::<1024>::new(CrateId::Component).unwrap());
-        let layout = Layout::from_size_align(100, 8).unwrap());
+        let component_provider = BudgetProvider::<1024>::new(CrateId::Component).unwrap();
+        let layout = Layout::from_size_align(100, 8).unwrap();
         let alloc_result = component_provider.allocate(layout;
         assert!(alloc_result.is_ok());
 
@@ -254,8 +254,8 @@ mod error_propagation_tests {
         drop(providers.into_iter().take(half).collect::<Vec<_>>);
 
         // Verify Runtime can allocate again
-        let new_provider = BudgetProvider::<1024>::new(CrateId::Runtime).unwrap());
-        let layout = Layout::from_size_align(100, 8).unwrap());
+        let new_provider = BudgetProvider::<1024>::new(CrateId::Runtime).unwrap();
+        let layout = Layout::from_size_align(100, 8).unwrap();
         let alloc_result = new_provider.allocate(layout;
         assert!(alloc_result.is_ok());
 
@@ -272,7 +272,7 @@ mod error_propagation_tests {
             let component_provider = BudgetProvider::<512>::new(CrateId::Component)?;
 
             // Simulate operation that could fail
-            let layout = Layout::from_size_align(256, 8).unwrap());
+            let layout = Layout::from_size_align(256, 8).unwrap();
             runtime_provider.allocate(layout.clone())?;
             component_provider.allocate(layout)?;
 
@@ -298,8 +298,8 @@ mod performance_tests {
         // Measure budget-aware allocation time
         let start = Instant::now);
         for _ in 0..ITERATIONS {
-            let provider = BudgetProvider::<256>::new(CrateId::Runtime).unwrap());
-            let layout = Layout::from_size_align(128, 8).unwrap());
+            let provider = BudgetProvider::<256>::new(CrateId::Runtime).unwrap();
+            let layout = Layout::from_size_align(128, 8).unwrap();
             let _ = provider.allocate(layout;
         }
         let budget_aware_duration = start.elapsed);
@@ -314,7 +314,7 @@ mod performance_tests {
         // Budget tracking should add less than 5x overhead
         let overhead_ratio =
             budget_aware_duration.as_nanos() as f64 / direct_duration.as_nanos() as f64;
-        println!("Allocation overhead ratio: {:.2}x", overhead_ratio;
+        println!("Allocation overhead ratio: {:.2}x", overhead_ratio);
         assert!(overhead_ratio < 5.0, "Budget tracking overhead too high: {:.2}x", overhead_ratio);
 
         let _ = memory_system_initializer::complete_global_memory_initialization);
@@ -325,7 +325,7 @@ mod performance_tests {
         let _ = memory_system_initializer::presets::development);
 
         const ALLOCATION_COUNT: usize = 5000;
-        let mut providers = Vec::new);
+        let mut providers = Vec::new());
 
         let start = Instant::now);
         for i in 0..ALLOCATION_COUNT {
@@ -342,7 +342,7 @@ mod performance_tests {
         }
         let duration = start.elapsed);
 
-        println!("Created {} allocations in {:?}", providers.len(), duration;
+        println!("Created {} allocations in {:?}", providers.len(), duration);
         assert!(
             duration < Duration::from_secs(1),
             "Allocation too slow for {} items",
@@ -364,7 +364,7 @@ mod edge_case_tests {
         // This tests graceful handling if budget is exhausted
 
         // Exhaust a crate's budget
-        let mut providers = Vec::new);
+        let mut providers = Vec::new());
         while let Ok(p) = BudgetProvider::<1024>::new(CrateId::Math) {
             providers.push(p);
         }
@@ -427,7 +427,7 @@ mod edge_case_tests {
         let _ = memory_system_initializer::presets::development);
 
         // Test that budget calculations don't overflow
-        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         let usage = stats.allocated_bytes;
         let budget = stats.budget_bytes;
 
@@ -452,7 +452,7 @@ mod thread_safety_tests {
         const THREAD_COUNT: usize = 8;
         const ALLOCATIONS_PER_THREAD: usize = 100;
 
-        let mut handles = Vec::new);
+        let mut handles = Vec::new());
 
         for thread_id in 0..THREAD_COUNT {
             let handle = thread::spawn(move || {
@@ -463,7 +463,7 @@ mod thread_safety_tests {
                     _ => CrateId::Host,
                 };
 
-                let mut providers = Vec::new);
+                let mut providers = Vec::new());
                 for _ in 0..ALLOCATIONS_PER_THREAD {
                     if let Ok(p) = BudgetProvider::<256>::new(crate_id) {
                         providers.push(p);
@@ -476,7 +476,7 @@ mod thread_safety_tests {
 
         let total_allocations: usize = handles.into_iter().map(|h| h.join().unwrap()).sum);
 
-        println!("Total concurrent allocations: {}", total_allocations;
+        println!("Total concurrent allocations: {}", total_allocations);
         assert!(total_allocations > 0);
 
         let _ = memory_system_initializer::complete_global_memory_initialization);
@@ -496,7 +496,7 @@ mod thread_safety_tests {
         ;
 
         // Concurrent allocations and deallocations
-        let mut handles = Vec::new);
+        let mut handles = Vec::new());
 
         for _ in 0..4 {
             let usage_after_clone = usage_after.clone();
@@ -504,7 +504,7 @@ mod thread_safety_tests {
                 // Allocate and immediately deallocate
                 for _ in 0..50 {
                     if let Ok(provider) = BudgetProvider::<512>::new(CrateId::Runtime) {
-                        let layout = Layout::from_size_align(256, 8).unwrap());
+                        let layout = Layout::from_size_align(256, 8).unwrap();
                         let _ = provider.allocate(layout;
                         // Provider dropped here
                     }
@@ -519,12 +519,12 @@ mod thread_safety_tests {
         }
 
         for handle in handles {
-            handle.join().unwrap());
+            handle.join().unwrap();
         }
 
         // Usage should return to near original after all deallocations
         let initial = usage_before.load(Ordering::SeqCst;
-        let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+        let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         let final_usage = final_stats.allocated_bytes;
 
         // Allow some variance due to shared pool
@@ -542,26 +542,26 @@ mod diagnostic_integration_tests {
         let _ = memory_system_initializer::presets::development);
 
         // Tracking should work in both debug and release modes
-        let provider = BudgetProvider::<1024>::new(CrateId::Debug).unwrap());
-        let layout = Layout::from_size_align(512, 8).unwrap());
+        let provider = BudgetProvider::<1024>::new(CrateId::Debug).unwrap();
+        let layout = Layout::from_size_align(512, 8).unwrap();
         let alloc_result = provider.allocate(layout;
         assert!(alloc_result.is_ok());
 
         // Verify tracking is active
-        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Debug).unwrap());
+        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Debug).unwrap();
         let usage = stats.allocated_bytes;
         assert!(usage > 0);
 
         #[cfg(debug_assertions)]
         {
-            println!("Debug mode: Enhanced tracking active";
+            println!("Debug mode: Enhanced tracking active");
             // In debug mode, we might have additional checks
             assert!(stats.allocated_bytes >= 1024);
         }
 
         #[cfg(not(debug_assertions))]
         {
-            println!("Release mode: Optimized tracking active";
+            println!("Release mode: Optimized tracking active");
             // In release mode, tracking should still work
             assert!(stats.allocated_bytes >= 1024);
         }
@@ -575,14 +575,14 @@ mod diagnostic_integration_tests {
 
         // Intentionally create a potential leak scenario
         let leaked_providers: Vec<BudgetProvider<512>> =
-            (0..10).filter_map(|_| BudgetProvider::<512>::new(CrateId::Logging).ok()).collect();
+            (0..10).filter_map(|_| BudgetProvider::<512>::new(CrateId::Logging).ok()).collect());
 
-        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Logging).unwrap());
+        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Logging).unwrap();
         let usage_with_leaks = stats.allocated_bytes;
         assert!(usage_with_leaks >= 5120)); // At least 10 * 512
 
         // In a real system, leak detection would identify these allocations
-        println!("Simulated memory leak scenario with {} allocations", leaked_providers.len);
+        println!("Simulated memory leak scenario with {} allocations", leaked_providers.len));
 
         // Clean up
         drop(leaked_providers;
@@ -598,18 +598,18 @@ mod custom_strategy_tests {
     fn test_custom_memory_strategy() {
         let _ = memory_system_initializer::presets::development);
 
-        let strategy = TestMemoryStrategy::new);
+        let strategy = TestMemoryStrategy::new();
 
         // Allocate using custom strategy
-        let id1 = strategy.allocate(1024).unwrap());
-        let id2 = strategy.allocate(2048).unwrap());
+        let id1 = strategy.allocate(1024).unwrap();
+        let id2 = strategy.allocate(2048).unwrap();
 
         let (count, bytes) = strategy.get_stats);
         assert_eq!(count, 2;
         assert_eq!(bytes, 3072;
 
         // Deallocate
-        strategy.deallocate(id1).unwrap());
+        strategy.deallocate(id1).unwrap();
 
         let (count, bytes) = strategy.get_stats);
         assert_eq!(count, 2); // Count doesn't decrease
@@ -627,7 +627,7 @@ mod custom_strategy_tests {
             Some(32 * 1024), // 32KB for embedded
         ;
 
-        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         let budget = stats.budget_bytes;
         assert!(budget < 10 * 1024)); // Should be small for embedded
 
@@ -636,7 +636,7 @@ mod custom_strategy_tests {
         // Test desktop platform
         let _ = memory_system_initializer::presets::development);
 
-        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap());
+        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Runtime).unwrap();
         let budget = stats.budget_bytes;
         assert!(budget > 100 * 1024)); // Should be larger for desktop
 
@@ -652,7 +652,7 @@ mod external_integration_tests {
         // In real WASI, this would use linear memory
         // Here we simulate with budget tracking
         let provider = BudgetProvider::<4096>::new(crate_id)?;
-        let layout = Layout::from_size_align(size, 8).unwrap());
+        let layout = Layout::from_size_align(size, 8).unwrap();
         let result = provider.allocate(layout)?;
         Ok(result)
     }
@@ -662,13 +662,13 @@ mod external_integration_tests {
         let _ = memory_system_initializer::presets::development);
 
         // Simulate WASI memory operations
-        let ptr1 = wasi_malloc(1024, CrateId::Host).unwrap());
-        let ptr2 = wasi_malloc(2048, CrateId::Host).unwrap());
+        let ptr1 = wasi_malloc(1024, CrateId::Host).unwrap();
+        let ptr2 = wasi_malloc(2048, CrateId::Host).unwrap();
 
         assert_ne!(ptr1, ptr2;
 
         // Verify budget tracking
-        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Host).unwrap());
+        let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Host).unwrap();
         let usage = stats.allocated_bytes;
         assert!(usage >= 8192)); // Two 4096 allocations
 
@@ -693,14 +693,14 @@ mod external_integration_tests {
         }
 
         // Call host function multiple times
-        let mut results = Vec::new);
+        let mut results = Vec::new());
         for _ in 0..5 {
             if let Ok(buffer) = host_function_with_allocation() {
                 results.push(buffer);
             }
         }
 
-        assert!(!results.is_empty();
+        assert!(!results.is_empty());
 
         let _ = memory_system_initializer::complete_global_memory_initialization);
     }
@@ -717,11 +717,11 @@ mod compile_time_enforcement_tests {
         let _ = memory_system_initializer::presets::development);
 
         // This compiles - correct usage
-        let provider = BudgetProvider::<1024>::new(CrateId::Runtime).unwrap());
+        let provider = BudgetProvider::<1024>::new(CrateId::Runtime).unwrap();
 
         // These would not compile (commented to allow tests to run):
-        // let bad_provider: BudgetProvider<0> = BudgetProvider::new(CrateId::Runtime).unwrap());
-        // let negative_size: BudgetProvider<-1> = BudgetProvider::new(CrateId::Runtime).unwrap());
+        // let bad_provider: BudgetProvider<0> = BudgetProvider::new(CrateId::Runtime).unwrap();
+        // let negative_size: BudgetProvider<-1> = BudgetProvider::new(CrateId::Runtime).unwrap();
 
         let _ = memory_system_initializer::complete_global_memory_initialization);
     }
@@ -735,13 +735,13 @@ mod compile_time_enforcement_tests {
         const MEDIUM: usize = 4096;
         const LARGE: usize = 65536;
 
-        let small_provider = BudgetProvider::<SMALL>::new(CrateId::Runtime).unwrap());
-        let medium_provider = BudgetProvider::<MEDIUM>::new(CrateId::Component).unwrap());
-        let large_provider = BudgetProvider::<LARGE>::new(CrateId::Platform).unwrap());
+        let small_provider = BudgetProvider::<SMALL>::new(CrateId::Runtime).unwrap();
+        let medium_provider = BudgetProvider::<MEDIUM>::new(CrateId::Component).unwrap();
+        let large_provider = BudgetProvider::<LARGE>::new(CrateId::Platform).unwrap();
 
-        let layout1 = Layout::from_size_align(128, 8).unwrap());
-        let layout2 = Layout::from_size_align(2048, 8).unwrap());
-        let layout3 = Layout::from_size_align(32768, 8).unwrap());
+        let layout1 = Layout::from_size_align(128, 8).unwrap();
+        let layout2 = Layout::from_size_align(2048, 8).unwrap();
+        let layout3 = Layout::from_size_align(32768, 8).unwrap();
 
         assert!(small_provider.allocate(layout1).is_ok());
         assert!(medium_provider.allocate(layout2).is_ok());
@@ -775,7 +775,7 @@ fn test_comprehensive_system_stress() {
                     _ => CrateId::Host,
                 };
 
-                let mut allocations = Vec::new);
+                let mut allocations = Vec::new());
                 let mut allocation_count = 0;
 
                 // Mixed allocation patterns
@@ -824,7 +824,7 @@ fn test_comprehensive_system_stress() {
                 (crate_id, allocation_count, allocations.len())
             })
         })
-        .collect();
+        .collect());
 
     // Phase 3: Monitor system health during stress
     let monitor_handle = thread::spawn(|| {
@@ -832,7 +832,7 @@ fn test_comprehensive_system_stress() {
             thread::sleep(Duration::from_millis(100;
 
             // Monitor system health
-            println!("System health check in progress...";
+            println!("System health check in progress...");
         }
     };
 
@@ -841,20 +841,20 @@ fn test_comprehensive_system_stress() {
     let mut total_retained = 0;
 
     for handle in workload_threads {
-        let (crate_id, allocated, retained) = handle.join().unwrap());
-        println!("Crate {:?}: allocated {}, retained {}", crate_id, allocated, retained;
+        let (crate_id, allocated, retained) = handle.join().unwrap();
+        println!("Crate {:?}: allocated {}, retained {}", crate_id, allocated, retained);
         total_allocations += allocated;
         total_retained += retained;
     }
 
-    monitor_handle.join().unwrap());
+    monitor_handle.join().unwrap();
 
     // Phase 5: Verify system integrity
-    println!("\nFinal system state:";
-    println!("  Total allocations: {}", total_allocations;
-    println!("  Total retained: {}", total_retained;
+    println!("\nFinal system state:");
+    println!("  Total allocations: {}", total_allocations);
+    println!("  Total retained: {}", total_retained);
 
     assert!(total_allocations > 0);
 
-    memory_system_initializer::complete_global_memory_initialization().unwrap());
+    memory_system_initializer::complete_global_memory_initialization().unwrap();
 }

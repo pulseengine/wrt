@@ -140,7 +140,7 @@ mod memory_budget_tests {
 
         // Test different report formats
         let text_report = MemoryReportBuilder::new().format(ReportFormat::Text).build()?;
-        assert!(!text_report.is_empty();
+        assert!(!text_report.is_empty());
         assert!(text_report.contains("Memory");
 
         let json_report = MemoryReportBuilder::new().format(ReportFormat::Json).build()?;
@@ -179,7 +179,7 @@ mod memory_budget_tests {
 
         // Warnings are acceptable but should be logged
         if has_warnings {
-            eprintln!("WARNING: Some crates approaching memory budget limits";
+            eprintln!("WARNING: Some crates approaching memory budget limits"));
         }
 
         Ok(())

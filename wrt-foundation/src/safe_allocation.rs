@@ -82,7 +82,7 @@ pub mod capability_factories {
         let capability = CapabilityProviderFactory::create_static_provider::<PROVIDER_SIZE>(crate_id, verification_level)?;
         
         // Create provider using safe default construction
-        let provider = NoStdProvider::<PROVIDER_SIZE>::default());
+        let provider = NoStdProvider::<PROVIDER_SIZE>::default();
         
         let vec = BoundedVec::new(provider).map_err(|_| {
             Error::memory_error("Failed to create capability-managed bounded vector")
@@ -113,7 +113,7 @@ pub mod capability_factories {
 /// ```rust
 /// use wrt_foundation::{capability_managed_alloc, CrateId, MemoryCapabilityContext};
 ///
-/// let context = MemoryCapabilityContext::new);
+/// let context = MemoryCapabilityContext::new();
 /// // Capability-based allocation with context verification
 /// let provider = capability_managed_alloc!(131072, &context, CrateId::Runtime)?;
 /// let vec = BoundedVec::new(provider)?;

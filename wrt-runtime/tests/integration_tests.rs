@@ -95,12 +95,12 @@ fn test_module_binary_loading() -> Result<()> {
     match result {
         Ok(_module) => {
             // Module loaded successfully
-            println!("Module loading succeeded";
+            println!("Module loading succeeded");
             Ok(())
         },
         Err(e) => {
             // Expected since our decoder implementation is minimal
-            println!("Module loading failed as expected: {:?}", e;
+            println!("Module loading failed as expected: {:?}", e);
             // For now, we consider this a success since the streaming decoder framework is in place
             Ok(())
         }

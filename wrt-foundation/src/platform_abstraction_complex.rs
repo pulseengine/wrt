@@ -436,7 +436,7 @@ pub fn current_time_ns() -> u64 {
     
     #[cfg(not(feature = "std"))]
     {
-        static TIME_PROVIDER: NoStdTimeProvider = NoStdTimeProvider::new);
+        static TIME_PROVIDER: NoStdTimeProvider = NoStdTimeProvider::new();
         TIME_PROVIDER.current_time_ns()
     }
 }

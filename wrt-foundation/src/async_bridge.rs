@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_async_runtime_creation() {
-        let runtime = AsyncRuntime::new);
+        let runtime = AsyncRuntime::new();
         assert!(runtime.executor.is_running();
     }
 }

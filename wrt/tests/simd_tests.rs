@@ -117,7 +117,7 @@ fn test_v128_splat() -> Result<()> {
     // Instantiate the module
     let instance_idx = engine.instantiate(module.clone())?;
 
-    println!("Running v128 splat tests");
+    println!("Running v128 splat tests"));
 
     // Test i8x16.splat
     let func_idx = module.get_export("i8x16_splat").unwrap().index;

@@ -181,7 +181,7 @@ impl AtomicMemoryModel {
     
     /// Optimize memory model based on usage patterns
     pub fn optimize_memory_model(&mut self) -> Result<OptimizationResult> {
-        let mut result = OptimizationResult::new);
+        let mut result = OptimizationResult::new();
         
         // Analyze operation patterns
         let patterns = self.analyze_operation_patterns);
@@ -714,22 +714,22 @@ mod tests {
     
     #[test]
     fn test_memory_model_stats() {
-        let stats = MemoryModelStats::new);
+        let stats = MemoryModelStats::new();
         assert_eq!(stats.total_operations, 0);
         assert_eq!(stats.total_execution_time, 0);
     }
     
     #[test]
     fn test_consistency_validation_result() {
-        let result = ConsistencyValidationResult::new().unwrap());
+        let result = ConsistencyValidationResult::new().unwrap();
         assert!(result.is_consistent);
-        assert!(result.data_races.is_empty();
+        assert!(result.data_races.is_empty());
     }
     
     #[cfg(feature = "std")]
     #[test]
     fn test_atomic_memory_model_creation() {
-        let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap());
+        let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap();
         let mut memory = vec![0u8; 1024];
         let model = AtomicMemoryModel::new(
             memory.as_mut_ptr(),

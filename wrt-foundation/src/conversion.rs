@@ -129,38 +129,38 @@ mod tests {
     #[test]
     fn test_val_type_conversions() {
         // Test binary conversions (now directly from ValueType)
-        assert_eq!(CoreValueType::I32.to_binary(), 0x7F;
-        assert_eq!(CoreValueType::I64.to_binary(), 0x7E;
-        assert_eq!(CoreValueType::F32.to_binary(), 0x7D;
-        assert_eq!(CoreValueType::F64.to_binary(), 0x7C;
+        assert_eq!(CoreValueType::I32.to_binary(), 0x7F);
+        assert_eq!(CoreValueType::I64.to_binary(), 0x7E);
+        assert_eq!(CoreValueType::F32.to_binary(), 0x7D);
+        assert_eq!(CoreValueType::F64.to_binary(), 0x7C);
         assert_eq!(CoreValueType::V128.to_binary(), 0x7B); // Added for V128
-        assert_eq!(CoreValueType::FuncRef.to_binary(), 0x70;
-        assert_eq!(CoreValueType::ExternRef.to_binary(), 0x6F;
+        assert_eq!(CoreValueType::FuncRef.to_binary(), 0x70);
+        assert_eq!(CoreValueType::ExternRef.to_binary(), 0x6F);
 
         // Test binary to val type conversions (now directly from ValueType)
-        assert_eq!(CoreValueType::from_binary(0x7F).unwrap(), CoreValueType::I32;
-        assert_eq!(CoreValueType::from_binary(0x7E).unwrap(), CoreValueType::I64;
-        assert_eq!(CoreValueType::from_binary(0x7D).unwrap(), CoreValueType::F32;
-        assert_eq!(CoreValueType::from_binary(0x7C).unwrap(), CoreValueType::F64;
+        assert_eq!(CoreValueType::from_binary(0x7F).unwrap(), CoreValueType::I32);
+        assert_eq!(CoreValueType::from_binary(0x7E).unwrap(), CoreValueType::I64);
+        assert_eq!(CoreValueType::from_binary(0x7D).unwrap(), CoreValueType::F32);
+        assert_eq!(CoreValueType::from_binary(0x7C).unwrap(), CoreValueType::F64);
         assert_eq!(CoreValueType::from_binary(0x7B).unwrap(), CoreValueType::V128); // Added for V128
-        assert_eq!(CoreValueType::from_binary(0x70).unwrap(), CoreValueType::FuncRef;
-        assert_eq!(CoreValueType::from_binary(0x6F).unwrap(), CoreValueType::ExternRef;
-        assert!(CoreValueType::from_binary(0x00).is_err();
+        assert_eq!(CoreValueType::from_binary(0x70).unwrap(), CoreValueType::FuncRef);
+        assert_eq!(CoreValueType::from_binary(0x6F).unwrap(), CoreValueType::ExternRef);
+        assert!(CoreValueType::from_binary(0x00).is_err());
     }
 
     #[test]
     fn test_ref_type_conversions() {
         // Test RefType to ValueType conversions
-        assert_eq!(ref_type_to_val_type(RefType::Funcref), CoreValueType::FuncRef;
-        assert_eq!(ref_type_to_val_type(RefType::Externref), CoreValueType::ExternRef;
+        assert_eq!(ref_type_to_val_type(RefType::Funcref), CoreValueType::FuncRef);
+        assert_eq!(ref_type_to_val_type(RefType::Externref), CoreValueType::ExternRef);
 
         // Test ValueType to RefType conversions
-        assert_eq!(val_type_to_ref_type(CoreValueType::FuncRef).unwrap(), RefType::Funcref;
-        assert_eq!(val_type_to_ref_type(CoreValueType::ExternRef).unwrap(), RefType::Externref;
-        assert!(val_type_to_ref_type(CoreValueType::I32).is_err();
-        assert!(val_type_to_ref_type(CoreValueType::I64).is_err();
-        assert!(val_type_to_ref_type(CoreValueType::F32).is_err();
-        assert!(val_type_to_ref_type(CoreValueType::F64).is_err();
+        assert_eq!(val_type_to_ref_type(CoreValueType::FuncRef).unwrap(), RefType::Funcref);
+        assert_eq!(val_type_to_ref_type(CoreValueType::ExternRef).unwrap(), RefType::Externref);
+        assert!(val_type_to_ref_type(CoreValueType::I32).is_err());
+        assert!(val_type_to_ref_type(CoreValueType::I64).is_err());
+        assert!(val_type_to_ref_type(CoreValueType::F32).is_err());
+        assert!(val_type_to_ref_type(CoreValueType::F64).is_err());
     }
 
     #[test]
@@ -168,11 +168,11 @@ mod tests {
         // Test valid function type creation using slices from arrays
         let params: [CoreValueType; 2] = [CoreValueType::I32, CoreValueType::I64];
         let results: [CoreValueType; 1] = [CoreValueType::F32];
-        let provider = TinyProvider::default());
-        let func_type = func_type::create(provider.clone(), &params, &results).unwrap());
+        let provider = TinyProvider::default();
+        let func_type = func_type::create(provider.clone(), &params, &results).unwrap();
 
-        assert_eq!(func_type.params(), &[CoreValueType::I32, CoreValueType::I64];
-        assert_eq!(func_type.results(), &[CoreValueType::F32];
+        assert_eq!(func_type.params(), &[CoreValueType::I32, CoreValueType::I64]);
+        assert_eq!(func_type.results(), &[CoreValueType::F32]);
 
         // Verification should pass
         assert!(func_type::verify(&func_type).is_ok());
@@ -180,9 +180,9 @@ mod tests {
         // Test creation with empty params and results
         let empty_params: [CoreValueType; 0] = [];
         let empty_results: [CoreValueType; 0] = [];
-        let func_type_empty = func_type::create(provider, &empty_params, &empty_results).unwrap());
-        assert_eq!(func_type_empty.params(), &[];
-        assert_eq!(func_type_empty.results(), &[];
+        let func_type_empty = func_type::create(provider, &empty_params, &empty_results).unwrap();
+        assert_eq!(func_type_empty.params(), &[]);
+        assert_eq!(func_type_empty.results(), &[]);
         assert!(func_type::verify(&func_type_empty).is_ok());
 
         // Example of a type that might exceed max (depending on
