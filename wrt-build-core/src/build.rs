@@ -82,7 +82,7 @@ pub fn execute_command(
 #[cfg(feature = "std")]
 fn format_command(cmd: &Command) -> String {
     let program = cmd.get_program().to_string_lossy();
-    let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect();
+    let args: Vec<String> = cmd.get_args().map(|arg| arg.to_string_lossy().to_string()).collect());
 
     if args.is_empty() {
         program.to_string()
@@ -626,7 +626,7 @@ pub mod xtask_port {
             .args(["rev-parse", "--abbrev-ref", "HEAD"])
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to get current branch: {}", e)))?;
-        let current_branch = String::from_utf8_lossy(&current_branch_cmd.stdout).trim().to_string();
+        let current_branch = String::from_utf8_lossy(&current_branch_cmd.stdout).trim().to_string());
 
         // Generate documentation for each version
         for version in &versions {
@@ -638,7 +638,7 @@ pub mod xtask_port {
 
             if version == "local" {
                 // Build current working directory docs
-                let output_dir = version_dir.to_string_lossy().to_string();
+                let output_dir = version_dir.to_string_lossy().to_string());
                 generate_docs_with_output_dir(false, false, Some(output_dir))?;
 
                 switcher_entries.push(serde_json::json!({
@@ -661,7 +661,7 @@ pub mod xtask_port {
                 }
 
                 // Build docs for this version
-                let output_dir = version_dir.to_string_lossy().to_string();
+                let output_dir = version_dir.to_string_lossy().to_string());
                 match generate_docs_with_output_dir(false, false, Some(output_dir)) {
                     Ok(_) => {
                         // Add to switcher
@@ -1526,7 +1526,7 @@ impl BuildSystem {
             .lines()
             .filter(|line| line.contains("warning:"))
             .map(|line| line.to_string())
-            .collect();
+            .collect());
 
         Ok(warnings)
     }

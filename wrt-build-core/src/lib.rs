@@ -134,7 +134,7 @@ mod tests {
         let workspace = detect_workspace_root();
         assert!(workspace.is_ok(), "Should detect workspace root");
 
-        let root = workspace.unwrap());
+        let root = workspace.unwrap();
         assert!(root.join("Cargo.toml").exists(), "Should have Cargo.toml");
         assert!(
             root.join("wrt-build-core").exists(),

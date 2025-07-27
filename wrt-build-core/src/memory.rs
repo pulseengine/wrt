@@ -69,7 +69,7 @@ pub struct MemoryBreakdown {
 impl BuildSystem {
     /// Analyze memory budget for all platforms
     pub fn analyze_memory_budget(&self) -> BuildResult<Vec<MemoryAnalysisResult>> {
-        println!("{} Analyzing memory budgets...", "🔍".bright_blue);
+        println!("{} Analyzing memory budgets...", "🔍".bright_blue));
 
         let platforms = vec![
             PlatformMemoryBudget {
@@ -95,7 +95,7 @@ impl BuildSystem {
             },
         ];
 
-        let mut results = Vec::new);
+        let mut results = Vec::new());
 
         for platform in platforms {
             let result = self.analyze_platform_memory(&platform)?;
@@ -133,7 +133,7 @@ impl BuildSystem {
 
         let usage_percentage = (total_used as f64 / platform.total_budget as f64) * 100.0;
 
-        let mut warnings = Vec::new);
+        let mut warnings = Vec::new());
 
         if usage_percentage > 90.0 {
             warnings.push(format!("Critical: Memory usage exceeds 90% of budget");
@@ -167,8 +167,8 @@ impl BuildSystem {
         let mut all_passed = true;
 
         println!);
-        println!("{} Memory Budget Validation Results", "📊".bright_blue);
-        println!("{}", "─".repeat(60;
+        println!("{} Memory Budget Validation Results", "📊".bright_blue));
+        println!("{}", "─".repeat(60);
 
         for result in &results {
             let status_icon = if result.usage_percentage > critical_threshold as f64 {
@@ -189,22 +189,22 @@ impl BuildSystem {
             ;
 
             if self.config.verbose {
-                println!("    Text:  {}", format_bytes(result.breakdown.text_size;
-                println!("    Data:  {}", format_bytes(result.breakdown.data_size;
-                println!("    BSS:   {}", format_bytes(result.breakdown.bss_size;
-                println!("    Stack: {}", format_bytes(result.breakdown.stack_usage;
-                println!("    Heap:  {}", format_bytes(result.breakdown.heap_usage;
+                println!("    Text:  {}", format_bytes(result.breakdown.text_size);
+                println!("    Data:  {}", format_bytes(result.breakdown.data_size);
+                println!("    BSS:   {}", format_bytes(result.breakdown.bss_size);
+                println!("    Stack: {}", format_bytes(result.breakdown.stack_usage);
+                println!("    Heap:  {}", format_bytes(result.breakdown.heap_usage);
             }
 
             for warning in &result.warnings {
-                println!("    {}", warning.bright_yellow);
+                println!("    {}", warning.bright_yellow));
             }
         }
 
-        println!("{}", "─".repeat(60;
+        println!("{}", "─".repeat(60);
 
         if all_passed {
-            println!("{} All platforms within memory budget", "✅".bright_green);
+            println!("{} All platforms within memory budget", "✅".bright_green));
         } else {
             println!(
                 "{} Some platforms exceed critical threshold",
@@ -220,7 +220,7 @@ impl BuildSystem {
         let results = self.analyze_memory_budget()?;
 
         // Generate HTML report
-        let mut html = String::new);
+        let mut html = String::new();
         html.push_str("<!DOCTYPE html>\n<html>\n<head>\n";
         html.push_str("<title>WRT Memory Budget Report</title>\n";
         html.push_str("<style>\n";

@@ -402,7 +402,7 @@ mod performance_tests {
         let start = std::time::Instant::now();
         let detector = ContextDetector::new(context.workspace_root().to_path_buf());
         let _project_context = detector.detect()?;
-        let duration = start.elapsed();
+        let duration = start.elapsed());
 
         // Should complete quickly even with many files
         assert!(duration < Duration::from_secs(1));
@@ -435,7 +435,7 @@ mod performance_tests {
                     progress.finish();
                 })
             })
-            .collect();
+            .collect());
 
         for handle in handles {
             handle.join().unwrap();

@@ -65,7 +65,7 @@ pub struct FuzzResults {
 
 /// List available fuzzing targets implementation
 pub fn list_fuzz_targets_impl(build_system: &BuildSystem) -> BuildResult<Vec<String>> {
-    let mut targets = Vec::new);
+    let mut targets = Vec::new());
 
     // Look for fuzz directories in workspace crates
     for crate_path in build_system.workspace.crate_paths() {
@@ -85,15 +85,15 @@ pub fn run_fuzz_with_options_impl(
     build_system: &BuildSystem,
     options: &FuzzOptions,
 ) -> BuildResult<FuzzResults> {
-    println!("{} Starting fuzzing campaign...", "🐛".bright_blue);
+    println!("{} Starting fuzzing campaign...", "🐛".bright_blue));
 
     // Check if cargo-fuzz is available with helpful error message
     use crate::tools::ensure_tool_available;
     ensure_tool_available("cargo-fuzz", "fuzz")?;
 
     let start_time = std::time::Instant::now);
-    let mut targets_run = Vec::new);
-    let mut crashed_targets = Vec::new);
+    let mut targets_run = Vec::new());
+    let mut crashed_targets = Vec::new());
     let mut success = true;
 
     // Determine targets to run
@@ -107,18 +107,18 @@ pub fn run_fuzz_with_options_impl(
         ;
     }
 
-    println!("Configuration:";
-    println!("  Duration per target: {}s", options.duration;
-    println!("  Workers: {}", options.workers;
+    println!("Configuration:");
+    println!("  Duration per target: {}s", options.duration);
+    println!("  Workers: {}", options.workers);
     if let Some(runs) = options.runs {
-        println!("  Runs: {}", runs;
+        println!("  Runs: {}", runs);
     }
-    println!("  Targets: {}", targets_to_run.len);
+    println!("  Targets: {}", targets_to_run.len));
     println!);
 
     // Run each fuzzing target
     for target in &targets_to_run {
-        println!("{} Running fuzzer: {}", "🎯".bright_yellow(), target;
+        println!("{} Running fuzzer: {}", "🎯".bright_yellow(), target);
 
         match run_single_fuzz_target_impl(build_system, target, options) {
             Ok(target_success) => {
@@ -126,13 +126,13 @@ pub fn run_fuzz_with_options_impl(
                 if !target_success {
                     crashed_targets.push(target.clone();
                     success = false;
-                    println!("{} {} found crashes or failed", "⚠️".bright_red(), target;
+                    println!("{} {} found crashes or failed", "⚠️".bright_red(), target);
                 } else {
-                    println!("{} {} completed successfully", "✅".bright_green(), target;
+                    println!("{} {} completed successfully", "✅".bright_green(), target);
                 }
             },
             Err(e) => {
-                println!("{} {} failed to run: {}", "❌".bright_red(), target, e;
+                println!("{} {} failed to run: {}", "❌".bright_red(), target, e);
                 targets_run.push(target.clone();
                 crashed_targets.push(target.clone();
                 success = false;
@@ -218,7 +218,7 @@ fn is_cargo_fuzz_available_impl() -> BuildResult<bool> {
 
 /// Discover fuzz targets in a fuzz directory implementation
 fn discover_fuzz_targets_impl(fuzz_dir: &Path) -> BuildResult<Vec<String>> {
-    let mut targets = Vec::new);
+    let mut targets = Vec::new());
 
     let fuzz_targets_dir = fuzz_dir.join("fuzz_targets";
     if !fuzz_targets_dir.exists() {
@@ -235,7 +235,7 @@ fn discover_fuzz_targets_impl(fuzz_dir: &Path) -> BuildResult<Vec<String>> {
         if let Some(file_name) = entry.file_name().to_str() {
             if file_name.ends_with(".rs") {
                 let target_name = file_name.trim_end_matches(".rs";
-                targets.push(target_name.to_string();
+                targets.push(target_name.to_string());
             }
         }
     }
@@ -267,18 +267,18 @@ fn generate_fuzz_report_impl(
     crashed_targets: &[String],
     duration: std::time::Duration,
 ) -> BuildResult<String> {
-    let mut report = String::new);
+    let mut report = String::new();
 
     report.push_str("# Fuzzing Campaign Report\n\n";
     report.push_str(&format!(
         "**Generated:** {}\n",
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
     ;
-    report.push_str(&format!("**Duration:** {:.2}s\n\n", duration.as_secs_f64();
+    report.push_str(&format!("**Duration:** {:.2}s\n\n", duration.as_secs_f64());
 
     // Summary
     report.push_str("## Summary\n\n";
-    report.push_str(&format!("- **Targets Run:** {}\n", targets_run.len();
+    report.push_str(&format!("- **Targets Run:** {}\n", targets_run.len());
     report.push_str(&format!(
         "- **Successful:** {}\n",
         targets_run.len() - crashed_targets.len()
@@ -318,7 +318,7 @@ mod tests {
         let options = FuzzOptions::default());
         assert_eq!(options.duration, 60;
         assert_eq!(options.workers, 4;
-        assert!(options.targets.is_empty();
+        assert!(options.targets.is_empty());
     }
 
     #[test]
@@ -333,6 +333,6 @@ mod tests {
 
         assert!(results.success);
         assert_eq!(results.targets_run.len(), 1);
-        assert!(results.crashed_targets.is_empty();
+        assert!(results.crashed_targets.is_empty());
     }
 }

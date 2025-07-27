@@ -219,7 +219,7 @@ impl CommandSuggestionEngine {
 
     /// Suggest commands based on input
     pub fn suggest(&self, input: &str, context: Option<&ProjectContext>) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new();
+        let mut suggestions = Vec::new());
         let input_lower = input.to_lowercase();
 
         // Exact match
@@ -284,7 +284,7 @@ impl CommandSuggestionEngine {
         suggestions.extend(self.suggest_workflows(&input_lower));
 
         // Sort by confidence and limit results
-        suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap();
         suggestions.truncate(5);
 
         suggestions
@@ -329,7 +329,7 @@ impl CommandSuggestionEngine {
 
     /// Suggest commands based on project context
     fn suggest_from_context(&self, context: &ProjectContext) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new();
+        let mut suggestions = Vec::new());
 
         // Suggest based on recommendations
         for rec in &context.recommendations {
@@ -360,7 +360,7 @@ impl CommandSuggestionEngine {
 
     /// Suggest workflow patterns
     fn suggest_workflows(&self, input: &str) -> Vec<Suggestion> {
-        let mut suggestions = Vec::new();
+        let mut suggestions = Vec::new());
 
         for workflow in &self.workflows {
             // Check if input matches workflow triggers

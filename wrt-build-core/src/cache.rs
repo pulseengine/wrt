@@ -430,25 +430,25 @@ impl CacheManager {
             };
         }
 
-        let mut new_diagnostics = Vec::new);
-        let mut removed_diagnostics = Vec::new);
-        let mut changed_diagnostics = Vec::new);
-        let mut unchanged_diagnostics = Vec::new);
+        let mut new_diagnostics = Vec::new());
+        let mut removed_diagnostics = Vec::new());
+        let mut changed_diagnostics = Vec::new());
+        let mut unchanged_diagnostics = Vec::new());
 
         // Collect all cached diagnostics
-        let mut cached_diagnostics = Vec::new);
+        let mut cached_diagnostics = Vec::new());
         for entry in self.cache.entries.values() {
             cached_diagnostics.extend(entry.diagnostics.iter().cloned);
         }
 
         // Create maps for efficient lookup
-        let mut cached_map = std::collections::HashMap::new);
+        let mut cached_map = std::collections::HashMap::new();
         for diagnostic in &cached_diagnostics {
             let key = diagnostic_key(diagnostic;
             cached_map.insert(key, diagnostic;
         }
 
-        let mut current_map = std::collections::HashMap::new);
+        let mut current_map = std::collections::HashMap::new();
         for diagnostic in current_diagnostics {
             let key = diagnostic_key(diagnostic;
             current_map.insert(key, diagnostic;
@@ -606,7 +606,7 @@ mod tests {
 
     #[test]
     fn test_cache_creation() {
-        let temp_dir = TempDir::new().unwrap());
+        let temp_dir = TempDir::new().unwrap();
         let cache = DiagnosticCache::new(temp_dir.path().to_path_buf);
 
         assert_eq!(cache.version, DiagnosticCache::VERSION;

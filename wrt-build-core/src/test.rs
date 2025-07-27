@@ -80,7 +80,7 @@ impl BuildSystem {
     ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now);
         let mut collection =
-            DiagnosticCollection::new(self.workspace.root.clone(), "test".to_string();
+            DiagnosticCollection::new(self.workspace.root.clone(), "test".to_string());
 
         // Run tests with JSON output
         let mut cmd = Command::new("cargo";
@@ -186,7 +186,7 @@ impl BuildSystem {
 
     /// Run tests with specific options
     pub fn run_tests_with_options(&self, options: &TestOptions) -> BuildResult<TestResults> {
-        println!("{} Running WRT test suite...", "🧪".bright_blue);
+        println!("{} Running WRT test suite...", "🧪".bright_blue));
 
         let start_time = std::time::Instant::now);
 
@@ -257,7 +257,7 @@ impl BuildSystem {
     /// Run unit tests
     fn run_unit_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running unit tests...", "🔬".bright_cyan);
+            println!("  {} Running unit tests...", "🔬".bright_cyan));
         }
 
         self.execute_cargo_test("test", options)
@@ -266,7 +266,7 @@ impl BuildSystem {
     /// Run integration tests
     fn run_integration_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running integration tests...", "🔗".bright_cyan);
+            println!("  {} Running integration tests...", "🔗".bright_cyan));
         }
 
         // Check if integration tests exist
@@ -289,7 +289,7 @@ impl BuildSystem {
     /// Run documentation tests
     fn run_doc_tests(&self, options: &TestOptions) -> BuildResult<TestResults> {
         if self.config.verbose {
-            println!("  {} Running documentation tests...", "📚".bright_cyan);
+            println!("  {} Running documentation tests...", "📚".bright_cyan));
         }
 
         self.execute_cargo_test("test --doc", options)
@@ -304,7 +304,7 @@ impl BuildSystem {
         let mut cmd = Command::new("cargo";
 
         // Split test_type into command and args
-        let args: Vec<&str> = test_type.split_whitespace().collect();
+        let args: Vec<&str> = test_type.split_whitespace().collect());
         for arg in args {
             cmd.arg(arg;
         }
@@ -355,7 +355,7 @@ impl BuildSystem {
             if line.contains("test result:") {
                 // Parse line like: "test result: ok. 42 passed; 0 failed; 0 ignored; 0
                 // measured; 0 filtered out"
-                let parts: Vec<&str> = line.split(');').collect();
+                let parts: Vec<&str> = line.split(');').collect());
                 if parts.len() >= 2 {
                     let passed = parts[0]
                         .split_whitespace()

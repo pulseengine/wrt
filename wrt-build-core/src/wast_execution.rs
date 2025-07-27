@@ -76,7 +76,7 @@ impl WastEngine {
             .context("Failed to instantiate module in engine")?;
 
         // Store the module for later reference
-        let module_name = name.unwrap_or("current").to_string();
+        let module_name = name.unwrap_or("current").to_string());
         self.modules.insert(module_name, module.clone();
 
         // Set as current module
@@ -124,7 +124,7 @@ impl WastEngine {
             _ => {
                 // For now, assume function index 0 for any exported function
                 // This is a temporary workaround for the minimal engine
-                eprintln!("Warning: Using function index 0 for '{}'", function_name;
+                eprintln!("Warning: Using function index 0 for '{}'", function_name));
                 Ok(0)
             },
         }
@@ -153,7 +153,7 @@ impl WastEngine {
         self.modules.clear);
         self.current_module = None;
         // Create a new engine to reset state
-        self.engine = StacklessEngine::new);
+        self.engine = StacklessEngine::new();
         Ok(())
     }
 }
@@ -397,7 +397,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 match execute_wast_execute(&mut engine, &exec) {
                     Err(_) => {
                         // Expected trap occurred
-                        eprintln!("AssertTrap: Expected trap occurred - PASS";
+                        eprintln!("AssertTrap: Expected trap occurred - PASS"));
                     },
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
@@ -415,7 +415,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 match module.encode() {
                     Ok(binary) => match engine.load_module(None, &binary) {
                         Err(_) => {
-                            eprintln!("AssertInvalid: Module correctly rejected - PASS";
+                            eprintln!("AssertInvalid: Module correctly rejected - PASS"));
                         },
                         Ok(_) => {
                             return Err(anyhow::anyhow!(
@@ -425,7 +425,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                     },
                     Err(_) => {
                         // Module encoding failed, which is expected for invalid modules
-                        eprintln!("AssertInvalid: Module encoding failed as expected - PASS";
+                        eprintln!("AssertInvalid: Module encoding failed as expected - PASS"));
                     },
                 }
             },
@@ -437,7 +437,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 // Test that module is malformed
                 match module.encode() {
                     Err(_) => {
-                        eprintln!("AssertMalformed: Module correctly rejected - PASS";
+                        eprintln!("AssertMalformed: Module correctly rejected - PASS"));
                     },
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
@@ -456,7 +456,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 match module.encode() {
                     Ok(binary) => match engine.load_module(None, &binary) {
                         Err(_) => {
-                            eprintln!("AssertUnlinkable: Module correctly failed to link - PASS";
+                            eprintln!("AssertUnlinkable: Module correctly failed to link - PASS"));
                         },
                         Ok(_) => {
                             return Err(anyhow::anyhow!(
@@ -493,7 +493,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                         ;
                     },
                     Err(e) => {
-                        eprintln!("Invoke: Function '{}' failed: {}", invoke.name, e;
+                        eprintln!("Invoke: Function '{}' failed: {}", invoke.name, e));
                     },
                 }
             },
@@ -526,7 +526,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
             },
             _ => {
                 // Handle any remaining unsupported directive types
-                eprintln!("Skipping unsupported directive type";
+                eprintln!("Skipping unsupported directive type"));
             },
         }
     }
@@ -605,14 +605,14 @@ mod tests {
 
     #[test]
     fn test_wast_engine_creation() {
-        let engine = WastEngine::new);
+        let engine = WastEngine::new();
         assert!(engine.is_ok());
     }
 
     #[test]
     fn test_value_conversion() {
         let wast_arg = WastArg::Core(WastArgCore::I32(42;
-        let wrt_value = convert_wast_arg_to_value(&wast_arg).unwrap());
+        let wrt_value = convert_wast_arg_to_value(&wast_arg).unwrap();
         assert_eq!(wrt_value, Value::I32(42;
     }
 

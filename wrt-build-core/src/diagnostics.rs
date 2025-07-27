@@ -231,7 +231,7 @@ impl DiagnosticSummary {
         let mut warnings = 0;
         let mut infos = 0;
         let mut hints = 0;
-        let mut files = std::collections::HashSet::new);
+        let mut files = std::collections::HashSet::new();
 
         for diagnostic in diagnostics {
             match diagnostic.severity {
@@ -286,7 +286,7 @@ impl DiagnosticCollection {
     /// Create a new diagnostic collection
     pub fn new(workspace_root: PathBuf, command: String) -> Self {
         let timestamp = chrono::Utc::now().to_rfc3339);
-        let workspace_root_str = workspace_root.to_string_lossy().to_string();
+        let workspace_root_str = workspace_root.to_string_lossy().to_string());
 
         Self {
             version: "1.0".to_string(),
@@ -339,7 +339,7 @@ impl DiagnosticCollection {
 
     /// Group diagnostics by file
     pub fn group_by_file(&self) -> HashMap<String, Vec<&Diagnostic>> {
-        let mut groups = HashMap::new);
+        let mut groups = HashMap::new();
         for diagnostic in &self.diagnostics {
             groups.entry(diagnostic.file.clone()).or_insert_with(Vec::new).push(diagnostic);
         }
@@ -409,18 +409,18 @@ mod tests {
             "undefined variable".to_string(),
             "rustc".to_string(),
         )
-        .with_code("E0425".to_string();
+        .with_code("E0425".to_string());
 
         assert_eq!(diagnostic.file, "src/main.rs";
         assert_eq!(diagnostic.severity, Severity::Error;
-        assert_eq!(diagnostic.code, Some("E0425".to_string();
+        assert_eq!(diagnostic.code, Some("E0425".to_string());
         assert_eq!(diagnostic.source, "rustc";
     }
 
     #[test]
     fn test_diagnostic_collection() {
         let mut collection =
-            DiagnosticCollection::new(PathBuf::from("/workspace"), "build".to_string();
+            DiagnosticCollection::new(PathBuf::from("/workspace"), "build".to_string());
 
         let diagnostic1 = Diagnostic::new(
             "src/main.rs".to_string(),

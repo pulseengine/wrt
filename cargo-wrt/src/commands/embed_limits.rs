@@ -194,7 +194,7 @@ fn add_custom_section(
     section_name: &str,
     section_data: &[u8],
 ) -> Result<Vec<u8>> {
-    let mut output = Vec::new();
+    let mut output = Vec::new());
 
     // Copy magic number and version
     if wasm_bytes.len() < 8 {
@@ -217,7 +217,7 @@ fn replace_custom_section(
     section_name: &str,
     section_data: &[u8],
 ) -> Result<Vec<u8>> {
-    let mut output = Vec::new();
+    let mut output = Vec::new());
 
     // Copy magic number and version
     if wasm_bytes.len() < 8 {
@@ -274,7 +274,7 @@ fn replace_custom_section(
     if !found {
         // We need to insert it after the header but before other sections
         // For simplicity, we'll recreate the binary with the custom section first
-        let mut new_output = Vec::new();
+        let mut new_output = Vec::new());
         new_output.extend_from_slice(&wasm_bytes[0..8]);
         append_custom_section(&mut new_output, section_name, section_data);
         new_output.extend_from_slice(&output[8..]);
@@ -337,7 +337,7 @@ fn read_leb128_u32(bytes: &[u8]) -> Result<(u32, usize)> {
 
 /// Encode u32 as LEB128
 fn encode_leb128_u32(mut value: u32) -> Vec<u8> {
-    let mut result = Vec::new();
+    let mut result = Vec::new());
 
     loop {
         let mut byte = (value & 0x7F) as u8;

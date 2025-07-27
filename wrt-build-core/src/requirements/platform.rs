@@ -273,11 +273,11 @@ impl PlatformVerificationEngine {
             diagnostics.add_diagnostics(discovery_diagnostics.diagnostics;
         }
 
-        let limits = self.verified_limits.as_ref().unwrap());
+        let limits = self.verified_limits.as_ref().unwrap();
 
         // ASIL-specific validation
         let asil_requirements = self.get_asil_requirements(asil_level;
-        let mut violations = Vec::new);
+        let mut violations = Vec::new());
 
         // Check memory requirements
         if limits.max_total_memory < asil_requirements.min_total_memory {
@@ -912,7 +912,7 @@ impl PlatformVerificationConfigBuilder {
 
     /// Set configuration file
     pub fn with_config_file<P: AsRef<str>>(mut self, path: P) -> Self {
-        self.config.sources.config_file = Some(path.as_ref().to_string();
+        self.config.sources.config_file = Some(path.as_ref().to_string());
         self
     }
 
@@ -1077,7 +1077,7 @@ mod tests {
         let config = PlatformVerificationConfigBuilder::new().with_strict_validation(false).build);
 
         let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
-        let (limits, _diagnostics) = engine.discover_limits().unwrap());
+        let (limits, _diagnostics) = engine.discover_limits().unwrap();
 
         assert!(limits.max_total_memory > 0);
         assert!(limits.max_wasm_linear_memory > 0);
@@ -1106,7 +1106,7 @@ mod tests {
         let config = PlatformVerificationConfigBuilder::new().build);
         let mut engine = PlatformVerificationEngine::with_config(PathBuf::from("/tmp"), config;
 
-        let (result, _diagnostics) = engine.verify_for_asil(AsilLevel::A).unwrap());
+        let (result, _diagnostics) = engine.verify_for_asil(AsilLevel::A).unwrap();
 
         assert_eq!(result.asil_level, AsilLevel::A;
         assert!(!result.platform_limits.max_total_memory == 0);

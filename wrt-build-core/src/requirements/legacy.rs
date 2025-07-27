@@ -116,7 +116,7 @@ impl Requirements {
 
     /// Convert to enhanced requirement registry
     pub fn to_registry(&self) -> RequirementRegistry {
-        let mut registry = RequirementRegistry::new);
+        let mut registry = RequirementRegistry::new();
 
         for req in &self.requirement {
             let safety_req = req.to_safety_requirement);
@@ -175,8 +175,8 @@ platform = ["all"]
 
     /// Verify all requirements
     pub fn verify(&self, workspace_root: &Path) -> BuildResult<RequirementsVerificationResult> {
-        let mut missing_files = Vec::new);
-        let mut incomplete_requirements = Vec::new);
+        let mut missing_files = Vec::new());
+        let mut incomplete_requirements = Vec::new());
         let mut verified_count = 0;
 
         for req in &self.requirement {
@@ -230,7 +230,7 @@ platform = ["all"]
 
     /// Generate requirements traceability matrix
     pub fn generate_traceability_matrix(&self) -> String {
-        let mut matrix = String::new);
+        let mut matrix = String::new();
 
         matrix.push_str("# Requirements Traceability Matrix\n\n";
         matrix.push_str("| ID | Name | ASIL | Status | Sources | Tests | Docs |\n";
@@ -452,7 +452,7 @@ impl EnhancedRequirementsVerifier {
 
             // Update status if needed
             if matches!(req.status, VerificationStatus::Verified) && !all_files_exist {
-                req.status = VerificationStatus::Failed("Missing referenced files".to_string();
+                req.status = VerificationStatus::Failed("Missing referenced files".to_string());
             }
         }
     }

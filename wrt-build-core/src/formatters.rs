@@ -152,7 +152,7 @@ impl HumanFormatter {
 
     /// Format a single diagnostic
     fn format_diagnostic(&self, diagnostic: &Diagnostic) -> String {
-        let mut output = String::new);
+        let mut output = String::new();
 
         // Format: severity: message [code] (source)
         let severity_text = format!("{}", diagnostic.severity;
@@ -228,11 +228,11 @@ impl Default for HumanFormatter {
 
 impl OutputFormatter for HumanFormatter {
     fn format_collection(&self, collection: &DiagnosticCollection) -> String {
-        let mut output = String::new);
+        let mut output = String::new();
 
         if collection.diagnostics.is_empty() {
             if self.use_colors {
-                output.push_str(&format!("{} No issues found\n", "✅".bright_green();
+                output.push_str(&format!("{} No issues found\n", "✅".bright_green());
             } else {
                 output.push_str("No issues found\n";
             }
@@ -242,11 +242,11 @@ impl OutputFormatter for HumanFormatter {
         if self.group_by_file {
             // Group diagnostics by file
             let grouped = collection.group_by_file);
-            let mut files: Vec<_> = grouped.keys().collect();
+            let mut files: Vec<_> = grouped.keys().collect());
             files.sort);
 
             for file in files {
-                let diagnostics = grouped.get(file).unwrap());
+                let diagnostics = grouped.get(file).unwrap();
 
                 // File header
                 if self.use_colors {
@@ -274,7 +274,7 @@ impl OutputFormatter for HumanFormatter {
     }
 
     fn format_diagnostics(&self, diagnostics: &[Diagnostic]) -> String {
-        let mut output = String::new);
+        let mut output = String::new();
         for diagnostic in diagnostics {
             output.push_str(&self.format_diagnostic(diagnostic;
         }
@@ -283,11 +283,11 @@ impl OutputFormatter for HumanFormatter {
 
     fn format_summary(&self, collection: &DiagnosticCollection) -> String {
         let summary = &collection.summary;
-        let mut output = String::new);
+        let mut output = String::new();
 
         if summary.total == 0 {
             if self.use_colors {
-                output.push_str(&format!("{} No issues found", "✅".bright_green();
+                output.push_str(&format!("{} No issues found", "✅".bright_green());
             } else {
                 output.push_str("No issues found";
             }
@@ -315,7 +315,7 @@ impl OutputFormatter for HumanFormatter {
                 if summary.hints > 0 { Some(format!("{} hints", summary.hints)) } else { None },
             ];
 
-            let parts: Vec<String> = parts.into_iter().flatten().collect();
+            let parts: Vec<String> = parts.into_iter().flatten().collect());
             let summary_text = parts.join(", ";
 
             let icon = if summary.errors > 0 {
@@ -424,7 +424,7 @@ impl Default for JsonLinesFormatter {
 
 impl OutputFormatter for JsonLinesFormatter {
     fn format_collection(&self, collection: &DiagnosticCollection) -> String {
-        let mut output = String::new);
+        let mut output = String::new();
 
         // Output each diagnostic as a separate JSON line
         for diagnostic in &collection.diagnostics {
@@ -444,7 +444,7 @@ impl OutputFormatter for JsonLinesFormatter {
     }
 
     fn format_diagnostics(&self, diagnostics: &[Diagnostic]) -> String {
-        let mut output = String::new);
+        let mut output = String::new();
         for diagnostic in diagnostics {
             if let Ok(json) = serde_json::to_string(diagnostic) {
                 output.push_str(&json;
@@ -500,7 +500,7 @@ mod tests {
 
     fn create_test_collection() -> DiagnosticCollection {
         let mut collection =
-            DiagnosticCollection::new(PathBuf::from("/workspace"), "test".to_string();
+            DiagnosticCollection::new(PathBuf::from("/workspace"), "test".to_string());
 
         collection.add_diagnostic(
             Diagnostic::new(
@@ -556,11 +556,11 @@ mod tests {
     #[test]
     fn test_json_formatter() {
         let collection = create_test_collection);
-        let formatter = JsonFormatter::new);
+        let formatter = JsonFormatter::new();
         let output = formatter.format_collection(&collection;
 
         // Should be valid JSON
-        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap());
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         assert!(parsed.is_object();
         assert!(parsed["diagnostics"].is_array();
         assert_eq!(parsed["diagnostics"].as_array().unwrap().len(), 2;
@@ -569,15 +569,15 @@ mod tests {
     #[test]
     fn test_json_lines_formatter() {
         let collection = create_test_collection);
-        let formatter = JsonLinesFormatter::new);
+        let formatter = JsonLinesFormatter::new();
         let output = formatter.format_collection(&collection;
 
-        let lines: Vec<&str> = output.trim().split('\n').collect();
+        let lines: Vec<&str> = output.trim().split('\n').collect());
         assert_eq!(lines.len(), 3); // 2 diagnostics + 1 summary
 
         // Each line should be valid JSON
         for line in lines {
-            serde_json::from_str::<serde_json::Value>(line).unwrap());
+            serde_json::from_str::<serde_json::Value>(line).unwrap();
         }
     }
 

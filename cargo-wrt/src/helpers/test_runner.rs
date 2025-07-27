@@ -107,7 +107,7 @@ impl TestRunner {
     /// Run tests for the current ASIL configuration
     pub fn run(&self) -> Result<TestSummary> {
         let start = Instant::now();
-        let mut results = Vec::new();
+        let mut results = Vec::new());
 
         // Get test packages based on ASIL level
         let packages = self.get_test_packages()?;
@@ -219,7 +219,7 @@ impl TestRunner {
 
         let output = cmd.output().context(format!("Failed to run tests for {}", package))?;
 
-        let duration = start.elapsed();
+        let duration = start.elapsed());
         let success = output.status.success();
 
         let error = if !success {
@@ -257,7 +257,7 @@ impl TestRunner {
     fn output_results(&self, summary: &TestSummary) -> Result<()> {
         match self.config.output_format {
             OutputFormat::Json => {
-                println!("{}", serde_json::to_string_pretty(summary)?);
+                println!("{}", serde_json::to_string_pretty(summary)?));
             },
             OutputFormat::Human => {
                 self.output_human_results(summary);
@@ -271,8 +271,8 @@ impl TestRunner {
 
     /// Output human-readable results
     fn output_human_results(&self, summary: &TestSummary) {
-        println!("\n{}", "Test Results".bold);
-        println!("{}", "=".repeat(50));
+        println!("\n{}", "Test Results".bold));
+        println!("{}", "=".repeat(50)));
 
         // Summary stats
         println!(
@@ -286,14 +286,14 @@ impl TestRunner {
 
         // Failed tests details
         if summary.failed > 0 {
-            println!("\n{}", "Failed Tests:".red().bold);
+            println!("\n{}", "Failed Tests:".red().bold));
             for (package, error) in &summary.failures {
-                println!("  {} {}", "❌".red(), package.red());
+                println!("  {} {}", "❌".red(), package.red()));
                 if let Some(err) = error {
                     // Show first few lines of error
-                    let lines: Vec<&str> = err.lines().take(3).collect();
+                    let lines: Vec<&str> = err.lines().take(3).collect());
                     for line in lines {
-                        println!("     {}", line.dimmed());
+                        println!("     {}", line.dimmed()));
                     }
                 }
             }
@@ -301,9 +301,9 @@ impl TestRunner {
 
         // Skipped tests
         if summary.skipped > 0 {
-            println!("\n{}", "Skipped Tests:".yellow().bold);
+            println!("\n{}", "Skipped Tests:".yellow().bold));
             for (package, reason) in &summary.skipped_tests {
-                println!("  {} {} - {}", "⚠".yellow(), package, reason.dimmed);
+                println!("  {} {} - {}", "⚠".yellow(), package, reason.dimmed));
             }
         }
     }

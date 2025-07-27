@@ -85,7 +85,7 @@ impl DocumentationVerificationFramework {
         ;
 
         let requirements = self.requirement_registry.requirements.clone();
-        let mut violations = Vec::new);
+        let mut violations = Vec::new());
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
@@ -193,7 +193,7 @@ impl DocumentationVerificationFramework {
         ;
 
         let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
-        let mut violations = Vec::new);
+        let mut violations = Vec::new());
         let mut compliant_requirements = 0;
 
         for requirement in &requirements {
@@ -372,7 +372,7 @@ impl DocumentationVerificationFramework {
         requirement: &SafetyRequirement,
         diagnostics: &mut DiagnosticCollection,
     ) -> DocumentationAnalysis {
-        let mut violations = Vec::new);
+        let mut violations = Vec::new());
         let required_standards = self.get_documentation_standards_for_asil(requirement.asil_level;
 
         // Check requirement documentation completeness
@@ -641,7 +641,7 @@ impl DocumentationVerificationFramework {
 
     /// Calculate compliance per ASIL level
     fn calculate_asil_compliance(&self) -> HashMap<AsilLevel, f64> {
-        let mut asil_compliance = HashMap::new);
+        let mut asil_compliance = HashMap::new();
 
         for asil_level in [
             AsilLevel::QM,
@@ -654,7 +654,7 @@ impl DocumentationVerificationFramework {
                 .documentation_analysis
                 .iter()
                 .filter(|a| a.asil_level == asil_level)
-                .collect();
+                .collect());
 
             if !asil_analyses.is_empty() {
                 let compliance = asil_analyses.iter().map(|a| a.compliance_score).sum::<f64>()
@@ -668,7 +668,7 @@ impl DocumentationVerificationFramework {
 
     /// Generate recommendations for improving documentation
     fn generate_recommendations(&self) -> Vec<String> {
-        let mut recommendations = Vec::new);
+        let mut recommendations = Vec::new());
 
         let critical_violations = self
             .documentation_analysis
@@ -902,7 +902,7 @@ mod tests {
     #[test]
     fn test_documentation_verification_framework_creation() {
         let mut framework = DocumentationVerificationFramework::new(PathBuf::from("/tmp";
-        let (result, _diagnostics) = framework.verify_all_documentation().unwrap());
+        let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
 
         assert_eq!(result.total_requirements, 0);
         assert_eq!(result.compliance_percentage, 100.0;
@@ -923,11 +923,11 @@ mod tests {
 
         framework.add_requirement(requirement;
 
-        let (result, _diagnostics) = framework.verify_all_documentation().unwrap());
+        let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
 
         assert_eq!(result.total_requirements, 1);
         assert_eq!(result.compliant_requirements, 0);
-        assert!(!result.violations.is_empty();
+        assert!(!result.violations.is_empty());
         assert!(!result.is_certification_ready);
     }
 
@@ -961,12 +961,12 @@ mod tests {
             AsilLevel::A,
         ;
 
-        requirement.add_implementation("well_documented_impl.rs".to_string();
-        requirement.add_test("comprehensive_test.rs".to_string();
+        requirement.add_implementation("well_documented_impl.rs".to_string());
+        requirement.add_test("comprehensive_test.rs".to_string());
 
         framework.add_requirement(requirement;
 
-        let (result, _diagnostics) = framework.verify_all_documentation().unwrap());
+        let (result, _diagnostics) = framework.verify_all_documentation().unwrap();
 
         assert_eq!(result.total_requirements, 1);
         assert_eq!(result.compliant_requirements, 1);

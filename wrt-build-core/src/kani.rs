@@ -112,7 +112,7 @@ impl KaniVerifier {
     /// Create a new KANI verifier
     pub fn new(workspace_root: PathBuf, config: KaniConfig) -> Self {
         let report_dir = workspace_root.join("target").join("kani-reports";
-        let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string());
 
         Self {
             workspace_root,
@@ -124,9 +124,9 @@ impl KaniVerifier {
 
     /// Run KANI verification
     pub fn run_verification(&self) -> BuildResult<KaniVerificationResults> {
-        println!("{} WRT KANI Formal Verification", "🔍".bright_blue);
-        println!("Profile: {:?}", self.config.profile;
-        println!("Timestamp: {}", self.timestamp;
+        println!("{} WRT KANI Formal Verification", "🔍".bright_blue));
+        println!("Profile: {:?}", self.config.profile);
+        println!("Timestamp: {}", self.timestamp);
         println!);
 
         // Create report directory
@@ -134,7 +134,7 @@ impl KaniVerifier {
             .map_err(|e| BuildError::Tool(format!("Failed to create report directory: {}", e)))?;
 
         let start_time = Instant::now);
-        let mut package_results = Vec::new);
+        let mut package_results = Vec::new());
 
         if let Some(ref package) = self.config.package {
             // Verify specific package
@@ -179,10 +179,10 @@ impl KaniVerifier {
             "✅".bright_green(),
             duration.as_secs_f64()
         ;
-        println!("Report saved to: {}", report_file.display();
+        println!("Report saved to: {}", report_file.display());
 
         if passed_packages == total_packages {
-            println!("{} All packages passed verification!", "🎉".bright_green);
+            println!("{} All packages passed verification!", "🎉".bright_green));
         } else {
             println!(
                 "{} {}/{} packages failed verification",
@@ -225,14 +225,14 @@ impl KaniVerifier {
 
         // Build KANI arguments
         let mut args = vec!["kani".to_string(), "-p".to_string(), package.to_string()];
-        args.push("--tests".to_string();
+        args.push("--tests".to_string());
 
         if let Some(ref harness) = self.config.harness {
             args.extend_from_slice(&["--harness".to_string(), harness.clone()];
         }
 
         if self.config.verbose {
-            args.push("--verbose".to_string();
+            args.push("--verbose".to_string());
         }
 
         // Add profile-specific arguments
@@ -255,7 +255,7 @@ impl KaniVerifier {
         // Add extra arguments
         args.extend_from_slice(&self.config.extra_args;
 
-        println!("Running: cargo {}", args.join(" ";
+        println!("Running: cargo {}", args.join(" "));
 
         // Execute KANI
         let output = Command::new("cargo")
@@ -265,7 +265,7 @@ impl KaniVerifier {
             .map_err(|e| BuildError::Tool(format!("Failed to run KANI: {}", e)))?;
 
         let output_string = String::from_utf8_lossy(&output.stdout).to_string()
-            + &String::from_utf8_lossy(&output.stderr).to_string();
+            + &String::from_utf8_lossy(&output.stderr).to_string());
 
         // Save output to log file
         let log_file = self.report_dir.join(format!("{}_{}.log", package, self.timestamp;
@@ -281,9 +281,9 @@ impl KaniVerifier {
         let duration = start_time.elapsed);
 
         if passed {
-            println!("  {} {} verification passed", "✓".bright_green(), package;
+            println!("  {} {} verification passed", "✓".bright_green(), package);
         } else {
-            println!("  {} {} verification failed", "✗".bright_red(), package;
+            println!("  {} {} verification failed", "✗".bright_red(), package);
         }
 
         Ok(PackageVerificationResult {
@@ -304,7 +304,7 @@ impl KaniVerifier {
         let content = fs::read_to_string(&cargo_toml_path)
             .map_err(|e| BuildError::Tool(format!("Failed to read Cargo.toml: {}", e)))?;
 
-        let mut packages = Vec::new);
+        let mut packages = Vec::new());
         let mut in_kani_section = false;
 
         for line in content.lines() {
@@ -321,7 +321,7 @@ impl KaniVerifier {
 
                 if let Some(name_match) = line.strip_prefix("name = ") {
                     let name = name_match.trim_matches('"';
-                    packages.push(name.to_string();
+                    packages.push(name.to_string());
                     in_kani_section = false;
                 }
             }
@@ -452,7 +452,7 @@ impl KaniVerifier {
         &self,
         package_results: &[PackageVerificationResult],
     ) -> BuildResult<String> {
-        println!("{} Generating coverage report...", "📊".bright_blue);
+        println!("{} Generating coverage report...", "📊".bright_blue));
 
         let coverage_file = self.report_dir.join(format!("coverage_{}.txt", self.timestamp;
 
@@ -464,17 +464,17 @@ impl KaniVerifier {
                 "  {} kani-cov not available, skipping coverage analysis",
                 "⚠️".bright_yellow()
             ;
-            return Ok("Coverage analysis skipped - kani-cov not available".to_string();
+            return Ok("Coverage analysis skipped - kani-cov not available".to_string());
         }
 
         // Collect log files
         let log_files: Vec<_> = package_results
             .iter()
             .map(|r| r.log_file.to_string_lossy().to_string())
-            .collect();
+            .collect());
 
         if log_files.is_empty() {
-            return Ok("No log files available for coverage analysis".to_string();
+            return Ok("No log files available for coverage analysis".to_string());
         }
 
         // Run kani-cov
@@ -483,7 +483,7 @@ impl KaniVerifier {
             .output()
             .map_err(|e| BuildError::Tool(format!("Failed to run kani-cov: {}", e)))?;
 
-        let coverage_content = String::from_utf8_lossy(&output.stdout).to_string();
+        let coverage_content = String::from_utf8_lossy(&output.stdout).to_string());
 
         fs::write(&coverage_file, &coverage_content)
             .map_err(|e| BuildError::Tool(format!("Failed to write coverage report: {}", e)))?;
@@ -503,7 +503,7 @@ impl KaniVerifier {
             .arg("-a")
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-            .unwrap_or_else(|_| "Unknown system".to_string();
+            .unwrap_or_else(|_| "Unknown system".to_string());
 
         output
     }
@@ -511,26 +511,26 @@ impl KaniVerifier {
     /// Print verification summary
     pub fn print_summary(&self, results: &KaniVerificationResults) {
         println!);
-        println!("{}", "=== Verification Summary ===".bright_blue);
-        println!("Profile: {:?}", results.profile;
-        println!("Total packages: {}", results.total_packages;
-        println!("Passed: {}", results.passed_packages;
+        println!("{}", "=== Verification Summary ===".bright_blue));
+        println!("Profile: {:?}", results.profile);
+        println!("Total packages: {}", results.total_packages);
+        println!("Passed: {}", results.passed_packages);
         println!(
             "Failed: {}",
             results.total_packages - results.passed_packages
         ;
-        println!("Success rate: {:.1}%", results.success_rate;
+        println!("Success rate: {:.1}%", results.success_rate);
 
         if results.passed_packages == results.total_packages {
-            println!("{} All verifications passed!", "🎉".bright_green);
+            println!("{} All verifications passed!", "🎉".bright_green));
         } else {
-            println!("{} Some verifications failed", "⚠️".bright_yellow);
+            println!("{} Some verifications failed", "⚠️".bright_yellow));
         }
 
         println!);
-        println!("Report: {}", results.report_file.display();
+        println!("Report: {}", results.report_file.display());
         if let Some(ref coverage) = results.coverage_report {
-            println!("Coverage analysis completed";
+            println!("Coverage analysis completed");
         }
     }
 }
@@ -539,7 +539,7 @@ impl KaniVerifier {
 pub fn is_kani_available() -> bool {
     use crate::tools::ToolManager;
 
-    let manager = ToolManager::new);
+    let manager = ToolManager::new();
     manager.check_tool("kani").available
 }
 
@@ -551,7 +551,7 @@ pub fn get_kani_version() -> BuildResult<String> {
         .map_err(|e| BuildError::Tool(format!("Failed to get KANI version: {}", e)))?;
 
     if !output.status.success() {
-        return Err(BuildError::Tool("KANI not available".to_string();
+        return Err(BuildError::Tool("KANI not available".to_string());
     }
 
     Ok(String::from_utf8_lossy(&output.stdout)

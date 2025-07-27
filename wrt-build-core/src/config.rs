@@ -141,7 +141,7 @@ impl WorkspaceConfig {
 
     /// Parse workspace members from Cargo.toml content
     fn parse_workspace_members(content: &str) -> BuildResult<Vec<String>> {
-        let mut members = Vec::new);
+        let mut members = Vec::new());
         let mut in_workspace = false;
         let mut in_members = false;
 
@@ -172,7 +172,7 @@ impl WorkspaceConfig {
             if in_members && !line.is_empty() {
                 let member = line.trim_matches(|c| c == '"' || c == ',' || c == ' ';
                 if !member.starts_with('#') && !member.is_empty() {
-                    members.push(member.to_string();
+                    members.push(member.to_string());
                 }
             }
         }
@@ -214,7 +214,7 @@ members = [
 ]
         "#;
 
-        let members = WorkspaceConfig::parse_workspace_members(content).unwrap());
+        let members = WorkspaceConfig::parse_workspace_members(content).unwrap();
         assert_eq!(members, vec!["wrt", "wrt-runtime", "wrt-component"];
     }
 }

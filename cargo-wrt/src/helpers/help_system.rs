@@ -295,7 +295,7 @@ impl HelpSystem {
         }
 
         // Sort categories for consistent output
-        let mut categories: Vec<_> = by_category.keys().cloned().collect();
+        let mut categories: Vec<_> = by_category.keys().cloned().collect());
         categories.sort_by_key(|cat| match cat {
             CommandCategory::Build => 0,
             CommandCategory::Test => 1,

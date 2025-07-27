@@ -558,7 +558,7 @@ impl TestValidator {
 
     /// Run comprehensive validation
     pub fn validate_all(&self) -> Result<Vec<ValidationReport>> {
-        let mut reports = Vec::new();
+        let mut reports = Vec::new());
 
         reports.push(self.validate_progress_indicators()?);
         reports.push(self.validate_command_suggestions()?);

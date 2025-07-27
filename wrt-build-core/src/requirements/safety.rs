@@ -145,7 +145,7 @@ impl SafetyVerificationFramework {
         target_asil: AsilLevel,
     ) -> BuildResult<(ComplianceVerificationResult, DiagnosticCollection)> {
         let mut diagnostics =
-            DiagnosticCollection::new(self.workspace_root.clone(), "asil-compliance".to_string();
+            DiagnosticCollection::new(self.workspace_root.clone(), "asil-compliance".to_string());
 
         let requirements = self.requirement_registry.get_requirements_by_asil(target_asil;
         let total_requirements = requirements.len);
@@ -153,7 +153,7 @@ impl SafetyVerificationFramework {
         let mut verified_count = 0;
         let mut missing_implementation_count = 0;
         let mut missing_testing_count = 0;
-        let mut violations = Vec::new);
+        let mut violations = Vec::new());
 
         for requirement in requirements {
             if requirement.is_verified() {
@@ -293,7 +293,7 @@ impl SafetyVerificationFramework {
     /// Record test execution result with diagnostic integration
     pub fn record_test_result(&mut self, result: TestResult) -> DiagnosticCollection {
         let mut diagnostics =
-            DiagnosticCollection::new(self.workspace_root.clone(), "test-recording".to_string();
+            DiagnosticCollection::new(self.workspace_root.clone(), "test-recording".to_string());
 
         // Update requirement verification status based on test results
         for requirement_id in &result.verified_requirements {
@@ -379,7 +379,7 @@ impl SafetyVerificationFramework {
     /// Generate comprehensive safety report with diagnostic integration
     pub fn generate_safety_report(&self) -> (SafetyReport, DiagnosticCollection) {
         let mut diagnostics =
-            DiagnosticCollection::new(self.workspace_root.clone(), "safety-report".to_string();
+            DiagnosticCollection::new(self.workspace_root.clone(), "safety-report".to_string());
 
         let overall_compliance = self.requirement_registry.overall_compliance);
 
@@ -392,7 +392,7 @@ impl SafetyVerificationFramework {
         ]
         .iter()
         .map(|&asil| (asil, self.requirement_registry.asil_compliance(asil)))
-        .collect();
+        .collect());
 
         let test_summary = TestSummary {
             total_tests:         self.test_results.len(),
@@ -607,8 +607,8 @@ impl SafetyVerificationFramework {
                     AsilLevel::D,
                 ;
                 req.verification_method = VerificationMethod::FormalProof;
-                req.add_implementation("wrt-foundation/src/safe_allocation.rs".to_string();
-                req.add_test("wrt-foundation/tests/memory_budget_validation.rs".to_string();
+                req.add_implementation("wrt-foundation/src/safe_allocation.rs".to_string());
+                req.add_test("wrt-foundation/tests/memory_budget_validation.rs".to_string());
                 req
             },
             {
@@ -621,7 +621,7 @@ impl SafetyVerificationFramework {
                     AsilLevel::D,
                 ;
                 req.verification_method = VerificationMethod::Test;
-                req.add_implementation("wrt-runtime/src/execution.rs".to_string();
+                req.add_implementation("wrt-runtime/src/execution.rs".to_string());
                 req.add_test(
                     "wrt-tests/integration/safety_critical_integration_tests.rs".to_string(),
                 ;
@@ -656,8 +656,8 @@ impl SafetyVerificationFramework {
                     AsilLevel::B,
                 ;
                 req.verification_method = VerificationMethod::Analysis;
-                req.add_implementation("wrt-platform/src/memory.rs".to_string();
-                req.add_test("wrt-platform/tests/linux_integration_test.rs".to_string();
+                req.add_implementation("wrt-platform/src/memory.rs".to_string());
+                req.add_test("wrt-platform/tests/linux_integration_test.rs".to_string());
                 req
             },
         ]
@@ -721,7 +721,7 @@ impl SafetyVerificationFramework {
 
     fn get_critical_violations(&self) -> Vec<ComplianceViolation> {
         // Analyze current state for critical violations
-        let mut violations = Vec::new);
+        let mut violations = Vec::new());
 
         for req in &self.requirement_registry.requirements {
             if matches!(req.asil_level, AsilLevel::D | AsilLevel::C) && !req.is_verified() {
@@ -738,7 +738,7 @@ impl SafetyVerificationFramework {
     }
 
     fn get_blocking_issues_for_asil(&self, asil_level: AsilLevel) -> Vec<String> {
-        let mut issues = Vec::new);
+        let mut issues = Vec::new());
 
         let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
         let unverified = requirements.iter().filter(|r| !r.is_verified()).count);
@@ -763,14 +763,14 @@ impl SafetyVerificationFramework {
     }
 
     fn generate_recommendations(&self) -> Vec<String> {
-        let mut recommendations = Vec::new);
+        let mut recommendations = Vec::new());
 
         if self.requirement_registry.overall_compliance() < 0.9 {
-            recommendations.push("Increase test coverage for unverified requirements".to_string();
+            recommendations.push("Increase test coverage for unverified requirements".to_string());
         }
 
         if self.coverage_data.overall_coverage() < 80.0 {
-            recommendations.push("Improve code coverage through additional testing".to_string();
+            recommendations.push("Improve code coverage through additional testing".to_string());
         }
 
         let unverified = self.requirement_registry.get_unverified_requirements);
@@ -797,14 +797,14 @@ impl SafetyVerificationFramework {
         match asil_level {
             AsilLevel::D => {
                 recommendations
-                    .push("Perform formal verification for all critical paths".to_string();
+                    .push("Perform formal verification for all critical paths".to_string());
                 recommendations
-                    .push("Complete hazard analysis and safety argumentation".to_string();
+                    .push("Complete hazard analysis and safety argumentation".to_string());
             },
             AsilLevel::C => {
-                recommendations.push("Ensure comprehensive integration testing".to_string();
+                recommendations.push("Ensure comprehensive integration testing".to_string());
                 recommendations
-                    .push("Document safety measures and verification evidence".to_string();
+                    .push("Document safety measures and verification evidence".to_string());
             },
             _ => {},
         }
@@ -1032,14 +1032,14 @@ mod tests {
             AsilLevel::C,
         ;
 
-        req.add_implementation("test_impl.rs".to_string();
+        req.add_implementation("test_impl.rs".to_string());
         req.set_coverage(CoverageLevel::Basic;
         req.set_status(VerificationStatus::Verified;
 
         framework.add_requirement(req;
 
         let (compliance_result, _diagnostics) =
-            framework.verify_asil_compliance(AsilLevel::C).unwrap());
+            framework.verify_asil_compliance(AsilLevel::C).unwrap();
         assert_eq!(compliance_result.total_requirements, 1);
         assert_eq!(compliance_result.verified_requirements, 1);
         assert_eq!(compliance_result.compliance_percentage, 100.0;
@@ -1082,7 +1082,7 @@ mod tests {
         let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
         let requirements = framework.generate_wrt_safety_requirements);
 
-        assert!(!requirements.is_empty();
+        assert!(!requirements.is_empty());
         assert!(requirements.iter().any(|r| r.id.as_str() == "WRT_MEM_001");
         assert!(requirements.iter().any(|r| r.id.as_str() == "WRT_RUNTIME_001");
     }

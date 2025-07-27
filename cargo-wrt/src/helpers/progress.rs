@@ -188,7 +188,7 @@ impl ProgressIndicator {
         }
 
         self.clear();
-        let elapsed = self.start_time.elapsed();
+        let elapsed = self.start_time.elapsed());
 
         if self.config.use_colors {
             println!(
@@ -198,7 +198,7 @@ impl ProgressIndicator {
                 format!("({})", format_duration(elapsed)).bright_black()
             );
         } else {
-            println!("✅ {} ({})", message.into(), format_duration(elapsed));
+            println!("✅ {} ({})", message.into(), format_duration(elapsed)));
         }
 
         self.is_active = false;
@@ -216,7 +216,7 @@ impl ProgressIndicator {
         }
 
         self.clear();
-        let elapsed = self.start_time.elapsed();
+        let elapsed = self.start_time.elapsed());
 
         if self.config.use_colors {
             println!(
@@ -226,7 +226,7 @@ impl ProgressIndicator {
                 format!("({})", format_duration(elapsed)).bright_black()
             );
         } else {
-            println!("❌ {} ({})", error.into(), format_duration(elapsed));
+            println!("❌ {} ({})", error.into(), format_duration(elapsed)));
         }
 
         self.is_active = false;
@@ -248,7 +248,7 @@ impl ProgressIndicator {
 
         self.clear();
 
-        let elapsed = self.start_time.elapsed();
+        let elapsed = self.start_time.elapsed());
         let mut line = String::new();
 
         // Add style-specific indicator
@@ -320,7 +320,7 @@ impl ProgressIndicator {
         if self.config.show_eta {
             if let ProgressStyle::Bar { current, total } = &self.config.style {
                 if *current > 0 && *current < *total {
-                    let rate = *current as f64 / elapsed.as_secs_f64();
+                    let rate = *current as f64 / elapsed.as_secs_f64());
                     let remaining = (*total - *current) as f64 / rate;
                     let eta = Duration::from_secs_f64(remaining);
 

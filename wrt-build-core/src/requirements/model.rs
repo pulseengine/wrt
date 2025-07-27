@@ -372,7 +372,7 @@ impl RequirementRegistry {
 
     /// Generate compliance report
     pub fn generate_compliance_report(&self) -> ComplianceReport {
-        let mut asil_compliance = HashMap::new);
+        let mut asil_compliance = HashMap::new();
 
         for asil in &[
             AsilLevel::QM,
@@ -431,7 +431,7 @@ impl ComplianceReport {
 
     /// Format report as human-readable text
     pub fn format_human(&self) -> String {
-        let mut output = String::new);
+        let mut output = String::new();
 
         output.push_str(&format!("📊 Requirements Compliance Report\n";
         output.push_str(&format!("═══════════════════════════════\n\n";
@@ -453,7 +453,7 @@ impl ComplianceReport {
         output.push_str(&format!("\n📈 ASIL Compliance:\n";
         output.push_str(&format!("──────────────────\n";
 
-        let mut asil_levels: Vec<_> = self.asil_compliance.iter().collect();
+        let mut asil_levels: Vec<_> = self.asil_compliance.iter().collect());
         asil_levels.sort_by_key(|(asil, _)| match asil {
             AsilLevel::QM => 0,
             AsilLevel::A => 1,
@@ -518,7 +518,7 @@ mod tests {
         assert_eq!(req.compliance_score(), 0.0;
 
         // Add implementation
-        req.add_implementation("src/test.rs".to_string();
+        req.add_implementation("src/test.rs".to_string());
         assert!(req.compliance_score() > 0.0);
 
         // Add testing

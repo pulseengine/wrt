@@ -193,7 +193,7 @@ impl BuildSystem {
     ) -> BuildResult<DiagnosticCollection> {
         let start_time = std::time::Instant::now);
         let mut collection =
-            DiagnosticCollection::new(self.workspace.root.clone(), "verify".to_string();
+            DiagnosticCollection::new(self.workspace.root.clone(), "verify".to_string());
 
         // 1. Basic safety checks with structured output
         let basic_diagnostics =
@@ -269,8 +269,8 @@ impl BuildSystem {
         ;
 
         let start_time = std::time::Instant::now);
-        let mut checks = Vec::new);
-        let mut report_sections: Vec<String> = Vec::new);
+        let mut checks = Vec::new());
+        let mut report_sections: Vec<String> = Vec::new());
 
         // 1. Basic safety checks
         checks.extend(self.run_basic_safety_checks_with_options(options)?;
@@ -378,7 +378,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<VerificationCheck>> {
-        let mut checks = Vec::new);
+        let mut checks = Vec::new());
 
         // Check for unsafe code usage
         checks.push(self.check_unsafe_code_usage_with_options(options)?;
@@ -405,7 +405,7 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new);
+        let searcher = TextSearcher::new();
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
 
         // Filter out allowed unsafe blocks if configuration is provided
@@ -440,7 +440,7 @@ impl BuildSystem {
 
     /// Check for panic usage
     fn check_panic_usage(&self) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new);
+        let searcher = TextSearcher::new();
         let matches = searcher.search_panic_usage(&self.workspace.root)?;
         let panic_count = count_production_matches(&matches;
 
@@ -458,7 +458,7 @@ impl BuildSystem {
 
     /// Check for unwrap usage
     fn check_unwrap_usage(&self) -> BuildResult<VerificationCheck> {
-        let searcher = TextSearcher::new);
+        let searcher = TextSearcher::new();
         let matches = searcher.search_unwrap_usage(&self.workspace.root)?;
         let unwrap_count = count_production_matches(&matches;
 
@@ -539,10 +539,10 @@ impl BuildSystem {
         &self,
         options: &VerificationOptions,
     ) -> BuildResult<Vec<Diagnostic>> {
-        let mut diagnostics = Vec::new);
+        let mut diagnostics = Vec::new());
 
         // Check for unsafe code usage
-        let searcher = TextSearcher::new);
+        let searcher = TextSearcher::new();
         let matches = searcher.search_unsafe_code(&self.workspace.root)?;
 
         // Filter matches based on allowed unsafe configuration
@@ -569,7 +569,7 @@ impl BuildSystem {
                     .strip_prefix(&self.workspace.root)
                     .unwrap_or(&search_match.file_path)
                     .to_string_lossy()
-                    .to_string();
+                    .to_string());
 
                 diagnostics.push(
                     Diagnostic::new(
@@ -599,7 +599,7 @@ impl BuildSystem {
                     .strip_prefix(&self.workspace.root)
                     .unwrap_or(&search_match.file_path)
                     .to_string_lossy()
-                    .to_string();
+                    .to_string());
 
                 diagnostics.push(
                     Diagnostic::new(
@@ -629,7 +629,7 @@ impl BuildSystem {
                     .strip_prefix(&self.workspace.root)
                     .unwrap_or(&search_match.file_path)
                     .to_string_lossy()
-                    .to_string();
+                    .to_string());
 
                 diagnostics.push(
                     Diagnostic::new(
@@ -808,14 +808,14 @@ impl BuildSystem {
         asil_level: &AsilLevel,
         duration: core::time::Duration,
     ) -> BuildResult<String> {
-        let mut report = String::new);
+        let mut report = String::new();
 
         report.push_str("# Safety Verification Report\n\n";
         report.push_str(&format!(
             "**Generated:** {}\n",
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
         ;
-        report.push_str(&format!("**Duration:** {:.2}s\n", duration.as_secs_f64();
+        report.push_str(&format!("**Duration:** {:.2}s\n", duration.as_secs_f64());
         report.push_str(&format!("**ASIL Level Achieved:** {:?}\n\n", asil_level;
 
         // Summary

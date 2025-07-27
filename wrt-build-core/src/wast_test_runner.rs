@@ -108,12 +108,12 @@ impl WastTestRunner {
         ;
 
         let test_files = self.discover_test_files(test_dir)?;
-        println!("📁 Found {} test files", test_files.len);
+        println!("📁 Found {} test files", test_files.len));
 
         for test_file in test_files {
             if let Some(max) = self.max_failures {
                 if self.stats.failed >= max {
-                    println!("⚠️  Reached maximum failure limit ({}), stopping", max;
+                    println!("⚠️  Reached maximum failure limit ({}), stopping", max);
                     break;
                 }
             }
@@ -121,7 +121,7 @@ impl WastTestRunner {
             match self.run_test_file(&test_file) {
                 Ok(_) => {
                     self.stats.total_files += 1;
-                    println!("✅ {}", test_file.file_name().unwrap().to_string_lossy);
+                    println!("✅ {}", test_file.file_name().unwrap().to_string_lossy));
                 },
                 Err(e) => {
                     self.stats.total_files += 1;
@@ -130,7 +130,7 @@ impl WastTestRunner {
                         test_file.file_name().unwrap().to_string_lossy(),
                         e
                     ;
-                    println!("{}", error_msg;
+                    println!("{}", error_msg);
                     self.stats.errors.push(error_msg);
 
                     if !self.continue_on_failure {
@@ -265,7 +265,7 @@ impl WastTestRunner {
             },
             WastDirective::Register { module, name, .. } => {
                 // Register module for imports - placeholder implementation
-                println!("Register: {} (placeholder)", name;
+                println!("Register: {} (placeholder)", name);
             },
             WastDirective::Invoke(invoke) => {
                 // Execute function without checking result
@@ -301,7 +301,7 @@ impl WastTestRunner {
 
     /// Discover test files in directory
     fn discover_test_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
-        let mut test_files = Vec::new);
+        let mut test_files = Vec::new());
 
         if !dir.is_dir() {
             return Err(anyhow::anyhow!(
@@ -338,19 +338,19 @@ impl WastTestRunner {
 
     /// Print test execution summary
     fn print_summary(&self) {
-        println!("\n📊 WAST Test Summary:";
-        println!("==================";
-        println!("Files tested: {}", self.stats.total_files;
-        println!("Total directives: {}", self.stats.total_directives;
-        println!("✅ Passed: {}", self.stats.passed;
-        println!("❌ Failed: {}", self.stats.failed;
-        println!("⏭️  Skipped: {}", self.stats.skipped;
-        println!("📈 Success rate: {:.1}%", self.stats.success_rate);
+        println!("\n📊 WAST Test Summary:");
+        println!("==================");
+        println!("Files tested: {}", self.stats.total_files);
+        println!("Total directives: {}", self.stats.total_directives);
+        println!("✅ Passed: {}", self.stats.passed);
+        println!("❌ Failed: {}", self.stats.failed);
+        println!("⏭️  Skipped: {}", self.stats.skipped);
+        println!("📈 Success rate: {:.1}%", self.stats.success_rate));
 
         if !self.stats.errors.is_empty() {
-            println!("\n❌ Errors:";
+            println!("\n❌ Errors:");
             for error in &self.stats.errors {
-                println!("  {}", error;
+                println!("  {}", error);
             }
         }
     }
@@ -430,7 +430,7 @@ mod tests {
 
     #[test]
     fn test_wast_runner_creation() {
-        let runner = WastTestRunner::new);
+        let runner = WastTestRunner::new();
         assert_eq!(runner.stats.total_files, 0);
         assert_eq!(runner.stats.total_directives, 0);
         assert_eq!(runner.continue_on_failure, true;
@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn test_simple_wast_execution() {
-        let mut runner = WastTestRunner::new);
+        let mut runner = WastTestRunner::new();
 
         let simple_wast = r#"
             (module
@@ -472,23 +472,23 @@ mod tests {
 
     #[test]
     fn test_test_file_discovery() {
-        let temp_dir = tempdir().unwrap());
+        let temp_dir = tempdir().unwrap();
         let test_dir = temp_dir.path);
 
         // Create test files
-        let mut file1 = File::create(test_dir.join("test1.wast")).unwrap());
-        writeln!(file1, "(module)").unwrap());
+        let mut file1 = File::create(test_dir.join("test1.wast")).unwrap();
+        writeln!(file1, "(module)").unwrap();
 
-        let mut file2 = File::create(test_dir.join("test2.wast")).unwrap());
-        writeln!(file2, "(module)").unwrap());
+        let mut file2 = File::create(test_dir.join("test2.wast")).unwrap();
+        writeln!(file2, "(module)").unwrap();
 
-        let mut file3 = File::create(test_dir.join("skip_test.wast")).unwrap());
-        writeln!(file3, "(module)").unwrap());
+        let mut file3 = File::create(test_dir.join("skip_test.wast")).unwrap();
+        writeln!(file3, "(module)").unwrap();
 
         // Test discovery with exclusion
-        let runner = WastTestRunner::new().exclude_pattern("skip_".to_string();
+        let runner = WastTestRunner::new().exclude_pattern("skip_".to_string());
 
-        let discovered = runner.discover_test_files(test_dir).unwrap());
+        let discovered = runner.discover_test_files(test_dir).unwrap();
         assert_eq!(discovered.len(), 2); // Should exclude skip_test.wast
     }
 

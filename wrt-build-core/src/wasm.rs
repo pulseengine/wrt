@@ -105,10 +105,10 @@ impl WasmVerifier {
         let start_time = Instant::now);
 
         // Parse the module using wrt-decoder unified loader
-        let mut imports = Vec::new);
-        let mut exports = Vec::new);
-        let mut builtin_imports = Vec::new);
-        let mut errors = Vec::new);
+        let mut imports = Vec::new());
+        let mut exports = Vec::new());
+        let mut builtin_imports = Vec::new());
+        let mut errors = Vec::new());
         let section_count = 0; // Will be updated when we have section counting
         let version = 1; // WebAssembly version 1
 
@@ -140,7 +140,7 @@ impl WasmVerifier {
                         }
                     },
                     None => {
-                        errors.push("Failed to parse module information".to_string();
+                        errors.push("Failed to parse module information".to_string());
                     },
                 }
             },
@@ -194,47 +194,47 @@ impl WasmVerifier {
     /// Print human-readable verification results
     pub fn print_results(&self, result: &WasmVerificationResult) {
         if result.valid {
-            println!("{} WebAssembly module is valid", "✅".bright_green);
+            println!("{} WebAssembly module is valid", "✅".bright_green));
         } else {
-            println!("{} WebAssembly module validation failed", "❌".bright_red);
+            println!("{} WebAssembly module validation failed", "❌".bright_red));
         }
 
-        println!("\n📊 Module Information:";
-        println!("  Version: {}", result.version;
-        println!("  Sections: {}", result.section_count;
+        println!("\n📊 Module Information:");
+        println!("  Version: {}", result.version);
+        println!("  Sections: {}", result.section_count);
 
         if !result.imports.is_empty() {
-            println!("\n📥 Imports ({}):", result.imports.len);
+            println!("\n📥 Imports ({}):", result.imports.len));
             for import in &result.imports {
-                println!("  - {}::{} ({})", import.module, import.name, import.kind;
+                println!("  - {}::{} ({})", import.module, import.name, import.kind);
             }
         }
 
         if !result.exports.is_empty() {
-            println!("\n📤 Exports ({}):", result.exports.len);
+            println!("\n📤 Exports ({}):", result.exports.len));
             for export in &result.exports {
-                println!("  - {} ({})", export.name, export.kind;
+                println!("  - {} ({})", export.name, export.kind);
             }
         }
 
         if !result.builtin_imports.is_empty() {
-            println!("\n🔧 Builtin Imports:";
+            println!("\n🔧 Builtin Imports:");
             for builtin in &result.builtin_imports {
-                println!("  - wasi_builtin::{}", builtin;
+                println!("  - wasi_builtin::{}", builtin);
             }
         }
 
         if let Some(perf) = &result.performance {
-            println!("\n⚡ Performance:";
-            println!("  Parse time: {}ms", perf.parse_time_ms;
-            println!("  Module size: {} bytes", perf.module_size;
-            println!("  Throughput: {:.2} MB/s", perf.throughput_mbps;
+            println!("\n⚡ Performance:");
+            println!("  Parse time: {}ms", perf.parse_time_ms);
+            println!("  Module size: {} bytes", perf.module_size);
+            println!("  Throughput: {:.2} MB/s", perf.throughput_mbps);
         }
 
         if !result.errors.is_empty() {
-            println!("\n❌ Errors:";
+            println!("\n❌ Errors:");
             for error in &result.errors {
-                println!("  - {}", error.bright_red);
+                println!("  - {}", error.bright_red));
             }
         }
     }
@@ -251,7 +251,7 @@ pub fn scan_for_builtins(module_path: impl AsRef<Path>) -> BuildResult<Vec<Strin
 pub fn verify_modules(
     module_paths: &[impl AsRef<Path>],
 ) -> BuildResult<Vec<(String, WasmVerificationResult)>> {
-    let mut results = Vec::new);
+    let mut results = Vec::new());
 
     for path in module_paths {
         let path_ref = path.as_ref);
@@ -300,11 +300,11 @@ mod tests {
         let module = create_minimal_module);
 
         // Write to temporary file
-        let mut temp_file = NamedTempFile::new().unwrap());
-        temp_file.write_all(&module).unwrap());
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(&module).unwrap();
 
         let verifier = WasmVerifier::new(temp_file.path);
-        let result = verifier.verify().unwrap());
+        let result = verifier.verify().unwrap();
 
         assert!(result.valid);
         assert_eq!(result.version, 1);
@@ -316,13 +316,13 @@ mod tests {
     fn test_invalid_module() {
         let invalid_module = vec![0xFF, 0xFF, 0xFF, 0xFF];
 
-        let mut temp_file = NamedTempFile::new().unwrap());
-        temp_file.write_all(&invalid_module).unwrap());
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(&invalid_module).unwrap();
 
         let verifier = WasmVerifier::new(temp_file.path);
-        let result = verifier.verify().unwrap());
+        let result = verifier.verify().unwrap();
 
         assert!(!result.valid);
-        assert!(!result.errors.is_empty();
+        assert!(!result.errors.is_empty());
     }
 }
