@@ -6,13 +6,9 @@ mod resume_tests {
         execution::ExecutionState,
         instructions::Instruction,
         module::Function,
-        types::{
-            FuncType,
-            ValueType,
-        },
+        types::{FuncType, ValueType},
         values::Value,
-        Module,
-        StacklessEngine,
+        Module, StacklessEngine,
     };
 
     #[test]
@@ -22,7 +18,7 @@ mod resume_tests {
 
         // Create a function type
         let func_type = FuncType {
-            params:  vec![ValueType::I32],
+            params: vec![ValueType::I32],
             results: vec![ValueType::I32],
         };
         module.types.push(func_type);
@@ -67,7 +63,7 @@ mod resume_tests {
 
         // Create a function type
         let func_type = FuncType {
-            params:  vec![ValueType::I32],
+            params: vec![ValueType::I32],
             results: vec![ValueType::I32],
         };
         module.types.push(func_type);

@@ -43,7 +43,7 @@ mod tests {
             cmd.arg(arg);
         }
 
-        let output = cmd.output().expect("Failed to execute wrtd"));
+        let output = cmd.output().expect("Failed to execute wrtd");
         let success = output.status.success();
         let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
         let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
@@ -59,7 +59,7 @@ mod tests {
             .join("tests/fixtures/std-mode-example.wasm")
             .to_str()
             .unwrap()
-            .to_string());
+            .to_string();
 
         // Test basic std functionality
         let (success, stdout, stderr) = run_wrtd_with_mode(
@@ -70,8 +70,8 @@ mod tests {
             &["--stats"],
         );
 
-        println!("STDOUT: {}", stdout));
-        println!("STDERR: {}", stderr));
+        println!("STDOUT: {}", stdout);
+        println!("STDERR: {}", stderr);
 
         assert!(success, "std mode execution should succeed");
         assert!(stdout.contains("Runtime mode: Std"));

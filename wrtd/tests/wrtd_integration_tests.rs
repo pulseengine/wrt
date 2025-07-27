@@ -3,19 +3,10 @@
 //! These tests validate that wrtd properly integrates with the new
 //! capability-based execution engine and handles different ASIL configurations.
 
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-    Result,
-};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 #[cfg(feature = "wasi")]
 use wrtd::WasiVersion;
-use wrtd::{
-    LogLevel,
-    WrtDaemon,
-    WrtdConfig,
-};
+use wrtd::{LogLevel, WrtDaemon, WrtdConfig};
 
 /// Simple WebAssembly module for testing
 const TEST_WASM: &[u8] = &[

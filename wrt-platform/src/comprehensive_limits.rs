@@ -178,8 +178,10 @@ pub struct MacOsLimitProvider;
 
 impl ComprehensiveLimitProvider for MacOsLimitProvider {
     fn discover_limits(&self) -> Result<ComprehensivePlatformLimits, Error> {
-        let mut limits = ComprehensivePlatformLimits::default();
-        limits.platform_id = PlatformId::MacOS;
+        let mut limits = ComprehensivePlatformLimits {
+            platform_id: PlatformId::MacOS,
+            ..ComprehensivePlatformLimits::default()
+        };
         
         #[cfg(all(feature = "std", target_os = "macos"))]
         {
@@ -261,7 +263,7 @@ impl PlatformLimitDiscoverer {
         
         #[cfg(feature = "std")]
         let limits = {
-            let provider: Box<dyn ComprehensiveLimitProvider> = self.create_provider()?;
+            let provider: alloc::boxed::Box<dyn ComprehensiveLimitProvider> = self.create_provider()?;
             provider.discover_limits()?
         };
         
@@ -278,18 +280,18 @@ impl PlatformLimitDiscoverer {
     
     /// Create appropriate provider for current platform
     #[cfg(feature = "std")]
-    fn create_provider(&self) -> Result<Box<dyn ComprehensiveLimitProvider>, Error> {
+    fn create_provider(&self) -> Result<alloc::boxed::Box<dyn ComprehensiveLimitProvider>, Error> {
         #[cfg(target_os = "linux")]
-        return Ok(Box::new(LinuxLimitProvider));
+        return Ok(alloc::boxed::Box::new(LinuxLimitProvider));
         
         #[cfg(target_os = "nto")]  
-        return Ok(Box::new(QnxLimitProvider));
+        return Ok(alloc::boxed::Box::new(QnxLimitProvider));
         
         #[cfg(target_os = "macos")]
-        return Ok(Box::new(MacOsLimitProvider));
+        return Ok(alloc::boxed::Box::new(MacOsLimitProvider));
         
         #[cfg(not(any(target_os = "linux", target_os = "nto", target_os = "macos")))]
-        return Ok(Box::new(EmbeddedLimitProvider::new(
+        return Ok(alloc::boxed::Box::new(EmbeddedLimitProvider::new(
             64 * 1024 * 1024, // 64MB default
             AsilLevel::QM,
         )));

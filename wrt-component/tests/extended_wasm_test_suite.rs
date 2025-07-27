@@ -38,7 +38,7 @@ fn create_engine_with_module() -> Result<(StacklessEngine, usize)> {
     let runtime_module = load_test_module()?;
     let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
-    let instance_arc = Arc::new(instance;
+    let instance_arc = Arc::new(instance);
     let instance_idx = engine.set_current_module(instance_arc)?;
     Ok((engine, instance_idx))
 }
@@ -65,19 +65,19 @@ fn test_basic_arithmetic_operations() -> Result<()> {
     ];
 
     for (a, b, expected) in test_cases {
-        let args = create_test_args(a, b;
+        let args = create_test_args(a, b);
         let results = engine.execute(instance_idx, 0, args)?;
 
-        assert_eq!(results.len(), 1, "Expected exactly one result";
+        assert_eq!(results.len(), 1, "Expected exactly one result");
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "add({}, {}) should equal {}",
                 a, b, expected
-            ;
+            );
         } else {
-            panic!("Expected I32 result, got {:?}", results[0];
+            panic!("Expected I32 result, got {:?}", results[0]);
         }
     }
 
@@ -96,26 +96,26 @@ fn test_integer_overflow_behavior() -> Result<()> {
     ];
 
     for (a, b, expected) in overflow_cases {
-        let args = create_test_args(a, b;
+        let args = create_test_args(a, b);
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
             results.len(),
             1,
             "Expected exactly one result for overflow case"
-        ;
+        );
 
         if let Value::I32(result) = &results[0] {
             assert_eq!(
                 *result, expected,
                 "Overflow add({}, {}) should wrap to {}",
                 a, b, expected
-            ;
+            );
         } else {
             panic!(
                 "Expected I32 result for overflow test, got {:?}",
                 results[0]
-            ;
+            );
         }
     }
 
@@ -137,7 +137,7 @@ fn test_zero_and_identity_operations() -> Result<()> {
     ];
 
     for (a, b, expected) in identity_cases {
-        let args = create_test_args(a, b;
+        let args = create_test_args(a, b);
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -180,7 +180,7 @@ fn test_negative_number_operations() -> Result<()> {
     ];
 
     for (a, b, expected) in negative_cases {
-        let args = create_test_args(a, b;
+        let args = create_test_args(a, b);
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -263,7 +263,7 @@ fn test_multiple_engine_instances() -> Result<()> {
         let b = i as i32 * 5;
         let expected = a + b;
 
-        let args = create_test_args(a, b;
+        let args = create_test_args(a, b);
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -300,7 +300,7 @@ fn test_repeated_execution_same_engine() -> Result<()> {
         let b = (i * 7) % 100;
         let expected = a + b;
 
-        let args = create_test_args(a, b;
+        let args = create_test_args(a, b);
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -348,7 +348,7 @@ fn test_boundary_value_analysis() -> Result<()> {
     ];
 
     for (a, b, expected) in boundary_cases {
-        let args = create_test_args(a, b;
+        let args = create_test_args(a, b);
         let results = engine.execute(instance_idx, 0, args)?;
 
         assert_eq!(
@@ -420,7 +420,7 @@ fn test_memory_safety_execution() -> Result<()> {
             let b = ((batch * 100 + i) * 3) % 1000;
             let expected = a + b;
 
-            let args = create_test_args(a, b;
+            let args = create_test_args(a, b);
             let results = engine.execute(instance_idx, 0, args)?;
 
             assert_eq!(
@@ -468,7 +468,7 @@ fn test_error_handling_robustness() -> Result<()> {
     let runtime_module = load_test_module()?;
     let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
-    let instance_arc = Arc::new(instance;
+    let instance_arc = Arc::new(instance);
     let instance_idx = engine.set_current_module(instance_arc)?;
 
     // Test execution with correct number of arguments
@@ -642,7 +642,7 @@ fn test_comprehensive_execution_validation() -> Result<()> {
                 let b = ((engine_id + 1) * 500 + batch * 50 + execution) % 10000;
                 let expected = a + b;
 
-                let args = create_test_args(a, b;
+                let args = create_test_args(a, b);
                 let results = engine.execute(instance_idx, 0, args)?;
 
                 assert_eq!(

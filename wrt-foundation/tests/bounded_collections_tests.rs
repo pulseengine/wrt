@@ -66,14 +66,14 @@ fn test_bounded_queue_operations() {
         assert!(queue.enqueue(i).is_ok());
     }
 
-    assert_eq!(queue.len(), 4;
+    assert_eq!(queue.len(), 4);
 
     // Verify expected queue contents after wrap-around
-    assert_eq!(queue.dequeue().unwrap(), Some(2;
-    assert_eq!(queue.dequeue().unwrap(), Some(3;
-    assert_eq!(queue.dequeue().unwrap(), Some(4;
-    assert_eq!(queue.dequeue().unwrap(), Some(5;
-    assert!(queue.dequeue().unwrap().is_none();
+    assert_eq!(queue.dequeue().unwrap(), Some(2));
+    assert_eq!(queue.dequeue().unwrap(), Some(3));
+    assert_eq!(queue.dequeue().unwrap(), Some(4));
+    assert_eq!(queue.dequeue().unwrap(), Some(5));
+    assert!(queue.dequeue().unwrap().is_none());
 
     // Test checksum verification
     for i in 0..5 {
@@ -139,11 +139,11 @@ fn test_bounded_map_operations() {
     assert_eq!(map.len(), 0);
 
     // Test verification level setting
-    map.set_verification_level(VerificationLevel::Off;
-    assert_eq!(map.verification_level(), VerificationLevel::Off;
+    map.set_verification_level(VerificationLevel::Off);
+    assert_eq!(map.verification_level(), VerificationLevel::Off);
 
-    map.set_verification_level(VerificationLevel::Full;
-    assert_eq!(map.verification_level(), VerificationLevel::Full;
+    map.set_verification_level(VerificationLevel::Full);
+    assert_eq!(map.verification_level(), VerificationLevel::Full);
 }
 
 #[test]
@@ -153,42 +153,42 @@ fn test_bounded_set_operations() {
 
     // Check empty set properties
     assert_eq!(set.len(), 0);
-    assert_eq!(set.capacity(), 5;
+    assert_eq!(set.capacity(), 5);
     assert!(set.is_empty());
-    assert!(!set.is_full();
-    assert!(!set.contains(&"item".to_string()).unwrap();
+    assert!(!set.is_full());
+    assert!(!set.contains(&"item".to_string()).unwrap());
 
     // Test insert operations
     for i in 0..5 {
-        let value = format!("item-{}", i;
-        assert!(set.insert(value.clone()).unwrap();
-        assert_eq!(set.len(), i as usize + 1;
-        assert!(set.contains(&value).unwrap();
+        let value = format!("item-{}", i);
+        assert!(set.insert(value.clone()).unwrap());
+        assert_eq!(set.len(), i as usize + 1);
+        assert!(set.contains(&value).unwrap());
     }
 
     // Test full set
-    assert!(set.is_full();
+    assert!(set.is_full());
     assert_eq!(
         set.insert("overflow".to_string()).unwrap_err().kind(),
         BoundedErrorKind::CapacityExceeded
-    ;
+    );
 
     // Test insert duplicate (should return false without error)
-    assert!(!set.insert("item-2".to_string()).unwrap();
+    assert!(!set.insert("item-2".to_string()).unwrap());
     assert_eq!(set.len(), 5); // Length unchanged
 
     // Test remove
-    assert!(set.remove(&"item-3".to_string()).unwrap();
-    assert_eq!(set.len(), 4;
-    assert!(!set.contains(&"item-3".to_string()).unwrap();
+    assert!(set.remove(&"item-3".to_string()).unwrap());
+    assert_eq!(set.len(), 4);
+    assert!(!set.contains(&"item-3".to_string()).unwrap());
 
     // Test remove non-existent item (should return false without error)
-    assert!(!set.remove(&"non-existent".to_string()).unwrap();
+    assert!(!set.remove(&"non-existent".to_string()).unwrap());
 
     // Test insert after remove (should succeed now that we have space)
-    assert!(set.insert("new-item".to_string()).unwrap();
-    assert_eq!(set.len(), 5;
-    assert!(set.contains(&"new-item".to_string()).unwrap();
+    assert!(set.insert("new-item".to_string()).unwrap());
+    assert_eq!(set.len(), 5);
+    assert!(set.contains(&"new-item".to_string()).unwrap());
 
     // Test clear
     assert!(set.clear().is_ok());
