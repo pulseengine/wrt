@@ -8,9 +8,9 @@
 use core::{fmt::Debug, time::Duration};
 
 #[cfg(not(feature = "std"))]
-use std::{boxed::Box, string::String, vec::Vec};
+use alloc::{boxed::Box, string::String, vec::Vec};
 #[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec::Vec};
+use alloc::{boxed::Box, string::String, vec::Vec};
 use wrt_sync::WrtMutex;
 
 use wrt_error::{Error, ErrorCategory, Result};
@@ -233,7 +233,7 @@ impl IpcServer {
                 Err(e) => {
                     if *self.running.lock() {
                         // Only log error if we're still running
-                        eprintln!("IPC server error: {}", e);
+                        eprintln!("IPC server error: {e}");
                     }
                 }
             }
