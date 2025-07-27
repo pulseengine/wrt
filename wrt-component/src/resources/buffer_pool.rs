@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_buffer_allocation() {
-        let mut pool = BufferPool::new);
+        let mut pool = BufferPool::new();
 
         // Allocate a buffer
         let buffer = pool.allocate(100;
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_buffer_pool_reset() {
-        let mut pool = BufferPool::new);
+        let mut pool = BufferPool::new();
 
         // Allocate and return some buffers
         pool.return_buffer(pool.allocate(100;

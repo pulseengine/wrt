@@ -51,7 +51,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
             let converted_fields = fields
                 .iter()
                 .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type)))
-                .collect();
+                .collect());
             WrtFormatValType::Record(converted_fields)
         }
         CanonicalValType::Variant(cases) => {
@@ -65,7 +65,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
                             .map(|val_type| convert_common_to_format_valtype(val_type)),
                     )
                 })
-                .collect();
+                .collect());
             WrtFormatValType::Variant(converted_cases)
         }
         CanonicalValType::List(elem_type) => {
@@ -73,7 +73,7 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> WrtFo
         }
         CanonicalValType::Tuple(types) => {
             let converted_types =
-                types.iter().map(|val_type| convert_common_to_format_valtype(val_type)).collect();
+                types.iter().map(|val_type| convert_common_to_format_valtype(val_type)).collect());
             WrtFormatValType::Tuple(converted_types)
         }
         CanonicalValType::Flags(names) => WrtFormatValType::Flags(names.clone()),
@@ -123,7 +123,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
             let converted_fields = fields
                 .iter()
                 .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type)))
-                .collect();
+                .collect());
             CanonicalValType::Record(converted_fields)
         }
         WrtFormatValType::Variant(cases) => {
@@ -137,7 +137,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
                             .map(|val_type| convert_format_to_common_valtype(val_type)),
                     )
                 })
-                .collect();
+                .collect());
             CanonicalValType::Variant(converted_cases)
         }
         WrtFormatValType::List(elem_type) => {
@@ -145,7 +145,7 @@ pub fn convert_format_to_common_valtype(format_type: &WrtFormatValType) -> Canon
         }
         WrtFormatValType::Tuple(types) => {
             let converted_types =
-                types.iter().map(|val_type| convert_format_to_common_valtype(val_type)).collect();
+                types.iter().map(|val_type| convert_format_to_common_valtype(val_type)).collect());
             CanonicalValType::Tuple(converted_types)
         }
         WrtFormatValType::Flags(names) => CanonicalValType::Flags(names.clone()),
@@ -179,7 +179,7 @@ pub fn serialize_component_value(value: &ComponentComponentValue) -> Result<Vec<
     let format_type = convert_common_to_format_valtype(&common_type;
 
     // Serialize the value based on its type
-    let mut buffer = Vec::new);
+    let mut buffer = Vec::new());
 
     match value {
         ComponentComponentValue::Bool(b) => {
@@ -758,7 +758,7 @@ pub fn deserialize_component_value(
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize Record";
             }
-            let mut values = Vec::new);
+            let mut values = Vec::new());
             for (name, val_type) in fields {
                 let value = deserialize_component_value(&data[offset..], val_type)?;
                 values.push((name.clone(), value;
@@ -892,7 +892,7 @@ pub fn deserialize_component_value(
             // No need to update offset anymore as we return immediately
 
             // Convert names to (String, bool) pairs based on the flag_byte
-            let mut flags = Vec::new);
+            let mut flags = Vec::new());
             for (i, name) in names.iter().enumerate() {
                 if i < 8 {
                     // Only process up to 8 flags (one byte)
@@ -1239,7 +1239,7 @@ pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProv
 
 /// Serialize multiple component values
 pub fn serialize_component_values(values: &[ComponentComponentValue]) -> Result<Vec<u8>, Error> {
-    let mut buffer = Vec::new);
+    let mut buffer = Vec::new());
 
     // Write the number of values
     let count = values.len() as u32;
@@ -1445,9 +1445,9 @@ mod tests {
             vec![ComponentComponentValue::Bool(true), ComponentComponentValue::S32(42), ComponentComponentValue::F64(3.14159)];
 
         for value in values {
-            let encoded = serialize_component_value(&value).unwrap());
+            let encoded = serialize_component_value(&value).unwrap();
             let format_type = convert_common_to_format_valtype(&value.get_type);
-            let decoded = deserialize_component_value(&encoded, &format_type).unwrap());
+            let decoded = deserialize_component_value(&encoded, &format_type).unwrap();
 
             // Only check bools since we only implemented deserialization for a subset of
             // types
@@ -1460,30 +1460,30 @@ mod tests {
     #[test]
     fn test_stream_serialization() {
         // Create a memory provider
-        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap());
-        let handler = SafeMemoryHandler::new(provider).unwrap());
+        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap();
+        let handler = SafeMemoryHandler::new(provider).unwrap();
 
         // Get a mutable slice for the output buffer
-        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap());
+        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap();
         let mut writer = WriteStream::new(slice_mut;
 
         // Create a simple value to serialize
         let value = ComponentComponentValue::Bool(true;
 
         // Serialize using stream
-        serialize_component_value_with_stream(&value, &mut writer, &handler).unwrap());
+        serialize_component_value_with_stream(&value, &mut writer, &handler).unwrap();
 
         // Read back
         let position = writer.position);
         drop(writer); // Release mutable borrow
 
-        let slice = handler.borrow_slice(0, position).unwrap());
+        let slice = handler.borrow_slice(0, position).unwrap();
         let mut reader = ReadStream::new(slice;
 
         // Deserialize using stream
         let format_type = WrtFormatValType::Bool;
         let decoded =
-            deserialize_component_value_with_stream(&mut reader, &format_type, &handler).unwrap());
+            deserialize_component_value_with_stream(&mut reader, &format_type, &handler).unwrap();
 
         // Verify
         assert_eq!(value, decoded;
@@ -1492,11 +1492,11 @@ mod tests {
     #[test]
     fn test_multiple_values_stream() {
         // Create a memory provider
-        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap());
-        let handler = SafeMemoryHandler::new(provider).unwrap());
+        let provider = safe_managed_alloc!(1024, CrateId::Component).unwrap();
+        let handler = SafeMemoryHandler::new(provider).unwrap();
 
         // Get a mutable slice for the output buffer
-        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap());
+        let mut slice_mut = handler.get_slice_mut(0, 1024).unwrap();
         let mut writer = WriteStream::new(slice_mut;
 
         // Create values to serialize
@@ -1507,13 +1507,13 @@ mod tests {
         ];
 
         // Serialize using stream
-        serialize_component_values_with_stream(&values, &mut writer, &handler).unwrap());
+        serialize_component_values_with_stream(&values, &mut writer, &handler).unwrap();
 
         // Read back
         let position = writer.position);
         drop(writer); // Release mutable borrow
 
-        let slice = handler.borrow_slice(0, position).unwrap());
+        let slice = handler.borrow_slice(0, position).unwrap();
         let mut reader = ReadStream::new(slice;
 
         // Prepare format types
@@ -1521,7 +1521,7 @@ mod tests {
 
         // Deserialize using stream
         let decoded =
-            deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap());
+            deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap();
 
         // Verify count
         assert_eq!(values.len(), decoded.len);

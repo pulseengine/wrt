@@ -56,7 +56,7 @@ impl ErrorContext {
 
     /// Add a trace entry to the error context
     pub fn add_trace(&mut self, trace_entry: &str) {
-        self.trace.push(trace_entry.to_string();
+        self.trace.push(trace_entry.to_string());
     }
 
     /// Get the error message
@@ -71,7 +71,7 @@ impl ErrorContext {
 
     /// Add metadata to the error context
     pub fn add_metadata(&mut self, key: &str, value: &str) {
-        self.metadata.insert(key.to_string(), value.to_string();
+        self.metadata.insert(key.to_string(), value.to_string());
     }
 
     /// Get metadata value for a key
@@ -207,7 +207,7 @@ impl BuiltinHandler for ErrorTraceHandler {
         };
 
         // Add trace to the error context
-        let mut store = self.store.lock().unwrap());
+        let mut store = self.store.lock().unwrap();
         let error_context = store.get_error_mut(error_id).ok_or_else(|| {
             Error::resource_not_found("Error occurred")
         })?;
@@ -234,26 +234,26 @@ mod tests {
 
     #[test]
     fn test_error_context_store() {
-        let mut store = ErrorContextStore::new);
+        let mut store = ErrorContextStore::new();
 
         // Create an error context
         let id = store.create_error("Test error";
         assert!(id > 0);
 
         // Get the error context
-        let error = store.get_error(id).expect("Error context should exist");
+        let error = store.get_error(id).expect("Error context should exist"));
         assert_eq!(error.message(), "Test error";
         assert_eq!(error.trace().len(), 0);
 
         // Add a trace entry
         store.get_error_mut(id).unwrap().add_trace("Trace 1";
-        let error = store.get_error(id).unwrap());
+        let error = store.get_error(id).unwrap();
         assert_eq!(error.trace().len(), 1);
         assert_eq!(error.trace()[0], "Trace 1";
 
         // Add metadata
         store.get_error_mut(id).unwrap().add_metadata("key", "value";
-        let error = store.get_error(id).unwrap());
+        let error = store.get_error(id).unwrap();
         assert_eq!(error.get_metadata("key").unwrap(), "value";
 
         // Drop the error context
@@ -268,7 +268,7 @@ mod tests {
 
         // Test with valid arguments
         let args = vec![ComponentValue::String("Test error".to_string())];
-        let result = handler.execute(&args).expect("Handler should succeed");
+        let result = handler.execute(&args).expect("Handler should succeed"));
         assert_eq!(result.len(), 1);
         let id = match result[0] {
             ComponentValue::U64(id) => id,
@@ -276,7 +276,7 @@ mod tests {
         };
 
         // Verify the error was created
-        let error = store.lock().unwrap().get_error(id).expect("Error context should exist");
+        let error = store.lock().unwrap().get_error(id).expect("Error context should exist"));
         assert_eq!(error.message(), "Test error";
 
         // Test with invalid arguments
@@ -296,11 +296,11 @@ mod tests {
 
         // Test with valid arguments
         let args = vec![ComponentValue::U64(id), ComponentValue::String("Trace entry".to_string())];
-        let result = handler.execute(&args).expect("Handler should succeed");
+        let result = handler.execute(&args).expect("Handler should succeed"));
         assert_eq!(result.len(), 0);
 
         // Verify the trace was added
-        let error = store.lock().unwrap().get_error(id).expect("Error context should exist");
+        let error = store.lock().unwrap().get_error(id).expect("Error context should exist"));
         assert_eq!(error.trace().len(), 1);
         assert_eq!(error.trace()[0], "Trace entry";
 

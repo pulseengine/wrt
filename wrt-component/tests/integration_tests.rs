@@ -129,17 +129,17 @@ fn test_full_module_parsing() {
 
     // Verify parsing of the entire module works without errors
     let parser = Parser::new(&module;
-    let payloads: Result<Vec<_>, _> = parser.collect();
+    let payloads: Result<Vec<_>, _> = parser.collect());
     assert!(payloads.is_ok());
 
-    let payloads = payloads.unwrap());
+    let payloads = payloads.unwrap();
 
     // Check that we have the expected number of sections
     // +1 for the Version payload
     assert_eq!(payloads.len(), 6 + 1;
 
     // Test that built-in scanning works on the complex module
-    let builtin_names = parser::scan_for_builtins(&module).unwrap());
+    let builtin_names = parser::scan_for_builtins(&module).unwrap();
     assert_eq!(builtin_names.len(), 1);
     assert_eq!(builtin_names[0], "add";
 }
@@ -150,7 +150,7 @@ fn test_invalid_section_size() {
 
     // The parser should detect the invalid section size
     let parser = Parser::new(&module;
-    let result: Result<Vec<_>, _> = parser.collect();
+    let result: Result<Vec<_>, _> = parser.collect());
 
     // We expect an error due to the invalid section size
     assert!(result.is_err();
@@ -162,7 +162,7 @@ fn test_truncated_module() {
 
     // The parser should detect the truncated module
     let parser = Parser::new(&module;
-    let result: Result<Vec<_>, _> = parser.collect();
+    let result: Result<Vec<_>, _> = parser.collect());
 
     // We expect an error due to the truncated module
     assert!(result.is_err();
@@ -175,7 +175,7 @@ fn test_invalid_wasm_header() {
 
     // The parser should reject this as not a valid WebAssembly module
     let parser = Parser::new(&invalid_module;
-    let result: Result<Vec<_>, _> = parser.collect();
+    let result: Result<Vec<_>, _> = parser.collect());
 
     // We expect an error due to invalid magic bytes
     assert!(result.is_err();
@@ -188,10 +188,10 @@ fn test_empty_module() {
 
     // The parser should handle an empty module without errors
     let parser = Parser::new(&empty_module;
-    let result: Result<Vec<_>, _> = parser.collect();
+    let result: Result<Vec<_>, _> = parser.collect());
 
     assert!(result.is_ok());
-    let payloads = result.unwrap());
+    let payloads = result.unwrap();
 
     // We expect only the Version payload
     assert_eq!(payloads.len(), 1);
@@ -205,11 +205,11 @@ fn test_section_access_api() {
     let import_section = wrt_decoder::find_import_section(&module;
     assert!(import_section.is_ok());
 
-    let import_section = import_section.unwrap());
+    let import_section = import_section.unwrap();
     assert!(import_section.is_some();
 
     // Verify that the import section contains our expected builtin import
-    let (offset, size) = import_section.unwrap());
+    let (offset, size) = import_section.unwrap();
     let import_data = &module[offset..offset + size];
 
     // Basic check that the import section data begins with correct count (0x01)

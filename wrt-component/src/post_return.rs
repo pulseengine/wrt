@@ -316,7 +316,7 @@ impl PostReturnRegistry {
         #[cfg(feature = "std")]
         {
             self.functions.insert(instance_id, post_return_fn;
-            self.pending_cleanups.insert(instance_id, Vec::new);
+            self.pending_cleanups.insert(instance_id, Vec::new());
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -990,14 +990,14 @@ mod tests {
 
     #[test]
     fn test_post_return_registry_creation() {
-        let registry = PostReturnRegistry::new(100).unwrap());
+        let registry = PostReturnRegistry::new(100).unwrap();
         assert_eq!(registry.max_cleanup_tasks, 100;
         assert_eq!(registry.functions.len(), 0);
     }
 
     #[test]
     fn test_register_post_return() {
-        let mut registry = PostReturnRegistry::new(100).unwrap());
+        let mut registry = PostReturnRegistry::new(100).unwrap();
         let instance_id = ComponentInstanceId(1;
 
         assert!(registry.register_post_return(instance_id, 42, None).is_ok());
@@ -1006,10 +1006,10 @@ mod tests {
 
     #[test]
     fn test_schedule_cleanup() {
-        let mut registry = PostReturnRegistry::new(100).unwrap());
+        let mut registry = PostReturnRegistry::new(100).unwrap();
         let instance_id = ComponentInstanceId(1;
 
-        registry.register_post_return(instance_id, 42, None).unwrap());
+        registry.register_post_return(instance_id, 42, None).unwrap();
 
         let task = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10;
         assert!(registry.schedule_cleanup(instance_id, task).is_ok());
@@ -1044,7 +1044,7 @@ mod tests {
             7,
         ;
         assert!(custom_task.is_ok());
-        let custom_task = custom_task.unwrap());
+        let custom_task = custom_task.unwrap();
         assert_eq!(custom_task.task_type, CleanupTaskType::Custom;
         assert_eq!(custom_task.priority, 7;
     }
@@ -1054,7 +1054,7 @@ mod tests {
         let mut registry = PostReturnRegistry::new(2).unwrap()); // Small limit for testing
         let instance_id = ComponentInstanceId(1;
 
-        registry.register_post_return(instance_id, 42, None).unwrap());
+        registry.register_post_return(instance_id, 42, None).unwrap();
 
         // Add tasks up to limit
         let task1 = helpers::memory_cleanup_task(instance_id, 0x1000, 64, 8, 10;
@@ -1068,7 +1068,7 @@ mod tests {
 
     #[test]
     fn test_metrics() {
-        let registry = PostReturnRegistry::new(100).unwrap());
+        let registry = PostReturnRegistry::new(100).unwrap();
         let metrics = registry.metrics);
 
         assert_eq!(metrics.total_executions, 0);

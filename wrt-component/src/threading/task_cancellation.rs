@@ -348,7 +348,7 @@ impl CancellationToken {
         
         #[cfg(feature = "std")]
         {
-            let mut handlers = self.inner.handlers.write().unwrap());
+            let mut handlers = self.inner.handlers.write().unwrap();
             handlers.push(handler_entry);
         }
         #[cfg(not(any(feature = "std", )))]
@@ -366,7 +366,7 @@ impl CancellationToken {
     pub fn unregister_handler(&self, handler_id: HandlerId) -> Result<()> {
         #[cfg(feature = "std")]
         {
-            let mut handlers = self.inner.handlers.write().unwrap());
+            let mut handlers = self.inner.handlers.write().unwrap();
             handlers.retain(|h| h.id != handler_id;
         }
         #[cfg(not(any(feature = "std", )))]
@@ -388,7 +388,7 @@ impl CancellationToken {
     fn call_handlers(&self) -> Result<()> {
         #[cfg(feature = "std")]
         {
-            let mut handlers = self.inner.handlers.write().unwrap());
+            let mut handlers = self.inner.handlers.write().unwrap();
             
             for handler in handlers.iter_mut() {
                 if handler.called && handler.once {
@@ -602,7 +602,7 @@ impl SubtaskManager {
     pub fn wait_all(&self) -> Result<Vec<SubtaskResult>> {
         // In a real implementation, this would block until all subtasks complete
         // For now, we return current results
-        let mut results = Vec::new);
+        let mut results = Vec::new());
         
         for subtask in &self.subtasks {
             if let Some(ref result) = subtask.result {
@@ -736,60 +736,60 @@ mod tests {
     
     #[test]
     fn test_cancellation_token() {
-        let token = CancellationToken::new().unwrap());
+        let token = CancellationToken::new().unwrap();
         assert!(!token.is_cancelled();
         
-        token.cancel().unwrap());
+        token.cancel().unwrap();
         assert!(token.is_cancelled();
     }
     
     #[test]
     fn test_child_cancellation() {
-        let parent = CancellationToken::new().unwrap());
-        let child = parent.child().unwrap());
+        let parent = CancellationToken::new().unwrap();
+        let child = parent.child().unwrap();
         
         assert!(!child.is_cancelled();
         
-        parent.cancel().unwrap());
+        parent.cancel().unwrap();
         assert!(parent.is_cancelled();
         assert!(child.is_cancelled();
     }
     
     #[test]
     fn test_cancellation_handler() {
-        let token = CancellationToken::new().unwrap());
+        let token = CancellationToken::new().unwrap();
         
         let handler_id = token.register_handler(
             CancellationHandlerFn::Notify,
             false,
-        ).unwrap());
+        ).unwrap();
         
-        token.cancel().unwrap());
+        token.cancel().unwrap();
         
         // Handler should have been called
-        token.unregister_handler(handler_id).unwrap());
+        token.unregister_handler(handler_id).unwrap();
     }
     
     #[test]
     fn test_subtask_manager() {
-        let mut manager = SubtaskManager::new(TaskId(1)).unwrap());
-        let parent_token = CancellationToken::new().unwrap());
+        let mut manager = SubtaskManager::new(TaskId(1)).unwrap();
+        let parent_token = CancellationToken::new().unwrap();
         
         let subtask_token = manager.spawn_subtask(
             ExecutionId(1),
             TaskId(2),
             &parent_token,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(manager.stats.created, 1);
         assert_eq!(manager.stats.active, 1);
         
-        manager.update_subtask_state(ExecutionId(1), SubtaskState::Running).unwrap());
+        manager.update_subtask_state(ExecutionId(1), SubtaskState::Running).unwrap();
         manager.set_subtask_result(
             ExecutionId(1),
             SubtaskResult::Success(vec![Value::U32(42)]),
-        ).unwrap());
-        manager.update_subtask_state(ExecutionId(1), SubtaskState::Completed).unwrap());
+        ).unwrap();
+        manager.update_subtask_state(ExecutionId(1), SubtaskState::Completed).unwrap();
         
         assert_eq!(manager.stats.completed, 1);
         assert_eq!(manager.stats.active, 0);
@@ -797,19 +797,19 @@ mod tests {
     
     #[test]
     fn test_subtask_cancellation() {
-        let mut manager = SubtaskManager::new(TaskId(1)).unwrap());
-        let parent_token = CancellationToken::new().unwrap());
+        let mut manager = SubtaskManager::new(TaskId(1)).unwrap();
+        let parent_token = CancellationToken::new().unwrap();
         
         let subtask_token = manager.spawn_subtask(
             ExecutionId(1),
             TaskId(2),
             &parent_token,
-        ).unwrap());
+        ).unwrap();
         
-        manager.cancel_subtask(ExecutionId(1)).unwrap());
+        manager.cancel_subtask(ExecutionId(1)).unwrap();
         assert!(subtask_token.is_cancelled();
         
-        manager.update_subtask_state(ExecutionId(1), SubtaskState::Cancelled).unwrap());
+        manager.update_subtask_state(ExecutionId(1), SubtaskState::Cancelled).unwrap();
         assert_eq!(manager.stats.cancelled, 1);
     }
     
@@ -818,7 +818,7 @@ mod tests {
         let result = with_cancellation_scope(true, |token| {
             assert!(!token.is_cancelled();
             Ok(42)
-        }).unwrap());
+        }).unwrap();
         
         assert_eq!(result, 42;
     }

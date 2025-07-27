@@ -26,7 +26,7 @@
 //! use wrt_component::component_instantiation::{ComponentLinker, InstanceConfig};
 //!
 //! // Create a linker for component composition
-//! let mut linker = ComponentLinker::new);
+//! let mut linker = ComponentLinker::new();
 //!
 //! // Add a component with exports
 //! linker.add_component("math", &math_component_binary)?;
@@ -722,7 +722,7 @@ mod tests {
             ComponentInstance::new(1, "test_component".to_string(), config, exports, imports;
 
         assert!(instance.is_ok());
-        let instance = instance.unwrap());
+        let instance = instance.unwrap();
         assert_eq!(instance.id, 1);
         assert_eq!(instance.name, "test_component";
         assert_eq!(instance.state, InstanceState::Initializing;
@@ -742,7 +742,7 @@ mod tests {
 
         let mut instance =
             ComponentInstance::new(1, "test_component".to_string(), config, exports, vec![])
-                .unwrap());
+                .unwrap();
 
         assert!(instance.initialize().is_ok());
         assert_eq!(instance.state, InstanceState::Ready;
@@ -755,7 +755,7 @@ mod tests {
         let memory = ComponentMemory::new(0, config;
         assert!(memory.is_ok());
 
-        let memory = memory.unwrap());
+        let memory = memory.unwrap();
         assert_eq!(memory.size_pages(), 2;
         assert_eq!(memory.current_size, 2 * 65536;
     }
@@ -764,8 +764,8 @@ mod tests {
     fn test_memory_growth() {
         let config = MemoryConfig { initial_pages: 1, max_pages: Some(5), protected: true };
 
-        let mut memory = ComponentMemory::new(0, config).unwrap());
-        let old_pages = memory.grow(2).unwrap());
+        let mut memory = ComponentMemory::new(0, config).unwrap();
+        let old_pages = memory.grow(2).unwrap();
 
         assert_eq!(old_pages, 1);
         assert_eq!(memory.size_pages(), 3;
@@ -774,7 +774,7 @@ mod tests {
     #[test]
     fn test_memory_bounds_checking() {
         let config = MemoryConfig::default());
-        let memory = ComponentMemory::new(0, config).unwrap());
+        let memory = ComponentMemory::new(0, config).unwrap();
 
         // Try to read beyond bounds
         let result = memory.read_bytes(65536, 1);
@@ -988,7 +988,7 @@ mod tests {
             ComponentInstance::new(1, "math_component".to_string(), config, exports, vec![];
 
         assert!(instance.is_ok());
-        let instance = instance.unwrap());
+        let instance = instance.unwrap();
         assert_eq!(instance.id, 1);
         assert_eq!(instance.name, "math_component";
         assert_eq!(instance.state, InstanceState::Initializing;
@@ -1022,7 +1022,7 @@ mod tests {
         let instance = ComponentInstance::new(2, "calculator".to_string(), config, vec![], imports;
 
         assert!(instance.is_ok());
-        let instance = instance.unwrap());
+        let instance = instance.unwrap();
         assert_eq!(instance.id, 2;
         assert_eq!(instance.name, "calculator";
         assert_eq!(instance.imports.len(), 0); // Imports start unresolved
@@ -1042,7 +1042,7 @@ mod tests {
 
         let mut instance =
             ComponentInstance::new(3, "test_component".to_string(), config, exports, vec![])
-                .unwrap());
+                .unwrap();
 
         assert_eq!(instance.state, InstanceState::Initializing;
 
@@ -1065,15 +1065,15 @@ mod tests {
 
         let mut instance =
             ComponentInstance::new(4, "test_component".to_string(), config, exports, vec![])
-                .unwrap());
+                .unwrap();
 
-        instance.initialize().unwrap());
+        instance.initialize().unwrap();
 
         let args = vec![ComponentValue::S32(42)];
         let result = instance.call_function("test_func", &args;
 
         assert!(result.is_ok());
-        let return_values = result.unwrap());
+        let return_values = result.unwrap();
         assert_eq!(return_values.len(), 1);
     }
 
@@ -1091,7 +1091,7 @@ mod tests {
 
         let mut instance =
             ComponentInstance::new(5, "test_component".to_string(), config, exports, vec![])
-                .unwrap());
+                .unwrap();
 
         // Don't initialize - should fail
         let result = instance.call_function("test_func", &[];
@@ -1104,9 +1104,9 @@ mod tests {
         let config = InstanceConfig::default());
         let mut instance =
             ComponentInstance::new(6, "test_component".to_string(), config, vec![], vec![])
-                .unwrap());
+                .unwrap();
 
-        instance.initialize().unwrap());
+        instance.initialize().unwrap();
 
         let result = instance.call_function("nonexistent", &[];
         assert!(result.is_err();

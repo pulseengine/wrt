@@ -224,7 +224,7 @@ mod capacity_limit_tests {
         let stack_result = new_operand_stack::<i64>();
         assert!(stack_result.is_ok());
 
-        let mut stack = stack_result.unwrap());
+        let mut stack = stack_result.unwrap();
 
         // Simulate computation that uses full stack
         for i in 0..MAX_OPERAND_STACK_SIZE {
@@ -256,7 +256,7 @@ mod capacity_limit_tests {
         let vec_result = new_memory_vec::<MockMemory>();
         assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap());
+        let mut vec = vec_result.unwrap();
 
         for i in 0..MAX_MEMORY_INSTANCES {
             let mem = MockMemory {
@@ -277,7 +277,7 @@ mod capacity_limit_tests {
         let vec_result = new_post_return_vec::<Callback>();
         assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap());
+        let mut vec = vec_result.unwrap();
 
         fn dummy_callback() -> WrtResult<()> {
             Ok(()))
@@ -301,7 +301,7 @@ mod capacity_limit_tests {
         let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap());
+        let mut vec = vec_result.unwrap();
 
         // Fill partially
         for i in 0..10 {
@@ -326,7 +326,7 @@ mod capacity_limit_tests {
         let vec_result = new_import_vec::<String>();
         assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap());
+        let mut vec = vec_result.unwrap();
 
         // Capacity should remain constant
         let initial_capacity = vec.capacity();

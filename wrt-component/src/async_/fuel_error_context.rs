@@ -155,7 +155,7 @@ impl ContextualError {
     
     /// Format the error with full context chain
     pub fn format_with_context(&self) -> Result<String> {
-        let mut output = String::new);
+        let mut output = String::new();
         
         // Start with the main error
         output.push_str(&format!("Error: {}\n", self.error.message();
@@ -404,7 +404,7 @@ mod tests {
         ;
         assert!(context.is_ok());
         
-        let context = context.unwrap());
+        let context = context.unwrap();
         assert_eq!(context.component_id, 1);
         assert_eq!(context.task_id, Some(42;
         assert_eq!(context.fuel_consumed, 100;
@@ -416,7 +416,7 @@ mod tests {
         let contextual = ContextualError::new(error, VerificationLevel::Basic;
         assert!(contextual.is_ok());
         
-        let mut contextual = contextual.unwrap());
+        let mut contextual = contextual.unwrap();
         assert_eq!(contextual.total_fuel_consumed, ERROR_CREATE_FUEL;
         
         // Add context
@@ -426,9 +426,9 @@ mod tests {
             "test.rs:20",
             "Additional context",
             50,
-        ).unwrap());
+        ).unwrap();
         
-        contextual = contextual.with_context(context).unwrap());
+        contextual = contextual.with_context(context).unwrap();
         assert_eq!(contextual.context_chain.len(), 1);
     }
     
@@ -445,7 +445,7 @@ mod tests {
         ;
         
         assert!(wrapped.is_ok());
-        let wrapped = wrapped.unwrap());
+        let wrapped = wrapped.unwrap();
         assert_eq!(wrapped.context_chain.len(), 1);
     }
     

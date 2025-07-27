@@ -96,7 +96,7 @@ mod tests {
     fn test_phase2_priority_inheritance_integration() {
         // Test priority inheritance protocol with async tasks
         let mut protocol =
-            FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap());
+            FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
 
         let high_priority_task = TaskId::new(1;
         let low_priority_holder = TaskId::new(2;
@@ -111,7 +111,7 @@ mod tests {
                 Some(low_priority_holder),
                 Some(Duration::from_millis(1000)),
             )
-            .unwrap());
+            .unwrap();
 
         // Verify priority inheritance occurred
         let effective_priority =
@@ -129,7 +129,7 @@ mod tests {
         ;
 
         // Release resource and verify cleanup
-        let next_holder = protocol.release_resource(resource_id, low_priority_holder).unwrap());
+        let next_holder = protocol.release_resource(resource_id, low_priority_holder).unwrap();
         assert_eq!(next_holder, Some(high_priority_task;
 
         let final_stats = protocol.get_statistics);
@@ -155,11 +155,11 @@ mod tests {
                 ComponentInstanceId::new(1),
                 Priority::Normal, // receiver
             )
-            .unwrap());
+            .unwrap();
 
         // Test immediate send/receive
         assert!(sender.try_send(42).is_ok());
-        let received = receiver.try_receive().unwrap());
+        let received = receiver.try_receive().unwrap();
         assert_eq!(received, 42;
 
         // Fill channel to test blocking behavior
@@ -176,7 +176,7 @@ mod tests {
 
         // Receive messages to make space
         for expected in 0..5 {
-            let received = receiver.try_receive().unwrap());
+            let received = receiver.try_receive().unwrap();
             assert_eq!(received, expected;
         }
 
@@ -209,7 +209,7 @@ mod tests {
         };
 
         let mut scheduler =
-            FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap());
+            FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
 
         // Add tasks with different priorities
         scheduler
@@ -221,7 +221,7 @@ mod tests {
                 None,
                 true, // preemptible
             )
-            .unwrap());
+            .unwrap();
 
         scheduler
             .add_task(
@@ -232,7 +232,7 @@ mod tests {
                 Some(Duration::from_millis(5000)), // deadline
                 true,
             )
-            .unwrap());
+            .unwrap();
 
         scheduler
             .add_task(
@@ -243,10 +243,10 @@ mod tests {
                 Some(Duration::from_millis(2000)), // tight deadline
                 false,                             // non-preemptible
             )
-            .unwrap());
+            .unwrap();
 
         // Schedule should select highest priority task first
-        let next_task = scheduler.schedule_next_task().unwrap());
+        let next_task = scheduler.schedule_next_task().unwrap();
         assert_eq!(next_task, Some(TaskId::new(3))); // High priority task
 
         // Simulate execution and state changes
@@ -256,10 +256,10 @@ mod tests {
                 AsyncTaskState::Waiting, // Task becomes blocked
                 500,                     // fuel consumed
             )
-            .unwrap());
+            .unwrap();
 
         // Next schedule should pick normal priority task
-        let next_task = scheduler.schedule_next_task().unwrap());
+        let next_task = scheduler.schedule_next_task().unwrap();
         assert_eq!(next_task, Some(TaskId::new(2))); // Normal priority task
 
         // Test preemption by adding higher priority task back
@@ -269,7 +269,7 @@ mod tests {
                 AsyncTaskState::Ready, // High priority task becomes ready again
                 0,
             )
-            .unwrap());
+            .unwrap();
 
         // Check if current task should be preempted
         if let Some(current_context) = scheduler.current_task.as_ref() {
@@ -278,7 +278,7 @@ mod tests {
                     current_context,
                     1000, // current fuel time
                 )
-                .unwrap());
+                .unwrap();
             assert!(should_preempt)); // Should preempt for higher priority
         }
 
@@ -300,18 +300,18 @@ mod tests {
         // Integration test showing all Phase 2 components working together
 
         // 1. Create async executor with fuel limits
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(50000;
         executor.set_default_verification_level(VerificationLevel::Standard;
 
         // 2. Create preemptive scheduler
         let config = PreemptiveSchedulerConfig::default());
         let mut preemptive_scheduler =
-            FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap());
+            FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
 
         // 3. Create priority inheritance protocol
         let mut priority_protocol =
-            FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap());
+            FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
 
         // 4. Create channel manager for inter-task communication
         let mut channel_manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard;
@@ -328,7 +328,7 @@ mod tests {
                 ComponentInstanceId::new(1),
                 Priority::Normal, // consumer
             )
-            .unwrap());
+            .unwrap();
 
         // 6. Add tasks to preemptive scheduler
         preemptive_scheduler
@@ -340,7 +340,7 @@ mod tests {
                 Some(Duration::from_millis(3000)),
                 true,
             )
-            .unwrap());
+            .unwrap();
 
         preemptive_scheduler
             .add_task(
@@ -351,7 +351,7 @@ mod tests {
                 Some(Duration::from_millis(5000)),
                 true,
             )
-            .unwrap());
+            .unwrap();
 
         preemptive_scheduler
             .add_task(
@@ -362,12 +362,12 @@ mod tests {
                 None,
                 true,
             )
-            .unwrap());
+            .unwrap();
 
         // 7. Simulate task execution with priority inheritance
 
         // High priority producer should run first
-        let next_task = preemptive_scheduler.schedule_next_task().unwrap());
+        let next_task = preemptive_scheduler.schedule_next_task().unwrap();
         assert_eq!(next_task, Some(TaskId::new(1;
 
         // Simulate producer sending data
@@ -381,15 +381,15 @@ mod tests {
                 AsyncTaskState::Waiting,
                 1000, // fuel consumed
             )
-            .unwrap());
+            .unwrap();
 
         // Consumer should run next
-        let next_task = preemptive_scheduler.schedule_next_task().unwrap());
+        let next_task = preemptive_scheduler.schedule_next_task().unwrap();
         assert_eq!(next_task, Some(TaskId::new(2);
 
         // Consumer receives data
-        let received1 = receiver.try_receive().unwrap());
-        let received2 = receiver.try_receive().unwrap());
+        let received1 = receiver.try_receive().unwrap();
+        let received2 = receiver.try_receive().unwrap();
         assert_eq!(received1, 100;
         assert_eq!(received2, 200;
 
@@ -400,16 +400,16 @@ mod tests {
                 AsyncTaskState::Ready,
                 800, // fuel consumed
             )
-            .unwrap());
+            .unwrap();
 
         preemptive_scheduler
             .update_task_state(TaskId::new(1), AsyncTaskState::Ready, 0)
-            .unwrap());
+            .unwrap();
 
         // Producer should preempt consumer due to higher priority
         if let Some(current_context) = preemptive_scheduler.current_task.as_ref() {
             let should_preempt =
-                preemptive_scheduler.should_preempt_current_task(current_context, 2000).unwrap());
+                preemptive_scheduler.should_preempt_current_task(current_context, 2000).unwrap();
             assert!(should_preempt);
         }
 
@@ -438,7 +438,7 @@ mod tests {
                 >= 2
         ;
 
-        println!("Phase 2 Integration Test Results:";
+        println!("Phase 2 Integration Test Results:");
         println!(
             "- Executor fuel status: {}/{} fuel used",
             executor_stats.consumed, executor_stats.limit
@@ -478,7 +478,7 @@ mod tests {
         // Background maintenance task
         let maintenance_task = TaskId::new(3;
 
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(30000); // System-wide resource limit
 
         let config = PreemptiveSchedulerConfig {
@@ -489,7 +489,7 @@ mod tests {
             min_fuel_quantum: 100,
             max_fuel_quantum: 2000,
         };
-        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Full).unwrap());
+        let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Full).unwrap();
 
         // Add safety-critical task with tight deadline and non-preemptible execution
         scheduler
@@ -501,7 +501,7 @@ mod tests {
                 Some(Duration::from_millis(1000)), // Tight deadline
                 false, // Non-preemptible when running
             )
-            .unwrap());
+            .unwrap();
 
         // Add application task with moderate priority
         scheduler
@@ -513,7 +513,7 @@ mod tests {
                 Some(Duration::from_millis(5000)),
                 true, // Preemptible
             )
-            .unwrap());
+            .unwrap();
 
         // Add maintenance task with low priority
         scheduler
@@ -525,10 +525,10 @@ mod tests {
                 None, // No deadline - best effort
                 true,
             )
-            .unwrap());
+            .unwrap();
 
         // Test 1: Safety-critical task has highest priority
-        let first_scheduled = scheduler.schedule_next_task().unwrap());
+        let first_scheduled = scheduler.schedule_next_task().unwrap();
         assert_eq!(first_scheduled, Some(safety_critical_task;
 
         // Test 2: Safety-critical task completes without preemption
@@ -538,10 +538,10 @@ mod tests {
                 AsyncTaskState::Completed,
                 800, // Under deadline fuel limit
             )
-            .unwrap());
+            .unwrap();
 
         // Test 3: Application task runs next
-        let second_scheduled = scheduler.schedule_next_task().unwrap());
+        let second_scheduled = scheduler.schedule_next_task().unwrap();
         assert_eq!(second_scheduled, Some(application_task;
 
         // Test 4: Safety-critical task can preempt application task
@@ -554,12 +554,12 @@ mod tests {
                 Some(Duration::from_millis(800)),
                 false,
             )
-            .unwrap());
+            .unwrap();
 
         // Should trigger preemption
         if let Some(current_context) = scheduler.current_task.as_ref() {
             let should_preempt =
-                scheduler.should_preempt_current_task(current_context, 2000).unwrap());
+                scheduler.should_preempt_current_task(current_context, 2000).unwrap();
             assert!(should_preempt);
         }
 
@@ -578,7 +578,7 @@ mod tests {
                 ComponentInstanceId::new(2),
                 Priority::Normal,
             )
-            .unwrap());
+            .unwrap();
 
         // Verify system constraints
         let scheduler_stats = scheduler.get_statistics);
@@ -595,13 +595,13 @@ mod tests {
         assert!(total_scheduler_fuel > 0)); // Scheduler is tracking fuel
         assert!(total_scheduler_fuel < 1000)); // Overhead is bounded
 
-        println!("ASIL-B Compliance Test Results:";
-        println!("✓ Priority isolation: Critical tasks scheduled first";
-        println!("✓ Temporal isolation: Non-preemptible critical sections";
-        println!("✓ Spatial isolation: Component-based task separation";
-        println!("✓ Resource bounds: Fuel budgets enforced";
-        println!("✓ Deterministic timing: Fuel-based scheduling";
-        println!("✓ Priority inheritance: Available for blocking scenarios";
+        println!("ASIL-B Compliance Test Results:");
+        println!("✓ Priority isolation: Critical tasks scheduled first");
+        println!("✓ Temporal isolation: Non-preemptible critical sections");
+        println!("✓ Spatial isolation: Component-based task separation");
+        println!("✓ Resource bounds: Fuel budgets enforced");
+        println!("✓ Deterministic timing: Fuel-based scheduling");
+        println!("✓ Priority inheritance: Available for blocking scenarios");
     }
 }
 
@@ -634,11 +634,11 @@ mod examples {
         // 4. Create channel manager for async communication
         let channel_manager = FuelAsyncChannelManager::<String>::new(VerificationLevel::Standard;
 
-        println!("Phase 2 async system created with:";
-        println!("- Fuel-based async executor with preemption support";
-        println!("- Priority inheritance protocol for preventing priority inversion";
-        println!("- Bounded async channels with flow control";
-        println!("- Preemptive scheduler with priority aging and deadline support";
+        println!("Phase 2 async system created with:");
+        println!("- Fuel-based async executor with preemption support");
+        println!("- Priority inheritance protocol for preventing priority inversion");
+        println!("- Bounded async channels with flow control");
+        println!("- Preemptive scheduler with priority aging and deadline support");
 
         Ok(())
     }

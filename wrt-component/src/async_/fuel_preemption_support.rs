@@ -440,19 +440,19 @@ mod tests {
 
     #[test]
     fn test_preemption_manager_creation() {
-        let manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap());
+        let manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         assert!(manager.preemption_enabled.load(Ordering::Acquire);
         
-        let disabled = FuelPreemptionManager::new(PreemptionPolicy::Disabled).unwrap());
+        let disabled = FuelPreemptionManager::new(PreemptionPolicy::Disabled).unwrap();
         assert!(!disabled.preemption_enabled.load(Ordering::Acquire);
     }
 
     #[test]
     fn test_task_registration() {
-        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::PriorityBased).unwrap());
+        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::PriorityBased).unwrap();
         
         let task_id = TaskId::new(1;
-        manager.register_task(task_id, Priority::Normal, true, 1000).unwrap());
+        manager.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         
         // Should have task state
         assert!(manager.task_states.contains_key(&task_id);
@@ -460,31 +460,31 @@ mod tests {
 
     #[test]
     fn test_cooperative_preemption() {
-        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap());
-        let executor = FuelAsyncExecutor::new().unwrap());
+        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
+        let executor = FuelAsyncExecutor::new().unwrap();
         
         let task_id = TaskId::new(1;
-        manager.register_task(task_id, Priority::Normal, true, 200).unwrap());
+        manager.register_task(task_id, Priority::Normal, true, 200).unwrap();
         
         // First check should continue (not enough fuel)
-        let decision = manager.check_preemption(task_id, 50, &executor).unwrap());
+        let decision = manager.check_preemption(task_id, 50, &executor).unwrap();
         assert_eq!(decision, PreemptionDecision::Continue;
         
         // After consuming more fuel, should check
-        let decision = manager.check_preemption(task_id, 100, &executor).unwrap());
+        let decision = manager.check_preemption(task_id, 100, &executor).unwrap();
         assert!(matches!(decision, PreemptionDecision::Continue | PreemptionDecision::YieldPoint);
     }
 
     #[test]
     fn test_quantum_management() {
-        let manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap());
+        let manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
         let task_id = TaskId::new(1;
         let mut mgr = manager;
-        mgr.register_task(task_id, Priority::Normal, true, 1000).unwrap());
+        mgr.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         
         // Update quantum
-        mgr.update_quantum(task_id, 100).unwrap());
+        mgr.update_quantum(task_id, 100).unwrap();
         
         if let Some(state) = mgr.task_states.get(&task_id) {
             assert_eq!(state.quantum_remaining.load(Ordering::Acquire), 900;
@@ -499,11 +499,11 @@ mod tests {
 
     #[test]
     fn test_voluntary_yield() {
-        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap());
+        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
         let task_id = TaskId::new(1;
-        manager.register_task(task_id, Priority::Normal, true, 1000).unwrap());
-        manager.voluntary_yield(task_id).unwrap());
+        manager.register_task(task_id, Priority::Normal, true, 1000).unwrap();
+        manager.voluntary_yield(task_id).unwrap();
         
         let stats = manager.get_statistics);
         assert_eq!(stats.voluntary_yields, 1);
@@ -511,15 +511,15 @@ mod tests {
 
     #[test]
     fn test_preemption_points() {
-        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap());
+        let mut manager = FuelPreemptionManager::new(PreemptionPolicy::Cooperative).unwrap();
         
         let task_id = TaskId::new(1;
-        manager.register_task(task_id, Priority::Normal, true, 1000).unwrap());
+        manager.register_task(task_id, Priority::Normal, true, 1000).unwrap();
         
         // Add preemption points
-        manager.add_preemption_point(task_id, 1, 100, true).unwrap());
-        manager.add_preemption_point(task_id, 2, 200, false).unwrap());
-        manager.add_preemption_point(task_id, 3, 300, true).unwrap());
+        manager.add_preemption_point(task_id, 1, 100, true).unwrap();
+        manager.add_preemption_point(task_id, 2, 200, false).unwrap();
+        manager.add_preemption_point(task_id, 3, 300, true).unwrap();
         
         assert_eq!(manager.preemption_points.get(&task_id).unwrap().len(), 3;
     }

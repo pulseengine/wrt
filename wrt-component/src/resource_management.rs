@@ -379,7 +379,7 @@ impl ResourceTable {
 /// Helper function to create resource data from bytes
 pub fn create_resource_data_bytes(data: &[u8]) -> core::result::Result<ResourceData, ResourceError> {
     let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| ResourceError::LimitExceeded)?;
-    let mut vec = BoundedVec::new(provider).unwrap());
+    let mut vec = BoundedVec::new(provider).unwrap();
     for &byte in data {
         vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -400,7 +400,7 @@ pub fn create_resource_data_custom<T: std::any::Any + Send + Sync>(data: T) -> R
 /// Helper function to create a resource type
 pub fn create_resource_type(name: &str) -> core::result::Result<ResourceTypeMetadata, ResourceError> {
     let provider = safe_managed_alloc!(65536, CrateId::Component).map_err(|_| ResourceError::LimitExceeded)?;
-    let mut name_vec = BoundedVec::new(provider).unwrap());
+    let mut name_vec = BoundedVec::new(provider).unwrap();
     for &byte in name.as_bytes() {
         name_vec.push(byte).map_err(|_| ResourceError::LimitExceeded)?;
     }
@@ -460,7 +460,7 @@ impl Default for ResourceTypeId {
 impl Default for ResourceData {
     fn default() -> Self {
         Self::Bytes({
-            let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+            let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
             BoundedVec::new(provider).unwrap()
         })
     }

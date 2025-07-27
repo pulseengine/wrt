@@ -40,7 +40,7 @@ where
 
     /// Set a debug name for the resource
     pub fn with_name(mut self, name: &str) -> Self {
-        self.name = Some(name.to_string();
+        self.name = Some(name.to_string());
         self
     }
 
@@ -263,7 +263,7 @@ mod tests {
             .build);
 
         assert_eq!(resource.type_idx, 1);
-        assert_eq!(resource.name, Some("test-resource".to_string();
+        assert_eq!(resource.name, Some("test-resource".to_string());
         assert_eq!(strategy, MemoryStrategy::ZeroCopy;
         assert_eq!(level, VerificationLevel::Full;
     }
@@ -279,8 +279,8 @@ mod tests {
             .build);
 
         // Create a resource to test the table was built correctly
-        let data = Arc::new("test".to_string();
-        let handle = table.create_resource(1, data).unwrap());
+        let data = Arc::new("test".to_string());
+        let handle = table.create_resource(1, data).unwrap();
         assert_eq!(handle, 1);
     }
 
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     #[cfg(not(feature = "std"))]
     fn test_resource_manager_builder_no_std() {
-        let table = Mutex::new(ResourceTable::new);
+        let table = Mutex::new(ResourceTable::new();
 
         let manager = ResourceManagerBuilder::new()
             .with_instance_id("test-instance")

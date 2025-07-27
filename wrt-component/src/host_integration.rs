@@ -493,7 +493,7 @@ impl HostIntegrationManager {
         }
 
         #[cfg(feature = "std")]
-        let mut allowed_instances = Vec::new);
+        let mut allowed_instances = Vec::new());
         #[cfg(not(any(feature = "std", )))]
         let mut allowed_instances = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -719,7 +719,7 @@ mod tests {
 
     #[test]
     fn test_host_integration_manager_creation() {
-        let manager = HostIntegrationManager::new);
+        let manager = HostIntegrationManager::new();
         assert_eq!(manager.host_functions.len(), 0);
         assert_eq!(manager.event_handlers.len(), 0);
     }
@@ -774,7 +774,7 @@ mod tests {
 
     #[test]
     fn test_host_resource_manager() {
-        let manager = HostResourceManager::new);
+        let manager = HostResourceManager::new();
         assert_eq!(manager.resource_count(), 0);
     }
 }

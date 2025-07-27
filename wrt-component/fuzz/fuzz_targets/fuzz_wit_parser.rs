@@ -7,7 +7,7 @@ fuzz_target!(|data: &[u8]| {
     // Convert raw bytes to string
     if let Ok(input) = std::str::from_utf8(data) {
         // Create parser
-        let mut parser = WitParser::new);
+        let mut parser = WitParser::new();
         
         // Try to parse as WIT - we expect this to either succeed or fail gracefully
         let _ = parser.parse(input;

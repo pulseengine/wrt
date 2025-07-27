@@ -198,7 +198,7 @@ impl BuiltinHandler for AsyncNewHandler {
 
         // Create a new async value
         let id = {
-            let mut store = self.async_store.lock().unwrap());
+            let mut store = self.async_store.lock().unwrap();
             store.create_async(AsyncStatus::Pending)
         };
 
@@ -247,7 +247,7 @@ impl BuiltinHandler for AsyncGetHandler {
         };
 
         // Get the result of the async computation
-        let store = self.async_store.lock().unwrap());
+        let store = self.async_store.lock().unwrap();
         store.get_result(async_id)
     }
 
@@ -292,7 +292,7 @@ impl BuiltinHandler for AsyncPollHandler {
         };
 
         // Check the status of the async computation
-        let store = self.async_store.lock().unwrap());
+        let store = self.async_store.lock().unwrap();
         let status = store.get_status(async_id)?;
 
         // Return the status as a variant
@@ -348,7 +348,7 @@ impl BuiltinHandler for AsyncWaitHandler {
 
         // Use Component Model polling instead of Rust futures
         loop {
-            let store = self.async_store.lock().unwrap());
+            let store = self.async_store.lock().unwrap();
 
             match store.get_status(async_id) {
                 Ok(AsyncStatus::Ready) => {
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_async_store() {
-        let mut store = AsyncValueStore::new);
+        let mut store = AsyncValueStore::new();
 
         // Create a new async value
         let id = store.create_async(AsyncStatus::Pending;
@@ -411,7 +411,7 @@ mod tests {
 
         // Set a result
         let result = vec![ComponentValue::U32(42)];
-        store.set_result(id, result.clone()).unwrap());
+        store.set_result(id, result.clone()).unwrap();
 
         // Check status and result
         assert_eq!(store.get_status(id).unwrap(), AsyncStatus::Ready;
@@ -419,7 +419,7 @@ mod tests {
 
         // Test error handling
         let id2 = store.create_async(AsyncStatus::Pending;
-        store.set_error(id2, "Test error".to_string()).unwrap());
+        store.set_error(id2, "Test error".to_string()).unwrap();
 
         assert_eq!(store.get_status(id2).unwrap(), AsyncStatus::Failed;
         assert!(store.get_result(id2).is_err();
@@ -436,13 +436,13 @@ mod tests {
 
         // Test with valid args (empty)
         let args = vec![];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
 
         assert_eq!(result.len(), 1);
         match &result[0] {
             ComponentValue::U32(id) => {
                 // Verify the async value was created
-                let async_store = store.lock().unwrap());
+                let async_store = store.lock().unwrap();
                 assert!(async_store.has_async(*id);
             }
             _ => panic!("Expected U32 result"),
@@ -460,10 +460,10 @@ mod tests {
 
         // Create a new async value and set its result
         let id = {
-            let mut async_store = store.lock().unwrap());
+            let mut async_store = store.lock().unwrap();
             let id = async_store.create_async(AsyncStatus::Pending;
             let result = vec![ComponentValue::U32(42)];
-            async_store.set_result(id, result).unwrap());
+            async_store.set_result(id, result).unwrap();
             id
         };
 
@@ -471,7 +471,7 @@ mod tests {
 
         // Test with valid args
         let args = vec![ComponentValue::U32(id)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
 
         assert_eq!(result.len(), 1);
         match &result[0] {
@@ -488,15 +488,15 @@ mod tests {
 
         // Create multiple async values with different statuses
         let (pending_id, ready_id, failed_id) = {
-            let mut async_store = store.lock().unwrap());
+            let mut async_store = store.lock().unwrap();
 
             let pending_id = async_store.create_async(AsyncStatus::Pending;
 
             let ready_id = async_store.create_async(AsyncStatus::Pending;
-            async_store.set_result(ready_id, vec![ComponentValue::U32(42)]).unwrap());
+            async_store.set_result(ready_id, vec![ComponentValue::U32(42)]).unwrap();
 
             let failed_id = async_store.create_async(AsyncStatus::Pending;
-            async_store.set_error(failed_id, "Test error".to_string()).unwrap());
+            async_store.set_error(failed_id, "Test error".to_string()).unwrap();
 
             (pending_id, ready_id, failed_id)
         };
@@ -505,17 +505,17 @@ mod tests {
 
         // Test pending
         let args = vec![ComponentValue::U32(pending_id)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
         assert_eq!(result, vec![ComponentValue::U32(0)];
 
         // Test ready
         let args = vec![ComponentValue::U32(ready_id)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
         assert_eq!(result, vec![ComponentValue::U32(1)];
 
         // Test failed
         let args = vec![ComponentValue::U32(failed_id)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
         assert_eq!(result, vec![ComponentValue::U32(2)];
     }
 
@@ -526,10 +526,10 @@ mod tests {
 
         // Create an async value that's already ready
         let id = {
-            let mut async_store = store.lock().unwrap());
+            let mut async_store = store.lock().unwrap();
             let id = async_store.create_async(AsyncStatus::Pending;
             let result = vec![ComponentValue::U32(42)];
-            async_store.set_result(id, result).unwrap());
+            async_store.set_result(id, result).unwrap();
             id
         };
 
@@ -537,7 +537,7 @@ mod tests {
 
         // Test with valid args
         let args = vec![ComponentValue::U32(id)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
 
         assert_eq!(result.len(), 1);
         match &result[0] {

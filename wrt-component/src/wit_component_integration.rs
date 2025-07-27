@@ -274,8 +274,8 @@ impl WitComponentContext {
     
     /// Process an interface declaration
     fn process_interface(&mut self, interface: &InterfaceDecl) -> Result<()> {
-        let mut functions = Vec::new);
-        let mut types = Vec::new);
+        let mut functions = Vec::new());
+        let mut types = Vec::new());
         
         // Process interface items
         for item in &interface.items {
@@ -297,7 +297,7 @@ impl WitComponentContext {
         // Create interface mapping
         let interface_name = interface.name.name.as_str()
             .map_err(|_| Error::parse_error("Error occurred"))?
-            .to_string();
+            .to_string());
         
         let mapping = InterfaceMapping {
             wit_name: interface.name.name.clone(),
@@ -321,8 +321,8 @@ impl WitComponentContext {
     
     /// Process a function declaration
     fn process_function(&mut self, func: &FunctionDecl) -> Result<FunctionMapping> {
-        let mut param_types = Vec::new);
-        let mut return_types = Vec::new);
+        let mut param_types = Vec::new());
+        let mut return_types = Vec::new());
         
         // Process parameters
         for param in &func.func.params {
@@ -368,7 +368,7 @@ impl WitComponentContext {
         
         let type_name = type_decl.name.name.as_str()
             .map_err(|_| Error::parse_error("Error occurred"))?
-            .to_string();
+            .to_string());
         
         self.type_mappings.insert(type_name, mapping.clone();
         

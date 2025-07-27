@@ -48,7 +48,7 @@ pub mod rust_async_bridge {
         type Output = core::result::Result<T, String>;
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            let future = self.wasm_future.lock().unwrap());
+            let future = self.wasm_future.lock().unwrap();
 
             match future.state {
                 FutureState::Ready => {
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_component_model_async_without_rust_futures() {
-        let mut task_manager = TaskManager::new);
+        let mut task_manager = TaskManager::new();
         let component_id = ComponentInstanceId::new(1;
 
         // Create a Component Model future - no Rust Future trait needed!
@@ -203,7 +203,7 @@ mod tests {
         assert!(matches!(result, PollResult::Pending);
 
         // Complete the future
-        wasm_future.set_value(42).unwrap());
+        wasm_future.set_value(42).unwrap();
 
         // Poll again
         let result = poll_future(&mut wasm_future, &mut task_manager;
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_component_model_stream_without_rust_futures() {
-        let mut task_manager = TaskManager::new);
+        let mut task_manager = TaskManager::new();
 
         // Create a Component Model stream - no Rust Stream trait needed!
         let stream_handle = StreamHandle(1;
@@ -221,8 +221,8 @@ mod tests {
         // Add some values
         #[cfg(feature = "std")]
         {
-            wasm_stream.buffer.push("Hello".to_string();
-            wasm_stream.buffer.push("World".to_string();
+            wasm_stream.buffer.push("Hello".to_string());
+            wasm_stream.buffer.push("World".to_string());
         }
 
         // Poll values manually

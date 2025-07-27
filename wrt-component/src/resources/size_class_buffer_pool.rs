@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_allocate_from_size_class() {
-        let mut pool = SizeClassBufferPool::new);
+        let mut pool = SizeClassBufferPool::new();
 
         // Allocate a buffer
         let buffer = pool.allocate(100;
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_size_classes() {
-        let mut pool = SizeClassBufferPool::new);
+        let mut pool = SizeClassBufferPool::new();
 
         // Test a few size classes
         let sizes = [15, 32, 33, 500, 1025, 4000, 16385];
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let mut pool = SizeClassBufferPool::new);
+        let mut pool = SizeClassBufferPool::new();
 
         // Allocate and return some buffers
         pool.return_buffer(pool.allocate(64;

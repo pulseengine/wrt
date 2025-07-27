@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_host_function_management() {
-        let mut host = Host::new);
+        let mut host = Host::new();
 
         let func_type = ExternType::Function {
             params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],

@@ -340,7 +340,7 @@ impl ComponentMemoryManager {
         }
         #[cfg(not(any(feature = "std", )))]
         {
-            let mut result = Vec::new);
+            let mut result = Vec::new());
             for i in offset as usize..end_offset {
                 result.push(memory.data[i]);
             }
@@ -754,17 +754,17 @@ mod tests {
 
     #[test]
     fn test_memory_manager_creation() {
-        let manager = ComponentMemoryManager::new().unwrap());
+        let manager = ComponentMemoryManager::new().unwrap();
         assert_eq!(manager.memory_count(), 0);
         assert_eq!(manager.total_allocated(), 0);
     }
 
     #[test]
     fn test_create_memory() {
-        let mut manager = ComponentMemoryManager::new().unwrap());
+        let mut manager = ComponentMemoryManager::new().unwrap();
         let limits = MemoryLimits { min: 1, max: Some(10) };
 
-        let memory_id = manager.create_memory(limits, false, Some(1)).unwrap());
+        let memory_id = manager.create_memory(limits, false, Some(1)).unwrap();
         assert_eq!(memory_id, 0);
         assert_eq!(manager.memory_count(), 1);
         assert_eq!(manager.total_allocated(), WASM_PAGE_SIZE;
@@ -772,51 +772,51 @@ mod tests {
 
     #[test]
     fn test_memory_access() {
-        let mut manager = ComponentMemoryManager::new().unwrap());
+        let mut manager = ComponentMemoryManager::new().unwrap();
         let limits = MemoryLimits { min: 1, max: None };
 
-        let memory_id = manager.create_memory(limits, false, Some(1)).unwrap());
+        let memory_id = manager.create_memory(limits, false, Some(1)).unwrap();
 
         // Write data
         let data = vec![1, 2, 3, 4];
-        let access = manager.write_memory(memory_id, 0, &data, Some(1)).unwrap());
+        let access = manager.write_memory(memory_id, 0, &data, Some(1)).unwrap();
         assert!(access.success);
         assert_eq!(access.bytes_accessed, 4;
 
         // Read data back
-        let read_data = manager.read_memory(memory_id, 0, 4, Some(1)).unwrap());
+        let read_data = manager.read_memory(memory_id, 0, 4, Some(1)).unwrap();
         assert_eq!(read_data, data;
     }
 
     #[test]
     fn test_table_manager_creation() {
-        let manager = ComponentTableManager::new().unwrap());
+        let manager = ComponentTableManager::new().unwrap();
         assert_eq!(manager.table_count(), 0);
     }
 
     #[test]
     fn test_create_table() {
-        let mut manager = ComponentTableManager::new().unwrap());
+        let mut manager = ComponentTableManager::new().unwrap();
         let limits = TableLimits { min: 10, max: Some(100) };
 
-        let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap());
+        let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
         assert_eq!(table_id, 0);
         assert_eq!(manager.table_count(), 1);
     }
 
     #[test]
     fn test_table_access() {
-        let mut manager = ComponentTableManager::new().unwrap());
+        let mut manager = ComponentTableManager::new().unwrap();
         let limits = TableLimits { min: 10, max: None };
 
-        let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap());
+        let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
 
         // Set element
         let element = TableElement::FuncRef(42;
-        manager.set_element(table_id, 0, element.clone()).unwrap());
+        manager.set_element(table_id, 0, element.clone()).unwrap();
 
         // Get element back
-        let retrieved = manager.get_element(table_id, 0).unwrap());
+        let retrieved = manager.get_element(table_id, 0).unwrap();
         match (retrieved, &element) {
             (TableElement::FuncRef(a), TableElement::FuncRef(b)) => assert_eq!(a, b),
             _ => panic!("Element mismatch"),

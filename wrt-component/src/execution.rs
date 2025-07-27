@@ -184,7 +184,7 @@ where
         Ok(_) => TimeBoundedOutcome::Completed,
         Err(e) => {
             // Extract error kind from the error message
-            let error_msg = e.to_string();
+            let error_msg = e.to_string());
             if error_msg.contains("time limit exceeded") || error_msg.contains("timeout") {
                 TimeBoundedOutcome::TimedOut
             } else if error_msg.contains("terminated") || error_msg.contains("limit exceeded") {

@@ -56,7 +56,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
         return Err(Error::parse_error("Invalid WebAssembly magic number";
     }
     
-    let mut builtin_names = Vec::new);
+    let mut builtin_names = Vec::new());
     let mut offset = 8; // Skip magic number and version
     
     // Parse sections to find the import section
@@ -95,7 +95,7 @@ fn scan_for_builtins_fallback(binary: &[u8]) -> Result<Vec<String>> {
 
 /// Parse builtin imports from import section data
 fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
-    let mut builtin_names = Vec::new);
+    let mut builtin_names = Vec::new());
     let mut offset = 0;
     
     // Read import count
@@ -130,7 +130,7 @@ fn parse_builtins_from_import_section(data: &[u8]) -> Result<Vec<String>> {
         
         // Check if this is a wasi_builtin import
         if module_name == "wasi_builtin" {
-            builtin_names.push(import_name.to_string();
+            builtin_names.push(import_name.to_string());
         }
         
         // Skip import kind and type info
@@ -187,7 +187,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 /// A Result containing a set of required built-in types
 pub fn get_required_builtins(binary: &[u8]) -> Result<HashSet<BuiltinType>> {
     let builtin_names = scan_for_builtins(binary)?;
-    let mut required_builtins = HashSet::new);
+    let mut required_builtins = HashSet::new();
 
     for name in builtin_names {
         if let Some(builtin_type) = map_import_to_builtin(&name) {
@@ -282,12 +282,12 @@ mod tests {
         let module = create_test_module("wasi_builtin", "resource.create";
 
         // Test that we can find the built-in import
-        let builtin_names = scan_for_builtins(&module).unwrap());
+        let builtin_names = scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 1);
         assert_eq!(builtin_names[0], "resource.create";
 
         // Test the mapping to built-in types
-        let required_builtins = get_required_builtins(&module).unwrap());
+        let required_builtins = get_required_builtins(&module).unwrap();
         assert!(required_builtins.contains(&BuiltinType::ResourceCreate);
         assert_eq!(required_builtins.len(), 1);
     }
@@ -298,13 +298,13 @@ mod tests {
         let module = create_test_module("wasi_builtin", "random_get_bytes";
 
         // We should be able to identify the import
-        let builtin_names = scan_for_builtins(&module).unwrap());
+        let builtin_names = scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 1);
         assert_eq!(builtin_names[0], "random_get_bytes";
 
         // Since random_get_bytes is not in our map_import_to_builtin function,
         // we should see no builtin types when we call get_required_builtins
-        let required_builtins = get_required_builtins(&module).unwrap());
+        let required_builtins = get_required_builtins(&module).unwrap();
         assert_eq!(required_builtins.len(), 0);
     }
 
@@ -314,11 +314,11 @@ mod tests {
         let module = create_test_module("other_module", "other_import";
 
         // We should not find any built-in imports
-        let builtin_names = scan_for_builtins(&module).unwrap());
+        let builtin_names = scan_for_builtins(&module).unwrap();
         assert_eq!(builtin_names.len(), 0);
 
         // No built-in types should be required
-        let required_builtins = get_required_builtins(&module).unwrap());
+        let required_builtins = get_required_builtins(&module).unwrap();
         assert_eq!(required_builtins.len(), 0);
     }
 

@@ -487,28 +487,28 @@ impl ASILExecutorFactory {
     ) -> Box<dyn AsyncTaskExecutor> {
         match asil_mode {
             ASILExecutionMode::D { .. } => {
-                let mut executor = ASILDTaskExecutor::new);
+                let mut executor = ASILDTaskExecutor::new();
                 if let Some(max_stack) = config.max_stack_depth {
                     executor.max_stack_depth = max_stack;
                 }
                 Box::new(executor)
             },
             ASILExecutionMode::C { .. } => {
-                let mut executor = ASILCTaskExecutor::new);
+                let mut executor = ASILCTaskExecutor::new();
                 if let Some(max_slice) = config.max_slice_duration {
                     executor.max_slice_duration = max_slice;
                 }
                 Box::new(executor)
             },
             ASILExecutionMode::B { .. } => {
-                let mut executor = ASILBTaskExecutor::new);
+                let mut executor = ASILBTaskExecutor::new();
                 if let Some(quota) = config.resource_quota {
                     executor.resource_quota = quota;
                 }
                 Box::new(executor)
             },
             ASILExecutionMode::A { .. } => {
-                let mut executor = ASILATaskExecutor::new);
+                let mut executor = ASILATaskExecutor::new();
                 if let Some(max_errors) = config.max_error_count {
                     executor.max_error_count = max_errors;
                 }
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn test_asil_d_executor() {
-        let mut executor = ASILDTaskExecutor::new);
+        let mut executor = ASILDTaskExecutor::new();
         assert_eq!(executor.max_fuel_per_step(ASILExecutionMode::D {
             deterministic_execution: true,
             bounded_execution_time: true,

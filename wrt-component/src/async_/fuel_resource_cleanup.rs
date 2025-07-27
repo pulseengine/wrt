@@ -179,10 +179,10 @@ impl TaskCleanupContext {
     ) -> Result<Vec<ContextualError>> {
         // Check if already executed
         if self.cleanup_executed.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new);
+            return Ok(Vec::new());
         }
         
-        let mut errors = Vec::new);
+        let mut errors = Vec::new());
         
         // Execute callbacks in priority order
         for callback in self.callbacks.drain(..) {
@@ -379,9 +379,9 @@ impl GlobalCleanupManager {
             .iter()
             .filter(|(_, ctx)| ctx.component_id == component_id)
             .map(|(id, _)| *id)
-            .collect();
+            .collect());
         
-        let mut all_errors = Vec::new);
+        let mut all_errors = Vec::new());
         
         for task_id in task_ids {
             match self.cancel_task(task_id) {
@@ -445,7 +445,7 @@ impl TaskCleanupGuard {
     /// Cancel the task early
     pub fn cancel(&self) -> Result<Vec<ContextualError>> {
         if self.cancelled.swap(true, Ordering::AcqRel) {
-            return Ok(Vec::new);
+            return Ok(Vec::new());
         }
         
         self.manager.lock()?.cancel_task(self.task_id)
@@ -466,7 +466,7 @@ mod tests {
     
     #[test]
     fn test_cleanup_context() {
-        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap());
+        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap();
         
         // Register various resources
         assert!(context.register_resource(ResourceHandle(1)).is_ok());
@@ -479,7 +479,7 @@ mod tests {
     
     #[test]
     fn test_callback_priority() {
-        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap());
+        let mut context = TaskCleanupContext::new(1, 1, VerificationLevel::Basic).unwrap();
         
         // Register callbacks with different priorities
         context.register_callback(CleanupCallback::new(
@@ -487,21 +487,21 @@ mod tests {
             10,
             1,
             false,
-        )).unwrap());
+        )).unwrap();
         
         context.register_callback(CleanupCallback::new(
             CleanupAction::Custom("high".to_string()),
             100,
             1,
             false,
-        )).unwrap());
+        )).unwrap();
         
         context.register_callback(CleanupCallback::new(
             CleanupAction::Custom("medium".to_string()),
             50,
             1,
             false,
-        )).unwrap());
+        )).unwrap();
         
         // Verify priority order (highest first)
         assert_eq!(context.callbacks[0].priority, 100;
@@ -511,20 +511,20 @@ mod tests {
     
     #[test]
     fn test_global_cleanup_manager() {
-        let mut manager = GlobalCleanupManager::new(10000).unwrap());
+        let mut manager = GlobalCleanupManager::new(10000).unwrap();
         
         // Register task
         assert!(manager.register_task(1, 1, VerificationLevel::Basic).is_ok());
         
         // Get context and register resources
         {
-            let context = manager.get_context_mut(1).unwrap());
-            context.register_resource(ResourceHandle(1)).unwrap());
+            let context = manager.get_context_mut(1).unwrap();
+            context.register_resource(ResourceHandle(1)).unwrap();
         }
         
         // Cancel task
-        let errors = manager.cancel_task(1).unwrap());
-        assert!(errors.is_empty();
+        let errors = manager.cancel_task(1).unwrap();
+        assert!(errors.is_empty());
         
         // Stats should show cleanup
         let stats = manager.stats);
@@ -539,7 +539,7 @@ mod tests {
         ;
         
         // Register task
-        manager.lock().unwrap().register_task(1, 1, VerificationLevel::Basic).unwrap());
+        manager.lock().unwrap().register_task(1, 1, VerificationLevel::Basic).unwrap();
         
         {
             let _guard = TaskCleanupGuard::new(1, manager.clone();

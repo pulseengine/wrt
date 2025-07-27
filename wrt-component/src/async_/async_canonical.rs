@@ -641,7 +641,7 @@ impl AsyncCanonicalAbi {
         self.next_error_context_handle += 1;
 
         #[cfg(feature = "std")]
-        let error_context = ErrorContext::new(handle, message.to_string();
+        let error_context = ErrorContext::new(handle, message.to_string());
         #[cfg(not(any(feature = "std", )))]
         let error_context =
             ErrorContext::new(handle, BoundedString::from_str(message).unwrap_or_default);
@@ -1036,7 +1036,7 @@ mod tests {
 
     #[test]
     fn test_async_canonical_abi_creation() {
-        let abi = AsyncCanonicalAbi::new().unwrap());
+        let abi = AsyncCanonicalAbi::new().unwrap();
         assert_eq!(abi.streams.len(), 0);
         assert_eq!(abi.futures.len(), 0);
         assert_eq!(abi.error_contexts.len(), 0);
@@ -1044,17 +1044,17 @@ mod tests {
 
     #[test]
     fn test_stream_lifecycle() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
 
         // Create stream
-        let stream_handle = abi.stream_new(&ValType::U32).unwrap());
+        let stream_handle = abi.stream_new(&ValType::U32).unwrap();
 
         // Write to stream
         let values = vec![Value::U32(42), Value::U32(24)];
-        abi.stream_write(stream_handle, &values).unwrap());
+        abi.stream_write(stream_handle, &values).unwrap();
 
         // Read from stream
-        let result = abi.stream_read(stream_handle).unwrap());
+        let result = abi.stream_read(stream_handle).unwrap();
         match result {
             AsyncReadResult::Values(read_values) => {
                 assert_eq!(read_values.len(), 1);
@@ -1064,27 +1064,27 @@ mod tests {
         }
 
         // Close stream
-        abi.stream_close_writable(stream_handle).unwrap());
-        abi.stream_close_readable(stream_handle).unwrap());
+        abi.stream_close_writable(stream_handle).unwrap();
+        abi.stream_close_readable(stream_handle).unwrap();
     }
 
     #[test]
     fn test_future_lifecycle() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
 
         // Create future
-        let future_handle = abi.future_new(&ValType::String).unwrap());
+        let future_handle = abi.future_new(&ValType::String).unwrap();
 
         // Initially should block
-        let result = abi.future_read(future_handle).unwrap());
+        let result = abi.future_read(future_handle).unwrap();
         assert!(matches!(result, AsyncReadResult::Blocked);
 
         // Write value
-        let value = Value::String(BoundedString::from_str("hello").unwrap());
-        abi.future_write(future_handle, &value).unwrap());
+        let value = Value::String(BoundedString::from_str("hello").unwrap();
+        abi.future_write(future_handle, &value).unwrap();
 
         // Should be ready now
-        let result = abi.future_read(future_handle).unwrap());
+        let result = abi.future_read(future_handle).unwrap();
         match result {
             AsyncReadResult::Values(values) => {
                 assert_eq!(values.len(), 1);
@@ -1096,13 +1096,13 @@ mod tests {
 
     #[test]
     fn test_error_context() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
 
-        let handle = abi.error_context_new("Test error").unwrap());
-        let debug_string = abi.error_context_debug_string(handle).unwrap());
+        let handle = abi.error_context_new("Test error").unwrap();
+        let debug_string = abi.error_context_debug_string(handle).unwrap();
         assert!(debug_string.as_str().contains("Test error");
 
-        abi.error_context_drop(handle).unwrap());
+        abi.error_context_drop(handle).unwrap();
 
         // Should be gone
         assert!(abi.error_context_debug_string(handle).is_err();
@@ -1110,7 +1110,7 @@ mod tests {
 
     #[test]
     fn test_task_operations() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
 
         // Test yield
         assert!(abi.task_yield().is_err())); // No current task
@@ -1121,7 +1121,7 @@ mod tests {
 
     #[test]
     fn test_async_lift_immediate() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
         let context = CanonicalLiftContext::default());
         let values = vec![42u8, 0, 0, 0];
         let types = vec![ValType::U32];
@@ -1137,7 +1137,7 @@ mod tests {
 
     #[test]
     fn test_async_lift_stream() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
         let context = CanonicalLiftContext::default());
         let values = vec![];
         let types = vec![ValType::Stream(Box::new(ValType::U32))];
@@ -1152,7 +1152,7 @@ mod tests {
 
     #[test]
     fn test_async_lower_immediate() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
         let context = CanonicalLowerContext::default());
         let values = vec![Value::U32(42)];
 
@@ -1166,7 +1166,7 @@ mod tests {
 
     #[test]
     fn test_async_lower_stream() {
-        let mut abi = AsyncCanonicalAbi::new().unwrap());
+        let mut abi = AsyncCanonicalAbi::new().unwrap();
         let context = CanonicalLowerContext::default());
         let stream_handle = StreamHandle(42;
         let values = vec![Value::Stream(stream_handle)];

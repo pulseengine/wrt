@@ -430,7 +430,7 @@ impl HandleRepresentationManager {
             if let Err(e) = self.type_registry.unmap_resource_handle(handle) {
                 // Log error but don't fail the drop
                 #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to unmap handle from type registry: {}", e;
+                eprintln!("Warning: Failed to unmap handle from type registry: {}", e));
                 #[cfg(not(feature = "std"))]
                 {
                     // In no_std, we can't print to stderr, so we silently ignore the error
@@ -779,7 +779,7 @@ mod tests {
 
     #[test]
     fn test_handle_representation_manager_creation() {
-        let manager = HandleRepresentationManager::new().unwrap());
+        let manager = HandleRepresentationManager::new().unwrap();
         assert!(manager.strict_type_checking.load(Ordering::Acquire);
     }
 
@@ -804,20 +804,20 @@ mod tests {
 
     #[test]
     fn test_handle_creation() {
-        let mut manager = HandleRepresentationManager::new().unwrap());
+        let mut manager = HandleRepresentationManager::new().unwrap();
         let component_id = ComponentInstanceId::new(1;
 
         let resource_type =
-            manager.type_registry.create_resource_type(component_id, "test-resource").unwrap());
+            manager.type_registry.create_resource_type(component_id, "test-resource").unwrap();
 
         let handle = manager
             .create_handle(component_id, resource_type, AccessRights::full_access()
-            .unwrap());
+            .unwrap();
 
         assert!(handle.id() > 0);
 
         // Verify representation was created
-        let repr = manager.get_representation(handle).unwrap());
+        let repr = manager.get_representation(handle).unwrap();
         assert_eq!(repr.component_id, component_id;
         assert_eq!(repr.type_id, resource_type.type_id;
         assert!(repr.is_owned);

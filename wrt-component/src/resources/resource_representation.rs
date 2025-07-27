@@ -732,8 +732,8 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
             use wrt_foundation::budget_aware_provider::CrateId;
             use crate::bounded_component_infra::ComponentProvider;
             let mut fields = BoundedVec::new(ComponentProvider::new(CrateId::Component)?)?;
-            fields.push(("), RepresentationValue::U64(ptr as u64))).unwrap());
-            fields.push(("size".to_string(), RepresentationValue::U64(size as u64))).unwrap());
+            fields.push(("), RepresentationValue::U64(ptr as u64))).unwrap();
+            fields.push(("size".to_string(), RepresentationValue::U64(size as u64))).unwrap();
             
             Ok(RepresentationValue::Structured(fields.into_vec())
         }
@@ -846,10 +846,10 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
             use wrt_foundation::budget_aware_provider::CrateId;
             use crate::bounded_component_infra::ComponentProvider;
             let mut fields = BoundedVec::new(ComponentProvider::new(CrateId::Component)?)?;
-            fields.push(("), RepresentationValue::U32(conn.socket_fd as u32))).unwrap());
-            fields.push(("local_addr".to_string(), RepresentationValue::String(conn.local_addr.to_string()))).unwrap());
-            fields.push(("remote_addr".to_string(), RepresentationValue::String(conn.remote_addr.to_string()))).unwrap());
-            fields.push(("state".to_string(), RepresentationValue::U32(conn.state as u32))).unwrap());
+            fields.push(("), RepresentationValue::U32(conn.socket_fd as u32))).unwrap();
+            fields.push(("local_addr".to_string(), RepresentationValue::String(conn.local_addr.to_string()))).unwrap();
+            fields.push(("remote_addr".to_string(), RepresentationValue::String(conn.remote_addr.to_string()))).unwrap();
+            fields.push(("state".to_string(), RepresentationValue::U32(conn.state as u32))).unwrap();
             
             Ok(RepresentationValue::Structured(fields.into_vec())
         }
@@ -994,22 +994,22 @@ mod tests {
     
     #[test]
     fn test_resource_representation_manager() {
-        let mut manager = ResourceRepresentationManager::new);
+        let mut manager = ResourceRepresentationManager::new();
         
         // Register file handle representation
         manager.register_representation::<FileHandle>(
             Box::new(FileHandleRepresentation::new()
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(manager.stats.representations_registered, 1);
     }
     
     #[test]
     fn test_file_handle_representation() {
-        let mut manager = ResourceRepresentationManager::new);
+        let mut manager = ResourceRepresentationManager::new();
         manager.register_representation::<FileHandle>(
             Box::new(FileHandleRepresentation::new()
-        ).unwrap());
+        ).unwrap();
         
         let handle = 123;
         let resource_id = ResourceId(1;
@@ -1024,18 +1024,18 @@ mod tests {
             type_id,
             RepresentationValue::U32(42), // File descriptor 42
             true,
-        ).unwrap());
+        ).unwrap();
         
-        let repr = manager.get_resource_representation(handle).unwrap());
+        let repr = manager.get_resource_representation(handle).unwrap();
         assert!(matches!(repr, RepresentationValue::U32(42);
     }
     
     #[test]
     fn test_memory_buffer_representation() {
-        let mut manager = ResourceRepresentationManager::new);
+        let mut manager = ResourceRepresentationManager::new();
         manager.register_representation::<MemoryBuffer>(
             Box::new(MemoryBufferRepresentation::new()
-        ).unwrap());
+        ).unwrap();
         
         let handle = 456;
         let resource_id = ResourceId(2;
@@ -1055,9 +1055,9 @@ mod tests {
             type_id,
             buffer_repr,
             true,
-        ).unwrap());
+        ).unwrap();
         
-        let repr = manager.get_resource_representation(handle).unwrap());
+        let repr = manager.get_resource_representation(handle).unwrap();
         assert!(matches!(repr, RepresentationValue::Structured(_);
     }
     
@@ -1070,19 +1070,19 @@ mod tests {
             ResourceId(1),
             ComponentId(1),
             RepresentationValue::U32(123),
-        ).unwrap());
+        ).unwrap();
         
-        let repr = canon_resource_rep(&mut manager, handle).unwrap());
+        let repr = canon_resource_rep(&mut manager, handle).unwrap();
         assert!(matches!(repr, RepresentationValue::U32(123);
         
-        canon_resource_drop(&mut manager, handle).unwrap());
+        canon_resource_drop(&mut manager, handle).unwrap();
     }
     
     #[test]
     fn test_representation_validation() {
-        let mut manager = ResourceRepresentationManager::new);
+        let mut manager = ResourceRepresentationManager::new();
         
-        let is_valid = manager.validate_handle(999).unwrap());
+        let is_valid = manager.validate_handle(999).unwrap();
         assert!(!is_valid);
         
         assert_eq!(manager.stats.validation_checks, 1);

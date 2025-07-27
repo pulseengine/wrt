@@ -396,7 +396,7 @@ mod tests {
     #[test]
     fn test_component_runtime_creation() {
         let limits = ComprehensivePlatformLimits::default());
-        let runtime = PlatformComponentRuntime::new(limits).unwrap());
+        let runtime = PlatformComponentRuntime::new(limits).unwrap();
         
         assert_eq!(runtime.instance_count(), 0);
         assert!(runtime.memory_budget().available_memory > 0);
@@ -405,10 +405,10 @@ mod tests {
     #[test]
     fn test_component_instantiation() {
         let limits = ComprehensivePlatformLimits::default());
-        let mut runtime = PlatformComponentRuntime::new(limits).unwrap());
+        let mut runtime = PlatformComponentRuntime::new(limits).unwrap();
         
         let component_bytes = b"fake component";
-        let component_id = runtime.instantiate_component(component_bytes).unwrap());
+        let component_id = runtime.instantiate_component(component_bytes).unwrap();
         
         assert_eq!(runtime.instance_count(), 1);
         assert!(runtime.get_component(component_id).is_some();
@@ -417,12 +417,12 @@ mod tests {
     #[test]
     fn test_memory_budget_allocation() {
         let limits = ComprehensivePlatformLimits::default());
-        let mut budget = ComponentMemoryBudget::calculate(&limits).unwrap());
+        let mut budget = ComponentMemoryBudget::calculate(&limits).unwrap();
         
         let initial_available = budget.available_memory;
         let allocation_size = 1024;
         
-        budget.allocate(ComponentId(1), allocation_size, AllocationType::LinearMemory).unwrap());
+        budget.allocate(ComponentId(1), allocation_size, AllocationType::LinearMemory).unwrap();
         
         assert_eq!(budget.available_memory, initial_available - allocation_size;
         assert_eq!(budget.allocations.len(), 1);
@@ -431,14 +431,14 @@ mod tests {
     #[test]
     fn test_component_termination() {
         let limits = ComprehensivePlatformLimits::default());
-        let mut runtime = PlatformComponentRuntime::new(limits).unwrap());
+        let mut runtime = PlatformComponentRuntime::new(limits).unwrap();
         
         let component_bytes = b"fake component";
-        let component_id = runtime.instantiate_component(component_bytes).unwrap());
+        let component_id = runtime.instantiate_component(component_bytes).unwrap();
         
         assert_eq!(runtime.instance_count(), 1);
         
-        runtime.terminate_component(component_id).unwrap());
+        runtime.terminate_component(component_id).unwrap();
         
         assert_eq!(runtime.instance_count(), 0);
         assert!(runtime.get_component(component_id).is_none();

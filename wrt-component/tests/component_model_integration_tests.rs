@@ -42,11 +42,11 @@ fn test_complete_component_model_workflow() {
     let instance_id = ComponentInstanceId::new(1;
 
     // Initialize all core systems
-    let mut type_registry = GenerativeTypeRegistry::new);
-    let mut task_manager = TaskManager::new);
-    let mut realloc_manager = ReallocManager::new);
-    let mut post_return_registry = PostReturnRegistry::new);
-    let mut bounds_checker = TypeBoundsChecker::new);
+    let mut type_registry = GenerativeTypeRegistry::new();
+    let mut task_manager = TaskManager::new();
+    let mut realloc_manager = ReallocManager::new();
+    let mut post_return_registry = PostReturnRegistry::new();
+    let mut bounds_checker = TypeBoundsChecker::new();
 
     // Test 1: Generative type creation and bounds
     test_generative_types_with_bounds(&mut type_registry, &mut bounds_checker, instance_id;
@@ -85,10 +85,10 @@ fn test_generative_types_with_bounds(
     instance_id: ComponentInstanceId,
 ) {
     // Create base resource type
-    let base_type = registry.create_resource_type(instance_id, "base-resource").unwrap());
+    let base_type = registry.create_resource_type(instance_id, "base-resource").unwrap();
 
     // Create derived type with subtype relationship
-    let derived_type = registry.create_resource_type(instance_id, "derived-resource").unwrap());
+    let derived_type = registry.create_resource_type(instance_id, "derived-resource").unwrap();
 
     // Establish type bounds
     let bound = TypeBound {
@@ -97,7 +97,7 @@ fn test_generative_types_with_bounds(
         kind: TypeBoundKind::Sub,
     };
 
-    bounds_checker.add_bound(bound).unwrap());
+    bounds_checker.add_bound(bound).unwrap();
 
     // Test subtype checking
     assert!(bounds_checker.is_subtype(derived_type.type_id, base_type.type_id));
@@ -108,7 +108,7 @@ fn test_generative_types_with_bounds(
 
     // Verify resource isolation per instance
     let other_instance = ComponentInstanceId::new(2;
-    let other_type = registry.create_resource_type(other_instance, "base-resource").unwrap());
+    let other_type = registry.create_resource_type(other_instance, "base-resource").unwrap();
 
     // Same name but different instance should have different type IDs
     assert_ne!(base_type.type_id, other_type.type_id;
@@ -116,7 +116,7 @@ fn test_generative_types_with_bounds(
 
 fn test_async_workflow(task_manager: &mut TaskManager, instance_id: ComponentInstanceId) {
     // Create a stream
-    let stream_handle = task_manager.create_stream(instance_id, ValType::I32, None).unwrap());
+    let stream_handle = task_manager.create_stream(instance_id, ValType::I32, None).unwrap();
 
     let stream = Stream::new(stream_handle, ValType::I32;
 
@@ -125,15 +125,15 @@ fn test_async_workflow(task_manager: &mut TaskManager, instance_id: ComponentIns
     assert!(task_manager.stream_write(stream_handle, data).is_ok());
 
     // Create a future
-    let future_handle = task_manager.create_future(instance_id, ValType::String).unwrap());
+    let future_handle = task_manager.create_future(instance_id, ValType::String).unwrap();
 
     let mut future = Future::new(future_handle, ValType::String;
 
     // Test task creation and execution
-    let task_id = task_manager.create_task(instance_id, "test-task").unwrap());
+    let task_id = task_manager.create_task(instance_id, "test-task").unwrap();
 
     // Start task
-    task_manager.start_task(task_id).unwrap());
+    task_manager.start_task(task_id).unwrap();
     assert_eq!(
         task_manager.get_task_state(task_id).unwrap(),
         TaskState::Ready
@@ -144,12 +144,12 @@ fn test_async_workflow(task_manager: &mut TaskManager, instance_id: ComponentIns
     assert!(result.is_ok());
 
     // Complete the future
-    let result_value = ComponentValue::String("test result".to_string();
-    future.complete(result_value.clone()).unwrap());
+    let result_value = ComponentValue::String("test result".to_string());
+    future.complete(result_value.clone()).unwrap();
     assert_eq!(future.state, FutureState::Ready;
 
     // Read from future
-    let read_result = future.read().unwrap());
+    let read_result = future.read().unwrap();
     assert_eq!(read_result, result_value;
 }
 
@@ -157,10 +157,10 @@ fn test_memory_management(realloc_manager: &mut ReallocManager, instance_id: Com
     // Binary std/no_std choice
     let size = 1024;
     let align = 8;
-    let ptr = realloc_manager.allocate(instance_id, size, align).unwrap());
+    let ptr = realloc_manager.allocate(instance_id, size, align).unwrap();
 
     // Binary std/no_std choice
-    let allocations = realloc_manager.get_instance_allocations(instance_id).unwrap());
+    let allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
     assert!(allocations.contains_key(&ptr);
 
     let alloc_info = &allocations[&ptr];
@@ -169,18 +169,18 @@ fn test_memory_management(realloc_manager: &mut ReallocManager, instance_id: Com
 
     // Binary std/no_std choice
     let new_size = 2048;
-    let new_ptr = realloc_manager.reallocate(instance_id, ptr, size, align, new_size).unwrap());
+    let new_ptr = realloc_manager.reallocate(instance_id, ptr, size, align, new_size).unwrap();
 
     // Old pointer should be gone, new one should exist
-    let updated_allocations = realloc_manager.get_instance_allocations(instance_id).unwrap());
+    let updated_allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
     assert!(!updated_allocations.contains_key(&ptr);
     assert!(updated_allocations.contains_key(&new_ptr);
     assert_eq!(updated_allocations[&new_ptr].size, new_size;
 
     // Binary std/no_std choice
-    realloc_manager.deallocate(instance_id, new_ptr, new_size, align).unwrap());
+    realloc_manager.deallocate(instance_id, new_ptr, new_size, align).unwrap();
 
-    let final_allocations = realloc_manager.get_instance_allocations(instance_id).unwrap());
+    let final_allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
     assert!(!final_allocations.contains_key(&new_ptr);
 }
 
@@ -209,15 +209,15 @@ fn test_post_return_integration(
 
     registry
         .register_post_return_function(instance_id, Box::new(post_return_fn))
-        .unwrap());
+        .unwrap();
 
     // Add cleanup tasks
     let memory_task = CleanupTask::memory_cleanup(1000, 512, 8;
-    registry.add_cleanup_task(instance_id, memory_task).unwrap());
+    registry.add_cleanup_task(instance_id, memory_task).unwrap();
 
     let resource_handle = ResourceHandle::new(42;
     let resource_task = CleanupTask::resource_cleanup(resource_handle;
-    registry.add_cleanup_task(instance_id, resource_task).unwrap());
+    registry.add_cleanup_task(instance_id, resource_task).unwrap();
 
     // Execute post-return cleanup
     let result = registry.execute_post_return(instance_id;
@@ -229,18 +229,18 @@ fn test_post_return_integration(
 }
 
 fn test_virtualization_integration() {
-    let mut virt_manager = VirtualizationManager::new);
+    let mut virt_manager = VirtualizationManager::new();
 
     // Create a virtualized component with strong isolation
     let component_id = virt_manager
         .create_virtual_component("sandbox-component", None, IsolationLevel::Strong)
-        .unwrap());
+        .unwrap();
 
     // Grant memory capability
     let memory_capability = Capability::Memory { max_size: 2048 };
     virt_manager
         .grant_capability(component_id, memory_capability.clone(), None, true)
-        .unwrap());
+        .unwrap();
 
     // Verify capability check
     assert!(virt_manager.check_capability(component_id, &memory_capability);
@@ -252,7 +252,7 @@ fn test_virtualization_integration() {
         execute: false,
     };
 
-    let mem_addr = virt_manager.allocate_virtual_memory(component_id, 1024, permissions).unwrap());
+    let mem_addr = virt_manager.allocate_virtual_memory(component_id, 1024, permissions).unwrap();
     assert!(mem_addr > 0);
 
     // Create virtual import
@@ -266,7 +266,7 @@ fn test_virtualization_integration() {
         capability_required: None,
     };
 
-    virt_manager.add_virtual_import(component_id, virtual_import).unwrap());
+    virt_manager.add_virtual_import(component_id, virtual_import).unwrap();
 
     // Create virtual export
     let virtual_export = VirtualExport {
@@ -276,19 +276,19 @@ fn test_virtualization_integration() {
         capability_required: None,
     };
 
-    virt_manager.add_virtual_export(component_id, virtual_export).unwrap());
+    virt_manager.add_virtual_export(component_id, virtual_export).unwrap();
 
     // Test parent-child relationship
     let child_id = virt_manager
         .create_virtual_component("child-component", Some(component_id), IsolationLevel::Basic)
-        .unwrap());
+        .unwrap();
 
     // Child should be created successfully with parent relationship
     assert_ne!(component_id, child_id;
 }
 
 fn test_thread_spawn_integration() {
-    let mut thread_manager = ComponentThreadManager::new);
+    let mut thread_manager = ComponentThreadManager::new();
     let component_id = ComponentInstanceId::new(500;
 
     // Create thread configuration
@@ -302,8 +302,8 @@ fn test_thread_spawn_integration() {
     };
 
     // Create spawn request
-    let mut arguments = BoundedVec::new);
-    arguments.push(ComponentValue::I32(42)).unwrap());
+    let mut arguments = BoundedVec::new());
+    arguments.push(ComponentValue::I32(42)).unwrap();
 
     let spawn_request = ThreadSpawnRequest {
         component_id,
@@ -314,7 +314,7 @@ fn test_thread_spawn_integration() {
     };
 
     // Test thread spawning
-    let handle = thread_manager.spawn_thread(spawn_request).unwrap());
+    let handle = thread_manager.spawn_thread(spawn_request).unwrap();
     assert_eq!(handle.component_id, component_id;
     assert!(!handle.detached);
 
@@ -327,7 +327,7 @@ fn test_thread_spawn_integration() {
     assert_eq!(component_threads[0], handle.thread_id;
 
     // Test thread cleanup
-    thread_manager.cleanup_component_threads(component_id).unwrap());
+    thread_manager.cleanup_component_threads(component_id).unwrap();
     assert_eq!(thread_manager.get_component_thread_count(component_id), 0);
 
     // Test fuel-aware thread spawning
@@ -335,7 +335,7 @@ fn test_thread_spawn_integration() {
 }
 
 fn test_fuel_aware_thread_spawning() {
-    let mut fuel_manager = FuelTrackedThreadManager::new);
+    let mut fuel_manager = FuelTrackedThreadManager::new();
     let component_id = ComponentInstanceId::new(550;
 
     // Set global fuel limit
@@ -345,8 +345,8 @@ fn test_fuel_aware_thread_spawning() {
     let fuel_config = create_fuel_thread_config(5000;
 
     // Create spawn request
-    let mut arguments = BoundedVec::new);
-    arguments.push(ComponentValue::I32(100)).unwrap());
+    let mut arguments = BoundedVec::new());
+    arguments.push(ComponentValue::I32(100)).unwrap();
 
     let spawn_request = ThreadSpawnRequest {
         component_id,
@@ -357,19 +357,19 @@ fn test_fuel_aware_thread_spawning() {
     };
 
     // Spawn thread with fuel tracking
-    let handle = fuel_manager.spawn_thread_with_fuel(spawn_request, fuel_config).unwrap());
+    let handle = fuel_manager.spawn_thread_with_fuel(spawn_request, fuel_config).unwrap();
 
     // Check initial fuel status
-    let fuel_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap());
+    let fuel_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap();
     assert_eq!(fuel_status.initial_fuel, 5000;
     assert_eq!(fuel_status.remaining_fuel, 5000;
     assert_eq!(fuel_status.consumed_fuel, 0);
     assert!(!fuel_status.fuel_exhausted);
 
     // Simulate fuel consumption
-    fuel_manager.consume_thread_fuel(handle.thread_id, 1000).unwrap());
+    fuel_manager.consume_thread_fuel(handle.thread_id, 1000).unwrap();
 
-    let updated_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap());
+    let updated_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap();
     assert_eq!(updated_status.remaining_fuel, 4000;
     assert_eq!(updated_status.consumed_fuel, 1000;
 
@@ -379,11 +379,11 @@ fn test_fuel_aware_thread_spawning() {
             // Simulated computation
             42
         })
-        .unwrap());
+        .unwrap();
     assert_eq!(result, 42;
 
     // Check fuel was consumed
-    let final_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap());
+    let final_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap();
     assert_eq!(final_status.remaining_fuel, 3500;
     assert_eq!(final_status.consumed_fuel, 1500;
 
@@ -398,7 +398,7 @@ fn test_fuel_aware_thread_spawning() {
     assert!(exhaust_result.is_err();
 
     // Verify thread is marked as fuel exhausted
-    let exhausted_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap());
+    let exhausted_status = fuel_manager.get_thread_fuel_status(handle.thread_id).unwrap();
     assert!(exhausted_status.fuel_exhausted);
 }
 
@@ -417,24 +417,24 @@ fn test_start_function_validation_integration() {
     // Add parameters
     let mut param1 = create_start_function_param("argc", ValType::I32;
     param1.default_value = Some(ComponentValue::I32(0;
-    descriptor.parameters.push(param1).unwrap());
+    descriptor.parameters.push(param1).unwrap();
 
     let mut param2 = create_start_function_param("argv", ValType::String;
-    param2.default_value = Some(ComponentValue::String("test".to_string();
-    descriptor.parameters.push(param2).unwrap());
+    param2.default_value = Some(ComponentValue::String("test".to_string());
+    descriptor.parameters.push(param2).unwrap();
 
     // Register start function
-    validator.register_start_function(component_id, descriptor).unwrap());
+    validator.register_start_function(component_id, descriptor).unwrap();
 
     // Validate start function
-    let state = validator.validate_start_function(component_id).unwrap());
+    let state = validator.validate_start_function(component_id).unwrap();
 
     // In a real implementation, this would depend on actual execution
     // For testing, we expect it to work or fail gracefully
     assert!(state == ValidationState::Passed || state == ValidationState::Failed);
 
     // Get validation result
-    let validation = validator.get_validation_result(component_id).unwrap());
+    let validation = validator.get_validation_result(component_id).unwrap();
     assert_eq!(validation.component_id, component_id;
     assert_eq!(validation.descriptor.name, "_start";
 
@@ -444,8 +444,8 @@ fn test_start_function_validation_integration() {
     assert!(summary.passed + summary.failed == 1);
 
     // Test validation reset
-    validator.reset_validation(component_id).unwrap());
-    let validation_after_reset = validator.get_validation_result(component_id).unwrap());
+    validator.reset_validation(component_id).unwrap();
+    let validation_after_reset = validator.get_validation_result(component_id).unwrap();
     assert_eq!(
         validation_after_reset.validation_state,
         ValidationState::Pending
@@ -453,16 +453,16 @@ fn test_start_function_validation_integration() {
 }
 
 fn test_handle_representation_and_sharing() {
-    let mut handle_manager = HandleRepresentationManager::new);
-    let mut sharing_manager = CrossComponentResourceSharingManager::new);
-    let mut type_registry = GenerativeTypeRegistry::new);
+    let mut handle_manager = HandleRepresentationManager::new();
+    let mut sharing_manager = CrossComponentResourceSharingManager::new();
+    let mut type_registry = GenerativeTypeRegistry::new();
 
     let source_component = ComponentInstanceId::new(700;
     let target_component = ComponentInstanceId::new(701;
 
     // Create resource type
     let resource_type =
-        type_registry.create_resource_type(source_component, "shared-resource").unwrap());
+        type_registry.create_resource_type(source_component, "shared-resource").unwrap();
 
     // Create handle with full access
     let handle = handle_manager
@@ -471,10 +471,10 @@ fn test_handle_representation_and_sharing() {
             resource_type.clone(),
             AccessRights::full_access(),
         )
-        .unwrap());
+        .unwrap();
 
     // Verify handle was created
-    let representation = handle_manager.get_representation(handle).unwrap());
+    let representation = handle_manager.get_representation(handle).unwrap();
     assert_eq!(representation.component_id, source_component;
     assert!(representation.is_owned);
     assert_eq!(representation.reference_count, 1);
@@ -482,19 +482,19 @@ fn test_handle_representation_and_sharing() {
     // Test handle operations
     let read_op = HandleOperation::Read {
         fields: {
-            let mut fields = BoundedVec::new);
-            fields.push("value".to_string()).unwrap());
+            let mut fields = BoundedVec::new());
+            fields.push("value".to_string()).unwrap();
             fields
         },
     };
 
-    let result = handle_manager.perform_operation(source_component, handle, read_op).unwrap());
+    let result = handle_manager.perform_operation(source_component, handle, read_op).unwrap();
     assert!(result.is_some();
 
     // Set up resource sharing
     // Establish sharing agreement
-    let mut resource_types = BoundedVec::new);
-    resource_types.push(resource_type.type_id).unwrap());
+    let mut resource_types = BoundedVec::new());
+    resource_types.push(resource_type.type_id).unwrap();
 
     let agreement_id = sharing_manager
         .establish_sharing_agreement(
@@ -505,22 +505,22 @@ fn test_handle_representation_and_sharing() {
             TransferPolicy::SharedOwnership,
             SharingLifetime::Permanent,
         )
-        .unwrap());
+        .unwrap();
 
     // Add a basic sharing policy
     let mut policy = create_basic_sharing_policy("test-policy";
-    let mut allowed_types = BoundedVec::new);
-    allowed_types.push(resource_type.type_id).unwrap());
+    let mut allowed_types = BoundedVec::new());
+    allowed_types.push(resource_type.type_id).unwrap();
     policy
         .rules
         .push(PolicyRule::AllowedResourceTypes {
             types: allowed_types,
         })
-        .unwrap());
-    sharing_manager.add_sharing_policy(policy).unwrap());
+        .unwrap();
+    sharing_manager.add_sharing_policy(policy).unwrap();
 
     // Share the resource
-    let shared_handle = sharing_manager.share_resource(agreement_id, handle).unwrap());
+    let shared_handle = sharing_manager.share_resource(agreement_id, handle).unwrap();
     assert_ne!(shared_handle, handle); // Should be a new handle
 
     // Verify target component can access shared resource
@@ -549,27 +549,27 @@ fn test_handle_representation_and_sharing() {
             metadata.access_count += 1;
             metadata.tags.push("tested".to_string()).ok();
         })
-        .unwrap());
+        .unwrap();
 
-    let metadata = handle_manager.get_handle_metadata(handle).unwrap());
+    let metadata = handle_manager.get_handle_metadata(handle).unwrap();
     assert!(metadata.access_count > 0);
 }
 
 fn test_component_composition() {
-    let mut linker = ComponentLinker::new);
+    let mut linker = ComponentLinker::new();
 
     // Create mock component instances for testing
     let producer_id = ComponentInstanceId::new(10;
     let consumer_id = ComponentInstanceId::new(11;
 
     // Add components
-    linker.add_component(producer_id, "producer-component").unwrap());
-    linker.add_component(consumer_id, "consumer-component").unwrap());
+    linker.add_component(producer_id, "producer-component").unwrap();
+    linker.add_component(consumer_id, "consumer-component").unwrap();
 
     // Create export/import pair
     let export_type = ValType::String;
-    linker.add_export(producer_id, "data-output", export_type.clone()).unwrap());
-    linker.add_import(consumer_id, "data-input", export_type).unwrap());
+    linker.add_export(producer_id, "data-output", export_type.clone()).unwrap();
+    linker.add_import(consumer_id, "data-input", export_type).unwrap();
 
     // Link components
     let link_result =
@@ -577,7 +577,7 @@ fn test_component_composition() {
     assert!(link_result.is_ok());
 
     // Resolve dependencies
-    let mut resolver = ComponentResolver::new);
+    let mut resolver = ComponentResolver::new();
     let resolution = resolver.resolve_component_dependencies(&linker;
 
     match resolution {
@@ -600,15 +600,15 @@ fn test_cross_environment_compatibility() {
     // Test that our implementations work across different environments
 
     // Test bounded collections (for no_std)
-    let mut bounded_vec: BoundedVec<u32, MAX_TEST_ITEMS> = BoundedVec::new);
+    let mut bounded_vec: BoundedVec<u32, MAX_TEST_ITEMS> = BoundedVec::new());
     for i in 0..10 {
-        bounded_vec.push(i).unwrap());
+        bounded_vec.push(i).unwrap();
     }
     assert_eq!(bounded_vec.len(), 10;
 
     // Test safe memory operations
-    let memory = SafeMemory::new(1024).unwrap());
-    let ptr = memory.allocate(64, 8).unwrap());
+    let memory = SafeMemory::new(1024).unwrap();
+    let ptr = memory.allocate(64, 8).unwrap();
     assert!(ptr > 0);
 
     // Test atomic operations (works in all environments)
@@ -620,8 +620,8 @@ fn test_cross_environment_compatibility() {
 #[test]
 fn test_canonical_options_integration() {
     let instance_id = ComponentInstanceId::new(100;
-    let mut realloc_manager = ReallocManager::new);
-    let mut post_return_registry = PostReturnRegistry::new);
+    let mut realloc_manager = ReallocManager::new();
+    let mut post_return_registry = PostReturnRegistry::new();
 
     // Binary std/no_std choice
     let options = CanonicalOptions::builder()
@@ -634,7 +634,7 @@ fn test_canonical_options_integration() {
     let mut lift_context = LiftContext::new(instance_id, &options;
 
     // Test memory operations in context
-    let ptr = lift_context.allocate_memory(256, 4).unwrap());
+    let ptr = lift_context.allocate_memory(256, 4).unwrap();
     assert!(ptr > 0);
 
     // Create lower context
@@ -642,7 +642,7 @@ fn test_canonical_options_integration() {
 
     // Add cleanup task
     let cleanup_task = CleanupTask::memory_cleanup(ptr as usize, 256, 4;
-    lower_context.add_cleanup_task(cleanup_task).unwrap());
+    lower_context.add_cleanup_task(cleanup_task).unwrap();
 
     // Finalize context (should trigger cleanup)
     let result = lower_context.finalize(&mut post_return_registry;
@@ -652,42 +652,42 @@ fn test_canonical_options_integration() {
 #[test]
 fn test_error_handling_integration() {
     let instance_id = ComponentInstanceId::new(200;
-    let mut task_manager = TaskManager::new);
+    let mut task_manager = TaskManager::new();
 
     // Test error context creation
     let error_msg = "Test error occurred";
-    let error_context = ErrorContext::new(error_msg.to_string();
+    let error_context = ErrorContext::new(error_msg.to_string());
 
     // Create a future that will fail
-    let future_handle = task_manager.create_future(instance_id, ValType::String).unwrap());
+    let future_handle = task_manager.create_future(instance_id, ValType::String).unwrap();
     let mut future = Future::new(future_handle, ValType::String;
 
     // Fail the future with error context
-    future.fail(error_context.clone()).unwrap());
+    future.fail(error_context.clone()).unwrap();
     assert_eq!(future.state, FutureState::Failed;
 
     // Verify error can be retrieved
-    let retrieved_error = future.get_error().unwrap());
+    let retrieved_error = future.get_error().unwrap();
     assert_eq!(retrieved_error.message, error_msg;
 }
 
 #[test]
 fn test_resource_lifecycle_integration() {
     let instance_id = ComponentInstanceId::new(300;
-    let mut type_registry = GenerativeTypeRegistry::new);
-    let mut task_manager = TaskManager::new);
+    let mut type_registry = GenerativeTypeRegistry::new();
+    let mut task_manager = TaskManager::new();
 
     // Create resource type
-    let resource_type = type_registry.create_resource_type(instance_id, "lifecycle-test").unwrap());
+    let resource_type = type_registry.create_resource_type(instance_id, "lifecycle-test").unwrap();
 
     // Create resource handle
     let handle = ResourceHandle::new(1;
 
     // Map handle to type
-    type_registry.map_resource_handle(handle, resource_type.clone()).unwrap());
+    type_registry.map_resource_handle(handle, resource_type.clone()).unwrap();
 
     // Verify mapping
-    let mapped_type = type_registry.get_resource_type(handle).unwrap());
+    let mapped_type = type_registry.get_resource_type(handle).unwrap();
     assert_eq!(mapped_type.type_id, resource_type.type_id;
     assert_eq!(mapped_type.name, resource_type.name;
 
@@ -702,7 +702,7 @@ fn test_std_specific_features() {
     use std::{sync::Arc, thread};
 
     // Test thread safety of our implementations
-    let type_registry = Arc::new(GenerativeTypeRegistry::new);
+    let type_registry = Arc::new(GenerativeTypeRegistry::new();
     let instance_id = ComponentInstanceId::new(400;
 
     let registry_clone = Arc::clone(&type_registry);
@@ -711,7 +711,7 @@ fn test_std_specific_features() {
         registry_clone.create_resource_type(instance_id, "thread-test")
     };
 
-    let result = handle.join().unwrap());
+    let result = handle.join().unwrap();
     assert!(result.is_ok());
 }
 

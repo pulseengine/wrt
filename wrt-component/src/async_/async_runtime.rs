@@ -828,7 +828,7 @@ mod tests {
 
     #[test]
     fn test_async_runtime_creation() {
-        let runtime = AsyncRuntime::new().unwrap());
+        let runtime = AsyncRuntime::new().unwrap();
         assert!(!runtime.is_running);
         assert_eq!(runtime.streams.len(), 0);
         assert_eq!(runtime.futures.len(), 0);
@@ -836,7 +836,7 @@ mod tests {
 
     #[test]
     fn test_runtime_start_stop() {
-        let mut runtime = AsyncRuntime::new().unwrap());
+        let mut runtime = AsyncRuntime::new().unwrap();
         
         assert!(runtime.start().is_ok());
         assert!(runtime.is_running);
@@ -847,42 +847,42 @@ mod tests {
 
     #[test]
     fn test_spawn_task() {
-        let mut runtime = AsyncRuntime::new().unwrap());
-        runtime.start().unwrap());
+        let mut runtime = AsyncRuntime::new().unwrap();
+        runtime.start().unwrap();
         
         let task_fn = TaskFunction::Custom {
             name: BoundedString::from_str("test").unwrap(),
             placeholder: 42,
         };
         
-        let task_id = runtime.spawn_task(task_fn, 0).unwrap());
+        let task_id = runtime.spawn_task(task_fn, 0).unwrap();
         assert_eq!(runtime.stats.tasks_created, 1);
         assert_eq!(runtime.stats.active_tasks, 1);
     }
 
     #[test]
     fn test_register_stream() {
-        let mut runtime = AsyncRuntime::new().unwrap());
+        let mut runtime = AsyncRuntime::new().unwrap();
         let stream = Stream::new(StreamHandle(1), ValType::U32;
         
-        let handle = runtime.register_stream(stream).unwrap());
+        let handle = runtime.register_stream(stream).unwrap();
         assert_eq!(handle.0, 1);
         assert_eq!(runtime.streams.len(), 1);
     }
 
     #[test]
     fn test_register_future() {
-        let mut runtime = AsyncRuntime::new().unwrap());
+        let mut runtime = AsyncRuntime::new().unwrap();
         let future = Future::new(FutureHandle(1), ValType::String;
         
-        let handle = runtime.register_future(future).unwrap());
+        let handle = runtime.register_future(future).unwrap();
         assert_eq!(handle.0, 1);
         assert_eq!(runtime.futures.len(), 1);
     }
 
     #[test]
     fn test_task_scheduler() {
-        let mut scheduler = TaskScheduler::new().unwrap());
+        let mut scheduler = TaskScheduler::new().unwrap();
         assert!(scheduler.is_idle();
         
         let task = ScheduledTask {
@@ -895,14 +895,14 @@ mod tests {
             },
         };
         
-        scheduler.schedule_task(task).unwrap());
+        scheduler.schedule_task(task).unwrap();
         assert!(!scheduler.is_idle();
     }
 
     #[test]
     fn test_reactor() {
-        let mut reactor = Reactor::new().unwrap());
-        let mut scheduler = TaskScheduler::new().unwrap());
+        let mut reactor = Reactor::new().unwrap();
+        let mut scheduler = TaskScheduler::new().unwrap();
         
         let event = ReactorEvent {
             id: 1,
@@ -910,8 +910,8 @@ mod tests {
             data: 1000,
         };
         
-        reactor.add_event(event).unwrap());
-        reactor.process_events(&mut scheduler).unwrap());
+        reactor.add_event(event).unwrap();
+        reactor.process_events(&mut scheduler).unwrap();
     }
 
     #[test]
@@ -920,14 +920,14 @@ mod tests {
         config.max_concurrent_tasks = 64;
         config.task_time_slice_us = 500;
         
-        let runtime = AsyncRuntime::with_config(config.clone()).unwrap());
+        let runtime = AsyncRuntime::with_config(config.clone()).unwrap();
         assert_eq!(runtime.config.max_concurrent_tasks, 64;
         assert_eq!(runtime.config.task_time_slice_us, 500;
     }
 
     #[test]
     fn test_runtime_stats() {
-        let runtime = AsyncRuntime::new().unwrap());
+        let runtime = AsyncRuntime::new().unwrap();
         let stats = runtime.get_stats);
         
         assert_eq!(stats.tasks_created, 0);

@@ -26,7 +26,7 @@
 //! use wrt_component::canonical_abi::{CanonicalABI, ComponentValue, ComponentType};
 //!
 //! // Create a canonical ABI instance
-//! let abi = CanonicalABI::new);
+//! let abi = CanonicalABI::new();
 //!
 //! // Lift an i32 from memory
 //! let value = abi.lift_i32(&memory, 0)?;
@@ -550,7 +550,7 @@ impl CanonicalABI {
                     return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new);
+                let mut code_units = Vec::new());
                 for chunk in bytes.chunks_exact(2) {
                     let code_unit = u16::from_le_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
@@ -565,7 +565,7 @@ impl CanonicalABI {
                     return Err(Error::validation_error("Error occurred: UTF-16 byte sequence must have even length";
                 }
                 
-                let mut code_units = Vec::new);
+                let mut code_units = Vec::new());
                 for chunk in bytes.chunks_exact(2) {
                     let code_unit = u16::from_be_bytes([chunk[0], chunk[1]];
                     code_units.push(code_unit);
@@ -601,7 +601,7 @@ impl CanonicalABI {
         }
 
         let element_size = self.size_of(element_ty)?;
-        let mut values = Vec::new);
+        let mut values = Vec::new());
 
         for i in 0..len {
             let element_offset = ptr + i * element_size;
@@ -619,7 +619,7 @@ impl CanonicalABI {
         fields: &[(String, ComponentType)],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut field_values = Vec::new);
+        let mut field_values = Vec::new());
         let mut current_offset = offset;
 
         for (field_name, field_ty) in fields {
@@ -638,7 +638,7 @@ impl CanonicalABI {
         types: &[ComponentType],
         offset: u32,
     ) -> Result<ComponentValue> {
-        let mut values = Vec::new);
+        let mut values = Vec::new());
         let mut current_offset = offset;
 
         for ty in types {
@@ -749,7 +749,7 @@ impl CanonicalABI {
         let byte_count = (flags.len() + 7) / 8;
         let bytes = memory.read_bytes(offset, byte_count as u32)?;
 
-        let mut active_flags = Vec::new);
+        let mut active_flags = Vec::new());
 
         for (i, flag_name) in flags.iter().enumerate() {
             let byte_index = i / 8;
@@ -1303,56 +1303,56 @@ mod tests {
         let mut memory = SimpleMemory::new(1024;
 
         // Test write and read
-        memory.write_u32_le(0, 0x12345678).unwrap());
+        memory.write_u32_le(0, 0x12345678).unwrap();
         assert_eq!(memory.read_u32_le(0).unwrap(), 0x12345678;
 
         // Test bytes
-        memory.write_bytes(10, &[1, 2, 3, 4]).unwrap());
+        memory.write_bytes(10, &[1, 2, 3, 4]).unwrap();
         assert_eq!(memory.read_bytes(10, 4).unwrap(), vec![1, 2, 3, 4];
     }
 
     #[test]
     fn test_canonical_abi_primitives() {
-        let abi = CanonicalABI::new);
+        let abi = CanonicalABI::new();
         let mut memory = SimpleMemory::new(1024;
 
         // Test bool
-        abi.lower_bool(&mut memory, true, 0).unwrap());
-        let value = abi.lift_bool(&memory, 0).unwrap());
+        abi.lower_bool(&mut memory, true, 0).unwrap();
+        let value = abi.lift_bool(&memory, 0).unwrap();
         assert_eq!(value, ComponentValue::Bool(true;
 
         // Test i32
-        abi.lower_s32(&mut memory, -42, 10).unwrap());
-        let value = abi.lift_s32(&memory, 10).unwrap());
+        abi.lower_s32(&mut memory, -42, 10).unwrap();
+        let value = abi.lift_s32(&memory, 10).unwrap();
         assert_eq!(value, ComponentValue::S32(-42;
 
         // Test f32
-        abi.lower_f32(&mut memory, 3.14, 20).unwrap());
-        let value = abi.lift_f32(&memory, 20).unwrap());
+        abi.lower_f32(&mut memory, 3.14, 20).unwrap();
+        let value = abi.lift_f32(&memory, 20).unwrap();
         assert_eq!(value, ComponentValue::F32(3.14;
 
         // Test char
-        abi.lower_char(&mut memory, 'A', 30).unwrap());
-        let value = abi.lift_char(&memory, 30).unwrap());
+        abi.lower_char(&mut memory, 'A', 30).unwrap();
+        let value = abi.lift_char(&memory, 30).unwrap();
         assert_eq!(value, ComponentValue::Char('A';
     }
 
     #[test]
     fn test_canonical_abi_string() {
-        let abi = CanonicalABI::new);
+        let abi = CanonicalABI::new();
         let mut memory = SimpleMemory::new(1024;
 
         // Lower a string
-        abi.lower_string(&mut memory, "hello", 0).unwrap());
+        abi.lower_string(&mut memory, "hello", 0).unwrap();
 
         // Lift it back
-        let value = abi.lift_string(&memory, 0).unwrap());
-        assert_eq!(value, ComponentValue::String("hello".to_string();
+        let value = abi.lift_string(&memory, 0).unwrap();
+        assert_eq!(value, ComponentValue::String("hello".to_string());
     }
 
     #[test]
     fn test_size_calculation() {
-        let abi = CanonicalABI::new);
+        let abi = CanonicalABI::new();
 
         assert_eq!(abi.size_of(&ComponentType::Bool).unwrap(), 1);
         assert_eq!(abi.size_of(&ComponentType::S32).unwrap(), 4;
@@ -1362,7 +1362,7 @@ mod tests {
 
     #[test]
     fn test_alignment_calculation() {
-        let abi = CanonicalABI::new);
+        let abi = CanonicalABI::new();
 
         assert_eq!(abi.align_of(&ComponentType::Bool).unwrap(), 1);
         assert_eq!(abi.align_of(&ComponentType::S32).unwrap(), 4;
@@ -1371,17 +1371,17 @@ mod tests {
 
     #[test]
     fn test_option_value() {
-        let abi = CanonicalABI::new);
+        let abi = CanonicalABI::new();
         let mut memory = SimpleMemory::new(1024;
 
         // Test None option
-        abi.lower_option(&mut memory, &None, 0).unwrap());
-        let value = abi.lift_option(&memory, &ComponentType::S32, 0).unwrap());
+        abi.lower_option(&mut memory, &None, 0).unwrap();
+        let value = abi.lift_option(&memory, &ComponentType::S32, 0).unwrap();
         assert_eq!(value, ComponentValue::Option(None;
 
         // Test Some option
         let some_value = Some(Box::new(ComponentValue::S32(42);
-        abi.lower_option(&mut memory, &some_value, 10).unwrap());
+        abi.lower_option(&mut memory, &some_value, 10).unwrap();
         // Note: This test is simplified and doesn't actually verify the full lifting
         // because the lowering implementation is also simplified
     }
@@ -1389,7 +1389,7 @@ mod tests {
     #[test]
     fn test_cross_environment_compatibility() {
         // This test verifies the code compiles and runs in different environments
-        let abi = CanonicalABI::new);
+        let abi = CanonicalABI::new();
 
         #[cfg(feature = "std")]
         {

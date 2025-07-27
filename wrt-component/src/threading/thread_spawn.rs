@@ -380,7 +380,7 @@ impl ComponentThreadManager {
         let component_id = request.component_id;
         let return_type = request.return_type.clone();
 
-        let mut builder = thread::Builder::new);
+        let mut builder = thread::Builder::new();
 
         if let Some(ref name) = request.configuration.name {
             builder = builder.name(name.clone();
@@ -464,7 +464,7 @@ impl ComponentThreadManager {
 
         let thread_result = result
             .clone()
-            .unwrap_or(ThreadResult::Error("Thread completed without result".to_string();
+            .unwrap_or(ThreadResult::Error("Thread completed without result".to_string());
 
         self.cleanup_thread(thread_id;
         Ok(thread_result)
@@ -637,7 +637,7 @@ mod tests {
 
     #[test]
     fn test_thread_manager_creation() {
-        let manager = ComponentThreadManager::new);
+        let manager = ComponentThreadManager::new();
         assert_eq!(manager.get_active_thread_count(), 0);
     }
 
@@ -658,11 +658,11 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_thread_spawn_and_join() {
-        let mut manager = ComponentThreadManager::new);
+        let mut manager = ComponentThreadManager::new();
         let component_id = ComponentInstanceId::new(1;
 
-        let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
-        let arguments = BoundedVec::new(provider).unwrap());
+        let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+        let arguments = BoundedVec::new(provider).unwrap();
         
         let request = ThreadSpawnRequest {
             component_id,
@@ -672,10 +672,10 @@ mod tests {
             return_type: Some(ValType::I32),
         };
 
-        let handle = manager.spawn_thread(request).unwrap());
+        let handle = manager.spawn_thread(request).unwrap();
         assert_eq!(handle.component_id, component_id;
 
-        let result = manager.join_thread(handle.thread_id).unwrap());
+        let result = manager.join_thread(handle.thread_id).unwrap();
         match result {
             ThreadResult::Success(_) => {}
             _ => panic!("Expected successful result"),
@@ -684,10 +684,10 @@ mod tests {
 
     #[test]
     fn test_thread_limits() {
-        let manager = ComponentThreadManager::new);
+        let manager = ComponentThreadManager::new();
         let component_id = ComponentInstanceId::new(1;
 
         assert_eq!(manager.get_component_thread_count(component_id), 0);
-        assert!(manager.get_component_threads(component_id).is_empty();
+        assert!(manager.get_component_threads(component_id).is_empty());
     }
 }

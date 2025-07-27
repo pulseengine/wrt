@@ -517,7 +517,7 @@ impl AsyncCombinators {
             bridge.poll_async_tasks()?
         };
 
-        let mut completed_combinators = Vec::new);
+        let mut completed_combinators = Vec::new());
         let mut ready_combinators = 0;
 
         // Check combinator statuses
@@ -667,7 +667,7 @@ mod tests {
         let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
-        ).unwrap());
+        ).unwrap();
         Arc::new(Mutex::new(bridge))
     }
 

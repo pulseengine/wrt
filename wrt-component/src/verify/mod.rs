@@ -27,19 +27,19 @@ pub mod kani_verification {
         {
             use std::vec::Vec;
 
-            let mut imports = Vec::new);
-            let mut exports = Vec::new);
+            let mut imports = Vec::new());
+            let mut exports = Vec::new());
 
             // Add imports with type constraints
             for i in 0..import_count {
                 let import_name = if i % 2 == 0 { "func_import" } else { "memory_import" };
-                imports.push(import_name.to_string();
+                imports.push(import_name.to_string());
             }
 
             // Add exports with type constraints
             for i in 0..export_count {
                 let export_name = if i % 2 == 0 { "func_export" } else { "memory_export" };
-                exports.push(export_name.to_string();
+                exports.push(export_name.to_string());
             }
 
             // Verify type consistency
@@ -73,7 +73,7 @@ pub mod kani_verification {
                     let ns = Namespace::from_string("wasi";
                     assert_eq!(ns.elements.len(), 1);
                     assert_eq!(ns.elements[0], "wasi";
-                    assert!(!ns.is_empty();
+                    assert!(!ns.is_empty());
                 }
             }
             1 => {
@@ -92,7 +92,7 @@ pub mod kani_verification {
                 #[cfg(feature = "std")]
                 {
                     let ns = Namespace::from_string("Error";
-                    assert!(ns.is_empty();
+                    assert!(ns.is_empty());
                     assert_eq!(ns.elements.len(), 0);
                 }
             }
@@ -129,7 +129,7 @@ pub mod kani_verification {
                     let param_count: usize = kani::any);
                     kani::assume(param_count <= 4;
 
-                    let mut params = Vec::new);
+                    let mut params = Vec::new());
                     for _ in 0..param_count {
                         params.push(ValueType::I32); // Simplified for verification
                     }
@@ -243,16 +243,16 @@ pub mod kani_verification {
 
             // Create a minimal component
             let imports = if has_imports {
-                let mut imp = Vec::new);
-                imp.push("required_func".to_string();
+                let mut imp = Vec::new());
+                imp.push("required_func".to_string());
                 imp
             } else {
                 Vec::new()
             };
 
             let exports = if has_exports {
-                let mut exp = Vec::new);
-                exp.push("exported_func".to_string();
+                let mut exp = Vec::new());
+                exp.push("exported_func".to_string());
                 exp
             } else {
                 Vec::new()
@@ -260,15 +260,15 @@ pub mod kani_verification {
 
             // Verify component structure
             if has_imports {
-                assert!(!imports.is_empty();
+                assert!(!imports.is_empty());
             } else {
-                assert!(imports.is_empty();
+                assert!(imports.is_empty());
             }
 
             if has_exports {
-                assert!(!exports.is_empty();
+                assert!(!exports.is_empty());
             } else {
-                assert!(exports.is_empty();
+                assert!(exports.is_empty());
             }
         }
     }

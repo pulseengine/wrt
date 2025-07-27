@@ -84,7 +84,7 @@ impl InstanceValueBuilder {
 
     /// Sets the instance name
     pub fn with_name(mut self, name: &str) -> Self {
-        self.name = Some(name.to_string();
+        self.name = Some(name.to_string());
         self
     }
 
@@ -216,7 +216,7 @@ mod tests {
             .with_type(instance_type)
             .with_export(export)
             .build()
-            .unwrap());
+            .unwrap();
 
         // Check the instance
         assert_eq!(instance.name.as_str(), "math";
@@ -234,30 +234,30 @@ mod tests {
             .with_name("instance1")
             .with_type(instance_type.clone())
             .build()
-            .unwrap());
+            .unwrap();
 
         let instance2 = InstanceValue::builder()
             .with_name("instance2")
             .with_type(instance_type)
             .build()
-            .unwrap());
+            .unwrap();
 
         // Create a collection and add the instances
-        let mut collection = InstanceCollection::new().unwrap());
-        assert!(collection.is_empty();
+        let mut collection = InstanceCollection::new().unwrap();
+        assert!(collection.is_empty());
 
-        collection.add_instance(instance1).unwrap());
-        collection.add_instance(instance2).unwrap());
+        collection.add_instance(instance1).unwrap();
+        collection.add_instance(instance2).unwrap();
 
         // Check the collection
         assert_eq!(collection.len(), 2;
-        assert!(!collection.is_empty();
+        assert!(!collection.is_empty());
         assert!(collection.get_instance("instance1").is_some();
         assert!(collection.get_instance("instance2").is_some();
         assert!(collection.get_instance("non_existent").is_none();
 
         // Test iteration
-        let names: Vec<&str> = collection.iter().map(|i| i.name.as_str()).collect();
+        let names: Vec<&str> = collection.iter().map(|i| i.name.as_str()).collect());
         assert_eq!(names, vec!["instance1", "instance2"];
     }
 }

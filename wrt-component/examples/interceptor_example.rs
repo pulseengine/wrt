@@ -22,21 +22,21 @@ use wrt_runtime::RuntimeInstance;
 
 fn main() -> Result<()> {
     // Create a mock component type
-    let component_type = ComponentType::new);
+    let component_type = ComponentType::new();
 
     // Create a callback registry with a test function
-    let mut registry = CallbackRegistry::new);
+    let mut registry = CallbackRegistry::new();
     registry.register_host_function(
         "test",
         "double",
         CloneableFn::new(|_ctx| {
-            println!("Host function 'test.double' called";
+            println!("Host function 'test.double' called");
             Ok(vec![Value::I32(84)]) // Double 42
         }),
     ;
 
     // Create a logging interceptor
-    let log_sink = Arc::new(|log_entry: &str| println!("[LOG] {}", log_entry;
+    let log_sink = Arc::new(|log_entry: &str| println!("[LOG] {}", log_entry);
     let logging_strategy = LoggingStrategy::new(log_sink;
 
     // Create a firewall interceptor
@@ -45,7 +45,7 @@ fn main() -> Result<()> {
         .build);
 
     // Create a statistics interceptor
-    let stats = StatisticsStrategy::new);
+    let stats = StatisticsStrategy::new();
     let stats_rc = Arc::new(stats;
 
     // Create an interceptor and add strategies
@@ -61,12 +61,12 @@ fn main() -> Result<()> {
         .with_interceptor(Arc::new(interceptor;
 
     // Call a host function through the component
-    println!("\nCalling test.double function...";
+    println!("\nCalling test.double function...");
     let result = component.call_host_function("test.double", &[Value::I32(42)])?;
-    println!("Result: {:?}", result;
+    println!("Result: {:?}", result);
 
     // Print statistics
-    println!("\nFunction call statistics:";
+    println!("\nFunction call statistics:");
     for (name, stats) in stats_rc.get_all_stats() {
         println!(
             "{}: {} calls, {} successful, {} errors, avg time: {:.2}ms",
@@ -75,9 +75,9 @@ fn main() -> Result<()> {
     }
 
     // Try calling a disallowed function
-    println!("\nTrying to call a disallowed function...";
+    println!("\nTrying to call a disallowed function...");
     let result = component.call_host_function("forbidden.function", &[Value::I32(42)];
-    println!("Result: {:?}", result;
+    println!("Result: {:?}", result);
 
     Ok(())
 }

@@ -288,7 +288,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for resources");
+                    .expect("Failed to allocate memory for resources"));
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
@@ -296,7 +296,7 @@ impl ResourceLifecycleManager {
             #[cfg(not(feature = "std"))]
             drop_handlers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for drop handlers");
+                    .expect("Failed to allocate memory for drop handlers"));
                 BoundedVec::new(provider).unwrap()
             },
             policies: LifecyclePolicies::default(),
@@ -308,7 +308,7 @@ impl ResourceLifecycleManager {
 
     /// Create new resource lifecycle manager with custom policies
     pub fn with_policies(policies: LifecyclePolicies) -> Self {
-        let mut manager = Self::new);
+        let mut manager = Self::new();
         manager.policies = policies;
         manager
     }
@@ -320,7 +320,7 @@ impl ResourceLifecycleManager {
 
         // Register drop handlers for this resource
         #[cfg(feature = "std")]
-        let mut handler_ids = Vec::new);
+        let mut handler_ids = Vec::new());
         #[cfg(not(any(feature = "std", )))]
         let mut handler_ids = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -423,7 +423,7 @@ impl ResourceLifecycleManager {
 
         // Execute drop handlers
         #[cfg(feature = "std")]
-        let handler_ids: Vec<DropHandlerId> = resource.handlers.iter().cloned().collect();
+        let handler_ids: Vec<DropHandlerId> = resource.handlers.iter().cloned().collect());
         #[cfg(not(any(feature = "std", )))]
         let handler_ids = resource.handlers.clone();
         
@@ -491,7 +491,7 @@ impl ResourceLifecycleManager {
 
         // Find resources to collect
         #[cfg(feature = "std")]
-        let mut resources_to_drop = Vec::new);
+        let mut resources_to_drop = Vec::new());
         #[cfg(not(any(feature = "std", )))]
         let mut resources_to_drop = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -595,10 +595,10 @@ impl ResourceLifecycleManager {
     #[cfg(feature = "std")]
     pub fn check_for_leaks(&mut self) -> Result<Vec<ResourceId>> {
         if !self.policies.leak_detection {
-            return Ok(Vec::new);
+            return Ok(Vec::new());
         }
 
-        let mut leaked_resources = Vec::new);
+        let mut leaked_resources = Vec::new());
         let current_time = self.get_current_time);
 
         for resource in &self.resources {
@@ -619,11 +619,11 @@ impl ResourceLifecycleManager {
     pub fn check_for_leaks(&mut self) -> core::result::Result<BoundedVec<ResourceId, 64, ResourceProvider>, Error> {
         if !self.policies.leak_detection {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            return Ok(BoundedVec::new(provider).unwrap());
+            return Ok(BoundedVec::new(provider).unwrap();
         }
 
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut leaked_resources = BoundedVec::new(provider).unwrap());
+        let mut leaked_resources = BoundedVec::new(provider).unwrap();
         let current_time = self.get_current_time);
 
         for resource in &self.resources {
@@ -847,7 +847,7 @@ mod tests {
 
     #[test]
     fn test_resource_lifecycle_manager_creation() {
-        let manager = ResourceLifecycleManager::new);
+        let manager = ResourceLifecycleManager::new();
         assert_eq!(manager.resources.len(), 0);
         assert_eq!(manager.stats.active_resources, 0);
         assert_eq!(manager.next_resource_id, 1);
@@ -855,7 +855,7 @@ mod tests {
 
     #[test]
     fn test_create_resource() {
-        let mut manager = ResourceLifecycleManager::new);
+        let mut manager = ResourceLifecycleManager::new();
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Stream,
@@ -865,12 +865,12 @@ mod tests {
             custom_handlers: Vec::new(),
             #[cfg(not(feature = "std"))]
             custom_handlers: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
                 BoundedVec::new(provider).unwrap()
             },
         };
         
-        let resource_id = manager.create_resource(request).unwrap());
+        let resource_id = manager.create_resource(request).unwrap();
         assert_eq!(resource_id.0, 1);
         assert_eq!(manager.stats.resources_created, 1);
         assert_eq!(manager.stats.active_resources, 1);
@@ -878,7 +878,7 @@ mod tests {
 
     #[test]
     fn test_reference_counting() {
-        let mut manager = ResourceLifecycleManager::new);
+        let mut manager = ResourceLifecycleManager::new();
         
         let request = ResourceCreateRequest {
             resource_type: ResourceType::Future,
@@ -888,39 +888,39 @@ mod tests {
             custom_handlers: Vec::new(),
             #[cfg(not(feature = "std"))]
             custom_handlers: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
                 BoundedVec::new(provider).unwrap()
             },
         };
         
-        let resource_id = manager.create_resource(request).unwrap());
+        let resource_id = manager.create_resource(request).unwrap();
         
         // Add reference
-        let ref_count = manager.add_reference(resource_id).unwrap());
+        let ref_count = manager.add_reference(resource_id).unwrap();
         assert_eq!(ref_count, 2;
         
         // Remove reference
-        let ref_count = manager.remove_reference(resource_id).unwrap());
+        let ref_count = manager.remove_reference(resource_id).unwrap();
         assert_eq!(ref_count, 1);
         
         // Remove last reference should drop resource
-        let ref_count = manager.remove_reference(resource_id).unwrap());
+        let ref_count = manager.remove_reference(resource_id).unwrap();
         assert_eq!(ref_count, 0);
         
-        let resource = manager.get_resource(resource_id).unwrap());
+        let resource = manager.get_resource(resource_id).unwrap();
         assert_eq!(resource.state, ResourceState::Destroyed;
     }
 
     #[test]
     fn test_drop_handler_registration() {
-        let mut manager = ResourceLifecycleManager::new);
+        let mut manager = ResourceLifecycleManager::new();
         
         let handler_id = manager.register_drop_handler(
             ResourceType::Stream,
             DropHandlerFunction::StreamCleanup,
             0,
             true,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(handler_id.0, 0);
         assert_eq!(manager.drop_handlers.len(), 1);
@@ -928,7 +928,7 @@ mod tests {
 
     #[test]
     fn test_garbage_collection() {
-        let mut manager = ResourceLifecycleManager::new);
+        let mut manager = ResourceLifecycleManager::new();
         
         // Create a resource with zero references
         let request = ResourceCreateRequest {
@@ -939,25 +939,25 @@ mod tests {
             custom_handlers: Vec::new(),
             #[cfg(not(feature = "std"))]
             custom_handlers: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
                 BoundedVec::new(provider).unwrap()
             },
         };
         
-        let resource_id = manager.create_resource(request).unwrap());
+        let resource_id = manager.create_resource(request).unwrap();
         manager.remove_reference(resource_id).unwrap()); // Drop to 0 references
         
-        let gc_result = manager.run_garbage_collection(true).unwrap());
+        let gc_result = manager.run_garbage_collection(true).unwrap();
         assert_eq!(gc_result.collected_count, 1);
         assert!(gc_result.full_gc);
     }
 
     #[test]
     fn test_resource_metadata() {
-        let mut metadata = ResourceMetadata::new("test-resource").unwrap());
+        let mut metadata = ResourceMetadata::new("test-resource").unwrap();
         
-        metadata.add_tag("important").unwrap());
-        metadata.add_property("version", Value::U32(1)).unwrap());
+        metadata.add_tag("important").unwrap();
+        metadata.add_property("version", Value::U32(1)).unwrap();
         
         assert_eq!(metadata.tags.len(), 1);
         assert_eq!(metadata.properties.len(), 1);

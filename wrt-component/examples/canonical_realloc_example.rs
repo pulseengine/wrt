@@ -34,12 +34,12 @@ mod example {
     /// Binary std/no_std choice
     fn example_lift_string() -> Result<()> {
         // Create instance and memory (simplified)
-        let module = Module::default());
+        let module = Module::default();
         let instance = Instance::new(&module)?;
         let memory = Memory::new(1, Some(10))?; // 1 initial page, max 10 pages
 
         // Binary std/no_std choice
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default();
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
 
         // Binary std/no_std choice
         let instance_id = ComponentInstanceId(1);
@@ -57,7 +57,7 @@ mod example {
 
         // Lift the string
         let lifted_string = lift_context.read_string(string_ptr, string_len)?;
-        println!("Lifted string: {}", lifted_string);
+        println!("Lifted string: {}", lifted_string));
 
         // Binary std/no_std choice
         lift_context.cleanup()?;
@@ -68,12 +68,12 @@ mod example {
     /// Binary std/no_std choice
     fn example_lower_string() -> Result<()> {
         // Create instance and memory
-        let module = Module::default());
+        let module = Module::default();
         let mut instance = Instance::new(&module)?;
         let mut memory = Memory::new(1, Some(10))?;
 
         // Binary std/no_std choice
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default();
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
 
         // Create canonical options
         let instance_id = ComponentInstanceId(1);
@@ -88,23 +88,23 @@ mod example {
         let test_string = "Hello, WASM!";
         let (ptr, len) = lower_context.write_string(test_string)?;
 
-        println!("Lowered string to ptr: {}, len: {}", ptr, len);
+        println!("Lowered string to ptr: {}, len: {}", ptr, len));
 
         // Binary std/no_std choice
         let allocations = lower_context.finish()?;
-        println!("Made {} allocations during lowering", allocations.len());
+        println!("Made {} allocations during lowering", allocations.len()));
 
         Ok(())
     }
 
     /// Binary std/no_std choice
     fn example_dynamic_list() -> Result<()> {
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default();
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         let instance_id = ComponentInstanceId(1);
 
         // Binary std/no_std choice
         {
-            let mut manager = realloc_manager.write().unwrap());
+            let mut manager = realloc_manager.write().unwrap();
             manager.register_realloc(instance_id, 42)?;
         }
 
@@ -114,7 +114,7 @@ mod example {
         let alignment = 4;
 
         let ptr = {
-            let mut manager = realloc_manager.write().unwrap());
+            let mut manager = realloc_manager.write().unwrap();
             manager.allocate(instance_id, initial_capacity * element_size, alignment)?
         };
 
@@ -126,7 +126,7 @@ mod example {
         // Grow the list
         let new_capacity = 20;
         let new_ptr = {
-            let mut manager = realloc_manager.write().unwrap());
+            let mut manager = realloc_manager.write().unwrap();
             manager.reallocate(
                 instance_id,
                 ptr,
@@ -143,21 +143,21 @@ mod example {
 
         // Clean up
         {
-            let mut manager = realloc_manager.write().unwrap());
+            let mut manager = realloc_manager.write().unwrap();
             manager.deallocate(instance_id, new_ptr, new_capacity * element_size, alignment)?;
         }
 
-        println!("Deallocated list");
+        println!("Deallocated list"));
 
         // Check metrics
         {
-            let manager = realloc_manager.read().unwrap());
+            let manager = realloc_manager.read().unwrap();
             let metrics = manager.metrics);
-            println!("Allocation metrics:");
-            println!("  Total allocations: {}", metrics.total_allocations);
-            println!("  Total deallocations: {}", metrics.total_deallocations);
-            println!("  Total bytes allocated: {}", metrics.total_bytes_allocated);
-            println!("  Peak memory usage: {}", metrics.peak_memory_usage);
+            println!("Allocation metrics:"));
+            println!("  Total allocations: {}", metrics.total_allocations));
+            println!("  Total deallocations: {}", metrics.total_deallocations));
+            println!("  Total bytes allocated: {}", metrics.total_bytes_allocated));
+            println!("  Peak memory usage: {}", metrics.peak_memory_usage));
         }
 
         Ok(())
@@ -165,11 +165,11 @@ mod example {
 
     /// Example of handling post-return cleanup
     fn example_post_return() -> Result<()> {
-        let module = Module::default());
+        let module = Module::default();
         let instance = Instance::new(&module)?;
         let memory = Memory::new(1, Some(10))?;
 
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default();
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         let instance_id = ComponentInstanceId(1);
 
         // Binary std/no_std choice
@@ -184,12 +184,12 @@ mod example {
         let ptr1 = lift_context.allocate(100, 8)?;
         let ptr2 = lift_context.allocate(200, 16)?;
 
-        println!("Made allocations: ptr1={}, ptr2={}", ptr1, ptr2);
+        println!("Made allocations: ptr1={}, ptr2={}", ptr1, ptr2));
 
         // Binary std/no_std choice
         lift_context.cleanup()?;
 
-        println!("Cleanup complete - allocations freed and post-return called");
+        println!("Cleanup complete - allocations freed and post-return called"));
 
         Ok(())
     }
@@ -207,26 +207,26 @@ mod example {
 
     #[test]
     fn test_realloc_manager_integration() {
-        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default();
+        let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         let instance_id = ComponentInstanceId(1);
 
         // Binary std/no_std choice
         {
-            let mut manager = realloc_manager.write().unwrap());
-            manager.register_realloc(instance_id, 42).unwrap());
+            let mut manager = realloc_manager.write().unwrap();
+            manager.register_realloc(instance_id, 42).unwrap();
 
-            let ptr = manager.allocate(instance_id, 64, 8).unwrap());
+            let ptr = manager.allocate(instance_id, 64, 8).unwrap();
             assert_ne!(ptr, 0);
 
-            let new_ptr = manager.reallocate(instance_id, ptr, 64, 8, 128).unwrap());
+            let new_ptr = manager.reallocate(instance_id, ptr, 64, 8, 128).unwrap();
             assert_ne!(new_ptr, 0);
 
-            manager.deallocate(instance_id, new_ptr, 128, 8).unwrap());
+            manager.deallocate(instance_id, new_ptr, 128, 8).unwrap();
         }
 
         // Check metrics
         {
-            let manager = realloc_manager.read().unwrap());
+            let manager = realloc_manager.read().unwrap();
             let metrics = manager.metrics);
             assert_eq!(metrics.total_allocations, 1);
             assert_eq!(metrics.total_deallocations, 1);

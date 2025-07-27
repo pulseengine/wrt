@@ -193,7 +193,7 @@ impl Default for AsyncContext {
 #[cfg(feature = "std")]
 thread_local! {
     static ASYNC_CONTEXT_STACK: AtomicRefCell<Vec<AsyncContext>> = 
-        AtomicRefCell::new(Vec::new);
+        AtomicRefCell::new(Vec::new());
 }
 
 /// Global context storage for no_std environments
@@ -329,7 +329,7 @@ pub mod canonical_builtins {
         match value {
             ComponentValue::Bool(true) => {
                 // Create a new empty context
-                let context = AsyncContext::new);
+                let context = AsyncContext::new();
                 AsyncContextManager::context_set(context)
             }
             ComponentValue::Bool(false) => {
@@ -351,7 +351,7 @@ pub mod canonical_builtins {
         T::Error: Into<Error>,
     {
         #[cfg(feature = "std")]
-        let context_key = ContextKey::new(key.to_string();
+        let context_key = ContextKey::new(key.to_string());
         #[cfg(not(any(feature = "std", )))]
         let context_key = ContextKey::new(key)?;
 
@@ -374,7 +374,7 @@ pub mod canonical_builtins {
         T: Into<ComponentValue>,
     {
         #[cfg(feature = "std")]
-        let context_key = ContextKey::new(key.to_string();
+        let context_key = ContextKey::new(key.to_string());
         #[cfg(not(any(feature = "std", )))]
         let context_key = ContextKey::new(key)?;
 
@@ -428,13 +428,13 @@ mod tests {
     fn test_context_key_creation() {
         #[cfg(feature = "std")]
         {
-            let key = ContextKey::new("test-key".to_string();
+            let key = ContextKey::new("test-key".to_string());
             assert_eq!(key.as_str(), "test-key";
         }
 
         #[cfg(not(any(feature = "std", )))]
         {
-            let key = ContextKey::new("test-key").unwrap());
+            let key = ContextKey::new("test-key").unwrap();
             assert_eq!(key.as_str(), "test-key";
         }
     }
@@ -448,22 +448,22 @@ mod tests {
 
     #[test]
     fn test_async_context_operations() {
-        let mut context = AsyncContext::new);
-        assert!(context.is_empty();
+        let mut context = AsyncContext::new();
+        assert!(context.is_empty());
 
         #[cfg(feature = "std")]
-        let key = ContextKey::new("test".to_string();
+        let key = ContextKey::new("test".to_string());
         #[cfg(not(any(feature = "std", )))]
-        let key = ContextKey::new("test").unwrap());
+        let key = ContextKey::new("test").unwrap();
 
         let value = ContextValue::from_component_value(ComponentValue::I32(42;
-        context.set(key.clone(), value).unwrap());
+        context.set(key.clone(), value).unwrap();
 
-        assert!(!context.is_empty();
+        assert!(!context.is_empty());
         assert_eq!(context.len(), 1);
         assert!(context.contains_key(&key);
 
-        let retrieved = context.get(&key).unwrap());
+        let retrieved = context.get(&key).unwrap();
         assert_eq!(
             retrieved.as_component_value().unwrap(),
             &ComponentValue::I32(42)
@@ -476,15 +476,15 @@ mod tests {
         let _ = AsyncContextManager::context_pop);
 
         // Test getting empty context
-        let context = AsyncContextManager::context_get().unwrap());
+        let context = AsyncContextManager::context_get().unwrap();
         assert!(context.is_none();
 
         // Test setting context
-        let new_context = AsyncContext::new);
-        AsyncContextManager::context_set(new_context).unwrap());
+        let new_context = AsyncContext::new();
+        AsyncContextManager::context_set(new_context).unwrap();
 
         // Test getting set context
-        let retrieved = AsyncContextManager::context_get().unwrap());
+        let retrieved = AsyncContextManager::context_get().unwrap();
         assert!(retrieved.is_some();
     }
 
@@ -494,14 +494,14 @@ mod tests {
         let _ = AsyncContextManager::context_pop);
 
         // Test context.get when no context
-        let result = canonical_builtins::canon_context_get().unwrap());
+        let result = canonical_builtins::canon_context_get().unwrap();
         assert_eq!(result, ComponentValue::Bool(false;
 
         // Test context.set with true
-        canonical_builtins::canon_context_set(ComponentValue::Bool(true)).unwrap());
+        canonical_builtins::canon_context_set(ComponentValue::Bool(true)).unwrap();
 
         // Test context.get when context exists
-        let result = canonical_builtins::canon_context_get().unwrap());
+        let result = canonical_builtins::canon_context_get().unwrap();
         assert_eq!(result, ComponentValue::Bool(true;
     }
 
@@ -511,16 +511,16 @@ mod tests {
         let _ = AsyncContextManager::context_pop);
 
         {
-            let context = AsyncContext::new);
-            let _scope = AsyncContextScope::enter(context).unwrap());
+            let context = AsyncContext::new();
+            let _scope = AsyncContextScope::enter(context).unwrap();
             
             // Context should be available in scope
-            let retrieved = AsyncContextManager::context_get().unwrap());
+            let retrieved = AsyncContextManager::context_get().unwrap();
             assert!(retrieved.is_some();
         }
 
         // Context should be popped after scope ends
-        let retrieved = AsyncContextManager::context_get().unwrap());
+        let retrieved = AsyncContextManager::context_get().unwrap();
         assert!(retrieved.is_none();
     }
 }

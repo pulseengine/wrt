@@ -774,7 +774,7 @@ mod tests {
         let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
-        ).unwrap());
+        ).unwrap();
         Arc::new(Mutex::new(bridge))
     }
 
@@ -784,12 +784,12 @@ mod tests {
         let mut channels = OptimizedAsyncChannels::new(bridge, None;
         
         let component_id = ComponentInstanceId::new(1;
-        channels.initialize_component_channels(component_id, None).unwrap());
+        channels.initialize_component_channels(component_id, None).unwrap();
         
         let (sender, receiver) = channels.create_channel(
             component_id,
             ChannelType::Bounded(32),
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(sender.component_id, component_id;
         assert_eq!(receiver.component_id, component_id;

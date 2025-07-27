@@ -836,7 +836,7 @@ impl UnifiedExecutionAgent {
     /// Convert values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<ComponentValue>> {
-        let mut component_values = Vec::new);
+        let mut component_values = Vec::new());
         for value in values {
             component_values.push(value.clone().into();
         }
@@ -956,14 +956,14 @@ mod tests {
 
     #[test]
     fn test_unified_agent_creation() {
-        let agent = UnifiedExecutionAgent::new_default().unwrap());
+        let agent = UnifiedExecutionAgent::new_default().unwrap();
         assert_eq!(agent.state(), UnifiedExecutionState::Ready;
         assert_eq!(agent.call_stack_depth(), 0);
     }
 
     #[test]
     fn test_synchronous_execution() {
-        let mut agent = UnifiedExecutionAgent::new_default().unwrap());
+        let mut agent = UnifiedExecutionAgent::new_default().unwrap();
         let args = [Value::U32(42), Value::Bool(true)];
         
         let result = agent.call_function(1, 2, &args;
@@ -974,7 +974,7 @@ mod tests {
 
     #[test]
     fn test_stackless_execution() {
-        let mut agent = UnifiedExecutionAgent::new_stackless().unwrap());
+        let mut agent = UnifiedExecutionAgent::new_stackless().unwrap();
         let args = [Value::U32(100)];
         
         let result = agent.call_function(1, 5, &args;
@@ -985,7 +985,7 @@ mod tests {
     #[cfg(feature = "async")]
     #[test]
     fn test_async_execution() {
-        let mut agent = UnifiedExecutionAgent::new_async().unwrap());
+        let mut agent = UnifiedExecutionAgent::new_async().unwrap();
         let args = [Value::F32(3.14)];
         
         let result = agent.call_function(2, 3, &args;
@@ -1001,7 +1001,7 @@ mod tests {
             stackless_enabled: true,
             cfi_enabled: false,
         };
-        let mut agent = UnifiedExecutionAgent::new_hybrid(flags).unwrap());
+        let mut agent = UnifiedExecutionAgent::new_hybrid(flags).unwrap();
         let args = [Value::S64(-100)];
         
         let result = agent.call_function(1, 1, &args;
@@ -1011,7 +1011,7 @@ mod tests {
 
     #[test]
     fn test_agent_reset() {
-        let mut agent = UnifiedExecutionAgent::new_default().unwrap());
+        let mut agent = UnifiedExecutionAgent::new_default().unwrap();
         
         // Execute something first
         let args = [Value::U32(42)];

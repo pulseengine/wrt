@@ -95,7 +95,7 @@ impl AsyncCanonicalEncoder {
                 // Use proper error propagation for encoder construction
                 // This should only fail in extreme memory exhaustion scenarios
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("AsyncCanonicalEncoder allocation should not fail");
+                    .expect("AsyncCanonicalEncoder allocation should not fail"));
                 BoundedVec::new(provider)
                     .expect("AsyncCanonicalEncoder buffer initialization should not fail")
             },
@@ -466,7 +466,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     }
     
     fn decode_record(&mut self, fields: &[(String, ValType)], options: &CanonicalOptions) -> core::result::Result<Vec<(String, Value)>> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         for (name, field_type) in fields {
             let value = self.decode_value(field_type, options)?;
             result.push((name.clone(), value;
@@ -490,7 +490,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     }
     
     fn decode_tuple(&mut self, types: &[ValType], options: &CanonicalOptions) -> Result<Vec<Value>> {
-        let mut values = Vec::new);
+        let mut values = Vec::new());
         for val_type in types {
             values.push(self.decode_value(val_type, options)?;
         }
@@ -520,7 +520,7 @@ impl<'a> AsyncCanonicalDecoder<'a> {
     
     fn decode_flags(&mut self, count: usize) -> Result<Vec<bool>> {
         let packed = self.decode_u32()?;
-        let mut flags = Vec::new);
+        let mut flags = Vec::new());
         
         for i in 0..count.min(32) {
             flags.push((packed & (1 << i)) != 0;
@@ -594,7 +594,7 @@ pub fn async_canonical_lift(
     options: &CanonicalOptions,
 ) -> Result<Vec<Value>> {
     let mut decoder = AsyncCanonicalDecoder::new(bytes;
-    let mut values = Vec::new);
+    let mut values = Vec::new());
     
     for val_type in target_types {
         values.push(decoder.decode_value(val_type, options)?;
@@ -608,7 +608,7 @@ pub fn async_canonical_lower(
     values: &[Value],
     options: &CanonicalOptions,
 ) -> Result<Vec<u8>> {
-    let mut encoder = AsyncCanonicalEncoder::new);
+    let mut encoder = AsyncCanonicalEncoder::new();
     
     for value in values {
         encoder.encode_value(value, options)?;
@@ -638,14 +638,14 @@ mod tests {
         
         // Test u32
         let values = vec![Value::U32(42)];
-        let encoded = async_canonical_lower(&values, &options).unwrap());
-        let decoded = async_canonical_lift(&encoded, &[ValType::U32], &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
+        let decoded = async_canonical_lift(&encoded, &[ValType::U32], &options).unwrap();
         assert_eq!(values, decoded;
         
         // Test bool
         let values = vec![Value::Bool(true)];
-        let encoded = async_canonical_lower(&values, &options).unwrap());
-        let decoded = async_canonical_lift(&encoded, &[ValType::Bool], &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
+        let decoded = async_canonical_lift(&encoded, &[ValType::Bool], &options).unwrap();
         assert_eq!(values, decoded;
     }
     
@@ -659,12 +659,12 @@ mod tests {
             Value::S8(-5),
         ])];
         
-        let encoded = async_canonical_lower(&values, &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
             &[ValType::Tuple(vec![ValType::U32, ValType::Bool, ValType::S8])],
             &options,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(values, decoded;
     }
@@ -675,22 +675,22 @@ mod tests {
         
         // Test Some
         let values = vec![Value::Option(Some(Box::new(Value::U32(42))))];
-        let encoded = async_canonical_lower(&values, &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
             &[ValType::Option(Box::new(ValType::U32))],
             &options,
-        ).unwrap());
+        ).unwrap();
         assert_eq!(values, decoded;
         
         // Test None
         let values = vec![Value::Option(None)];
-        let encoded = async_canonical_lower(&values, &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
             &[ValType::Option(Box::new(ValType::U32))],
             &options,
-        ).unwrap());
+        ).unwrap();
         assert_eq!(values, decoded;
     }
     
@@ -700,7 +700,7 @@ mod tests {
         
         // Test Ok
         let values = vec![Value::Result(Ok(Box::new(Value::U32(42))))];
-        let encoded = async_canonical_lower(&values, &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
             &[ValType::Result {
@@ -708,7 +708,7 @@ mod tests {
                 err: Box::new(ValType::String),
             }],
             &options,
-        ).unwrap());
+        ).unwrap();
         assert_eq!(values, decoded;
     }
     
@@ -718,22 +718,22 @@ mod tests {
         
         // Test stream handle
         let values = vec![Value::Stream(123)];
-        let encoded = async_canonical_lower(&values, &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
             &[ValType::Stream(Box::new(ValType::U32))],
             &options,
-        ).unwrap());
+        ).unwrap();
         assert_eq!(values, decoded;
         
         // Test future handle
         let values = vec![Value::Future(456)];
-        let encoded = async_canonical_lower(&values, &options).unwrap());
+        let encoded = async_canonical_lower(&values, &options).unwrap();
         let decoded = async_canonical_lift(
             &encoded,
             &[ValType::Future(Box::new(ValType::String))],
             &options,
-        ).unwrap());
+        ).unwrap();
         assert_eq!(values, decoded;
     }
 }

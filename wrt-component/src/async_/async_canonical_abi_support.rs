@@ -602,7 +602,7 @@ impl AsyncCanonicalAbiSupport {
         // Poll underlying bridge
         let bridge_result = self.bridge.poll_async_tasks()?;
 
-        let mut completed_operations = Vec::new);
+        let mut completed_operations = Vec::new());
         let mut ready_operations = 0;
 
         // Check operation statuses
@@ -733,7 +733,7 @@ mod tests {
         let component_id = ComponentInstanceId::new(1;
         let options = CanonicalOptions::default());
         
-        abi_support.initialize_component_abi(component_id, options).unwrap());
+        abi_support.initialize_component_abi(component_id, options).unwrap();
         assert!(abi_support.abi_contexts.contains_key(&component_id);
     }
 

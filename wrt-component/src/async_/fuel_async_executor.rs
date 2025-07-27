@@ -1353,7 +1353,7 @@ impl FuelAsyncExecutor {
     pub fn get_fuel_alerts(&self) -> Vec<FuelAlert> {
         if let Some(monitor) = &self.fuel_monitor {
             if let Ok(alerts) = monitor.active_alerts.lock() {
-                return alerts.iter().cloned().collect();
+                return alerts.iter().cloned().collect());
             }
         }
         Vec::new()
@@ -2160,7 +2160,7 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with ASIL-D constraints from configuration
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         
         // Set fuel limit from configuration
         let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit);
@@ -2194,7 +2194,7 @@ impl FuelAsyncExecutor {
         }
         
         // Execute real WebAssembly with isolation constraints from configuration
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         
         // Set fuel limit from configuration
         let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit);
@@ -2231,7 +2231,7 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with resource limits
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         engine.set_fuel(Some(400)); // Bounded fuel for ASIL-B
         
         // Set resource limits
@@ -2255,7 +2255,7 @@ impl FuelAsyncExecutor {
         }
 
         // Execute real WebAssembly with relaxed constraints
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         engine.set_fuel(Some(1000)); // More fuel for ASIL-A
         
         // Relaxed limits for ASIL-A
@@ -2452,7 +2452,7 @@ impl FuelAsyncExecutor {
         _waker_context: &mut Context<'_>,
     ) -> Result<ExecutionStepResult, Error> {
         // Create a StacklessEngine for WebAssembly execution
-        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new);
+        let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         
         // Set fuel limit based on task's remaining fuel budget
         let consumed = task.fuel_consumed.load(Ordering::Acquire;
@@ -2645,7 +2645,7 @@ impl FuelAsyncExecutor {
     
     /// Serialize WebAssembly values to bytes
     fn serialize_values(&self, values: &[wrt_foundation::Value]) -> Result<Vec<u8>, Error> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         
         for value in values {
             match value {
@@ -3097,7 +3097,7 @@ mod tests {
 
     #[test]
     fn test_executor_creation() {
-        let executor = FuelAsyncExecutor::new().unwrap());
+        let executor = FuelAsyncExecutor::new().unwrap();
         let status = executor.get_global_fuel_status);
         
         assert_eq!(status.active_tasks, 0);
@@ -3107,7 +3107,7 @@ mod tests {
 
     #[test]
     fn test_task_spawning() {
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(10000;
 
         let future = async { Ok(()) };
@@ -3116,16 +3116,16 @@ mod tests {
             1000,
             Priority::Normal,
             future,
-        ).unwrap());
+        ).unwrap();
 
-        let status = executor.get_task_status(task_id).unwrap());
+        let status = executor.get_task_status(task_id).unwrap();
         assert_eq!(status.state, AsyncTaskState::Ready;
         assert_eq!(status.fuel_budget, 1000;
     }
 
     #[test]
     fn test_fuel_limit_enforcement() {
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(100;
 
         let future = async { Ok(()) };
@@ -3141,7 +3141,7 @@ mod tests {
 
     #[test]
     fn test_proper_waker_integration() {
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(10000;
         
         // Create Arc<Mutex<>> wrapper and set self reference
@@ -3152,7 +3152,7 @@ mod tests {
         
         // Spawn a task that yields once
         let task_id = {
-            let mut exec = executor_arc.lock().unwrap());
+            let mut exec = executor_arc.lock().unwrap();
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 1000,
@@ -3163,8 +3163,8 @@ mod tests {
         
         // First poll should return Pending and wake the task
         {
-            let mut exec = executor_arc.lock().unwrap());
-            let polled = exec.poll_tasks().unwrap());
+            let mut exec = executor_arc.lock().unwrap();
+            let polled = exec.poll_tasks().unwrap();
             assert_eq!(polled, 1);
             
             let stats = exec.get_polling_stats);
@@ -3174,8 +3174,8 @@ mod tests {
         
         // Second poll should complete the task
         {
-            let mut exec = executor_arc.lock().unwrap());
-            let polled = exec.poll_tasks().unwrap());
+            let mut exec = executor_arc.lock().unwrap();
+            let polled = exec.poll_tasks().unwrap();
             assert_eq!(polled, 1);
             
             let stats = exec.get_polling_stats);
@@ -3185,15 +3185,15 @@ mod tests {
         
         // Verify task is completed
         {
-            let exec = executor_arc.lock().unwrap());
-            let status = exec.get_task_status(task_id).unwrap());
+            let exec = executor_arc.lock().unwrap();
+            let status = exec.get_task_status(task_id).unwrap();
             assert_eq!(status.state, AsyncTaskState::Completed;
         }
     }
 
     #[test]
     fn test_polling_statistics() {
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(10000;
         
         // Spawn multiple tasks
@@ -3203,11 +3203,11 @@ mod tests {
                 1000,
                 Priority::Normal,
                 async { Ok(()) },
-            ).unwrap());
+            ).unwrap();
         }
         
         // Poll all tasks
-        let polled = executor.poll_tasks().unwrap());
+        let polled = executor.poll_tasks().unwrap();
         assert_eq!(polled, 3;
         
         let stats = executor.get_polling_stats);

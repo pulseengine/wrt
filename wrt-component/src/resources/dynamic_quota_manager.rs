@@ -664,7 +664,7 @@ impl DynamicQuotaManager {
     fn allocate_hierarchical(&mut self, node_id: u32, amount: u64, timestamp: u64) -> WrtResult<bool> {
         let mut current_id = Some(node_id;
         #[cfg(feature = "std")]
-        let mut allocated_nodes = Vec::new);
+        let mut allocated_nodes = Vec::new());
         #[cfg(not(feature = "std"))]
         let mut allocated_nodes = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -852,7 +852,7 @@ mod tests {
 
     #[test]
     fn test_quota_manager_creation() {
-        let mut manager = DynamicQuotaManager::new().unwrap());
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         // Create global quota
         let global_id = manager.create_quota_node(
@@ -861,7 +861,7 @@ mod tests {
             None,
             ResourceType::Memory,
             16 * 1024 * 1024, // 16MB
-        ).unwrap());
+        ).unwrap();
         
         // Create component quota
         let comp_id = manager.create_quota_node(
@@ -870,7 +870,7 @@ mod tests {
             Some(global_id),
             ResourceType::Memory,
             4 * 1024 * 1024, // 4MB
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(global_id, 1);
         assert_eq!(comp_id, 2;
@@ -878,7 +878,7 @@ mod tests {
 
     #[test]
     fn test_quota_request() {
-        let mut manager = DynamicQuotaManager::new().unwrap());
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         // Create quota hierarchy
         let global_id = manager.create_quota_node(
@@ -887,7 +887,7 @@ mod tests {
             None,
             ResourceType::Memory,
             16 * 1024 * 1024,
-        ).unwrap());
+        ).unwrap();
         
         let comp_id = manager.create_quota_node(
             QuotaNodeType::Component,
@@ -895,7 +895,7 @@ mod tests {
             Some(global_id),
             ResourceType::Memory,
             4 * 1024 * 1024,
-        ).unwrap());
+        ).unwrap();
         
         // Request allocation
         let request = QuotaRequest {
@@ -907,19 +907,19 @@ mod tests {
             priority: 0,
         };
         
-        let response = manager.request_quota(&request).unwrap());
+        let response = manager.request_quota(&request).unwrap();
         assert!(response.granted);
         assert_eq!(response.amount_granted, 2 * 1024 * 1024;
         assert!(response.reservation_id.is_some();
         
         // Check quota status
-        let node = manager.get_quota_status(comp_id).unwrap());
+        let node = manager.get_quota_status(comp_id).unwrap();
         assert_eq!(node.current_usage, 2 * 1024 * 1024;
     }
 
     #[test]
     fn test_hierarchical_quota_enforcement() {
-        let mut manager = DynamicQuotaManager::new().unwrap());
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         // Create hierarchy with smaller parent quota
         let global_id = manager.create_quota_node(
@@ -928,7 +928,7 @@ mod tests {
             None,
             ResourceType::Memory,
             2 * 1024 * 1024, // 2MB global
-        ).unwrap());
+        ).unwrap();
         
         let comp_id = manager.create_quota_node(
             QuotaNodeType::Component,
@@ -936,7 +936,7 @@ mod tests {
             Some(global_id),
             ResourceType::Memory,
             4 * 1024 * 1024, // 4MB component (larger than parent)
-        ).unwrap());
+        ).unwrap();
         
         // Request should be limited by parent quota
         let request = QuotaRequest {
@@ -948,13 +948,13 @@ mod tests {
             priority: 0,
         };
         
-        let response = manager.request_quota(&request).unwrap());
+        let response = manager.request_quota(&request).unwrap();
         assert!(!response.granted)); // Should be denied due to global quota
     }
 
     #[test]
     fn test_quota_release() {
-        let mut manager = DynamicQuotaManager::new().unwrap());
+        let mut manager = DynamicQuotaManager::new().unwrap();
         
         let comp_id = manager.create_quota_node(
             QuotaNodeType::Component,
@@ -962,7 +962,7 @@ mod tests {
             None,
             ResourceType::Memory,
             4 * 1024 * 1024,
-        ).unwrap());
+        ).unwrap();
         
         // Allocate
         let request = QuotaRequest {
@@ -974,18 +974,18 @@ mod tests {
             priority: 0,
         };
         
-        let response = manager.request_quota(&request).unwrap());
-        let reservation_id = response.reservation_id.unwrap());
+        let response = manager.request_quota(&request).unwrap();
+        let reservation_id = response.reservation_id.unwrap();
         
         // Check allocation
-        let node = manager.get_quota_status(comp_id).unwrap());
+        let node = manager.get_quota_status(comp_id).unwrap();
         assert_eq!(node.current_usage, 2 * 1024 * 1024;
         
         // Release
-        manager.release_quota(reservation_id).unwrap());
+        manager.release_quota(reservation_id).unwrap();
         
         // Check deallocation
-        let node = manager.get_quota_status(comp_id).unwrap());
+        let node = manager.get_quota_status(comp_id).unwrap();
         assert_eq!(node.current_usage, 0);
     }
 }

@@ -326,7 +326,7 @@ impl TaskRegistry {
         #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, we need to collect keys first
-            let mut finished_keys = BoundedVec::<TaskId, MAX_TASKS>::new);
+            let mut finished_keys = BoundedVec::<TaskId, MAX_TASKS>::new();
             for (id, task) in self.tasks.iter() {
                 if task.status.is_finished() {
                     let _ = finished_keys.push(*id);
@@ -354,7 +354,7 @@ impl TaskBuiltins {
         let mut registry_ref = TASK_REGISTRY.try_borrow_mut()
             .map_err(|_| Error::runtime_execution_error("Error occurred"
             ))?;
-        *registry_ref = Some(TaskRegistry::new);
+        *registry_ref = Some(TaskRegistry::new();
         Ok(())
     }
 
@@ -393,7 +393,7 @@ impl TaskBuiltins {
     /// `task.start` canonical built-in
     /// Creates and starts a new task
     pub fn task_start() -> Result<TaskId> {
-        let task = Task::new);
+        let task = Task::new();
         Self::with_registry_mut(|registry| {
             let id = registry.register_task(task)?;
             // Start the task immediately
@@ -537,7 +537,7 @@ pub mod task_helpers {
         F: FnOnce(CancellationToken) -> Result<R>,
         R: Into<TaskReturn>,
     {
-        let token = CancellationToken::new);
+        let token = CancellationToken::new();
         let task_id = TaskBuiltins::task_start()?;
         
         // Execute within cancellation scope
@@ -558,7 +558,7 @@ pub mod task_helpers {
     /// Wait for multiple tasks to complete
     #[cfg(feature = "std")]
     pub fn wait_for_tasks(task_ids: Vec<TaskId>) -> Result<Vec<Option<TaskReturn>>> {
-        let mut results = Vec::new);
+        let mut results = Vec::new());
         for task_id in task_ids {
             let result = TaskBuiltins::task_wait(task_id)?;
             results.push(result);
@@ -630,8 +630,8 @@ mod tests {
 
     #[test]
     fn test_task_id_generation() {
-        let id1 = TaskId::new);
-        let id2 = TaskId::new);
+        let id1 = TaskId::new();
+        let id2 = TaskId::new();
         assert_ne!(id1, id2;
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
@@ -665,7 +665,7 @@ mod tests {
 
     #[test]
     fn test_task_lifecycle() {
-        let mut task = Task::new);
+        let mut task = Task::new();
         assert_eq!(task.status, TaskStatus::Pending;
         assert!(task.return_value.is_none();
 
@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn test_task_cancellation() {
-        let mut task = Task::new);
+        let mut task = Task::new();
         assert!(!task.is_cancelled();
 
         task.start);
@@ -691,12 +691,12 @@ mod tests {
 
     #[test]
     fn test_task_registry_operations() {
-        let mut registry = TaskRegistry::new);
+        let mut registry = TaskRegistry::new();
         assert_eq!(registry.task_count(), 0);
 
-        let task = Task::new);
+        let task = Task::new();
         let task_id = task.id;
-        registry.register_task(task).unwrap());
+        registry.register_task(task).unwrap();
         assert_eq!(registry.task_count(), 1);
 
         let retrieved_task = registry.get_task(task_id;
@@ -711,40 +711,40 @@ mod tests {
     #[test] 
     fn test_task_builtins() {
         // Initialize the registry
-        TaskBuiltins::initialize().unwrap());
+        TaskBuiltins::initialize().unwrap();
 
         // Test task creation and status
-        let task_id = TaskBuiltins::task_start().unwrap());
-        let status = TaskBuiltins::task_status(task_id).unwrap());
+        let task_id = TaskBuiltins::task_start().unwrap();
+        let status = TaskBuiltins::task_status(task_id).unwrap();
         assert_eq!(status, TaskStatus::Running;
 
         // Test task completion
         let return_value = TaskReturn::from_component_value(ComponentValue::I32(42;
-        TaskBuiltins::task_return(task_id, return_value).unwrap());
+        TaskBuiltins::task_return(task_id, return_value).unwrap();
         
-        let final_status = TaskBuiltins::task_status(task_id).unwrap());
+        let final_status = TaskBuiltins::task_status(task_id).unwrap();
         assert_eq!(final_status, TaskStatus::Completed;
 
         // Test task wait
-        let result = TaskBuiltins::task_wait(task_id).unwrap());
+        let result = TaskBuiltins::task_wait(task_id).unwrap();
         assert!(result.is_some();
     }
 
     #[test]
     fn test_task_metadata() {
-        TaskBuiltins::initialize().unwrap());
-        let task_id = TaskBuiltins::task_start().unwrap());
+        TaskBuiltins::initialize().unwrap();
+        let task_id = TaskBuiltins::task_start().unwrap();
 
         // Set metadata
-        TaskBuiltins::set_task_metadata(task_id, "test_key", ComponentValue::Bool(true)).unwrap());
+        TaskBuiltins::set_task_metadata(task_id, "test_key", ComponentValue::Bool(true)).unwrap();
 
         // Get metadata
-        let value = TaskBuiltins::get_task_metadata(task_id, "test_key").unwrap());
+        let value = TaskBuiltins::get_task_metadata(task_id, "test_key").unwrap();
         assert!(value.is_some();
         assert_eq!(value.unwrap(), ComponentValue::Bool(true;
 
         // Get non-existent metadata
-        let missing = TaskBuiltins::get_task_metadata(task_id, "missing_key").unwrap());
+        let missing = TaskBuiltins::get_task_metadata(task_id, "missing_key").unwrap();
         assert!(missing.is_none();
     }
 

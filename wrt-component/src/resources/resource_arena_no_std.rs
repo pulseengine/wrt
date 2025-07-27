@@ -99,7 +99,7 @@ impl<'a> ResourceArena<'a> {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string();
+                res_guard.name = Some(name.to_string());
             }
         }
 
@@ -247,30 +247,30 @@ mod tests {
     #[test]
     fn test_create_and_release() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap());
+        let table = Mutex::new(ResourceTable::new().unwrap();
 
         // Create an arena
-        let mut arena = ResourceArena::new(&table).unwrap());
+        let mut arena = ResourceArena::new(&table).unwrap();
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Box::new("test1".to_string())).unwrap());
-        let handle2 = arena.create_resource(2, Box::new(42)).unwrap());
+        let handle1 = arena.create_resource(1, Box::new("test1".to_string())).unwrap();
+        let handle2 = arena.create_resource(2, Box::new(42)).unwrap();
 
         // Verify they exist
-        assert!(arena.has_resource(ResourceId(handle1)).unwrap());
-        assert!(arena.has_resource(ResourceId(handle2)).unwrap());
+        assert!(arena.has_resource(ResourceId(handle1)).unwrap();
+        assert!(arena.has_resource(ResourceId(handle2)).unwrap();
 
         // Verify count
         assert_eq!(arena.resource_count(), 2;
 
         // Release all
-        arena.release_all().unwrap());
+        arena.release_all().unwrap();
 
         // Verify resources are gone
         assert_eq!(arena.resource_count(), 0);
 
         // Verify they no longer exist in the table
-        let locked_table = table.lock().unwrap());
+        let locked_table = table.lock().unwrap();
         assert!(locked_table.get_resource(handle1).is_err();
         assert!(locked_table.get_resource(handle2).is_err();
     }
@@ -278,23 +278,23 @@ mod tests {
     #[test]
     fn test_drop_specific_resource() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap());
+        let table = Mutex::new(ResourceTable::new().unwrap();
 
         // Create an arena
-        let mut arena = ResourceArena::new(&table).unwrap());
+        let mut arena = ResourceArena::new(&table).unwrap();
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Box::new("test1".to_string())).unwrap());
-        let handle2 = arena.create_resource(2, Box::new(42)).unwrap());
+        let handle1 = arena.create_resource(1, Box::new("test1".to_string())).unwrap();
+        let handle2 = arena.create_resource(2, Box::new(42)).unwrap();
 
         // Drop one resource
-        arena.drop_resource(handle1).unwrap());
+        arena.drop_resource(handle1).unwrap();
 
         // Verify it's gone
-        assert!(!arena.has_resource(ResourceId(handle1)).unwrap());
+        assert!(!arena.has_resource(ResourceId(handle1)).unwrap();
 
         // But the other one should still exist
-        assert!(arena.has_resource(ResourceId(handle2)).unwrap());
+        assert!(arena.has_resource(ResourceId(handle2)).unwrap();
 
         // Verify count
         assert_eq!(arena.resource_count(), 1);
@@ -303,40 +303,40 @@ mod tests {
     #[test]
     fn test_auto_release_on_drop() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap());
+        let table = Mutex::new(ResourceTable::new().unwrap();
 
         // Create resources in a scope
         {
-            let mut arena = ResourceArena::new(&table).unwrap());
-            let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap());
+            let mut arena = ResourceArena::new(&table).unwrap();
+            let handle = arena.create_resource(1, Box::new("test".to_string())).unwrap();
 
             // Verify it exists
-            assert!(arena.has_resource(ResourceId(handle)).unwrap());
+            assert!(arena.has_resource(ResourceId(handle)).unwrap();
 
             // Arena will be dropped here
         }
 
         // Verify resource no longer exists in the table
-        let locked_table = table.lock().unwrap());
+        let locked_table = table.lock().unwrap();
         assert_eq!(locked_table.resource_count(), 0);
     }
 
     #[test]
     fn test_named_resource() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap());
+        let table = Mutex::new(ResourceTable::new().unwrap();
 
         // Create an arena with name
-        let mut arena = ResourceArena::new_with_name(&table, "test-arena").unwrap());
+        let mut arena = ResourceArena::new_with_name(&table, "test-arena").unwrap();
 
         // Create a named resource
-        let handle = arena.create_named_resource(1, Box::new(42), "answer").unwrap());
+        let handle = arena.create_named_resource(1, Box::new(42), "answer").unwrap();
 
         // Get the resource and check the name
-        let resource = arena.get_resource(handle).unwrap());
-        let guard = resource.lock().unwrap());
+        let resource = arena.get_resource(handle).unwrap();
+        let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string();
+        assert_eq!(guard.name, Some("answer".to_string());
 
         // Check arena name
         assert_eq!(arena.name(), Some("test-arena";
@@ -345,14 +345,14 @@ mod tests {
     #[test]
     fn test_resource_capacity() {
         // Create a resource table
-        let table = Mutex::new(ResourceTable::new().unwrap());
+        let table = Mutex::new(ResourceTable::new().unwrap();
 
         // Create an arena
-        let mut arena = ResourceArena::new(&table).unwrap());
+        let mut arena = ResourceArena::new(&table).unwrap();
 
         // Create MAX_ARENA_RESOURCES resources
         for i in 0..MAX_ARENA_RESOURCES {
-            let _ = arena.create_resource(1, Box::new(i)).unwrap());
+            let _ = arena.create_resource(1, Box::new(i)).unwrap();
         }
 
         // Verify count

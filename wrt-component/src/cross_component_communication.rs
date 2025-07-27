@@ -29,7 +29,7 @@
 //! use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
 //! 
 //! // Create communication strategy
-//! let comm_strategy = ComponentCommunicationStrategy::new);
+//! let comm_strategy = ComponentCommunicationStrategy::new();
 //! 
 //! // Add to interceptor
 //! let mut interceptor = LinkInterceptor::new("component_comm";
@@ -345,7 +345,7 @@ impl ComponentCommunicationStrategy {
         // Convert to ComponentValue format
         #[cfg(feature = "safety-critical")]
         let component_values: Result<WrtVec<ComponentValue, {CrateId::Component as u8}, 256>> = {
-            let mut vec = WrtVec::new);
+            let mut vec = WrtVec::new());
             for val in args.iter() {
                 let converted = self.convert_value_to_component_value(val)?;
                 vec.push(converted).map_err(|_| {
@@ -357,7 +357,7 @@ impl ComponentCommunicationStrategy {
         #[cfg(not(feature = "safety-critical"))]
         let component_values: Result<Vec<ComponentValue>> = args.iter()
             .map(|val| self.convert_value_to_component_value(val))
-            .collect();
+            .collect());
         
         let component_values = component_values?;
         
@@ -384,9 +384,9 @@ impl ComponentCommunicationStrategy {
         // For now, serialize as simple byte representation
         // In a full implementation, this would use proper canonical ABI serialization
         #[cfg(feature = "safety-critical")]
-        let mut marshaled_data: WrtVec<u8, {CrateId::Component as u8}, 8192> = WrtVec::new);
+        let mut marshaled_data: WrtVec<u8, {CrateId::Component as u8}, 8192> = WrtVec::new());
         #[cfg(not(feature = "safety-critical"))]
-        let mut marshaled_data = Vec::new);
+        let mut marshaled_data = Vec::new());
         for value in &component_values {
             let value_bytes = self.serialize_component_value(value)?;
             #[cfg(feature = "safety-critical")]
@@ -490,14 +490,14 @@ impl ComponentCommunicationStrategy {
             ComponentValue::F32(v) => Ok(v.to_le_bytes().to_vec()),
             ComponentValue::F64(v) => Ok(v.to_le_bytes().to_vec()),
             ComponentValue::String(s) => {
-                let mut bytes = Vec::new);
+                let mut bytes = Vec::new());
                 bytes.extend((s.len() as u32).to_le_bytes);
                 bytes.extend(s.as_bytes();
                 Ok(bytes)
             }
             #[cfg(feature = "safety-critical")]
             _ => {
-                let mut vec = WrtVec::new);
+                let mut vec = WrtVec::new());
                 vec.push(0).map_err(|_| {
                     Error::runtime_execution_error("Unable to serialize component value")
                 })?;
@@ -522,7 +522,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     ) -> Result<Vec<wrt_foundation::values::Value>> {
         // Check if this is a cross-component call
         if let Some(mut routing_info) = self.parse_component_call(function) {
-            routing_info.source_component = source.to_string();
+            routing_info.source_component = source.to_string());
             
             // Validate security policy
             self.validate_security_policy(&routing_info)?;
@@ -734,7 +734,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     ) -> Result<()> {
         // Simplified validation for no_std
         if let Some(mut routing_info) = self.parse_component_call(function) {
-            routing_info.source_component = source.to_string();
+            routing_info.source_component = source.to_string());
             self.validate_security_policy(&routing_info)?;
         }
         Ok(())
@@ -840,26 +840,26 @@ mod tests {
 
     #[test]
     fn test_communication_strategy_creation() {
-        let strategy = ComponentCommunicationStrategy::new);
+        let strategy = ComponentCommunicationStrategy::new();
         assert_eq!(strategy.stats.function_calls_intercepted, 0);
         assert!(strategy.config.enable_security);
     }
 
     #[test]
     fn test_component_call_parsing() {
-        let strategy = ComponentCommunicationStrategy::new);
+        let strategy = ComponentCommunicationStrategy::new();
         
         let routing_info = strategy.parse_component_call("math_component::add";
         assert!(routing_info.is_some();
         
-        let info = routing_info.unwrap());
+        let info = routing_info.unwrap();
         assert_eq!(info.target_component, "math_component";
         assert_eq!(info.function_name, "add";
     }
 
     #[test]
     fn test_security_policy_validation() {
-        let mut strategy = ComponentCommunicationStrategy::new);
+        let mut strategy = ComponentCommunicationStrategy::new();
         
         let policy = ComponentSecurityPolicy {
             allowed_targets: vec!["math_component".to_string()],
@@ -884,7 +884,7 @@ mod tests {
 
     #[test]
     fn test_parameter_marshaling() {
-        let strategy = ComponentCommunicationStrategy::new);
+        let strategy = ComponentCommunicationStrategy::new();
         
         let args = vec![
             wrt_foundation::values::Value::I32(42),
@@ -894,14 +894,14 @@ mod tests {
         let result = strategy.marshal_call_parameters(&args;
         assert!(result.is_ok());
         
-        let marshaling_result = result.unwrap());
+        let marshaling_result = result.unwrap();
         assert!(marshaling_result.success);
         assert_eq!(marshaling_result.metadata.original_count, 2;
     }
 
     #[test]
     fn test_component_value_conversion() {
-        let strategy = ComponentCommunicationStrategy::new);
+        let strategy = ComponentCommunicationStrategy::new();
         
         let value = wrt_foundation::values::Value::I32(123;
         let result = strategy.convert_value_to_component_value(&value;
@@ -915,7 +915,7 @@ mod tests {
 
     #[test]
     fn test_marshaled_size_calculation() {
-        let strategy = ComponentCommunicationStrategy::new);
+        let strategy = ComponentCommunicationStrategy::new();
         
         let values = vec![
             ComponentValue::S32(42),
@@ -930,11 +930,11 @@ mod tests {
 
     #[test]
     fn test_instance_registration() {
-        let mut strategy = ComponentCommunicationStrategy::new);
+        let mut strategy = ComponentCommunicationStrategy::new();
         
-        strategy.register_instance(1, "math_component".to_string()).unwrap());
+        strategy.register_instance(1, "math_component".to_string()).unwrap();
         assert!(strategy.instance_registry.contains_key(&1);
-        assert_eq!(strategy.instance_registry.get(&1), Some(&"math_component".to_string();
+        assert_eq!(strategy.instance_registry.get(&1), Some(&"math_component".to_string());
     }
 
     #[test]
@@ -956,8 +956,8 @@ mod tests {
     #[test]
     fn test_security_policy_defaults() {
         let policy = ComponentSecurityPolicy::default());
-        assert!(policy.allowed_targets.is_empty();
-        assert!(policy.allowed_functions.is_empty();
+        assert!(policy.allowed_targets.is_empty());
+        assert!(policy.allowed_functions.is_empty());
         assert!(!policy.allow_resource_transfer);
         assert_eq!(policy.max_call_depth, 16;
     }

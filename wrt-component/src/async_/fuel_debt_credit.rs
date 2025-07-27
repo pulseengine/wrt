@@ -278,18 +278,18 @@ mod tests {
         let system = FuelDebtCreditSystem::default());
         let task_id = TaskId::new(1;
         
-        system.register_task(task_id).unwrap());
+        system.register_task(task_id).unwrap();
         
         // Task should have default credit
         assert_eq!(system.get_task_credit(task_id).unwrap(), DEFAULT_CREDIT;
         assert_eq!(system.get_task_debt(task_id).unwrap(), 0);
         
         // Consume some fuel
-        assert!(system.consume_fuel(task_id, 500).unwrap());
+        assert!(system.consume_fuel(task_id, 500).unwrap();
         assert_eq!(system.get_task_credit(task_id).unwrap(), DEFAULT_CREDIT - 500;
         
         // Go into debt
-        assert!(system.consume_fuel(task_id, 1000).unwrap());
+        assert!(system.consume_fuel(task_id, 1000).unwrap();
         assert_eq!(system.get_task_credit(task_id).unwrap(), 0);
         assert_eq!(system.get_task_debt(task_id).unwrap(), 500;
     }
@@ -299,16 +299,16 @@ mod tests {
         let system = FuelDebtCreditSystem::new(
             DebtPolicy::Strict,
             CreditRestriction::Capped,
-        ).unwrap());
+        ).unwrap();
         let task_id = TaskId::new(1;
         
-        system.register_task(task_id).unwrap());
+        system.register_task(task_id).unwrap();
         
         // Exhaust credit first
-        assert!(system.consume_fuel(task_id, DEFAULT_CREDIT).unwrap());
+        assert!(system.consume_fuel(task_id, DEFAULT_CREDIT).unwrap();
         
         // Try to exceed max debt
-        assert!(!system.consume_fuel(task_id, MAX_TASK_DEBT + 1).unwrap());
+        assert!(!system.consume_fuel(task_id, MAX_TASK_DEBT + 1).unwrap();
     }
 
     #[test]
@@ -316,17 +316,17 @@ mod tests {
         let system = FuelDebtCreditSystem::new(
             DebtPolicy::Forgiveness { rate: 100 },
             CreditRestriction::None,
-        ).unwrap());
+        ).unwrap();
         let task_id = TaskId::new(1;
         
-        system.register_task(task_id).unwrap());
+        system.register_task(task_id).unwrap();
         
         // Go into debt
-        system.consume_fuel(task_id, DEFAULT_CREDIT + 500).unwrap());
+        system.consume_fuel(task_id, DEFAULT_CREDIT + 500).unwrap();
         assert_eq!(system.get_task_debt(task_id).unwrap(), 500;
         
         // Process forgiveness
-        let forgiven = system.process_debt_forgiveness().unwrap());
+        let forgiven = system.process_debt_forgiveness().unwrap();
         assert_eq!(forgiven, 100;
         assert_eq!(system.get_task_debt(task_id).unwrap(), 400;
     }

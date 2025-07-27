@@ -251,7 +251,7 @@ impl AgentRegistry {
         let agent_id = AgentId(self.next_agent_id;
         self.next_agent_id += 1;
 
-        let agent = ComponentExecutionEngine::new);
+        let agent = ComponentExecutionEngine::new();
 
         #[cfg(feature = "std")]
         {
@@ -279,7 +279,7 @@ impl AgentRegistry {
         let agent_id = AgentId(self.next_agent_id;
         self.next_agent_id += 1;
 
-        let agent = AsyncExecutionEngine::new);
+        let agent = AsyncExecutionEngine::new();
 
         #[cfg(feature = "std")]
         {
@@ -546,7 +546,7 @@ impl AgentRegistry {
         
         // Get list of legacy agent IDs to avoid borrow conflicts
         #[cfg(feature = "std")]
-        let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect();
+        let legacy_ids: Vec<AgentId> = self.legacy_agents.keys().copied().collect());
         #[cfg(not(feature = "std"))]
         let legacy_ids: BoundedVec<AgentId, MAX_AGENTS, crate::bounded_component_infra::ComponentProvider> = {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn test_registry_creation() {
-        let registry = AgentRegistry::new().unwrap());
+        let registry = AgentRegistry::new().unwrap();
         assert_eq!(registry.stats.active_agents, 0);
         assert_eq!(registry.stats.unified_agents_created, 0);
         assert_eq!(registry.stats.legacy_agents_created, 0);
@@ -688,10 +688,10 @@ mod tests {
 
     #[test]
     fn test_unified_agent_creation() {
-        let mut registry = AgentRegistry::new().unwrap());
+        let mut registry = AgentRegistry::new().unwrap();
         let config = AgentConfiguration::default());
         
-        let agent_id = registry.create_unified_agent(config).unwrap());
+        let agent_id = registry.create_unified_agent(config).unwrap();
         assert_eq!(agent_id.0, 1);
         assert_eq!(registry.stats.unified_agents_created, 1);
         assert_eq!(registry.stats.active_agents, 1);
@@ -699,9 +699,9 @@ mod tests {
 
     #[test]
     fn test_legacy_agent_creation() {
-        let mut registry = AgentRegistry::new().unwrap());
+        let mut registry = AgentRegistry::new().unwrap();
         
-        let agent_id = registry.create_legacy_component_agent().unwrap());
+        let agent_id = registry.create_legacy_component_agent().unwrap();
         assert_eq!(agent_id.0, 1);
         assert_eq!(registry.stats.legacy_agents_created, 1);
         assert_eq!(registry.stats.active_agents, 1);
@@ -712,26 +712,26 @@ mod tests {
 
     #[test]
     fn test_agent_migration() {
-        let mut registry = AgentRegistry::new().unwrap());
+        let mut registry = AgentRegistry::new().unwrap();
         
         // Create legacy agent
-        let agent_id = registry.create_legacy_component_agent().unwrap());
+        let agent_id = registry.create_legacy_component_agent().unwrap();
         assert!(registry.is_pending_migration(agent_id);
         
         // Migrate to unified
-        registry.migrate_agent(agent_id).unwrap());
+        registry.migrate_agent(agent_id).unwrap();
         assert!(!registry.is_pending_migration(agent_id);
         assert_eq!(registry.migration_status.completed_migrations, 1);
         
         // Should now be a unified agent
-        let info = registry.get_agent_info(agent_id).unwrap());
+        let info = registry.get_agent_info(agent_id).unwrap();
         assert_eq!(info.agent_type, AgentType::Unified;
         assert_eq!(info.migration_status, AgentMigrationStatus::NotRequired;
     }
 
     #[test]
     fn test_agent_creation_options() {
-        let mut registry = AgentRegistry::new().unwrap());
+        let mut registry = AgentRegistry::new().unwrap();
         
         let options = AgentCreationOptions {
             agent_type: PreferredAgentType::Unified,
@@ -739,17 +739,17 @@ mod tests {
             allow_legacy_fallback: false,
         };
         
-        let agent_id = registry.create_agent(options).unwrap());
-        let info = registry.get_agent_info(agent_id).unwrap());
+        let agent_id = registry.create_agent(options).unwrap();
+        let info = registry.get_agent_info(agent_id).unwrap();
         assert_eq!(info.agent_type, AgentType::Unified;
     }
 
     #[test]
     fn test_function_execution() {
-        let mut registry = AgentRegistry::new().unwrap());
+        let mut registry = AgentRegistry::new().unwrap();
         let config = AgentConfiguration::default());
         
-        let agent_id = registry.create_unified_agent(config).unwrap());
+        let agent_id = registry.create_unified_agent(config).unwrap();
         let args = [Value::U32(42), Value::Bool(true)];
         
         let result = registry.call_function(agent_id, 1, 2, &args;
@@ -758,13 +758,13 @@ mod tests {
 
     #[test]
     fn test_agent_removal() {
-        let mut registry = AgentRegistry::new().unwrap());
+        let mut registry = AgentRegistry::new().unwrap();
         let config = AgentConfiguration::default());
         
-        let agent_id = registry.create_unified_agent(config).unwrap());
+        let agent_id = registry.create_unified_agent(config).unwrap();
         assert_eq!(registry.stats.active_agents, 1);
         
-        registry.remove_agent(agent_id).unwrap());
+        registry.remove_agent(agent_id).unwrap();
         assert_eq!(registry.stats.active_agents, 0);
         
         let info = registry.get_agent_info(agent_id;
@@ -870,4 +870,4 @@ impl Eq for MigrationWarning {}
 impl_basic_traits!(AgentId, AgentId::default());
 #[cfg(not(feature = "std"))]
 impl_basic_traits!(LegacyAgentType, LegacyAgentType::default());
-impl_basic_traits!(MigrationWarning, MigrationWarning::new().unwrap());
+impl_basic_traits!(MigrationWarning, MigrationWarning::new().unwrap();

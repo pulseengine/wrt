@@ -27,7 +27,7 @@ impl Namespace {
             return Self { parts: Vec::new() };
         }
 
-        let parts = s.split('.').map(ToString::to_string).collect();
+        let parts = s.split('.').map(ToString::to_string).collect());
 
         Self { parts }
     }
@@ -58,7 +58,7 @@ impl Namespace {
 
         for part in other.split('.') {
             if !part.is_empty() {
-                new_parts.push(part.to_string();
+                new_parts.push(part.to_string());
             }
         }
 
@@ -94,7 +94,7 @@ mod tests {
         assert_eq!(ns.to_string(), "wasi.http";
 
         let empty = Namespace::from_string("";
-        assert!(empty.is_empty();
+        assert!(empty.is_empty());
         assert_eq!(empty.to_string(), "";
 
         let from_parts = Namespace::from_parts(vec![String::from("wasi"), String::from("io")];

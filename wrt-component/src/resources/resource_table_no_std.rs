@@ -246,6 +246,6 @@ impl Default for ResourceTable {
 
 // Apply traits to the main types
 impl_basic_traits!(Resource, Resource::new(0, 0);
-impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap());
+impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap();
 impl_basic_traits!(MemoryStrategy, MemoryStrategy::default());
 impl_basic_traits!(VerificationLevel, VerificationLevel::default());

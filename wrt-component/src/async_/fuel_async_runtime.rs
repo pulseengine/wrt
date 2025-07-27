@@ -322,7 +322,7 @@ impl FuelAsyncRuntime {
     
     /// Collect results from completed tasks
     fn collect_completed_tasks(&mut self) -> Result<()> {
-        let mut completed_tasks = Vec::new);
+        let mut completed_tasks = Vec::new());
         
         // Get completed tasks from executor
         {
@@ -563,7 +563,7 @@ mod tests {
         let runtime = FuelAsyncRuntime::new(config;
         assert!(runtime.is_ok());
         
-        let runtime = runtime.unwrap());
+        let runtime = runtime.unwrap();
         assert_eq!(runtime.state(), RuntimeState::Initializing;
         assert_eq!(runtime.stats().total_spawned, 0);
     }
@@ -581,17 +581,17 @@ mod tests {
         let runtime = FuelAsyncRuntime::new(config;
         assert!(runtime.is_ok());
         
-        let runtime = runtime.unwrap());
+        let runtime = runtime.unwrap();
         assert_eq!(runtime.global_fuel_budget, 500_000;
         assert_eq!(runtime.verification_level, VerificationLevel::Full;
     }
     
     #[test]
     fn test_simple_executor() {
-        let executor = SimpleAsyncExecutor::new);
+        let executor = SimpleAsyncExecutor::new();
         assert!(executor.is_ok());
         
-        let executor = executor.unwrap());
+        let executor = executor.unwrap();
         assert_eq!(executor.runtime.state(), RuntimeState::Initializing;
     }
 }

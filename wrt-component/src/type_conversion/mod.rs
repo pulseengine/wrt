@@ -93,7 +93,7 @@ mod tests {
         
         // Use registry conversion
         let registry = TypeConversionRegistry::with_defaults);
-        let types_val_via_registry = registry.convert::<FormatValType, TypesValType>(&format_val).unwrap());
+        let types_val_via_registry = registry.convert::<FormatValType, TypesValType>(&format_val).unwrap();
         
         // They should produce the same result
         assert_eq!(types_val_via_bidirectional, types_val_via_registry;

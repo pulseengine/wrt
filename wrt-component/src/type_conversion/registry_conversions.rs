@@ -156,22 +156,22 @@ mod tests {
 
     #[test]
     fn test_primitive_valtype_conversions() {
-        let mut registry = TypeConversionRegistry::new);
+        let mut registry = TypeConversionRegistry::new();
         register_valtype_conversions(&mut registry;
 
         // Test Format to Types ValType
         let format_val_type = FormatValType::S32;
-        let types_val_type = registry.convert::<FormatValType, ValType>(&format_val_type).unwrap());
+        let types_val_type = registry.convert::<FormatValType, ValType>(&format_val_type).unwrap();
         assert!(matches!(types_val_type, ValType::S32);
 
         // Test Types to Format ValType
         let types_val_type = ValType::Bool;
-        let format_val_type = registry.convert::<ValType, FormatValType>(&types_val_type).unwrap());
+        let format_val_type = registry.convert::<ValType, FormatValType>(&types_val_type).unwrap();
         assert!(matches!(format_val_type, FormatValType::Bool);
 
         // Test ValueType to FormatValType
         let value_type = ValueType::I32;
-        let format_val_type = registry.convert::<ValueType, FormatValType>(&value_type).unwrap());
+        let format_val_type = registry.convert::<ValueType, FormatValType>(&value_type).unwrap();
         assert!(matches!(format_val_type, FormatValType::S32);
     }
 }

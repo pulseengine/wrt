@@ -445,7 +445,7 @@ impl TaskRegistry {
 
 /// ASIL-D safe global task registry
 use std::sync::{Mutex, OnceLock};
-static GLOBAL_TASK_REGISTRY: OnceLock<Mutex<TaskRegistry>> = OnceLock::new);
+static GLOBAL_TASK_REGISTRY: OnceLock<Mutex<TaskRegistry>> = OnceLock::new();
 
 /// Get the global task registry (ASIL-D safe)
 fn get_task_registry() -> Result<&'static Mutex<TaskRegistry>, Error> {
@@ -686,32 +686,32 @@ mod tests {
 
     #[test]
     fn test_task_registry_creation() {
-        let mut registry = TaskRegistry::new);
+        let mut registry = TaskRegistry::new();
         assert_eq!(registry.next_task_id, 1);
         assert_eq!(registry.next_subtask_id, 1);
     }
 
     #[test]
     fn test_task_registration() {
-        let mut registry = TaskRegistry::new);
-        let handle = registry.register_task(None, None).unwrap());
+        let mut registry = TaskRegistry::new();
+        let handle = registry.register_task(None, None).unwrap();
         assert_eq!(handle.0, 1);
         assert_eq!(registry.next_task_id, 2;
     }
 
     #[test]
     fn test_subtask_registration() {
-        let mut registry = TaskRegistry::new);
-        let parent_handle = registry.register_task(None, None).unwrap());
-        let subtask_handle = registry.register_subtask(parent_handle, None, None).unwrap());
+        let mut registry = TaskRegistry::new();
+        let parent_handle = registry.register_task(None, None).unwrap();
+        let subtask_handle = registry.register_subtask(parent_handle, None, None).unwrap();
         assert_eq!(subtask_handle.0, 1);
         assert_eq!(registry.next_subtask_id, 2;
     }
 
     #[test]
     fn test_task_cancellation() {
-        let mut registry = TaskRegistry::new);
-        let handle = registry.register_task(None, None).unwrap());
+        let mut registry = TaskRegistry::new();
+        let handle = registry.register_task(None, None).unwrap();
         
         let result = registry.cancel_task(handle;
         assert_eq!(result, CancelResult::Cancelled;
@@ -723,9 +723,9 @@ mod tests {
 
     #[test]
     fn test_subtask_cancellation() {
-        let mut registry = TaskRegistry::new);
-        let parent_handle = registry.register_task(None, None).unwrap());
-        let subtask_handle = registry.register_subtask(parent_handle, None, None).unwrap());
+        let mut registry = TaskRegistry::new();
+        let parent_handle = registry.register_task(None, None).unwrap();
+        let subtask_handle = registry.register_subtask(parent_handle, None, None).unwrap();
         
         let result = registry.cancel_subtask(subtask_handle;
         assert_eq!(result, CancelResult::Cancelled;
@@ -737,10 +737,10 @@ mod tests {
 
     #[test]
     fn test_task_completion() {
-        let mut registry = TaskRegistry::new);
-        let handle = registry.register_task(None, None).unwrap());
+        let mut registry = TaskRegistry::new();
+        let handle = registry.register_task(None, None).unwrap();
         
-        registry.complete_task(handle).unwrap());
+        registry.complete_task(handle).unwrap();
         
         let result = registry.cancel_task(handle;
         assert_eq!(result, CancelResult::AlreadyCompleted;
@@ -748,24 +748,24 @@ mod tests {
 
     #[test]
     fn test_builtin_task_cancel() {
-        let result = builtins::task_cancel(999).unwrap());
+        let result = builtins::task_cancel(999).unwrap();
         assert_eq!(result, ComponentValue::U32(3)); // Not found
     }
 
     #[test]
     fn test_builtin_subtask_cancel() {
-        let result = builtins::subtask_cancel(999).unwrap());
+        let result = builtins::subtask_cancel(999).unwrap();
         assert_eq!(result, ComponentValue::U32(3)); // Not found
     }
 
     #[test]
     fn test_task_context_management() {
-        let mut registry = TaskRegistry::new);
-        let handle = registry.register_task(None, None).unwrap());
+        let mut registry = TaskRegistry::new();
+        let handle = registry.register_task(None, None).unwrap();
         
         // Test setting and getting context
         let key = "test_key";
-        registry.set_task_context(handle, key, value.clone()).unwrap());
+        registry.set_task_context(handle, key, value.clone()).unwrap();
         
         let retrieved = registry.get_task_context(handle, key;
         assert_eq!(retrieved, Some(value;
@@ -794,19 +794,19 @@ mod tests {
     #[test]
     fn test_context_operations_with_task() {
         // Spawn a task first to have an active context
-        let task_handle = builtins::task_spawn(None, None).unwrap());
+        let task_handle = builtins::task_spawn(None, None).unwrap();
         if let ComponentValue::U32(handle_id) = task_handle {
             // Note: In a real implementation, we'd set this task as current
             // For testing, we'll test the registry methods directly
-            let mut registry = TaskRegistry::new);
+            let mut registry = TaskRegistry::new();
             let handle = TaskHandle(handle_id;
-            registry.register_task(None, None).unwrap());
+            registry.register_task(None, None).unwrap();
             
             // Test context operations
             let key = "test_key";
             let value = ComponentValue::S32(42;
             
-            registry.set_task_context(handle, key, value.clone()).unwrap());
+            registry.set_task_context(handle, key, value.clone()).unwrap();
             let retrieved = registry.get_task_context(handle, key;
             assert_eq!(retrieved, Some(value;
         }

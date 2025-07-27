@@ -39,7 +39,7 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string();
+            return Err(Error::runtime_execution_error("Error occurred".to_string());
         }
 
         // Extract function ID
@@ -113,7 +113,7 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("Error occurred".to_string();
+            return Err(Error::runtime_execution_error("Error occurred".to_string());
         }
 
         // Extract thread ID
@@ -171,7 +171,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string();
+            return Err(Error::runtime_execution_error("Error occurred".to_string());
         }
 
         // Extract operation type
@@ -185,7 +185,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
         match op_type {
             "is-running" => {
                 if args.len() != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string();
+                    return Err(Error::runtime_execution_error("Error occurred".to_string());
                 }
 
                 let thread_id = match args[1] {
@@ -202,7 +202,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
             }
             "cancel" => {
                 if args.len() != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string();
+                    return Err(Error::runtime_execution_error("Error occurred".to_string());
                 }
 
                 let thread_id = match args[1] {
@@ -351,7 +351,7 @@ mod tests {
         let result = create_safe_threading_handlers(executor, module;
         assert!(result.is_ok());
 
-        let (_manager, handlers) = result.unwrap());
+        let (_manager, handlers) = result.unwrap();
         assert_eq!(handlers.len(), 3;
     }
 
@@ -360,7 +360,7 @@ mod tests {
         let executor = create_test_executor);
         let module = create_test_module);
 
-        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap());
+        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
         let spawn_handler = &handlers[0];
 
         // Test spawn with function ID
@@ -380,7 +380,7 @@ mod tests {
         let executor = create_test_executor);
         let module = create_test_module);
 
-        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap());
+        let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
         let status_handler = &handlers[2];
 
         // Test stats operation
@@ -388,7 +388,7 @@ mod tests {
         let result = status_handler.execute(&args;
         assert!(result.is_ok());
 
-        let stats = result.unwrap());
+        let stats = result.unwrap();
         assert!(stats.len() >= 5)); // Should return multiple statistics
     }
 }

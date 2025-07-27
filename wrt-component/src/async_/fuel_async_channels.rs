@@ -734,7 +734,7 @@ mod tests {
             false, // no priority inheritance
             TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
             TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap());
+        ).unwrap();
         
         // Send a message
         let send_result = sender.try_send(42;
@@ -755,7 +755,7 @@ mod tests {
             false,
             TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
             TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap());
+        ).unwrap();
         
         // Fill the channel
         assert!(sender.try_send(1).is_ok());
@@ -775,10 +775,10 @@ mod tests {
             false,
             TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
             TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap());
+        ).unwrap();
         
         // Close the channel
-        manager.close_channel(sender.channel_id).unwrap());
+        manager.close_channel(sender.channel_id).unwrap();
         
         // Operations should now fail with Closed
         let send_result = sender.try_send(42;

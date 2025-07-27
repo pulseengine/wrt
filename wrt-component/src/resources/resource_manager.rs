@@ -153,7 +153,7 @@ impl ResourceManager {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string();
+                res_guard.name = Some(name.to_string());
             }
         }
 
@@ -321,19 +321,19 @@ mod tests {
 
     #[test]
     fn test_resource_creation() {
-        let manager = ResourceManager::new);
+        let manager = ResourceManager::new();
 
         // Create a string resource
         let data = Arc::new(String::from("test";
-        let handle = manager.create_resource(1, data).unwrap());
+        let handle = manager.create_resource(1, data).unwrap();
 
         // Verify it exists
-        let result = manager.has_resource(ResourceId(handle)).unwrap());
+        let result = manager.has_resource(ResourceId(handle)).unwrap();
         assert!(result);
 
         // Get the resource
-        let resource = manager.get_resource(handle).unwrap());
-        let guard = resource.lock().unwrap());
+        let resource = manager.get_resource(handle).unwrap();
+        let guard = resource.lock().unwrap();
 
         // Verify type index
         assert_eq!(guard.type_idx, 1);
@@ -341,13 +341,13 @@ mod tests {
 
     #[test]
     fn test_add_and_get_host_resource() {
-        let manager = ResourceManager::new);
+        let manager = ResourceManager::new();
 
         // Add a string resource using the legacy API
-        let id = manager.add_host_resource(String::from("test")).unwrap());
+        let id = manager.add_host_resource(String::from("test")).unwrap();
 
         // Check we can retrieve it
-        let resource = manager.get_host_resource::<String>(id).unwrap());
+        let resource = manager.get_host_resource::<String>(id).unwrap();
         assert_eq!(*resource.lock().unwrap(), "test";
 
         // Check type mismatch
@@ -357,63 +357,63 @@ mod tests {
 
     #[test]
     fn test_named_resource() {
-        let manager = ResourceManager::new);
+        let manager = ResourceManager::new();
 
         // Create a named resource
         let data = Arc::new(42i32;
-        let handle = manager.create_named_resource(1, data, "answer").unwrap());
+        let handle = manager.create_named_resource(1, data, "answer").unwrap();
 
         // Get the resource and check the name
-        let resource = manager.get_resource(handle).unwrap());
-        let guard = resource.lock().unwrap());
+        let resource = manager.get_resource(handle).unwrap();
+        let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string();
+        assert_eq!(guard.name, Some("answer".to_string());
     }
 
     #[test]
     fn test_resource_lifecycle() {
-        let manager = ResourceManager::new);
+        let manager = ResourceManager::new();
 
         // Add a resource
         let data = Arc::new(42i32;
-        let handle = manager.create_resource(1, data).unwrap());
+        let handle = manager.create_resource(1, data).unwrap();
 
         // Verify it exists
-        let exists = manager.has_resource(ResourceId(handle)).unwrap());
+        let exists = manager.has_resource(ResourceId(handle)).unwrap();
         assert!(exists);
 
         // Drop it
-        manager.drop_resource(handle).unwrap());
+        manager.drop_resource(handle).unwrap();
 
         // Verify it's gone
-        let exists = manager.has_resource(ResourceId(handle)).unwrap());
+        let exists = manager.has_resource(ResourceId(handle)).unwrap();
         assert!(!exists);
     }
 
     #[test]
     fn test_borrow_resource() {
-        let manager = ResourceManager::new);
+        let manager = ResourceManager::new();
 
         // Create a resource
         let data = Arc::new(42i32;
-        let handle = manager.create_resource(1, data).unwrap());
+        let handle = manager.create_resource(1, data).unwrap();
 
         // Borrow it
-        let borrow_handle = manager.borrow_resource(handle).unwrap());
+        let borrow_handle = manager.borrow_resource(handle).unwrap();
 
         // Verify both exist
-        assert!(manager.has_resource(ResourceId(handle)).unwrap());
-        assert!(manager.has_resource(ResourceId(borrow_handle)).unwrap());
+        assert!(manager.has_resource(ResourceId(handle)).unwrap();
+        assert!(manager.has_resource(ResourceId(borrow_handle)).unwrap();
 
         // Verify they're different handles
         assert_ne!(handle, borrow_handle;
 
         // But point to the same data
-        let resource1 = manager.get_resource(handle).unwrap());
-        let resource2 = manager.get_resource(borrow_handle).unwrap());
+        let resource1 = manager.get_resource(handle).unwrap();
+        let resource2 = manager.get_resource(borrow_handle).unwrap();
 
-        let data1 = resource1.lock().unwrap().data.downcast_ref::<i32>().unwrap());
-        let data2 = resource2.lock().unwrap().data.downcast_ref::<i32>().unwrap());
+        let data1 = resource1.lock().unwrap().data.downcast_ref::<i32>().unwrap();
+        let data2 = resource2.lock().unwrap().data.downcast_ref::<i32>().unwrap();
 
         assert_eq!(*data1, *data2;
     }

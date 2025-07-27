@@ -69,7 +69,7 @@ impl ResourceArena {
         // Set the name if we have access to the resource
         if let Ok(res) = table.get_resource(handle) {
             if let Ok(mut res_guard) = res.lock() {
-                res_guard.name = Some(name.to_string();
+                res_guard.name = Some(name.to_string());
             }
         }
 
@@ -184,7 +184,7 @@ impl ResourceArena {
 
     /// Set the name of this arena
     pub fn set_name(&mut self, name: &str) {
-        self.name = Some(name.to_string();
+        self.name = Some(name.to_string());
     }
 
     /// Get all resources managed by this arena
@@ -223,24 +223,24 @@ mod tests {
         let mut arena = ResourceArena::new(table.clone();
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Arc::new("test1".to_string())).unwrap());
-        let handle2 = arena.create_resource(2, Arc::new(42)).unwrap());
+        let handle1 = arena.create_resource(1, Arc::new("test1".to_string())).unwrap();
+        let handle2 = arena.create_resource(2, Arc::new(42)).unwrap();
 
         // Verify they exist
-        assert!(arena.has_resource(ResourceId(handle1)).unwrap());
-        assert!(arena.has_resource(ResourceId(handle2)).unwrap());
+        assert!(arena.has_resource(ResourceId(handle1)).unwrap();
+        assert!(arena.has_resource(ResourceId(handle2)).unwrap();
 
         // Verify count
         assert_eq!(arena.resource_count(), 2;
 
         // Release all
-        arena.release_all().unwrap());
+        arena.release_all().unwrap();
 
         // Verify resources are gone
         assert_eq!(arena.resource_count(), 0);
 
         // Verify they no longer exist in the table
-        let locked_table = table.lock().unwrap());
+        let locked_table = table.lock().unwrap();
         assert!(locked_table.get_resource(handle1).is_err();
         assert!(locked_table.get_resource(handle2).is_err();
     }
@@ -254,17 +254,17 @@ mod tests {
         let mut arena = ResourceArena::new(table.clone();
 
         // Create some resources
-        let handle1 = arena.create_resource(1, Arc::new("test1".to_string())).unwrap());
-        let handle2 = arena.create_resource(2, Arc::new(42)).unwrap());
+        let handle1 = arena.create_resource(1, Arc::new("test1".to_string())).unwrap();
+        let handle2 = arena.create_resource(2, Arc::new(42)).unwrap();
 
         // Drop one resource
-        arena.drop_resource(handle1).unwrap());
+        arena.drop_resource(handle1).unwrap();
 
         // Verify it's gone
-        assert!(!arena.has_resource(ResourceId(handle1)).unwrap());
+        assert!(!arena.has_resource(ResourceId(handle1)).unwrap();
 
         // But the other one should still exist
-        assert!(arena.has_resource(ResourceId(handle2)).unwrap());
+        assert!(arena.has_resource(ResourceId(handle2)).unwrap();
 
         // Verify count
         assert_eq!(arena.resource_count(), 1);
@@ -278,16 +278,16 @@ mod tests {
         // Create resources in a scope
         {
             let mut arena = ResourceArena::new(table.clone();
-            let handle = arena.create_resource(1, Arc::new("test".to_string())).unwrap());
+            let handle = arena.create_resource(1, Arc::new("test".to_string())).unwrap();
 
             // Verify it exists
-            assert!(arena.has_resource(ResourceId(handle)).unwrap());
+            assert!(arena.has_resource(ResourceId(handle)).unwrap();
 
             // Arena will be dropped here
         }
 
         // Verify resource no longer exists in the table
-        let locked_table = table.lock().unwrap());
+        let locked_table = table.lock().unwrap();
         assert_eq!(locked_table.resource_count(), 0);
     }
 
@@ -300,13 +300,13 @@ mod tests {
         let mut arena = ResourceArena::new_with_name(table, "test-arena";
 
         // Create a named resource
-        let handle = arena.create_named_resource(1, Arc::new(42), "answer").unwrap());
+        let handle = arena.create_named_resource(1, Arc::new(42), "answer").unwrap();
 
         // Get the resource and check the name
-        let resource = arena.get_resource(handle).unwrap());
-        let guard = resource.lock().unwrap());
+        let resource = arena.get_resource(handle).unwrap();
+        let guard = resource.lock().unwrap();
 
-        assert_eq!(guard.name, Some("answer".to_string();
+        assert_eq!(guard.name, Some("answer".to_string());
 
         // Check arena name
         assert_eq!(arena.name(), Some("test-arena";
@@ -322,21 +322,21 @@ mod tests {
         let mut arena2 = ResourceArena::new_with_name(table.clone(), "arena2";
 
         // Add resources to each
-        let handle1 = arena1.create_resource(1, Arc::new("test1".to_string())).unwrap());
-        let handle2 = arena2.create_resource(2, Arc::new("test2".to_string())).unwrap());
+        let handle1 = arena1.create_resource(1, Arc::new("test1".to_string())).unwrap();
+        let handle2 = arena2.create_resource(2, Arc::new("test2".to_string())).unwrap();
 
         // Resource should only exist in its arena
-        assert!(arena1.has_resource(ResourceId(handle1)).unwrap());
-        assert!(!arena1.has_resource(ResourceId(handle2)).unwrap());
+        assert!(arena1.has_resource(ResourceId(handle1)).unwrap();
+        assert!(!arena1.has_resource(ResourceId(handle2)).unwrap();
 
-        assert!(!arena2.has_resource(ResourceId(handle1)).unwrap());
-        assert!(arena2.has_resource(ResourceId(handle2)).unwrap());
+        assert!(!arena2.has_resource(ResourceId(handle1)).unwrap();
+        assert!(arena2.has_resource(ResourceId(handle2)).unwrap();
 
         // Release one arena
-        arena1.release_all().unwrap());
+        arena1.release_all().unwrap();
 
         // Resources from arena1 should be gone, but arena2's should remain
-        let locked_table = table.lock().unwrap());
+        let locked_table = table.lock().unwrap();
         assert!(locked_table.get_resource(handle1).is_err();
         assert!(locked_table.get_resource(handle2).is_ok());
     }

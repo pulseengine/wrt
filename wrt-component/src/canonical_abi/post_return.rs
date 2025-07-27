@@ -216,7 +216,7 @@ impl PostReturnContext {
 
         self.is_executing = true;
         let start_time = current_time_us);
-        let mut errors = Vec::new);
+        let mut errors = Vec::new());
 
         // Execute each cleanup operation in priority order
         let entries = mem::take(&mut self.entries;
@@ -250,7 +250,7 @@ impl PostReturnContext {
 
         // Handle collected errors based on recovery mode
         if !errors.is_empty() && self.error_recovery == ErrorRecoveryMode::StopOnError {
-            let (resource_type, error) = errors.into_iter().next().unwrap());
+            let (resource_type, error) = errors.into_iter().next().unwrap();
             return Err(Error::runtime_execution_error(&format!("Post-return cleanup failed for {}: {}", resource_type, error);
         }
 
@@ -260,7 +260,7 @@ impl PostReturnContext {
     /// Execute a single cleanup entry
     fn execute_cleanup_entry(&self, instance: &mut Instance, memory: &mut Memory, entry: &PostReturnEntry) -> Result<()> {
         // Convert ComponentValue args to raw values for function call
-        let mut raw_args = Vec::new);
+        let mut raw_args = Vec::new());
         
         #[cfg(feature = "std")]
         {
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_post_return_context_creation() {
-        let context = PostReturnContext::new().unwrap());
+        let context = PostReturnContext::new().unwrap();
         assert_eq!(context.pending_operations(), 0);
         assert!(!context.is_executing();
         assert_eq!(context.stats().operations_executed, 0);
@@ -432,7 +432,7 @@ mod tests {
 
     #[test]
     fn test_cleanup_entry_creation() {
-        let entry = helpers::create_memory_cleanup(1, 0x1000, 4096).unwrap());
+        let entry = helpers::create_memory_cleanup(1, 0x1000, 4096).unwrap();
         assert_eq!(entry.func_index, 1);
         assert_eq!(entry.priority, CleanupPriority::High;
         assert_eq!(entry.resource_type, ResourceType::Memory;
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_cleanup_priority_ordering() {
-        let mut context = PostReturnContext::new().unwrap());
+        let mut context = PostReturnContext::new().unwrap();
         
         let low_entry = PostReturnEntry {
             func_index: 1,
@@ -457,7 +457,7 @@ mod tests {
             args: vec![],
             #[cfg(not(feature = "std"))]
             args: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
                 BoundedVec::new(provider).unwrap()
             },
             priority: CleanupPriority::Low,
@@ -470,7 +470,7 @@ mod tests {
             args: vec![],
             #[cfg(not(feature = "std"))]
             args: {
-                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
+                let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
                 BoundedVec::new(provider).unwrap()
             },
             priority: CleanupPriority::High,
@@ -478,8 +478,8 @@ mod tests {
         };
         
         // Add low priority first, then high priority
-        context.add_cleanup(low_entry).unwrap());
-        context.add_cleanup(high_entry).unwrap());
+        context.add_cleanup(low_entry).unwrap();
+        context.add_cleanup(high_entry).unwrap();
         
         assert_eq!(context.pending_operations(), 2;
         
@@ -493,7 +493,7 @@ mod tests {
 
     #[test]
     fn test_error_recovery_modes() {
-        let mut context = PostReturnContext::new);
+        let mut context = PostReturnContext::new();
         
         context.set_error_recovery(ErrorRecoveryMode::StopOnError;
         assert_eq!(context.error_recovery, ErrorRecoveryMode::StopOnError;

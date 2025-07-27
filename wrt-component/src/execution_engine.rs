@@ -341,7 +341,7 @@ impl ComponentExecutionEngine {
             }
             #[cfg(not(any(feature = "std", )))]
             {
-                let mut name = wrt_foundation::bounded::BoundedString::new);
+                let mut name = wrt_foundation::bounded::BoundedString::new();
                 let _ = name.push_str("func_";
                 name
             }
@@ -426,7 +426,7 @@ impl ComponentExecutionEngine {
 
         self.current_instance = None;
         self.state = ExecutionState::Ready;
-        self.resource_manager = ResourceLifecycleManager::new);
+        self.resource_manager = ResourceLifecycleManager::new();
     }
 
     /// Get canonical ABI processor
@@ -462,7 +462,7 @@ impl ComponentExecutionEngine {
     /// Convert engine values to component values
     #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<crate::canonical_abi::ComponentValue>> {
-        let mut component_values = Vec::new);
+        let mut component_values = Vec::new());
         for value in values {
             let component_value = self.convert_value_to_component(value)?;
             component_values.push(component_value);
@@ -685,7 +685,7 @@ mod tests {
 
     #[test]
     fn test_execution_engine_creation() {
-        let engine = ComponentExecutionEngine::new().unwrap());
+        let engine = ComponentExecutionEngine::new().unwrap();
         assert_eq!(engine.state(), &ExecutionState::Ready;
         assert_eq!(engine.call_stack_depth(), 0);
         assert_eq!(engine.current_instance(), None;
@@ -693,7 +693,7 @@ mod tests {
 
     #[test]
     fn test_call_frame_creation() {
-        let frame = CallFrame::new(1, 2).unwrap());
+        let frame = CallFrame::new(1, 2).unwrap();
         assert_eq!(frame.instance_id, 1);
         assert_eq!(frame.function_index, 2;
         assert_eq!(frame.locals.len(), 0);
@@ -702,7 +702,7 @@ mod tests {
 
     #[test]
     fn test_call_frame_locals() {
-        let mut frame = CallFrame::new(1, 2).unwrap());
+        let mut frame = CallFrame::new(1, 2).unwrap();
 
         // Test pushing locals
         assert!(frame.push_local(Value::U32(42)).is_ok());
@@ -743,16 +743,16 @@ mod tests {
     #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_host_function_registration_nostd() {
-        let mut engine = ComponentExecutionEngine::new().unwrap());
+        let mut engine = ComponentExecutionEngine::new().unwrap();
 
         fn test_func(_args: &[Value]) -> WrtResult<Value> {
             Ok(Value::U32(42))
         }
 
-        let index = engine.register_host_function(test_func).unwrap());
+        let index = engine.register_host_function(test_func).unwrap();
         assert_eq!(index, 0);
 
-        let result = engine.call_host_function(0, &[]).unwrap());
+        let result = engine.call_host_function(0, &[]).unwrap();
         assert_eq!(result, Value::U32(42;
     }
 }

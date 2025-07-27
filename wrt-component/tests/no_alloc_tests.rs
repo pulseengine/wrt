@@ -59,7 +59,7 @@ mod no_alloc_tests {
         assert!(component.is_ok());
 
         // Check properties of the minimal component
-        let component = component.unwrap());
+        let component = component.unwrap();
         assert_eq!(component.size(), 8;
         assert_eq!(component.export_count(), 0);
         assert_eq!(component.import_count(), 0);

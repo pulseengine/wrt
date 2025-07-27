@@ -60,8 +60,8 @@ mod tests {
 
     impl ErrorHandlingHarness {
         fn new() -> Self {
-            let task_manager = Arc::new(Mutex::new(TaskManager::new);
-            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new);
+            let task_manager = Arc::new(Mutex::new(TaskManager::new();
+            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
             
             let config = BridgeConfiguration {
                 enable_preemption: true,
@@ -193,17 +193,17 @@ mod tests {
 
     #[test]
     fn test_resource_exhaustion_handling() {
-        let mut harness = ErrorHandlingHarness::new);
+        let mut harness = ErrorHandlingHarness::new();
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
-        harness.channels.initialize_component_channels(component_id, None).unwrap());
-        harness.timers.initialize_component_timers(component_id, None).unwrap());
-        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap());
+        harness.channels.initialize_component_channels(component_id, None).unwrap();
+        harness.timers.initialize_component_timers(component_id, None).unwrap();
+        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap();
 
         // Test 1: Channel exhaustion
         let mut channels_created = 0;
@@ -256,7 +256,7 @@ mod tests {
         
         for i in 0..200 { // Try to exceed limits
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.spawn_async_task(
                     component_id,
                     Some(i),
@@ -294,7 +294,7 @@ mod tests {
 
         // System should still be functional after exhaustion
         let bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
         assert_eq!(bridge_stats.active_components, 1);
@@ -302,23 +302,23 @@ mod tests {
         let (errors, recoveries) = harness.get_error_stats);
         assert!(errors > 0, "No resource exhaustion errors recorded");
         
-        println!("Resource Exhaustion Handling Test: PASSED";
-        println!("  Channels Created: {} (errors: {})", channels_created, channel_creation_errors;
-        println!("  Timers Created: {} (errors: {})", timers_created, timer_creation_errors;
-        println!("  Mutexes Created: {} (errors: {})", mutexes_created, mutex_creation_errors;
-        println!("  Tasks Created: {} (errors: {})", tasks_created, task_creation_errors;
-        println!("  Total Errors Handled: {}", errors;
+        println!("Resource Exhaustion Handling Test: PASSED");
+        println!("  Channels Created: {} (errors: {})", channels_created, channel_creation_errors);
+        println!("  Timers Created: {} (errors: {})", timers_created, timer_creation_errors);
+        println!("  Mutexes Created: {} (errors: {})", mutexes_created, mutex_creation_errors);
+        println!("  Tasks Created: {} (errors: {})", tasks_created, task_creation_errors);
+        println!("  Total Errors Handled: {}", errors);
     }
 
     #[test]
     fn test_task_failure_isolation() {
-        let mut harness = ErrorHandlingHarness::new);
+        let mut harness = ErrorHandlingHarness::new();
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
 
         // Spawn mix of good and faulty tasks
@@ -334,11 +334,11 @@ mod tests {
             (FailureMode::NoFailure, 2),
         ];
 
-        let mut task_ids = Vec::new);
+        let mut task_ids = Vec::new());
         
         for (i, (failure_mode, polls_until_failure)) in task_configs.iter().enumerate() {
             let task_id = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.spawn_async_task(
                     component_id,
                     Some(i as u32),
@@ -363,7 +363,7 @@ mod tests {
         
         for round in 0..200 {
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.poll_async_tasks().unwrap()
             };
             
@@ -385,7 +385,7 @@ mod tests {
         
         // System should remain functional despite task failures
         let bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
         assert_eq!(bridge_stats.active_components, 1);
@@ -394,30 +394,30 @@ mod tests {
         assert!(errors > 0, "No task failures recorded");
         assert!(completed_tasks > 0, "No tasks completed despite failures");
         
-        println!("Task Failure Isolation Test: PASSED";
-        println!("  Total Tasks: {}", task_configs.len);
-        println!("  Completed Tasks: {}", completed_tasks;
-        println!("  Expected Good Tasks: {}", expected_good_tasks;
-        println!("  Errors Isolated: {}", errors;
+        println!("Task Failure Isolation Test: PASSED");
+        println!("  Total Tasks: {}", task_configs.len));
+        println!("  Completed Tasks: {}", completed_tasks);
+        println!("  Expected Good Tasks: {}", expected_good_tasks);
+        println!("  Errors Isolated: {}", errors);
     }
 
     #[test]
     fn test_channel_error_handling() {
-        let mut harness = ErrorHandlingHarness::new);
+        let mut harness = ErrorHandlingHarness::new();
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
-        harness.channels.initialize_component_channels(component_id, None).unwrap());
+        harness.channels.initialize_component_channels(component_id, None).unwrap();
 
         // Test 1: Operations on closed channels
         let (sender, receiver) = harness.channels.create_channel(
             component_id,
             ChannelType::Bounded(4),
-        ).unwrap());
+        ).unwrap();
 
         // Send some messages
         for i in 0..3 {
@@ -426,12 +426,12 @@ mod tests {
                 component_id,
                 ComponentValue::U32(i),
                 None,
-            ).unwrap());
+            ).unwrap();
             assert_eq!(result, SendResult::Sent;
         }
 
         // Close the channel
-        harness.channels.close_channel(sender.channel_id).unwrap());
+        harness.channels.close_channel(sender.channel_id).unwrap();
 
         // Try to send on closed channel
         let send_result = harness.channels.send_message(
@@ -439,7 +439,7 @@ mod tests {
             component_id,
             ComponentValue::U32(999),
             None,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(send_result, SendResult::Closed;
         harness.record_error(); // Record as handled error
@@ -490,7 +490,7 @@ mod tests {
         let (valid_sender, valid_receiver) = harness.channels.create_channel(
             component_id,
             ChannelType::Bounded(4),
-        ).unwrap());
+        ).unwrap();
 
         // Try to use channel from wrong component
         let cross_send = harness.channels.send_message(
@@ -509,23 +509,23 @@ mod tests {
         let (errors, recoveries) = harness.get_error_stats);
         assert!(errors > 0, "No channel errors recorded");
         
-        println!("Channel Error Handling Test: PASSED";
-        println!("  Messages Received from Closed Channel: {}", received_count;
-        println!("  Errors Handled: {}", errors;
-        println!("  Recoveries: {}", recoveries;
+        println!("Channel Error Handling Test: PASSED");
+        println!("  Messages Received from Closed Channel: {}", received_count);
+        println!("  Errors Handled: {}", errors);
+        println!("  Recoveries: {}", recoveries);
     }
 
     #[test]
     fn test_timer_error_scenarios() {
-        let mut harness = ErrorHandlingHarness::new);
+        let mut harness = ErrorHandlingHarness::new();
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
-        harness.timers.initialize_component_timers(component_id, None).unwrap());
+        harness.timers.initialize_component_timers(component_id, None).unwrap();
 
         // Test 1: Invalid timer parameters
         let invalid_timer_result = harness.timers.create_timer(
@@ -544,12 +544,12 @@ mod tests {
             component_id,
             TimerType::Oneshot,
             1000,
-        ).unwrap());
+        ).unwrap();
 
-        let first_cancel = harness.timers.cancel_timer(timer_id).unwrap());
+        let first_cancel = harness.timers.cancel_timer(timer_id).unwrap();
         assert!(first_cancel, "First cancellation should succeed");
 
-        let second_cancel = harness.timers.cancel_timer(timer_id).unwrap());
+        let second_cancel = harness.timers.cancel_timer(timer_id).unwrap();
         assert!(!second_cancel, "Second cancellation should fail gracefully");
         harness.record_error(); // Record as handled error
 
@@ -604,42 +604,42 @@ mod tests {
         assert!(errors > 0, "No timer errors recorded");
         assert!(timer_stats.total_timers_created > 0, "No timers created");
         
-        println!("Timer Error Scenarios Test: PASSED";
-        println!("  Timers Created: {}", created_timers;
-        println!("  Timers Fired: {}", timer_stats.total_timers_fired;
-        println!("  Errors Handled: {}", errors;
-        println!("  Successful Operations: {}", recoveries;
+        println!("Timer Error Scenarios Test: PASSED");
+        println!("  Timers Created: {}", created_timers);
+        println!("  Timers Fired: {}", timer_stats.total_timers_fired);
+        println!("  Errors Handled: {}", errors);
+        println!("  Successful Operations: {}", recoveries);
     }
 
     #[test]
     fn test_sync_primitive_deadlock_avoidance() {
-        let mut harness = ErrorHandlingHarness::new);
+        let mut harness = ErrorHandlingHarness::new();
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
-        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap());
+        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap();
 
         // Create mutexes for potential deadlock scenario
-        let mutex1 = harness.sync_primitives.create_async_mutex(component_id, false).unwrap());
-        let mutex2 = harness.sync_primitives.create_async_mutex(component_id, false).unwrap());
+        let mutex1 = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
+        let mutex2 = harness.sync_primitives.create_async_mutex(component_id, false).unwrap();
 
         let task1 = crate::threading::task_manager::TaskId::new(1;
         let task2 = crate::threading::task_manager::TaskId::new(2;
 
         // Test 1: Basic mutex contention
-        let result1 = harness.sync_primitives.lock_async_mutex(mutex1, task1, component_id).unwrap());
+        let result1 = harness.sync_primitives.lock_async_mutex(mutex1, task1, component_id).unwrap();
         assert_eq!(result1, MutexLockResult::Acquired;
 
-        let result2 = harness.sync_primitives.lock_async_mutex(mutex1, task2, component_id).unwrap());
+        let result2 = harness.sync_primitives.lock_async_mutex(mutex1, task2, component_id).unwrap();
         assert_eq!(result2, MutexLockResult::WouldBlock;
         harness.record_error(); // Contention handled
 
         // Release first lock
-        harness.sync_primitives.unlock_async_mutex(mutex1, task1).unwrap());
+        harness.sync_primitives.unlock_async_mutex(mutex1, task1).unwrap();
         harness.record_recovery(); // Lock released
 
         // Test 2: Invalid unlock operations
@@ -652,23 +652,23 @@ mod tests {
         harness.record_error);
 
         // Test 3: Semaphore overflow/underflow
-        let semaphore = harness.sync_primitives.create_async_semaphore(component_id, 2, true).unwrap());
+        let semaphore = harness.sync_primitives.create_async_semaphore(component_id, 2, true).unwrap();
 
         // Acquire all permits
-        let acq1 = harness.sync_primitives.acquire_semaphore(semaphore, task1, component_id).unwrap());
-        let acq2 = harness.sync_primitives.acquire_semaphore(semaphore, task2, component_id).unwrap());
+        let acq1 = harness.sync_primitives.acquire_semaphore(semaphore, task1, component_id).unwrap();
+        let acq2 = harness.sync_primitives.acquire_semaphore(semaphore, task2, component_id).unwrap();
         assert_eq!(acq1, SemaphoreAcquireResult::Acquired;
         assert_eq!(acq2, SemaphoreAcquireResult::Acquired;
 
         // Try to acquire when exhausted
         let task3 = crate::threading::task_manager::TaskId::new(3;
-        let acq3 = harness.sync_primitives.acquire_semaphore(semaphore, task3, component_id).unwrap());
+        let acq3 = harness.sync_primitives.acquire_semaphore(semaphore, task3, component_id).unwrap();
         assert_eq!(acq3, SemaphoreAcquireResult::WouldBlock;
         harness.record_error(); // Exhaustion handled
 
         // Release permits
-        harness.sync_primitives.release_semaphore(semaphore).unwrap());
-        harness.sync_primitives.release_semaphore(semaphore).unwrap());
+        harness.sync_primitives.release_semaphore(semaphore).unwrap();
+        harness.sync_primitives.release_semaphore(semaphore).unwrap();
         harness.record_recovery);
 
         // Try to over-release
@@ -694,20 +694,20 @@ mod tests {
         assert!(errors > 0, "No sync primitive errors recorded");
         assert!(recoveries > 0, "No recoveries recorded");
         
-        println!("Sync Primitive Error Handling Test: PASSED";
-        println!("  Contention Events: {}", errors;
-        println!("  Successful Operations: {}", recoveries;
+        println!("Sync Primitive Error Handling Test: PASSED");
+        println!("  Contention Events: {}", errors);
+        println!("  Successful Operations: {}", recoveries);
     }
 
     #[test]
     fn test_recovery_and_graceful_degradation() {
-        let mut harness = ErrorHandlingHarness::new);
+        let mut harness = ErrorHandlingHarness::new();
         let component_id = ComponentInstanceId::new(1;
         
         // Initialize component
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
 
         // Spawn tasks with recovery capability
@@ -719,11 +719,11 @@ mod tests {
             FailureMode::RecoveryAfterFailure,
         ];
 
-        let mut task_ids = Vec::new);
+        let mut task_ids = Vec::new());
         
         for (i, failure_mode) in recovery_tasks.iter().enumerate() {
             let task_id = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.spawn_async_task(
                     component_id,
                     Some(i as u32),
@@ -747,7 +747,7 @@ mod tests {
         
         for round in 0..300 { // Allow time for recovery
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.poll_async_tasks().unwrap()
             };
             
@@ -774,36 +774,36 @@ mod tests {
         
         // System should remain stable after recovery
         let bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
         assert_eq!(bridge_stats.active_components, 1);
         
-        println!("Recovery and Graceful Degradation Test: PASSED";
-        println!("  Total Tasks: {}", recovery_tasks.len);
-        println!("  Completed Tasks: {}", completed_tasks;
-        println!("  Expected Recoverable: {}", expected_recoverable;
-        println!("  Errors: {}", errors;
-        println!("  Recoveries: {}", recoveries;
-        println!("  Recovery Rate: {:.1}%", (recoveries as f64 / errors as f64) * 100.0;
+        println!("Recovery and Graceful Degradation Test: PASSED");
+        println!("  Total Tasks: {}", recovery_tasks.len));
+        println!("  Completed Tasks: {}", completed_tasks);
+        println!("  Expected Recoverable: {}", expected_recoverable);
+        println!("  Errors: {}", errors);
+        println!("  Recoveries: {}", recoveries);
+        println!("  Recovery Rate: {:.1}%", (recoveries as f64 / errors as f64) * 100.0);
     }
 
     #[test]
     fn test_system_stability_under_errors() {
-        let mut harness = ErrorHandlingHarness::new);
+        let mut harness = ErrorHandlingHarness::new();
         
         // Create multiple components to test system-wide stability
         let components: Vec<ComponentInstanceId> = (1..=3)
             .map(|i| ComponentInstanceId::new(i)
-            .collect();
+            .collect());
 
         for &component_id in &components {
             {
-                let mut bridge = harness.bridge.lock().unwrap());
-                bridge.initialize_component_async(component_id, None).unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
+                bridge.initialize_component_async(component_id, None).unwrap();
             }
-            harness.channels.initialize_component_channels(component_id, None).unwrap());
-            harness.timers.initialize_component_timers(component_id, None).unwrap());
+            harness.channels.initialize_component_channels(component_id, None).unwrap();
+            harness.timers.initialize_component_timers(component_id, None).unwrap();
         }
 
         // Inject various errors across components
@@ -825,7 +825,7 @@ mod tests {
             for (scenario_idx, &(failure_mode, polls_until_failure)) in error_scenarios.iter().enumerate() {
                 if (scenario_idx % components.len()) == component_idx {
                     let task_id = {
-                        let mut bridge = harness.bridge.lock().unwrap());
+                        let mut bridge = harness.bridge.lock().unwrap();
                         bridge.spawn_async_task(
                             component_id,
                             Some(task_count),
@@ -865,7 +865,7 @@ mod tests {
 
         // Execute system under stress with error injection
         let initial_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
 
@@ -875,7 +875,7 @@ mod tests {
         for round in 0..500 {
             // Poll tasks
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.poll_async_tasks().unwrap()
             };
             completed_tasks += result.tasks_completed;
@@ -886,7 +886,7 @@ mod tests {
             
             // Check system stability
             let current_stats = {
-                let bridge = harness.bridge.lock().unwrap());
+                let bridge = harness.bridge.lock().unwrap();
                 bridge.get_bridge_statistics()
             };
             
@@ -901,7 +901,7 @@ mod tests {
         }
 
         let final_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
         
@@ -919,15 +919,15 @@ mod tests {
         let error_rate = total_errors as f64 / task_count as f64;
         let completion_rate = completed_tasks as f64 / task_count as f64;
         
-        println!("System Stability Under Errors Test: PASSED";
-        println!("  Components: {}", components.len);
-        println!("  Total Tasks: {}", task_count;
-        println!("  Completed Tasks: {}", completed_tasks;
-        println!("  Completion Rate: {:.1}%", completion_rate * 100.0;
-        println!("  Total Errors: {}", total_errors;
-        println!("  Total Recoveries: {}", total_recoveries;
-        println!("  Error Rate: {:.1}%", error_rate * 100.0;
-        println!("  Stable Rounds: {}", stable_rounds;
-        println!("  Final Active Components: {}", final_stats.active_components;
+        println!("System Stability Under Errors Test: PASSED");
+        println!("  Components: {}", components.len));
+        println!("  Total Tasks: {}", task_count);
+        println!("  Completed Tasks: {}", completed_tasks);
+        println!("  Completion Rate: {:.1}%", completion_rate * 100.0);
+        println!("  Total Errors: {}", total_errors);
+        println!("  Total Recoveries: {}", total_recoveries);
+        println!("  Error Rate: {:.1}%", error_rate * 100.0);
+        println!("  Stable Rounds: {}", stable_rounds);
+        println!("  Final Active Components: {}", final_stats.active_components);
     }
 }

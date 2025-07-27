@@ -221,12 +221,12 @@ mod tests {
         wasm.extend_from_slice(section_data;
         
         // Test finding the section
-        let result = find_custom_section(&wasm, "test.section").unwrap());
+        let result = find_custom_section(&wasm, "test.section").unwrap();
         assert!(result.is_some();
         assert_eq!(result.unwrap(), section_data;
         
         // Test finding non-existent section
-        let result = find_custom_section(&wasm, "non.existent").unwrap());
+        let result = find_custom_section(&wasm, "non.existent").unwrap();
         assert!(result.is_none();
     }
     

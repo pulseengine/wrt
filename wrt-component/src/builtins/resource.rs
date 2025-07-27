@@ -86,7 +86,7 @@ impl BuiltinHandler for ResourceCreateHandler {
         };
 
         // Create a new resource based on the representation
-        let mut manager = self.resource_manager.lock().unwrap());
+        let mut manager = self.resource_manager.lock().unwrap();
         let id = manager.add_host_resource(rep;
 
         // Return the resource ID
@@ -147,7 +147,7 @@ impl BuiltinHandler for ResourceDropHandler {
         };
 
         // Drop the resource
-        let mut manager = self.resource_manager.lock().unwrap());
+        let mut manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
@@ -201,14 +201,14 @@ impl BuiltinHandler for ResourceRepHandler {
         };
 
         // Get the resource representation
-        let manager = self.resource_manager.lock().unwrap());
+        let manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
             return Err(Error::runtime_execution_error("Resource not found";
         }
 
         // Get the resource as u32
         let resource = manager.get_host_resource::<u32>(id)?;
-        let rep = *resource.lock().unwrap());
+        let rep = *resource.lock().unwrap();
 
         // Return the representation
         Ok(vec![ComponentValue::U32(rep)])
@@ -255,7 +255,7 @@ impl BuiltinHandler for ResourceGetHandler {
         };
 
         // Find or create resource with this representation
-        let mut manager = self.resource_manager.lock().unwrap());
+        let mut manager = self.resource_manager.lock().unwrap();
 
         // Try to find an existing resource with this rep
         for (resource_id, resource) in manager.get_resources_iter() {
@@ -314,13 +314,13 @@ mod tests {
 
         // Test with valid args
         let args = vec![ComponentValue::U32(42)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
 
         assert_eq!(result.len(), 1);
         match &result[0] {
             ComponentValue::U32(id) => {
                 // Verify the resource was created
-                let manager = resource_manager.lock().unwrap());
+                let manager = resource_manager.lock().unwrap();
                 assert!(manager.has_resource(ResourceId(*id));
             }
             _ => panic!("Expected U32 result"),
@@ -338,7 +338,7 @@ mod tests {
 
         // Create a resource
         let id = {
-            let mut manager = resource_manager.lock().unwrap());
+            let mut manager = resource_manager.lock().unwrap();
             manager.add_host_resource(42)
         };
 
@@ -346,12 +346,12 @@ mod tests {
 
         // Test with valid args
         let args = vec![ComponentValue::U32(id.0)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
 
         assert_eq!(result.len(), 0);
 
         // Verify the resource was dropped
-        let manager = resource_manager.lock().unwrap());
+        let manager = resource_manager.lock().unwrap();
         assert!(!manager.has_resource(id);
     }
 
@@ -361,7 +361,7 @@ mod tests {
 
         // Create a resource
         let id = {
-            let mut manager = resource_manager.lock().unwrap());
+            let mut manager = resource_manager.lock().unwrap();
             manager.add_host_resource(42u32)
         };
 
@@ -369,7 +369,7 @@ mod tests {
 
         // Test with valid args
         let args = vec![ComponentValue::U32(id.0)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
 
         assert_eq!(result.len(), 1);
         match &result[0] {
@@ -387,7 +387,7 @@ mod tests {
 
         // Test with new representation
         let args = vec![ComponentValue::U32(42)];
-        let result = handler.execute(&args).unwrap());
+        let result = handler.execute(&args).unwrap();
 
         assert_eq!(result.len(), 1);
         let first_id = match &result[0] {
@@ -396,7 +396,7 @@ mod tests {
         };
 
         // Test with same representation (should return same ID)
-        let result2 = handler.execute(&args).unwrap());
+        let result2 = handler.execute(&args).unwrap();
         let second_id = match &result2[0] {
             ComponentValue::U32(id) => *id,
             _ => panic!("Expected U32 result"),

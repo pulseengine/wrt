@@ -60,9 +60,9 @@ impl ImportMap {
     /// Convert this import map to one using SafeMemory containers
     #[cfg(feature = "safe-memory")]
     pub fn to_safe_memory(&self) -> SafeImportMap {
-        let mut result = SafeImportMap::new);
+        let mut result = SafeImportMap::new();
         for (name, import) in &self.imports {
-            result.add(name, import.clone()).unwrap());
+            result.add(name, import.clone()).unwrap();
         }
         result
     }
@@ -167,7 +167,7 @@ impl SafeImportMap {
 
     /// Convert to standard ImportMap
     pub fn to_standard(&self) -> Result<ImportMap> {
-        let mut result = ImportMap::new);
+        let mut result = ImportMap::new();
         let items = self.imports.to_vec()?;
         for (name, import) in items {
             result.add(&name, import)?;

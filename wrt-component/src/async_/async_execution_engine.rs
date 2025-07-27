@@ -849,10 +849,10 @@ impl ExecutionContext {
     /// Reset context for reuse
     pub fn reset(&mut self) {
         self.component_instance = 0;
-        self.function_name = BoundedString::new);
+        self.function_name = BoundedString::new();
         self.call_stack.clear);
         self.locals.clear);
-        self.memory_views = MemoryViews::new);
+        self.memory_views = MemoryViews::new();
     }
 }
 

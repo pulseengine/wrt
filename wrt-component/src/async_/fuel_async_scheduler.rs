@@ -220,7 +220,7 @@ impl FuelAsyncScheduler {
 
     /// Check for deadline violations
     pub fn check_deadlines(&self, current_time: u64) -> Vec<TaskId> {
-        let mut violations = Vec::new);
+        let mut violations = Vec::new());
 
         for (task_id, task) in self.scheduled_tasks.iter() {
             if let Some(deadline) = task.deadline {
@@ -465,7 +465,7 @@ mod tests {
         let scheduler = FuelAsyncScheduler::new(
             SchedulingPolicy::Cooperative,
             VerificationLevel::Standard,
-        ).unwrap());
+        ).unwrap();
 
         let stats = scheduler.get_statistics);
         assert_eq!(stats.policy, SchedulingPolicy::Cooperative;
@@ -477,7 +477,7 @@ mod tests {
         let mut scheduler = FuelAsyncScheduler::new(
             SchedulingPolicy::Cooperative,
             VerificationLevel::Standard,
-        ).unwrap());
+        ).unwrap();
 
         let task_id = TaskId::new(1;
         scheduler.add_task(
@@ -486,7 +486,7 @@ mod tests {
             Priority::Normal,
             1000,
             None,
-        ).unwrap());
+        ).unwrap();
 
         let stats = scheduler.get_statistics);
         assert_eq!(stats.total_tasks, 1);
@@ -498,15 +498,15 @@ mod tests {
         let mut scheduler = FuelAsyncScheduler::new(
             SchedulingPolicy::PriorityBased,
             VerificationLevel::Standard,
-        ).unwrap());
+        ).unwrap();
 
         let task1 = TaskId::new(1;
         let task2 = TaskId::new(2;
 
         // Add low priority task first
-        scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Low, 1000, None).unwrap());
+        scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Low, 1000, None).unwrap();
         // Add high priority task second
-        scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::High, 1000, None).unwrap());
+        scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::High, 1000, None).unwrap();
 
         // High priority task should be scheduled first
         let next = scheduler.next_task);
@@ -518,17 +518,17 @@ mod tests {
         let mut scheduler = FuelAsyncScheduler::new(
             SchedulingPolicy::RoundRobin,
             VerificationLevel::Standard,
-        ).unwrap());
+        ).unwrap();
 
         let task1 = TaskId::new(1;
         let task2 = TaskId::new(2;
 
-        scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap());
-        scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap());
+        scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
+        scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
 
         // Should alternate between tasks
         assert_eq!(scheduler.next_task(), Some(task1;
-        scheduler.update_task_state(task1, 100, AsyncTaskState::Waiting).unwrap());
+        scheduler.update_task_state(task1, 100, AsyncTaskState::Waiting).unwrap();
         assert_eq!(scheduler.next_task(), Some(task2;
     }
 }

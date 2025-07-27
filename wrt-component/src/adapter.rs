@@ -410,7 +410,7 @@ impl CoreModuleAdapter {
         }
         #[cfg(not(feature = "std"))]
         {
-            let mut result = Vec::new);
+            let mut result = Vec::new());
             for arg in args {
                 result.push(arg.clone();
             }
@@ -617,14 +617,14 @@ mod tests {
     fn test_core_module_adapter_creation() {
         #[cfg(feature = "std")]
         {
-            let adapter = CoreModuleAdapter::new("test_module".to_string();
+            let adapter = CoreModuleAdapter::new("test_module".to_string());
             assert_eq!(adapter.name, "test_module";
             assert_eq!(adapter.functions.len(), 0);
         }
         #[cfg(not(feature = "std"))]
         {
-            let name = BoundedString::from_str("test_module").unwrap());
-            let adapter = CoreModuleAdapter::new(name).unwrap());
+            let name = BoundedString::from_str("test_module").unwrap();
+            let adapter = CoreModuleAdapter::new(name).unwrap();
             assert_eq!(adapter.name.as_str(), "test_module";
             assert_eq!(adapter.functions.len(), 0);
         }
@@ -632,9 +632,9 @@ mod tests {
 
     #[test]
     fn test_function_adapter() {
-        let mut core_sig = CoreFunctionSignature::new().unwrap());
-        core_sig.add_param(CoreValType::I32).unwrap());
-        core_sig.add_result(CoreValType::I32).unwrap());
+        let mut core_sig = CoreFunctionSignature::new().unwrap();
+        core_sig.add_param(CoreValType::I32).unwrap();
+        core_sig.add_result(CoreValType::I32).unwrap();
 
         let adapter =
             FunctionAdapter::new(0, WrtComponentType::Unit, core_sig, AdaptationMode::Direct;

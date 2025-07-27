@@ -367,7 +367,7 @@ impl ValueConverter {
 
     /// Convert multiple values
     pub fn convert_values_component_to_core(&self, values: &[ComponentValue]) -> Result<Vec<CoreValue>> {
-        let mut core_values = Vec::new);
+        let mut core_values = Vec::new());
         for value in values {
             core_values.push(self.component_to_core(value)?;
         }
@@ -384,7 +384,7 @@ impl ValueConverter {
             return Err(Error::validation_error("Error occurred";
         }
 
-        let mut component_values = Vec::new);
+        let mut component_values = Vec::new());
         for (value, target_type) in values.iter().zip(types.iter()) {
             component_values.push(self.core_to_component(value, target_type)?;
         }
@@ -797,58 +797,58 @@ mod tests {
 
     #[test]
     fn test_value_converter_creation() {
-        let converter = ValueConverter::new);
+        let converter = ValueConverter::new();
         assert!(converter.config.strict_type_checking);
         assert!(converter.config.enable_caching);
     }
 
     #[test]
     fn test_component_to_core_conversion() {
-        let converter = ValueConverter::new);
+        let converter = ValueConverter::new();
         
         // Test basic conversions
         let bool_val = ComponentValue::Bool(true;
-        let core_val = converter.component_to_core(&bool_val).unwrap());
+        let core_val = converter.component_to_core(&bool_val).unwrap();
         assert_eq!(core_val, CoreValue::I32(1;
 
         let s32_val = ComponentValue::S32(42;
-        let core_val = converter.component_to_core(&s32_val).unwrap());
+        let core_val = converter.component_to_core(&s32_val).unwrap();
         assert_eq!(core_val, CoreValue::I32(42;
 
         let f64_val = ComponentValue::F64(3.14;
-        let core_val = converter.component_to_core(&f64_val).unwrap());
+        let core_val = converter.component_to_core(&f64_val).unwrap();
         assert_eq!(core_val, CoreValue::F64(3.14;
     }
 
     #[test]
     fn test_core_to_component_conversion() {
-        let converter = ValueConverter::new);
+        let converter = ValueConverter::new();
         
         // Test conversions with target types
         let core_val = CoreValue::I32(1;
-        let component_val = converter.core_to_component(&core_val, &ComponentType::Bool).unwrap());
+        let component_val = converter.core_to_component(&core_val, &ComponentType::Bool).unwrap();
         assert_eq!(component_val, ComponentValue::Bool(true;
 
         let core_val = CoreValue::I32(42;
-        let component_val = converter.core_to_component(&core_val, &ComponentType::S32).unwrap());
+        let component_val = converter.core_to_component(&core_val, &ComponentType::S32).unwrap();
         assert_eq!(component_val, ComponentValue::S32(42;
     }
 
     #[test]
     fn test_instance_resolver() {
-        let mut resolver = InstanceResolver::new);
+        let mut resolver = InstanceResolver::new();
         
         let instance_id = resolver.register_instance(
             1,
             "test_module".to_string(),
             10,
             65536,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(instance_id, 1);
         assert_eq!(resolver.instance_count(), 1);
         
-        let info = resolver.get_instance(instance_id).unwrap());
+        let info = resolver.get_instance(instance_id).unwrap();
         assert_eq!(info.component_id, 1);
         assert_eq!(info.module_name, "test_module";
         assert_eq!(info.function_count, 10;
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn test_host_function_registry() {
-        let mut registry = HostFunctionRegistry::new);
+        let mut registry = HostFunctionRegistry::new();
         
         fn test_host_function(args: &[ComponentValue]) -> Result<ComponentValue> {
             if let Some(ComponentValue::S32(val)) = args.first() {
@@ -878,19 +878,19 @@ mod tests {
             "double".to_string(),
             signature,
             test_host_function,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(index, 0);
         assert_eq!(registry.function_count(), 1);
         
         let args = vec![ComponentValue::S32(21)];
-        let result = registry.call_function(index, &args).unwrap());
+        let result = registry.call_function(index, &args).unwrap();
         assert_eq!(result, ComponentValue::S32(42;
     }
 
     #[test]
     fn test_runtime_bridge_creation() {
-        let bridge = ComponentRuntimeBridge::new);
+        let bridge = ComponentRuntimeBridge::new();
         assert_eq!(bridge.execution_stats().function_calls, 0);
         assert_eq!(bridge.instance_resolver().instance_count(), 0);
         assert_eq!(bridge.host_registry().function_count(), 0);
@@ -898,7 +898,7 @@ mod tests {
 
     #[test]
     fn test_runtime_bridge_host_function() {
-        let mut bridge = ComponentRuntimeBridge::new);
+        let mut bridge = ComponentRuntimeBridge::new();
         
         fn add_function(args: &[ComponentValue]) -> Result<ComponentValue> {
             if args.len() == 2 {
@@ -922,7 +922,7 @@ mod tests {
             "add".to_string(),
             signature,
             add_function,
-        ).unwrap());
+        ).unwrap();
         
         // Register an instance
         let instance_id = bridge.register_component_instance(
@@ -930,14 +930,14 @@ mod tests {
             "test".to_string(),
             5,
             4096,
-        ).unwrap());
+        ).unwrap();
         
         // Update instance to ready state
-        bridge.instance_resolver.update_instance_state(instance_id, RuntimeInstanceState::Ready).unwrap());
+        bridge.instance_resolver.update_instance_state(instance_id, RuntimeInstanceState::Ready).unwrap();
         
         // Execute the host function
         let args = vec![ComponentValue::S32(10), ComponentValue::S32(32)];
-        let result = bridge.execute_component_function(instance_id, "add", &args).unwrap());
+        let result = bridge.execute_component_function(instance_id, "add", &args).unwrap();
         assert_eq!(result, ComponentValue::S32(42;
     }
 

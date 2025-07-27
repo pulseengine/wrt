@@ -64,7 +64,7 @@ fuzz_target!(|data: &[u8]| {
     
     // Test realloc manager if enabled
     if has_realloc {
-        let mut realloc_manager = ReallocManager::new);
+        let mut realloc_manager = ReallocManager::new();
         
         if data.len() > 5 {
             let alloc_size = (data[5] as usize) % 512 + 1;

@@ -630,7 +630,7 @@ impl BoundedResourceManager {
         let pending_resources: alloc::vec::Vec<ResourceId> = self.global_resources.iter()
             .filter(|r| r.state == ResourceState::PendingCleanup)
             .map(|r| r.id)
-            .collect();
+            .collect());
         
         for resource_id in pending_resources {
             self.finalize_resource(resource_id)?;
@@ -682,7 +682,7 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(type_id.0, 1);
         
@@ -700,10 +700,10 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap());
+        ).unwrap();
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, instance_id).unwrap());
+        let handle = manager.create_resource(type_id, data, instance_id).unwrap();
         
         assert!(manager.get_resource(handle).is_some();
         
@@ -723,14 +723,14 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap());
+        ).unwrap();
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, source_instance).unwrap());
+        let handle = manager.create_resource(type_id, data, source_instance).unwrap();
         
-        manager.transfer_ownership(handle, target_instance).unwrap());
+        manager.transfer_ownership(handle, target_instance).unwrap();
         
-        let resource = manager.get_resource(handle).unwrap());
+        let resource = manager.get_resource(handle).unwrap();
         assert_eq!(resource.instance_id, target_instance;
         
         let stats = manager.get_statistics);
@@ -748,12 +748,12 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap());
+        ).unwrap();
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, source_instance).unwrap());
+        let handle = manager.create_resource(type_id, data, source_instance).unwrap();
         
-        let borrowed_handle = manager.borrow_resource(handle, target_instance).unwrap());
+        let borrowed_handle = manager.borrow_resource(handle, target_instance).unwrap();
         
         assert!(manager.get_resource(handle).is_some();
         assert!(manager.get_resource(borrowed_handle).is_some();
@@ -772,12 +772,12 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap());
+        ).unwrap();
         
         let data = alloc::vec![0u8; 100].into_boxed_slice);
-        let handle = manager.create_resource(type_id, data, instance_id).unwrap());
+        let handle = manager.create_resource(type_id, data, instance_id).unwrap();
         
-        manager.cleanup_instance(instance_id).unwrap());
+        manager.cleanup_instance(instance_id).unwrap();
         
         let stats = manager.get_statistics);
         assert_eq!(stats.active_resources, 0);
@@ -793,7 +793,7 @@ mod tests {
             max_cross_component_shares: 1,
         };
         let safety_context = SafetyContext::new(AsilLevel::QM;
-        let mut manager = BoundedResourceManager::new(limits, safety_context).unwrap());
+        let mut manager = BoundedResourceManager::new(limits, safety_context).unwrap();
         
         // Register one type should succeed
         let type_id = manager.register_resource_type(
@@ -801,7 +801,7 @@ mod tests {
             1024,
             None,
             AsilLevel::QM,
-        ).unwrap());
+        ).unwrap();
         
         // Registering a second type should fail
         let result = manager.register_resource_type(

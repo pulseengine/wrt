@@ -561,9 +561,9 @@ pub struct BuiltinRequirements {
 impl Default for BuiltinRequirements {
     fn default() -> Self {
         let required_provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for BuiltinRequirements::required");
+            .expect("Failed to allocate memory for BuiltinRequirements::required"));
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for BuiltinRequirements::instances");
+            .expect("Failed to allocate memory for BuiltinRequirements::instances"));
         
         Self {
             required: BoundedVec::new(required_provider).expect("Failed to create BoundedVec for BuiltinRequirements::required"),
@@ -1076,7 +1076,7 @@ mod tests {
             .with_export("export", ExternType::Function { params: Vec::new(), results: Vec::new() })
             .with_verification_level(VerificationLevel::Full)
             .build()
-            .unwrap());
+            .unwrap();
 
         assert_eq!(component_type.imports.len(), 1);
         assert_eq!(component_type.exports.len(), 1);
@@ -1102,7 +1102,7 @@ mod tests {
             .with_import(import)
             .with_verification_level(VerificationLevel::Full)
             .build()
-            .unwrap());
+            .unwrap();
 
         assert_eq!(component.exports.len(), 1);
         assert_eq!(component.imports.len(), 1);
@@ -1111,7 +1111,7 @@ mod tests {
 
     #[test]
     fn test_component_operations() {
-        let mut component = Component::new().unwrap());
+        let mut component = Component::new().unwrap();
 
         // Add an export
         let export = Export {
@@ -1119,7 +1119,7 @@ mod tests {
             ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
             value: None,
         };
-        component.add_export(export).unwrap());
+        component.add_export(export).unwrap();
 
         // Add an import
         let import = Import {
@@ -1127,7 +1127,7 @@ mod tests {
             name: "name".to_string(),
             ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
         };
-        component.add_import(import).unwrap());
+        component.add_import(import).unwrap();
 
         // Test getters
         let found_export = component.get_export("export";
@@ -1145,7 +1145,7 @@ mod tests {
         let memory_type = MemoryType { minimum: 1, maximum: Some(2), shared: false };
 
         // Create a memory value
-        let mut memory_value = MemoryValue::new(memory_type).unwrap());
+        let mut memory_value = MemoryValue::new(memory_type).unwrap();
 
         // Set a debug name
         memory_value.set_debug_name("test_memory";
@@ -1155,16 +1155,16 @@ mod tests {
 
         // Write some data
         let data = b"Hello, world!";
-        memory_value.write(0, data).unwrap());
+        memory_value.write(0, data).unwrap();
 
         // Read the data back
-        let read_data = memory_value.read(0, data.len() as u32).unwrap());
+        let read_data = memory_value.read(0, data.len() as u32).unwrap();
 
         // Verify the data
         assert_eq!(read_data, data;
 
         // Grow the memory
-        let old_size = memory_value.grow(1).unwrap());
+        let old_size = memory_value.grow(1).unwrap();
         assert_eq!(old_size, 1);
 
         // Check the new size
@@ -1218,7 +1218,7 @@ impl Default for ExternValue {
 impl Default for FunctionValue {
     fn default() -> Self {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for FunctionValue::default");
+            .expect("Failed to allocate memory for FunctionValue::default"));
         Self {
             ty: FuncType::default(),
             export_name: BoundedString::new_with_provider(provider)
@@ -1257,7 +1257,7 @@ impl Default for Limits {
 impl Default for TableValue {
     fn default() -> Self {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect("Failed to allocate memory for TableValue::default");
+            .expect("Failed to allocate memory for TableValue::default"));
         Self {
             ty: TableType::default(),
             table: BoundedVec::new(provider).expect("Failed to create BoundedVec for TableValue::default"),

@@ -212,7 +212,7 @@ impl FuelAsyncBridge {
         T: Send + 'static,
     {
         let bridge_config = config.unwrap_or_else(|| self.default_config.clone();
-        let mut task_ids = Vec::new);
+        let mut task_ids = Vec::new());
 
         // Spawn all futures as tasks
         for future in futures {
@@ -241,7 +241,7 @@ impl FuelAsyncBridge {
         }
 
         // Execute all tasks concurrently
-        let mut results = Vec::new);
+        let mut results = Vec::new());
         for task_id in task_ids {
             // This is a simplified version - real implementation would use proper concurrent execution
             match self.executor.get_task_status(task_id) {
@@ -479,7 +479,7 @@ mod tests {
         let bridge = FuelAsyncBridge::new(
             AsyncBridgeConfig::default(),
             VerificationLevel::Standard,
-        ).unwrap());
+        ).unwrap();
 
         let stats = bridge.get_bridge_statistics);
         assert_eq!(stats.total_bridges, 0);
@@ -511,7 +511,7 @@ mod tests {
         let mut bridge = FuelAsyncBridge::new(
             AsyncBridgeConfig::default(),
             VerificationLevel::Standard,
-        ).unwrap());
+        ).unwrap();
 
         // This would work with an actual async runtime
         // let result: Result<u32, _> = bridge.execute_async_function(

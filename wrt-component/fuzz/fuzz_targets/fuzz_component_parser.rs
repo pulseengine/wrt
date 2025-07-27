@@ -15,7 +15,7 @@ fuzz_target!(|data: &[u8]| {
     let _ = parser::get_required_builtins(data;
     
     // Test component loader with different validation levels
-    let mut loader = ComponentLoader::new);
+    let mut loader = ComponentLoader::new();
     
     // Try loading with no validation
     loader.set_validation_level(ValidationLevel::None;

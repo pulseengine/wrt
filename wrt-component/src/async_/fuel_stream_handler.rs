@@ -358,7 +358,7 @@ impl FuelStreamManager {
                 stream.target_component == component_id
             })
             .map(|(id, _)| *id)
-            .collect();
+            .collect());
         
         for stream_id in stream_ids {
             self.close_stream(stream_id)?;
@@ -377,7 +377,7 @@ mod tests {
         let stream = FuelStream::<u32>::new(1, 1000, VerificationLevel::Basic;
         assert!(stream.is_ok());
         
-        let stream = stream.unwrap());
+        let stream = stream.unwrap();
         assert_eq!(stream.id, 1);
         assert_eq!(stream.state, StreamState::Active;
         assert_eq!(stream.fuel_consumed, STREAM_CREATE_FUEL;
@@ -385,7 +385,7 @@ mod tests {
     
     #[test]
     fn test_stream_yield_and_poll() {
-        let mut stream = FuelStream::new(1, 1000, VerificationLevel::Basic).unwrap());
+        let mut stream = FuelStream::new(1, 1000, VerificationLevel::Basic).unwrap();
         
         // Yield items
         assert!(stream.yield_item(42).is_ok());
@@ -414,7 +414,7 @@ mod tests {
     
     #[test]
     fn test_stream_completion() {
-        let mut stream = FuelStream::<u32>::new(1, 1000, VerificationLevel::Basic).unwrap());
+        let mut stream = FuelStream::<u32>::new(1, 1000, VerificationLevel::Basic).unwrap();
         
         assert!(stream.complete().is_ok());
         assert_eq!(stream.state, StreamState::Completed;
@@ -425,7 +425,7 @@ mod tests {
     
     #[test]
     fn test_fuel_exhaustion() {
-        let mut stream = FuelStream::<u32>::new(1, 20, VerificationLevel::Basic).unwrap());
+        let mut stream = FuelStream::<u32>::new(1, 20, VerificationLevel::Basic).unwrap();
         
         // Consume most of the fuel
         let waker = futures_task::noop_waker);

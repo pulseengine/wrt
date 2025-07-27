@@ -61,8 +61,8 @@ mod tests {
 
     impl ASILComplianceHarness {
         fn new_for_asil_level(asil_level: ASILLevel) -> Self {
-            let task_manager = Arc::new(Mutex::new(TaskManager::new);
-            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new);
+            let task_manager = Arc::new(Mutex::new(TaskManager::new();
+            let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
             
             let config = BridgeConfiguration {
                 enable_preemption: true,
@@ -106,7 +106,7 @@ mod tests {
 
         fn report_safety_violation(&self, violation: &str) {
             self.safety_violations.fetch_add(1, Ordering::AcqRel;
-            eprintln!("SAFETY VIOLATION: {}", violation;
+            eprintln!("SAFETY VIOLATION: {}", violation));
         }
 
         fn verify_no_safety_violations(&self) -> bool {
@@ -174,23 +174,23 @@ mod tests {
         
         // Initialize with strict limits for ASIL-D
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
-        harness.channels.initialize_component_channels(component_id, None).unwrap());
-        harness.timers.initialize_component_timers(component_id, None).unwrap());
-        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap());
+        harness.channels.initialize_component_channels(component_id, None).unwrap();
+        harness.timers.initialize_component_timers(component_id, None).unwrap();
+        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap();
 
         // Create deterministic tasks with strict fuel budgets
         const NUM_TASKS: u32 = 5; // Small number for ASIL-D
         const FUEL_BUDGET: u64 = 1000; // Strict budget
         const MAX_EXECUTIONS: u32 = 10; // Bounded execution
         
-        let mut task_ids = Vec::new);
+        let mut task_ids = Vec::new());
         
         for i in 0..NUM_TASKS {
             let task_id = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.spawn_async_task(
                     component_id,
                     Some(i),
@@ -217,7 +217,7 @@ mod tests {
         
         for round in 0..max_poll_rounds {
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.poll_async_tasks().unwrap()
             };
             
@@ -247,7 +247,7 @@ mod tests {
 
         // ASIL-D Verification: Fuel consumption must be within bounds
         let final_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
         
@@ -263,10 +263,10 @@ mod tests {
         assert!(harness.verify_no_safety_violations(), "ASIL-D compliance violations detected");
         assert_eq!(completed_tasks, NUM_TASKS, "Not all ASIL-D tasks completed";
         
-        println!("ASIL-D Deterministic Execution Test: PASSED";
-        println!("  Tasks Completed: {}/{}", completed_tasks, NUM_TASKS;
-        println!("  Fuel Consumed: {}", final_stats.total_fuel_consumed;
-        println!("  Fuel Budget: {}", total_fuel_budget;
+        println!("ASIL-D Deterministic Execution Test: PASSED");
+        println!("  Tasks Completed: {}/{}", completed_tasks, NUM_TASKS);
+        println!("  Fuel Consumed: {}", final_stats.total_fuel_consumed);
+        println!("  Fuel Budget: {}", total_fuel_budget);
     }
 
     #[test]
@@ -282,22 +282,22 @@ mod tests {
         
         // Initialize both components
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(critical_component, None).unwrap());
-            bridge.initialize_component_async(non_critical_component, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(critical_component, None).unwrap();
+            bridge.initialize_component_async(non_critical_component, None).unwrap();
         }
         
-        harness.channels.initialize_component_channels(critical_component, None).unwrap());
-        harness.channels.initialize_component_channels(non_critical_component, None).unwrap());
+        harness.channels.initialize_component_channels(critical_component, None).unwrap();
+        harness.channels.initialize_component_channels(non_critical_component, None).unwrap();
         
-        harness.sync_primitives.initialize_component_sync(critical_component, None).unwrap());
-        harness.sync_primitives.initialize_component_sync(non_critical_component, None).unwrap());
+        harness.sync_primitives.initialize_component_sync(critical_component, None).unwrap();
+        harness.sync_primitives.initialize_component_sync(non_critical_component, None).unwrap();
 
         // Create resource isolation test
         
         // 1. Spatial Isolation: Separate memory spaces
-        let critical_mutex = harness.sync_primitives.create_async_mutex(critical_component, false).unwrap());
-        let non_critical_mutex = harness.sync_primitives.create_async_mutex(non_critical_component, false).unwrap());
+        let critical_mutex = harness.sync_primitives.create_async_mutex(critical_component, false).unwrap();
+        let non_critical_mutex = harness.sync_primitives.create_async_mutex(non_critical_component, false).unwrap();
         
         // Verify mutexes are separate
         assert_ne!(critical_mutex, non_critical_mutex, "Spatial isolation violated: shared mutex";
@@ -306,16 +306,16 @@ mod tests {
         let (critical_sender, critical_receiver) = harness.channels.create_channel(
             critical_component,
             ChannelType::Bounded(8),
-        ).unwrap());
+        ).unwrap();
         
         let (non_critical_sender, non_critical_receiver) = harness.channels.create_channel(
             non_critical_component,
             ChannelType::Bounded(8),
-        ).unwrap());
+        ).unwrap();
 
         // 3. Temporal Isolation: Priority-based scheduling
         let critical_task = {
-            let mut bridge = harness.bridge.lock().unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
             bridge.spawn_async_task(
                 critical_component,
                 Some(0),
@@ -334,7 +334,7 @@ mod tests {
         };
 
         let non_critical_task = {
-            let mut bridge = harness.bridge.lock().unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
             bridge.spawn_async_task(
                 non_critical_component,
                 Some(0),
@@ -370,7 +370,7 @@ mod tests {
         
         for round in 0..500 {
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.poll_async_tasks().unwrap()
             };
             
@@ -390,7 +390,7 @@ mod tests {
 
         // ASIL-C Verification: Both components should function independently
         let final_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
         
@@ -409,10 +409,10 @@ mod tests {
 
         assert!(harness.verify_no_safety_violations(), "ASIL-C interference violations detected");
         
-        println!("ASIL-C Freedom from Interference Test: PASSED";
-        println!("  Active Components: {}", final_stats.active_components;
-        println!("  Tasks Completed: {}", completed_tasks;
-        println!("  Channels Created: {}", channel_stats.total_channels_created;
+        println!("ASIL-C Freedom from Interference Test: PASSED");
+        println!("  Active Components: {}", final_stats.active_components);
+        println!("  Tasks Completed: {}", completed_tasks);
+        println!("  Channels Created: {}", channel_stats.total_channels_created);
     }
 
     #[test]
@@ -426,12 +426,12 @@ mod tests {
         
         // Initialize with specific resource limits
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
-        harness.channels.initialize_component_channels(component_id, None).unwrap());
-        harness.timers.initialize_component_timers(component_id, None).unwrap());
-        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap());
+        harness.channels.initialize_component_channels(component_id, None).unwrap();
+        harness.timers.initialize_component_timers(component_id, None).unwrap();
+        harness.sync_primitives.initialize_component_sync(component_id, None).unwrap();
 
         // Test bounded channel creation
         let mut channels_created = 0;
@@ -482,7 +482,7 @@ mod tests {
         
         for i in 0..200 { // Try to exceed limit
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.spawn_async_task(
                     component_id,
                     Some(i),
@@ -515,7 +515,7 @@ mod tests {
         let timer_stats = harness.timers.get_timer_statistics);
         let sync_stats = harness.sync_primitives.get_sync_statistics);
         let bridge_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
 
@@ -527,11 +527,11 @@ mod tests {
 
         assert!(harness.verify_no_safety_violations(), "ASIL-B resource violations detected");
         
-        println!("ASIL-B Bounded Resource Usage Test: PASSED";
-        println!("  Channels Created: {} (bounded)", channels_created;
-        println!("  Timers Created: {} (bounded)", timers_created;
-        println!("  Mutexes Created: {} (bounded)", mutexes_created;
-        println!("  Tasks Created: {} (bounded)", tasks_created;
+        println!("ASIL-B Bounded Resource Usage Test: PASSED");
+        println!("  Channels Created: {} (bounded)", channels_created);
+        println!("  Timers Created: {} (bounded)", timers_created);
+        println!("  Mutexes Created: {} (bounded)", mutexes_created);
+        println!("  Tasks Created: {} (bounded)", tasks_created);
     }
 
     #[test]
@@ -545,11 +545,11 @@ mod tests {
         
         // Initialize system
         {
-            let mut bridge = harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(component_id, None).unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(component_id, None).unwrap();
         }
-        harness.channels.initialize_component_channels(component_id, None).unwrap());
-        harness.timers.initialize_component_timers(component_id, None).unwrap());
+        harness.channels.initialize_component_channels(component_id, None).unwrap();
+        harness.timers.initialize_component_timers(component_id, None).unwrap();
 
         // Test error detection and handling
         
@@ -566,7 +566,7 @@ mod tests {
         let (sender, receiver) = harness.channels.create_channel(
             component_id,
             ChannelType::Bounded(2),
-        ).unwrap());
+        ).unwrap();
 
         // Fill channel to capacity
         for i in 0..3 {
@@ -575,7 +575,7 @@ mod tests {
                 component_id,
                 ComponentValue::U32(i),
                 None,
-            ).unwrap());
+            ).unwrap();
             
             if i >= 2 {
                 // Should indicate backpressure or full
@@ -593,19 +593,19 @@ mod tests {
             component_id,
             TimerType::Oneshot,
             100,
-        ).unwrap());
+        ).unwrap();
 
         // Cancel timer and verify
-        let cancel_result = harness.timers.cancel_timer(timer_id).unwrap());
+        let cancel_result = harness.timers.cancel_timer(timer_id).unwrap();
         assert!(cancel_result, "Timer cancellation failed");
 
         // Try to cancel again - should handle gracefully
-        let second_cancel = harness.timers.cancel_timer(timer_id).unwrap());
+        let second_cancel = harness.timers.cancel_timer(timer_id).unwrap();
         assert!(!second_cancel, "Double cancellation not handled correctly");
 
         // 4. Basic task execution
         let task_id = {
-            let mut bridge = harness.bridge.lock().unwrap());
+            let mut bridge = harness.bridge.lock().unwrap();
             bridge.spawn_async_task(
                 component_id,
                 Some(0),
@@ -627,7 +627,7 @@ mod tests {
         let mut completed = false;
         for _ in 0..100 {
             let result = {
-                let mut bridge = harness.bridge.lock().unwrap());
+                let mut bridge = harness.bridge.lock().unwrap();
                 bridge.poll_async_tasks().unwrap()
             };
             
@@ -643,17 +643,17 @@ mod tests {
 
         // Verify system state
         let final_stats = {
-            let bridge = harness.bridge.lock().unwrap());
+            let bridge = harness.bridge.lock().unwrap();
             bridge.get_bridge_statistics()
         };
         
         assert!(harness.verify_no_safety_violations(), "ASIL-A safety violations detected");
         assert_eq!(final_stats.active_components, 1);
         
-        println!("ASIL-A Basic Safety Requirements Test: PASSED";
-        println!("  Task Completed: {}", completed;
-        println!("  Error Detection: Functional";
-        println!("  Resource Management: Functional";
+        println!("ASIL-A Basic Safety Requirements Test: PASSED");
+        println!("  Task Completed: {}", completed);
+        println!("  Error Detection: Functional");
+        println!("  Resource Management: Functional");
     }
 
     #[test]
@@ -668,18 +668,18 @@ mod tests {
         
         // Initialize both systems
         {
-            let mut bridge = asil_d_harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(critical_component, None).unwrap());
+            let mut bridge = asil_d_harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(critical_component, None).unwrap();
         }
         
         {
-            let mut bridge = asil_a_harness.bridge.lock().unwrap());
-            bridge.initialize_component_async(basic_component, None).unwrap());
+            let mut bridge = asil_a_harness.bridge.lock().unwrap();
+            bridge.initialize_component_async(basic_component, None).unwrap();
         }
 
         // Create tasks in both systems
         let critical_task = {
-            let mut bridge = asil_d_harness.bridge.lock().unwrap());
+            let mut bridge = asil_d_harness.bridge.lock().unwrap();
             bridge.spawn_async_task(
                 critical_component,
                 Some(0),
@@ -698,7 +698,7 @@ mod tests {
         };
 
         let basic_task = {
-            let mut bridge = asil_a_harness.bridge.lock().unwrap());
+            let mut bridge = asil_a_harness.bridge.lock().unwrap();
             bridge.spawn_async_task(
                 basic_component,
                 Some(0),
@@ -724,7 +724,7 @@ mod tests {
             // Poll ASIL-D system
             if !d_completed {
                 let d_result = {
-                    let mut bridge = asil_d_harness.bridge.lock().unwrap());
+                    let mut bridge = asil_d_harness.bridge.lock().unwrap();
                     bridge.poll_async_tasks().unwrap()
                 };
                 if d_result.tasks_completed > 0 {
@@ -735,7 +735,7 @@ mod tests {
             // Poll ASIL-A system
             if !a_completed {
                 let a_result = {
-                    let mut bridge = asil_a_harness.bridge.lock().unwrap());
+                    let mut bridge = asil_a_harness.bridge.lock().unwrap();
                     bridge.poll_async_tasks().unwrap()
                 };
                 if a_result.tasks_completed > 0 {
@@ -754,8 +754,8 @@ mod tests {
         assert!(d_completed, "ASIL-D task did not complete");
         assert!(a_completed, "ASIL-A task did not complete");
         
-        println!("Cross-ASIL Level Compatibility Test: PASSED";
-        println!("  ASIL-D Task Completed: {}", d_completed;
-        println!("  ASIL-A Task Completed: {}", a_completed;
+        println!("Cross-ASIL Level Compatibility Test: PASSED");
+        println!("  ASIL-D Task Completed: {}", d_completed);
+        println!("  ASIL-A Task Completed: {}", a_completed);
     }
 }

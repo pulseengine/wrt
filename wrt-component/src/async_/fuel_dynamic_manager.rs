@@ -426,7 +426,7 @@ impl FuelDynamicManager {
     fn rebalance_priority_adaptive(&mut self, total_available: u64) -> Result<(), Error> {
         // Calculate priority weights
         let mut total_weight = 0.0;
-        let mut weights = Vec::new);
+        let mut weights = Vec::new());
 
         for (id, quota) in self.component_quotas.iter() {
             let active = quota.active_tasks.load(Ordering::Acquire) as f64;
@@ -482,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_dynamic_manager_creation() {
-        let manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap());
+        let manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap();
         let stats = manager.get_allocation_stats);
         assert_eq!(stats.reserve_fuel, 10000;
         assert_eq!(stats.policy, FuelAllocationPolicy::Adaptive;
@@ -490,10 +490,10 @@ mod tests {
 
     #[test]
     fn test_component_registration() {
-        let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::FairShare, 10000).unwrap());
+        let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::FairShare, 10000).unwrap();
         
         let component_id = ComponentInstanceId::new(1;
-        manager.register_component(component_id, 5000, Priority::Normal).unwrap());
+        manager.register_component(component_id, 5000, Priority::Normal).unwrap();
         
         // Should be able to calculate allocation
         let allocation = manager.calculate_fuel_allocation(
@@ -501,18 +501,18 @@ mod tests {
             component_id,
             1000,
             Priority::Normal,
-        ).unwrap());
+        ).unwrap();
         assert_eq!(allocation, 1000); // No active tasks yet, so uses base
     }
 
     #[test]
     fn test_adaptive_allocation() {
-        let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap());
+        let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap();
         let task_id = TaskId::new(1;
         let component_id = ComponentInstanceId::new(1;
         
         // Update history with exhaustion
-        manager.update_task_history(task_id, 1000, 10, false).unwrap());
+        manager.update_task_history(task_id, 1000, 10, false).unwrap();
         manager.handle_fuel_exhaustion(task_id).ok();
         
         // Should get increased allocation
@@ -521,13 +521,13 @@ mod tests {
             component_id,
             1000,
             Priority::Normal,
-        ).unwrap());
+        ).unwrap();
         assert!(allocation > 1000)); // Should be increased due to exhaustion
     }
 
     #[test]
     fn test_priority_allocation() {
-        let manager = FuelDynamicManager::new(FuelAllocationPolicy::PriorityAdaptive, 10000).unwrap());
+        let manager = FuelDynamicManager::new(FuelAllocationPolicy::PriorityAdaptive, 10000).unwrap();
         let task_id = TaskId::new(1;
         let component_id = ComponentInstanceId::new(1;
         
@@ -536,28 +536,28 @@ mod tests {
             component_id,
             1000,
             Priority::Low,
-        ).unwrap());
+        ).unwrap();
         
         let high_priority = manager.calculate_fuel_allocation(
             TaskId::new(2),
             component_id,
             1000,
             Priority::High,
-        ).unwrap());
+        ).unwrap();
         
         assert!(high_priority > low_priority);
     }
 
     #[test]
     fn test_emergency_fuel_allocation() {
-        let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap());
+        let mut manager = FuelDynamicManager::new(FuelAllocationPolicy::Adaptive, 10000).unwrap();
         let task_id = TaskId::new(1;
         
         // Create history
-        manager.update_task_history(task_id, 500, 5, false).unwrap());
+        manager.update_task_history(task_id, 500, 5, false).unwrap();
         
         // Request emergency fuel
-        let emergency = manager.handle_fuel_exhaustion(task_id).unwrap());
+        let emergency = manager.handle_fuel_exhaustion(task_id).unwrap();
         assert!(emergency >= MIN_FUEL_ALLOCATION);
         
         // Check reserve was reduced

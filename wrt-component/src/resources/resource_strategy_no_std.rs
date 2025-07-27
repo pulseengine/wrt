@@ -166,7 +166,7 @@ mod tests {
         let strategy = ResourceStrategyNoStd::new(MemoryStrategy::Copy;
         let data = &[1, 2, 3, 4, 5];
 
-        let result = strategy.process_memory(data, ResourceOperation::Read).unwrap());
+        let result = strategy.process_memory(data, ResourceOperation::Read).unwrap();
         assert_eq!(result.as_slice(), data;
 
         // Modifying the copy shouldn't affect the original
@@ -181,7 +181,7 @@ mod tests {
         let strategy = ResourceStrategyNoStd::new(MemoryStrategy::Reference;
         let data = &[1, 2, 3, 4, 5];
 
-        let result = strategy.process_memory(data, ResourceOperation::Read).unwrap());
+        let result = strategy.process_memory(data, ResourceOperation::Read).unwrap();
         assert_eq!(result.as_slice(), data;
     }
 

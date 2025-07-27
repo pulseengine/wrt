@@ -27,7 +27,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 macro_rules! debug_println {
     ($($arg:tt)*) => {
-        eprintln!($($arg)*;
+        eprintln!($($arg)*)));
     };
 }
 
@@ -133,7 +133,7 @@ macro_rules! debug_println {
     ($($arg:tt)*) => {
         #[cfg(debug_assertions)]
         {
-            println!($($arg)*;
+            println!($($arg)*));
         }
         #[cfg(not(debug_assertions))]
         {

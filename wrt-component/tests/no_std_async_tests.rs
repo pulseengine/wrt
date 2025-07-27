@@ -26,16 +26,16 @@ fn test_async_context_no_std() {
     let _ = AsyncContextManager::context_pop);
 
     // Test basic context operations
-    let context = AsyncContext::new);
-    AsyncContextManager::context_set(context).unwrap());
+    let context = AsyncContext::new();
+    AsyncContextManager::context_set(context).unwrap();
 
     // Set a value with bounded string key
-    let key = ContextKey::new("test").unwrap());
+    let key = ContextKey::new("test").unwrap();
     let value = ContextValue::from_component_value(ComponentValue::I32(42;
-    AsyncContextManager::set_context_value(key.clone(), value).unwrap());
+    AsyncContextManager::set_context_value(key.clone(), value).unwrap();
 
     // Retrieve value
-    let retrieved = AsyncContextManager::get_context_value(&key).unwrap());
+    let retrieved = AsyncContextManager::get_context_value(&key).unwrap();
     assert!(retrieved.is_some();
     assert_eq!(
         retrieved.unwrap().as_component_value().unwrap(),
@@ -43,32 +43,32 @@ fn test_async_context_no_std() {
     ;
 
     // Clean up
-    AsyncContextManager::context_pop().unwrap());
+    AsyncContextManager::context_pop().unwrap();
 }
 
 #[test]
 fn test_task_management_no_std() {
-    TaskBuiltins::initialize().unwrap());
+    TaskBuiltins::initialize().unwrap();
 
     // Create task
-    let task_id = TaskBuiltins::task_start().unwrap());
+    let task_id = TaskBuiltins::task_start().unwrap();
 
     // Check status
-    let status = TaskBuiltins::task_status(task_id).unwrap());
+    let status = TaskBuiltins::task_status(task_id).unwrap();
     assert_eq!(status, TaskStatus::Running;
 
     // Set metadata with bounded string
-    TaskBuiltins::set_task_metadata(task_id, "priority", ComponentValue::I32(5)).unwrap());
+    TaskBuiltins::set_task_metadata(task_id, "priority", ComponentValue::I32(5)).unwrap();
 
     // Complete task
     TaskBuiltins::task_return(
         task_id,
         TaskReturn::from_component_value(ComponentValue::Bool(true)),
     )
-    .unwrap());
+    .unwrap();
 
     // Verify completion
-    let final_status = TaskBuiltins::task_status(task_id).unwrap());
+    let final_status = TaskBuiltins::task_status(task_id).unwrap();
     assert_eq!(final_status, TaskStatus::Completed;
 }
 
@@ -76,10 +76,10 @@ fn test_task_management_no_std() {
 fn test_waitable_sets_no_std() {
     use crate::async_types::{Future, FutureHandle, FutureState};
 
-    WaitableSetBuiltins::initialize().unwrap());
+    WaitableSetBuiltins::initialize().unwrap();
 
     // Create set
-    let set_id = WaitableSetBuiltins::waitable_set_new().unwrap());
+    let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
 
     // Add future
     let future = Future {
@@ -87,25 +87,25 @@ fn test_waitable_sets_no_std() {
         state: FutureState::Pending,
     };
     let waitable_id =
-        WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap());
+        WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
 
     // Check contains
-    assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap());
+    assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap();
 
     // Remove
-    assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap());
+    assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap();
 }
 
 #[test]
 fn test_error_context_no_std() {
-    ErrorContextBuiltins::initialize().unwrap());
+    ErrorContextBuiltins::initialize().unwrap();
 
     // Create error context with bounded string
     let context_id =
-        ErrorContextBuiltins::error_context_new("Test error", ErrorSeverity::Warning).unwrap());
+        ErrorContextBuiltins::error_context_new("Test error", ErrorSeverity::Warning).unwrap();
 
     // Get debug message
-    let message = ErrorContextBuiltins::error_context_debug_message(context_id).unwrap());
+    let message = ErrorContextBuiltins::error_context_debug_message(context_id).unwrap();
     assert_eq!(message.as_str(), "Test error";
 
     // Add stack frame with bounded strings
@@ -116,14 +116,14 @@ fn test_error_context_no_std() {
         Some(42),
         None,
     )
-    .unwrap());
+    .unwrap();
 
     // Set metadata with bounded string key
     ErrorContextBuiltins::error_context_set_metadata(context_id, "code", ComponentValue::I32(100))
-        .unwrap());
+        .unwrap();
 
     // Clean up
-    ErrorContextBuiltins::error_context_drop(context_id).unwrap());
+    ErrorContextBuiltins::error_context_drop(context_id).unwrap();
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn test_advanced_threading_no_std() {
         FunctionSignature, ThreadSpawnConfig, ValueType as ThreadValueType,
     };
 
-    AdvancedThreadingBuiltins::initialize().unwrap());
+    AdvancedThreadingBuiltins::initialize().unwrap();
 
     // Create function reference with bounded string
     let func_ref = FunctionReference::new(
@@ -144,7 +144,7 @@ fn test_advanced_threading_no_std() {
         0,
         0,
     )
-    .unwrap());
+    .unwrap();
 
     let config = ThreadSpawnConfig {
         stack_size: Some(4096),
@@ -152,18 +152,18 @@ fn test_advanced_threading_no_std() {
     };
 
     // Spawn thread
-    let thread_id = AdvancedThreadingBuiltins::thread_spawn_ref(func_ref, config, None).unwrap());
+    let thread_id = AdvancedThreadingBuiltins::thread_spawn_ref(func_ref, config, None).unwrap();
 
     // Check state
-    let state = AdvancedThreadingBuiltins::thread_state(thread_id).unwrap());
+    let state = AdvancedThreadingBuiltins::thread_state(thread_id).unwrap();
     assert_eq!(state, AdvancedThreadState::Running;
 
     // Set thread-local with bounded storage
     AdvancedThreadingBuiltins::thread_local_set(thread_id, 1, ComponentValue::I32(123), None)
-        .unwrap());
+        .unwrap();
 
     // Get thread-local
-    let value = AdvancedThreadingBuiltins::thread_local_get(thread_id, 1).unwrap());
+    let value = AdvancedThreadingBuiltins::thread_local_get(thread_id, 1).unwrap();
     assert_eq!(value, Some(ComponentValue::I32(123);
 }
 
@@ -174,12 +174,12 @@ fn test_fixed_length_lists_no_std() {
     assert!(list_type.validate_size().is_ok());
 
     // Create list
-    let mut list = FixedLengthList::new(list_type.clone()).unwrap());
+    let mut list = FixedLengthList::new(list_type.clone()).unwrap();
 
     // Add elements (uses bounded vec internally)
-    list.push(ComponentValue::I32(1)).unwrap());
-    list.push(ComponentValue::I32(2)).unwrap());
-    list.push(ComponentValue::I32(3)).unwrap());
+    list.push(ComponentValue::I32(1)).unwrap();
+    list.push(ComponentValue::I32(2)).unwrap();
+    list.push(ComponentValue::I32(3)).unwrap();
 
     // Verify full
     assert!(list.is_full();
@@ -190,11 +190,11 @@ fn test_fixed_length_lists_no_std() {
         ComponentValue::I32(20),
         ComponentValue::I32(30),
     ];
-    let list2 = FixedLengthList::with_elements(list_type, &elements).unwrap());
+    let list2 = FixedLengthList::with_elements(list_type, &elements).unwrap();
     assert_eq!(list2.current_length(), 3;
 
     // Test utilities
-    let zeros = fixed_list_utils::zero_filled(ValueType::Bool, 5).unwrap());
+    let zeros = fixed_list_utils::zero_filled(ValueType::Bool, 5).unwrap();
     assert_eq!(zeros.current_length(), 5;
 }
 
@@ -213,8 +213,8 @@ fn test_bounded_collections_limits() {
     assert!(error_result.is_err();
 
     // Task metadata limits
-    TaskBuiltins::initialize().unwrap());
-    let task_id = TaskBuiltins::task_start().unwrap());
+    TaskBuiltins::initialize().unwrap();
+    let task_id = TaskBuiltins::task_start().unwrap();
 
     // Metadata key size limit
     let long_metadata_key = "m".repeat(33); // Exceeds bounded string size
@@ -228,16 +228,16 @@ fn test_memory_efficiency_no_std() {
     // Verify that our no_std implementations are memory efficient
 
     // Small context
-    let context = AsyncContext::new);
+    let context = AsyncContext::new();
     // In no_std, this uses BoundedMap with fixed capacity
 
     // Small task registry
-    TaskBuiltins::initialize().unwrap());
+    TaskBuiltins::initialize().unwrap();
     // Registry uses bounded collections
 
     // Small waitable set
-    WaitableSetBuiltins::initialize().unwrap());
-    let set_id = WaitableSetBuiltins::waitable_set_new().unwrap());
+    WaitableSetBuiltins::initialize().unwrap();
+    let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
     // Set uses bounded collections for waitables
 
     // Binary std/no_std choice
@@ -266,7 +266,7 @@ fn test_stack_based_operations() {
             ComponentValue::I32(3),
         ],
     )
-    .unwrap());
+    .unwrap();
 
     // Binary std/no_std choice
     assert_eq!(list.current_length(), 3;

@@ -1074,7 +1074,7 @@ impl ParameterMarshaler {
         let marshaled_parameters = parameters.to_vec);
         #[cfg(not(feature = "std"))]
         let marshaled_parameters = {
-            let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap());
+            let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
             for param in parameters {
                 vec.push(param.clone()).map_err(|_| Error::validation_error("Too many parameters for bounded vec"))?;
             }
@@ -1094,7 +1094,7 @@ impl ParameterMarshaler {
             original_parameters: parameters.to_vec(),
             #[cfg(not(feature = "std"))]
             original_parameters: {
-                let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap());
+                let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
                 for param in parameters {
                     vec.push(param.clone()).map_err(|_| Error::validation_error("Too many parameters for bounded vec"))?;
                 }
@@ -1200,9 +1200,9 @@ impl ResourceCoordinator {
     /// Coordinate resources for a call
     pub fn coordinate_resources(&mut self, resource_handles: &[ResourceHandle]) -> Result<ResourceState> {
         #[cfg(feature = "std")]
-        let mut acquired_locks = std::vec::Vec::new);
+        let mut acquired_locks = std::vec::Vec::new());
         #[cfg(not(feature = "std"))]
-        let mut acquired_locks = BoundedVec::new(crate::MemoryProvider::default()).unwrap());
+        let mut acquired_locks = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
 
         // Acquire locks for all resources
         for &handle in resource_handles {
@@ -1230,7 +1230,7 @@ impl ResourceCoordinator {
             transferring_resources: resource_handles.to_vec(),
             #[cfg(not(feature = "std"))]
             transferring_resources: {
-                let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap());
+                let mut vec = BoundedVec::new(crate::MemoryProvider::default()).unwrap();
                 for handle in resource_handles {
                     vec.push(*handle).map_err(|_| Error::runtime_execution_error("Too many transferring resources"))?;
                 }
@@ -1421,7 +1421,7 @@ mod tests {
 
     #[test]
     fn test_call_context_manager_creation() {
-        let manager = CallContextManager::new);
+        let manager = CallContextManager::new();
         assert_eq!(manager.contexts.len(), 0);
     }
 
@@ -1440,23 +1440,23 @@ mod tests {
             ComponentValue::String("hello".to_string()),
             #[cfg(not(feature = "std"))]
             ComponentValue::String({
-                let mut s = BoundedString::new(crate::MemoryProvider::default()).unwrap());
-                s.push_str("hello").unwrap());
+                let mut s = BoundedString::new(crate::MemoryProvider::default()).unwrap();
+                s.push_str("hello").unwrap();
                 s
             }),
             ComponentValue::Bool(true),
         ];
 
-        let size = marshaler.calculate_parameter_size(&parameters).unwrap());
+        let size = marshaler.calculate_parameter_size(&parameters).unwrap();
         assert!(size > 0);
     }
 
     #[test]
     fn test_resource_coordinator() {
-        let mut coordinator = ResourceCoordinator::new);
+        let mut coordinator = ResourceCoordinator::new();
         let handles = vec![ResourceHandle::new(1), ResourceHandle::new(2)];
 
-        let state = coordinator.coordinate_resources(&handles).unwrap());
+        let state = coordinator.coordinate_resources(&handles).unwrap();
         assert_eq!(state.acquired_locks.len(), 2;
         assert_eq!(state.transferring_resources.len(), 2;
     }

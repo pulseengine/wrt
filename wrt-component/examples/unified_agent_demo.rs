@@ -16,7 +16,7 @@ use wrt_component::{
 };
 
 fn main() {
-    println!("=== WRT Unified Execution Engine Demo ===\n";
+    println!("=== WRT Unified Execution Engine Demo ===\n");
 
     // Demo 1: Basic synchronous execution
     demo_synchronous_execution);
@@ -41,8 +41,8 @@ fn main() {
 }
 
 fn demo_synchronous_execution() {
-    println!("1. Synchronous Execution Demo";
-    println!("-----------------------------";
+    println!("1. Synchronous Execution Demo");
+    println!("-----------------------------");
 
     // Create a unified engine with default synchronous mode
     let config = AgentConfiguration::default());
@@ -54,10 +54,10 @@ fn demo_synchronous_execution() {
     // Execute a function
     match engine.call_function(1, 100, &args) {
         Ok(result) => {
-            println!("Function executed successfully!";
-            println!("Result: {:?}", result;
-            println!("State: {:?}", engine.state);
-            println!("Statistics: {:?}", engine.statistics);
+            println!("Function executed successfully!");
+            println!("Result: {:?}", result);
+            println!("State: {:?}", engine.state));
+            println!("Statistics: {:?}", engine.statistics));
         },
         Err(e) => println!("Execution failed: {:?}", e),
     }
@@ -66,8 +66,8 @@ fn demo_synchronous_execution() {
 }
 
 fn demo_async_execution() {
-    println!("2. Async Execution Demo";
-    println!("----------------------";
+    println!("2. Async Execution Demo");
+    println!("----------------------");
 
     #[cfg(feature = "async")]
     {
@@ -83,8 +83,8 @@ fn demo_async_execution() {
 
         match engine.call_function(2, 200, &args) {
             Ok(result) => {
-                println!("Async function started!";
-                println!("Result: {:?}", result;
+                println!("Async function started!");
+                println!("Result: {:?}", result);
 
                 // In real usage, you would poll or await the async operation
                 println!(
@@ -97,14 +97,14 @@ fn demo_async_execution() {
     }
 
     #[cfg(not(feature = "async"))]
-    println!("Async feature not enabled. Compile with --features async";
+    println!("Async feature not enabled. Compile with --features async");
 
     println!);
 }
 
 fn demo_stackless_execution() {
-    println!("3. Stackless Execution Demo";
-    println!("--------------------------";
+    println!("3. Stackless Execution Demo");
+    println!("--------------------------");
 
     // Create engine for stackless execution (memory-constrained environments)
     let mut engine = UnifiedExecutionAgent::new_stackless);
@@ -114,9 +114,9 @@ fn demo_stackless_execution() {
 
     match engine.call_function(3, 300, &args) {
         Ok(result) => {
-            println!("Stackless execution successful!";
-            println!("Result: {:?}", result;
-            println!("Stackless frames: {}", engine.statistics().stackless_frames;
+            println!("Stackless execution successful!");
+            println!("Result: {:?}", result);
+            println!("Stackless frames: {}", engine.statistics().stackless_frames);
         },
         Err(e) => println!("Stackless execution failed: {:?}", e),
     }
@@ -125,8 +125,8 @@ fn demo_stackless_execution() {
 }
 
 fn demo_cfi_protected_execution() {
-    println!("4. CFI-Protected Execution Demo";
-    println!("------------------------------";
+    println!("4. CFI-Protected Execution Demo");
+    println!("------------------------------");
 
     #[cfg(feature = "cfi")]
     {
@@ -138,8 +138,8 @@ fn demo_cfi_protected_execution() {
 
         match engine.call_function(4, 400, &args) {
             Ok(result) => {
-                println!("CFI-protected execution successful!";
-                println!("Result: {:?}", result;
+                println!("CFI-protected execution successful!");
+                println!("Result: {:?}", result);
                 println!(
                     "CFI-protected instructions: {}",
                     engine.statistics().cfi_instructions_protected
@@ -154,14 +154,14 @@ fn demo_cfi_protected_execution() {
     }
 
     #[cfg(not(feature = "cfi"))]
-    println!("CFI feature not enabled. Compile with --features cfi";
+    println!("CFI feature not enabled. Compile with --features cfi");
 
     println!);
 }
 
 fn demo_hybrid_execution() {
-    println!("5. Hybrid Mode Execution Demo";
-    println!("----------------------------";
+    println!("5. Hybrid Mode Execution Demo");
+    println!("----------------------------");
 
     // Create engine with multiple capabilities enabled
     let flags = HybridModeFlags {
@@ -172,29 +172,29 @@ fn demo_hybrid_execution() {
 
     let mut engine = UnifiedExecutionAgent::new_hybrid(flags;
 
-    println!("Hybrid mode enabled with:";
-    println!("  - Async: {}", flags.async_enabled;
-    println!("  - Stackless: {}", flags.stackless_enabled;
-    println!("  - CFI: {}", flags.cfi_enabled;
+    println!("Hybrid mode enabled with:");
+    println!("  - Async: {}", flags.async_enabled);
+    println!("  - Stackless: {}", flags.stackless_enabled);
+    println!("  - CFI: {}", flags.cfi_enabled);
 
     // Execute function with combined capabilities
     let args = vec![Value::String("hybrid_test".to_string())];
 
     match engine.call_function(5, 500, &args) {
         Ok(result) => {
-            println!("Hybrid execution successful!";
-            println!("Result: {:?}", result;
+            println!("Hybrid execution successful!");
+            println!("Result: {:?}", result);
 
             let stats = engine.statistics);
-            println!("Combined statistics:";
-            println!("  - Instructions: {}", stats.instructions_executed;
-            println!("  - Stackless frames: {}", stats.stackless_frames;
+            println!("Combined statistics:");
+            println!("  - Instructions: {}", stats.instructions_executed);
+            println!("  - Stackless frames: {}", stats.stackless_frames);
 
             #[cfg(feature = "async")]
-            println!("  - Async operations: {}", stats.async_operations;
+            println!("  - Async operations: {}", stats.async_operations);
 
             #[cfg(feature = "cfi")]
-            println!("  - CFI protected: {}", stats.cfi_instructions_protected;
+            println!("  - CFI protected: {}", stats.cfi_instructions_protected);
         },
         Err(e) => println!("Hybrid execution failed: {:?}", e),
     }
@@ -203,16 +203,16 @@ fn demo_hybrid_execution() {
 }
 
 fn demo_engine_registry() {
-    println!("6. Agent Registry Demo";
-    println!("--------------------";
+    println!("6. Agent Registry Demo");
+    println!("--------------------");
 
     // Create a registry to manage multiple engines
-    let mut registry = AgentRegistry::new);
+    let mut registry = AgentRegistry::new();
 
     // Create multiple engines with different configurations
     let sync_engine_id = registry
         .create_unified_engine(AgentConfiguration::default())
-        .expect("Failed to create sync engine");
+        .expect("Failed to create sync engine"));
 
     let stackless_config = AgentConfiguration {
         execution_mode: ExecutionMode::Stackless,
@@ -221,7 +221,7 @@ fn demo_engine_registry() {
     };
     let stackless_engine_id = registry
         .create_unified_engine(stackless_config)
-        .expect("Failed to create stackless engine");
+        .expect("Failed to create stackless engine"));
 
     println!(
         "Created {} engines in registry",
@@ -231,13 +231,13 @@ fn demo_engine_registry() {
     // Execute functions on different engines
     let args = vec![Value::U32(777)];
 
-    println!("\nExecuting on sync engine:";
+    println!("\nExecuting on sync engine:");
     match registry.call_function(sync_engine_id, 1, 100, &args) {
         Ok(result) => println!("  Result: {:?}", result),
         Err(e) => println!("  Error: {:?}", e),
     }
 
-    println!("\nExecuting on stackless engine:";
+    println!("\nExecuting on stackless engine:");
     match registry.call_function(stackless_engine_id, 1, 100, &args) {
         Ok(result) => println!("  Result: {:?}", result),
         Err(e) => println!("  Error: {:?}", e),
@@ -245,25 +245,25 @@ fn demo_engine_registry() {
 
     // Get engine information
     if let Some(info) = registry.get_engine_info(sync_engine_id) {
-        println!("\nSync engine info:";
-        println!("  Type: {:?}", info.engine_type;
-        println!("  Migration status: {:?}", info.migration_status;
+        println!("\nSync engine info:");
+        println!("  Type: {:?}", info.engine_type);
+        println!("  Migration status: {:?}", info.migration_status);
     }
 
     println!);
 }
 
 fn demo_legacy_migration() {
-    println!("7. Legacy Agent Migration Demo";
-    println!("-----------------------------";
+    println!("7. Legacy Agent Migration Demo");
+    println!("-----------------------------");
 
-    let mut registry = AgentRegistry::new);
+    let mut registry = AgentRegistry::new();
 
     // Create a legacy engine (for demonstration)
-    println!("Creating legacy component engine...";
+    println!("Creating legacy component engine...");
     let legacy_id = registry
         .create_legacy_component_engine()
-        .expect("Failed to create legacy engine");
+        .expect("Failed to create legacy engine"));
 
     // Check migration status
     let migration_status = registry.migration_status);
@@ -274,22 +274,22 @@ fn demo_legacy_migration() {
 
     // Get engine info before migration
     if let Some(info) = registry.get_engine_info(legacy_id) {
-        println!("\nBefore migration:";
-        println!("  Agent type: {:?}", info.engine_type;
-        println!("  Migration status: {:?}", info.migration_status;
+        println!("\nBefore migration:");
+        println!("  Agent type: {:?}", info.engine_type);
+        println!("  Migration status: {:?}", info.migration_status);
     }
 
     // Migrate the engine
-    println!("\nMigrating legacy engine to unified...";
+    println!("\nMigrating legacy engine to unified...");
     match registry.migrate_engine(legacy_id) {
         Ok(()) => {
-            println!("Migration successful!";
+            println!("Migration successful!");
 
             // Check status after migration
             if let Some(info) = registry.get_engine_info(legacy_id) {
-                println!("\nAfter migration:";
-                println!("  Agent type: {:?}", info.engine_type;
-                println!("  Migration status: {:?}", info.migration_status;
+                println!("\nAfter migration:");
+                println!("  Agent type: {:?}", info.engine_type);
+                println!("  Migration status: {:?}", info.migration_status);
             }
 
             println!(
@@ -301,7 +301,7 @@ fn demo_legacy_migration() {
     }
 
     // Test the migrated engine
-    println!("\nTesting migrated engine:";
+    println!("\nTesting migrated engine:");
     let args = vec![Value::Bool(true)];
     match registry.call_function(legacy_id, 1, 100, &args) {
         Ok(result) => println!("  Execution successful: {:?}", result),
@@ -313,6 +313,6 @@ fn demo_legacy_migration() {
 
 // Helper function to print separator
 fn print_separator() {
-    println!("\n{}", "=".repeat(50;
+    println!("\n{}", "=".repeat(50);
     println!);
 }

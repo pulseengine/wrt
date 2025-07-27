@@ -119,7 +119,7 @@ impl<P: MemoryProvider + Default + Clone> ExportMap<P> {
     /// Convert this export map to one using SafeMemory containers
     #[cfg(feature = "safe-memory")]
     pub fn to_safe_memory(&self) -> Result<SafeExportMap> {
-        let mut result = SafeExportMap::new);
+        let mut result = SafeExportMap::new();
         for (name, export) in self.exports.iter() {
             let name_str = name.as_str()?;
             result.add(name_str, export.clone())?;

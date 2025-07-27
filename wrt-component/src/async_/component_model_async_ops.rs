@@ -230,7 +230,7 @@ impl ComponentModelAsyncOps {
         let current_time = self.get_current_time);
         
         // Check all active wait operations
-        let mut completed_waits = Vec::new);
+        let mut completed_waits = Vec::new());
         
         for (task_id, wait_op) in self.active_waits.iter_mut() {
             // Check for timeout
@@ -493,12 +493,12 @@ mod tests {
 
     #[test]
     fn test_waitable_registry() {
-        let mut registry = WaitableRegistry::new().unwrap());
+        let mut registry = WaitableRegistry::new().unwrap();
         let future_handle = FutureHandle(42;
         
-        assert!(!registry.is_future_ready(future_handle).unwrap());
+        assert!(!registry.is_future_ready(future_handle).unwrap();
         
-        registry.mark_future_ready(future_handle).unwrap());
-        assert!(registry.is_future_ready(future_handle).unwrap());
+        registry.mark_future_ready(future_handle).unwrap();
+        assert!(registry.is_future_ready(future_handle).unwrap();
     }
 }

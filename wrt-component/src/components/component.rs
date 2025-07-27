@@ -875,7 +875,7 @@ impl BuiltinRequirements {
 /// Scans a binary for required builtins
 pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
     // Helper to avoid boilerplate
-    let mut requirements = BuiltinRequirements::new);
+    let mut requirements = BuiltinRequirements::new();
 
     // Try to decode as component or module
     #[cfg(feature = "std")]
@@ -1050,17 +1050,17 @@ mod tests {
 
     #[test]
     fn test_runtime_instance_creation() {
-        let runtime = RuntimeInstance::new);
-        assert!(runtime.functions.is_empty();
-        assert!(runtime.memories.is_empty();
-        assert!(runtime.tables.is_empty();
-        assert!(runtime.globals.is_empty();
+        let runtime = RuntimeInstance::new();
+        assert!(runtime.functions.is_empty());
+        assert!(runtime.memories.is_empty());
+        assert!(runtime.tables.is_empty());
+        assert!(runtime.globals.is_empty());
         assert!(runtime.module_instance.is_none();
     }
 
     #[test]
     fn test_register_function() {
-        let mut runtime = RuntimeInstance::new);
+        let mut runtime = RuntimeInstance::new();
         let func_type = wrt_runtime::func::FuncType {
             params: vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
@@ -1075,7 +1075,7 @@ mod tests {
 
     #[test]
     fn test_function_not_found() {
-        let runtime = RuntimeInstance::new);
+        let runtime = RuntimeInstance::new();
 
         // Try to execute a non-existent function
         let args = vec![Value::I32(1)];
@@ -1094,7 +1094,7 @@ mod tests {
 
     #[test]
     fn test_argument_count_validation() {
-        let mut runtime = RuntimeInstance::new);
+        let mut runtime = RuntimeInstance::new();
 
         // Create and register a function expecting 2 arguments
         let func_type = wrt_runtime::func::FuncType {
@@ -1104,7 +1104,7 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
         let extern_value = ExternValue::Function(func_value;
 
-        runtime.register_function("test_func".to_string(), extern_value).unwrap());
+        runtime.register_function("test_func".to_string(), extern_value).unwrap();
 
         // Call with wrong number of arguments
         let args = vec![Value::I32(1)]; // Only one argument
@@ -1123,7 +1123,7 @@ mod tests {
 
     #[test]
     fn test_argument_type_validation() {
-        let mut runtime = RuntimeInstance::new);
+        let mut runtime = RuntimeInstance::new();
 
         // Create and register a function expecting I32 arguments
         let func_type = wrt_runtime::func::FuncType {
@@ -1133,7 +1133,7 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
         let extern_value = ExternValue::Function(func_value;
 
-        runtime.register_function("test_func".to_string(), extern_value).unwrap());
+        runtime.register_function("test_func".to_string(), extern_value).unwrap();
 
         // Call with wrong argument types
         let args = vec![Value::I32(1), Value::F32(2.0)]; // Second arg is F32
@@ -1152,7 +1152,7 @@ mod tests {
 
     #[test]
     fn test_function_not_implemented() {
-        let mut runtime = RuntimeInstance::new);
+        let mut runtime = RuntimeInstance::new();
 
         // Create and register a function
         let func_type = wrt_runtime::func::FuncType {
@@ -1162,7 +1162,7 @@ mod tests {
         let func_value = FunctionValue { ty: func_type, export_name: "test_func".to_string() };
         let extern_value = ExternValue::Function(func_value;
 
-        runtime.register_function("test_func".to_string(), extern_value).unwrap());
+        runtime.register_function("test_func".to_string(), extern_value).unwrap();
 
         // Call with correct arguments
         let args = vec![Value::I32(1), Value::I32(2)];

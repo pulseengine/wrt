@@ -308,7 +308,7 @@ impl ComponentLoader {
 
         // Add a default import
         #[cfg(feature = "std")]
-        let import_name = "default".to_string();
+        let import_name = "default".to_string());
         #[cfg(not(any(feature = "std", )))]
         let import_name = BoundedString::from_str("default")
             .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default import name as bounded string")
@@ -321,7 +321,7 @@ impl ComponentLoader {
 
         // Add a default export
         #[cfg(feature = "std")]
-        let export_name = "main".to_string();
+        let export_name = "main".to_string());
         #[cfg(not(any(feature = "std", )))]
         let export_name = BoundedString::from_str("main")
             .map_err(|_| wrt_error::Error::validation_invalid_input("Failed to create default export name as bounded string")
@@ -616,7 +616,7 @@ mod tests {
 
     #[test]
     fn test_component_loader_creation() {
-        let loader = ComponentLoader::new);
+        let loader = ComponentLoader::new();
         assert_eq!(loader.validation_level, ValidationLevel::Full;
         assert_eq!(loader.max_component_size, 16 * 1024 * 1024;
     }
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_parsed_component_creation() {
-        let mut component = ParsedComponent::new().expect("Failed to create ParsedComponent");
+        let mut component = ParsedComponent::new().expect("Failed to create ParsedComponent"));
         assert_eq!(component.types.len(), 0);
         assert_eq!(component.imports.len(), 0);
         assert_eq!(component.exports.len(), 0);
@@ -668,7 +668,7 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_component() {
-        let loader = ComponentLoader::new);
+        let loader = ComponentLoader::new();
 
         // Test empty binary
         let result = loader.parse_component(&[];
@@ -681,14 +681,14 @@ mod tests {
 
     #[test]
     fn test_parse_minimal_component() {
-        let loader = ComponentLoader::new);
+        let loader = ComponentLoader::new();
 
         // Create minimal valid component binary (simplified)
         let binary = b"\x00asm\x0d\x00\x01\x00"; // Magic + version
         let result = loader.parse_component(binary;
         assert!(result.is_ok());
 
-        let parsed = result.unwrap());
+        let parsed = result.unwrap();
         assert!(parsed.types.len() > 0);
     }
 }

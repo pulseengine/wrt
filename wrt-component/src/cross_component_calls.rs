@@ -480,14 +480,14 @@ impl CrossComponentCallManager {
         caller_instance: u32,
     ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
         #[cfg(feature = "std")]
-        let mut prepared_args = Vec::new);
+        let mut prepared_args = Vec::new());
         #[cfg(not(any(feature = "std", )))]
-        let mut prepared_args = Vec::new);
+        let mut prepared_args = Vec::new());
 
         #[cfg(feature = "std")]
-        let mut transferred_resources = Vec::new);
+        let mut transferred_resources = Vec::new());
         #[cfg(not(any(feature = "std", )))]
-        let mut transferred_resources = Vec::new);
+        let mut transferred_resources = Vec::new());
 
         for arg in args {
             match arg {
@@ -736,7 +736,7 @@ impl CrossComponentCallManager {
             }
 
             // Group transfers by target component for batch processing
-            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> = std::collections::HashMap::new);
+            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> = std::collections::HashMap::new();
             
             for transfer in self.pending_transfers.drain(..) {
                 transfers_by_target.entry(transfer.target_component).or_insert_with(Vec::new).push(transfer);
@@ -938,14 +938,14 @@ mod tests {
 
     #[test]
     fn test_call_manager_creation() {
-        let manager = CrossComponentCallManager::new().unwrap());
+        let manager = CrossComponentCallManager::new().unwrap();
         assert_eq!(manager.call_depth(), 0);
         assert_eq!(manager.targets.len(), 0);
     }
 
     #[test]
     fn test_register_target() {
-        let mut manager = CrossComponentCallManager::new().unwrap());
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         let target = CallTarget::new(
             1,
@@ -955,7 +955,7 @@ mod tests {
             ResourceTransferPolicy::None,
         ;
 
-        let target_id = manager.register_target(target).unwrap());
+        let target_id = manager.register_target(target).unwrap();
         assert_eq!(target_id, 0);
         assert_eq!(manager.targets.len(), 1);
     }
@@ -994,7 +994,7 @@ mod tests {
 
     #[test]
     fn test_is_call_allowed() {
-        let mut manager = CrossComponentCallManager::new().unwrap());
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         // No targets registered - should not be allowed
         assert!(!manager.is_call_allowed(0, 1);
@@ -1007,7 +1007,7 @@ mod tests {
             CallPermissions::default(),
             ResourceTransferPolicy::None,
         ;
-        manager.register_target(target).unwrap());
+        manager.register_target(target).unwrap();
 
         // Now should be allowed
         assert!(manager.is_call_allowed(0, 1);
@@ -1015,7 +1015,7 @@ mod tests {
 
     #[test]
     fn test_call_caching() {
-        let mut manager = CrossComponentCallManager::new().unwrap());
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         // Test call stats update
         manager.update_call_stats(0, 1, "test_func", 12345, 500;
@@ -1030,7 +1030,7 @@ mod tests {
                 function_name: "test_func".to_string(),
                 signature_hash: 12345,
             };
-            let stats = manager.call_frequency.get(&key).unwrap());
+            let stats = manager.call_frequency.get(&key).unwrap();
             assert_eq!(stats.call_count, 2;
             assert_eq!(stats.avg_duration_ns, 550); // (500 + 600) / 2
         }
@@ -1038,11 +1038,11 @@ mod tests {
 
     #[test]
     fn test_pending_transfers() {
-        let mut manager = CrossComponentCallManager::new().unwrap());
+        let mut manager = CrossComponentCallManager::new().unwrap();
 
         // Add some pending transfers
-        manager.add_pending_transfer(100, 0, 1, ResourceTransferType::Move).unwrap());
-        manager.add_pending_transfer(101, 0, 1, ResourceTransferType::Borrow).unwrap());
+        manager.add_pending_transfer(100, 0, 1, ResourceTransferType::Move).unwrap();
+        manager.add_pending_transfer(101, 0, 1, ResourceTransferType::Borrow).unwrap();
 
         #[cfg(feature = "std")]
         {
@@ -1061,7 +1061,7 @@ mod tests {
 
     #[test]
     fn test_signature_hash() {
-        let manager = CrossComponentCallManager::new().unwrap());
+        let manager = CrossComponentCallManager::new().unwrap();
 
         // Test that different types have different hashes
         let hash1 = manager.calculate_signature_hash(&WrtComponentType::U32;

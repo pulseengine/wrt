@@ -383,7 +383,7 @@ impl FuelPriorityInheritanceProtocol {
         record_global_operation(OperationType::CollectionMutate, self.verification_level;
         
         let mut cleaned_count = 0;
-        let mut expired_resources = Vec::new);
+        let mut expired_resources = Vec::new());
 
         // Find expired inheritance chains
         for (resource_id, chain) in self.inheritance_chains.iter() {
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn test_protocol_creation() {
-        let protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap());
+        let protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
         let stats = protocol.get_statistics);
         
         assert_eq!(stats.total_inheritances.load(Ordering::Acquire), 0);
@@ -499,7 +499,7 @@ mod tests {
 
     #[test]
     fn test_blocking_registration() {
-        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap());
+        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
         
         let blocked_task = TaskId::new(1;
         let holder_task = TaskId::new(2;
@@ -522,7 +522,7 @@ mod tests {
 
     #[test]
     fn test_priority_inheritance() {
-        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap());
+        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
         
         let high_priority_task = TaskId::new(1;
         let low_priority_holder = TaskId::new(2;
@@ -544,7 +544,7 @@ mod tests {
 
     #[test]
     fn test_resource_release() {
-        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap());
+        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
         
         let blocked_task = TaskId::new(1;
         let holder_task = TaskId::new(2;
@@ -557,10 +557,10 @@ mod tests {
             resource_id,
             Some(holder_task),
             None,
-        ).unwrap());
+        ).unwrap();
         
         // Release resource
-        let next_holder = protocol.release_resource(resource_id, holder_task).unwrap());
+        let next_holder = protocol.release_resource(resource_id, holder_task).unwrap();
         
         assert_eq!(next_holder, Some(blocked_task;
         
@@ -570,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_priority_inversion_detection() {
-        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap());
+        let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
         
         let high_priority_task = TaskId::new(1;
         let low_priority_blocker = TaskId::new(2;
@@ -583,13 +583,13 @@ mod tests {
             resource_id,
             Some(low_priority_blocker),
             None,
-        ).unwrap());
+        ).unwrap();
         
         // Check for priority inversion
         let inversion_detected = protocol.check_priority_inversion(
             high_priority_task,
             Priority::Low, // Simulate lower current priority
-        ).unwrap());
+        ).unwrap();
         
         assert!(inversion_detected);
     }

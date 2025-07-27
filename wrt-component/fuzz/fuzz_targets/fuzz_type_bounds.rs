@@ -12,8 +12,8 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     
-    let mut type_registry = GenerativeTypeRegistry::new);
-    let mut bounds_checker = TypeBoundsChecker::new);
+    let mut type_registry = GenerativeTypeRegistry::new();
+    let mut bounds_checker = TypeBoundsChecker::new();
     
     // Use fuzzer data to create component IDs and type operations
     let component_id = ComponentInstanceId::new((data[0] as u32) % 100;
@@ -21,7 +21,7 @@ fuzz_target!(|data: &[u8]| {
     let num_bounds = (data[2] % 20) as usize;
     
     // Create some resource types
-    let mut type_ids = Vec::new);
+    let mut type_ids = Vec::new());
     for i in 0..num_types.min(data.len() / 4) {
         let name = format!("type_{}", i;
         if let Ok(resource_type) = type_registry.create_resource_type(component_id, &name) {

@@ -384,14 +384,14 @@ mod tests {
 
     #[test]
     fn test_realloc_manager_creation() {
-        let manager = ReallocManager::new(1024, 10).unwrap());
+        let manager = ReallocManager::new(1024, 10).unwrap();
         assert_eq!(manager.max_allocation_size, 1024;
         assert_eq!(manager.max_instance_allocations, 10;
     }
 
     #[test]
     fn test_register_realloc() {
-        let mut manager = ReallocManager::new(1024, 10).unwrap());
+        let mut manager = ReallocManager::new(1024, 10).unwrap();
         let instance_id = ComponentInstanceId(1;
 
         assert!(manager.register_realloc(instance_id, 42).is_ok());
@@ -399,11 +399,11 @@ mod tests {
 
     #[test]
     fn test_allocation() {
-        let mut manager = ReallocManager::new(1024, 10).unwrap());
+        let mut manager = ReallocManager::new(1024, 10).unwrap();
         let instance_id = ComponentInstanceId(1;
 
         // Binary std/no_std choice
-        manager.register_realloc(instance_id, 42).unwrap());
+        manager.register_realloc(instance_id, 42).unwrap();
 
         // Allocate memory
         let ptr = manager.allocate(instance_id, 64, 8;
@@ -417,13 +417,13 @@ mod tests {
 
     #[test]
     fn test_reallocation() {
-        let mut manager = ReallocManager::new(1024, 10).unwrap());
+        let mut manager = ReallocManager::new(1024, 10).unwrap();
         let instance_id = ComponentInstanceId(1;
 
-        manager.register_realloc(instance_id, 42).unwrap());
+        manager.register_realloc(instance_id, 42).unwrap();
 
         // Binary std/no_std choice
-        let ptr = manager.allocate(instance_id, 64, 8).unwrap());
+        let ptr = manager.allocate(instance_id, 64, 8).unwrap();
 
         // Binary std/no_std choice
         let new_ptr = manager.reallocate(instance_id, ptr, 64, 8, 128;
@@ -432,13 +432,13 @@ mod tests {
 
     #[test]
     fn test_deallocation() {
-        let mut manager = ReallocManager::new(1024, 10).unwrap());
+        let mut manager = ReallocManager::new(1024, 10).unwrap();
         let instance_id = ComponentInstanceId(1;
 
-        manager.register_realloc(instance_id, 42).unwrap());
+        manager.register_realloc(instance_id, 42).unwrap();
 
         // Binary std/no_std choice
-        let ptr = manager.allocate(instance_id, 64, 8).unwrap());
+        let ptr = manager.allocate(instance_id, 64, 8).unwrap();
         assert!(manager.deallocate(instance_id, ptr, 64, 8).is_ok());
 
         // Check metrics
@@ -448,10 +448,10 @@ mod tests {
 
     #[test]
     fn test_allocation_limits() {
-        let mut manager = ReallocManager::new(100, 2).unwrap());
+        let mut manager = ReallocManager::new(100, 2).unwrap();
         let instance_id = ComponentInstanceId(1;
 
-        manager.register_realloc(instance_id, 42).unwrap());
+        manager.register_realloc(instance_id, 42).unwrap();
 
         // Test size limit
         assert!(manager.allocate(instance_id, 200, 8).is_err();

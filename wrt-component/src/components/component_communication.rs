@@ -28,7 +28,7 @@
 //! use wrt_component::component_communication::{CallRouter, CallContext};
 //! 
 //! // Create a call router
-//! let mut router = CallRouter::new);
+//! let mut router = CallRouter::new();
 //! 
 //! // Route a call between components
 //! let context = CallContext::new(source_instance, target_instance, "add", &args)?;
@@ -477,7 +477,7 @@ impl CallRouter {
         let marshaled_parameters = self.marshal_parameters(&context, source_instance, target_instance)?;
 
         // Update call state
-        let mut context = self.active_calls.get_mut(&context.call_id).unwrap());
+        let mut context = self.active_calls.get_mut(&context.call_id).unwrap();
         context.state = CallState::Executing;
 
         // Execute the target function
@@ -488,14 +488,14 @@ impl CallRouter {
         ;
 
         // Update call state and statistics based on result
-        let context = self.active_calls.get_mut(&context.call_id).unwrap());
+        let context = self.active_calls.get_mut(&context.call_id).unwrap();
         match &result {
             Ok(_) => {
                 context.state = CallState::Completed;
                 self.stats.successful_calls += 1;
             }
             Err(e) => {
-                context.state = CallState::Failed("Call execution failed".to_string();
+                context.state = CallState::Failed("Call execution failed".to_string());
                 self.stats.failed_calls += 1;
             }
         }
@@ -633,7 +633,7 @@ impl CallStack {
             return Err(Error::runtime_execution_error("Call stack is empty";
         }
 
-        let frame = self.frames.pop().unwrap());
+        let frame = self.frames.pop().unwrap();
         self.current_depth -= 1;
         Ok(frame)
     }
@@ -804,14 +804,14 @@ mod tests {
 
     #[test]
     fn test_call_router_creation() {
-        let router = CallRouter::new);
+        let router = CallRouter::new();
         assert_eq!(router.stats.total_calls, 0);
         assert_eq!(router.get_call_stack_depth(), 0);
     }
 
     #[test]
     fn test_call_context_creation() {
-        let router = CallRouter::new);
+        let router = CallRouter::new();
         let context = router.create_call_context(
             1, 
             2, 
@@ -821,7 +821,7 @@ mod tests {
         ;
         
         assert!(context.is_ok());
-        let context = context.unwrap());
+        let context = context.unwrap();
         assert_eq!(context.source_instance, 1);
         assert_eq!(context.target_instance, 2;
         assert_eq!(context.target_function, "test_function";
@@ -841,10 +841,10 @@ mod tests {
             created_at: 0,
         };
 
-        stack.push_frame(frame).unwrap());
+        stack.push_frame(frame).unwrap();
         assert_eq!(stack.depth(), 1);
 
-        let popped = stack.pop_frame().unwrap());
+        let popped = stack.pop_frame().unwrap();
         assert_eq!(popped.call_id, 1);
         assert_eq!(stack.depth(), 0);
     }

@@ -348,16 +348,16 @@ mod tests {
 
     #[test]
     fn test_resolver_creation() {
-        let resolver = ComponentResolver::new);
+        let resolver = ComponentResolver::new();
         assert_eq!(resolver.import_cache.len(), 0);
         assert_eq!(resolver.export_cache.len(), 0);
     }
 
     #[test]
     fn test_import_resolution() {
-        let mut resolver = ComponentResolver::new);
+        let mut resolver = ComponentResolver::new();
         let instance_id = ComponentInstanceId(1;
-        let import_name = BoundedString::from_str("test_import").unwrap());
+        let import_name = BoundedString::from_str("test_import").unwrap();
 
         let import_value =
             ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) };
@@ -365,15 +365,15 @@ mod tests {
         let result = resolver.resolve_import(instance_id, import_name.clone(), import_value;
         assert!(result.is_ok());
 
-        let resolved = result.unwrap());
+        let resolved = result.unwrap();
         assert_eq!(resolved.name, import_name;
     }
 
     #[test]
     fn test_export_resolution() {
-        let mut resolver = ComponentResolver::new);
+        let mut resolver = ComponentResolver::new();
         let instance_id = ComponentInstanceId(1;
-        let export_name = BoundedString::from_str("test_export").unwrap());
+        let export_name = BoundedString::from_str("test_export").unwrap();
 
         let export_value = ExportValue::Value {
             val_type: ValType::String,
@@ -383,13 +383,13 @@ mod tests {
         let result = resolver.resolve_export(instance_id, export_name.clone(), export_value;
         assert!(result.is_ok());
 
-        let resolved = result.unwrap());
+        let resolved = result.unwrap();
         assert_eq!(resolved.name, export_name;
     }
 
     #[test]
     fn test_import_export_compatibility() {
-        let mut resolver = ComponentResolver::new);
+        let mut resolver = ComponentResolver::new();
 
         // Create matching import and export
         let import = ResolvedImport {
@@ -406,12 +406,12 @@ mod tests {
 
         let result = resolver.can_satisfy_import(&import, &export;
         assert!(result.is_ok());
-        assert!(result.unwrap());
+        assert!(result.unwrap();
     }
 
     #[test]
     fn test_type_compatibility() {
-        let resolver = ComponentResolver::new);
+        let resolver = ComponentResolver::new();
 
         // Test primitive type compatibility
         assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool);

@@ -237,7 +237,7 @@ impl ComponentLinker {
             .values()
             .filter(|instance| &instance.name == id)
             .map(|instance| instance.id)
-            .collect();
+            .collect());
 
         if !dependent_instances.is_empty() {
             return Err(Error::runtime_execution_error("Component has active instances and cannot be removed")
@@ -298,7 +298,7 @@ impl ComponentLinker {
 
     /// Link all components and create instances
     pub fn link_all(&mut self) -> Result<Vec<InstanceId>> {
-        let mut instance_ids = Vec::new);
+        let mut instance_ids = Vec::new());
 
         // Topological sort to determine instantiation order
         let sorted_components = self.link_graph.topological_sort()?;
@@ -352,9 +352,9 @@ impl ComponentLinker {
         
         #[cfg(not(feature = "std"))]
         let exports = {
-            let mut exports = Vec::new);
-            let mut params = Vec::new);
-            let mut results = Vec::new);
+            let mut exports = Vec::new());
+            let mut params = Vec::new());
+            let mut results = Vec::new());
             results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
             
             let signature = crate::component_instantiation::create_function_signature(
@@ -391,7 +391,7 @@ impl ComponentLinker {
         component_id: &ComponentId,
         imports: &[ComponentImport],
     ) -> Result<Vec<ResolvedImport>> {
-        let mut resolved = Vec::new);
+        let mut resolved = Vec::new());
 
         for import in imports {
             let resolution = self.resolve_single_import(component_id, import)?;
@@ -527,7 +527,7 @@ impl LinkGraph {
         {
             let mut visited = vec![false; self.nodes.len()];
             let mut temp_visited = vec![false; self.nodes.len()];
-            let mut result = Vec::new);
+            let mut result = Vec::new());
             
             for i in 0..self.nodes.len() {
                 if !visited[i] {
@@ -549,7 +549,7 @@ impl LinkGraph {
             let mut temp_visited = BoundedVec::new(provider2).map_err(|_| {
                 Error::platform_memory_allocation_failed("Failed to create temp_visited vector")
             })?;
-            let mut result = Vec::new);
+            let mut result = Vec::new());
             
             // Initialize with false values
             for _ in 0..self.nodes.len() {
@@ -614,7 +614,7 @@ mod tests {
 
     #[test]
     fn test_linker_creation() {
-        let linker = ComponentLinker::new);
+        let linker = ComponentLinker::new();
         assert_eq!(linker.components.len(), 0);
         assert_eq!(linker.instances.len(), 0);
         assert_eq!(linker.next_instance_id, 1);
@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn test_add_component() {
-        let mut linker = ComponentLinker::new);
+        let mut linker = ComponentLinker::new();
         let binary = vec![0x00, 0x61, 0x73, 0x6d]; // "wasm" magic
 
         let result = linker.add_component("test_component".to_string(), &binary;
@@ -633,45 +633,45 @@ mod tests {
 
     #[test]
     fn test_remove_component() {
-        let mut linker = ComponentLinker::new);
+        let mut linker = ComponentLinker::new();
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
-        linker.add_component("test_component".to_string(), &binary).unwrap());
+        linker.add_component("test_component".to_string(), &binary).unwrap();
         assert_eq!(linker.components.len(), 1);
 
-        let result = linker.remove_component(&"test_component".to_string();
+        let result = linker.remove_component(&"test_component".to_string());
         assert!(result.is_ok());
         assert_eq!(linker.components.len(), 0);
     }
 
     #[test]
     fn test_link_graph_operations() {
-        let mut graph = LinkGraph::new);
+        let mut graph = LinkGraph::new();
 
         // Add components
-        graph.add_component("comp1".to_string()).unwrap());
-        graph.add_component("comp2".to_string()).unwrap());
+        graph.add_component("comp1".to_string()).unwrap();
+        graph.add_component("comp2".to_string()).unwrap();
         assert_eq!(graph.nodes.len(), 2;
 
         // Remove component
-        graph.remove_component(&"comp1".to_string()).unwrap());
+        graph.remove_component(&"comp1".to_string()).unwrap();
         assert_eq!(graph.nodes.len(), 1);
         assert_eq!(graph.nodes[0].component_id, "comp2";
     }
 
     #[test]
     fn test_topological_sort_empty() {
-        let graph = LinkGraph::new);
-        let result = graph.topological_sort().unwrap());
-        assert!(result.is_empty();
+        let graph = LinkGraph::new();
+        let result = graph.topological_sort().unwrap();
+        assert!(result.is_empty());
     }
 
     #[test]
     fn test_topological_sort_single() {
-        let mut graph = LinkGraph::new);
-        graph.add_component("comp1".to_string()).unwrap());
+        let mut graph = LinkGraph::new();
+        graph.add_component("comp1".to_string()).unwrap();
 
-        let result = graph.topological_sort().unwrap());
+        let result = graph.topological_sort().unwrap();
         assert_eq!(result, vec!["comp1".to_string()];
     }
 
@@ -687,10 +687,10 @@ mod tests {
 
     #[test]
     fn test_linking_stats() {
-        let mut linker = ComponentLinker::new);
+        let mut linker = ComponentLinker::new();
         let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
-        linker.add_component("test".to_string(), &binary).unwrap());
+        linker.add_component("test".to_string(), &binary).unwrap();
 
         let stats = linker.get_stats);
         assert_eq!(stats.components_registered, 1);

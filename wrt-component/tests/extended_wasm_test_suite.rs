@@ -36,7 +36,7 @@ fn load_test_module() -> Result<Module> {
 /// Helper function to create execution engine with module
 fn create_engine_with_module() -> Result<(StacklessEngine, usize)> {
     let runtime_module = load_test_module()?;
-    let mut engine = StacklessEngine::new);
+    let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
     let instance_arc = Arc::new(instance;
     let instance_idx = engine.set_current_module(instance_arc)?;
@@ -245,8 +245,8 @@ fn test_execution_determinism() -> Result<()> {
 #[test]
 fn test_multiple_engine_instances() -> Result<()> {
     // Test that multiple engine instances work independently
-    let mut engines = Vec::new);
-    let mut instance_indices = Vec::new);
+    let mut engines = Vec::new());
+    let mut instance_indices = Vec::new());
 
     // Create 5 independent engine instances
     for i in 0..5 {
@@ -413,7 +413,7 @@ fn test_memory_safety_execution() -> Result<()> {
 
     // Test with a large number of executions to catch memory issues
     for batch in 0..10 {
-        let mut results_in_batch = Vec::new);
+        let mut results_in_batch = Vec::new());
 
         for i in 0..100 {
             let a = (batch * 100 + i) % 1000;
@@ -466,7 +466,7 @@ fn test_memory_safety_execution() -> Result<()> {
 #[test]
 fn test_error_handling_robustness() -> Result<()> {
     let runtime_module = load_test_module()?;
-    let mut engine = StacklessEngine::new);
+    let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
     let instance_arc = Arc::new(instance;
     let instance_idx = engine.set_current_module(instance_arc)?;
@@ -540,16 +540,16 @@ fn test_asil_b_compliance_validation() -> Result<()> {
 
     // Analyze execution time consistency (ASIL-B requirement for deterministic
     // behavior)
-    let min_time = execution_times.iter().min().unwrap());
-    let max_time = execution_times.iter().max().unwrap());
+    let min_time = execution_times.iter().min().unwrap();
+    let max_time = execution_times.iter().max().unwrap();
     let avg_time =
         execution_times.iter().sum::<std::time::Duration>() / execution_times.len() as u32;
 
-    println!("✅ ASIL-B Execution Analysis:";
-    println!("   - {} executions completed", test_iterations;
-    println!("   - Min execution time: {:?}", min_time;
-    println!("   - Max execution time: {:?}", max_time;
-    println!("   - Avg execution time: {:?}", avg_time;
+    println!("✅ ASIL-B Execution Analysis:");
+    println!("   - {} executions completed", test_iterations);
+    println!("   - Min execution time: {:?}", min_time);
+    println!("   - Max execution time: {:?}", max_time);
+    println!("   - Avg execution time: {:?}", avg_time);
     println!(
         "   - Time variance: {:?}",
         max_time.saturating_sub(*min_time)
@@ -628,7 +628,7 @@ fn test_production_workload_simulation() -> Result<()> {
 #[test]
 fn test_comprehensive_execution_validation() -> Result<()> {
     // Comprehensive test combining all aspects
-    println!("🚀 Starting comprehensive execution validation...";
+    println!("🚀 Starting comprehensive execution validation...");
 
     // Test 1: Multiple engines with different workloads
     let mut total_executions = 0;

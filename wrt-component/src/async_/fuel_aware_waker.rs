@@ -477,9 +477,9 @@ mod tests {
 
     #[test]
     fn test_waker_creation() {
-        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap());
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap());
-        let executor_ref = Weak::new);
+        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
+        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap();
+        let executor_ref = Weak::new();
         
         let waker = create_fuel_aware_waker(
             TaskId::new(1),
@@ -496,9 +496,9 @@ mod tests {
 
     #[test]
     fn test_wake_adds_to_ready_queue() {
-        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap());
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap());
-        let executor_ref = Weak::new);
+        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
+        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap();
+        let executor_ref = Weak::new();
         
         let task_id = TaskId::new(42;
         let waker = create_fuel_aware_waker(
@@ -511,16 +511,16 @@ mod tests {
         waker.wake);
 
         // Check that task was added to ready queue
-        let queue = ready_queue.lock().unwrap());
+        let queue = ready_queue.lock().unwrap();
         assert_eq!(queue.len(), 1);
         assert_eq!(queue[0], task_id;
     }
 
     #[test]
     fn test_wake_coalescing() {
-        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap());
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap());
-        let executor_ref = Weak::new);
+        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
+        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap();
+        let executor_ref = Weak::new();
         
         let task_id = TaskId::new(42;
         let waker = create_fuel_aware_waker(
@@ -535,29 +535,29 @@ mod tests {
         waker.wake_by_ref);
 
         // Should only be in queue once due to is_woken flag
-        let queue = ready_queue.lock().unwrap());
+        let queue = ready_queue.lock().unwrap();
         assert_eq!(queue.len(), 1);
     }
 
     #[test]
     fn test_wake_coalescer() {
-        let coalescer = WakeCoalescer::new().unwrap());
-        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap());
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap());
+        let coalescer = WakeCoalescer::new().unwrap();
+        let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
+        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider).unwrap();
 
         // Add multiple wakes for same task
-        coalescer.add_wake(TaskId::new(1)).unwrap());
-        coalescer.add_wake(TaskId::new(1)).unwrap());
-        coalescer.add_wake(TaskId::new(2)).unwrap());
+        coalescer.add_wake(TaskId::new(1)).unwrap();
+        coalescer.add_wake(TaskId::new(1)).unwrap();
+        coalescer.add_wake(TaskId::new(2)).unwrap();
         
         assert_eq!(coalescer.pending_count(), 2); // Should deduplicate
 
         // Process wakes
-        let processed = coalescer.process_wakes(&ready_queue).unwrap());
+        let processed = coalescer.process_wakes(&ready_queue).unwrap();
         assert_eq!(processed, 2;
 
         // Queue should have both tasks
-        let queue = ready_queue.lock().unwrap());
+        let queue = ready_queue.lock().unwrap();
         assert_eq!(queue.len(), 2;
     }
 }

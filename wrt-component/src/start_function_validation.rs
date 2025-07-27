@@ -256,7 +256,7 @@ impl StartFunctionValidator {
             .iter()
             .filter(|(_, v)| v.validation_state == ValidationState::Pending)
             .map(|(id, _)| *id)
-            .collect();
+            .collect());
 
         for component_id in pending_components {
             let state = self.validate_start_function(component_id)?;
@@ -471,7 +471,7 @@ impl StartFunctionValidator {
         timeout_ms: u64,
     ) -> StartFunctionResult<Option<ComponentValue>> {
         // Create execution state
-        let mut execution_state = ExecutionState::new);
+        let mut execution_state = ExecutionState::new();
         execution_state.set_timeout(Duration::from_millis(timeout_ms;
 
         // Execute through the execution engine
@@ -660,14 +660,14 @@ mod tests {
 
     #[test]
     fn test_start_function_validator_creation() {
-        let validator = StartFunctionValidator::new);
+        let validator = StartFunctionValidator::new();
         assert_eq!(validator.default_timeout_ms, DEFAULT_START_TIMEOUT_MS;
         assert_eq!(validator.default_validation_level, ValidationLevel::Standard;
     }
 
     #[test]
     fn test_start_function_descriptor_creation() {
-        let descriptor = create_start_function_descriptor("_start").unwrap());
+        let descriptor = create_start_function_descriptor("_start").unwrap();
         assert_eq!(descriptor.name, "_start";
         assert!(descriptor.required);
         assert_eq!(descriptor.timeout_ms, DEFAULT_START_TIMEOUT_MS;
@@ -684,17 +684,17 @@ mod tests {
 
     #[test]
     fn test_descriptor_validation() {
-        let validator = StartFunctionValidator::new);
+        let validator = StartFunctionValidator::new();
 
         // Valid descriptor
-        let valid_descriptor = create_start_function_descriptor("_start").unwrap());
+        let valid_descriptor = create_start_function_descriptor("_start").unwrap();
         assert!(validator.validate_descriptor(&valid_descriptor).is_ok());
 
         // Invalid descriptor (empty name)
-        let parameters_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
-        let parameters = BoundedVec::new(parameters_provider).unwrap());
-        let dependencies_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap());
-        let dependencies = BoundedVec::new(dependencies_provider).unwrap());
+        let parameters_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+        let parameters = BoundedVec::new(parameters_provider).unwrap();
+        let dependencies_provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
+        let dependencies = BoundedVec::new(dependencies_provider).unwrap();
         
         let invalid_descriptor = StartFunctionDescriptor {
             name: String::new(),

@@ -185,14 +185,14 @@ impl<'a> CanonicalLiftContext<'a> {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
-                    .collect();
+                    .collect());
                 String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
             }
             StringEncoding::Utf16Be => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
-                    .collect();
+                    .collect());
                 String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
             }
             StringEncoding::Latin1 => Ok(bytes.into_iter().map(|b| b as char).collect()),
@@ -419,11 +419,11 @@ mod tests {
         assert_eq!(utf8_bytes.len(), 5;
 
         // Test UTF-16 LE
-        let utf16_le: Vec<u8> = "Hello".encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
+        let utf16_le: Vec<u8> = "Hello".encode_utf16().flat_map(|c| c.to_le_bytes()).collect());
         assert_eq!(utf16_le.len(), 10); // 5 chars * 2 bytes
 
         // Test Latin-1
-        let latin1: Vec<u8> = "Hello".chars().map(|c| c as u8).collect();
+        let latin1: Vec<u8> = "Hello".chars().map(|c| c as u8).collect());
         assert_eq!(latin1.len(), 5;
     }
 }

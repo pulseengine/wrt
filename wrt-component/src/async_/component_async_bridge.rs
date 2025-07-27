@@ -175,7 +175,7 @@ impl ComponentAsyncBridge {
         result.tasks_polled = tasks_polled;
 
         // Update component task states based on executor state
-        let mut completed_tasks = Vec::new);
+        let mut completed_tasks = Vec::new());
         for (comp_task_id, exec_task_id) in self.task_mapping.iter() {
             let exec = self.executor.lock()?;
             if let Some(status) = exec.get_task_status(*exec_task_id) {
@@ -340,7 +340,7 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
         
-        let bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap());
+        let bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap();
         assert_eq!(bridge.component_limits.len(), 0);
     }
 
@@ -349,12 +349,12 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new();
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
         
-        let mut bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap());
+        let mut bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap();
         
         let component_id = ComponentInstanceId::new(1;
-        bridge.register_component(component_id, 10, 10000, Priority::Normal).unwrap());
+        bridge.register_component(component_id, 10, 10000, Priority::Normal).unwrap();
         
-        let stats = bridge.get_component_stats(component_id).unwrap());
+        let stats = bridge.get_component_stats(component_id).unwrap();
         assert_eq!(stats.active_tasks, 0);
         assert_eq!(stats.max_tasks, 10;
         assert_eq!(stats.fuel_budget, 10000;

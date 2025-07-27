@@ -298,7 +298,7 @@ mod tests {
         let component = MinimalComponent::new(&MINIMAL_COMPONENT, VerificationLevel::Standard;
         assert!(component.is_ok());
 
-        let component = component.unwrap());
+        let component = component.unwrap();
         assert_eq!(component.size(), 8;
         assert_eq!(component.export_count(), 0);
         assert_eq!(component.import_count(), 0);

@@ -74,7 +74,7 @@ impl GenerativeTypeRegistry {
         let instance_types =
             self.instance_types.entry(instance_id).or_insert_with(|| {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)
-                    .expect("Failed to allocate memory for instance types");
+                    .expect("Failed to allocate memory for instance types"));
                 BoundedVec::new(provider).expect("Failed to create BoundedVec")
             };
 
@@ -100,7 +100,7 @@ impl GenerativeTypeRegistry {
     ) -> core::result::Result<(), ComponentError> {
         let bounds = self.type_bounds.entry(type_id).or_insert_with(|| {
             let provider = safe_managed_alloc!(65536, CrateId::Component)
-                .expect("Failed to allocate memory for type bounds");
+                .expect("Failed to allocate memory for type bounds"));
             BoundedVec::new(provider).expect("Failed to create BoundedVec")
         };
 
@@ -270,14 +270,14 @@ mod tests {
 
     #[test]
     fn test_generative_type_registry_creation() {
-        let mut registry = GenerativeTypeRegistry::new);
+        let mut registry = GenerativeTypeRegistry::new();
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance_id = ComponentInstanceId(1;
 
         let result = registry.create_generative_type(base_type.clone(), instance_id;
         assert!(result.is_ok());
 
-        let gen_type = result.unwrap());
+        let gen_type = result.unwrap();
         assert_eq!(gen_type.base_type, base_type;
         assert_eq!(gen_type.instance_id, instance_id;
         assert_eq!(gen_type.generation, 0);
@@ -286,20 +286,20 @@ mod tests {
 
     #[test]
     fn test_unique_type_ids_across_instances() {
-        let mut registry = GenerativeTypeRegistry::new);
+        let mut registry = GenerativeTypeRegistry::new();
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance1 = ComponentInstanceId(1;
         let instance2 = ComponentInstanceId(2;
 
-        let type1 = registry.create_generative_type(base_type.clone(), instance1).unwrap());
-        let type2 = registry.create_generative_type(base_type, instance2).unwrap());
+        let type1 = registry.create_generative_type(base_type.clone(), instance1).unwrap();
+        let type2 = registry.create_generative_type(base_type, instance2).unwrap();
 
         assert_ne!(type1.unique_type_id, type2.unique_type_id;
     }
 
     #[test]
     fn test_type_bounds() {
-        let mut registry = GenerativeTypeRegistry::new);
+        let mut registry = GenerativeTypeRegistry::new();
         let type_id = TypeId(1;
         let target_type = TypeId(2;
 
@@ -315,12 +315,12 @@ mod tests {
 
     #[test]
     fn test_resource_handle_registration() {
-        let mut registry = GenerativeTypeRegistry::new);
+        let mut registry = GenerativeTypeRegistry::new();
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance_id = ComponentInstanceId(1;
         let handle = ResourceHandle::new(100;
 
-        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap());
+        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();
 
         assert!(registry.register_resource_handle(handle, gen_type.clone()).is_ok());
         assert_eq!(registry.get_resource_type(handle), Some(&gen_type;
@@ -328,11 +328,11 @@ mod tests {
 
     #[test]
     fn test_instance_cleanup() {
-        let mut registry = GenerativeTypeRegistry::new);
+        let mut registry = GenerativeTypeRegistry::new();
         let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
         let instance_id = ComponentInstanceId(1;
 
-        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap());
+        let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();
         assert!(registry.get_generative_type(gen_type.unique_type_id, instance_id).is_some();
 
         registry.cleanup_instance(instance_id;
@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_transitive_type_bounds() {
-        let mut registry = GenerativeTypeRegistry::new);
+        let mut registry = GenerativeTypeRegistry::new();
         let type_a = TypeId(1;
         let type_b = TypeId(2;
         let type_c = TypeId(3;
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_type_consistency_validation() {
-        let mut registry = GenerativeTypeRegistry::new);
+        let mut registry = GenerativeTypeRegistry::new();
         assert!(registry.validate_type_consistency().is_ok());
 
         let type_a = TypeId(1;

@@ -58,7 +58,7 @@ mod tests {
         let mut bridge = ComponentAsyncBridge::new(
             task_manager.clone(),
             thread_manager.clone(),
-        ).unwrap());
+        ).unwrap();
 
         // Register a component
         let component_id = ComponentInstanceId::new(1;
@@ -67,11 +67,11 @@ mod tests {
             10,     // max concurrent tasks
             10000,  // fuel budget
             Priority::Normal,
-        ).unwrap());
+        ).unwrap();
 
         // Spawn multiple async tasks
-        let mut task_ids = Vec::new);
-        let mut completion_flags = Vec::new);
+        let mut task_ids = Vec::new());
+        let mut completion_flags = Vec::new());
 
         for i in 0..3 {
             let completed = Arc::new(AtomicBool::new(false;
@@ -88,7 +88,7 @@ mod tests {
                 component_id,
                 future,
                 Some(1000),
-            ).unwrap());
+            ).unwrap();
             task_ids.push(task_id);
         }
 
@@ -97,7 +97,7 @@ mod tests {
         let max_polls = 20;
 
         while total_polls < max_polls {
-            let result = bridge.poll_async_tasks().unwrap());
+            let result = bridge.poll_async_tasks().unwrap();
             total_polls += 1;
 
             if result.tasks_completed == 3 {
@@ -114,19 +114,19 @@ mod tests {
         }
 
         // Check statistics
-        let stats = bridge.get_component_stats(component_id).unwrap());
+        let stats = bridge.get_component_stats(component_id).unwrap();
         assert_eq!(stats.active_tasks, 0);
         assert!(stats.fuel_consumed > 0);
         assert!(stats.fuel_consumed < stats.fuel_budget);
 
-        let polling_stats = bridge.get_polling_stats().unwrap());
+        let polling_stats = bridge.get_polling_stats().unwrap();
         assert_eq!(polling_stats.tasks_completed, 3;
         assert!(polling_stats.total_polls >= 6)); // At least 2 polls per task
     }
 
     #[test]
     fn test_fuel_exhaustion_handling() {
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(100;
         
         // Create executor with self-reference
@@ -137,7 +137,7 @@ mod tests {
 
         // Spawn a task with more fuel than available
         let result = {
-            let mut exec = executor_arc.lock().unwrap());
+            let mut exec = executor_arc.lock().unwrap();
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 150, // Exceeds global limit
@@ -150,7 +150,7 @@ mod tests {
         
         // Spawn a task within limits
         let task_id = {
-            let mut exec = executor_arc.lock().unwrap());
+            let mut exec = executor_arc.lock().unwrap();
             exec.spawn_task(
                 ComponentInstanceId::new(1),
                 50,
@@ -161,14 +161,14 @@ mod tests {
 
         // Poll to completion
         {
-            let mut exec = executor_arc.lock().unwrap());
-            let polled = exec.poll_tasks().unwrap());
+            let mut exec = executor_arc.lock().unwrap();
+            let polled = exec.poll_tasks().unwrap();
             assert_eq!(polled, 1);
         }
 
         // Verify fuel was consumed
         let status = {
-            let exec = executor_arc.lock().unwrap());
+            let exec = executor_arc.lock().unwrap();
             exec.get_global_fuel_status()
         };
         assert!(status.consumed > 0);
@@ -176,20 +176,20 @@ mod tests {
 
     #[test]
     fn test_wake_coalescing() {
-        let coalescer = WakeCoalescer::new().unwrap());
+        let coalescer = WakeCoalescer::new().unwrap();
         
         // Add multiple wakes for the same task
         let task_id = crate::threading::task_manager::TaskId::new(42;
         for _ in 0..5 {
-            coalescer.add_wake(task_id).unwrap());
+            coalescer.add_wake(task_id).unwrap();
         }
         
         // Should only have one pending wake
         assert_eq!(coalescer.pending_count(), 1);
         
         // Add wakes for different tasks
-        coalescer.add_wake(crate::threading::task_manager::TaskId::new(43)).unwrap());
-        coalescer.add_wake(crate::threading::task_manager::TaskId::new(44)).unwrap());
+        coalescer.add_wake(crate::threading::task_manager::TaskId::new(43)).unwrap();
+        coalescer.add_wake(crate::threading::task_manager::TaskId::new(44)).unwrap();
         
         assert_eq!(coalescer.pending_count(), 3;
     }
@@ -201,10 +201,10 @@ mod tests {
         let mut bridge = ComponentAsyncBridge::new(
             task_manager.clone(),
             thread_manager.clone(),
-        ).unwrap());
+        ).unwrap();
 
         // Set global fuel budget
-        bridge.set_global_fuel_budget(50000).unwrap());
+        bridge.set_global_fuel_budget(50000).unwrap();
 
         // Register multiple components
         for i in 1..=3 {
@@ -214,12 +214,12 @@ mod tests {
                 5,      // max concurrent tasks per component
                 10000,  // fuel budget per component
                 Priority::Normal,
-            ).unwrap());
+            ).unwrap();
         }
 
         // Spawn tasks across components
-        let mut all_tasks = Vec::new);
-        let mut completion_counters = Vec::new);
+        let mut all_tasks = Vec::new());
+        let mut completion_counters = Vec::new());
 
         for comp_id in 1..=3 {
             let counter = Arc::new(AtomicU64::new(0;
@@ -237,7 +237,7 @@ mod tests {
                     ComponentInstanceId::new(comp_id),
                     future,
                     Some(500),
-                ).unwrap());
+                ).unwrap();
                 all_tasks.push(task_id);
             }
         }
@@ -245,7 +245,7 @@ mod tests {
         // Poll until all tasks complete
         let mut polls = 0;
         loop {
-            let result = bridge.poll_async_tasks().unwrap());
+            let result = bridge.poll_async_tasks().unwrap();
             polls += 1;
 
             if result.tasks_completed == 9 || polls > 50 {
@@ -260,7 +260,7 @@ mod tests {
 
         // Check component statistics
         for i in 1..=3 {
-            let stats = bridge.get_component_stats(ComponentInstanceId::new(i)).unwrap());
+            let stats = bridge.get_component_stats(ComponentInstanceId::new(i)).unwrap();
             assert_eq!(stats.active_tasks, 0);
             assert!(stats.fuel_consumed > 0);
         }
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_priority_based_scheduling() {
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         let scheduler = FuelAsyncScheduler::new(SchedulingPolicy::Priority;
         
         executor.set_global_fuel_limit(10000;
@@ -286,7 +286,7 @@ mod tests {
                 low_priority_completed.store(true, Ordering::Release;
                 Ok(())
             },
-        ).unwrap());
+        ).unwrap();
 
         let high_task = executor.spawn_task(
             ComponentInstanceId::new(1),
@@ -296,14 +296,14 @@ mod tests {
                 high_clone.store(true, Ordering::Release;
                 Ok(())
             },
-        ).unwrap());
+        ).unwrap();
 
         // With priority scheduling, high priority should complete first
         // (In a real implementation, the scheduler would be integrated)
-        executor.poll_tasks().unwrap());
+        executor.poll_tasks().unwrap();
 
         // Both should eventually complete
-        executor.poll_tasks().unwrap());
+        executor.poll_tasks().unwrap();
         
         assert!(high_priority_completed.load(Ordering::Acquire);
         assert!(low_priority_completed.load(Ordering::Acquire);
@@ -311,29 +311,29 @@ mod tests {
 
     #[test]
     fn test_yield_threshold() {
-        let mut executor = FuelAsyncExecutor::new().unwrap());
+        let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(100000;
         
         // Spawn many lightweight tasks
-        let mut task_ids = Vec::new);
+        let mut task_ids = Vec::new());
         for i in 0..20 {
             let task_id = executor.spawn_task(
                 ComponentInstanceId::new(1),
                 100,
                 Priority::Normal,
                 async move { Ok(()) },
-            ).unwrap());
+            ).unwrap();
             task_ids.push(task_id);
         }
 
         // First poll should not process all tasks due to yield threshold
-        let polled = executor.poll_tasks().unwrap());
+        let polled = executor.poll_tasks().unwrap();
         assert!(polled < 20);
 
         // Multiple polls needed to complete all
         let mut total_polled = polled;
         while total_polled < 20 {
-            let additional = executor.poll_tasks().unwrap());
+            let additional = executor.poll_tasks().unwrap();
             total_polled += additional;
         }
 

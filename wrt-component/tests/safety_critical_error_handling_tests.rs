@@ -33,20 +33,20 @@ mod error_handling_tests {
     /// Test that capacity exceeded returns error, not panic
     #[test]
     fn test_no_panic_on_capacity_exceeded() {
-        let vec_result = new_component_vec::<u32>);
+        let vec_result = new_component_vec::<u32>();
         assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap());
+        let mut vec = vec_result.unwrap();
 
         // Fill to capacity
         for i in 0..MAX_COMPONENT_INSTANCES {
-            let result = vec.try_push(i as u32;
+            let result = vec.try_push(i as u32);
             assert!(result.is_ok());
         }
 
         // All subsequent pushes should return error, not panic
         for i in 0..100 {
-            let result = vec.try_push(i;
+            let result = vec.try_push(i);
             match result {
                 Err(WrtError::CapacityExceeded) => {
                     // Expected - no panic
@@ -60,24 +60,24 @@ mod error_handling_tests {
     /// Test error handling in string operations
     #[test]
     fn test_string_error_handling() {
-        let name_result = new_component_name);
+        let name_result = new_component_name();
         assert!(name_result.is_ok());
 
-        let mut name = name_result.unwrap());
+        let mut name = name_result.unwrap();
 
         // Test empty string
-        let result = name.try_set("Error";
+        let result = name.try_set("Error");
         assert!(result.is_ok());
         assert_eq!(name.len(), 0);
 
         // Test exact limit
-        let exact_limit = "a".repeat(MAX_COMPONENT_NAME_LEN;
-        let result = name.try_set(&exact_limit;
+        let exact_limit = "a".repeat(MAX_COMPONENT_NAME_LEN);
+        let result = name.try_set(&exact_limit);
         assert!(result.is_ok());
 
         // Test over limit - should return error
-        let over_limit = "a".repeat(MAX_COMPONENT_NAME_LEN + 1;
-        let result = name.try_set(&over_limit;
+        let over_limit = "a".repeat(MAX_COMPONENT_NAME_LEN + 1);
+        let result = name.try_set(&over_limit);
         match result {
             Err(WrtError::CapacityExceeded) => {
                 // Expected
@@ -86,28 +86,28 @@ mod error_handling_tests {
         }
 
         // Original value should be unchanged after error
-        assert_eq!(name.len(), MAX_COMPONENT_NAME_LEN;
+        assert_eq!(name.len(), MAX_COMPONENT_NAME_LEN);
     }
 
     /// Test map error handling
     #[test]
     fn test_map_error_handling() {
-        let map_result = new_type_map::<u32>);
+        let map_result = new_type_map::<u32>();
         assert!(map_result.is_ok());
 
-        let mut map = map_result.unwrap());
+        let mut map = map_result.unwrap();
 
         // Test duplicate key handling
         let key1 = 42u32;
-        let result1 = map.try_insert(key1, 100;
+        let result1 = map.try_insert(key1, 100);
         assert!(result1.is_ok());
 
         // Insert with same key should handle gracefully
-        let result2 = map.try_insert(key1, 200;
+        let result2 = map.try_insert(key1, 200);
         match result2 {
             Ok(_) => {
                 // Key was updated
-                assert_eq!(map.get(&key1), Some(&200;
+                assert_eq!(map.get(&key1), Some(&200));
             },
             Err(_) => {
                 // Or error was returned - both are valid
@@ -116,14 +116,14 @@ mod error_handling_tests {
 
         // Test non-existent key lookup
         let missing_key = 999u32;
-        let value = map.get(&missing_key;
+        let value = map.get(&missing_key);
         assert_eq!(value, None); // Should return None, not panic
     }
 
     /// Test resource table error handling
     #[test]
     fn test_resource_table_error_handling() {
-        let mut table = ResourceTable::new);
+        let mut table = ResourceTable::new();
 
         // Test invalid handle operations
         let invalid_handle = 0xFFFFFFFF;
@@ -143,7 +143,7 @@ mod error_handling_tests {
         assert!(result.is_err();
 
         // Allocate and deallocate correctly
-        let handle = table.allocate().expect("Failed to allocate");
+        let handle = table.allocate().expect("Failed to allocate"));
         assert!(table.deallocate(handle).is_ok());
 
         // Double deallocate should error
@@ -154,7 +154,7 @@ mod error_handling_tests {
     /// Test canonical ABI error handling
     #[test]
     fn test_canonical_abi_error_handling() {
-        let abi = CanonicalABI::new);
+        let abi = CanonicalABI::new();
 
         // Test with null memory
         let null_memory = core::ptr::null);
@@ -175,7 +175,7 @@ mod error_handling_tests {
     /// Test resource lifecycle error handling
     #[test]
     fn test_resource_lifecycle_error_handling() {
-        let mut manager = ResourceLifecycleManager::new);
+        let mut manager = ResourceLifecycleManager::new();
 
         let resource_type = ResourceType {
             type_idx: 1,
@@ -194,7 +194,7 @@ mod error_handling_tests {
         // Create resource
         let handle = manager
             .create_resource(resource_type, metadata)
-            .expect("Failed to create resource");
+            .expect("Failed to create resource"));
 
         // Test invalid operations
         let invalid_handle = handle + 1000;
@@ -227,7 +227,7 @@ mod error_handling_tests {
         let stack_result = new_call_stack::<u32>);
         assert!(stack_result.is_ok());
 
-        let mut stack = stack_result.unwrap());
+        let mut stack = stack_result.unwrap();
 
         // Push until full
         while !stack.is_full() {
@@ -254,7 +254,7 @@ mod error_handling_tests {
         let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap());
+        let mut vec = vec_result.unwrap();
 
         // Pop from empty should return None, not panic
         assert_eq!(vec.pop(), None;
@@ -268,7 +268,7 @@ mod error_handling_tests {
         let map_result = new_type_map::<String>);
         assert!(map_result.is_ok());
 
-        let map = map_result.unwrap());
+        let map = map_result.unwrap();
 
         // Get from empty map
         let key = 42u32;
@@ -286,7 +286,7 @@ mod error_handling_tests {
         let vec_result = new_type_map::<u32>);
         assert!(vec_result.is_ok());
 
-        let mut map = vec_result.unwrap());
+        let mut map = vec_result.unwrap();
 
         // Insert at boundary values
         assert!(map.try_insert(0, 100).is_ok());
@@ -357,11 +357,11 @@ mod error_handling_tests {
         let vec_result = new_component_vec::<u32>);
         assert!(vec_result.is_ok());
 
-        let mut vec = vec_result.unwrap());
+        let mut vec = vec_result.unwrap();
 
         // Fill vector
         while !vec.is_full() {
-            vec.try_push(1).unwrap());
+            vec.try_push(1).unwrap();
         }
 
         // Cause error

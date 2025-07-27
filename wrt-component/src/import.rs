@@ -58,7 +58,7 @@ impl Import {
 
     /// Creates an import identifier by combining namespace and name
     pub fn identifier(&self) -> String {
-        let ns_str = self.namespace.to_string();
+        let ns_str = self.namespace.to_string());
         if ns_str.is_empty() {
             self.name.clone()
         } else {
@@ -174,8 +174,8 @@ mod tests {
 
     #[test]
     fn test_import_collection() {
-        let mut collection = ImportCollection::new);
-        assert!(collection.is_empty();
+        let mut collection = ImportCollection::new();
+        assert!(collection.is_empty());
 
         let import1 = Import::new(
             Namespace::from_string("wasi.http"),
@@ -213,7 +213,7 @@ mod tests {
         collection.add(import2;
 
         assert_eq!(collection.len(), 2;
-        assert!(!collection.is_empty();
+        assert!(!collection.is_empty());
 
         let fetched = collection.get("wasi.http.fetch";
         assert!(fetched.is_some();
@@ -222,7 +222,7 @@ mod tests {
         let not_found = collection.get("unknown";
         assert!(not_found.is_none();
 
-        let imports: Vec<&Import> = collection.iter().collect();
+        let imports: Vec<&Import> = collection.iter().collect());
         assert_eq!(imports.len(), 2;
     }
 }

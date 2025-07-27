@@ -58,7 +58,7 @@ pub fn string_byte_length(s: &str, encoding: StringEncoding) -> usize {
 
 /// Encode to UTF-16 Little Endian
 fn encode_utf16_le(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new);
+    let mut bytes = Vec::new());
 
     for code_unit in s.encode_utf16() {
         bytes.push((code_unit & 0xFF) as u8;
@@ -70,7 +70,7 @@ fn encode_utf16_le(s: &str) -> Result<Vec<u8>> {
 
 /// Encode to UTF-16 Big Endian
 fn encode_utf16_be(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new);
+    let mut bytes = Vec::new());
 
     for code_unit in s.encode_utf16() {
         bytes.push((code_unit >> 8) as u8;
@@ -82,7 +82,7 @@ fn encode_utf16_be(s: &str) -> Result<Vec<u8>> {
 
 /// Encode to Latin-1 (ISO-8859-1)
 fn encode_latin1(s: &str) -> Result<Vec<u8>> {
-    let mut bytes = Vec::new);
+    let mut bytes = Vec::new());
 
     for c in s.chars() {
         let code_point = c as u32;
@@ -108,7 +108,7 @@ fn decode_utf16_le(bytes: &[u8]) -> Result<String> {
         return Err(Error::runtime_execution_error("Error occurred";
     }
 
-    let mut code_units = Vec::new);
+    let mut code_units = Vec::new());
     for chunk in bytes.chunks_exact(2) {
         let code_unit = u16::from_le_bytes([chunk[0], chunk[1]];
         code_units.push(code_unit);
@@ -125,7 +125,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
         return Err(Error::runtime_execution_error("Error occurred";
     }
 
-    let mut code_units = Vec::new);
+    let mut code_units = Vec::new());
     for chunk in bytes.chunks_exact(2) {
         let code_unit = u16::from_be_bytes([chunk[0], chunk[1]];
         code_units.push(code_unit);
@@ -139,7 +139,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
 /// Decode from Latin-1 (ISO-8859-1)
 fn decode_latin1(bytes: &[u8]) -> Result<String> {
     // Latin-1 is a direct mapping from bytes to Unicode code points 0x00-0xFF
-    let chars: Vec<char> = bytes.iter().map(|&b| b as char).collect();
+    let chars: Vec<char> = bytes.iter().map(|&b| b as char).collect());
     Ok(chars.into_iter().collect())
 }
 
@@ -321,38 +321,38 @@ mod tests {
     #[test]
     fn test_utf8_encoding() {
         let text = "Hello, world!";
-        let encoded = encode_string(text, StringEncoding::Utf8).unwrap());
-        let decoded = decode_string(&encoded, StringEncoding::Utf8).unwrap());
+        let encoded = encode_string(text, StringEncoding::Utf8).unwrap();
+        let decoded = decode_string(&encoded, StringEncoding::Utf8).unwrap();
         assert_eq!(text, decoded;
     }
 
     #[test]
     fn test_utf16_le_encoding() {
         let text = "Hello, 世界!";
-        let encoded = encode_string(text, StringEncoding::Utf16Le).unwrap());
-        let decoded = decode_string(&encoded, StringEncoding::Utf16Le).unwrap());
+        let encoded = encode_string(text, StringEncoding::Utf16Le).unwrap();
+        let decoded = decode_string(&encoded, StringEncoding::Utf16Le).unwrap();
         assert_eq!(text, decoded;
     }
 
     #[test]
     fn test_utf16_be_encoding() {
         let text = "Hello, 世界!";
-        let encoded = encode_string(text, StringEncoding::Utf16Be).unwrap());
-        let decoded = decode_string(&encoded, StringEncoding::Utf16Be).unwrap());
+        let encoded = encode_string(text, StringEncoding::Utf16Be).unwrap();
+        let decoded = decode_string(&encoded, StringEncoding::Utf16Be).unwrap();
         assert_eq!(text, decoded;
     }
 
     #[test]
     fn test_latin1_encoding() {
         let text = "Hello, World!"; // ASCII subset
-        let encoded = encode_string(text, StringEncoding::Latin1).unwrap());
-        let decoded = decode_string(&encoded, StringEncoding::Latin1).unwrap());
+        let encoded = encode_string(text, StringEncoding::Latin1).unwrap();
+        let decoded = decode_string(&encoded, StringEncoding::Latin1).unwrap();
         assert_eq!(text, decoded;
 
         // Test extended Latin-1 characters
         let text = "Café résumé";
-        let encoded = encode_string(text, StringEncoding::Latin1).unwrap());
-        let decoded = decode_string(&encoded, StringEncoding::Latin1).unwrap());
+        let encoded = encode_string(text, StringEncoding::Latin1).unwrap();
+        let decoded = decode_string(&encoded, StringEncoding::Latin1).unwrap();
         assert_eq!(text, decoded;
     }
 
@@ -370,11 +370,11 @@ mod tests {
 
         // UTF-8 to UTF-16LE
         let transcoder = StringTranscoder::new(StringEncoding::Utf8, StringEncoding::Utf16Le;
-        let utf16_bytes = transcoder.transcode(utf8_bytes).unwrap());
+        let utf16_bytes = transcoder.transcode(utf8_bytes).unwrap();
 
         // UTF-16LE back to UTF-8
         let transcoder = StringTranscoder::new(StringEncoding::Utf16Le, StringEncoding::Utf8;
-        let result_bytes = transcoder.transcode(&utf16_bytes).unwrap());
+        let result_bytes = transcoder.transcode(&utf16_bytes).unwrap();
 
         assert_eq!(utf8_bytes, &result_bytes[..];
     }
