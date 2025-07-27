@@ -743,7 +743,7 @@ pub struct BoundedNNCapability {
 impl BoundedNNCapability {
     /// Create a new bounded capability
     pub fn new() -> Result<Self> {
-        let mut allowed_formats = Vec::new);
+        let mut allowed_formats = Vec::new());
         
         // Only allow well-tested formats
         allowed_formats.push(ModelFormat::ONNX);
@@ -833,7 +833,7 @@ pub struct StaticNNCapability {
 impl StaticNNCapability {
     /// Create a new static capability with pre-approved models
     pub fn new(approved_hashes: &[[u8); 32]]) -> Result<Self> {
-        let mut approved_models = Vec::new);
+        let mut approved_models = Vec::new());
         
         for hash in approved_hashes {
             approved_models.push(*hash);
@@ -946,7 +946,7 @@ mod tests {
     
     #[test]
     fn test_dynamic_capability() {
-        let cap = DynamicNNCapability::new);
+        let cap = DynamicNNCapability::new();
         assert_eq!(cap.verification_level(), VerificationLevel::Standard;
         assert!(cap.allows_dynamic_loading();
         
@@ -960,7 +960,7 @@ mod tests {
     
     #[test]
     fn test_bounded_capability() {
-        let cap = BoundedNNCapability::new().unwrap());
+        let cap = BoundedNNCapability::new().unwrap();
         assert_eq!(cap.verification_level(), VerificationLevel::Sampling;
         
         // Should reject oversized models
@@ -973,7 +973,7 @@ mod tests {
     
     #[test]
     fn test_static_capability() {
-        let cap = StaticNNCapability::new(&[]).unwrap());
+        let cap = StaticNNCapability::new(&[]).unwrap();
         assert_eq!(cap.verification_level(), VerificationLevel::Continuous;
         assert!(!cap.allows_dynamic_loading();
         
@@ -993,7 +993,7 @@ mod tests {
         let approved_hash3 = [0xCCu8; 32];
         
         // Create capability with approved hashes
-        let cap = StaticNNCapability::new(&[approved_hash1, approved_hash2, approved_hash3]).unwrap());
+        let cap = StaticNNCapability::new(&[approved_hash1, approved_hash2, approved_hash3]).unwrap();
         
         // Test approved models
         assert!(cap.is_model_approved(&approved_hash1);

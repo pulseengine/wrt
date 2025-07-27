@@ -151,66 +151,66 @@ impl FunctionOperations for DemoContext {
 
 #[cfg(feature = "std")]
 fn main() -> Result<()> {
-    println!("=== WebAssembly Control Flow Operations Demo ===\n");
+    println!("=== WebAssembly Control Flow Operations Demo ===\n"));
     
-    let mut context = DemoContext::new);
+    let mut context = DemoContext::new();
     
     // 1. Demonstrate Return instruction
-    println!("1. Return Operation:");
-    let return_op = Return::new);
+    println!("1. Return Operation:"));
+    let return_op = Return::new();
     return_op.execute(&mut context)?;
-    println!("   Executed return instruction");
-    println!("   Function returned: {}", context.returned);
+    println!("   Executed return instruction"));
+    println!("   Function returned: {}", context.returned));
     
     // Reset context for next demo
     context.returned = false;
     
     // 2. Demonstrate CallIndirect instruction
-    println!("\n2. Call Indirect Operation:");
+    println!("\n2. Call Indirect Operation:"));
     // Push function index onto stack
     context.push_control_value(Value::I32(42))?;
     
     let call_indirect = CallIndirect::new(0, 2); // table 0, type 2
     call_indirect.execute(&mut context)?;
-    println!("   Executed call_indirect with table=0, type=2, func_index=42";
-    println!("   Indirect call executed: {:?}", context.indirect_call;
+    println!("   Executed call_indirect with table=0, type=2, func_index=42");
+    println!("   Indirect call executed: {:?}", context.indirect_call);
     
     // Reset context for next demo
     context.indirect_call = None;
     
     // 3. Demonstrate BrTable instruction
-    println!("\n3. Branch Table Operation:";
+    println!("\n3. Branch Table Operation:");
     
     // Test with in-range index
     context.push_control_value(Value::I32(1))?; // Index 1
     let br_table = BrTable::from_slice(&[10, 20, 30], 99)?;
     br_table.execute(&mut context)?;
-    println!("   Executed br_table with index=1, table=[10,20,30], default=99";
-    println!("   Branched to label: {:?}", context.branch_target;
+    println!("   Executed br_table with index=1, table=[10,20,30], default=99");
+    println!("   Branched to label: {:?}", context.branch_target);
     
     // Reset and test with out-of-range index
     context.branch_target = None;
     context.push_control_value(Value::I32(5))?; // Out of range
     let br_table = BrTable::from_slice(&[10, 20, 30], 99)?;
     br_table.execute(&mut context)?;
-    println!("   Executed br_table with index=5 (out of range)";
-    println!("   Branched to default label: {:?}", context.branch_target;
+    println!("   Executed br_table with index=5 (out of range)");
+    println!("   Branched to default label: {:?}", context.branch_target);
     
     // 4. Demonstrate unified ControlOp enum
-    println!("\n4. Unified Control Operations:";
+    println!("\n4. Unified Control Operations:");
     
     // Test Return through ControlOp
     let control_return = ControlOp::Return;
     context.returned = false;
     control_return.execute(&mut context)?;
-    println!("   ControlOp::Return executed: {}", context.returned;
+    println!("   ControlOp::Return executed: {}", context.returned);
     
     // Test CallIndirect through ControlOp
     context.push_control_value(Value::I32(7))?;
     let control_call_indirect = ControlOp::CallIndirect { table_idx: 1, type_idx: 3 };
     context.indirect_call = None;
     control_call_indirect.execute(&mut context)?;
-    println!("   ControlOp::CallIndirect executed: {:?}", context.indirect_call;
+    println!("   ControlOp::CallIndirect executed: {:?}", context.indirect_call);
     
     // Binary std/no_std choice
     #[cfg(feature = "std")]
@@ -223,14 +223,14 @@ fn main() -> Result<()> {
         
         context.branch_target = None;
         control_br_table.execute(&mut context)?;
-        println!("   ControlOp::BrTable executed: {:?}", context.branch_target;
+        println!("   ControlOp::BrTable executed: {:?}", context.branch_target);
     }
     
     #[cfg(not(feature = "std"))]
-    println!("   ControlOp::BrTable test skipped (requires alloc)";
+    println!("   ControlOp::BrTable test skipped (requires alloc)");
     
     // 5. Demonstrate error handling
-    println!("\n5. Error Handling:";
+    println!("\n5. Error Handling:");
     
     // Test CallIndirect with negative function index
     context.push_control_value(Value::I32(-1))?;
@@ -248,12 +248,12 @@ fn main() -> Result<()> {
         Err(e) => println!("   Expected type error: {}", e),
     }
     
-    println!("\n=== Demo Complete ===";
+    println!("\n=== Demo Complete ===");
     Ok(())
 }
 
 #[cfg(not(feature = "std"))]
 fn main() {
     // Binary std/no_std choice
-    eprintln!("This example requires std or alloc features";
+    eprintln!("This example requires std or alloc features"));
 }

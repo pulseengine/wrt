@@ -220,7 +220,7 @@ impl RealtimeMonitor {
             }
 
             if config.console_output {
-                println!("🛑 Real-time memory monitor stopped";
+                println!("🛑 Real-time memory monitor stopped");
             }
         };
 
@@ -390,7 +390,7 @@ impl RealtimeMonitor {
         // Ensure output directory exists
         if let Err(e) = fs::create_dir_all(&config.output_dir) {
             if config.console_output {
-                eprintln!("Failed to create output directory: {}", e;
+                eprintln!("Failed to create output directory: {}", e));
             }
             return Ok();
         }
@@ -533,7 +533,7 @@ mod tests {
         let sample = RealtimeMonitor::collect_sample(0;
         assert!(sample.is_ok());
 
-        let sample = sample.unwrap());
+        let sample = sample.unwrap();
         assert_eq!(sample.timestamp, 0);
         assert!(sample.crate_utilization.len() == 16);
     }

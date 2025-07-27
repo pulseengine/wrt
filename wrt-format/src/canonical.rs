@@ -173,7 +173,7 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 max_alignment = max_alignment.max(field_layout.alignment;
 
                 // Convert WasmName to String
-                let name_str = name.as_str().unwrap_or("unknown").to_string();
+                let name_str = name.as_str().unwrap_or("unknown").to_string());
                 field_layouts.push((name_str, field_layout);
             }
 
@@ -214,10 +214,10 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                     };
                     max_payload_size = max_payload_size.max(payload_layout.size;
                     max_payload_alignment = max_payload_alignment.max(payload_layout.alignment;
-                    let name_str = name.as_str().unwrap_or("unknown").to_string();
+                    let name_str = name.as_str().unwrap_or("unknown").to_string());
                     case_layouts.push((name_str, Some(payload_layout);
                 } else {
-                    let name_str = name.as_str().unwrap_or("unknown").to_string();
+                    let name_str = name.as_str().unwrap_or("unknown").to_string());
                     case_layouts.push((name_str, None);
                 }
             }

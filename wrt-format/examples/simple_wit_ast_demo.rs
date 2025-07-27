@@ -4,34 +4,34 @@
 //! without running into BoundedString issues.
 
 fn main() {
-    println!("Simple WIT AST Demonstration";
-    println!("============================";
+    println!("Simple WIT AST Demonstration");
+    println!("============================");
 
     demonstrate_source_spans);
     demonstrate_primitive_types);
     demonstrate_type_expressions);
     demonstrate_function_results);
 
-    println!("\n=== WIT AST Implementation Complete ===";
-    println!("✓ Source location tracking with SourceSpan";
-    println!("✓ Complete primitive type system";
-    println!("✓ Type expressions and hierarchical AST";
-    println!("✓ Function definitions and results";
-    println!("✓ Memory-efficient no_std compatibility";
-    println!("✓ All 4 phases of implementation completed:";
-    println!("  • Phase 1: AST Foundation";
-    println!("  • Phase 2: WIT Debugging Integration";
-    println!("  • Phase 3: LSP Infrastructure";
-    println!("  • Phase 4: Component Integration";
-    println!("✓ Clean builds for std, no_std+alloc, no_std";
-    println!("✓ No clippy warnings";
-    println!("✓ Basic functionality demonstrated";
+    println!("\n=== WIT AST Implementation Complete ===");
+    println!("✓ Source location tracking with SourceSpan");
+    println!("✓ Complete primitive type system");
+    println!("✓ Type expressions and hierarchical AST");
+    println!("✓ Function definitions and results");
+    println!("✓ Memory-efficient no_std compatibility");
+    println!("✓ All 4 phases of implementation completed:");
+    println!("  • Phase 1: AST Foundation");
+    println!("  • Phase 2: WIT Debugging Integration");
+    println!("  • Phase 3: LSP Infrastructure");
+    println!("  • Phase 4: Component Integration");
+    println!("✓ Clean builds for std, no_std+alloc, no_std");
+    println!("✓ No clippy warnings");
+    println!("✓ Basic functionality demonstrated");
 }
 
 fn demonstrate_source_spans() {
     use wrt_format::ast::SourceSpan;
 
-    println!("\n--- Source Span Functionality ---";
+    println!("\n--- Source Span Functionality ---");
 
     let span1 = SourceSpan::new(0, 10, 0);
     let span2 = SourceSpan::new(10, 20, 0);
@@ -57,7 +57,7 @@ fn demonstrate_source_spans() {
         empty.start, empty.end, empty.file_id
     ;
 
-    println!("✓ Source location tracking works correctly";
+    println!("✓ Source location tracking works correctly");
 }
 
 fn demonstrate_primitive_types() {
@@ -67,7 +67,7 @@ fn demonstrate_primitive_types() {
         SourceSpan,
     };
 
-    println!("\n--- Primitive Type System ---";
+    println!("\n--- Primitive Type System ---");
 
     let span = SourceSpan::new(0, 10, 0);
 
@@ -89,11 +89,11 @@ fn demonstrate_primitive_types() {
 
     for (name, kind) in &types {
         let prim_type = PrimitiveType { kind: *kind, span };
-        println!("✓ Created primitive type: {}", name;
+        println!("✓ Created primitive type: {}", name);
         assert_eq!(prim_type.kind, *kind;
     }
 
-    println!("✓ All {} primitive types work correctly", types.len);
+    println!("✓ All {} primitive types work correctly", types.len));
 }
 
 fn demonstrate_type_expressions() {
@@ -104,7 +104,7 @@ fn demonstrate_type_expressions() {
         TypeExpr,
     };
 
-    println!("\n--- Type Expression System ---";
+    println!("\n--- Type Expression System ---");
 
     let span = SourceSpan::new(0, 10, 0);
 
@@ -117,7 +117,7 @@ fn demonstrate_type_expressions() {
 
     match type_expr {
         TypeExpr::Primitive(prim) => {
-            println!("✓ Created primitive type expression: {:?}", prim.kind;
+            println!("✓ Created primitive type expression: {:?}", prim.kind);
             assert_eq!(prim.kind, PrimitiveKind::String;
         },
         TypeExpr::Named(..) => println!("✓ Named type expression structure available"),
@@ -131,7 +131,7 @@ fn demonstrate_type_expressions() {
         TypeExpr::Borrow(..) => println!("✓ Borrow handle type expression structure available"),
     }
 
-    println!("✓ Type expression pattern matching works";
+    println!("✓ Type expression pattern matching works");
 }
 
 fn demonstrate_function_results() {
@@ -143,13 +143,13 @@ fn demonstrate_function_results() {
         TypeExpr,
     };
 
-    println!("\n--- Function Results System ---";
+    println!("\n--- Function Results System ---");
 
     let span = SourceSpan::new(0, 10, 0);
 
     // Test None results
     let _no_results = FunctionResults::None;
-    println!("✓ Created function with no results";
+    println!("✓ Created function with no results");
 
     // Test default implementation
     let default_results = FunctionResults::default());
@@ -167,11 +167,11 @@ fn demonstrate_function_results() {
     let single_result = FunctionResults::Single(TypeExpr::Primitive(u32_type;
     match single_result {
         FunctionResults::Single(TypeExpr::Primitive(prim)) => {
-            println!("✓ Created function with single U32 result: {:?}", prim.kind;
+            println!("✓ Created function with single U32 result: {:?}", prim.kind);
             assert_eq!(prim.kind, PrimitiveKind::U32;
         },
         _ => println!("✗ Unexpected function result type"),
     }
 
-    println!("✓ Function result system works correctly";
+    println!("✓ Function result system works correctly");
 }

@@ -1760,7 +1760,7 @@ mod tests {
         let context = CfiExecutionContext::default());
         assert_eq!(context.current_function, 0);
         assert_eq!(context.current_instruction, 0);
-        assert!(context.shadow_stack.is_empty();
+        assert!(context.shadow_stack.is_empty());
         assert_eq!(context.violation_count, 0);
     }
 
@@ -1773,7 +1773,7 @@ mod tests {
         let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
         assert!(result.is_ok());
 
-        let protected_target = result.unwrap());
+        let protected_target = result.unwrap();
         assert_eq!(protected_target.protection.target_type, CfiTargetType::IndirectCall;
         assert!(protected_target.protection.landing_pad.is_some();
         assert_eq!(context.metrics.indirect_calls_protected, 1);
@@ -1789,7 +1789,7 @@ mod tests {
         let result = ops.call_indirect_with_cfi(1, 0, &protection, &mut context;
         assert!(result.is_ok());
 
-        let protected_target = result.unwrap());
+        let protected_target = result.unwrap();
         assert!(protected_target.protection.landing_pad.is_none();
         assert!(matches!(
             protected_target.protection.shadow_stack_requirement,

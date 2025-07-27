@@ -666,7 +666,7 @@ mod tests {
         let manager = BoundedHostIntegrationManager::new(limits;
         assert!(manager.is_ok());
 
-        let manager = manager.unwrap());
+        let manager = manager.unwrap();
         let stats = manager.get_statistics);
         assert_eq!(stats.registered_functions, 0);
         assert_eq!(stats.active_calls, 0);
@@ -675,10 +675,10 @@ mod tests {
     #[test]
     fn test_function_registration() {
         let limits = HostIntegrationLimits::default());
-        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap());
+        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
         let echo_function = create_echo_function);
-        let function_id = manager.register_function(echo_function).unwrap());
+        let function_id = manager.register_function(echo_function).unwrap();
 
         assert_eq!(function_id.0, 1);
 
@@ -689,16 +689,16 @@ mod tests {
     #[test]
     fn test_function_call() {
         let limits = HostIntegrationLimits::default());
-        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap());
+        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
         let echo_function = create_echo_function);
-        let function_id = manager.register_function(echo_function).unwrap());
+        let function_id = manager.register_function(echo_function).unwrap();
 
         let test_data = b"hello world".to_vec);
         let context =
             BoundedCallContext::new(function_id, ComponentInstanceId(1), test_data.clone(), 0);
 
-        let result = manager.call_function(function_id, context).unwrap());
+        let result = manager.call_function(function_id, context).unwrap();
 
         assert!(result.success);
         assert_eq!(result.return_data, test_data;
@@ -710,7 +710,7 @@ mod tests {
             memory_budget: 100,
             ..HostIntegrationLimits::default()
         };
-        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap());
+        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
         let large_function = SimpleBoundedHostFunction::new(
             "large_function".to_string(),
@@ -729,7 +729,7 @@ mod tests {
             max_concurrent_calls: 1,
             ..HostIntegrationLimits::default()
         };
-        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap());
+        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
         let blocking_function = SimpleBoundedHostFunction::new(
             "blocking_function".to_string(),
@@ -741,7 +741,7 @@ mod tests {
             0,
         ;
 
-        let function_id = manager.register_function(blocking_function).unwrap());
+        let function_id = manager.register_function(blocking_function).unwrap();
 
         let context1 = BoundedCallContext::new(
             function_id,
@@ -771,10 +771,10 @@ mod tests {
             max_parameter_size: 10,
             ..HostIntegrationLimits::default()
         };
-        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap());
+        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
         let echo_function = create_echo_function);
-        let function_id = manager.register_function(echo_function).unwrap());
+        let function_id = manager.register_function(echo_function).unwrap();
 
         let large_data = vec![0u8; 20]; // Exceeds limit
         let context = BoundedCallContext::new(function_id, ComponentInstanceId(1), large_data, 0);
@@ -786,10 +786,10 @@ mod tests {
     #[test]
     fn test_safety_level_checks() {
         let limits = HostIntegrationLimits::default());
-        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap());
+        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
         let safety_function = create_safety_check_function);
-        let function_id = manager.register_function(safety_function).unwrap());
+        let function_id = manager.register_function(safety_function).unwrap();
 
         // Call with higher safety level than function (should fail)
         let context = BoundedCallContext::new(
@@ -806,10 +806,10 @@ mod tests {
     #[test]
     fn test_instance_call_cancellation() {
         let limits = HostIntegrationLimits::default());
-        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap());
+        let mut manager = BoundedHostIntegrationManager::new(limits).unwrap();
 
         let echo_function = create_echo_function);
-        let function_id = manager.register_function(echo_function).unwrap());
+        let function_id = manager.register_function(echo_function).unwrap();
 
         let context = BoundedCallContext::new(
             function_id,

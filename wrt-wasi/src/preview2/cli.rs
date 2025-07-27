@@ -278,7 +278,7 @@ mod tests {
         // Test with access disabled
         capabilities.args_access = false;
         let no_args = get_filtered_arguments(&capabilities)?;
-        assert!(no_args.is_empty();
+        assert!(no_args.is_empty());
         
         Ok(())
     }

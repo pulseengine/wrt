@@ -503,7 +503,7 @@ pub mod verification {
         kani::assume(value <= 0xFFFF;
 
         let encoded = super::binary::with_alloc::write_leb128_u32(value;
-        let (decoded, _) = super::binary::read_leb128_u32(&encoded, 0).unwrap());
+        let (decoded, _) = super::binary::read_leb128_u32(&encoded, 0).unwrap();
 
         assert_eq!(value, decoded;
     }
@@ -525,7 +525,7 @@ pub mod no_std_demo {
         };
 
         // Create a type registry
-        let mut registry = TypeRegistry::new);
+        let mut registry = TypeRegistry::new();
 
         // Add a primitive type
         let bool_ref = registry.add_type(FormatValType::Bool)?;

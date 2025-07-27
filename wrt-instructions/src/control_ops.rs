@@ -33,7 +33,7 @@
 //! use wrt_instructions::Value;
 //!
 //! // Return from function
-//! let return_op = Return::new);
+//! let return_op = Return::new();
 //! // Execute with appropriate context
 //!
 //! // Indirect function call
@@ -485,7 +485,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 br_table.execute(context)
             }
             Self::Return => {
-                let return_op = Return::new);
+                let return_op = Return::new();
                 return_op.execute(context)
             }
             Self::Call(func_idx) => context.call_function(*func_idx),
@@ -736,20 +736,20 @@ mod tests {
 
     #[test]
     fn test_block_operations() {
-        let mut context = MockControlContext::new);
+        let mut context = MockControlContext::new();
 
         // Test block instruction
         let block_type = ControlBlockType::ValueType(Some(ValueType::I32;
-        ControlOp::Block(block_type.clone()).execute(&mut context).unwrap());
+        ControlOp::Block(block_type.clone()).execute(&mut context).unwrap();
         assert_eq!(context.get_block_depth(), 1);
 
         // Test end instruction
-        ControlOp::End.execute(&mut context).unwrap());
+        ControlOp::End.execute(&mut context).unwrap();
         assert_eq!(context.get_block_depth(), 0);
 
         // Test loop instruction
         let loop_type = ControlBlockType::ValueType(None;
-        ControlOp::Loop(loop_type).execute(&mut context).unwrap());
+        ControlOp::Loop(loop_type).execute(&mut context).unwrap();
         assert_eq!(context.get_block_depth(), 1);
 
         // Check the block type
@@ -761,34 +761,34 @@ mod tests {
 
     #[test]
     fn test_if_else() {
-        let mut context = MockControlContext::new);
+        let mut context = MockControlContext::new();
 
         // Test if instruction with true condition
         context.push_control_value(Value::I32(1)).unwrap()); // True condition
         let if_type = ControlBlockType::ValueType(None;
-        ControlOp::If(if_type.clone()).execute(&mut context).unwrap());
+        ControlOp::If(if_type.clone()).execute(&mut context).unwrap();
         assert_eq!(context.get_block_depth(), 1);
 
         // Test else instruction
-        ControlOp::Else.execute(&mut context).unwrap());
+        ControlOp::Else.execute(&mut context).unwrap();
         assert_eq!(context.get_block_depth(), 1); // Still in the same block
 
         // Test end instruction
-        ControlOp::End.execute(&mut context).unwrap());
+        ControlOp::End.execute(&mut context).unwrap();
         assert_eq!(context.get_block_depth(), 0);
 
         // Test if instruction with false condition
         context.push_control_value(Value::I32(0)).unwrap()); // False condition
-        ControlOp::If(if_type).execute(&mut context).unwrap());
+        ControlOp::If(if_type).execute(&mut context).unwrap();
         assert_eq!(context.get_block_depth(), 1);
     }
 
     #[test]
     fn test_branching() {
-        let mut context = MockControlContext::new);
+        let mut context = MockControlContext::new();
 
         // Test br instruction
-        ControlOp::Br(1).execute(&mut context).unwrap());
+        ControlOp::Br(1).execute(&mut context).unwrap();
         assert!(context.branched.is_some();
         assert_eq!(context.branched.unwrap().label_idx, 1);
 
@@ -797,7 +797,7 @@ mod tests {
 
         // Test br_if instruction with true condition
         context.push_control_value(Value::I32(1)).unwrap()); // True condition
-        ControlOp::BrIf(2).execute(&mut context).unwrap());
+        ControlOp::BrIf(2).execute(&mut context).unwrap();
         assert!(context.branched.is_some();
         assert_eq!(context.branched.unwrap().label_idx, 2;
 
@@ -806,22 +806,22 @@ mod tests {
 
         // Test br_if instruction with false condition
         context.push_control_value(Value::I32(0)).unwrap()); // False condition
-        ControlOp::BrIf(3).execute(&mut context).unwrap());
+        ControlOp::BrIf(3).execute(&mut context).unwrap();
         assert!(context.branched.is_none())); // Should not branch
     }
 
     #[test]
     fn test_br_table() {
-        let mut context = MockControlContext::new);
+        let mut context = MockControlContext::new();
 
         // Test br_table instruction with in-range index
         context.push_control_value(Value::I32(1)).unwrap()); // Index 1
-        let mut table = Vec::new);
+        let mut table = Vec::new());
         table.push(10);
         table.push(20);
         table.push(30);
         let default = 99;
-        ControlOp::BrTable { table: table.clone(), default }.execute(&mut context).unwrap());
+        ControlOp::BrTable { table: table.clone(), default }.execute(&mut context).unwrap();
         assert!(context.branched.is_some();
         assert_eq!(context.branched.unwrap().label_idx, 20); // table[1]
 
@@ -830,34 +830,34 @@ mod tests {
 
         // Test br_table instruction with out-of-range index
         context.push_control_value(Value::I32(5)).unwrap()); // Index out of range
-        ControlOp::BrTable { table, default }.execute(&mut context).unwrap());
+        ControlOp::BrTable { table, default }.execute(&mut context).unwrap();
         assert!(context.branched.is_some();
         assert_eq!(context.branched.unwrap().label_idx, 99); // default
     }
 
     #[test]
     fn test_function_control() {
-        let mut context = MockControlContext::new);
+        let mut context = MockControlContext::new();
 
         // Test return instruction
-        ControlOp::Return.execute(&mut context).unwrap());
+        ControlOp::Return.execute(&mut context).unwrap();
         assert!(context.returned);
 
         // Test call instruction
-        ControlOp::Call(42).execute(&mut context).unwrap());
+        ControlOp::Call(42).execute(&mut context).unwrap();
         assert_eq!(context.func_called, Some(42;
 
         // Test call_indirect instruction
-        ControlOp::CallIndirect { table_idx: 1, type_idx: 5 }.execute(&mut context).unwrap());
+        ControlOp::CallIndirect { table_idx: 1, type_idx: 5 }.execute(&mut context).unwrap();
         assert_eq!(context.indirect_call, Some((1, 5);
     }
 
     #[test]
     fn test_other_control() {
-        let mut context = MockControlContext::new);
+        let mut context = MockControlContext::new();
 
         // Test nop instruction
-        ControlOp::Nop.execute(&mut context).unwrap());
+        ControlOp::Nop.execute(&mut context).unwrap();
 
         // Test unreachable instruction
         let result = ControlOp::Unreachable.execute(&mut context;
@@ -868,10 +868,10 @@ mod tests {
     #[test]
     fn test_individual_control_flow_operations() {
         // We'll create a simpler test context to avoid trait issues
-        println!("Testing individual control flow operations";
+        println!("Testing individual control flow operations");
         
         // Test Return creation
-        let return_op = Return::new);
+        let return_op = Return::new();
         assert_eq!(return_op, Return::default());
         
         // Test CallIndirect creation
@@ -882,7 +882,7 @@ mod tests {
         // Test BrTable creation from slice
         let br_table = BrTable::from_slice(&[1, 2, 3], 99;
         assert!(br_table.is_ok());
-        let table = br_table.unwrap());
+        let table = br_table.unwrap();
         assert_eq!(table.default, 99;
     }
 }

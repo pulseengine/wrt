@@ -132,7 +132,7 @@ impl<'a> StackTraceBuilder<'a> {
     /// Full stack walking requires runtime support for frame pointers
     #[cfg(all(feature = "line-info", feature = "function-info"))]
     pub fn build_from_pc(&mut self, pc: u32) -> Result<StackTrace<'a>, ()> {
-        let mut trace = StackTrace::new);
+        let mut trace = StackTrace::new();
 
         // Get function info
         let function = self.debug_info.find_function_info(pc;
@@ -165,7 +165,7 @@ impl<'a> StackTraceBuilder<'a> {
     /// Build a partial trace with just PC values
     /// (when debug info is not available)
     pub fn build_minimal(&self, pcs: &[u32]) -> Result<StackTrace<'a>, ()> {
-        let mut trace = StackTrace::new);
+        let mut trace = StackTrace::new();
 
         for (i, &pc) in pcs.iter().enumerate() {
             let frame = StackFrame {
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_stack_trace_display() {
-        let mut trace = StackTrace::new);
+        let mut trace = StackTrace::new();
 
         // Add a frame with no debug info
         let frame1 = StackFrame {
@@ -240,17 +240,17 @@ mod tests {
             depth:     0,
         };
 
-        trace.push_frame(frame1).unwrap());
+        trace.push_frame(frame1).unwrap();
 
         // Test minimal display
-        let mut output = String::new);
-        let file_table = crate::FileTable::new);
+        let mut output = String::new();
+        let file_table = crate::FileTable::new();
         trace
             .display(&file_table, |s| {
                 output.push_str(s;
                 Ok(())
             })
-            .unwrap());
+            .unwrap();
 
         assert!(output.contains("#0 0x00001000");
     }

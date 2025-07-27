@@ -11,7 +11,7 @@ use wrt_error::Result;
 /// Test that model loading respects memory limits
 #[test]
 fn test_model_size_limit_enforcement() {
-    let capability = DynamicNNCapability::new);
+    let capability = DynamicNNCapability::new();
     let limits = NNResourceLimits {
         max_model_size: 10 * 1024 * 1024, // 10MB limit
         max_concurrent_models: 2,
@@ -39,7 +39,7 @@ fn test_model_size_limit_enforcement() {
 /// Test that tensor memory allocation is bounded
 #[test]
 fn test_tensor_memory_limits() {
-    let capability = DynamicNNCapability::new);
+    let capability = DynamicNNCapability::new();
     let limits = capability.resource_limits);
     
     // Test within tensor memory limits
@@ -76,7 +76,7 @@ fn test_tensor_dimension_limits() {
 /// Test resource tracking with bounded capability
 #[test]
 fn test_bounded_capability_resource_tracking() {
-    let capability = BoundedNNCapability::new().unwrap());
+    let capability = BoundedNNCapability::new().unwrap();
     let limits = capability.resource_limits);
     
     // Test model count limits
@@ -125,7 +125,7 @@ fn test_no_dynamic_allocation_pattern() {
     // For ASIL-D, we need to verify no dynamic allocation after init
     // This test verifies our allocation patterns use bounded, pre-allocated structures
     
-    let capability = DynamicNNCapability::new);
+    let capability = DynamicNNCapability::new();
     
     // All these operations should use pre-allocated memory
     let operations = vec![
@@ -148,8 +148,8 @@ fn test_bounded_collections_usage() {
     use wrt_foundation::BoundedVec;
     
     // Test that we can create bounded collections with safe allocation
-    let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap());
-    let mut bounded_vec = BoundedVec::new(provider).unwrap());
+    let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap();
+    let mut bounded_vec = BoundedVec::new(provider).unwrap();
     
     // Test that bounded collections enforce limits
     for i in 0..100 {
@@ -169,7 +169,7 @@ fn test_resource_id_wraparound_protection() {
     // This test verifies our ID management doesn't create security issues
     
     let mut id_counter: u32 = u32::MAX - 5; // Near wraparound
-    let mut active_ids = std::collections::HashSet::new);
+    let mut active_ids = std::collections::HashSet::new();
     
     for _ in 0..10 {
         // Check for wraparound
@@ -186,7 +186,7 @@ fn test_resource_id_wraparound_protection() {
         
         // Clean up old IDs periodically
         if active_ids.len() > 5 {
-            let oldest = *active_ids.iter().next().unwrap());
+            let oldest = *active_ids.iter().next().unwrap();
             active_ids.remove(&oldest;
         }
     }
@@ -199,8 +199,8 @@ fn test_automatic_memory_cleanup() {
     
     {
         // Create resources in a scope
-        let capability = DynamicNNCapability::new);
-        let _tensor_dims = TensorDimensions::new(&[32, 32, 32]).unwrap());
+        let capability = DynamicNNCapability::new();
+        let _tensor_dims = TensorDimensions::new(&[32, 32, 32]).unwrap();
         
         // Use some memory
         let _operation = NNOperation::Load {
@@ -219,7 +219,7 @@ fn test_automatic_memory_cleanup() {
 fn test_error_path_memory_safety() {
     // Test that error conditions don't cause memory leaks
     
-    let capability = DynamicNNCapability::new);
+    let capability = DynamicNNCapability::new();
     
     // Create operations that will fail
     let failing_operations = vec![
@@ -265,7 +265,7 @@ fn test_concurrent_resource_safety() {
     
     // Wait for all threads
     for handle in handles {
-        handle.join().unwrap());
+        handle.join().unwrap();
     }
     
     // If we reach here, concurrent access was safe

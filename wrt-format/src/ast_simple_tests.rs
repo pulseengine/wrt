@@ -134,8 +134,8 @@ mod tests {
 
         #[cfg(feature = "std")]
         {
-            assert!(document.use_items.is_empty();
-            assert!(document.items.is_empty();
+            assert!(document.use_items.is_empty());
+            assert!(document.items.is_empty());
         }
     }
 
@@ -184,7 +184,7 @@ mod tests {
         assert_eq!(function.span.end, 50;
 
         #[cfg(feature = "std")]
-        assert!(function.params.is_empty();
+        assert!(function.params.is_empty());
 
         match function.results {
             FunctionResults::None => {}, // Expected
@@ -197,11 +197,11 @@ mod tests {
     fn test_ast_structure_without_strings() {
         // Test that we can work with the AST structure even without BoundedString
         // creation
-        let interface_items: Vec<InterfaceItem> = Vec::new);
-        assert!(interface_items.is_empty();
+        let interface_items: Vec<InterfaceItem> = Vec::new());
+        assert!(interface_items.is_empty());
 
-        let top_level_items: Vec<TopLevelItem> = Vec::new);
-        assert!(top_level_items.is_empty();
+        let top_level_items: Vec<TopLevelItem> = Vec::new());
+        assert!(top_level_items.is_empty());
 
         // Test that default implementations work
         let function_results = FunctionResults::default());

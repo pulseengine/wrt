@@ -784,7 +784,7 @@ impl<'a> StreamingTypeParser<'a> {
         #[cfg(not(feature = "std"))]
         let mut imports = DecoderVec::new(provider.clone())?;
         #[cfg(feature = "std")]
-        let mut imports = DecoderVec::new);
+        let mut imports = DecoderVec::new());
         for _ in 0..import_count {
             let namespace = self.read_string()?;
             let name = self.read_string()?;
@@ -810,7 +810,7 @@ impl<'a> StreamingTypeParser<'a> {
         #[cfg(not(feature = "std"))]
         let mut exports = DecoderVec::new(provider)?;
         #[cfg(feature = "std")]
-        let mut exports = DecoderVec::new);
+        let mut exports = DecoderVec::new());
         for _ in 0..export_count {
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
@@ -839,7 +839,7 @@ impl<'a> StreamingTypeParser<'a> {
             DecoderVec::new(provider)?
         };
         #[cfg(feature = "std")]
-        let mut exports = DecoderVec::new);
+        let mut exports = DecoderVec::new());
         for _ in 0..export_count {
             let name = self.read_string()?;
             let extern_type = self.parse_extern_type()?;
@@ -868,7 +868,7 @@ impl<'a> StreamingTypeParser<'a> {
             DecoderVec::new(provider.clone())?
         };
         #[cfg(feature = "std")]
-        let mut params = DecoderVec::new);
+        let mut params = DecoderVec::new());
         for _ in 0..param_count {
             let name = self.read_string()?;
             let val_type = self.parse_value_type()?;
@@ -894,7 +894,7 @@ impl<'a> StreamingTypeParser<'a> {
             DecoderVec::new(provider)?
         };
         #[cfg(feature = "std")]
-        let mut results = DecoderVec::new);
+        let mut results = DecoderVec::new());
         for _ in 0..result_count {
             let val_type = self.parse_value_type()?;
             #[cfg(not(feature = "std"))]
@@ -966,7 +966,7 @@ impl<'a> StreamingTypeParser<'a> {
                     DecoderVec::new(provider.clone())?
                 };
                 #[cfg(feature = "std")]
-                let mut params = DecoderVec::new);
+                let mut params = DecoderVec::new());
                 for _ in 0..param_count {
                     let name = self.read_string()?;
                     let val_type = self.parse_value_type()?;
@@ -991,7 +991,7 @@ impl<'a> StreamingTypeParser<'a> {
                     DecoderVec::new(provider)?
                 };
                 #[cfg(feature = "std")]
-                let mut results = DecoderVec::new);
+                let mut results = DecoderVec::new());
                 for _ in 0..result_count {
                     let val_type = self.parse_value_type()?;
                     #[cfg(not(feature = "std"))]
@@ -1087,7 +1087,7 @@ impl<'a> StreamingTypeParser<'a> {
                     DecoderVec::new(provider)?
                 };
                 #[cfg(feature = "std")]
-                let empty_fields = DecoderVec::new);
+                let empty_fields = DecoderVec::new());
                 return Ok(FormatValType::Record(empty_fields;
             },
             0x71 => {
@@ -1115,7 +1115,7 @@ impl<'a> StreamingTypeParser<'a> {
                     DecoderVec::new(provider)?
                 };
                 #[cfg(feature = "std")]
-                let empty_cases = DecoderVec::new);
+                let empty_cases = DecoderVec::new());
                 return Ok(FormatValType::Variant(empty_cases;
             },
             0x70 => {
@@ -1151,7 +1151,7 @@ impl<'a> StreamingTypeParser<'a> {
                     DecoderVec::new(provider)?
                 };
                 #[cfg(feature = "std")]
-                let empty_elements = DecoderVec::new);
+                let empty_elements = DecoderVec::new());
                 return Ok(FormatValType::Tuple(empty_elements;
             },
             0x6E => {
@@ -1293,12 +1293,12 @@ mod tests {
     fn test_empty_section() {
         let data = &[0u8]; // Zero types
 
-        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap());
+        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap();
 
-        let result = parser.parse().unwrap());
+        let result = parser.parse().unwrap();
         assert_eq!(result.type_count(), 0);
         assert_eq!(result.bytes_consumed(), 1);
-        assert!(result.is_empty();
+        assert!(result.is_empty());
     }
 
     #[test]
@@ -1311,23 +1311,23 @@ mod tests {
             DecoderVec::new(provider)?
         };
         #[cfg(feature = "std")]
-        let mut data = DecoderVec::new);
+        let mut data = DecoderVec::new());
 
         // Write LEB128 encoded type count
         let mut count = type_count;
         while count >= 0x80 {
             #[cfg(not(feature = "std"))]
-            data.push((count & 0x7F) as u8 | 0x80).unwrap());
+            data.push((count & 0x7F) as u8 | 0x80).unwrap();
             #[cfg(feature = "std")]
             data.push((count & 0x7F) as u8 | 0x80;
             count >>= 7;
         }
         #[cfg(not(feature = "std"))]
-        data.push(count as u8).unwrap());
+        data.push(count as u8).unwrap();
         #[cfg(feature = "std")]
         data.push(count as u8);
 
-        let mut parser = StreamingTypeParser::new(&data, VerificationLevel::Standard).unwrap());
+        let mut parser = StreamingTypeParser::new(&data, VerificationLevel::Standard).unwrap();
 
         assert!(parser.parse().is_err();
         Ok(())
@@ -1339,7 +1339,7 @@ mod tests {
         // but requires complex binary construction
         let data = &[0u8]; // Zero types for now
 
-        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap());
+        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap();
 
         // Set recursion depth to maximum
         parser.recursion_depth = MAX_TYPE_RECURSION_DEPTH;
@@ -1352,12 +1352,12 @@ mod tests {
     fn test_parser_offset_tracking() {
         let data = &[0u8]; // Zero types
 
-        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap());
+        let mut parser = StreamingTypeParser::new(data, VerificationLevel::Standard).unwrap();
 
         assert_eq!(parser.offset(), 0);
         assert_eq!(parser.remaining(), 1);
 
-        let result = parser.parse().unwrap());
+        let result = parser.parse().unwrap();
         assert_eq!(parser.offset(), 1);
         assert_eq!(parser.remaining(), 0);
         assert_eq!(result.bytes_consumed(), 1);

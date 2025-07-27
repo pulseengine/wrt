@@ -192,13 +192,13 @@ macro_rules! make_vec {
 macro_rules! make_vec {
     () => {{
         use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-        let provider = safe_managed_alloc!(65536, CrateId::Instructions).unwrap());
+        let provider = safe_managed_alloc!(65536, CrateId::Instructions).unwrap();
         BoundedVec::new(provider).unwrap()
     }};
     ($($elem:expr),*) => {{
         use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
-        let provider = safe_managed_alloc!(65536, CrateId::Instructions).unwrap());
-        let mut v = BoundedVec::new(provider).unwrap());
+        let provider = safe_managed_alloc!(65536, CrateId::Instructions).unwrap();
+        let mut v = BoundedVec::new(provider).unwrap();
         $(v.push($elem).unwrap());)*
         v
     }};

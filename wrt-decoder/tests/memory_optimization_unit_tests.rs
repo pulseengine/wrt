@@ -45,7 +45,7 @@ mod tests {
         assert!(check_bounds_u32(alleged_count, max_allowed, "section count").is_ok());
 
         // Convert to usize safely
-        let count_usize = safe_usize_conversion(alleged_count, "section count").unwrap());
+        let count_usize = safe_usize_conversion(alleged_count, "section count").unwrap();
         assert_eq!(count_usize, 1000;
 
         // Simulate conservative memory reservation
@@ -86,7 +86,7 @@ mod string_optimization_tests {
         let result = validate_utf8_name(&test_data, 0);
         assert!(result.is_ok());
 
-        let (validated_str, new_offset) = result.unwrap());
+        let (validated_str, new_offset) = result.unwrap();
         assert_eq!(validated_str, "hello";
         assert_eq!(new_offset, 6); // 1 byte length + 5 bytes string
     }

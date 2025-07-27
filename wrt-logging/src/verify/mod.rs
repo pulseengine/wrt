@@ -27,7 +27,7 @@ fn verify_log_level() {
 #[kani::proof]
 fn verify_log_operation() {
     // Create a log operation
-    let op = LogOperation::new(LogLevel::Info, "test message".to_string();
+    let op = LogOperation::new(LogLevel::Info, "test message".to_string());
 
     // Verify fields
     assert_eq!(op.level, LogLevel::Info;
@@ -40,7 +40,7 @@ fn verify_log_operation() {
     // Verify fields
     assert_eq!(op_with_id.level, LogLevel::Debug;
     assert_eq!(op_with_id.message, "test message";
-    assert_eq!(op_with_id.component_id, Some("component-1".to_string();
+    assert_eq!(op_with_id.component_id, Some("component-1".to_string());
 }
 
 #[cfg(kani)]
@@ -52,16 +52,16 @@ fn verify_logging_ext() {
         use crate::handler::LoggingExt;
         
         // Create a registry
-        let mut registry = CallbackRegistry::new);
+        let mut registry = CallbackRegistry::new();
 
         // Add handler (using LoggingExt trait)
         let registry_with_handler = {
-            let mut r = CallbackRegistry::new);
+            let mut r = CallbackRegistry::new();
             r.register_log_handler(|_| {};
             r
         };
 
         // Verify that we can log
-        registry_with_handler.handle_log(LogOperation::new(LogLevel::Info, "test message".to_string();
+        registry_with_handler.handle_log(LogOperation::new(LogLevel::Info, "test message".to_string());
     }
 }

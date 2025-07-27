@@ -364,7 +364,7 @@ mod tests {
         let _ = MemoryInitializer::initialize);
         
         // Test string creation
-        let string_value = CapabilityAwareValue::string_from_str("test").unwrap());
+        let string_value = CapabilityAwareValue::string_from_str("test").unwrap();
         if let CapabilityAwareValue::String(_) = string_value {
             // Success
         } else {
@@ -385,7 +385,7 @@ mod tests {
         let _ = MemoryInitializer::initialize);
         
         let value = CapabilityAwareValue::U32(100;
-        let boxed = WasiValueBox::new(value).unwrap());
+        let boxed = WasiValueBox::new(value).unwrap();
         
         assert_eq!(boxed.as_inner().as_u32(), 100;
     }

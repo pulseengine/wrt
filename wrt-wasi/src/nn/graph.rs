@@ -242,7 +242,7 @@ fn calculate_sha256(data: &[u8]) -> [u8; 32] {
 }
 
 /// Global graph store instance
-static GRAPH_STORE: OnceLock<Mutex<GraphStore>> = OnceLock::new);
+static GRAPH_STORE: OnceLock<Mutex<GraphStore>> = OnceLock::new();
 
 /// Initialize the graph store
 pub fn initialize_graph_store() -> Result<()> {
@@ -283,11 +283,11 @@ mod tests {
     
     #[test]
     fn test_graph_store() {
-        let mut store = GraphStore::new().unwrap());
+        let mut store = GraphStore::new().unwrap();
         assert_eq!(store.count(), 0);
         assert!(!store.is_full();
         
-        let id = store.next_id().unwrap());
+        let id = store.next_id().unwrap();
         assert_eq!(id, 1);
         assert_eq!(store.next_id().unwrap(), 2;
     }

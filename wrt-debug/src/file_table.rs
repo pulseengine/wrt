@@ -237,12 +237,12 @@ mod tests {
         let string_data = b"\0src\0lib\0main.rs\0utils.rs\0tests\0";
         let string_table = StringTable::new(string_data;
 
-        let mut file_table = FileTable::new);
+        let mut file_table = FileTable::new();
 
         // Add directories
-        let src_dir = string_table.get_string(1).unwrap());
-        let lib_dir = string_table.get_string(5).unwrap());
-        let tests_dir = string_table.get_string(25).unwrap());
+        let src_dir = string_table.get_string(1).unwrap();
+        let lib_dir = string_table.get_string(5).unwrap();
+        let tests_dir = string_table.get_string(25).unwrap();
 
         assert_eq!(file_table.add_directory(src_dir), Ok(1;
         assert_eq!(file_table.add_directory(lib_dir), Ok(2;
@@ -271,11 +271,11 @@ mod tests {
         assert_eq!(file_table.directory_count(), 3;
 
         // Test full path resolution
-        let path1 = file_table.get_full_path(1).unwrap());
+        let path1 = file_table.get_full_path(1).unwrap();
         assert_eq!(path1.filename(), "main.rs";
         assert_eq!(path1.directory.unwrap().as_str(), "src";
 
-        let path2 = file_table.get_full_path(2).unwrap());
+        let path2 = file_table.get_full_path(2).unwrap();
         assert_eq!(path2.filename(), "utils.rs";
         assert_eq!(path2.directory.unwrap().as_str(), "src";
     }
@@ -290,12 +290,12 @@ mod tests {
             filename:  string_table.get_string(5).unwrap(),
         };
 
-        let mut output = String::new);
+        let mut output = String::new();
         path.display(|s| {
             output.push_str(s;
             Ok(())
         })
-        .unwrap());
+        .unwrap();
 
         assert_eq!(output, "src/main.rs";
     }

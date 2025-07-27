@@ -283,8 +283,8 @@ mod tests {
             {
                 // Use capability-aware allocation for safety-critical code
                 let provider = crate::bounded_host_infra::create_host_provider()?;
-                let mut vec = ValueVec::new(provider).unwrap());
-                vec.push(Value::I32(42)).unwrap());
+                let mut vec = ValueVec::new(provider).unwrap();
+                vec.push(Value::I32(42)).unwrap();
                 Ok(vec)
             }
         };
@@ -304,12 +304,12 @@ mod tests {
         let result2 = f2.call(&mut target, empty_args;
 
         assert!(result.is_ok());
-        let result_vec = result.unwrap());
+        let result_vec = result.unwrap();
         assert_eq!(result_vec.len(), 1);
         assert!(matches!(result_vec[0], Value::I32(42));
 
         assert!(result2.is_ok());
-        let result2_vec = result2.unwrap());
+        let result2_vec = result2.unwrap();
         assert_eq!(result2_vec.len(), 1);
         assert!(matches!(result2_vec[0], Value::I32(42));
     }
@@ -324,8 +324,8 @@ mod tests {
             {
                 // Use capability-aware allocation for safety-critical code
                 let provider = crate::bounded_host_infra::create_host_provider()?;
-                let mut vec = ValueVec::new(provider).unwrap());
-                vec.push(Value::I32(42)).unwrap());
+                let mut vec = ValueVec::new(provider).unwrap();
+                vec.push(Value::I32(42)).unwrap();
                 Ok(vec)
             }
         };
@@ -343,7 +343,7 @@ mod tests {
         let result = handler.call(&mut target, empty_args;
 
         assert!(result.is_ok());
-        let result_vec = result.unwrap());
+        let result_vec = result.unwrap();
         assert_eq!(result_vec.len(), 1);
         assert!(matches!(result_vec[0], Value::I32(42));
     }

@@ -135,7 +135,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
 
         // Add arguments if configured
         if self.config.log_args && !args.is_empty() {
-            let mut args_str = String::new);
+            let mut args_str = String::new();
             let limit = if self.config.max_args > 0 {
                 self.config.max_args.min(args.len())
             } else {
@@ -196,7 +196,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
             match &result {
                 Ok(values) => {
                     if !values.is_empty() {
-                        let mut result_str = String::new);
+                        let mut result_str = String::new();
                         let limit = if self.config.max_results > 0 {
                             self.config.max_results.min(values.len())
                         } else {
@@ -366,7 +366,7 @@ mod tests {
     impl LogSink for TestSink {
         fn write_log(&self, entry: &str) {
             if let Ok(mut logs) = self.logs.lock() {
-                logs.push(entry.to_string();
+                logs.push(entry.to_string());
             }
         }
     }
@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(result.unwrap(), args;
 
         // Check log entry
-        let logs = sink.logs.lock().unwrap());
+        let logs = sink.logs.lock().unwrap();
         assert_eq!(logs.len(), 1);
         assert!(logs[0].contains("CALL: source->target::function");
         assert!(logs[0].contains("I32(42)");
@@ -403,7 +403,7 @@ mod tests {
         assert_eq!(after_result.unwrap(), vec![Value::I64(123)];
 
         // Check log entry
-        let logs = sink.logs.lock().unwrap());
+        let logs = sink.logs.lock().unwrap();
         assert_eq!(logs.len(), 1);
         assert!(logs[0].contains("RETURN: source->target::function");
         assert!(logs[0].contains("I64(123)");
@@ -426,7 +426,7 @@ mod tests {
         let _ = strategy.before_call("source", "target", "function", &args;
 
         // Check log entry - should not contain args
-        let logs = sink.logs.lock().unwrap());
+        let logs = sink.logs.lock().unwrap();
         assert_eq!(logs.len(), 1);
         assert!(logs[0].contains("CALL: source->target::function");
         assert!(!logs[0].contains("I32(42)");

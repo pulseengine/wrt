@@ -69,9 +69,9 @@ pub struct ContainerConfig {
 
 impl Default for ContainerConfig {
     fn default() -> Self {
-        let mut environment = HashMap::new);
-        environment.insert("RUST_LOG".to_string(), "info".to_string();
-        environment.insert("CARGO_INCREMENTAL".to_string(), "0".to_string();
+        let mut environment = HashMap::new();
+        environment.insert("RUST_LOG".to_string(), "info".to_string());
+        environment.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
 
         Self {
             base_image: "ubuntu:22.04".to_string(),
@@ -172,7 +172,7 @@ impl DaggerPipeline {
     async fn run_local_fallback(&self, args: &[&str]) -> Result<String> {
         use std::process::Command;
 
-        eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution";
+        eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution"));
 
         let mut cmd = Command::new("cargo-wrt";
         cmd.args(args;
@@ -204,31 +204,31 @@ impl ContainerConfigBuilder {
 
     /// Set the base container image
     pub fn base_image(mut self, image: &str) -> Self {
-        self.config.base_image = image.to_string();
+        self.config.base_image = image.to_string());
         self
     }
 
     /// Set the Rust version
     pub fn rust_version(mut self, version: &str) -> Self {
-        self.config.rust_version = version.to_string();
+        self.config.rust_version = version.to_string());
         self
     }
 
     /// Add a system package
     pub fn add_package(mut self, package: &str) -> Self {
-        self.config.system_packages.push(package.to_string();
+        self.config.system_packages.push(package.to_string());
         self
     }
 
     /// Set an environment variable
     pub fn env(mut self, key: &str, value: &str) -> Self {
-        self.config.environment.insert(key.to_string(), value.to_string();
+        self.config.environment.insert(key.to_string(), value.to_string());
         self
     }
 
     /// Set the working directory
     pub fn work_dir(mut self, dir: &str) -> Self {
-        self.config.work_dir = dir.to_string();
+        self.config.work_dir = dir.to_string());
         self
     }
 
@@ -308,7 +308,7 @@ mod tests {
         let config = ContainerConfig::default());
         assert_eq!(config.base_image, "ubuntu:22.04";
         assert_eq!(config.rust_version, "1.86.0";
-        assert!(!config.system_packages.is_empty();
+        assert!(!config.system_packages.is_empty());
     }
 
     #[test]
@@ -325,7 +325,7 @@ mod tests {
         assert_eq!(config.base_image, "alpine:latest";
         assert_eq!(config.rust_version, "1.85.0";
         assert!(config.system_packages.contains(&"git".to_string());
-        assert_eq!(config.environment.get("DEBUG"), Some(&"1".to_string();
+        assert_eq!(config.environment.get("DEBUG"), Some(&"1".to_string());
         assert_eq!(config.work_dir, "/app";
         assert_eq!(config.timeout, 1200;
     }

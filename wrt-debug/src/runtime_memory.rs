@@ -401,7 +401,7 @@ mod tests {
                 writable:    true,
                 name:        "main",
             })
-            .unwrap());
+            .unwrap();
 
         inspector
             .add_region(MemoryRegion {
@@ -411,7 +411,7 @@ mod tests {
                 writable:    true,
                 name:        "stack",
             })
-            .unwrap());
+            .unwrap();
 
         // Test region lookup
         assert!(inspector.find_region(0x5000).is_some();
@@ -433,7 +433,7 @@ mod tests {
                 allocated: true,
                 id:        Some(1),
             })
-            .unwrap());
+            .unwrap();
 
         inspector
             .add_allocation(HeapAllocation {
@@ -442,7 +442,7 @@ mod tests {
                 allocated: true,
                 id:        Some(2),
             })
-            .unwrap());
+            .unwrap();
 
         inspector
             .add_allocation(HeapAllocation {
@@ -451,7 +451,7 @@ mod tests {
                 allocated: false,
                 id:        Some(3),
             })
-            .unwrap());
+            .unwrap();
 
         let stats = inspector.heap_stats);
         assert_eq!(stats.total_allocations, 3;

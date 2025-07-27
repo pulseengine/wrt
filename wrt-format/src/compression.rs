@@ -60,7 +60,7 @@ impl CompressionType {
 /// Where count is a single byte (0-255)
 #[cfg(feature = "std")]
 pub fn rle_encode(data: &[u8]) -> Vec<u8> {
-    let mut result = Vec::new);
+    let mut result = Vec::new());
     let mut i = 0;
 
     while i < data.len() {
@@ -103,10 +103,10 @@ pub fn rle_encode(data: &[u8]) -> Vec<u8> {
 #[cfg(feature = "std")]
 pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
     if input.is_empty() {
-        return Ok(Vec::new);
+        return Ok(Vec::new());
     }
 
-    let mut result = Vec::new);
+    let mut result = Vec::new());
     let mut i = 0;
 
     while i < input.len() {
@@ -309,7 +309,7 @@ mod tests {
 
         // Test for a zero-length RLE sequence with zero count
         let zero_count = vec![0, 0, 42]; // RLE sequence: [0x00, count=0, value=42]
-        let result = rle_decode(&zero_count).unwrap());
+        let result = rle_decode(&zero_count).unwrap();
         assert_eq!(result, vec![]); // Should decode to empty array since count
                                     // is 0
     }

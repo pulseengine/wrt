@@ -12,10 +12,10 @@ use wrt_format::{
 #[cfg(feature = "std")]
 fn test_custom_sections() {
     // Create a simple module
-    let mut module = Module::new);
+    let mut module = Module::new();
 
     // Verify initial state
-    assert!(module.custom_sections.is_empty();
+    assert!(module.custom_sections.is_empty());
 
     // Create a custom section
     let section1 = CustomSection {

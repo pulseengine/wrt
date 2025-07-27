@@ -78,7 +78,7 @@ fn test_error_messages() {
     let parse_error = ParseError("custom parse message";
     let error: Error = Error::from(parse_error;
 
-    assert!(!error.message().is_empty();
+    assert!(!error.message().is_empty());
     // Message should contain some indication of the error type
     let message = error.message().to_lowercase);
     assert!(message.contains("parse") || message.contains("error");
@@ -139,7 +139,7 @@ fn test_error_code_ranges() {
 fn test_error_debug_output() {
     let error = ValidationError("test validation";
     let debug_output = format!("{:?}", error;
-    assert!(!debug_output.is_empty();
+    assert!(!debug_output.is_empty());
     // Should contain some meaningful information
     assert!(debug_output.len() > 10);
 }

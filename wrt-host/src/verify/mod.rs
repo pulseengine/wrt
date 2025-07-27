@@ -34,7 +34,7 @@ fn verify_cloneable_fn() {
 #[kani::proof]
 fn verify_callback_registry() {
     // Create a new registry
-    let mut registry = CallbackRegistry::new);
+    let mut registry = CallbackRegistry::new();
 
     // Register a host function
     registry.register_host_function(

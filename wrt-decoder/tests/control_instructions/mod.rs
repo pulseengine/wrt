@@ -6,19 +6,19 @@ use wrt_foundation::ValueType;
 fn test_parse_encode_block() {
     // block (empty) end
     let bytes = vec![0x02, 0x40, 0x0B];
-    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap());
+    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
     
     match instruction {
         Instruction::Block(block_type, instructions) => {
             assert_eq!(block_type, BlockType::Empty;
-            assert!(instructions.is_empty();
+            assert!(instructions.is_empty());
         }
         _ => panic!("Expected Block instruction"),
     }
     
     assert_eq!(bytes_read, 3;
     
-    let encoded = encode_instruction(&instruction).unwrap());
+    let encoded = encode_instruction(&instruction).unwrap();
     assert_eq!(encoded, bytes;
 }
 
@@ -30,7 +30,7 @@ fn test_parse_encode_loop() {
         0x41, 0x01, // i32.const 1
         0x0B        // end
     ];
-    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap());
+    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
     
     match instruction {
         Instruction::Loop(block_type, instructions) => {
@@ -43,7 +43,7 @@ fn test_parse_encode_loop() {
     
     assert_eq!(bytes_read, 5;
     
-    let encoded = encode_instruction(&instruction).unwrap());
+    let encoded = encode_instruction(&instruction).unwrap();
     assert_eq!(encoded, bytes;
 }
 
@@ -57,7 +57,7 @@ fn test_parse_encode_if() {
         0x41, 0x00, // i32.const 0
         0x0B        // end
     ];
-    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap());
+    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
     
     match instruction {
         Instruction::If(block_type, then_instructions, else_instructions) => {
@@ -72,7 +72,7 @@ fn test_parse_encode_if() {
     
     assert_eq!(bytes_read, 8;
     
-    let encoded = encode_instruction(&instruction).unwrap());
+    let encoded = encode_instruction(&instruction).unwrap();
     assert_eq!(encoded, bytes;
 }
 
@@ -86,7 +86,7 @@ fn test_parse_encode_br_table() {
         0x01,       // label 1
         0x02,       // default label 2
     ];
-    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap());
+    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
     
     match instruction {
         Instruction::BrTable(labels, default_label) => {
@@ -98,7 +98,7 @@ fn test_parse_encode_br_table() {
     
     assert_eq!(bytes_read, 5;
     
-    let encoded = encode_instruction(&instruction).unwrap());
+    let encoded = encode_instruction(&instruction).unwrap();
     assert_eq!(encoded, bytes;
 }
 
@@ -111,7 +111,7 @@ fn test_nested_blocks() {
         0x0B,       // inner end
         0x0B        // outer end
     ];
-    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap());
+    let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
     
     match &instruction {
         Instruction::Block(block_type, instructions) => {
@@ -121,7 +121,7 @@ fn test_nested_blocks() {
             match &instructions[0] {
                 Instruction::Block(inner_block_type, inner_instructions) => {
                     assert_eq!(*inner_block_type, BlockType::Empty;
-                    assert!(inner_instructions.is_empty();
+                    assert!(inner_instructions.is_empty());
                 }
                 _ => panic!("Expected inner Block instruction"),
             }
@@ -131,6 +131,6 @@ fn test_nested_blocks() {
     
     assert_eq!(bytes_read, 6;
     
-    let encoded = encode_instruction(&instruction).unwrap());
+    let encoded = encode_instruction(&instruction).unwrap();
     assert_eq!(encoded, bytes;
 } 

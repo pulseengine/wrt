@@ -200,28 +200,28 @@ mod tests {
     #[test]
     fn test_br_on_null_with_null_funcref() {
         let op = BrOnNull::new(0;
-        let result = op.execute(&Value::FuncRef(None)).unwrap());
+        let result = op.execute(&Value::FuncRef(None)).unwrap();
         assert!(result)); // Branch should be taken
     }
 
     #[test]
     fn test_br_on_null_with_non_null_funcref() {
         let op = BrOnNull::new(0;
-        let result = op.execute(&Value::FuncRef(Some(FuncRef { index: 42 }))).unwrap());
+        let result = op.execute(&Value::FuncRef(Some(FuncRef { index: 42 }))).unwrap();
         assert!(!result)); // Branch should not be taken
     }
 
     #[test]
     fn test_br_on_null_with_null_externref() {
         let op = BrOnNull::new(1;
-        let result = op.execute(&Value::ExternRef(None)).unwrap());
+        let result = op.execute(&Value::ExternRef(None)).unwrap();
         assert!(result)); // Branch should be taken
     }
 
     #[test]
     fn test_br_on_null_with_non_null_externref() {
         let op = BrOnNull::new(1;
-        let result = op.execute(&Value::ExternRef(Some(ExternRef { index: 123 }))).unwrap());
+        let result = op.execute(&Value::ExternRef(Some(ExternRef { index: 123 }))).unwrap();
         assert!(!result)); // Branch should not be taken
     }
 
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn test_br_on_non_null_with_null_funcref() {
         let op = BrOnNonNull::new(0;
-        let (branch_taken, value) = op.execute(&Value::FuncRef(None)).unwrap());
+        let (branch_taken, value) = op.execute(&Value::FuncRef(None)).unwrap();
         assert!(!branch_taken)); // Branch should not be taken
         assert!(value.is_none())); // No value kept on stack
     }
@@ -244,7 +244,7 @@ mod tests {
     fn test_br_on_non_null_with_non_null_funcref() {
         let op = BrOnNonNull::new(0;
         let ref_value = Value::FuncRef(Some(FuncRef { index: 42 };
-        let (branch_taken, value) = op.execute(&ref_value).unwrap());
+        let (branch_taken, value) = op.execute(&ref_value).unwrap();
         assert!(branch_taken)); // Branch should be taken
         assert_eq!(value, Some(ref_value)); // Reference stays on stack
     }
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn test_br_on_non_null_with_null_externref() {
         let op = BrOnNonNull::new(1;
-        let (branch_taken, value) = op.execute(&Value::ExternRef(None)).unwrap());
+        let (branch_taken, value) = op.execute(&Value::ExternRef(None)).unwrap();
         assert!(!branch_taken)); // Branch should not be taken
         assert!(value.is_none();
     }
@@ -261,7 +261,7 @@ mod tests {
     fn test_br_on_non_null_with_non_null_externref() {
         let op = BrOnNonNull::new(1;
         let ref_value = Value::ExternRef(Some(ExternRef { index: 123 };
-        let (branch_taken, value) = op.execute(&ref_value).unwrap());
+        let (branch_taken, value) = op.execute(&ref_value).unwrap();
         assert!(branch_taken)); // Branch should be taken
         assert_eq!(value, Some(ref_value)); // Reference stays on stack
     }
@@ -277,7 +277,7 @@ mod tests {
     fn test_branch_hint_op_enum() {
         // Test BrOnNull
         let br_on_null = BranchHintOp::BrOnNull(BrOnNull::new(2;
-        let (taken, label, value) = br_on_null.execute(&Value::FuncRef(None)).unwrap());
+        let (taken, label, value) = br_on_null.execute(&Value::FuncRef(None)).unwrap();
         assert!(taken);
         assert_eq!(label, Some(2;
         assert!(value.is_none();
@@ -285,7 +285,7 @@ mod tests {
         // Test BrOnNonNull with non-null ref
         let br_on_non_null = BranchHintOp::BrOnNonNull(BrOnNonNull::new(3;
         let ref_value = Value::FuncRef(Some(FuncRef { index: 10 };
-        let (taken, label, value) = br_on_non_null.execute(&ref_value).unwrap());
+        let (taken, label, value) = br_on_non_null.execute(&ref_value).unwrap();
         assert!(taken);
         assert_eq!(label, Some(3;
         assert_eq!(value, Some(ref_value;

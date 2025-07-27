@@ -298,7 +298,7 @@ impl FormatDetectionTests {
         assert!(core_info.module_info.is_some())); // Core may still be present
 
         #[cfg(feature = "std")]
-        println!("✓ Unified loader format detection tests passed";
+        println!("✓ Unified loader format detection tests passed");
         Ok(())
     }
 
@@ -348,7 +348,7 @@ impl FormatDetectionTests {
                 description
             ;
             #[cfg(feature = "std")]
-            println!("✓ Lazy detection: {} -> {:?}", description, detected_format;
+            println!("✓ Lazy detection: {} -> {:?}", description, detected_format);
         }
 
         Ok(())
@@ -384,11 +384,11 @@ impl FormatDetectionTests {
         // This might succeed but with warnings - check the format
         if let Ok(info) = result {
             #[cfg(feature = "std")]
-            println!("Unsupported version detected as: {:?}", info.format_type;
+            println!("Unsupported version detected as: {:?}", info.format_type);
         }
 
         #[cfg(feature = "std")]
-        println!("✓ Error handling tests passed";
+        println!("✓ Error handling tests passed");
         Ok(())
     }
 
@@ -481,7 +481,7 @@ impl FormatDetectionTests {
         let _info = load_wasm_unified(&empty_vec)?;
 
         #[cfg(feature = "std")]
-        println!("✓ Edge case tests passed";
+        println!("✓ Edge case tests passed");
         Ok(())
     }
 
@@ -501,19 +501,19 @@ impl FormatDetectionTests {
             // Check that builtin imports are consistent
             if i > 0 {
                 // On subsequent loads, should hit cache
-                assert!(!info.builtin_imports.is_empty() || info.builtin_imports.is_empty();
+                assert!(!info.builtin_imports.is_empty() || info.builtin_imports.is_empty());
             }
         }
 
         #[cfg(feature = "std")]
-        println!("✓ Caching behavior tests passed";
+        println!("✓ Caching behavior tests passed");
         Ok(())
     }
 
     /// Run all format detection tests
     pub fn run_all_tests() -> Result<()> {
         #[cfg(feature = "std")]
-        println!("=== Running Comprehensive Format Detection Tests ===\n";
+        println!("=== Running Comprehensive Format Detection Tests ===\n");
 
         Self::test_unified_loader_detection()?;
         Self::test_lazy_detection()?;
@@ -523,7 +523,7 @@ impl FormatDetectionTests {
         Self::test_caching_behavior()?;
 
         #[cfg(feature = "std")]
-        println!("\n🎯 All format detection tests passed successfully!";
+        println!("\n🎯 All format detection tests passed successfully!");
         Ok(())
     }
 
@@ -561,11 +561,11 @@ mod tests {
 
     #[test]
     fn test_minimal_binaries() {
-        let core = FormatTestData::minimal_core_module().unwrap());
+        let core = FormatTestData::minimal_core_module().unwrap();
         assert!(core.len() >= 8);
         assert_eq!(&core[0..4], &[0x00, 0x61, 0x73, 0x6d];
 
-        let component = FormatTestData::minimal_component().unwrap());
+        let component = FormatTestData::minimal_component().unwrap();
         assert!(component.len() >= 8);
         assert_eq!(&component[0..4], &[0x00, 0x61, 0x73, 0x6d];
         assert_eq!(component[4], 0x0a); // Component version
@@ -573,21 +573,21 @@ mod tests {
 
     #[test]
     fn test_unified_loader_basic() {
-        FormatDetectionTests::test_unified_loader_detection().unwrap());
+        FormatDetectionTests::test_unified_loader_detection().unwrap();
     }
 
     #[test]
     fn test_lazy_detection_basic() {
-        FormatDetectionTests::test_lazy_detection().unwrap());
+        FormatDetectionTests::test_lazy_detection().unwrap();
     }
 
     #[test]
     fn test_error_cases() {
-        FormatDetectionTests::test_error_handling().unwrap());
+        FormatDetectionTests::test_error_handling().unwrap();
     }
 
     #[test]
     fn test_edge_cases() {
-        FormatDetectionTests::test_edge_cases().unwrap());
+        FormatDetectionTests::test_edge_cases().unwrap();
     }
 }

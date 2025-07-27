@@ -676,7 +676,7 @@ mod tests {
 
         // Memory section: count=1, limits=0, initial=1
         let memory_data = [0x01, 0x00, 0x01];
-        let section = validator.parse_memory_section(&memory_data).unwrap());
+        let section = validator.parse_memory_section(&memory_data).unwrap();
 
         if let Section::Memory(mem) = section {
             assert_eq!(mem.initial, 1);
@@ -692,24 +692,24 @@ mod tests {
 
         // Test reading simple values
         let data = [0x01]; // 1
-        let (value, bytes) = validator.read_leb128_u32(&data).unwrap());
+        let (value, bytes) = validator.read_leb128_u32(&data).unwrap();
         assert_eq!(value, 1);
         assert_eq!(bytes, 1);
 
         let data = [0x7F]; // 127
-        let (value, bytes) = validator.read_leb128_u32(&data).unwrap());
+        let (value, bytes) = validator.read_leb128_u32(&data).unwrap();
         assert_eq!(value, 127;
         assert_eq!(bytes, 1);
 
         let data = [0x80, 0x01]; // 128
-        let (value, bytes) = validator.read_leb128_u32(&data).unwrap());
+        let (value, bytes) = validator.read_leb128_u32(&data).unwrap();
         assert_eq!(value, 128;
         assert_eq!(bytes, 2;
     }
 
     #[test]
     fn test_factory_methods() {
-        let validator = PlatformWasmValidatorFactory::create_for_platform().unwrap());
+        let validator = PlatformWasmValidatorFactory::create_for_platform().unwrap();
         assert_eq!(validator.state(), ValidationState::Header;
 
         let embedded_validator = PlatformWasmValidatorFactory::create_for_embedded(1024 * 1024;

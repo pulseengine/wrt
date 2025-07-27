@@ -208,7 +208,7 @@ impl Sha256 {
 
 /// Compute SHA-256 hash of data in one shot
 pub fn sha256(data: &[u8]) -> [u8; 32] {
-    let mut hasher = Sha256::new);
+    let mut hasher = Sha256::new();
     hasher.update(data;
     hasher.finalize()
 }
@@ -272,7 +272,7 @@ mod tests {
         let hash1 = sha256(data;
         
         // Incremental
-        let mut hasher = Sha256::new);
+        let mut hasher = Sha256::new();
         hasher.update(&data[..10];
         hasher.update(&data[10..20];
         hasher.update(&data[20..];

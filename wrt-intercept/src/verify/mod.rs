@@ -86,8 +86,8 @@ pub mod proofs {
         let args = vec![Value::I32(10)];
         let result = interceptor.intercept_call("target", "func", args.clone(), |modified_args| {
             // The strategy should not have modified the args
-            assert!(modified_args.len() == args.len();
-            assert!(matches!(modified_args[0], Value::I32(10));
+            assert!(modified_args.len() == args.len());
+            assert!(matches!(modified_args[0], Value::I32(10)));
             Ok(vec![Value::I64(20)])
         };
 

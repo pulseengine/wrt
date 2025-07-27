@@ -520,17 +520,17 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_wit_debugger_creation() {
-        let debugger = WitDebugger::new);
+        let debugger = WitDebugger::new();
         assert_eq!(debugger.step_mode(), WitStepMode::Continue;
-        assert!(debugger.components.is_empty();
-        assert!(debugger.functions.is_empty();
-        assert!(debugger.types.is_empty();
+        assert!(debugger.components.is_empty());
+        assert!(debugger.functions.is_empty());
+        assert!(debugger.types.is_empty());
     }
 
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_component_metadata() {
-        let mut debugger = WitDebugger::new);
+        let mut debugger = WitDebugger::new();
         let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
@@ -554,7 +554,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_function_metadata() {
-        let mut debugger = WitDebugger::new);
+        let mut debugger = WitDebugger::new();
         let guard = safe_managed_alloc!(8192, CrateId::Debug)?;
         let provider = guard.provider().clone();
 
@@ -578,7 +578,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_step_mode() {
-        let mut debugger = WitDebugger::new);
+        let mut debugger = WitDebugger::new();
 
         assert_eq!(debugger.step_mode(), WitStepMode::Continue;
 

@@ -264,7 +264,7 @@ mod tests {
     fn test_tensor_type_conversion() {
         let tensor_type = TensorType::F32;
         let wit_type = tensor_type.to_wit);
-        let converted = TensorType::from_wit(wit_type).unwrap());
+        let converted = TensorType::from_wit(wit_type).unwrap();
         assert_eq!(tensor_type, converted;
     }
     

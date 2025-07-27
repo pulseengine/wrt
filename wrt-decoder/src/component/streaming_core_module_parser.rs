@@ -156,7 +156,7 @@ impl<'a> StreamingCoreModuleParser<'a> {
         }
 
         // Initialize storage (simplified for now)
-        let mut modules = Vec::new);
+        let mut modules = Vec::new());
 
         // Parse each core module
         for i in 0..module_count {
@@ -305,19 +305,19 @@ mod tests {
     fn test_empty_section() {
         let data = &[0u8]; // Zero modules
 
-        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap());
+        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
 
-        let result = parser.parse().unwrap());
+        let result = parser.parse().unwrap();
         assert_eq!(result.module_count(), 0);
         assert_eq!(result.bytes_consumed(), 1);
-        assert!(result.is_empty();
+        assert!(result.is_empty());
     }
 
     #[test]
     fn test_invalid_module_count() {
         // Create data with too many modules
         let module_count = (MAX_MODULES_PER_COMPONENT + 1) as u32;
-        let mut data = Vec::new);
+        let mut data = Vec::new());
 
         // Write LEB128 encoded module count
         let mut count = module_count;
@@ -328,14 +328,14 @@ mod tests {
         data.push(count as u8);
 
         let mut parser =
-            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap());
+            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
 
         assert!(parser.parse().is_err();
     }
 
     #[test]
     fn test_invalid_module_size() {
-        let mut data = Vec::new);
+        let mut data = Vec::new());
         data.push(1); // One module
 
         // Write oversized module size
@@ -348,7 +348,7 @@ mod tests {
         data.push(size as u8);
 
         let mut parser =
-            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap());
+            StreamingCoreModuleParser::new(&data, VerificationLevel::Standard).unwrap();
 
         assert!(parser.parse().is_err();
     }
@@ -357,12 +357,12 @@ mod tests {
     fn test_parser_offset_tracking() {
         let data = &[0u8]; // Zero modules
 
-        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap());
+        let mut parser = StreamingCoreModuleParser::new(data, VerificationLevel::Standard).unwrap();
 
         assert_eq!(parser.offset(), 0);
         assert_eq!(parser.remaining(), 1);
 
-        let result = parser.parse().unwrap());
+        let result = parser.parse().unwrap();
         assert_eq!(parser.offset(), 1);
         assert_eq!(parser.remaining(), 0);
         assert_eq!(result.bytes_consumed(), 1);

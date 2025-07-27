@@ -444,7 +444,7 @@ mod tests {
     #[cfg(feature = "debug-info")]
     fn test_create_debug_info() {
         let module_bytes = &[0u8; 100];
-        let debug_info = DwarfDebugInfo::new(module_bytes).unwrap());
+        let debug_info = DwarfDebugInfo::new(module_bytes).unwrap();
         assert!(!debug_info.has_debug_info();
     }
 
@@ -452,7 +452,7 @@ mod tests {
     #[cfg(feature = "debug-info")]
     fn test_add_section() {
         let module_bytes = &[0u8; 100];
-        let mut debug_info = DwarfDebugInfo::new(module_bytes).unwrap());
+        let mut debug_info = DwarfDebugInfo::new(module_bytes).unwrap();
 
         debug_info.add_section(".debug_line", 10, 20;
         // Note: has_section method doesn't exist, using has_debug_info instead
@@ -472,8 +472,8 @@ mod tests {
     #[test]
     #[cfg(feature = "abbrev")]
     fn test_abbreviation_table() {
-        let abbrev_table = AbbreviationTable::new);
-        assert!(abbrev_table.is_empty();
+        let abbrev_table = AbbreviationTable::new();
+        assert!(abbrev_table.is_empty());
     }
 
     // Note: The original test.rs contained 215 lines of comprehensive tests

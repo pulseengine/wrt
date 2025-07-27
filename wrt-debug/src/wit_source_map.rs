@@ -313,7 +313,7 @@ impl WitSourceMap {
         let context_start = start_line.saturating_sub(context_lines;
         let context_end = (end_line + context_lines).min(file.lines.len() as u32;
 
-        let mut context_lines_vec = Vec::new);
+        let mut context_lines_vec = Vec::new());
         for i in context_start..context_end {
             if let Some(line) = file.lines.get(i as usize) {
                 context_lines_vec.push(ContextLine {
@@ -405,7 +405,7 @@ impl WitSourceFile {
         let path_bounded = BoundedString::from_str(path, provider.clone())
             .map_err(|_| Error::parse_error("Path too long"))?;
 
-        let mut lines = Vec::new);
+        let mut lines = Vec::new());
         for line in content.lines() {
             let line_bounded = BoundedString::from_str(line, provider.clone())
                 .map_err(|_| Error::parse_error("Line too long"))?;
@@ -482,7 +482,7 @@ mod tests {
     #[cfg(feature = "wit-integration")]
     #[test]
     fn test_source_map_basic() {
-        let mut source_map = WitSourceMap::new);
+        let mut source_map = WitSourceMap::new();
 
         let span = SourceSpan::new(10, 20, 0);
         source_map.add_binary_mapping(100, span;
@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn test_source_file() {
         let content = "line 1\nline 2\nline 3";
-        let file = WitSourceFile::new("test.wit", content).unwrap());
+        let file = WitSourceFile::new("test.wit", content).unwrap();
 
         assert_eq!(file.line_count(), 3;
         assert_eq!(file.line(1).unwrap().as_str().unwrap(), "line 1";
@@ -531,7 +531,7 @@ mod tests {
         assert!(boundary.contains_address(350);
         assert!(!boundary.contains_address(250);
 
-        let region = boundary.memory_region_for_address(150).unwrap());
+        let region = boundary.memory_region_for_address(150).unwrap();
         assert_eq!(region.region_type, MemoryRegionType::Linear;
     }
 }

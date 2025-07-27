@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         GraphEncoding,
     };
 
-    println!("Initializing WASI-NN with Tract backend...");
+    println!("Initializing WASI-NN with Tract backend..."));
 
     // Initialize WASI-NN with appropriate capability
     let capability = create_nn_capability(VerificationLevel::Standard)?;
@@ -35,10 +35,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     initialize_backends()?;
 
     // In a real implementation, this would be done in initialize_backends
-    let mut registry = BackendRegistry::new);
+    let mut registry = BackendRegistry::new();
     registry.register(GraphEncoding::ONNX, Box::new(TractBackendProvider::new());
 
-    println!("WASI-NN with Tract backend initialized successfully!");
+    println!("WASI-NN with Tract backend initialized successfully!"));
 
     // Example: Load an ONNX model (would need real model data)
     // let model_data = std::fs::read("model.onnx")?;
@@ -48,28 +48,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ExecutionTarget::CPU as u8,
     // )?;
     //
-    // println!("Model loaded with graph ID: {}", graph_id);
+    // println!("Model loaded with graph ID: {}", graph_id));
     //
     // Create execution context
     // let context_id =
     // wrt_wasi::nn::sync_bridge::nn_init_execution_context(graph_id)?;
     //
-    // println!("Execution context created with ID: {}", context_id);
+    // println!("Execution context created with ID: {}", context_id));
     //
     // Set inputs, run inference, get outputs...
 
-    println!("\nTract backend features:");
-    println!("- Pure Rust implementation");
-    println!("- ONNX model support");
-    println!("- No external dependencies");
-    println!("- Capability-aware resource management");
-    println!("- Safety level support (QM, ASIL-A, ASIL-B)");
+    println!("\nTract backend features:"));
+    println!("- Pure Rust implementation"));
+    println!("- ONNX model support"));
+    println!("- No external dependencies"));
+    println!("- Capability-aware resource management"));
+    println!("- Safety level support (QM, ASIL-A, ASIL-B)"));
 
     Ok(())
 }
 
 #[cfg(not(all(feature = "std", feature = "wasi-nn", feature = "tract")))]
 fn main() {
-    eprintln!("This example requires features: std, wasi-nn, tract");
+    eprintln!("This example requires features: std, wasi-nn, tract")));
     std::process::exit(1;
 }

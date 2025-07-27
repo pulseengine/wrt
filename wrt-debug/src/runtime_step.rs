@@ -382,7 +382,7 @@ mod tests {
 
     #[test]
     fn test_instruction_stepping() {
-        let mut controller = StepController::new);
+        let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
 
         // Start instruction step
@@ -398,7 +398,7 @@ mod tests {
 
     #[test]
     fn test_line_stepping() {
-        let mut controller = StepController::new);
+        let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {
@@ -431,7 +431,7 @@ mod tests {
 
     #[test]
     fn test_step_over() {
-        let mut controller = StepController::new);
+        let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
 
         let line1 = LineInfo {

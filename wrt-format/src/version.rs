@@ -93,11 +93,11 @@ pub struct VersionInfo {
 impl Default for VersionInfo {
     fn default() -> Self {
         #[cfg(feature = "std")]
-        let features = HashMap::new);
+        let features = HashMap::new();
 
         #[cfg(not(any(feature = "std", )))]
         let features = crate::HashMap::new(wrt_foundation::NoStdProvider::default())
-            .expect("Failed to create feature map");
+            .expect("Failed to create feature map"));
 
         let mut info =
             Self { version: ComponentModelVersion::default(), features, uses_experimental: false };
@@ -117,7 +117,7 @@ impl Clone for VersionInfo {
         #[cfg(not(any(feature = "std", )))]
         let features = {
             let new_features = crate::HashMap::new(wrt_foundation::NoStdProvider::default())
-                .expect("Failed to create feature map");
+                .expect("Failed to create feature map"));
             // For now, create a new empty map since BoundedMap doesn't have Clone
             new_features
         };

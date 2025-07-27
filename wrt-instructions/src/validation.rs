@@ -300,23 +300,23 @@ mod tests {
 
     #[test]
     fn test_validation_context_creation() {
-        let ctx = ValidationContext::new);
+        let ctx = ValidationContext::new();
         assert_eq!(ctx.stack_depth, 0);
         assert!(!ctx.unreachable);
     }
 
     #[test]
     fn test_push_pop_types() {
-        let mut ctx = ValidationContext::new);
+        let mut ctx = ValidationContext::new();
         
         // Push some types
-        ctx.push_type(ValueType::I32).unwrap());
-        ctx.push_type(ValueType::F64).unwrap());
+        ctx.push_type(ValueType::I32).unwrap();
+        ctx.push_type(ValueType::F64).unwrap();
         assert_eq!(ctx.stack_depth, 2;
         
         // Pop types
-        ctx.pop_type().unwrap());
-        ctx.pop_type().unwrap());
+        ctx.pop_type().unwrap();
+        ctx.pop_type().unwrap();
         assert_eq!(ctx.stack_depth, 0);
         
         // Underflow should error
@@ -325,23 +325,23 @@ mod tests {
 
     #[test]
     fn test_unreachable_handling() {
-        let mut ctx = ValidationContext::new);
+        let mut ctx = ValidationContext::new();
         
         // Mark as unreachable
-        ctx.mark_unreachable().unwrap());
+        ctx.mark_unreachable().unwrap();
         assert!(ctx.is_unreachable();
         
         // Pop should succeed even with empty stack when unreachable
-        ctx.pop_type().unwrap());
+        ctx.pop_type().unwrap();
     }
 
     #[test]
     fn test_validate_arithmetic() {
-        let mut ctx = ValidationContext::new);
+        let mut ctx = ValidationContext::new();
         
         // Set up stack for i32.add
-        ctx.push_type(ValueType::I32).unwrap());
-        ctx.push_type(ValueType::I32).unwrap());
+        ctx.push_type(ValueType::I32).unwrap();
+        ctx.push_type(ValueType::I32).unwrap();
         
         // Validate i32.add
         validate_arithmetic_op(
@@ -349,7 +349,7 @@ mod tests {
             &[ValueType::I32, ValueType::I32],
             ValueType::I32,
             &mut ctx
-        ).unwrap());
+        ).unwrap();
         
         // Should have one i32 on stack
         assert_eq!(ctx.stack_depth, 1);
@@ -357,10 +357,10 @@ mod tests {
 
     #[test]
     fn test_validate_memory_load() {
-        let mut ctx = ValidationContext::new);
+        let mut ctx = ValidationContext::new();
         
         // Push address
-        ctx.push_type(ValueType::I32).unwrap());
+        ctx.push_type(ValueType::I32).unwrap();
         
         // Validate i32.load
         validate_memory_op(
@@ -370,7 +370,7 @@ mod tests {
             ValueType::I32,
             true, // is_load
             &mut ctx
-        ).unwrap());
+        ).unwrap();
         
         // Should have loaded value
         assert_eq!(ctx.stack_depth, 1);
@@ -378,14 +378,14 @@ mod tests {
 
     #[test]
     fn test_validate_comparison() {
-        let mut ctx = ValidationContext::new);
+        let mut ctx = ValidationContext::new();
         
         // Push two i32s
-        ctx.push_type(ValueType::I32).unwrap());
-        ctx.push_type(ValueType::I32).unwrap());
+        ctx.push_type(ValueType::I32).unwrap();
+        ctx.push_type(ValueType::I32).unwrap();
         
         // Validate i32.eq
-        validate_comparison_op(ValueType::I32, &mut ctx).unwrap());
+        validate_comparison_op(ValueType::I32, &mut ctx).unwrap();
         
         // Should have i32 result
         assert_eq!(ctx.stack_depth, 1);

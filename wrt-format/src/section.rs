@@ -259,7 +259,7 @@ impl CustomSection {
     /// Serialize the custom section to binary
     #[cfg(feature = "std")]
     pub fn to_binary(&self) -> core::result::Result<Vec<u8>, wrt_error::Error> {
-        let mut section_data = Vec::new);
+        let mut section_data = Vec::new());
 
         // Add name as encoded string (name length + name bytes)
         let name_len = self.name.len() as u32;
@@ -401,7 +401,7 @@ pub fn write_component_section_header(
     section_type: ComponentSectionType,
     content_size: u32,
 ) -> Vec<u8> {
-    let mut bytes = Vec::new);
+    let mut bytes = Vec::new());
     bytes.push(section_type.id();
     bytes.extend_from_slice(&crate::binary::with_alloc::write_leb128_u32(content_size;
     bytes
@@ -480,7 +480,7 @@ mod tests {
         let section = CustomSection::new("test-section".to_string(), test_data.clone();
 
         // Serialize
-        let binary = section.to_binary().unwrap());
+        let binary = section.to_binary().unwrap();
 
         // Check that the binary data contains the section name
         let name_bytes = "test-section".as_bytes);
@@ -514,10 +514,10 @@ mod tests {
         let section = CustomSection::new("test-section".to_string(), test_data;
 
         // Create a safe slice
-        let safe_slice = SafeSlice::new(&section.data).unwrap());
+        let safe_slice = SafeSlice::new(&section.data).unwrap();
 
         // Get the data
-        let data = safe_slice.data().unwrap());
+        let data = safe_slice.data().unwrap();
 
         // Check it matches our test data
         assert_eq!(data, &[1, 2, 3, 4];
@@ -533,7 +533,7 @@ mod tests {
         assert_eq!(header_bytes[0], ComponentSectionType::CoreModule as u8;
 
         // Parse the header
-        let (header, _) = parse_component_section_header(&header_bytes, 0).unwrap());
+        let (header, _) = parse_component_section_header(&header_bytes, 0).unwrap();
 
         // Check the parsed values match what we wrote
         assert_eq!(header.section_type, ComponentSectionType::CoreModule;
@@ -549,7 +549,7 @@ mod tests {
             format_component_section(ComponentSectionType::CoreModule, || section_content.clone();
 
         // Parse the section header
-        let (header, content_pos) = parse_component_section_header(&section_bytes, 0).unwrap());
+        let (header, content_pos) = parse_component_section_header(&section_bytes, 0).unwrap();
 
         // Check the header values
         assert_eq!(header.section_type, ComponentSectionType::CoreModule;
@@ -569,7 +569,7 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_invalid_component_section_id() {
         // Create an invalid section ID
-        let mut header_bytes = Vec::new);
+        let mut header_bytes = Vec::new());
         header_bytes.push(255); // Invalid section ID
         // Use a manual LEB128 encoding for 42
         header_bytes.push(42); // 42 fits in one byte for LEB128

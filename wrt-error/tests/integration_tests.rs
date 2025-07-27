@@ -29,7 +29,7 @@ mod tests {
 
         // Just verify the error was created (no specific category check)
         let error_str = format!("{error}";
-        println!("Error string: {}", error_str;
+        println!("Error string: {}", error_str);
         assert!(error_str.contains("Validation failed");
     }
 
@@ -38,7 +38,7 @@ mod tests {
         let result: Result<i32> = Err(Error::runtime_error("Runtime error";
         assert!(result.is_err();
 
-        let error = result.err().unwrap());
+        let error = result.err().unwrap();
         assert!(error.is_runtime_error();
     }
 

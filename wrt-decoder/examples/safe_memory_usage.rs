@@ -14,7 +14,7 @@ use wrt_foundation::{
 const MINIMAL_WASM: [u8; 8] = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
 fn main() -> Result<()> {
-    println!("=== Safe Memory Usage Example ===";
+    println!("=== Safe Memory Usage Example ===");
 
     // Create a safe memory handler for the WASM binary
     let mut handler = SafeMemoryHandler::new(MINIMAL_WASM.to_vec);
@@ -27,27 +27,27 @@ fn main() -> Result<()> {
 
     // Verify the integrity of the memory
     handler.verify_integrity()?;
-    println!("Memory integrity verified!";
+    println!("Memory integrity verified!");
 
     // Decode the module using the safe slice
     let module = decode_module_safe(&slice)?;
 
     // Display module information
-    println!("Decoded WebAssembly module (version {})", module.version;
-    println!("Types: {}", module.types.len);
-    println!("Imports: {}", module.imports.len);
-    println!("Functions: {}", module.functions.len);
-    println!("Exports: {}", module.exports.len);
+    println!("Decoded WebAssembly module (version {})", module.version);
+    println!("Types: {}", module.types.len));
+    println!("Imports: {}", module.imports.len));
+    println!("Functions: {}", module.functions.len));
+    println!("Exports: {}", module.exports.len));
 
     // Get memory statistics
     let stats = handler.memory_stats);
-    println!("\nMemory Statistics:";
-    println!("Total size: {} bytes", stats.total_size;
-    println!("Access count: {}", stats.access_count;
-    println!("Unique regions: {}", stats.unique_regions;
-    println!("Max access size: {} bytes", stats.max_access_size;
+    println!("\nMemory Statistics:");
+    println!("Total size: {} bytes", stats.total_size);
+    println!("Access count: {}", stats.access_count);
+    println!("Unique regions: {}", stats.unique_regions);
+    println!("Max access size: {} bytes", stats.max_access_size);
 
-    println!("\nSafe memory usage completed successfully!";
+    println!("\nSafe memory usage completed successfully!");
     Ok(())
 }
 

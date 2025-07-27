@@ -98,7 +98,7 @@ fn test_asil_error_context() {
 fn test_safety_monitor() {
     use wrt_error::SafetyMonitor;
 
-    let monitor = SafetyMonitor::new);
+    let monitor = SafetyMonitor::new();
     assert_eq!(monitor.error_count(), 0);
 
     // Record some errors

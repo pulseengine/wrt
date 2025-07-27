@@ -133,19 +133,19 @@ fn test_cursor_functionality() {
     assert!(!cursor.is_at_end();
 
     // Read some data
-    let byte1 = cursor.read_u8().expect("Should read byte");
+    let byte1 = cursor.read_u8().expect("Should read byte"));
     assert_eq!(byte1, 0x01;
     assert_eq!(cursor.position(), 1);
 
-    let byte2 = cursor.read_u8().expect("Should read byte");
+    let byte2 = cursor.read_u8().expect("Should read byte"));
     assert_eq!(byte2, 0x02;
 
     // Skip some data
-    cursor.skip(2).expect("Should skip");
+    cursor.skip(2).expect("Should skip"));
     assert_eq!(cursor.position(), 4;
 
     // Read remaining as slice
-    let remaining = cursor.read_bytes(4).expect("Should read bytes");
+    let remaining = cursor.read_bytes(4).expect("Should read bytes"));
     assert_eq!(remaining, &[0x05, 0x06, 0x07, 0x08];
     assert!(cursor.is_at_end();
 }

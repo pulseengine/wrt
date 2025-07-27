@@ -202,7 +202,7 @@ impl ComputeCapable for TractContext {
                 let shape: Vec<usize> = dims.as_slice()
                     .iter()
                     .map(|&d| d as usize)
-                    .collect();
+                    .collect());
                 
                 // Get tensor data
                 let data = tensor.as_bytes);
@@ -213,14 +213,14 @@ impl ComputeCapable for TractContext {
                     dt if dt == f32::datum_type() => {
                         let float_data: Vec<f32> = data.chunks_exact(4)
                             .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
-                            .collect();
+                            .collect());
                         tract_onnx::prelude::Tensor::from_shape(&shape, &float_data)
                             .map_err(|_| Error::wasi_runtime_error("Failed to create f32 Tract tensor"))?
                     },
                     dt if dt == i32::datum_type() => {
                         let int_data: Vec<i32> = data.chunks_exact(4)
                             .map(|chunk| i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
-                            .collect();
+                            .collect());
                         tract_onnx::prelude::Tensor::from_shape(&shape, &int_data)
                             .map_err(|_| Error::wasi_runtime_error("Failed to create i32 Tract tensor"))?
                     },
@@ -235,7 +235,7 @@ impl ComputeCapable for TractContext {
                 .map_err(|_| Error::wasi_runtime_error("Inference failed"))?;
             
             // Convert outputs back to WASI-NN tensors
-            let mut result = Vec::new);
+            let mut result = Vec::new());
             
             // Create capability based on the stored verification level
             use crate::nn::capabilities::{create_nn_capability, NNVerificationLevel};
@@ -249,7 +249,7 @@ impl ComputeCapable for TractContext {
                 let shape: Vec<u32> = tract_output.shape()
                     .iter()
                     .map(|&d| d as u32)
-                    .collect();
+                    .collect());
                 let dimensions = TensorDimensions::new(&shape)?;
                 
                 // Create WASI-NN tensor with data
@@ -260,7 +260,7 @@ impl ComputeCapable for TractContext {
             }
             
             // Store outputs for later retrieval  
-            self.outputs = Some(outputs.into_iter().map(|t| Arc::new(t.into_tensor())).collect();
+            self.outputs = Some(outputs.into_iter().map(|t| Arc::new(t.into_tensor())).collect());
             
             Ok(result)
         }
@@ -356,8 +356,8 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
             };
             
             // Analyze the model to get input/output info
-            let mut input_info = Vec::new);
-            let mut output_info = Vec::new);
+            let mut input_info = Vec::new());
+            let mut output_info = Vec::new());
             
             // Get input facts
             for (idx, input) in model.inputs.iter().enumerate() {
@@ -480,21 +480,21 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
             let shape: Vec<usize> = tensor.dimensions.as_slice()
                 .iter()
                 .map(|&d| d as usize)
-                .collect();
+                .collect());
             
             // Create Tract tensor from data using safe construction
             let tract_tensor = match datum_type {
                 dt if dt == f32::datum_type() => {
                     let float_data: Vec<f32> = tensor.data.chunks_exact(4)
                         .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
-                        .collect();
+                        .collect());
                     tract_onnx::prelude::Tensor::from_shape(&shape, &float_data)
                         .map_err(|_| Error::wasi_runtime_error("Failed to create f32 Tract tensor"))?
                 },
                 dt if dt == i32::datum_type() => {
                     let int_data: Vec<i32> = tensor.data.chunks_exact(4)
                         .map(|chunk| i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
-                        .collect();
+                        .collect());
                     tract_onnx::prelude::Tensor::from_shape(&shape, &int_data)
                         .map_err(|_| Error::wasi_runtime_error("Failed to create i32 Tract tensor"))?
                 },
@@ -523,14 +523,14 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
                         .ok_or_else(|| Error::wasi_invalid_argument("Input not set"))
                         .map(|tensor| tensor.clone().into())
                 })
-                .collect();
+                .collect());
             let inputs = inputs?;
             
             // Run inference
             let outputs = context.runnable.run(inputs)
                 .map_err(|_| Error::wasi_runtime_error("Inference failed"))?;
             
-            context.outputs = Some(outputs.into_iter().map(|t| Arc::new(t.into_tensor())).collect();
+            context.outputs = Some(outputs.into_iter().map(|t| Arc::new(t.into_tensor())).collect());
             Ok(())
         }
         
@@ -563,7 +563,7 @@ impl<C: NeuralNetworkCapability + 'static> NeuralNetworkBackend for TractBackend
                 let shape: Vec<u32> = tract_tensor.shape()
                     .iter()
                     .map(|&d| d as u32)
-                    .collect();
+                    .collect());
                 let dimensions = TensorDimensions::new(&shape)?;
                 
                 // Copy data
@@ -618,7 +618,7 @@ impl BackendProvider for TractBackendProvider {
         match capability.verification_level() {
             super::VerificationLevel::Standard => {
                 use super::capabilities::DynamicNNCapability;
-                let cap = DynamicNNCapability::new);
+                let cap = DynamicNNCapability::new();
                 Ok(Box::new(TractDynBackend::new(TractBackend::new(cap))))
             }
             super::VerificationLevel::Sampling => {
@@ -721,14 +721,14 @@ mod tests {
     
     #[test]
     fn test_tract_backend_creation() {
-        let capability = DynamicNNCapability::new);
+        let capability = DynamicNNCapability::new();
         let backend = TractBackend::new(capability;
         assert_eq!(backend.name(), "tract";
     }
     
     #[test]
     fn test_tract_supports_encoding() {
-        let capability = DynamicNNCapability::new);
+        let capability = DynamicNNCapability::new();
         let backend = TractBackend::new(capability;
         
         assert!(backend.supports_encoding(GraphEncoding::ONNX);
@@ -738,11 +738,11 @@ mod tests {
     
     #[test]
     fn test_tract_tensor_creation() {
-        let capability = DynamicNNCapability::new);
+        let capability = DynamicNNCapability::new();
         let backend = TractBackend::new(capability;
         
-        let dims = TensorDimensions::new(&[10, 10]).unwrap());
-        let tensor = backend.create_tensor(dims, TensorType::F32).unwrap());
+        let dims = TensorDimensions::new(&[10, 10]).unwrap();
+        let tensor = backend.create_tensor(dims, TensorType::F32).unwrap();
         
         assert_eq!(tensor.size_bytes(), 400); // 10*10*4
         assert!(tensor.is_contiguous();
@@ -781,7 +781,7 @@ mod tests {
         let model_data = b"approved model";
         let hash = calculate_model_hash(model_data;
         
-        let capability = StaticNNCapability::new(&[hash]).unwrap());
+        let capability = StaticNNCapability::new(&[hash]).unwrap();
         assert!(capability.is_model_approved(&hash);
         
         // Test unapproved model

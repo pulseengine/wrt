@@ -18,20 +18,20 @@ use wrt_format::{
 #[test]
 fn test_component_name_section() {
     // Create a component with a name
-    let mut component = Component::new);
-    component.name = Some("test_component".to_string();
+    let mut component = Component::new();
+    component.name = Some("test_component".to_string());
 
     // Add some basic content to make it a valid component
     // (In a real test, we might add more)
 
     // Generate the binary
-    let binary = encode_component(&component).unwrap());
+    let binary = encode_component(&component).unwrap();
 
     // Decode the binary back to a component
-    let decoded = decode_component(&binary).unwrap());
+    let decoded = decode_component(&binary).unwrap();
 
     // Check that the name was preserved
-    assert_eq!(decoded.name, Some("test_component".to_string();
+    assert_eq!(decoded.name, Some("test_component".to_string());
 }
 
 // Let's create our own ComponentNameSection for testing since we don't know the
@@ -81,10 +81,10 @@ fn test_standalone_name_section() {
     };
 
     // Generate the binary
-    let encoded = generate_component_name_section(&component_name_section).unwrap());
+    let encoded = generate_component_name_section(&component_name_section).unwrap();
 
     // Parse it back
-    let decoded = parse_component_name_section(&encoded).unwrap());
+    let decoded = parse_component_name_section(&encoded).unwrap();
 
     // Check component name
     assert_eq!(decoded.component_name, original.component_name;
@@ -132,15 +132,15 @@ fn test_custom_section_with_name() {
     };
 
     // Generate name section binary
-    let name_section_data = generate_component_name_section(&actual_name_section).unwrap());
+    let name_section_data = generate_component_name_section(&actual_name_section).unwrap();
 
     // Create custom section content with "name" as the identifier
-    let mut custom_section_content = Vec::new);
+    let mut custom_section_content = Vec::new());
     custom_section_content.extend_from_slice(&binary::write_string("name";
     custom_section_content.extend_from_slice(&name_section_data;
 
     // Create a component with just the custom section
-    let mut binary = Vec::new);
+    let mut binary = Vec::new());
 
     // Component preamble
     binary.extend_from_slice(&binary::COMPONENT_MAGIC;
@@ -154,8 +154,8 @@ fn test_custom_section_with_name() {
     binary.extend_from_slice(&custom_section_content;
 
     // Decode the binary
-    let component = decode_component(&binary).unwrap());
+    let component = decode_component(&binary).unwrap();
 
     // Check that the name was extracted
-    assert_eq!(component.name, Some("test_component".to_string();
+    assert_eq!(component.name, Some("test_component".to_string());
 }

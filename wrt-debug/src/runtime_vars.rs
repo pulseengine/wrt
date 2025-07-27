@@ -351,13 +351,13 @@ mod tests {
             address:  None,
         };
 
-        let mut output = String::new);
+        let mut output = String::new();
         ValueDisplay { value: &value }
             .display(|s| {
                 output.push_str(s;
                 Ok(())
             })
-            .unwrap());
+            .unwrap();
 
         assert_eq!(output, "42";
 
@@ -372,14 +372,14 @@ mod tests {
                 output.push_str(s;
                 Ok(())
             })
-            .unwrap());
+            .unwrap();
 
         assert_eq!(output, "true";
     }
 
     #[test]
     fn test_variable_scope() {
-        let mut inspector = VariableInspector::new);
+        let mut inspector = VariableInspector::new();
 
         let var = VariableDefinition {
             name:       None,
@@ -394,14 +394,14 @@ mod tests {
             line:       0,
         };
 
-        inspector.add_variable(var).unwrap());
+        inspector.add_variable(var).unwrap();
 
         // Variable should be in scope at 0x1500
-        let vars: Vec<_> = inspector.find_variables_at_pc(0x1500).collect();
+        let vars: Vec<_> = inspector.find_variables_at_pc(0x1500).collect());
         assert_eq!(vars.len(), 1);
 
         // Variable should not be in scope at 0x2500
-        let vars: Vec<_> = inspector.find_variables_at_pc(0x2500).collect();
+        let vars: Vec<_> = inspector.find_variables_at_pc(0x2500).collect());
         assert_eq!(vars.len(), 0);
     }
 }

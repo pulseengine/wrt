@@ -11,10 +11,10 @@ fn test_source_span() {
     assert_eq!(span.start, 10;
     assert_eq!(span.end, 20;
     assert_eq!(span.len(), 10;
-    assert!(!span.is_empty();
+    assert!(!span.is_empty());
     
     let empty = SourceSpan::empty);
-    assert!(empty.is_empty();
+    assert!(empty.is_empty());
 }
 
 #[cfg(feature = "std")]
@@ -23,8 +23,8 @@ fn test_identifier() {
     use wrt_format::wit_parser::WitBoundedString;
     use wrt_foundation::{NoStdProvider, safe_managed_alloc};
     
-    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
-    let name = WitBoundedString::from_str("test", provider).unwrap());
+    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
+    let name = WitBoundedString::from_str("test", provider).unwrap();
     let span = SourceSpan::new(0, 4, 0);
     
     let ident = Identifier::new(name, span;
@@ -37,8 +37,8 @@ fn test_identifier() {
 fn test_wit_document() {
     let doc = WitDocument::default());
     assert!(doc.package.is_none();
-    assert!(doc.use_items.is_empty();
-    assert!(doc.items.is_empty();
+    assert!(doc.use_items.is_empty());
+    assert!(doc.items.is_empty());
     assert_eq!(doc.span, SourceSpan::empty);
 }
 
@@ -74,8 +74,8 @@ fn test_type_expr() {
     use wrt_format::wit_parser::WitBoundedString;
     use wrt_foundation::{NoStdProvider, safe_managed_alloc};
     
-    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
-    let name = WitBoundedString::from_str("MyType", provider).unwrap());
+    let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
+    let name = WitBoundedString::from_str("MyType", provider).unwrap();
     let ident = Identifier::new(name, SourceSpan::new(0, 6, 0);
     
     let named = TypeExpr::Named(NamedType {

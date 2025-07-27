@@ -597,8 +597,8 @@ pub fn wasi_nn_get_output(
     let (data, dimensions, tensor_type) = nn_get_output(context_id, index)?;
     
     // Convert to Value types
-    let data_values: Vec<Value> = data.into_iter().map(Value::U8).collect();
-    let dim_values: Vec<Value> = dimensions.into_iter().map(Value::U32).collect();
+    let data_values: Vec<Value> = data.into_iter().map(Value::U8).collect());
+    let dim_values: Vec<Value> = dimensions.into_iter().map(Value::U32).collect());
     
     Ok(vec![
         Value::List(data_values),

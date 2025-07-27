@@ -256,7 +256,7 @@ mod tests {
         let component = BoundedComponent::new(provider;
         assert!(component.is_ok());
 
-        let component = component.unwrap());
+        let component = component.unwrap();
         assert_eq!(component.type_count(), 0);
         assert_eq!(component.import_count(), 0);
         assert_eq!(component.export_count(), 0);

@@ -132,14 +132,14 @@ mod tests {
     
     #[test]
     fn test_drop() {
-        let mut context = MockParametricContext::new);
+        let mut context = MockParametricContext::new();
         
         // Push a value
-        context.push_value(Value::I32(42)).unwrap());
+        context.push_value(Value::I32(42)).unwrap();
         assert_eq!(context.stack.len(), 1);
         
         // Execute drop
-        ParametricOp::Drop.execute(&mut context).unwrap());
+        ParametricOp::Drop.execute(&mut context).unwrap();
         assert_eq!(context.stack.len(), 0);
         
         // Test drop on empty stack
@@ -149,14 +149,14 @@ mod tests {
     
     #[test]
     fn test_select() {
-        let mut context = MockParametricContext::new);
+        let mut context = MockParametricContext::new();
         
         // Test selecting first value (condition true)
         context.push_value(Value::I32(10)).unwrap()); // val1
         context.push_value(Value::I32(20)).unwrap()); // val2
         context.push_value(Value::I32(1)).unwrap());  // condition (true)
         
-        ParametricOp::Select.execute(&mut context).unwrap());
+        ParametricOp::Select.execute(&mut context).unwrap();
         assert_eq!(context.pop_value().unwrap(), Value::I32(10;
         
         // Test selecting second value (condition false)
@@ -164,7 +164,7 @@ mod tests {
         context.push_value(Value::I32(20)).unwrap()); // val2
         context.push_value(Value::I32(0)).unwrap());  // condition (false)
         
-        ParametricOp::Select.execute(&mut context).unwrap());
+        ParametricOp::Select.execute(&mut context).unwrap();
         assert_eq!(context.pop_value().unwrap(), Value::I32(20;
         
         // Test with different types
@@ -172,13 +172,13 @@ mod tests {
         context.push_value(Value::F32(FloatBits32::from_float(2.0))).unwrap()); // val2
         context.push_value(Value::I32(1)).unwrap());   // condition
         
-        ParametricOp::Select.execute(&mut context).unwrap());
+        ParametricOp::Select.execute(&mut context).unwrap();
         assert_eq!(context.pop_value().unwrap(), Value::F32(FloatBits32::from_float(1.0);
     }
     
     #[test]
     fn test_select_type_mismatch() {
-        let mut context = MockParametricContext::new);
+        let mut context = MockParametricContext::new();
         
         // Push values of different types
         context.push_value(Value::I32(10)).unwrap());  // val1
@@ -191,14 +191,14 @@ mod tests {
     
     #[test]
     fn test_select_typed() {
-        let mut context = MockParametricContext::new);
+        let mut context = MockParametricContext::new();
         
         // Test with correct types
         context.push_value(Value::I64(100)).unwrap()); // val1
         context.push_value(Value::I64(200)).unwrap()); // val2
         context.push_value(Value::I32(0)).unwrap());   // condition
         
-        ParametricOp::SelectTyped(ValueType::I64).execute(&mut context).unwrap());
+        ParametricOp::SelectTyped(ValueType::I64).execute(&mut context).unwrap();
         assert_eq!(context.pop_value().unwrap(), Value::I64(200;
         
         // Test with incorrect types

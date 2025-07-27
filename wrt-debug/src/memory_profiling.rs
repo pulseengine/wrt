@@ -119,7 +119,7 @@ impl wrt_foundation::traits::ToBytes for AllocationType {
         let mut vec = wrt_foundation::bounded::BoundedVec::new(
             wrt_provider!(32, CrateId::Debug).unwrap_or_default(),
         )
-        .expect("Failed to create bounded vector");
+        .expect("Failed to create bounded vector"));
         let _ = vec.push(*self as u8);
         vec
     }
@@ -494,9 +494,9 @@ impl<'a> MemoryProfiler<'a> {
     pub fn generate_profile_report(&self) -> WrtResult<ProfileReport> {
         // Create bounded maps for stats
         #[cfg(feature = "std")]
-        let mut crate_stats = BTreeMap::new);
+        let mut crate_stats = BTreeMap::new();
         #[cfg(feature = "std")]
-        let mut type_stats = BTreeMap::new);
+        let mut type_stats = BTreeMap::new();
 
         #[cfg(not(feature = "std"))]
         let mut crate_stats = BoundedHashMap::<CrateId, usize, 32, NoStdProvider<{ 32 * 64 }>>::new(
@@ -601,7 +601,7 @@ impl<'a> MemoryProfiler<'a> {
 
         // Group accesses by address range
         #[cfg(feature = "std")]
-        let mut access_counts = BTreeMap::new);
+        let mut access_counts = BTreeMap::new();
         #[cfg(not(feature = "std"))]
         let mut access_counts = BoundedHashMap::<usize, usize, 64, NoStdProvider<{ 64 * 32 }>>::new(
             wrt_provider!({ 64 * 32 }, CrateId::Debug).unwrap_or_default(),
@@ -651,7 +651,7 @@ impl<'a> MemoryProfiler<'a> {
         let mut total_deallocations = 0usize;
 
         #[cfg(feature = "std")]
-        let mut operation_times = BTreeMap::new);
+        let mut operation_times = BTreeMap::new();
         #[cfg(not(feature = "std"))]
         let mut operation_times =
             BoundedHashMap::<
@@ -844,7 +844,7 @@ pub struct PerformanceAnalysis {
 /// Memory profiler instance
 // ASIL-D safe: Use thread-safe static with lazy initialization
 #[cfg(feature = "std")]
-static MEMORY_PROFILER: OnceLock<Mutex<MemoryProfiler<'static>>> = OnceLock::new);
+static MEMORY_PROFILER: OnceLock<Mutex<MemoryProfiler<'static>>> = OnceLock::new();
 
 #[cfg(not(feature = "std"))]
 use core::sync::atomic::AtomicPtr;
@@ -949,7 +949,7 @@ mod tests {
 
     #[test]
     fn test_memory_profiler_basic() {
-        init_profiler().unwrap());
+        init_profiler().unwrap();
         MemoryProfiler::enable_allocation_tracking);
 
         // Track an allocation
@@ -961,15 +961,15 @@ mod tests {
                 "test_allocation",
             )
         })
-        .unwrap());
+        .unwrap();
 
         assert!(alloc_id > 0);
 
         // Track deallocation
-        with_profiler(|profiler| profiler.track_deallocation(alloc_id)).unwrap());
+        with_profiler(|profiler| profiler.track_deallocation(alloc_id)).unwrap();
 
         // Generate report
-        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap());
+        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap();
 
         assert_eq!(report.total_allocations, 1);
         assert_eq!(report.total_deallocations, 1);
@@ -977,7 +977,7 @@ mod tests {
 
     #[test]
     fn test_leak_detection() {
-        init_profiler().unwrap());
+        init_profiler().unwrap();
         MemoryProfiler::enable_allocation_tracking);
 
         // Create allocation without deallocation
@@ -989,18 +989,18 @@ mod tests {
                 "potential_leak",
             )
         })
-        .unwrap());
+        .unwrap();
 
         // Detect leaks
-        let leaks = with_profiler(|profiler| profiler.detect_leaks()).unwrap());
+        let leaks = with_profiler(|profiler| profiler.detect_leaks()).unwrap();
 
         // Should detect the large allocation as potential leak
-        assert!(!leaks.is_empty();
+        assert!(!leaks.is_empty());
     }
 
     #[test]
     fn test_profiling() {
-        init_profiler().unwrap());
+        init_profiler().unwrap();
         MemoryProfiler::enable_profiling);
 
         // Profile an operation
@@ -1016,8 +1016,8 @@ mod tests {
         assert_eq!(result, 4950;
 
         // Check that profiling was recorded
-        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap());
+        let report = with_profiler(|profiler| profiler.generate_profile_report()).unwrap();
 
-        assert!(!report.performance_metrics.slowest_operations.is_empty();
+        assert!(!report.performance_metrics.slowest_operations.is_empty());
     }
 }

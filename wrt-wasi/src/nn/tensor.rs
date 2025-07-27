@@ -200,7 +200,7 @@ impl Tensor {
             }
             VerificationLevel::Sampling | VerificationLevel::Continuous => {
                 // Bounded allocation with pre-checking
-                let mut vec = Vec::new);
+                let mut vec = Vec::new());
                 vec.try_reserve_exact(size_bytes)
                     .map_err(|_| Error::wasi_resource_exhausted("Failed to allocate tensor memory"))?;
                 vec.resize(size_bytes, 0);
@@ -378,7 +378,7 @@ mod tests {
     
     #[test]
     fn test_tensor_dimensions() {
-        let dims = TensorDimensions::new(&[2, 3, 4]).unwrap());
+        let dims = TensorDimensions::new(&[2, 3, 4]).unwrap();
         assert_eq!(dims.rank(), 3;
         assert_eq!(dims.num_elements(), 24;
         assert!(dims.is_valid();
@@ -386,9 +386,9 @@ mod tests {
     
     #[test]
     fn test_tensor_creation() {
-        let capability = DynamicNNCapability::new);
-        let dims = TensorDimensions::new(&[10, 10]).unwrap());
-        let tensor = Tensor::new(dims, TensorType::F32, &capability).unwrap());
+        let capability = DynamicNNCapability::new();
+        let dims = TensorDimensions::new(&[10, 10]).unwrap();
+        let tensor = Tensor::new(dims, TensorType::F32, &capability).unwrap();
         
         assert_eq!(tensor.size_bytes(), 400); // 10*10*4
         assert_eq!(tensor.capability_level(), VerificationLevel::Standard;
@@ -396,12 +396,12 @@ mod tests {
     
     #[test]
     fn test_tensor_builder() {
-        let capability = DynamicNNCapability::new);
+        let capability = DynamicNNCapability::new();
         let tensor = TensorBuilder::new()
             .dimensions(&[5, 5]).unwrap()
             .data_type(TensorType::U8)
             .build(&capability)
-            .unwrap());
+            .unwrap();
             
         assert_eq!(tensor.dimensions().num_elements(), 25;
         assert_eq!(tensor.data_type(), TensorType::U8;

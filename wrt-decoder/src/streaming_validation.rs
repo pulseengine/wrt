@@ -575,18 +575,18 @@ mod tests {
 
     #[test]
     fn test_validator_creation() {
-        let validator = StreamingValidator::new().unwrap());
+        let validator = StreamingValidator::new().unwrap();
         assert_eq!(validator.issues.len(), 0);
         assert!(validator.validation_passed();
     }
 
     #[test]
     fn test_header_validation() {
-        let mut validator = StreamingValidator::new().unwrap());
+        let mut validator = StreamingValidator::new().unwrap();
 
         // Valid WASM header
         let valid_header = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
-        validator.validate_header(&valid_header, 0).unwrap());
+        validator.validate_header(&valid_header, 0).unwrap();
 
         let report = validator.generate_report);
         assert_eq!(report.info_count, 1); // Should have info about core module
@@ -595,11 +595,11 @@ mod tests {
 
     #[test]
     fn test_invalid_magic() {
-        let mut validator = StreamingValidator::new().unwrap());
+        let mut validator = StreamingValidator::new().unwrap();
 
         // Invalid magic number
         let invalid_header = [0xFF, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
-        validator.validate_header(&invalid_header, 0).unwrap());
+        validator.validate_header(&invalid_header, 0).unwrap();
 
         let report = validator.generate_report);
         assert!(report.critical_count > 0);
@@ -608,23 +608,23 @@ mod tests {
 
     #[test]
     fn test_leb128_validation() {
-        let mut validator = StreamingValidator::new().unwrap());
+        let mut validator = StreamingValidator::new().unwrap();
 
         // Valid LEB128: 42 (0x2A)
         let leb_data = [0x2A];
-        let (value, bytes_read) = validator.validate_leb128(&leb_data, 0, false).unwrap());
+        let (value, bytes_read) = validator.validate_leb128(&leb_data, 0, false).unwrap();
         assert_eq!(value, 42;
         assert_eq!(bytes_read, 1);
     }
 
     #[test]
     fn test_context_management() {
-        let mut validator = StreamingValidator::new().unwrap());
+        let mut validator = StreamingValidator::new().unwrap();
 
-        validator.enter_context("test").unwrap());
-        validator.enter_context("nested").unwrap());
-        validator.exit_context().unwrap());
-        validator.exit_context().unwrap());
+        validator.enter_context("test").unwrap();
+        validator.enter_context("nested").unwrap();
+        validator.exit_context().unwrap();
+        validator.exit_context().unwrap();
 
         // Should not panic or error
     }

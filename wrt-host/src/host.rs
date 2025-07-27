@@ -187,8 +187,8 @@ impl Default for BuiltinHost {
     fn default() -> Self {
         #[cfg(not(feature = "std"))]
         {
-            let string_provider = create_host_provider().expect("Failed to create host provider");
-            let map_provider = create_host_provider().expect("Failed to create host provider");
+            let string_provider = create_host_provider().expect("Failed to create host provider"));
+            let map_provider = create_host_provider().expect("Failed to create host provider"));
 
             Self {
                 component_name: HostString::from_str("", string_provider.clone())
@@ -241,12 +241,12 @@ impl BuiltinHost {
     #[cfg(not(feature = "std"))]
     #[must_use]
     pub fn new(component_name: &str, host_id: &str) -> Self {
-        let string_provider = create_host_provider().expect("Failed to create host provider");
-        let map_provider = create_host_provider().expect("Failed to create host provider");
+        let string_provider = create_host_provider().expect("Failed to create host provider"));
+        let map_provider = create_host_provider().expect("Failed to create host provider"));
         let comp_name = HostString::from_str(component_name, string_provider.clone())
-            .expect("Failed to create component name");
+            .expect("Failed to create component name"));
         let host_name =
-            HostString::from_str(host_id, string_provider).expect("Failed to create host id");
+            HostString::from_str(host_id, string_provider).expect("Failed to create host id"));
 
         Self {
             component_name: comp_name,
@@ -287,9 +287,9 @@ impl BuiltinHost {
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
     {
         // In no_std mode, we can't store function handlers dynamically
-        let provider = create_host_provider().expect("Failed to create host provider");
+        let provider = create_host_provider().expect("Failed to create host provider"));
         let name = HostString::from_str(builtin_type.name(), provider)
-            .expect("Failed to create builtin name");
+            .expect("Failed to create builtin name"));
         let _ = self.handlers.insert(name, HandlerData::default());
     }
 
@@ -335,9 +335,9 @@ impl BuiltinHost {
         #[cfg(not(feature = "std"))]
         {
             // In no_std mode, check if we have any handlers registered
-            let provider = create_host_provider().expect("Failed to create host provider");
+            let provider = create_host_provider().expect("Failed to create host provider"));
             let name = HostString::from_str(builtin_type.name(), provider)
-                .expect("Failed to create builtin name");
+                .expect("Failed to create builtin name"));
             self.handlers.contains_key(&name).unwrap_or(false)
         }
     }
@@ -484,7 +484,7 @@ impl Clone for BuiltinHost {
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = create_host_provider().expect("Failed to create host provider");
+            let provider = create_host_provider().expect("Failed to create host provider"));
             Self {
                 component_name: self.component_name.clone(),
                 host_id: self.host_id.clone(),

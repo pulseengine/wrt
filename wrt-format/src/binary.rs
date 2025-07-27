@@ -561,7 +561,7 @@ pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     }
 
     // Create an empty module with the binary stored
-    let mut module = Module::new);
+    let mut module = Module::new();
     module.binary = Some(bytes.to_vec);
 
     // For now, we don't actually parse the module
@@ -758,7 +758,7 @@ pub mod with_alloc {
 
         // Create a minimal valid module with bounded allocation
         #[cfg(feature = "safety-critical")]
-        let mut binary: WrtVec<u8, { CrateId::Format as u8 }, { 4 * 1024 * 1024 }> = WrtVec::new);
+        let mut binary: WrtVec<u8, { CrateId::Format as u8 }, { 4 * 1024 * 1024 }> = WrtVec::new());
 
         #[cfg(not(feature = "safety-critical"))]
         let mut binary = Vec::with_capacity(8;
@@ -926,7 +926,7 @@ pub mod with_alloc {
             return vec![0];
         }
 
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         let mut value = value;
 
         while value != 0 {
@@ -948,7 +948,7 @@ pub mod with_alloc {
     /// This function will be used when implementing the full binary generator.
     #[cfg(feature = "std")]
     pub fn write_leb128_i32(value: i32) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         let mut value = value;
         let mut more = true;
 
@@ -983,7 +983,7 @@ pub mod with_alloc {
     /// This function will be used when implementing the full binary formatter.
     #[cfg(feature = "std")]
     pub fn write_leb128_i64(value: i64) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         let mut value = value;
         let mut more = true;
 
@@ -1076,7 +1076,7 @@ pub mod with_alloc {
     /// Write a LEB128 unsigned 64-bit integer to a byte array
     #[cfg(feature = "std")]
     pub fn write_leb128_u64(value: u64) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         let mut value = value;
 
         loop {
@@ -1188,7 +1188,7 @@ pub mod with_alloc {
     /// Write a WebAssembly UTF-8 string (length prefixed)
     #[cfg(feature = "std")]
     pub fn write_string(value: &str) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
 
         // Write the length as LEB128
         let length = value.len() as u32;
@@ -1232,7 +1232,7 @@ pub mod with_alloc {
     where
         F: Fn(&T) -> Vec<u8>,
     {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
 
         // Write the vector length
         result.extend_from_slice(&write_leb128_u32(elements.len() as u32;
@@ -1265,7 +1265,7 @@ pub mod with_alloc {
     /// Writes the section ID and content size as a LEB128 unsigned integer.
     #[cfg(feature = "std")]
     pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
 
         // Write section ID
         result.push(id);
@@ -1622,7 +1622,7 @@ pub mod with_alloc {
         }
 
         // Create an empty component with the binary stored
-        let mut component = crate::component::Component::new);
+        let mut component = crate::component::Component::new();
         component.binary = Some(bytes.to_vec);
 
         // In a real implementation, we would parse the sections here
@@ -2518,7 +2518,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Passive;
-                offset_expr = Vec::new);
+                offset_expr = Vec::new());
             },
             0x02 => {
                 // Active with tableidx: tableidx expr elemkind vec(expr) end
@@ -2608,7 +2608,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Declared;
-                offset_expr = Vec::new);
+                offset_expr = Vec::new());
             },
             0x04 => {
                 // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
@@ -2684,7 +2684,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Passive;
-                offset_expr = Vec::new);
+                offset_expr = Vec::new());
             },
             0x06 => {
                 // Active with tableidx: tableidx expr reftype vec(expr) end
@@ -2780,7 +2780,7 @@ pub mod with_alloc {
 
                 init_data = PureElementInit::ExpressionBytes(exprs_vec;
                 mode = PureElementMode::Declared;
-                offset_expr = Vec::new);
+                offset_expr = Vec::new());
             },
             _ => {
                 return Err(crate::error::parse_error_dynamic(format!(
@@ -2999,7 +2999,7 @@ mod tests {
             return vec![0];
         }
 
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         let mut value = value;
 
         while value != 0 {
@@ -3030,7 +3030,7 @@ mod tests {
 
     #[cfg(feature = "std")]
     fn write_string_test(value: &str) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         let length = value.len() as u32;
         result.extend_from_slice(&write_leb128_u32_test(length;
         result.extend_from_slice(value.as_bytes);
@@ -3039,7 +3039,7 @@ mod tests {
 
     #[cfg(feature = "std")]
     fn write_leb128_u64_test(value: u64) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         let mut value = value;
 
         loop {
@@ -3065,7 +3065,7 @@ mod tests {
     where
         F: Fn(&T) -> Vec<u8>,
     {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         result.extend_from_slice(&write_leb128_u32_test(elements.len() as u32;
         for elem in elements {
             result.extend_from_slice(&write_elem(elem;
@@ -3075,7 +3075,7 @@ mod tests {
 
     #[cfg(feature = "std")]
     fn write_section_header_test(id: u8, content_size: u32) -> Vec<u8> {
-        let mut result = Vec::new);
+        let mut result = Vec::new());
         result.push(id);
         result.extend_from_slice(&write_leb128_u32_test(content_size;
         result
@@ -3097,7 +3097,7 @@ mod tests {
 
         for &value in &values {
             let bytes = write_f32_test(value;
-            let (decoded, size) = read_f32_test(&bytes, 0).unwrap());
+            let (decoded, size) = read_f32_test(&bytes, 0).unwrap();
 
             assert_eq!(size, 4;
             if value.is_nan() {
@@ -3124,7 +3124,7 @@ mod tests {
 
         for &value in &values {
             let bytes = write_f64_test(value;
-            let (decoded, size) = read_f64_test(&bytes, 0).unwrap());
+            let (decoded, size) = read_f64_test(&bytes, 0).unwrap();
 
             assert_eq!(size, 8;
             if value.is_nan() {
@@ -3147,7 +3147,7 @@ mod tests {
 
         for &s in &test_strings {
             let bytes = write_string_test(s;
-            let (decoded, _) = read_string_test(&bytes, 0).unwrap());
+            let (decoded, _) = read_string_test(&bytes, 0).unwrap();
 
             assert_eq!(decoded, s;
         }
@@ -3169,7 +3169,7 @@ mod tests {
 
         for &value in &test_values {
             let bytes = write_leb128_u64_test(value;
-            let (decoded, _) = read_leb128_u64(&bytes, 0).unwrap());
+            let (decoded, _) = read_leb128_u64(&bytes, 0).unwrap();
 
             assert_eq!(decoded, value;
         }
@@ -3196,7 +3196,7 @@ mod tests {
         let bytes = write_vector_test(&values, |v| write_leb128_u32_test(*v;
 
         // Read the vector back
-        let (decoded, _) = read_vector_test(&bytes, 0, read_leb128_u32).unwrap());
+        let (decoded, _) = read_vector_test(&bytes, 0, read_leb128_u32).unwrap();
 
         assert_eq!(values, decoded;
     }
@@ -3211,7 +3211,7 @@ mod tests {
         let bytes = write_section_header_test(section_id, content_size;
 
         // Read the section header back
-        let (decoded_id, decoded_size, _) = read_section_header_test(&bytes, 0).unwrap());
+        let (decoded_id, decoded_size, _) = read_section_header_test(&bytes, 0).unwrap();
 
         assert_eq!(section_id, decoded_id;
         assert_eq!(content_size, decoded_size;

@@ -77,7 +77,7 @@ impl WitParser {
 
         #[cfg(feature = "std")]
         {
-            let lines: Vec<&str> = source.lines().collect();
+            let lines: Vec<&str> = source.lines().collect());
             let mut i = 0;
 
             while i < lines.len() {
@@ -122,7 +122,7 @@ impl WitParser {
 
         #[cfg(feature = "std")]
         {
-            let lines: Vec<&str> = source.lines().collect();
+            let lines: Vec<&str> = source.lines().collect());
             let mut i = 0;
 
             while i < lines.len() {
@@ -156,7 +156,7 @@ impl WitParser {
     fn parse_import(&mut self, line: &str) -> Result<WitImport, WitParseError> {
         #[cfg(feature = "std")]
         {
-            let parts: Vec<&str> = line.split_whitespace().collect();
+            let parts: Vec<&str> = line.split_whitespace().collect());
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
@@ -248,7 +248,7 @@ impl WitParser {
     fn parse_export(&mut self, line: &str) -> Result<WitExport, WitParseError> {
         #[cfg(feature = "std")]
         {
-            let parts: Vec<&str> = line.split_whitespace().collect();
+            let parts: Vec<&str> = line.split_whitespace().collect());
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
@@ -348,7 +348,7 @@ impl WitParser {
         #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
             let name_part = &line[..colon_pos].trim);
-            let parts: Vec<&str> = name_part.split_whitespace().collect();
+            let parts: Vec<&str> = name_part.split_whitespace().collect());
             
             if let Some(name) = parts.last() {
                 function.name = BoundedString::from_str(name, self.provider.clone())
@@ -364,7 +364,7 @@ impl WitParser {
     fn parse_type_def(&mut self, line: &str) -> Result<WitTypeDef, WitParseError> {
         #[cfg(feature = "std")]
         {
-            let parts: Vec<&str> = line.splitn(3, ' ').collect();
+            let parts: Vec<&str> = line.splitn(3, ' ').collect());
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()
@@ -606,14 +606,14 @@ mod tests {
 
     #[test]
     fn test_wit_parser_creation() {
-        let parser = WitParser::new);
+        let parser = WitParser::new();
         assert_eq!(parser.current_position, 0);
         assert_eq!(parser.type_definitions.len(), 0);
     }
 
     #[test]
     fn test_parse_basic_types() {
-        let mut parser = WitParser::new);
+        let mut parser = WitParser::new();
         
         assert_eq!(parser.parse_type("bool").unwrap(), WitType::Bool;
         assert_eq!(parser.parse_type("u32").unwrap(), WitType::U32;
@@ -624,15 +624,15 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_compound_types() {
-        let mut parser = WitParser::new);
+        let mut parser = WitParser::new();
         
-        let list_type = parser.parse_type("list<u32>").unwrap());
+        let list_type = parser.parse_type("list<u32>").unwrap();
         match list_type {
             WitType::List(inner) => assert_eq!(*inner, WitType::U32),
             _ => panic!("Expected list type"),
         }
 
-        let option_type = parser.parse_type("option<string>").unwrap());
+        let option_type = parser.parse_type("option<string>").unwrap();
         match option_type {
             WitType::Option(inner) => assert_eq!(*inner, WitType::String),
             _ => panic!("Expected option type"),
@@ -642,15 +642,15 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_async_types() {
-        let mut parser = WitParser::new);
+        let mut parser = WitParser::new();
         
-        let stream_type = parser.parse_type("stream<u8>").unwrap());
+        let stream_type = parser.parse_type("stream<u8>").unwrap();
         match stream_type {
             WitType::Stream(inner) => assert_eq!(*inner, WitType::U8),
             _ => panic!("Expected stream type"),
         }
 
-        let future_type = parser.parse_type("future<string>").unwrap());
+        let future_type = parser.parse_type("future<string>").unwrap();
         match future_type {
             WitType::Future(inner) => assert_eq!(*inner, WitType::String),
             _ => panic!("Expected future type"),
@@ -660,7 +660,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parse_simple_world() {
-        let mut parser = WitParser::new);
+        let mut parser = WitParser::new();
         let source = r#"
             world test-world {
                 import test-func: func()
@@ -671,7 +671,7 @@ mod tests {
         let world = parser.parse_world(source;
         assert!(world.is_ok());
         
-        let world = world.unwrap());
+        let world = world.unwrap();
         assert_eq!(world.name.as_str().unwrap(), "test-world";
         
         // Import BoundedCapacity trait for len() method
@@ -683,14 +683,14 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_convert_to_valtype() {
-        let parser = WitParser::new);
+        let parser = WitParser::new();
         
         assert_eq!(parser.convert_to_valtype(&WitType::Bool).unwrap(), crate::types::ValueType::I32;
         assert_eq!(parser.convert_to_valtype(&WitType::U32).unwrap(), crate::types::ValueType::I32;
         assert_eq!(parser.convert_to_valtype(&WitType::String).unwrap(), crate::types::ValueType::I32;
         
         let list_wit = WitType::List(Box::new(WitType::U32;
-        let list_val = parser.convert_to_valtype(&list_wit).unwrap());
+        let list_val = parser.convert_to_valtype(&list_wit).unwrap();
         assert_eq!(list_val, crate::types::ValueType::I32); // Lists are represented as pointers
     }
 }

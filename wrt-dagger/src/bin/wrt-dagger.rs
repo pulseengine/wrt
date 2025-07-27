@@ -105,24 +105,24 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Commands::Build => {
-            println!("🐋 Building WRT in container...";
+            println!("🐋 Building WRT in container...");
             let pipeline = DaggerPipeline::new(config).await?;
             let output = pipeline.build().await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::Test => {
-            println!("🧪 Running tests in container...";
+            println!("🧪 Running tests in container...");
             let pipeline = DaggerPipeline::new(config).await?;
             let output = pipeline.test().await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::Ci => {
-            println!("🚀 Running CI pipeline in container...";
+            println!("🚀 Running CI pipeline in container...");
             let pipeline = DaggerPipeline::new(config).await?;
             let output = pipeline.ci().await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::Verify { asil } => {
@@ -132,50 +132,50 @@ async fn main() -> Result<()> {
             ;
             let pipeline = DaggerPipeline::new(config).await?;
             let output = pipeline.verify(&asil).await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::Coverage => {
-            println!("📊 Generating coverage in container...";
+            println!("📊 Generating coverage in container...");
             let pipeline = DaggerPipeline::new(config).await?;
             let output = pipeline.coverage().await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::Run { args } => {
-            println!("⚡ Running custom cargo-wrt command in container...";
+            println!("⚡ Running custom cargo-wrt command in container...");
             let pipeline = DaggerPipeline::new(config).await?;
-            let args_str: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            let args_str: Vec<&str> = args.iter().map(|s| s.as_str()).collect());
             let output = pipeline.run_cargo_wrt(&args_str).await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::Config => {
-            println!("📋 Container Configuration:";
+            println!("📋 Container Configuration:");
             let json =
                 serde_json::to_string_pretty(&config).context("Failed to serialize config")?;
-            println!("{}", json;
+            println!("{}", json);
         },
 
         Commands::CiPipeline => {
-            println!("🏭 Running optimized CI pipeline...";
+            println!("🏭 Running optimized CI pipeline...");
             let pipeline = utils::ci_pipeline().await?;
             let output = pipeline.ci().await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::DevPipeline => {
-            println!("💻 Running development pipeline...";
+            println!("💻 Running development pipeline...");
             let pipeline = utils::dev_pipeline().await?;
             let output = pipeline.build().await?;
-            println!("{}", output;
+            println!("{}", output);
         },
 
         Commands::SafetyPipeline => {
-            println!("🛡️ Running safety verification pipeline...";
+            println!("🛡️ Running safety verification pipeline...");
             let pipeline = utils::safety_pipeline().await?;
             let output = pipeline.verify("d").await?;
-            println!("{}", output;
+            println!("{}", output);
         },
     }
 

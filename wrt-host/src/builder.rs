@@ -90,12 +90,12 @@ impl Default for HostBuilder {
         {
             use crate::bounded_host_infra::create_host_provider;
 
-            let provider = create_host_provider().expect("Failed to create host provider");
+            let provider = create_host_provider().expect("Failed to create host provider"));
             Self {
                 registry: CallbackRegistry::new(),
                 required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
                     let fallback_provider =
-                        create_host_provider().expect("Failed to create fallback host provider");
+                        create_host_provider().expect("Failed to create fallback host provider"));
                     wrt_foundation::BoundedSet::new(fallback_provider)
                         .expect("Failed to create bounded set")
                 }),
@@ -190,7 +190,7 @@ impl HostBuilder {
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
                 use crate::bounded_host_infra::create_host_provider;
-                let provider = create_host_provider().expect("Failed to create host provider");
+                let provider = create_host_provider().expect("Failed to create host provider"));
                 ValueVec::new(provider)
                     .expect("ValueVec creation should never fail with valid provider")
             };
@@ -323,7 +323,7 @@ impl HostBuilder {
             #[cfg(not(feature = "std"))]
             let args: ValueVec = {
                 use crate::bounded_host_infra::create_host_provider;
-                let provider = create_host_provider().expect("Failed to create host provider");
+                let provider = create_host_provider().expect("Failed to create host provider"));
                 ValueVec::new(provider)
                     .expect("ValueVec creation should never fail with valid provider")
             };
@@ -394,8 +394,8 @@ mod tests {
 
     #[test]
     fn test_builder_basics() {
-        let builder = HostBuilder::new);
-        let registry = builder.build().expect("Failed to build registry");
+        let builder = HostBuilder::new();
+        let registry = builder.build().expect("Failed to build registry"));
 
         assert!(!registry.has_host_function("test_module", "test_function");
     }
@@ -407,7 +407,7 @@ mod tests {
         let builder =
             HostBuilder::new().with_host_function("test_module", "test_function", handler;
 
-        let registry = builder.build().expect("Failed to build registry");
+        let registry = builder.build().expect("Failed to build registry"));
 
         assert!(registry.has_host_function("test_module", "test_function");
     }
@@ -419,7 +419,7 @@ mod tests {
                 Ok(vec![Value::I64(123)])
             };
 
-        let registry = builder.build().expect("Failed to build registry");
+        let registry = builder.build().expect("Failed to build registry"));
 
         assert!(registry.has_host_function("wasi_builtin", "resource.create");
     }
@@ -505,7 +505,7 @@ mod tests {
 
         let builder = HostBuilder::new().with_link_interceptor(interceptor;
 
-        let registry = builder.build().expect("Failed to build registry");
+        let registry = builder.build().expect("Failed to build registry"));
 
         assert!(registry.get_interceptor().is_some();
     }

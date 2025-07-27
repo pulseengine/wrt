@@ -92,10 +92,10 @@ impl DataSegmentBridge {
         let offset_expr_bytes = segment.offset_expr_bytes.clone();
         #[cfg(not(feature = "std"))]
         let offset_expr_bytes = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
-            let mut bounded_vec = OffsetExprBytes::new(provider).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
+            let mut bounded_vec = OffsetExprBytes::new(provider).unwrap();
             for byte in &segment.offset_expr_bytes {
-                bounded_vec.push(*byte).unwrap());
+                bounded_vec.push(*byte).unwrap();
             }
             bounded_vec
         };
@@ -139,10 +139,10 @@ impl ElementSegmentBridge {
         let offset_expr_bytes = segment.offset_expr_bytes.clone();
         #[cfg(not(feature = "std"))]
         let offset_expr_bytes = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
-            let mut bounded_vec = OffsetExprBytes::new(provider).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
+            let mut bounded_vec = OffsetExprBytes::new(provider).unwrap();
             for byte in &segment.offset_expr_bytes {
-                bounded_vec.push(*byte).unwrap());
+                bounded_vec.push(*byte).unwrap();
             }
             bounded_vec
         };
@@ -394,10 +394,10 @@ impl ModuleBridge {
     pub fn extract_module_runtime_data(module: &crate::module::Module) -> ModuleRuntimeData {
         // Convert module data segments to runtime extractions
         #[cfg(feature = "std")]
-        let mut data_extractions = DataExtractionVec::new);
+        let mut data_extractions = DataExtractionVec::new());
         #[cfg(not(feature = "std"))]
         let mut data_extractions = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             DataExtractionVec::new(provider).unwrap()
         };
         for data_segment in module.data.iter() {
@@ -412,10 +412,10 @@ impl ModuleBridge {
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
-                        let mut bounded = OffsetExprBytes::new(provider).unwrap());
+                        let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
+                        let mut bounded = OffsetExprBytes::new(provider).unwrap();
                         for byte in &data_segment.offset_expr_bytes {
-                            bounded.push(*byte).unwrap());
+                            bounded.push(*byte).unwrap();
                         }
                         bounded
                     }
@@ -426,15 +426,15 @@ impl ModuleBridge {
             #[cfg(feature = "std")]
             data_extractions.push(extraction);
             #[cfg(not(feature = "std"))]
-            data_extractions.push(extraction).unwrap());
+            data_extractions.push(extraction).unwrap();
         }
             
         // Convert module element segments to runtime extractions
         #[cfg(feature = "std")]
-        let mut element_extractions = ElementExtractionVec::new);
+        let mut element_extractions = ElementExtractionVec::new());
         #[cfg(not(feature = "std"))]
         let mut element_extractions = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             ElementExtractionVec::new(provider).unwrap()
         };
         for element_segment in module.elements.iter() {
@@ -449,10 +449,10 @@ impl ModuleBridge {
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
-                        let mut bounded = OffsetExprBytes::new(provider).unwrap());
+                        let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
+                        let mut bounded = OffsetExprBytes::new(provider).unwrap();
                         for byte in &element_segment.offset_expr_bytes {
-                            bounded.push(*byte).unwrap());
+                            bounded.push(*byte).unwrap();
                         }
                         bounded
                     }
@@ -466,7 +466,7 @@ impl ModuleBridge {
             #[cfg(feature = "std")]
             element_extractions.push(extraction);
             #[cfg(not(feature = "std"))]
-            element_extractions.push(extraction).unwrap());
+            element_extractions.push(extraction).unwrap();
         }
             
         ModuleRuntimeData {
@@ -483,10 +483,10 @@ impl ModuleBridge {
     pub fn create_initialization_plan(module: &crate::module::Module) -> ModuleInitializationPlan {
         // Create data initialization hints directly from module data
         #[cfg(feature = "std")]
-        let mut data_hints = Vec::new);
+        let mut data_hints = Vec::new());
         #[cfg(not(feature = "std"))]
         let mut data_hints = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             DataInitVec::new(provider).unwrap()
         };
         for (index, data_segment) in module.data.iter().enumerate() {
@@ -507,15 +507,15 @@ impl ModuleBridge {
             #[cfg(feature = "std")]
             data_hints.push((index, hint);
             #[cfg(not(feature = "std"))]
-            data_hints.push((index, hint)).unwrap());
+            data_hints.push((index, hint)).unwrap();
         }
             
         // Create element initialization hints directly from module elements
         #[cfg(feature = "std")]
-        let mut element_hints = Vec::new);
+        let mut element_hints = Vec::new());
         #[cfg(not(feature = "std"))]
         let mut element_hints = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             ElementInitVec::new(provider).unwrap()
         };
         for (index, element_segment) in module.elements.iter().enumerate() {
@@ -531,7 +531,7 @@ impl ModuleBridge {
             #[cfg(feature = "std")]
             element_hints.push((index, hint);
             #[cfg(not(feature = "std"))]
-            element_hints.push((index, hint)).unwrap());
+            element_hints.push((index, hint)).unwrap();
         }
             
         ModuleInitializationPlan {
@@ -845,10 +845,10 @@ impl wrt_foundation::traits::FromBytes for RuntimeDataExtraction {
         
         // Create empty Vec for offset_expr_bytes
         #[cfg(feature = "std")]
-        let offset_expr_bytes = std::vec::Vec::new);
+        let offset_expr_bytes = std::vec::Vec::new());
         #[cfg(not(feature = "std"))]
         let offset_expr_bytes = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             OffsetExprBytes::new(provider)?
         };
         
@@ -913,10 +913,10 @@ impl wrt_foundation::traits::FromBytes for RuntimeElementExtraction {
         
         // Create defaults for complex fields
         #[cfg(feature = "std")]
-        let offset_expr_bytes = std::vec::Vec::new);
+        let offset_expr_bytes = std::vec::Vec::new());
         #[cfg(not(feature = "std"))]
         let offset_expr_bytes = {
-            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap());
+            let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             OffsetExprBytes::new(provider)?
         };
         

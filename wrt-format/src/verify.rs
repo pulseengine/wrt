@@ -42,7 +42,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::proof)]
     pub fn verify_state_section_roundtrip() {
         // Create a minimal state section
-        let state = StateSection::new);
+        let state = StateSection::new();
 
         // Serialize to bytes
         let state_bytes = create_state_section(&state;

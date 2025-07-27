@@ -389,21 +389,21 @@ mod tests {
 
     #[test]
     fn test_breakpoint_management() {
-        let mut manager = BreakpointManager::new);
+        let mut manager = BreakpointManager::new();
 
         // Add breakpoint
-        let id1 = manager.add_breakpoint(0x1000).unwrap());
+        let id1 = manager.add_breakpoint(0x1000).unwrap();
         assert!(manager.find_by_address(0x1000).is_some();
 
         // No duplicate
         assert!(manager.add_breakpoint(0x1000).is_err();
 
         // Add line breakpoint
-        let id2 = manager.add_line_breakpoint(1, 42, 0x2000).unwrap());
+        let id2 = manager.add_line_breakpoint(1, 42, 0x2000).unwrap();
         assert!(manager.find_by_location(1, 42).is_some();
 
         // Remove breakpoint
-        manager.remove_breakpoint(id1).unwrap());
+        manager.remove_breakpoint(id1).unwrap();
         assert!(manager.find_by_address(0x1000).is_none();
 
         // List breakpoints
@@ -412,12 +412,12 @@ mod tests {
 
     #[test]
     fn test_breakpoint_conditions() {
-        let mut manager = BreakpointManager::new);
+        let mut manager = BreakpointManager::new();
 
-        let id = manager.add_breakpoint(0x1000).unwrap());
+        let id = manager.add_breakpoint(0x1000).unwrap();
 
         // Set hit count condition
-        manager.set_condition(id, BreakpointCondition::HitCount(3)).unwrap());
+        manager.set_condition(id, BreakpointCondition::HitCount(3)).unwrap();
 
         // Mock state
         struct MockState;

@@ -211,7 +211,7 @@ mod component_binary_parser {
             header.validate()?;
 
             // Initialize component
-            let mut component = Component::new);
+            let mut component = Component::new();
 
             // Parse all sections
             while self.offset < self.size {
@@ -670,7 +670,7 @@ mod component_binary_parser {
 
         #[test]
         fn test_parser_creation() {
-            let parser = ComponentBinaryParser::new);
+            let parser = ComponentBinaryParser::new();
             assert_eq!(parser.validation_level, ValidationLevel::Standard;
 
             let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full;
@@ -679,38 +679,38 @@ mod component_binary_parser {
 
         #[test]
         fn test_parse_empty_binary() {
-            let mut parser = ComponentBinaryParser::new);
+            let mut parser = ComponentBinaryParser::new();
             let result = parser.parse(&[];
             assert!(result.is_err();
         }
 
         #[test]
         fn test_parse_too_small_binary() {
-            let mut parser = ComponentBinaryParser::new);
+            let mut parser = ComponentBinaryParser::new();
             let result = parser.parse(&[0x00, 0x61, 0x73, 0x6D]); // Only magic, no version/layer
             assert!(result.is_err();
         }
 
         #[test]
         fn test_parse_minimal_valid_component() {
-            let mut parser = ComponentBinaryParser::new);
+            let mut parser = ComponentBinaryParser::new();
 
             // Create minimal valid component binary: magic + version + layer
-            let mut binary = Vec::new);
+            let mut binary = Vec::new());
             binary.extend_from_slice(&COMPONENT_MAGIC); // Magic
             binary.extend_from_slice(&COMPONENT_VERSION.to_le_bytes()); // Version
             binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes()); // Layer
 
             let result = parser.parse(&binary;
             assert!(result.is_ok());
-            let component = result.unwrap());
+            let component = result.unwrap();
             assert!(component.name.is_none();
         }
 
         #[test]
         fn test_convenience_functions() {
             // Test the convenience parsing functions
-            let mut binary = Vec::new);
+            let mut binary = Vec::new());
             binary.extend_from_slice(&COMPONENT_MAGIC;
             binary.extend_from_slice(&COMPONENT_VERSION.to_le_bytes);
             binary.extend_from_slice(&COMPONENT_LAYER.to_le_bytes);

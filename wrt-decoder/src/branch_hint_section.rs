@@ -283,7 +283,7 @@ impl Default for BranchHintSection {
 /// Parse the branch hint custom section from binary data
 pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
     let mut offset = 0;
-    let mut section = BranchHintSection::new);
+    let mut section = BranchHintSection::new();
 
     // Read function count
     let (func_count, consumed) = read_leb128_u32(data, offset)?;
@@ -325,7 +325,7 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
 #[cfg(feature = "std")]
 pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>> {
     use crate::prelude::write_leb128_u32 as format_write_leb128_u32;
-    let mut data = Vec::new);
+    let mut data = Vec::new());
 
     // Write function count
     data.extend_from_slice(&format_write_leb128_u32(usize_to_wasm_u32(
@@ -388,13 +388,13 @@ mod tests {
     fn test_function_branch_hints() {
         let mut hints = FunctionBranchHints::new(5;
         assert_eq!(hints.function_index, 5;
-        assert!(hints.is_empty();
+        assert!(hints.is_empty());
 
-        hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap());
-        hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap());
+        hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
+        hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap();
 
         assert_eq!(hints.len(), 2;
-        assert!(!hints.is_empty();
+        assert!(!hints.is_empty());
 
         assert_eq!(hints.get_hint(10), Some(BranchHintValue::LikelyTrue;
         assert_eq!(hints.get_hint(20), Some(BranchHintValue::LikelyFalse;
@@ -404,17 +404,17 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_branch_hint_section() {
-        let mut section = BranchHintSection::new);
-        assert!(section.is_empty();
+        let mut section = BranchHintSection::new();
+        assert!(section.is_empty());
 
         let mut func_hints = FunctionBranchHints::new(0;
-        func_hints.add_hint(5, BranchHintValue::LikelyTrue).unwrap());
-        func_hints.add_hint(15, BranchHintValue::LikelyFalse).unwrap());
-        section.add_function_hints(func_hints).unwrap());
+        func_hints.add_hint(5, BranchHintValue::LikelyTrue).unwrap();
+        func_hints.add_hint(15, BranchHintValue::LikelyFalse).unwrap();
+        section.add_function_hints(func_hints).unwrap();
 
         let mut func_hints = FunctionBranchHints::new(2;
-        func_hints.add_hint(25, BranchHintValue::LikelyTrue).unwrap());
-        section.add_function_hints(func_hints).unwrap());
+        func_hints.add_hint(25, BranchHintValue::LikelyTrue).unwrap();
+        section.add_function_hints(func_hints).unwrap();
 
         assert_eq!(section.function_count(), 2;
         assert_eq!(section.total_hint_count(), 3;
@@ -430,22 +430,22 @@ mod tests {
     #[test]
     fn test_parse_encode_round_trip() {
         // Create a test section
-        let mut section = BranchHintSection::new);
+        let mut section = BranchHintSection::new();
 
         let mut func0_hints = FunctionBranchHints::new(0;
-        func0_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap());
-        func0_hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap());
-        section.add_function_hints(func0_hints).unwrap());
+        func0_hints.add_hint(10, BranchHintValue::LikelyTrue).unwrap();
+        func0_hints.add_hint(20, BranchHintValue::LikelyFalse).unwrap();
+        section.add_function_hints(func0_hints).unwrap();
 
         let mut func2_hints = FunctionBranchHints::new(2;
-        func2_hints.add_hint(30, BranchHintValue::LikelyTrue).unwrap());
-        section.add_function_hints(func2_hints).unwrap());
+        func2_hints.add_hint(30, BranchHintValue::LikelyTrue).unwrap();
+        section.add_function_hints(func2_hints).unwrap();
 
         // Encode to binary
-        let encoded = encode_branch_hint_section(&section).unwrap());
+        let encoded = encode_branch_hint_section(&section).unwrap();
 
         // Parse back from binary
-        let parsed = parse_branch_hint_section(&encoded).unwrap());
+        let parsed = parse_branch_hint_section(&encoded).unwrap();
 
         // Verify round-trip
         assert_eq!(parsed.function_count(), 2;
@@ -459,9 +459,9 @@ mod tests {
     fn test_parse_empty_section() {
         // Empty section: just function count = 0
         let data = &[0x00];
-        let section = parse_branch_hint_section(data).unwrap());
+        let section = parse_branch_hint_section(data).unwrap();
 
-        assert!(section.is_empty();
+        assert!(section.is_empty());
         assert_eq!(section.function_count(), 0);
         assert_eq!(section.total_hint_count(), 0);
     }

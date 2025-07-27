@@ -115,55 +115,55 @@ impl MemoryOperations for MockMemory {
 fn main() -> Result<()> {
     // Initialize global memory system first
     wrt_foundation::memory_init::MemoryInitializer::initialize()
-        .expect("Failed to initialize memory system");
+        .expect("Failed to initialize memory system"));
 
-    println!("WebAssembly Memory Operations Demo");
-    println!("==================================");
+    println!("WebAssembly Memory Operations Demo"));
+    println!("=================================="));
     
     // Create a mock memory instance
     let mut memory = MockMemory::new(1024;
     
     // Demonstrate i32 store and load operations
-    println!("\n1. Testing i32 store and load:";
+    println!("\n1. Testing i32 store and load:");
     
     // Create a store operation: store i32 value at offset 0
     let store_op = MemoryStore::i32(0, 4); // offset=0, align=4
     
     // Store the value 0x12345678 at address 0
     store_op.execute(&mut memory, &Value::I32(0), &Value::I32(0x12345678))?;
-    println!("  Stored 0x12345678 at address 0";
+    println!("  Stored 0x12345678 at address 0");
     
     // Create a load operation: load i32 value from offset 0
     let load_op = MemoryLoad::i32_legacy(0, 4); // offset=0, align=4
     
     // Load the value from address 0
     let loaded_value = load_op.execute(&memory, &Value::I32(0))?;
-    println!("  Loaded value: {:?}", loaded_value;
+    println!("  Loaded value: {:?}", loaded_value);
     
     // Demonstrate memory fill operation
-    println!("\n2. Testing memory fill:";
+    println!("\n2. Testing memory fill:");
     
     let fill_op = MemoryFill::new(0); // memory_index=0
     fill_op.execute(&mut memory, &Value::I32(100), &Value::I32(0xAB), &Value::I32(10))?;
-    println!("  Filled 10 bytes with 0xAB starting at address 100";
+    println!("  Filled 10 bytes with 0xAB starting at address 100");
     
     // Verify the fill by reading back
     let read_result = memory.read_bytes(100, 10)?;
-    println!("  Read back: {:02x?}", read_result;
+    println!("  Read back: {:02x?}", read_result);
     
     // Demonstrate memory copy operation
-    println!("\n3. Testing memory copy:";
+    println!("\n3. Testing memory copy:");
     
     let copy_op = MemoryCopy::new(0, 0); // same memory_index for source and destination
     copy_op.execute(&mut memory, &Value::I32(200), &Value::I32(100), &Value::I32(5))?;
-    println!("  Copied 5 bytes from address 100 to address 200";
+    println!("  Copied 5 bytes from address 100 to address 200");
     
     // Verify the copy by reading back
     let copy_result = memory.read_bytes(200, 5)?;
-    println!("  Copied data: {:02x?}", copy_result;
+    println!("  Copied data: {:02x?}", copy_result);
     
     // Demonstrate different data types
-    println!("\n4. Testing different data types:";
+    println!("\n4. Testing different data types:");
     
     // f32 operations
     let f32_store = MemoryStore::f32(300, 4;
@@ -171,7 +171,7 @@ fn main() -> Result<()> {
     
     let f32_load = MemoryLoad::f32(300, 4;
     let f32_value = f32_load.execute(&memory, &Value::I32(0))?;
-    println!("  f32 value: {:?}", f32_value;
+    println!("  f32 value: {:?}", f32_value);
     
     // i64 operations
     let i64_store = MemoryStore::i64(400, 8;
@@ -179,22 +179,22 @@ fn main() -> Result<()> {
     
     let i64_load = MemoryLoad::i64(400, 8;
     let i64_value = i64_load.execute(&memory, &Value::I32(0))?;
-    println!("  i64 value: {:?}", i64_value;
+    println!("  i64 value: {:?}", i64_value);
     
     // Demonstrate memory growth
-    println!("\n5. Testing memory growth:";
+    println!("\n5. Testing memory growth:");
     let old_size = memory.size_in_bytes()?;
-    println!("  Original size: {} bytes", old_size;
+    println!("  Original size: {} bytes", old_size);
     
     memory.grow(512)?; // Grow by 512 bytes
     let new_size = memory.size_in_bytes()?;
-    println!("  New size after growth: {} bytes", new_size;
+    println!("  New size after growth: {} bytes", new_size);
     
-    println!("\n✓ All memory operations completed successfully!";
-    println!("✓ The MemoryOperations trait successfully bridges wrt-instructions and wrt-runtime!";
+    println!("\n✓ All memory operations completed successfully!");
+    println!("✓ The MemoryOperations trait successfully bridges wrt-instructions and wrt-runtime!");
     
     // Memory cleanup happens automatically via RAII
-    println!("\nMemory operations demo completed successfully!";
+    println!("\nMemory operations demo completed successfully!");
     
     Ok(())
 }

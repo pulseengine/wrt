@@ -307,7 +307,7 @@ fn parse_type_section_info(data: &[u8], info: &mut ModuleInfo) -> Result<()> {
         // For now, just add placeholder type info
         // In a full implementation, we'd parse the actual function types
         #[cfg(feature = "std")]
-        info.function_types.push("func".to_string();
+        info.function_types.push("func".to_string());
 
         #[cfg(not(feature = "std"))]
         {
@@ -536,7 +536,7 @@ fn extract_component_info(_binary: &[u8]) -> Result<ComponentInfo> {
 
 /// Extract built-in imports from WASM binary
 fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
-    let mut builtin_imports = Vec::new);
+    let mut builtin_imports = Vec::new());
     let mut offset = 8; // Skip header
 
     // Find and parse import section
@@ -594,7 +594,7 @@ fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
                 // Check if this is a wasi_builtin import
                 if module_name == "wasi_builtin" {
                     #[cfg(feature = "std")]
-                    builtin_imports.push(import_name.to_string();
+                    builtin_imports.push(import_name.to_string());
 
                     #[cfg(not(feature = "std"))]
                     {
@@ -663,7 +663,7 @@ mod tests {
     fn test_detect_core_module() {
         // Simple core module header
         let module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        let info = load_wasm_unified(&module).unwrap());
+        let info = load_wasm_unified(&module).unwrap();
         assert_eq!(info.format_type, WasmFormat::CoreModule;
         assert!(info.is_core_module();
         assert!(!info.is_component();
@@ -684,10 +684,10 @@ mod tests {
     #[test]
     fn test_empty_module_info() {
         let module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
-        let info = load_wasm_unified(&module).unwrap());
-        let module_info = info.require_module_info().unwrap());
-        assert!(module_info.imports.is_empty();
-        assert!(module_info.exports.is_empty();
+        let info = load_wasm_unified(&module).unwrap();
+        let module_info = info.require_module_info().unwrap();
+        assert!(module_info.imports.is_empty());
+        assert!(module_info.exports.is_empty());
         assert!(module_info.start_function.is_none();
     }
 }

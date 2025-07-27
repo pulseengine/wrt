@@ -172,7 +172,7 @@ impl Limits {
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         #[cfg(feature = "std")]
         {
-            let mut bytes = Vec::new);
+            let mut bytes = Vec::new());
             // Encode min
             bytes.extend(&self.min.to_le_bytes();
             // Encode max (1 byte for Some/None, then 8 bytes if Some)

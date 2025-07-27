@@ -544,7 +544,7 @@ impl BoundedLogBuffer {
     
     /// Get all log entries
     pub fn get_entries(&self) -> Vec<BoundedLogEntry> {
-        let mut entries = Vec::new);
+        let mut entries = Vec::new());
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 entries.push(entry);
@@ -555,7 +555,7 @@ impl BoundedLogBuffer {
     
     /// Get log entries filtered by level
     pub fn get_entries_by_level(&self, level: LogLevel) -> Vec<BoundedLogEntry> {
-        let mut filtered = Vec::new);
+        let mut filtered = Vec::new());
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if entry.level == level {
@@ -568,7 +568,7 @@ impl BoundedLogBuffer {
     
     /// Get log entries filtered by component
     pub fn get_entries_by_component(&self, component_id: ComponentLoggingId) -> Vec<BoundedLogEntry> {
-        let mut filtered = Vec::new);
+        let mut filtered = Vec::new());
         for i in 0..self.entries.len() {
             if let Ok(entry) = self.entries.get(i) {
                 if entry.component_id == component_id {
@@ -1096,7 +1096,7 @@ mod tests {
         let manager = BoundedLoggingManager::new(limits;
         assert!(manager.is_ok());
         
-        let manager = manager.unwrap());
+        let manager = manager.unwrap();
         let stats = manager.get_statistics);
         assert_eq!(stats.registered_loggers, 0);
         assert_eq!(stats.total_log_entries, 0);
@@ -1105,13 +1105,13 @@ mod tests {
     #[test]
     fn test_logger_registration() {
         let limits = BoundedLoggingLimits::default());
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Info,
-        ).unwrap());
+        ).unwrap();
         
         assert_eq!(logger_id.0, 1);
         
@@ -1123,15 +1123,15 @@ mod tests {
     #[test]
     fn test_log_message() {
         let limits = BoundedLoggingLimits::default());
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
-        let result = manager.log(logger_id, LogLevel::Info, "Test message".to_string();
+        let result = manager.log(logger_id, LogLevel::Info, "Test message".to_string());
         assert!(result.is_ok());
         
         let stats = manager.get_statistics);
@@ -1142,20 +1142,20 @@ mod tests {
     #[test]
     fn test_log_level_filtering() {
         let limits = BoundedLoggingLimits::default());
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Warn, // Only log Warn and Error
-        ).unwrap());
+        ).unwrap();
         
         // This should be ignored (Debug < Warning)
-        let result = manager.log(logger_id, LogLevel::Debug, "Debug message".to_string();
+        let result = manager.log(logger_id, LogLevel::Debug, "Debug message".to_string());
         assert!(result.is_ok());
         
         // This should be logged (Warning >= Warning)
-        let result = manager.log(logger_id, LogLevel::Warn, "Warning message".to_string();
+        let result = manager.log(logger_id, LogLevel::Warn, "Warning message".to_string());
         assert!(result.is_ok());
         
         let stats = manager.get_statistics);
@@ -1169,16 +1169,16 @@ mod tests {
             max_log_message_size: 10,
             ..BoundedLoggingLimits::default()
         };
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
         // This message is too long (20 chars > 10 limit)
-        let result = manager.log(logger_id, LogLevel::Info, "This message is too long".to_string();
+        let result = manager.log(logger_id, LogLevel::Info, "This message is too long".to_string());
         assert!(result.is_err();
         
         let stats = manager.get_statistics);
@@ -1191,18 +1191,18 @@ mod tests {
             max_log_entries: 2,
             ..BoundedLoggingLimits::default()
         };
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger_id = manager.register_logger(
             ComponentLoggingId(1),
             "test-logger".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
         // Add three messages (should only keep the last two)
-        manager.log(logger_id, LogLevel::Info, "Message 1".to_string()).unwrap());
-        manager.log(logger_id, LogLevel::Info, "Message 2".to_string()).unwrap());
-        manager.log(logger_id, LogLevel::Info, "Message 3".to_string()).unwrap());
+        manager.log(logger_id, LogLevel::Info, "Message 1".to_string()).unwrap();
+        manager.log(logger_id, LogLevel::Info, "Message 2".to_string()).unwrap();
+        manager.log(logger_id, LogLevel::Info, "Message 3".to_string()).unwrap();
         
         let entries = manager.get_log_entries);
         assert_eq!(entries.len(), 2;
@@ -1218,7 +1218,7 @@ mod tests {
             max_concurrent_loggers: 1,
             ..BoundedLoggingLimits::default()
         };
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         // First logger should succeed
         let result1 = manager.register_logger(
@@ -1240,25 +1240,25 @@ mod tests {
     #[test]
     fn test_component_logger_removal() {
         let limits = BoundedLoggingLimits::default());
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger1_id = manager.register_logger(
             ComponentLoggingId(1),
             "logger1".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
         let logger2_id = manager.register_logger(
             ComponentLoggingId(1),
             "logger2".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
         let logger3_id = manager.register_logger(
             ComponentLoggingId(2),
             "logger3".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
         let removed = manager.remove_component_loggers(ComponentLoggingId(1;
         assert_eq!(removed, 2;
@@ -1276,23 +1276,23 @@ mod tests {
     #[test]
     fn test_log_filtering_by_component() {
         let limits = BoundedLoggingLimits::default());
-        let mut manager = BoundedLoggingManager::new(limits).unwrap());
+        let mut manager = BoundedLoggingManager::new(limits).unwrap();
         
         let logger1_id = manager.register_logger(
             ComponentLoggingId(1),
             "logger1".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
         let logger2_id = manager.register_logger(
             ComponentLoggingId(2),
             "logger2".to_string(),
             LogLevel::Debug,
-        ).unwrap());
+        ).unwrap();
         
-        manager.log(logger1_id, LogLevel::Info, "Message from component 1".to_string()).unwrap());
-        manager.log(logger2_id, LogLevel::Info, "Message from component 2".to_string()).unwrap());
-        manager.log(logger1_id, LogLevel::Error, "Error from component 1".to_string()).unwrap());
+        manager.log(logger1_id, LogLevel::Info, "Message from component 1".to_string()).unwrap();
+        manager.log(logger2_id, LogLevel::Info, "Message from component 2".to_string()).unwrap();
+        manager.log(logger1_id, LogLevel::Error, "Error from component 1".to_string()).unwrap();
         
         let component1_entries = manager.get_entries_by_component(ComponentLoggingId(1;
         let component2_entries = manager.get_entries_by_component(ComponentLoggingId(2;

@@ -38,7 +38,7 @@ fn verify_resource_id_no_wraparound() {
     kani::assume(initial_id < u32::MAX - 1000); // Leave room for operations
     
     let mut id_counter = initial_id;
-    let mut active_ids = std::collections::HashSet::new);
+    let mut active_ids = std::collections::HashSet::new();
     
     // Simulate allocating and deallocating resources
     for _ in 0..100 {
@@ -56,7 +56,7 @@ fn verify_resource_id_no_wraparound() {
             ;
         } else if !active_ids.is_empty() {
             // Deallocate random ID
-            let id_to_remove = *active_ids.iter().next().unwrap());
+            let id_to_remove = *active_ids.iter().next().unwrap();
             active_ids.remove(&id_to_remove;
         }
     }
@@ -66,7 +66,7 @@ fn verify_resource_id_no_wraparound() {
 #[kani::proof]
 fn verify_model_size_limits() {
     let model_size: usize = kani::any);
-    let capability = DynamicNNCapability::new);
+    let capability = DynamicNNCapability::new();
     let limits = capability.resource_limits);
     
     let operation = NNOperation::Load {
@@ -119,7 +119,7 @@ fn verify_capability_consistency() {
     let model_size: usize = kani::any);
     kani::assume(model_size > 0 && model_size <= 500 * 1024 * 1024;
     
-    let capability = BoundedNNCapability::new().unwrap());
+    let capability = BoundedNNCapability::new().unwrap();
     let operation = NNOperation::Load {
         size: model_size,
         format: ModelFormat::ONNX,
@@ -257,7 +257,7 @@ fn verify_resource_cleanup() {
     
     // Create and drop a resource
     {
-        let capability = DynamicNNCapability::new);
+        let capability = DynamicNNCapability::new();
         // Resource is created
         kani::assert(true, "Resource created successfully");
     }

@@ -164,13 +164,13 @@ impl LogEntry {
     
     /// Add context key-value pair
     pub fn with_context(mut self, key: &str, value: &str) -> Self {
-        self.context.push((key.to_string(), value.to_string();
+        self.context.push((key.to_string(), value.to_string());
         self
     }
     
     /// Add correlation ID for request tracing
     pub fn with_correlation_id(mut self, id: &str) -> Self {
-        self.correlation_id = Some(id.to_string();
+        self.correlation_id = Some(id.to_string());
         self
     }
     
@@ -422,7 +422,7 @@ impl Logger {
         // For now, output to stderr
         // In production, this could be directed to proper logging infrastructure
         #[cfg(feature = "std")]
-        eprintln!("{}", output;
+        eprintln!("{}", output));
         
         #[cfg(not(feature = "std"))]
         {
@@ -443,7 +443,7 @@ pub struct LoggingStats {
 }
 
 /// Global logger instance
-static LOGGER: std::sync::OnceLock<Arc<Logger>> = std::sync::OnceLock::new);
+static LOGGER: std::sync::OnceLock<Arc<Logger>> = std::sync::OnceLock::new();
 
 /// Initialize the global logger
 pub fn initialize_logger(config: LoggerConfig) -> Result<()> {
@@ -680,7 +680,7 @@ mod tests {
         
         assert_eq!(entry.level, LogLevel::Warning;
         assert_eq!(entry.component, "wasi-nn";
-        assert_eq!(entry.correlation_id, Some("req_123".to_string();
+        assert_eq!(entry.correlation_id, Some("req_123".to_string());
         assert_eq!(entry.context.len(), 1);
     }
     
@@ -703,7 +703,7 @@ mod tests {
     
     #[test]
     fn test_logger_stats() {
-        let logger = Logger::new);
+        let logger = Logger::new();
         
         let error_event = ErrorEvent::ValidationError {
             field: "model_size".to_string(),

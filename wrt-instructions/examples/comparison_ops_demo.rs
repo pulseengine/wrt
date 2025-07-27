@@ -9,7 +9,6 @@
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-use std::vec::Vec;
 
 use wrt_error::Result;
 use wrt_foundation::{
@@ -197,119 +196,119 @@ fn main() -> Result<()> {
     println!("   Input: 3.14159, 3.14159");
     ComparisonOp::F32Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   3.14159 == 3.14159: {} (true)", result;
+        println!("   3.14159 == 3.14159: {} (true)", result));
     }
     context.stack.clear();
 
     // f32.lt (less than)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(2.718)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(3.14159)))?;
-    println!("   Input: 2.718, 3.14159";
+    println!("   Input: 2.718, 3.14159"));
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   2.718 < 3.14159: {} (true)", result;
+        println!("   2.718 < 3.14159: {} (true)", result));
     }
     context.stack.clear();
 
     // f32.ge (greater than or equal)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(5.0)))?;
-    println!("   Input: 5.0, 5.0";
+    println!("   Input: 5.0, 5.0"));
     ComparisonOp::F32Ge.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   5.0 >= 5.0: {} (true)", result;
+        println!("   5.0 >= 5.0: {} (true)", result));
     }
     context.stack.clear();
 
     // 6. Float comparisons (f64)
-    println!("\n6. Float Comparisons (f64):";
+    println!("\n6. Float Comparisons (f64):"));
 
     // f64.ne (not equal)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793)))?;
     context.push_comparison_value(Value::F64(FloatBits64::from_float(2.718281828459045)))?;
-    println!("   Input: π (3.141592653589793), e (2.718281828459045)";
+    println!("   Input: π (3.141592653589793), e (2.718281828459045)"));
     ComparisonOp::F64Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   π != e: {} (true)", result;
+        println!("   π != e: {} (true)", result));
     }
     context.stack.clear();
 
     // f64.le (less than or equal)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(1.414213562373095)))?; // sqrt(2)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(1.732050807568877)))?; // sqrt(3)
-    println!("   Input: sqrt(2) (1.414213562373095), sqrt(3) (1.732050807568877)";
+    println!("   Input: sqrt(2) (1.414213562373095), sqrt(3) (1.732050807568877)"));
     ComparisonOp::F64Le.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   sqrt(2) <= sqrt(3): {} (true)", result;
+        println!("   sqrt(2) <= sqrt(3): {} (true)", result));
     }
     context.stack.clear();
 
     // 7. Test operations (eqz)
-    println!("\n7. Test Operations (eqz - equals zero):";
+    println!("\n7. Test Operations (eqz - equals zero):"));
 
     // i32.eqz with zero
     context.push_comparison_value(Value::I32(0))?;
-    println!("   Input: 0";
+    println!("   Input: 0"));
     ComparisonOp::I32Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   0 == 0: {} (true)", result;
+        println!("   0 == 0: {} (true)", result));
     }
     context.stack.clear();
 
     // i32.eqz with non-zero
     context.push_comparison_value(Value::I32(42))?;
-    println!("   Input: 42";
+    println!("   Input: 42"));
     ComparisonOp::I32Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   42 == 0: {} (false)", result;
+        println!("   42 == 0: {} (false)", result));
     }
     context.stack.clear();
 
     // i64.eqz with zero
     context.push_comparison_value(Value::I64(0))?;
-    println!("   Input: 0i64";
+    println!("   Input: 0i64"));
     ComparisonOp::I64Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   0i64 == 0: {} (true)", result;
+        println!("   0i64 == 0: {} (true)", result));
     }
     context.stack.clear();
 
     // i64.eqz with large non-zero
     context.push_comparison_value(Value::I64(0x123456789ABCDEF0))?;
-    println!("   Input: 0x123456789ABCDEF0";
+    println!("   Input: 0x123456789ABCDEF0"));
     ComparisonOp::I64Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   0x123456789ABCDEF0 == 0: {} (false)", result;
+        println!("   0x123456789ABCDEF0 == 0: {} (false)", result));
     }
     context.stack.clear();
 
     // 8. NaN handling in float comparisons
-    println!("\n8. NaN Handling in Float Comparisons:";
+    println!("\n8. NaN Handling in Float Comparisons:"));
 
     // f32 NaN == NaN (should be false)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
-    println!("   Input: NaN, NaN";
+    println!("   Input: NaN, NaN"));
     ComparisonOp::F32Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   NaN == NaN: {} (false - WebAssembly spec)", result;
+        println!("   NaN == NaN: {} (false - WebAssembly spec)", result));
     }
     context.stack.clear();
 
     // f32 NaN != anything (should be true)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(42.0)))?;
-    println!("   Input: NaN, 42.0";
+    println!("   Input: NaN, 42.0"));
     ComparisonOp::F32Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   NaN != 42.0: {} (true - WebAssembly spec)", result;
+        println!("   NaN != 42.0: {} (true - WebAssembly spec)", result));
     }
     context.stack.clear();
 
     // f32 NaN < anything (should be false)
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NAN)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(42.0)))?;
-    println!("   Input: NaN, 42.0";
+    println!("   Input: NaN, 42.0"));
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!(
@@ -322,53 +321,53 @@ fn main() -> Result<()> {
     // f64 NaN != NaN (should be true)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN)))?;
     context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN)))?;
-    println!("   Input: NaN (f64), NaN (f64)";
+    println!("   Input: NaN (f64), NaN (f64)"));
     ComparisonOp::F64Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   NaN != NaN (f64): {} (true - WebAssembly spec)", result;
+        println!("   NaN != NaN (f64): {} (true - WebAssembly spec)", result));
     }
     context.stack.clear();
 
     // 9. Special float values
-    println!("\n9. Special Float Values:";
+    println!("\n9. Special Float Values:"));
 
     // Positive and negative infinity
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::NEG_INFINITY)))?;
     context.push_comparison_value(Value::F32(FloatBits32::from_float(f32::INFINITY)))?;
-    println!("   Input: -∞, +∞";
+    println!("   Input: -∞, +∞"));
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   -∞ < +∞: {} (true)", result;
+        println!("   -∞ < +∞: {} (true)", result));
     }
     context.stack.clear();
 
     // Positive and negative zero
     context.push_comparison_value(Value::F64(FloatBits64::from_float(-0.0)))?;
     context.push_comparison_value(Value::F64(FloatBits64::from_float(0.0)))?;
-    println!("   Input: -0.0, +0.0";
+    println!("   Input: -0.0, +0.0"));
     ComparisonOp::F64Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   -0.0 == +0.0: {} (true - IEEE 754 spec)", result;
+        println!("   -0.0 == +0.0: {} (true - IEEE 754 spec)", result));
     }
     context.stack.clear();
 
     // 10. Edge cases and overflow scenarios
-    println!("\n10. Edge Cases:";
+    println!("\n10. Edge Cases:"));
 
     // Maximum i32 values
     context.push_comparison_value(Value::I32(i32::MAX))?;
     context.push_comparison_value(Value::I32(i32::MIN))?;
-    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648)";
+    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648)"));
     ComparisonOp::I32GtS.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   i32::MAX > i32::MIN (signed): {} (true)", result;
+        println!("   i32::MAX > i32::MIN (signed): {} (true)", result));
     }
     context.stack.clear();
 
     // Same values as unsigned comparison
     context.push_comparison_value(Value::I32(i32::MAX))?;
     context.push_comparison_value(Value::I32(i32::MIN))?;
-    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648 = 0x80000000)";
+    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648 = 0x80000000)"));
     ComparisonOp::I32LtU.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!(
@@ -377,13 +376,13 @@ fn main() -> Result<()> {
         );
     }
 
-    println!("\n=== Demo Complete ===";
-    println!("\nKey Takeaways:";
-    println!("- All comparison operations return i32 values (0 for false, 1 for true)";
-    println!("- Signed vs unsigned comparisons can produce different results";
-    println!("- NaN handling follows WebAssembly specification exactly";
-    println!("- Float comparisons handle special values (±∞, ±0, NaN) correctly";
-    println!("- Integer operations work with full 32-bit and 64-bit ranges";
+    println!("\n=== Demo Complete ==="));
+    println!("\nKey Takeaways:"));
+    println!("- All comparison operations return i32 values (0 for false, 1 for true)"));
+    println!("- Signed vs unsigned comparisons can produce different results"));
+    println!("- NaN handling follows WebAssembly specification exactly"));
+    println!("- Float comparisons handle special values (±∞, ±0, NaN) correctly"));
+    println!("- Integer operations work with full 32-bit and 64-bit ranges"));
 
     Ok(())
 }
@@ -391,6 +390,6 @@ fn main() -> Result<()> {
 #[cfg(not(feature = "std"))]
 fn main() {
     // Binary std/no_std choice - ASIL-D safe: exit gracefully
-    eprintln!("This example requires std or alloc features";
-    core::process::exit(1;
+    eprintln!("This example requires std or alloc features");
+    core::process::exit(1);
 }

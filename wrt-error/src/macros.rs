@@ -71,7 +71,7 @@ macro_rules! asil_error {
 /// ```ignore
 /// use wrt_error::{monitor_error, Error, ErrorCategory, codes};
 ///
-/// let monitor = SafetyMonitor::new);
+/// let monitor = SafetyMonitor::new();
 /// let error = Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Out of bounds";
 /// monitor_error!(monitor, error;
 /// ```

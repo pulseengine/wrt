@@ -21,20 +21,20 @@ use wrt_error::{
 };
 
 fn main() {
-    println!("WRT Error ASIL Demo";
-    println!("===================\n";
+    println!("WRT Error ASIL Demo");
+    println!("===================\n");
 
     // Show current ASIL level
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
     {
         let current_level = AsilLevel::current);
-        println!("Current ASIL Level: {}", current_level.name);
+        println!("Current ASIL Level: {}", current_level.name));
         println!);
     }
 
     #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
     {
-        println!("Current ASIL Level: QM (Quality Management)";
+        println!("Current ASIL Level: QM (Quality Management)");
         println!);
     }
 
@@ -55,24 +55,24 @@ fn main() {
 }
 
 fn demonstrate_basic_errors() {
-    println!("Basic Error Creation";
-    println!("-------------------";
+    println!("Basic Error Creation");
+    println!("-------------------");
 
     // Create various error types
     let memory_error = Error::memory_error("Memory allocation failed";
     let validation_error = Error::validation_error("Invalid input parameter";
     let runtime_error = Error::runtime_error("Execution failed";
 
-    println!("Memory Error: {}", memory_error;
-    println!("Validation Error: {}", validation_error;
-    println!("Runtime Error: {}", runtime_error;
+    println!("Memory Error: {}", memory_error);
+    println!("Validation Error: {}", validation_error);
+    println!("Runtime Error: {}", runtime_error);
     println!);
 }
 
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
 fn demonstrate_asil_features() {
-    println!("ASIL-Aware Features";
-    println!("------------------";
+    println!("ASIL-Aware Features");
+    println!("------------------");
 
     // Create errors and check their ASIL levels
     let safety_error = Error::safety_violation("Critical safety violation detected";
@@ -101,7 +101,7 @@ fn demonstrate_asil_features() {
     // Check safe state requirements
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     {
-        println!("\nSafe State Requirements:";
+        println!("\nSafe State Requirements:");
         println!(
             "Safety Error requires safe state: {}",
             safety_error.requires_safe_state()
@@ -121,10 +121,10 @@ fn demonstrate_asil_features() {
         .with_timestamp(1234567890)
         .with_module_id(42;
 
-    println!("\nError Context:";
-    println!("- ASIL Level: {}", context.asil_level.name);
-    println!("- Timestamp: {:?}", context.timestamp;
-    println!("- Module ID: {:?}", context.module_id;
+    println!("\nError Context:");
+    println!("- ASIL Level: {}", context.asil_level.name));
+    println!("- Timestamp: {:?}", context.timestamp);
+    println!("- Module ID: {:?}", context.module_id);
     println!(
         "- Requires Immediate Action: {}",
         context.requires_immediate_action()
@@ -134,10 +134,10 @@ fn demonstrate_asil_features() {
 
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
 fn demonstrate_safety_monitoring() {
-    println!("Safety Monitoring (ASIL-C+)";
-    println!("--------------------------";
+    println!("Safety Monitoring (ASIL-C+)");
+    println!("--------------------------");
 
-    let monitor = SafetyMonitor::new);
+    let monitor = SafetyMonitor::new();
 
     // Simulate some errors
     let errors = vec![
@@ -150,14 +150,14 @@ fn demonstrate_safety_monitoring() {
     // Record errors
     for (i, error) in errors.iter().enumerate() {
         monitor.record_error(error;
-        println!("Recorded error {}: {}", i + 1, error;
+        println!("Recorded error {}: {}", i + 1, error);
     }
 
-    println!("\nTotal errors recorded: {}", monitor.error_count);
+    println!("\nTotal errors recorded: {}", monitor.error_count));
 
     // Reset monitor
     monitor.reset);
-    println!("Monitor reset. Error count: {}", monitor.error_count);
+    println!("Monitor reset. Error count: {}", monitor.error_count));
     println!);
 }
 
@@ -165,8 +165,8 @@ fn demonstrate_safety_monitoring() {
 fn demonstrate_asil_d_features() {
     use wrt_error::validate_error_consistency;
 
-    println!("ASIL-D Specific Features";
-    println!("-----------------------";
+    println!("ASIL-D Specific Features");
+    println!("-----------------------");
 
     // Demonstrate error integrity validation
     let valid_error = Error::runtime_execution_error(
@@ -175,7 +175,7 @@ fn demonstrate_asil_d_features() {
     let valid_safety = Error::safety_violation(",
     ;
 
-    println!("Error Integrity Validation:";
+    println!("Error Integrity Validation:");
     println!(
         "Memory Error: {} - Valid: {}",
         valid_error,
@@ -191,12 +191,12 @@ fn demonstrate_asil_d_features() {
     let det_error = Error::safety_violation("Non-deterministic behavior detected";
     let red_error = Error::safety_violation("Redundancy check failed";
 
-    println!("\nASIL-D Specific Errors:";
-    println!("Determinism Error: {}", det_error;
-    println!("Redundancy Error: {}", red_error;
+    println!("\nASIL-D Specific Errors:");
+    println!("Determinism Error: {}", det_error);
+    println!("Redundancy Error: {}", red_error);
 
     // Validate consistency using standalone function
-    println!("\nStandalone Consistency Validation:";
+    println!("\nStandalone Consistency Validation:");
     println!(
         "Memory Error consistent: {}",
         validate_error_consistency(&valid_error)

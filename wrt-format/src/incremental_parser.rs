@@ -218,7 +218,7 @@ impl IncrementalParser {
         self.stats.full_reparses += 1;
 
         // Build source string
-        let mut full_source = String::new);
+        let mut full_source = String::new();
         for line in &self.source {
             if let Ok(line_str) = line.as_str() {
                 full_source.push_str(line_str;
@@ -352,7 +352,7 @@ impl IncrementalParser {
 
     /// Build parse tree from AST
     fn build_parse_tree(&self, doc: &WitDocument) -> Result<ParseNode> {
-        let mut children = Vec::new);
+        let mut children = Vec::new());
 
         // Add package node if present
         if let Some(ref pkg) = doc.package {
@@ -503,7 +503,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_incremental_parser_creation() {
-        let parser = IncrementalParser::new);
+        let parser = IncrementalParser::new();
         assert!(parser.get_ast().is_none();
         assert_eq!(parser.stats().total_parses, 0);
     }
@@ -551,7 +551,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn test_parser_cache() {
-        let mut cache = IncrementalParserCache::new);
+        let mut cache = IncrementalParserCache::new();
 
         let parser1 = cache.get_parser(0;
         parser1.stats.total_parses = 5;

@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn test_all_error_constants_are_unique() {
-        let mut seen_codes = HashSet::new);
+        let mut seen_codes = HashSet::new();
 
         // Core error codes (1000-1999)
         let core_codes = vec![

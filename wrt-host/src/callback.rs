@@ -265,7 +265,7 @@ impl CallbackRegistry {
     pub fn new() -> Self {
         // In no_std mode, we need to provide memory providers for the bounded collections
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider");
+        let provider = create_host_provider().expect("Failed to create host provider"));
         Self {
             callbacks: HashMap::new(provider).unwrap_or_default(),
             host_functions: HostFunctionsNoStd::default(),
@@ -343,8 +343,8 @@ impl CallbackRegistry {
         function_name: &str,
         handler: HostFunctionHandler,
     ) {
-        let module_name = module_name.to_string();
-        let function_name = function_name.to_string();
+        let module_name = module_name.to_string());
+        let function_name = function_name.to_string());
 
         let module_functions = self.host_functions.entry(module_name).or_default);
         module_functions.insert(function_name, handler;
@@ -464,7 +464,7 @@ impl CallbackRegistry {
     pub fn get_registered_modules(&self) -> StringVec {
         // In no_std mode, we can't return dynamic module names
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider");
+        let provider = create_host_provider().expect("Failed to create host provider"));
         StringVec::new(provider).unwrap_or_default()
     }
 
@@ -485,7 +485,7 @@ impl CallbackRegistry {
     pub fn get_registered_functions(&self, _module_name: &str) -> StringVec {
         // In no_std mode, we can't return dynamic function names
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider");
+        let provider = create_host_provider().expect("Failed to create host provider"));
         StringVec::new(provider).unwrap_or_default()
     }
 
@@ -498,7 +498,7 @@ impl CallbackRegistry {
     pub fn get_available_builtins(&self) -> crate::prelude::HashSet<BuiltinType> {
         use crate::prelude::HashSet;
 
-        let mut builtins = HashSet::new);
+        let mut builtins = HashSet::new();
 
         // Check for built-ins in the wasi_builtin module
         if let Some(builtin_funcs) = self.host_functions.get("wasi_builtin") {
@@ -523,10 +523,10 @@ impl CallbackRegistry {
     ) -> wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider> {
         // In no_std mode, we can't dynamically track built-ins
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect("Failed to create host provider");
+        let provider = create_host_provider().expect("Failed to create host provider"));
         wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
             let fallback_provider =
-                create_host_provider().expect("Failed to create fallback host provider");
+                create_host_provider().expect("Failed to create fallback host provider"));
             wrt_foundation::BoundedSet::new(fallback_provider)
                 .expect("Failed to create bounded set")
         })
@@ -571,7 +571,7 @@ impl CallbackRegistry {
 impl Clone for CallbackRegistry {
     fn clone(&self) -> Self {
         // Create a new registry
-        let mut new_registry = Self::new);
+        let mut new_registry = Self::new();
 
         // Clone the interceptor if present
         #[cfg(feature = "std")]
@@ -615,7 +615,7 @@ mod tests {
 
     #[test]
     fn test_callback_registry() {
-        let mut registry = CallbackRegistry::new);
+        let mut registry = CallbackRegistry::new();
 
         // Register a host function
         let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn test_callback_registry_callback() {
-        let mut registry = CallbackRegistry::new);
+        let mut registry = CallbackRegistry::new();
 
         // Register a callback
         registry.register_callback(CallbackType::Intercept, 42;
@@ -671,7 +671,7 @@ mod tests {
     #[test]
     fn test_call_builtin_function() {
         // Create a registry with a host function for resource.create
-        let mut registry = CallbackRegistry::new);
+        let mut registry = CallbackRegistry::new();
         let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
         registry.register_host_function("wasi_builtin", "resource.create", handler;
 

@@ -12,7 +12,7 @@ use wrt_format::component::{
 
 /// Create a simple component with values of different types
 fn create_test_component() -> Result<wrt_format::component::Component> {
-    let mut component = wrt_format::component::Component::new);
+    let mut component = wrt_format::component::Component::new();
 
     // Add test values
     component.values = vec![

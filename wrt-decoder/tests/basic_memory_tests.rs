@@ -63,7 +63,7 @@ mod string_tests {
         let result = parse_utf8_string_inplace(&test_data, 0);
         assert!(result.is_ok());
 
-        let (string, offset) = result.unwrap());
+        let (string, offset) = result.unwrap();
         assert_eq!(string, "hello";
         assert_eq!(offset, 6); // 1 byte length + 5 bytes string
     }

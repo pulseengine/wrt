@@ -122,7 +122,7 @@ impl DecodedCache {
                 .iter()
                 .filter(|import| import.module == "wasi_builtin")
                 .map(|import| import.name.clone())
-                .collect();
+                .collect());
             self.builtin_imports = Some(builtins;
         }
 
@@ -340,7 +340,7 @@ fn parse_imports_from_binary(binary: &[u8]) -> Result<Vec<ImportInfo>> {
     use crate::unified_loader::parse_import_section_info;
 
     let mut offset = 8; // Skip header
-    let mut imports = Vec::new);
+    let mut imports = Vec::new());
 
     // Find import section
     while offset < binary.len() {
@@ -385,7 +385,7 @@ fn parse_exports_from_binary(binary: &[u8]) -> Result<Vec<ExportInfo>> {
     use crate::unified_loader::parse_export_section_info;
 
     let mut offset = 8; // Skip header
-    let mut exports = Vec::new);
+    let mut exports = Vec::new());
 
     // Find export section
     while offset < binary.len() {
@@ -466,7 +466,7 @@ mod tests {
         let cache = DecodedCache::new(WasmFormat::CoreModule, 1024;
         assert_eq!(cache.format_type, WasmFormat::CoreModule;
         assert_eq!(cache.binary_size, 1024;
-        assert!(cache.sections.is_empty();
+        assert!(cache.sections.is_empty());
     }
 
     #[test]
@@ -474,11 +474,11 @@ mod tests {
         let mut manager = CacheManager::new(1024 * 1024;
         let binary = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
-        let cache1 = manager.get_cache(&binary).unwrap());
+        let cache1 = manager.get_cache(&binary).unwrap();
         assert_eq!(cache1.format_type, WasmFormat::CoreModule;
 
         // Should return same cache for same binary
-        let cache2 = manager.get_cache(&binary).unwrap());
+        let cache2 = manager.get_cache(&binary).unwrap();
         assert_eq!(cache2.format_type, WasmFormat::CoreModule;
     }
 

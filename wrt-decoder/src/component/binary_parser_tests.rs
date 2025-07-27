@@ -14,7 +14,7 @@ mod tests {
 
     /// Create a minimal valid component binary for testing
     fn create_minimal_component_binary() -> Vec<u8> {
-        let mut binary = Vec::new);
+        let mut binary = Vec::new());
 
         // Add component magic
         binary.extend_from_slice(&[0x00, 0x61, 0x73, 0x6D]); // Component magic
@@ -45,7 +45,7 @@ mod tests {
 
     /// Create a component binary with invalid magic
     fn create_invalid_magic_binary() -> Vec<u8> {
-        let mut binary = Vec::new);
+        let mut binary = Vec::new());
 
         // Add invalid magic
         binary.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]); // Invalid magic
@@ -57,7 +57,7 @@ mod tests {
 
     /// Create a component binary with invalid version
     fn create_invalid_version_binary() -> Vec<u8> {
-        let mut binary = Vec::new);
+        let mut binary = Vec::new());
 
         binary.extend_from_slice(&[0x00, 0x61, 0x73, 0x6D]); // Valid magic
         binary.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0xFF]); // Invalid version
@@ -68,7 +68,7 @@ mod tests {
 
     /// Create a component binary with invalid layer
     fn create_invalid_layer_binary() -> Vec<u8> {
-        let mut binary = Vec::new);
+        let mut binary = Vec::new());
 
         binary.extend_from_slice(&[0x00, 0x61, 0x73, 0x6D]); // Valid magic
         binary.extend_from_slice(&[0x01, 0x00, 0x00, 0x00]); // Version 1
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn test_parser_creation() {
-        let parser = ComponentBinaryParser::new);
+        let parser = ComponentBinaryParser::new();
         assert_eq!(parser.validation_level, ValidationLevel::Standard;
 
         let minimal_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Minimal;
@@ -94,34 +94,34 @@ mod tests {
     #[test]
     fn test_parse_minimal_valid_component() {
         let binary = create_minimal_component_binary);
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
 
         let result = parser.parse(&binary;
         assert!(result.is_ok());
 
-        let component = result.unwrap());
+        let component = result.unwrap();
         assert!(component.name.is_none();
-        assert!(component.modules.is_empty();
-        assert!(component.types.is_empty();
+        assert!(component.modules.is_empty());
+        assert!(component.types.is_empty());
     }
 
     #[test]
     fn test_parse_component_with_custom_section() {
         let binary = create_component_with_custom_section);
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
 
         let result = parser.parse(&binary;
         assert!(result.is_ok());
 
         // Custom sections should be parsed but ignored in basic implementation
-        let _component = result.unwrap());
+        let _component = result.unwrap();
     }
 
     // Error condition tests
 
     #[test]
     fn test_parse_empty_binary() {
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
         let result = parser.parse(&[];
 
         assert!(result.is_err();
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_parse_too_small_binary() {
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
 
         // Binary smaller than minimum header size (12 bytes)
         let small_binary = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00];
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_parse_invalid_magic() {
         let binary = create_invalid_magic_binary);
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
 
         let result = parser.parse(&binary;
         assert!(result.is_err();
@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn test_parse_invalid_version() {
         let binary = create_invalid_version_binary);
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
 
         let result = parser.parse(&binary;
         assert!(result.is_err();
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn test_parse_invalid_layer() {
         let binary = create_invalid_layer_binary);
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
 
         let result = parser.parse(&binary;
         assert!(result.is_err();
@@ -363,7 +363,7 @@ mod tests {
         binary.push(255); // Unknown section ID
         binary.push(0); // Empty section
 
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
         let result = parser.parse(&binary;
 
         // Should succeed but ignore unknown section
@@ -379,7 +379,7 @@ mod tests {
         binary.push(100); // Large section size (but only few bytes follow)
         binary.push(1); // Only 1 byte of data
 
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
         let result = parser.parse(&binary;
 
         // Should fail due to oversized section
@@ -426,7 +426,7 @@ mod tests {
         binary.extend_from_slice(b"test"); // Name
         binary.extend_from_slice(&[0); 5]); // 5 bytes of data
 
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
         let result = parser.parse(&binary;
         assert!(result.is_ok());
     }
@@ -444,7 +444,7 @@ mod tests {
             binary.extend_from_slice(&[0); 4]); // 4 bytes of data
         }
 
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
         let result = parser.parse(&binary;
         assert!(result.is_ok());
     }
@@ -459,7 +459,7 @@ mod tests {
         binary.push(0); // Custom section ID
         binary.push(0); // Zero section size
 
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
         let result = parser.parse(&binary;
         assert!(result.is_ok());
     }
@@ -473,7 +473,7 @@ mod tests {
         binary.push(1); // Section size
         binary.push(0); // One byte of data
 
-        let mut parser = ComponentBinaryParser::new);
+        let mut parser = ComponentBinaryParser::new();
         let result = parser.parse(&binary;
         assert!(result.is_ok());
     }

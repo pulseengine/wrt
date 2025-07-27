@@ -338,8 +338,8 @@ mod tests {
         assert_eq!(format_limits_mem64.memory64, true;
 
         // Test FormatLimits -> wrt-foundation Limits
-        let wrt_limits_min_2 = format_limits_to_wrt_limits(&format_limits_min).unwrap());
-        let wrt_limits_both_2 = format_limits_to_wrt_limits(&format_limits_both).unwrap());
+        let wrt_limits_min_2 = format_limits_to_wrt_limits(&format_limits_min).unwrap();
+        let wrt_limits_both_2 = format_limits_to_wrt_limits(&format_limits_both).unwrap();
 
         assert_eq!(wrt_limits_min_2.min, 10;
         assert_eq!(wrt_limits_min_2.max, None;

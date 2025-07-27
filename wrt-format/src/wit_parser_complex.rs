@@ -224,7 +224,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         };
 
         #[cfg(feature = "std")]
-        let lines: Vec<&str> = source.lines().collect();
+        let lines: Vec<&str> = source.lines().collect());
         #[cfg(feature = "std")]
         let mut i = 0;
 
@@ -268,7 +268,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         };
 
         #[cfg(feature = "std")]
-        let lines: Vec<&str> = source.lines().collect();
+        let lines: Vec<&str> = source.lines().collect());
         #[cfg(feature = "std")]
         let mut i = 0;
 
@@ -302,7 +302,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     fn parse_import(&mut self, line: &str) -> Result<WitImport<P>, WitParseError<P>> {
         #[cfg(feature = "std")]
-        let parts: Vec<&str> = line.split_whitespace().collect();
+        let parts: Vec<&str> = line.split_whitespace().collect());
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
@@ -342,7 +342,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     fn parse_export(&mut self, line: &str) -> Result<WitExport<P>, WitParseError<P>> {
         #[cfg(feature = "std")]
-        let parts: Vec<&str> = line.split_whitespace().collect();
+        let parts: Vec<&str> = line.split_whitespace().collect());
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
@@ -391,7 +391,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
             let name_part = &line[..colon_pos].trim);
-            let parts: Vec<&str> = name_part.split_whitespace().collect();
+            let parts: Vec<&str> = name_part.split_whitespace().collect());
             
             if let Some(name) = parts.last() {
                 function.name = BoundedString::from_str(name, self.provider.clone())
@@ -406,7 +406,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
 
     fn parse_type_def(&mut self, line: &str) -> Result<WitTypeDef<P>, WitParseError<P>> {
         #[cfg(feature = "std")]
-        let parts: Vec<&str> = line.splitn(3, ' ').collect();
+        let parts: Vec<&str> = line.splitn(3, ' ').collect());
         #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
@@ -581,13 +581,13 @@ mod tests {
     fn test_parse_compound_types() {
         let mut parser = WitParser::new(DefaultWitProvider::default());
         
-        let list_type = parser.parse_type("list<u32>").unwrap());
+        let list_type = parser.parse_type("list<u32>").unwrap();
         match list_type {
             WitType::List(inner) => assert_eq!(*inner, WitType::U32),
             _ => panic!("Expected list type"),
         }
 
-        let option_type = parser.parse_type("option<string>").unwrap());
+        let option_type = parser.parse_type("option<string>").unwrap();
         match option_type {
             WitType::Option(inner) => assert_eq!(*inner, WitType::String),
             _ => panic!("Expected option type"),
@@ -599,13 +599,13 @@ mod tests {
     fn test_parse_async_types() {
         let mut parser = WitParser::new(DefaultWitProvider::default());
         
-        let stream_type = parser.parse_type("stream<u8>").unwrap());
+        let stream_type = parser.parse_type("stream<u8>").unwrap();
         match stream_type {
             WitType::Stream(inner) => assert_eq!(*inner, WitType::U8),
             _ => panic!("Expected stream type"),
         }
 
-        let future_type = parser.parse_type("future<string>").unwrap());
+        let future_type = parser.parse_type("future<string>").unwrap();
         match future_type {
             WitType::Future(inner) => assert_eq!(*inner, WitType::String),
             _ => panic!("Expected future type"),
@@ -626,7 +626,7 @@ mod tests {
         let world = parser.parse_world(source;
         assert!(world.is_ok());
         
-        let world = world.unwrap());
+        let world = world.unwrap();
         assert_eq!(world.name.as_str(), "test-world";
         assert_eq!(world.imports.len(), 1);
         assert_eq!(world.exports.len(), 1);
@@ -642,7 +642,7 @@ mod tests {
         assert_eq!(parser.convert_to_valtype(&WitType::String).unwrap(), crate::types::ValueType::I32;
         
         let list_wit = WitType::List(Box::new(WitType::U32;
-        let list_val = parser.convert_to_valtype(&list_wit).unwrap());
+        let list_val = parser.convert_to_valtype(&list_wit).unwrap();
         assert_eq!(list_val, crate::types::ValueType::I32); // Lists are represented as pointers
     }
 }

@@ -121,8 +121,8 @@ impl ExecutionContext {
             ;
         }
         
-        let mut inputs = Vec::new);
-        let mut outputs = Vec::new);
+        let mut inputs = Vec::new());
+        let mut outputs = Vec::new());
         
         for _ in 0..num_inputs {
             inputs.push(None);
@@ -338,7 +338,7 @@ impl ContextStore {
 }
 
 /// Global context store
-static CONTEXT_STORE: OnceLock<Mutex<ContextStore>> = OnceLock::new);
+static CONTEXT_STORE: OnceLock<Mutex<ContextStore>> = OnceLock::new();
 
 /// Initialize the context store
 pub fn initialize_context_store() -> Result<()> {
@@ -378,7 +378,7 @@ pub fn execute_inference(
             .iter()
             .enumerate()
             .filter_map(|(i, opt)| if opt.is_none() { Some(i) } else { None })
-            .collect();
+            .collect());
         return Err(Error::wasi_invalid_argument(
             "Not all inputs are set"
         ;
@@ -422,7 +422,7 @@ pub fn execute_inference(
     let inputs: Vec<Tensor> = context.inputs
         .iter()
         .filter_map(|opt| opt.as_ref().cloned())
-        .collect();
+        .collect());
     
     // Validate input count matches expectation
     let expected_inputs = graph.backend_model().num_inputs);

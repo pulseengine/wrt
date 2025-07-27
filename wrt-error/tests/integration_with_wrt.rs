@@ -39,7 +39,7 @@ mod tests {
         // Binary std/no_std choice
         // Binary std/no_std choice
         // #[cfg(feature = "std")]
-        // let _ = std::format!("{}", error_result.as_ref().err().unwrap());
+        // let _ = std::format!("{}", error_result.as_ref().err().unwrap();
     }
 
     #[cfg(all(feature = "std"))]
