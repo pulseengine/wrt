@@ -1093,15 +1093,15 @@ mod tests {
         assert_eq!(parsed.sort_names[0].1.entries[0].index, 0);
         #[cfg(feature = "std")]
         {
-            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0";
+            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0");
             assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
-            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1";
+            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1");
         }
         #[cfg(not(feature = "std"))]
         {
-            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0";
+            assert_eq!(parsed.sort_names[0].1.entries[0].name, "func0");
             assert_eq!(parsed.sort_names[0].1.entries[1].index, 1);
-            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1";
+            assert_eq!(parsed.sort_names[0].1.entries[1].name, "func1");
         }
     }
 }

@@ -188,7 +188,7 @@ impl PostReturnContext {
         #[cfg(not(feature = "std"))]
         {
             // Simple bubble sort for no_std
-            let len = self.entries.len);
+            let len = self.entries.len();
             for i in 0..len {
                 for j in 0..len - 1 - i {
                     if self.entries.get(j).unwrap().priority < self.entries.get(j + 1).unwrap().priority {

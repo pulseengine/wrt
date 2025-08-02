@@ -23,11 +23,11 @@ pub enum ASILExecutionMode {
 #[derive(Debug, Clone, Default)]
 pub struct ASILExecutionConfig {
     /// ASIL execution mode
-    pub mode: ASILExecutionMode,
+    pub mode:           ASILExecutionMode,
     /// Fuel limit for bounded execution
-    pub fuel_limit: u64,
+    pub fuel_limit:     u64,
     /// Memory limit in bytes
-    pub memory_limit: usize,
+    pub memory_limit:   usize,
     /// Maximum call stack depth
     pub max_call_depth: u32,
 }
@@ -71,17 +71,17 @@ impl ASILExecutionConfig {
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionStats {
     /// Number of instructions executed
-    pub instructions_executed: u64,
+    pub instructions_executed:  u64,
     /// Amount of fuel consumed
-    pub fuel_consumed: u64,
+    pub fuel_consumed:          u64,
     /// Peak memory usage in bytes
-    pub peak_memory_usage: usize,
+    pub peak_memory_usage:      usize,
     /// Number of function calls made
-    pub function_calls: u32,
+    pub function_calls:         u32,
     /// Maximum call stack depth reached
     pub max_call_depth_reached: u32,
     /// Execution time in microseconds
-    pub execution_time_us: u64,
+    pub execution_time_us:      u64,
 }
 
 impl ExecutionStats {
@@ -127,22 +127,23 @@ impl ExecutionStats {
 }
 
 /// Extract resource limits configuration from WebAssembly binary
-/// 
+///
 /// This function attempts to extract ASIL-compliant resource limits
 /// from a WebAssembly binary's custom sections.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `binary` - The WebAssembly binary data
 /// * `asil_mode` - The target ASIL execution mode
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns `Ok(Some(config))` if resource limits are found and valid,
-/// `Ok(None)` if no resource limits are found, or `Err` if the binary is invalid.
+/// `Ok(None)` if no resource limits are found, or `Err` if the binary is
+/// invalid.
 pub fn extract_resource_limits_from_binary(
-    _binary: &[u8], 
-    asil_mode: ASILExecutionMode
+    _binary: &[u8],
+    asil_mode: ASILExecutionMode,
 ) -> crate::WrtResult<Option<ASILExecutionConfig>> {
     // TODO: Implement actual resource limits extraction from custom sections
     // For now, return a default configuration based on ASIL mode

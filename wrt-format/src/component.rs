@@ -162,7 +162,7 @@ impl Component {
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )
-        .unwrap_or_else(|_| panic!("Failed to allocate memory provider";
+        .unwrap_or_else(|_| panic!("Failed to allocate memory provider"));
         WasmVec::new(provider).unwrap_or_else(|_| panic!("Failed to create WasmVec"))
     }
 }
@@ -172,7 +172,7 @@ impl Validatable for Component {
         // Validate component name if present
         if let Some(name) = &self.name {
             if name.is_empty() {
-                return Err(Error::validation_error("Component name cannot be empty";
+                return Err(Error::validation_error("Component name cannot be empty"));
             }
         }
 
@@ -214,7 +214,7 @@ impl Validatable for CoreInstance {
                     return Err(validation_error!(
                         "Module index {} seems unreasonably large",
                         module_idx
-                    ;
+                    ));
                 }
 
                 // Validate arg references
@@ -222,7 +222,7 @@ impl Validatable for CoreInstance {
                     if arg_ref.name.is_empty() {
                         return Err(Error::validation_error(
                             "Arg reference name cannot be empty",
-                        ;
+                        ));
                     }
                 }
 
@@ -234,14 +234,14 @@ impl Validatable for CoreInstance {
                     if export.name.is_empty() {
                         return Err(Error::validation_error(
                             "Inline export name cannot be empty",
-                        ;
+                        ));
                     }
                     // Reasonable index limit
                     if export.idx > 100_000 {
                         return Err(validation_error!(
                             "Export index {} seems unreasonably large",
                             export.idx
-                        ;
+                        ));
                     }
                 }
 
@@ -321,14 +321,14 @@ impl Validatable for CoreType {
                     return Err(validation_error!(
                         "Function has too many parameters ({})",
                         params.len()
-                    ;
+                    ));
                 }
 
                 if results.len() > 1000 {
                     return Err(validation_error!(
                         "Function has too many results ({})",
                         results.len()
-                    ;
+                    ));
                 }
 
                 Ok(())
@@ -337,17 +337,17 @@ impl Validatable for CoreType {
                 // Validate imports
                 for (namespace, name, _) in imports {
                     if namespace.is_empty() {
-                        return Err(Error::validation_error("Import namespace cannot be empty";
+                        return Err(Error::validation_error("Import namespace cannot be empty"));
                     }
                     if name.is_empty() {
-                        return Err(Error::validation_error("Import name cannot be empty";
+                        return Err(Error::validation_error("Import name cannot be empty"));
                     }
                 }
 
                 // Validate exports
                 for (name, _) in exports {
                     if name.is_empty() {
-                        return Err(Error::validation_error("Export name cannot be empty";
+                        return Err(Error::validation_error("Export name cannot be empty"));
                     }
                 }
 
@@ -969,16 +969,16 @@ impl ImportName {
     /// Add package reference to an import name
     #[cfg(feature = "std")]
     pub fn with_package(mut self, package: PackageReference) -> Self {
-        self.package = Some(package;
+        self.package = Some(package);
         self
     }
 
     /// Get the full import path as a string
     #[cfg(feature = "std")]
     pub fn full_path(&self) -> String {
-        let mut path = format!("{}.{}", self.namespace, self.name;
+        let mut path = format!("{}.{}", self.namespace, self.name);
         for nested in &self.nested {
-            path.push_str(&format!(".{}", nested;
+            path.push_str(&format!(".{}", nested));
         }
         path
     }
@@ -1015,13 +1015,13 @@ impl ExportName {
 
     /// Add semver compatibility information
     pub fn with_semver(mut self, semver: String) -> Self {
-        self.semver = Some(semver;
+        self.semver = Some(semver);
         self
     }
 
     /// Add integrity hash for content verification
     pub fn with_integrity(mut self, integrity: String) -> Self {
-        self.integrity = Some(integrity;
+        self.integrity = Some(integrity);
         self
     }
 
@@ -1029,7 +1029,7 @@ impl ExportName {
     pub fn full_path(&self) -> String {
         let mut path = self.name.clone();
         for nested in &self.nested {
-            path.push_str(&format!(".{}", nested;
+            path.push_str(&format!(".{}", nested));
         }
         path
     }
@@ -1120,7 +1120,7 @@ impl Validatable for Instance {
                     return Err(validation_error!(
                         "Component index {} seems unreasonably large",
                         component_idx
-                    ;
+                    ));
                 }
 
                 // Validate arg references
@@ -1128,7 +1128,7 @@ impl Validatable for Instance {
                     if arg_ref.name.is_empty() {
                         return Err(Error::validation_error(
                             "Arg reference name cannot be empty",
-                        ;
+                        ));
                     }
                 }
 
@@ -1140,7 +1140,7 @@ impl Validatable for Instance {
                     if export.name.is_empty() {
                         return Err(Error::validation_error(
                             "Inline export name cannot be empty",
-                        ;
+                        ));
                     }
                 }
 
@@ -1160,11 +1160,11 @@ impl Validatable for Alias {
                     return Err(validation_error!(
                         "Instance index {} seems unreasonably large",
                         instance_idx
-                    ;
+                    ));
                 }
 
                 if name.is_empty() {
-                    return Err(Error::validation_error("Export name cannot be empty";
+                    return Err(Error::validation_error("Export name cannot be empty"));
                 }
 
                 Ok(())
@@ -1176,11 +1176,11 @@ impl Validatable for Alias {
                     return Err(validation_error!(
                         "Instance index {} seems unreasonably large",
                         instance_idx
-                    ;
+                    ));
                 }
 
                 if name.is_empty() {
-                    return Err(Error::validation_error("Export name cannot be empty";
+                    return Err(Error::validation_error("Export name cannot be empty"));
                 }
 
                 Ok(())
@@ -1190,11 +1190,11 @@ impl Validatable for Alias {
                     return Err(validation_error!(
                         "Outer count {} seems unreasonably large",
                         count
-                    ;
+                    ));
                 }
 
                 if *idx > 10000 {
-                    return Err(validation_error!("Index {} seems unreasonably large", idx;
+                    return Err(validation_error!("Index {} seems unreasonably large", idx));
                 }
 
                 Ok(())
@@ -1210,17 +1210,17 @@ impl Validatable for ComponentType {
                 // Validate imports
                 for (namespace, name, _) in imports {
                     if namespace.is_empty() {
-                        return Err(Error::validation_error("Import namespace cannot be empty";
+                        return Err(Error::validation_error("Import namespace cannot be empty"));
                     }
                     if name.is_empty() {
-                        return Err(Error::validation_error("Import name cannot be empty";
+                        return Err(Error::validation_error("Import name cannot be empty"));
                     }
                 }
 
                 // Validate exports
                 for (name, _) in exports {
                     if name.is_empty() {
-                        return Err(Error::validation_error("Export name cannot be empty";
+                        return Err(Error::validation_error("Export name cannot be empty"));
                     }
                 }
 
@@ -1230,7 +1230,7 @@ impl Validatable for ComponentType {
                 // Validate exports
                 for (name, _) in exports {
                     if name.is_empty() {
-                        return Err(Error::validation_error("Export name cannot be empty";
+                        return Err(Error::validation_error("Export name cannot be empty"));
                     }
                 }
 
@@ -1242,13 +1242,13 @@ impl Validatable for ComponentType {
                     return Err(validation_error!(
                         "Function has too many parameters ({})",
                         params.len()
-                    ;
+                    ));
                 }
 
                 // Check param names
                 for (name, _) in params {
                     if name.is_empty() {
-                        return Err(Error::validation_error("Parameter name cannot be empty";
+                        return Err(Error::validation_error("Parameter name cannot be empty"));
                     }
                 }
 
@@ -1256,7 +1256,7 @@ impl Validatable for ComponentType {
                     return Err(validation_error!(
                         "Function has too many results ({})",
                         results.len()
-                    ;
+                    ));
                 }
 
                 Ok(())
@@ -1283,14 +1283,14 @@ impl Validatable for Canon {
                     return Err(validation_error!(
                         "Function index {} seems unreasonably large",
                         func_idx
-                    ;
+                    ));
                 }
 
                 if *type_idx > 10000 {
                     return Err(validation_error!(
                         "Type index {} seems unreasonably large",
                         type_idx
-                    ;
+                    ));
                 }
 
                 Ok(())
@@ -1300,7 +1300,7 @@ impl Validatable for Canon {
                     return Err(validation_error!(
                         "Function index {} seems unreasonably large",
                         func_idx
-                    ;
+                    ));
                 }
 
                 Ok(())
@@ -1317,21 +1317,21 @@ impl Validatable for Start {
             return Err(validation_error!(
                 "Function index {} seems unreasonably large",
                 self.func_idx
-            ;
+            ));
         }
 
         if self.args.len() > 1000 {
             return Err(validation_error!(
                 "Start function has too many arguments ({})",
                 self.args.len()
-            ;
+            ));
         }
 
         if self.results > 1000 {
             return Err(validation_error!(
                 "Start function has too many results ({})",
                 self.results
-            ;
+            ));
         }
 
         Ok(())
@@ -1342,24 +1342,24 @@ impl Validatable for Import {
     fn validate(&self) -> Result<()> {
         // Validate import name
         if self.name.namespace.is_empty() {
-            return Err(Error::validation_error("Import namespace cannot be empty";
+            return Err(Error::validation_error("Import namespace cannot be empty"));
         }
 
         if self.name.name.is_empty() {
-            return Err(Error::validation_error("Import name cannot be empty";
+            return Err(Error::validation_error("Import name cannot be empty"));
         }
 
         // Nested namespaces should not be empty strings
         for nested in &self.name.nested {
             if nested.is_empty() {
-                return Err(Error::validation_error("Nested namespace cannot be empty";
+                return Err(Error::validation_error("Nested namespace cannot be empty"));
             }
         }
 
         // Validate package reference if present
         if let Some(pkg) = &self.name.package {
             if pkg.name.is_empty() {
-                return Err(Error::validation_error("Package name cannot be empty";
+                return Err(Error::validation_error("Package name cannot be empty"));
             }
         }
 
@@ -1371,13 +1371,13 @@ impl Validatable for Export {
     fn validate(&self) -> Result<()> {
         // Validate export name
         if self.name.name.is_empty() {
-            return Err(Error::validation_error("Export name cannot be empty";
+            return Err(Error::validation_error("Export name cannot be empty"));
         }
 
         // Nested namespaces should not be empty strings
         for nested in &self.name.nested {
             if nested.is_empty() {
-                return Err(Error::validation_error("Nested namespace cannot be empty";
+                return Err(Error::validation_error("Nested namespace cannot be empty"));
             }
         }
 
@@ -1386,7 +1386,7 @@ impl Validatable for Export {
             return Err(validation_error!(
                 "Export index {} seems unreasonably large",
                 self.idx
-            ;
+            ));
         }
 
         Ok(())
@@ -1400,7 +1400,7 @@ impl Validatable for Value {
             return Err(validation_error!(
                 "Value data size {} seems unreasonably large",
                 self.data.len()
-            ;
+            ));
         }
 
         // Check value expression if present
@@ -1411,7 +1411,7 @@ impl Validatable for Value {
                         return Err(validation_error!(
                             "Item reference index {} seems unreasonably large",
                             idx
-                        ;
+                        ));
                     }
                 },
                 ValueExpression::GlobalInit { global_idx } => {
@@ -1419,7 +1419,7 @@ impl Validatable for Value {
                         return Err(validation_error!(
                             "Global index {} seems unreasonably large",
                             global_idx
-                        ;
+                        ));
                     }
                 },
                 ValueExpression::FunctionCall { func_idx, args } => {
@@ -1427,13 +1427,14 @@ impl Validatable for Value {
                         return Err(validation_error!(
                             "Function index {} seems unreasonably large",
                             func_idx
-                        ;
+                        ));
                     }
 
                     if args.len() > 1000 {
                         return Err(validation_error!(
                             "Function call has too many arguments ({})",
                             args.len()
+                        ));
                         ;
                     }
                 },

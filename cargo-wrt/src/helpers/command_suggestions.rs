@@ -284,7 +284,7 @@ impl CommandSuggestionEngine {
         suggestions.extend(self.suggest_workflows(&input_lower));
 
         // Sort by confidence and limit results
-        suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap();
+        suggestions.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
         suggestions.truncate(5);
 
         suggestions

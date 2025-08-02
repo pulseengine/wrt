@@ -705,7 +705,7 @@ impl CfiExecutionEngine {
 
         // Update peak shadow stack depth tracking
         if self.cfi_context.shadow_stack.len() > self.statistics.peak_shadow_stack_depth {
-            self.statistics.peak_shadow_stack_depth = self.cfi_context.shadow_stack.len);
+            self.statistics.peak_shadow_stack_depth = self.cfi_context.shadow_stack.len();
         }
 
         Ok(())

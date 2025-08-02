@@ -97,7 +97,7 @@ pub struct ToolManager {
 impl ToolManager {
     /// Create a new tool manager with default tool definitions
     pub fn new() -> Self {
-        let version_config = ToolVersionConfig::load_or_default);
+        let version_config = ToolVersionConfig::load_or_default();
         let mut tools = HashMap::new();
 
         // Core tools (should always be available)
@@ -113,7 +113,7 @@ impl ToolManager {
                     .map(String::from)
                     .collect(),
             },
-        ;
+        );
 
         tools.insert(
             "rustc".to_string(),
@@ -124,7 +124,7 @@ impl ToolManager {
                 required:        true,
                 used_by:         vec!["build", "test"].into_iter().map(String::from).collect(),
             },
-        ;
+        );
 
         // Rust toolchain components (managed via rustup)
         tools.insert(
@@ -136,7 +136,7 @@ impl ToolManager {
                 required:        false,
                 used_by:         vec!["check", "ci"].into_iter().map(String::from).collect(),
             },
-        ;
+        );
 
         tools.insert(
             "rustfmt".to_string(),
@@ -147,7 +147,7 @@ impl ToolManager {
                 required:        false,
                 used_by:         vec!["check", "ci"].into_iter().map(String::from).collect(),
             },
-        ;
+        );
 
         // Optional tools for advanced features
         tools.insert(
@@ -163,7 +163,7 @@ impl ToolManager {
                     .map(String::from)
                     .collect(),
             },
-        ;
+        );
 
         tools.insert(
             "cargo-fuzz".to_string(),
@@ -174,7 +174,7 @@ impl ToolManager {
                 required:        false,
                 used_by:         vec!["fuzz"].into_iter().map(String::from).collect(),
             },
-        ;
+        );
 
         tools.insert(
             "git".to_string(),
@@ -185,7 +185,7 @@ impl ToolManager {
                 required:        false,
                 used_by:         vec!["setup"].into_iter().map(String::from).collect(),
             },
-        ;
+        );
 
         // Documentation tools
         tools.insert(
@@ -198,7 +198,7 @@ impl ToolManager {
                 required:        false,
                 used_by:         vec!["docs"].into_iter().map(String::from).collect(),
             },
-        ;
+        );
 
         tools.insert(
             "python-venv".to_string(),
@@ -210,7 +210,7 @@ impl ToolManager {
                 required:        false,
                 used_by:         vec!["docs"].into_iter().map(String::from).collect(),
             },
-        ;
+        );
 
         Self {
             tools,
@@ -361,7 +361,7 @@ impl ToolManager {
         let mut results = HashMap::new();
 
         for tool_name in self.tools.keys() {
-            results.insert(tool_name.clone(), self.check_tool(tool_name;
+            results.insert(tool_name.clone(), self.check_tool(tool_name));
         }
 
         results
@@ -381,7 +381,7 @@ impl ToolManager {
                 tool_info.description,
                 tool_info.install_command.bright_green(),
                 tool_name.bright_yellow()
-            ;
+            );
             BuildError::Tool(message)
         } else {
             BuildError::Tool(format!(
@@ -394,9 +394,9 @@ impl ToolManager {
     /// Print a tool status report
     pub fn print_tool_status(&self) {
         println!("{} Tool Status Report", "🔧".bright_blue);
-        println!);
+        println!();
 
-        let results = self.check_all_tools);
+        let results = self.check_all_tools();
 
         // Required tools
         println!("{}", "Required Tools:".bright_yellow);
@@ -404,7 +404,7 @@ impl ToolManager {
             if tool_info.required {
                 if let Some(status) = results.get(tool_name) {
                     let status_icon = if status.available { "✅" } else { "❌" };
-                    let (version_info, status_detail) = self.format_version_status(&status;
+                    let (version_info, status_detail) = self.format_version_status(&status);
 
                     println!(
                         "  {} {} - {}{}{}",
@@ -413,18 +413,18 @@ impl ToolManager {
                         tool_info.description,
                         status_detail,
                         version_info.bright_black()
-                    ;
+                    );
                 }
             }
         }
 
-        println!);
+        println!();
         println!("{}", "Optional Tools:".bright_yellow);
         for (tool_name, tool_info) in &self.tools {
             if !tool_info.required {
                 if let Some(status) = results.get(tool_name) {
                     let status_icon = if status.available { "✅" } else { "⚠️" };
-                    let (version_info, status_detail) = self.format_version_status(&status;
+                    let (version_info, status_detail) = self.format_version_status(&status);
 
                     println!(
                         "  {} {} - {}{}{}",
@@ -433,23 +433,23 @@ impl ToolManager {
                         tool_info.description,
                         status_detail,
                         version_info.bright_black()
-                    ;
+                    );
 
                     if !status.available {
                         println!(
                             "      💿 Install: {}",
                             tool_info.install_command.bright_green()
-                        ;
+                        );
                         println!(
                             "      📋 Used by: {}",
                             tool_info.used_by.join(", ").bright_magenta()
-                        ;
+                        );
                     }
                 }
             }
         }
 
-        println!);
+        println!();
     }
 
     /// Get tool info for a specific tool
@@ -505,7 +505,7 @@ impl ToolManager {
 
     /// Install or update a tool if needed
     pub fn install_tool_if_needed(&self, tool_name: &str) -> BuildResult<bool> {
-        let status = self.check_tool(tool_name;
+        let status = self.check_tool(tool_name);
 
         // If tool is available and version is compatible, skip installation
         if status.available && !status.needs_action {
@@ -514,7 +514,7 @@ impl ToolManager {
                     println!(
                         "  ✅ {} is already installed with compatible version",
                         tool_name.bright_cyan()
-                    ;
+                    );
                     return Ok(false); // No action needed
                 },
                 VersionStatus::Newer {
@@ -526,7 +526,7 @@ impl ToolManager {
                         tool_name.bright_cyan(),
                         installed.bright_yellow(),
                         required.bright_blue()
-                    ;
+                    );
                     return Ok(false); // No action needed, newer is fine
                 },
                 _ => {}, // Continue with installation
@@ -540,7 +540,7 @@ impl ToolManager {
                 return Err(BuildError::Tool(format!(
                     "No installation command configured for tool '{}'",
                     tool_name
-                );
+                )));
             },
         };
 
@@ -554,7 +554,7 @@ impl ToolManager {
                     tool_name.bright_cyan(),
                     installed.bright_red(),
                     required.bright_green()
-                ;
+                );
             },
             VersionStatus::Mismatch {
                 installed,
@@ -565,14 +565,14 @@ impl ToolManager {
                     tool_name.bright_cyan(),
                     installed.bright_red(),
                     required.bright_green()
-                ;
+                );
             },
             _ => {
                 println!(
                     "  📦 Installing {} for {}",
                     tool_name.bright_cyan(),
                     "build system functionality".bright_blue()
-                ;
+                );
             },
         }
 
@@ -585,7 +585,7 @@ impl ToolManager {
             println!(
                 "    💡 Manual installation required: {}",
                 install_cmd.bright_yellow()
-            ;
+            );
             Ok(false)
         }
     }
@@ -616,13 +616,13 @@ impl ToolManager {
                     println!(
                         "    ⚠️  Kani setup had issues: {}",
                         String::from_utf8_lossy(&setup_output.stderr).bright_yellow()
-                    ;
+                    );
                 }
             }
 
             Ok(true)
         } else {
-            let error_msg = String::from_utf8_lossy(&output.stderr;
+            let error_msg = String::from_utf8_lossy(&output.stderr);
             Err(BuildError::Tool(format!(
                 "Failed to install {}: {}",
                 tool_name, error_msg
@@ -643,7 +643,7 @@ impl ToolManager {
             println!("    ✅ Rustup command executed successfully");
             Ok(true)
         } else {
-            let error_msg = String::from_utf8_lossy(&output.stderr;
+            let error_msg = String::from_utf8_lossy(&output.stderr);
             Err(BuildError::Tool(format!(
                 "Failed to execute rustup command: {}",
                 error_msg
@@ -653,7 +653,7 @@ impl ToolManager {
 
     /// Install all tools that need updates
     pub fn install_all_needed_tools(&self) -> BuildResult<()> {
-        let managed_tools = self.version_config.get_managed_tools);
+        let managed_tools = self.version_config.get_managed_tools();
         let mut installed_any = false;
 
         for tool_name in managed_tools {
@@ -672,9 +672,9 @@ impl ToolManager {
         }
 
         if installed_any {
-            println!);
+            println!();
             println!("🔄 Verifying installations...");
-            self.print_tool_status);
+            self.print_tool_status();
         }
 
         Ok(())
@@ -728,7 +728,7 @@ impl ToolManager {
         }
 
         // clippy is called via `cargo clippy`
-        let output = Command::new("cargo").args(["clippy", "--version"]).output);
+        let output = Command::new("cargo").args(["clippy", "--version"]).output();
 
         match output {
             Ok(output) if output.status.success() => {
@@ -736,7 +736,7 @@ impl ToolManager {
                     .lines()
                     .next()
                     .unwrap_or("unknown")
-                    .to_string());
+                    .to_string();
 
                 ToolStatus {
                     available:      true,
@@ -783,7 +783,7 @@ impl ToolManager {
         }
 
         // rustfmt is called via `cargo fmt`
-        let output = Command::new("cargo").args(["fmt", "--version"]).output);
+        let output = Command::new("cargo").args(["fmt", "--version"]).output();
 
         match output {
             Ok(output) if output.status.success() => {
@@ -791,7 +791,7 @@ impl ToolManager {
                     .lines()
                     .next()
                     .unwrap_or("unknown")
-                    .to_string());
+                    .to_string();
 
                 ToolStatus {
                     available:      true,
@@ -825,7 +825,7 @@ impl ToolManager {
 
     fn check_cargo_fuzz(&self) -> ToolStatus {
         // cargo-fuzz is called via `cargo +nightly fuzz`
-        let output = Command::new("cargo").args(["+nightly", "fuzz", "--help"]).output);
+        let output = Command::new("cargo").args(["+nightly", "fuzz", "--help"]).output();
 
         match output {
             Ok(output) if output.status.success() => ToolStatus {
@@ -861,7 +861,7 @@ impl ToolManager {
     }
 
     fn check_python_venv(&self) -> ToolStatus {
-        let output = Command::new("python3").args(["-m", "venv", "--help"]).output);
+        let output = Command::new("python3").args(["-m", "venv", "--help"]).output();
 
         match output {
             Ok(output) if output.status.success() => ToolStatus {
@@ -911,7 +911,7 @@ impl ToolManager {
 
     /// Helper method to check a command and extract version
     fn check_command_version(&self, command: &str, args: &[&str]) -> ToolStatus {
-        let output = Command::new(command).args(args).output);
+        let output = Command::new(command).args(args).output();
 
         match output {
             Ok(output) if output.status.success() => {
@@ -919,7 +919,7 @@ impl ToolManager {
                     .lines()
                     .next()
                     .unwrap_or("unknown")
-                    .to_string());
+                    .to_string();
 
                 ToolStatus {
                     available:      true,
@@ -957,10 +957,10 @@ impl Default for ToolManager {
 /// Check if a tool is available before using it
 pub fn ensure_tool_available(tool_name: &str, command: &str) -> BuildResult<()> {
     let manager = ToolManager::new();
-    let status = manager.check_tool(tool_name;
+    let status = manager.check_tool(tool_name);
 
     if !status.available {
-        return Err(manager.generate_missing_tool_error(tool_name, command;
+        return Err(manager.generate_missing_tool_error(tool_name, command));
     }
 
     Ok(())
@@ -985,9 +985,9 @@ mod tests {
     #[test]
     fn test_tool_manager_creation() {
         let manager = ToolManager::new();
-        assert!(manager.tools.contains_key("cargo");
-        assert!(manager.tools.contains_key("rustc");
-        assert!(manager.tools.contains_key("kani");
+        assert!(manager.tools.contains_key("cargo"));
+        assert!(manager.tools.contains_key("rustc"));
+        assert!(manager.tools.contains_key("kani"));
     }
 
     #[test]
@@ -995,16 +995,16 @@ mod tests {
         let manager = ToolManager::new();
 
         // Cargo should be available in any Rust environment
-        let cargo_status = manager.check_tool("cargo";
+        let cargo_status = manager.check_tool("cargo");
         assert!(cargo_status.available);
-        assert!(cargo_status.version.is_some();
+        assert!(cargo_status.version.is_some());
     }
 
     #[test]
     fn test_unknown_tool() {
         let manager = ToolManager::new();
-        let status = manager.check_tool("nonexistent-tool";
+        let status = manager.check_tool("nonexistent-tool");
         assert!(!status.available);
-        assert!(status.error.is_some();
+        assert!(status.error.is_some());
     }
 }

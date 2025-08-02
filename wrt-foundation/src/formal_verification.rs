@@ -9,9 +9,13 @@
 use crate::{
     budget_aware_provider::CrateId,
     budget_verification::CRATE_BUDGETS,
-    memory_coordinator::{CrateIdentifier, GenericMemoryCoordinator},
+    memory_coordinator::{
+        CrateIdentifier,
+        GenericMemoryCoordinator,
+    },
     wrt_memory_system::CapabilityWrtFactory,
-    Error, Result,
+    Error,
+    Result,
 };
 
 #[cfg(kani)]
@@ -73,7 +77,7 @@ mod proofs {
                 // If allocation succeeded, it must be within crate budget
                 assert!(size <= crate_budget);
                 assert!(coordinator.get_crate_allocation(CrateId::Foundation) <= crate_budget);
-            }
+            },
             Err(_) => {
                 // If allocation failed, it was because it would exceed budget
                 assert!(
@@ -81,7 +85,7 @@ mod proofs {
                         || coordinator.get_crate_allocation(CrateId::Foundation) + size
                             > crate_budget
                 );
-            }
+            },
         }
     }
 
@@ -120,7 +124,10 @@ fn memory_coordinator_harness() {
     kani::assume(budget2 > 0 && budget2 < 1000000);
     kani::assume(total_budget >= budget1 + budget2);
 
-    let budgets = [(CrateId::Foundation, budget1), (CrateId::Component, budget2)];
+    let budgets = [
+        (CrateId::Foundation, budget1),
+        (CrateId::Component, budget2),
+    ];
 
     if coordinator.initialize(budgets.iter().copied(), total_budget).is_ok() {
         // Property: Coordinator is properly initialized

@@ -7,16 +7,30 @@
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 //! SW-REQ-ID: REQ_MEM_003 - Automatic cleanup
 
+use wrt_error::helpers::memory_limit_exceeded_error;
+
 use crate::{
     budget_aware_provider::CrateId,
     codes,
-    generic_memory_guard::{GenericMemoryGuard, ManagedMemoryProvider, MemoryCoordinator},
-    generic_provider_factory::{GenericBudgetAwareFactory, ProviderFactory},
-    memory_coordinator::{AllocationId, CrateIdentifier, GenericMemoryCoordinator},
+    generic_memory_guard::{
+        GenericMemoryGuard,
+        ManagedMemoryProvider,
+        MemoryCoordinator,
+    },
+    generic_provider_factory::{
+        GenericBudgetAwareFactory,
+        ProviderFactory,
+    },
+    memory_coordinator::{
+        AllocationId,
+        CrateIdentifier,
+        GenericMemoryCoordinator,
+    },
     safe_memory::NoStdProvider,
-    Error, ErrorCategory, Result,
+    Error,
+    ErrorCategory,
+    Result,
 };
-use wrt_error::helpers::memory_limit_exceeded_error;
 
 /// Maximum number of crates in the WRT system
 pub const WRT_MAX_CRATES: usize = 32;
@@ -28,8 +42,9 @@ pub type WrtMemoryCoordinator = GenericMemoryCoordinator<CrateId, WRT_MAX_CRATES
 pub type WrtMemoryGuard<const N: usize> =
     GenericMemoryGuard<NoStdProvider<N>, WrtMemoryCoordinator, CrateId>;
 
-// REMOVED: Legacy global memory coordinator eliminated in favor of capability-based system
-// Use MemoryCapabilityContext through get_global_capability_context() for memory management
+// REMOVED: Legacy global memory coordinator eliminated in favor of
+// capability-based system Use MemoryCapabilityContext through
+// get_global_capability_context() for memory management
 
 // CrateIdentifier implementation is in budget_aware_provider.rs
 
@@ -77,7 +92,9 @@ impl<const N: usize> ProviderFactory for SizedNoStdProviderFactory<N> {
 
     fn create_provider(&self, size: usize) -> Result<Self::Provider> {
         if size > N {
-            return Err(memory_limit_exceeded_error("Requested size exceeds provider capacity"));
+            return Err(memory_limit_exceeded_error(
+                "Requested size exceeds provider capacity",
+            ));
         }
 
         #[allow(deprecated)]
@@ -93,18 +110,22 @@ pub type WrtBudgetAwareFactory<const N: usize> =
 
 /// Modern capability-based factory for WRT memory providers
 ///
-/// This replaces the deprecated WrtProviderFactory with a capability-driven approach
-/// that integrates with the MemoryCapabilityContext system.
+/// This replaces the deprecated WrtProviderFactory with a capability-driven
+/// approach that integrates with the MemoryCapabilityContext system.
 pub struct CapabilityWrtFactory;
 
 impl CapabilityWrtFactory {
     /// Create a capability-gated provider using the global capability context
-    pub fn create_provider<const N: usize>(crate_id: CrateId) -> Result<crate::safe_memory::NoStdProvider<N>> {
+    pub fn create_provider<const N: usize>(
+        crate_id: CrateId,
+    ) -> Result<crate::safe_memory::NoStdProvider<N>> {
         use crate::memory_init::get_global_capability_context;
         let context = get_global_capability_context()?;
-        
+
         // Use the context to create a capability-guarded provider
-        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<N>(context, crate_id)
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<N>(
+            context, crate_id,
+        )
     }
 
     /// Initialize the capability system with default crate budgets

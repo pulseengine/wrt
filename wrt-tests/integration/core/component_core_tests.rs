@@ -47,7 +47,7 @@ fn test_core_instance_with_multiple_arguments() -> Result<()> {
     let (instances, bytes_read) = parse_core_instance_section(&bytes)?;
     
     // Verify section was parsed correctly
-    assert_eq!(bytes_read, bytes.len);
+    assert_eq!(bytes_read, bytes.len();
     assert_eq!(instances.len(), 1);
     
     // Check the argument parsing

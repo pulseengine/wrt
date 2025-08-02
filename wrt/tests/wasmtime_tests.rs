@@ -24,10 +24,10 @@ fn test_memory_persistence() -> Result<()> {
     "#;
 
     // Convert WAT to binary WebAssembly
-    let wasm = wat::parse_str(wat).expect(".expect("Failed to parse WAT"));")
+    let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module
-    let module = Module::from_bytes(&wasm).expect(".expect("Failed to parse WASM"));")
+    let module = Module::from_bytes(&wasm).expect("Failed to parse WASM");
 
     // Create a new engine with the StacklessEngine
     // This uses the correct implementation that initializes memory properly
@@ -81,10 +81,10 @@ fn test_memory_in_single_function() -> Result<()> {
     "#;
 
     // Convert WAT to binary WebAssembly
-    let wasm = wat::parse_str(wat).expect(".expect("Failed to parse WAT"));")
+    let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module
-    let module = Module::from_bytes(&wasm).expect(".expect("Failed to parse WASM"));")
+    let module = Module::from_bytes(&wasm).expect("Failed to parse WASM");
 
     // Create a new engine with the StacklessEngine
     // This uses the correct implementation that initializes memory properly
@@ -139,10 +139,10 @@ fn test_memory_single_function_combined() -> Result<()> {
     "#;
 
     // Convert WAT to binary WebAssembly
-    let wasm = wat::parse_str(wat).expect(".expect("Failed to parse WAT"));")
+    let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module
-    let module = Module::from_bytes(&wasm).expect(".expect("Failed to parse WASM"));")
+    let module = Module::from_bytes(&wasm).expect("Failed to parse WASM");
 
     // Create a new engine with the StacklessEngine
     let mut engine = wrt::new_stackless_engine();

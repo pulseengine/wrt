@@ -7,14 +7,24 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use core::{fmt, str::FromStr};
+use core::{
+    fmt,
+    str::FromStr,
+};
 
 // Error types are imported through crate root
 use crate::{
     bounded::BoundedVec,
     prelude::*,
     safe_memory::NoStdProvider,
-    traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
+    traits::{
+        Checksummable,
+        FromBytes,
+        ReadStream,
+        SerializationError,
+        ToBytes,
+        WriteStream,
+    },
     verification::Checksum,
     WrtResult,
 };
@@ -282,7 +292,7 @@ impl BuiltinType {
             // Resource built-ins are always available
             Self::ResourceCreate | Self::ResourceDrop | Self::ResourceRep | Self::ResourceGet => {
                 true
-            }
+            },
 
             // Feature-gated built-ins
             #[cfg(feature = "component-model-async")]
@@ -365,14 +375,32 @@ mod tests {
 
     #[test]
     fn test_builtin_from_str() {
-        assert_eq!(BuiltinType::from_str("resource.create"), Ok(BuiltinType::ResourceCreate));
-        assert_eq!(BuiltinType::from_str("resource.drop"), Ok(BuiltinType::ResourceDrop));
-        assert_eq!(BuiltinType::from_str("resource.rep"), Ok(BuiltinType::ResourceRep));
-        assert_eq!(BuiltinType::from_str("resource.get"), Ok(BuiltinType::ResourceGet));
-        assert_eq!(BuiltinType::from_str("unknown.builtin"), Err(ParseBuiltinError));
+        assert_eq!(
+            BuiltinType::from_str("resource.create"),
+            Ok(BuiltinType::ResourceCreate)
+        );
+        assert_eq!(
+            BuiltinType::from_str("resource.drop"),
+            Ok(BuiltinType::ResourceDrop)
+        );
+        assert_eq!(
+            BuiltinType::from_str("resource.rep"),
+            Ok(BuiltinType::ResourceRep)
+        );
+        assert_eq!(
+            BuiltinType::from_str("resource.get"),
+            Ok(BuiltinType::ResourceGet)
+        );
+        assert_eq!(
+            BuiltinType::from_str("unknown.builtin"),
+            Err(ParseBuiltinError)
+        );
 
         // Also test the parse convenience method
-        assert_eq!(BuiltinType::parse("resource.create"), Some(BuiltinType::ResourceCreate));
+        assert_eq!(
+            BuiltinType::parse("resource.create"),
+            Some(BuiltinType::ResourceCreate)
+        );
         assert_eq!(BuiltinType::parse("unknown.builtin"), None);
     }
 

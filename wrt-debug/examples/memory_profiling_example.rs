@@ -12,14 +12,14 @@ use wrt_foundation::budget_aware_provider::CrateId;
 fn main() {
     // Initialize global memory system first
     wrt_foundation::memory_system_initializer::presets::development()
-        .expect(".expect("Failed to initialize memory system"));")
+        .expect("Failed to initialize memory system");
 
     // Initialize the memory profiler
     init_profiler().unwrap();
 
     // Enable allocation tracking and profiling
-    MemoryProfiler::enable_allocation_tracking);
-    MemoryProfiler::enable_profiling);
+    MemoryProfiler::enable_allocation_tracking();
+    MemoryProfiler::enable_profiling();
 
     // Track some allocations
     let alloc_id1 = with_profiler(|profiler| {
@@ -49,7 +49,7 @@ fn main() {
             sum += i;
         }
         sum
-    };
+    });
 
     println!("Computation result: {}", result);
 
@@ -73,7 +73,7 @@ fn main() {
             println!(
                 "  Allocation #{} ({}): {} bytes - confidence: {}%",
                 leak.allocation.id, leak.reason, leak.allocation.size, leak.confidence
-            ;
+            );
         }
     }
 
@@ -81,13 +81,13 @@ fn main() {
     println!(
         "  Average operation time: {} µs",
         report.performance_metrics.avg_operation_time
-    ;
+    );
     println!(
         "  Memory churn rate: {} bytes/µs",
         report.performance_metrics.memory_churn_rate
-    ;
+    );
 
     // Complete memory system cleanup
     wrt_foundation::memory_system_initializer::complete_global_memory_initialization()
-        .expect(".expect("Failed to complete memory system"));")
+        .expect("Failed to complete memory system");
 }

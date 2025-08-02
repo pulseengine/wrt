@@ -257,7 +257,7 @@ impl AsyncResourceCleanupManager {
         let mut results = Vec::new();
         
         #[cfg(feature = "std")]
-        let entries = self.cleanup_entries.remove(&instance_id).unwrap_or_default);
+        let entries = self.cleanup_entries.remove(&instance_id).unwrap_or_default();
         
         #[cfg(not(any(feature = "std", )))]
         let entries = {
@@ -268,13 +268,13 @@ impl AsyncResourceCleanupManager {
             for (i, (id, entries)) in self.cleanup_entries.iter().enumerate() {
                 if *id == instance_id {
                     found_entries = entries.clone();
-                    index_to_remove = Some(i;
+                    index_to_remove = Some(i);
                     break;
                 }
             }
             
             if let Some(index) = index_to_remove {
-                self.cleanup_entries.remove(index;
+                self.cleanup_entries.remove(index);
             }
             
             found_entries
@@ -284,21 +284,21 @@ impl AsyncResourceCleanupManager {
         #[cfg(feature = "std")]
         let mut sorted_entries = entries;
         #[cfg(feature = "std")]
-        sorted_entries.sort_by(|a, b| b.priority.cmp(&a.priority;
+        sorted_entries.sort_by(|a, b| b.priority.cmp(&a.priority));
 
         #[cfg(not(any(feature = "std", )))]
         let mut sorted_entries = entries;
         #[cfg(not(any(feature = "std", )))]
-        self.sort_entries_by_priority(&mut sorted_entries;
+        self.sort_entries_by_priority(&mut sorted_entries);
 
         // Execute each cleanup
         for entry in sorted_entries {
-            let result = self.execute_single_cleanup(&entry;
+            let result = self.execute_single_cleanup(&entry);
             
             match &result {
                 CleanupResult::Success => {
                     self.stats.total_executed += 1;
-                    self.update_type_stats(&entry.resource_type;
+                    self.update_type_stats(&entry.resource_type);
                 }
                 CleanupResult::Failed(_) | CleanupResult::CriticalFailure(_) => {
                     self.stats.failed_cleanups += 1;
@@ -368,26 +368,26 @@ impl AsyncResourceCleanupManager {
 
     /// Reset all statistics
     pub fn reset_stats(&mut self) {
-        self.stats = AsyncCleanupStats::default());
+        self.stats = AsyncCleanupStats::default();
     }
 
     /// Remove all cleanup entries for an instance
     pub fn clear_instance(&mut self, instance_id: ComponentInstanceId) -> Result<()> {
         #[cfg(feature = "std")]
         {
-            self.cleanup_entries.remove(&instance_id;
+            self.cleanup_entries.remove(&instance_id);
         }
         #[cfg(not(any(feature = "std", )))]
         {
             let mut index_to_remove = None;
             for (i, (id, _)) in self.cleanup_entries.iter().enumerate() {
                 if *id == instance_id {
-                    index_to_remove = Some(i;
+                    index_to_remove = Some(i);
                     break;
                 }
             }
             if let Some(index) = index_to_remove {
-                self.cleanup_entries.remove(index;
+                self.cleanup_entries.remove(index);
             }
         }
         Ok(())
@@ -434,7 +434,7 @@ impl AsyncResourceCleanupManager {
         }
 
         // Update peak statistics
-        let total_entries = self.count_total_entries);
+        let total_entries = self.count_total_entries();
         if total_entries > self.stats.peak_cleanup_entries {
             self.stats.peak_cleanup_entries = total_entries;
         }
@@ -580,8 +580,8 @@ mod tests {
     #[test]
     fn test_register_stream_cleanup() {
         let mut manager = AsyncResourceCleanupManager::new().unwrap();
-        let instance_id = ComponentInstanceId(1;
-        let handle = StreamHandle(42;
+        let instance_id = ComponentInstanceId(1);
+        let handle = StreamHandle(42);
         
         let cleanup_data = AsyncCleanupData::Stream {
             handle,
@@ -604,7 +604,7 @@ mod tests {
     #[test]
     fn test_execute_cleanups() {
         let mut manager = AsyncResourceCleanupManager::new().unwrap();
-        let instance_id = ComponentInstanceId(1;
+        let instance_id = ComponentInstanceId(1);
         
         // Register multiple cleanups
         let stream_data = AsyncCleanupData::Stream {
@@ -635,14 +635,14 @@ mod tests {
         ).unwrap();
 
         let results = manager.execute_cleanups(instance_id).unwrap();
-        assert_eq!(results.len(), 2;
+        assert_eq!(results.len(), 2);
         
         // Check that both cleanups succeeded
         for result in &results {
-            assert!(matches!(result, CleanupResult::Success);
+            assert!(matches!(result, CleanupResult::Success));
         }
 
-        assert_eq!(manager.get_stats().total_executed, 2;
+        assert_eq!(manager.get_stats().total_executed, 2);
         assert_eq!(manager.get_stats().stream_cleanups, 1);
         assert_eq!(manager.get_stats().future_cleanups, 1);
     }
@@ -650,7 +650,7 @@ mod tests {
     #[test]
     fn test_cleanup_priority_ordering() {
         let mut manager = AsyncResourceCleanupManager::new().unwrap();
-        let instance_id = ComponentInstanceId(1;
+        let instance_id = ComponentInstanceId(1);
         
         // Register cleanups with different priorities
         manager.register_cleanup(
@@ -677,18 +677,18 @@ mod tests {
         ).unwrap();
 
         let results = manager.execute_cleanups(instance_id).unwrap();
-        assert_eq!(results.len(), 2;
+        assert_eq!(results.len(), 2);
         
         // All should succeed regardless of order
         for result in &results {
-            assert!(matches!(result, CleanupResult::Success);
+            assert!(matches!(result, CleanupResult::Success));
         }
     }
 
     #[test]
     fn test_clear_instance() {
         let mut manager = AsyncResourceCleanupManager::new().unwrap();
-        let instance_id = ComponentInstanceId(1;
+        let instance_id = ComponentInstanceId(1);
         
         manager.register_cleanup(
             instance_id,
@@ -712,16 +712,16 @@ mod tests {
 
     #[test]
     fn test_resource_type_display() {
-        assert_eq!(AsyncResourceType::Stream.to_string(), "stream";
-        assert_eq!(AsyncResourceType::Future.to_string(), "future";
-        assert_eq!(AsyncResourceType::ErrorContext.to_string(), "error-context";
-        assert_eq!(AsyncResourceType::AsyncTask.to_string(), "async-task";
+        assert_eq!(AsyncResourceType::Stream.to_string(), "stream");
+        assert_eq!(AsyncResourceType::Future.to_string(), "future");
+        assert_eq!(AsyncResourceType::ErrorContext.to_string(), "error-context");
+        assert_eq!(AsyncResourceType::AsyncTask.to_string(), "async-task");
     }
 
     #[test]
     fn test_stats_tracking() {
         let mut manager = AsyncResourceCleanupManager::new().unwrap();
-        let instance_id = ComponentInstanceId(1;
+        let instance_id = ComponentInstanceId(1);
         
         // Register different types of cleanups
         manager.register_cleanup(
@@ -748,13 +748,13 @@ mod tests {
         ).unwrap();
 
         let stats_before = manager.get_stats().clone();
-        assert_eq!(stats_before.total_created, 2;
+        assert_eq!(stats_before.total_created, 2);
         assert_eq!(stats_before.total_executed, 0);
 
         manager.execute_cleanups(instance_id).unwrap();
 
-        let stats_after = manager.get_stats);
-        assert_eq!(stats_after.total_executed, 2;
+        let stats_after = manager.get_stats();
+        assert_eq!(stats_after.total_executed, 2);
         assert_eq!(stats_after.stream_cleanups, 1);
         assert_eq!(stats_after.future_cleanups, 1);
     }

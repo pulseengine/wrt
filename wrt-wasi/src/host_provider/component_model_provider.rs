@@ -69,7 +69,7 @@ fn convert_compat_values_to_foundation(values: Vec<crate::Value>) -> Result<Foun
             crate::Value::List(list) => {
                 // For lists, we'll need to convert to an appropriate foundation type
                 // This is a simplification - real implementation would need proper list support
-                return Err(Error::wasi_invalid_argument("List values not yet supported in conversion";
+                return Err(Error::wasi_invalid_argument("List values not yet supported in conversion"));
             }
             _ => return Err(Error::wasi_invalid_argument("Unsupported value type for conversion")),
         }
@@ -113,7 +113,7 @@ impl Default for ValType {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for ValType {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[*self as u8];
+        checksum.update_slice(&[*self as u8]);
     }
 }
 
@@ -223,9 +223,9 @@ impl ComponentModelProvider {
         
         // Initialize function cache
         #[cfg(feature = "std")]
-        let cached_functions = Some(Vec::with_capacity(0;
+        let cached_functions = Some(Vec::with_capacity(0));
         #[cfg(not(feature = "std"))]
-        let cached_functions = Some(0;
+        let cached_functions = Some(0);
         
         Ok(Self {
             capabilities,
@@ -249,8 +249,8 @@ impl ComponentModelProvider {
             let functions = self.build_host_functions()?;
             
             for function in functions {
-                let module_name = Self::extract_module_name(&function.name;
-                registry.register_host_function(module_name, &function.name, function.handler.clone();
+                let module_name = Self::extract_module_name(&function.name);
+                registry.register_host_function(module_name, &function.name, function.handler.clone());
             }
         }
         
@@ -268,52 +268,52 @@ impl ComponentModelProvider {
     #[cfg(feature = "std")]
     fn build_host_functions(&mut self) -> Result<&Vec<HostFunction>> {
         if self.cached_functions.is_some() {
-            return Ok(self.cached_functions.as_ref().unwrap();
+            return Ok(self.cached_functions.as_ref().unwrap());
         }
         
-        let mut functions = Vec::with_capacity(0;
+        let mut functions = Vec::with_capacity(0);
         
         // Add filesystem functions if capabilities allow
         if self.capabilities.filesystem.read_access {
-            functions.push(self.create_filesystem_read_function()?;
+            functions.push(self.create_filesystem_read_function()?);
         }
         if self.capabilities.filesystem.write_access {
-            functions.push(self.create_filesystem_write_function()?;
+            functions.push(self.create_filesystem_write_function()?);
         }
         if self.capabilities.filesystem.directory_access {
-            functions.push(self.create_filesystem_open_function()?;
+            functions.push(self.create_filesystem_open_function()?);
         }
         
         // Add CLI functions if capabilities allow
         if self.capabilities.environment.args_access {
-            functions.push(self.create_cli_args_function()?;
+            functions.push(self.create_cli_args_function()?);
         }
         if self.capabilities.environment.environ_access {
-            functions.push(self.create_cli_environ_function()?;
+            functions.push(self.create_cli_environ_function()?);
         }
         
         // Add clock functions if capabilities allow
         if self.capabilities.clocks.monotonic_access {
-            functions.push(self.create_clock_now_function()?;
+            functions.push(self.create_clock_now_function()?);
         }
         
         // Add I/O functions if capabilities allow
         if self.capabilities.io.stdout_access {
-            functions.push(self.create_io_write_function()?;
+            functions.push(self.create_io_write_function()?);
         }
         
         // Add random functions if capabilities allow
         if self.capabilities.random.secure_random {
-            functions.push(self.create_random_get_function()?;
+            functions.push(self.create_random_get_function()?);
         }
         
         // Add neural network functions if capabilities allow
         #[cfg(all(feature = "wasi-nn", feature = "nn-preview2", feature = "std"))]
         if self.capabilities.nn.dynamic_loading {
-            functions.extend(self.create_nn_functions()?;
+            functions.extend(self.create_nn_functions()?);
         }
         
-        self.cached_functions = Some(functions;
+        self.cached_functions = Some(functions);
         Ok(self.cached_functions.as_ref().unwrap())
     }
     
@@ -334,7 +334,7 @@ impl ComponentModelProvider {
         #[cfg(feature = "wasi-nn")]
         if self.capabilities.nn.dynamic_loading { count += 5; } // 5 NN functions
         
-        self.cached_functions = Some(count;
+        self.cached_functions = Some(count);
         Ok(count)
     }
     
@@ -403,7 +403,7 @@ impl ComponentModelProvider {
                 #[cfg(feature = "wasi-cli")]
                 {
                     use crate::preview2::cli_capability_aware::wasi_cli_get_arguments_capability_aware;
-                    let empty_args = value_vec!);
+                    let empty_args = value_vec!();
                     match wasi_cli_get_arguments_capability_aware(_target, empty_args) {
                         Ok(_) => Ok(value_vec!()),
                         Err(_) => Ok(value_vec!()),
@@ -430,7 +430,7 @@ impl ComponentModelProvider {
                 #[cfg(feature = "wasi-cli")]
                 {
                     use crate::preview2::cli_capability_aware::wasi_cli_get_environment_capability_aware;
-                    let empty_args = value_vec!);
+                    let empty_args = value_vec!();
                     match wasi_cli_get_environment_capability_aware(_target, empty_args) {
                         Ok(_) => Ok(value_vec!()),
                         Err(_) => Ok(value_vec!()),
@@ -549,7 +549,7 @@ impl ComponentModelProvider {
                 convert_compat_values_to_foundation(result)
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
-        };
+        });
         
         // Compute function
         functions.push(HostFunction {
@@ -565,7 +565,7 @@ impl ComponentModelProvider {
                 convert_compat_values_to_foundation(result)
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
-        };
+        });
         
         // Get output function
         functions.push(HostFunction {
@@ -581,7 +581,7 @@ impl ComponentModelProvider {
                 convert_compat_values_to_foundation(result)
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
-        };
+        });
         
         Ok(functions)
     }
@@ -646,13 +646,13 @@ impl WasiProviderBuilder {
     
     /// Set capabilities for the provider
     pub fn with_capabilities(mut self, capabilities: WasiCapabilities) -> Self {
-        self.capabilities = Some(capabilities;
+        self.capabilities = Some(capabilities);
         self
     }
     
     /// Set safety level for the provider (overrides capability-based detection)
     pub fn with_safety_level(mut self, level: &'static str) -> Self {
-        self.safety_level = Some(level;
+        self.safety_level = Some(level);
         self
     }
     
@@ -690,7 +690,7 @@ mod tests {
         let capabilities = WasiCapabilities::minimal()?;
         let provider = ComponentModelProvider::new(capabilities)?;
         
-        assert_eq!(provider.version(), WasiVersion::Preview2;
+        assert_eq!(provider.version(), WasiVersion::Preview2);
         assert!(!provider.capabilities().filesystem.read_access);
         
         Ok(())
@@ -701,11 +701,11 @@ mod tests {
         assert_eq!(
             ComponentModelProvider::extract_module_name("wasi:filesystem/types.read"),
             "wasi:filesystem"
-        ;
+        );
         assert_eq!(
             ComponentModelProvider::extract_module_name("wasi:cli/environment.get-arguments"),
             "wasi:cli"
-        ;
+        );
     }
     
     #[test]
@@ -714,7 +714,7 @@ mod tests {
         let provider = ComponentModelProvider::new(capabilities)?;
         
         // Should return current compile-time safety level
-        let safety_level = provider.safety_level);
+        let safety_level = provider.safety_level();
         assert!(!safety_level.is_empty());
         
         Ok(())
@@ -726,7 +726,7 @@ mod tests {
             .with_safety_level("bounded-collections")
             .build()?;
             
-        assert_eq!(provider.version(), WasiVersion::Preview2;
+        assert_eq!(provider.version(), WasiVersion::Preview2);
         
         Ok(())
     }

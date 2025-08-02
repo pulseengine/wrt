@@ -9,7 +9,11 @@
 
 use crate::{
     budget_aware_provider::CrateId,
-    budget_verification::{calculate_total_budget, CRATE_BUDGETS, TOTAL_MEMORY_BUDGET},
+    budget_verification::{
+        calculate_total_budget,
+        CRATE_BUDGETS,
+        TOTAL_MEMORY_BUDGET,
+    },
 };
 
 /// Maximum allocation size for any single allocation (16MB)
@@ -21,7 +25,8 @@ pub const MAX_ALLOCATIONS_PER_CRATE: usize = 1024;
 /// Compile-time memory bounds validator
 ///
 /// This struct uses const generics to enforce memory bounds at compile time.
-/// All bounds checking is performed during compilation, ensuring zero runtime overhead.
+/// All bounds checking is performed during compilation, ensuring zero runtime
+/// overhead.
 pub struct CompileTimeBoundsValidator<const SIZE: usize, const CRATE: usize>;
 
 impl<const SIZE: usize, const CRATE: usize> CompileTimeBoundsValidator<SIZE, CRATE> {
@@ -32,17 +37,26 @@ impl<const SIZE: usize, const CRATE: usize> CompileTimeBoundsValidator<SIZE, CRA
     pub const fn validate() -> Self {
         // Validate size constraints
         assert!(SIZE > 0, "Allocation size must be greater than zero");
-        assert!(SIZE <= MAX_SINGLE_ALLOCATION, "Allocation size exceeds maximum allowed");
+        assert!(
+            SIZE <= MAX_SINGLE_ALLOCATION,
+            "Allocation size exceeds maximum allowed"
+        );
 
         // Validate crate constraints
         assert!(CRATE < CRATE_BUDGETS.len(), "Invalid crate ID");
 
         // Validate allocation fits within crate budget
-        assert!(SIZE <= CRATE_BUDGETS[CRATE], "Allocation exceeds crate budget");
+        assert!(
+            SIZE <= CRATE_BUDGETS[CRATE],
+            "Allocation exceeds crate budget"
+        );
 
         // Validate total system budget
         let total_budget = calculate_total_budget();
-        assert!(total_budget <= TOTAL_MEMORY_BUDGET, "Total budget exceeds system memory");
+        assert!(
+            total_budget <= TOTAL_MEMORY_BUDGET,
+            "Total budget exceeds system memory"
+        );
 
         Self
     }
@@ -82,7 +96,8 @@ impl<const SIZE: usize, const CRATE: usize> CompileTimeBoundsValidator<SIZE, CRA
 
 /// Compile-time allocation validator macro
 ///
-/// This macro performs comprehensive compile-time validation of memory allocations.
+/// This macro performs comprehensive compile-time validation of memory
+/// allocations.
 ///
 /// # Usage
 ///
@@ -103,7 +118,10 @@ macro_rules! validate_allocation {
             >::validate();
 
             // Additional compile-time checks
-            assert!(validator.is_platform_safe(), "Allocation not safe for target platform");
+            assert!(
+                validator.is_platform_safe(),
+                "Allocation not safe for target platform"
+            );
         };
     }};
 }
@@ -126,7 +144,10 @@ impl<const SIZE: usize, const ALIGN: usize> MemoryLayoutValidator<SIZE, ALIGN> {
         assert!(ALIGN <= 4096, "Alignment exceeds maximum (4KB)");
 
         // Validate size is aligned
-        assert!(SIZE % ALIGN == 0, "Size must be aligned to alignment boundary");
+        assert!(
+            SIZE % ALIGN == 0,
+            "Size must be aligned to alignment boundary"
+        );
 
         Self
     }
@@ -147,16 +168,28 @@ impl<const CAPACITY: usize, const ELEMENT_SIZE: usize>
     /// Validate collection bounds at compile time
     pub const fn validate() -> Self {
         // Validate capacity
-        assert!(CAPACITY > 0, "Collection capacity must be greater than zero");
-        assert!(CAPACITY <= 1_000_000, "Collection capacity exceeds safety limit");
+        assert!(
+            CAPACITY > 0,
+            "Collection capacity must be greater than zero"
+        );
+        assert!(
+            CAPACITY <= 1_000_000,
+            "Collection capacity exceeds safety limit"
+        );
 
         // Validate element size
         assert!(ELEMENT_SIZE > 0, "Element size must be greater than zero");
-        assert!(ELEMENT_SIZE <= 65536, "Element size exceeds safety limit (64KB)");
+        assert!(
+            ELEMENT_SIZE <= 65536,
+            "Element size exceeds safety limit (64KB)"
+        );
 
         // Validate total memory usage
         let total_memory = CAPACITY * ELEMENT_SIZE;
-        assert!(total_memory <= MAX_SINGLE_ALLOCATION, "Collection total memory exceeds limit");
+        assert!(
+            total_memory <= MAX_SINGLE_ALLOCATION,
+            "Collection total memory exceeds limit"
+        );
 
         Self
     }
@@ -177,7 +210,10 @@ impl<const FRAME_SIZE: usize> StackBoundsValidator<FRAME_SIZE> {
     /// Validate stack frame size at compile time
     pub const fn validate() -> Self {
         assert!(FRAME_SIZE > 0, "Stack frame size must be greater than zero");
-        assert!(FRAME_SIZE <= Self::MAX_FRAME_SIZE, "Stack frame size exceeds maximum");
+        assert!(
+            FRAME_SIZE <= Self::MAX_FRAME_SIZE,
+            "Stack frame size exceeds maximum"
+        );
 
         Self
     }
@@ -192,7 +228,10 @@ impl<const RESOURCE_COUNT: usize> ResourceLimitsValidator<RESOURCE_COUNT> {
 
     /// Validate resource limits at compile time
     pub const fn validate() -> Self {
-        assert!(RESOURCE_COUNT <= Self::MAX_RESOURCES, "Resource count exceeds maximum");
+        assert!(
+            RESOURCE_COUNT <= Self::MAX_RESOURCES,
+            "Resource count exceeds maximum"
+        );
 
         Self
     }
@@ -208,7 +247,10 @@ impl SystemBoundsValidator {
     pub const fn validate_system() {
         // Check total budget doesn't exceed system memory
         let total_budget = calculate_total_budget();
-        assert!(total_budget <= TOTAL_MEMORY_BUDGET, "System budget validation failed");
+        assert!(
+            total_budget <= TOTAL_MEMORY_BUDGET,
+            "System budget validation failed"
+        );
 
         // Check crate budget distribution is reasonable
         let mut max_crate_budget = 0;
@@ -221,7 +263,10 @@ impl SystemBoundsValidator {
         }
 
         // No single crate should use more than 50% of total memory
-        assert!(max_crate_budget <= TOTAL_MEMORY_BUDGET / 2, "Single crate budget too large");
+        assert!(
+            max_crate_budget <= TOTAL_MEMORY_BUDGET / 2,
+            "Single crate budget too large"
+        );
     }
 }
 

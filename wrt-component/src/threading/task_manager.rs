@@ -40,7 +40,7 @@ const MAX_TASK_CALL_DEPTH: usize = 64;
 
 /// Task identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TaskId(pub u32;
+pub struct TaskId(pub u32);
 
 /// Task management system
 pub struct TaskManager {
@@ -235,7 +235,7 @@ impl TaskManager {
             return Err(wrt_error::Error::runtime_execution_error("Error occurred");
         }
 
-        let task_id = TaskId(self.next_task_id;
+        let task_id = TaskId(self.next_task_id);
         self.next_task_id += 1;
 
         let task = Task {
@@ -656,7 +656,7 @@ mod tests {
 
         let task_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
 
-        assert_eq!(task_id, TaskId(0;
+        assert_eq!(task_id, TaskId(0));
         assert_eq!(manager.task_count(), 1);
         assert_eq!(manager.ready_task_count(), 1);
         assert!(manager.has_ready_tasks();

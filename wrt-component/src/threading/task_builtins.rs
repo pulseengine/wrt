@@ -51,7 +51,7 @@ const MAX_TASK_RESULT_SIZE: usize = 512;
 
 /// Task identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TaskId(pub u64;
+pub struct TaskId(pub u64);
 
 impl TaskId {
     pub fn new() -> Self {

@@ -1129,7 +1129,7 @@ impl ParameterMarshaler {
                 }
                 #[cfg(not(feature = "std"))]
                 ComponentValue::String(s) => {
-                    let len = s.as_bytes().len);
+                    let len = s.as_bytes().len();
                     if len > MAX_STRING_LENGTH {
                         return Err(Error::validation_error("String parameter too long";
                     }

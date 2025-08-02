@@ -2,9 +2,15 @@
 //!
 //! This module provides the CrateId enum used throughout the WRT memory system.
 
-use crate::memory_coordinator::CrateIdentifier;
-use crate::traits::{Checksummable, FromBytes, ToBytes};
-use crate::verification::Checksum;
+use crate::{
+    memory_coordinator::CrateIdentifier,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
+    verification::Checksum,
+};
 
 /// Crate identifiers for budget tracking
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

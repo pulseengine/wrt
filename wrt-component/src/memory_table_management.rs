@@ -371,7 +371,7 @@ impl ComponentMemoryManager {
             ))?;
 
         // Check bounds
-        let end_offset = offset as usize + data.len);
+        let end_offset = offset as usize + data.len();
         if end_offset > memory.data.len() {
             return Ok(MemoryAccess {
                 success: false,
@@ -427,7 +427,7 @@ impl ComponentMemoryManager {
         }
 
         // Grow memory
-        let old_size = memory.data.len);
+        let old_size = memory.data.len();
         #[cfg(feature = "std")]
         {
             memory.data.resize(old_size + additional_size, 0);
@@ -664,7 +664,7 @@ impl ComponentTableManager {
             .ok_or_else(|| wrt_error::Error::validation_invalid_input("Invalid input"))
             ))?;
 
-        let current_size = table.elements.len);
+        let current_size = table.elements.len();
         let new_size = current_size + size as usize;
 
         // Check limits

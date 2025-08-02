@@ -67,7 +67,7 @@ impl ComponentRegistry {
         }
 
         // Add the component to the store and get its index
-        let component_idx = self.component_store.len);
+        let component_idx = self.component_store.len();
         self.component_store.push(component).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,

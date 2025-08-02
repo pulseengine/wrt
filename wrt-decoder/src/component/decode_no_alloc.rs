@@ -365,7 +365,7 @@ pub fn decode_component_header(
 
     // Initialize the component header
     let mut header = ComponentHeader::new(verification_level;
-    header.size = bytes.len);
+    header.size = bytes.len();
 
     // Create empty collections for the component header
     let header_provider = create_provider_1024()?;
@@ -1005,7 +1005,7 @@ mod tests {
         assert!(result.is_ok());
 
         let header = result.unwrap();
-        assert_eq!(header.size, 8;
+        assert_eq!(header.size, 8);
         assert_eq!(header.section_count, 0);
         assert_eq!(header.types.len(), 0);
         assert_eq!(header.exports.len(), 0);

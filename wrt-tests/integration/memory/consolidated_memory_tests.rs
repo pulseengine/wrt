@@ -168,7 +168,7 @@ mod foundation_memory_tests {
 
         // Verify data access works
         assert_eq!(slice.data().unwrap(), &data;
-        assert_eq!(slice.len(), data.len);
+        assert_eq!(slice.len(), data.len();
         assert!(!slice.is_empty());
     }
 
@@ -249,7 +249,7 @@ mod foundation_memory_tests {
             stack.push(value).unwrap();
         }
 
-        assert_eq!(stack.len(), test_values.len);
+        assert_eq!(stack.len(), test_values.len();
         assert!(!stack.is_empty());
 
         // Pop values (should be in reverse order)

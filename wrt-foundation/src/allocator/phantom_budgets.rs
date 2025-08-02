@@ -7,23 +7,23 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum CrateId {
-    Foundation = 0,
-    Decoder = 1,
-    Runtime = 2,
-    Component = 3,
-    Host = 4,
-    Platform = 5,
-    Sync = 6,
-    Logging = 7,
-    Intercept = 8,
-    Instructions = 9,
-    Math = 10,
-    Format = 11,
-    Debug = 12,
-    Error = 13,
+    Foundation       = 0,
+    Decoder          = 1,
+    Runtime          = 2,
+    Component        = 3,
+    Host             = 4,
+    Platform         = 5,
+    Sync             = 6,
+    Logging          = 7,
+    Intercept        = 8,
+    Instructions     = 9,
+    Math             = 10,
+    Format           = 11,
+    Debug            = 12,
+    Error            = 13,
     VerificationTool = 14,
-    Wrt = 15,
-    Wrtd = 16,
+    Wrt              = 15,
+    Wrtd             = 16,
 }
 
 /// Compile-time memory budgets per crate (in bytes)
@@ -102,7 +102,13 @@ mod tests {
     #[test]
     fn test_phantom_type() {
         let _budget: MemoryBudget<{ CrateId::Foundation as u8 }, 1024> = MemoryBudget::verify();
-        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::crate_id(), 0);
-        assert_eq!(MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::size(), 1024);
+        assert_eq!(
+            MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::crate_id(),
+            0
+        );
+        assert_eq!(
+            MemoryBudget::<{ CrateId::Foundation as u8 }, 1024>::size(),
+            1024
+        );
     }
 }

@@ -115,7 +115,7 @@ pub mod std_runtime {
             };
             
             if self.config.verbose {
-                println!("Loaded module: {} bytes", module_bytes.len);
+                println!("Loaded module: {} bytes", module_bytes.len();
             }
             
             // Cache the module
@@ -229,7 +229,7 @@ pub mod alloc_runtime {
             }
             
             let fuel_used = module_data.len() as u64 / 50; // More conservative than std
-            let memory_used = module_data.len);
+            let memory_used = module_data.len();
             
             if fuel_used > self.config.max_fuel {
                 return Err("Fuel limit exceeded".to_string());
@@ -307,7 +307,7 @@ pub mod nostd_runtime {
         pub fn execute_module(&mut self, module_data: &[u8], _function: &str) -> Result<u32, u8> {
             // Very conservative limits for bare metal
             let fuel_used = module_data.len() as u64 / 10;
-            let memory_used = module_data.len);
+            let memory_used = module_data.len();
             
             if fuel_used > self.config.max_fuel {
                 return Err(1); // Error code: fuel exceeded

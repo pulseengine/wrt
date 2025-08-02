@@ -40,7 +40,7 @@ fn main() {
     }
 
     // Drop the provider
-    drop(provider;
+    drop(provider);
 
     // Check final stats
     let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component).unwrap();

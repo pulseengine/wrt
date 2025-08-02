@@ -38,20 +38,20 @@ mod tests {
         assert!(!component_error.to_string().is_empty());
         assert!(component_error.to_string().contains("component invalid");
 
-        let memory_error = MemoryAccessError("out of bounds access";
+        let memory_error = MemoryAccessError("out of bounds access");
         assert!(!memory_error.to_string().is_empty());
-        assert!(memory_error.to_string().contains("out of bounds access");
+        assert!(memory_error.to_string().contains("out of bounds access"));
 
-        let lock_error = PoisonedLockError("lock poisoned";
+        let lock_error = PoisonedLockError("lock poisoned");
         assert!(!lock_error.to_string().is_empty());
-        assert!(lock_error.to_string().contains("lock poisoned");
+        assert!(lock_error.to_string().contains("lock poisoned"));
     }
 
     #[test]
     fn test_specific_error_types_display() {
         // Test specific error types that have specialized Display implementations
 
-        let stack_underflow = StackUnderflowError("stack empty";
+        let stack_underflow = StackUnderflowError("stack empty");
         assert!(!stack_underflow.to_string().is_empty());
 
         let export_not_found = ExportNotFoundError("missing_function";
@@ -123,7 +123,7 @@ mod tests {
         let resource_limit_exceeded = ResourceLimitExceeded("memory full";
         assert!(!resource_limit_exceeded.to_string().is_empty());
 
-        let invalid_argument = InvalidArgumentError("null pointer";
+        let invalid_argument = InvalidArgumentError("null pointer");
         assert!(!invalid_argument.to_string().is_empty());
     }
 
@@ -262,7 +262,7 @@ mod tests {
             assert!(
                 !display.is_empty(),
                 "Display should handle empty strings gracefully"
-            ;
+            );
         }
 
         // Test with special characters
@@ -276,7 +276,7 @@ mod tests {
             assert!(
                 !display.is_empty(),
                 "Display should handle special characters"
-            ;
+            );
         }
     }
 }

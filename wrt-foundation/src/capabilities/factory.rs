@@ -11,23 +11,29 @@ use core::marker::PhantomData;
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
-
+#[cfg(any(feature = "std", feature = "alloc"))]
+use super::{
+    context::MemoryCapabilityContext,
+    MemoryCapability,
+    MemoryOperation,
+};
 #[cfg(any(feature = "std", feature = "alloc"))]
 use crate::{
     budget_aware_provider::CrateId,
     codes,
-    safe_memory::{NoStdProvider, Provider},
-    Error, ErrorCategory, Result,
+    safe_memory::{
+        NoStdProvider,
+        Provider,
+    },
+    Error,
+    ErrorCategory,
+    Result,
 };
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-use super::{context::MemoryCapabilityContext, MemoryCapability, MemoryOperation};
-
 
 /// A memory provider that is protected by capability verification
 ///
@@ -35,8 +41,8 @@ use super::{context::MemoryCapabilityContext, MemoryCapability, MemoryOperation}
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct CapabilityGuardedProvider<const N: usize> {
     capability: Box<dyn super::AnyMemoryCapability>,
-    provider: Option<NoStdProvider<N>>,
-    _phantom: PhantomData<[u8; N]>,
+    provider:   Option<NoStdProvider<N>>,
+    _phantom:   PhantomData<[u8; N]>,
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -48,23 +54,34 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         capability.verify_access(&operation)?;
 
         if capability.max_allocation_size() < N {
-            return Err(Error::security_access_denied("Provider size exceeds capability limit"));
+            return Err(Error::security_access_denied(
+                "Provider size exceeds capability limit",
+            ));
         }
 
-        Ok(Self { capability, provider: None, _phantom: PhantomData })
+        Ok(Self {
+            capability,
+            provider: None,
+            _phantom: PhantomData,
+        })
     }
 
     /// Initialize the underlying provider (lazy initialization)
     fn ensure_provider(&mut self) -> Result<&mut NoStdProvider<N>> {
         if self.provider.is_none() {
             // Create the underlying provider using safe_managed_alloc
-            use crate::{safe_managed_alloc, budget_aware_provider::CrateId};
+            use crate::{
+                budget_aware_provider::CrateId,
+                safe_managed_alloc,
+            };
             let provider = safe_managed_alloc!(N, CrateId::Foundation)
                 .map_err(|_| Error::memory_error("Failed to allocate provider"))?;
             self.provider = Some(provider);
         }
 
-        self.provider.as_mut().ok_or_else(|| Error::memory_error("Provider not initialized"))
+        self.provider
+            .as_mut()
+            .ok_or_else(|| Error::memory_error("Provider not initialized"))
     }
 
     /// Read data with capability verification
@@ -77,7 +94,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         // Delegate to the provider's slice implementation
         if offset + len > N {
             return Err(Error::runtime_execution_error(
-                "Read range exceeds provider capacity"
+                "Read range exceeds provider capacity",
             ));
         }
 
@@ -88,7 +105,10 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
 
     /// Write data with capability verification
     pub fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        let operation = MemoryOperation::Write { offset, len: data.len() };
+        let operation = MemoryOperation::Write {
+            offset,
+            len: data.len(),
+        };
         self.capability.verify_access(&operation)?;
 
         let provider = self.ensure_provider()?;
@@ -97,7 +117,7 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write range exceeds provider capacity"
+                "Write range exceeds provider capacity",
             ));
         }
 
@@ -124,7 +144,10 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
 
     /// Get a mutable slice of the entire buffer
     pub fn as_slice_mut(&mut self) -> Result<crate::safe_memory::SliceMut<'_>> {
-        let operation = MemoryOperation::Write { offset: 0, len: N };
+        let operation = MemoryOperation::Write {
+            offset: 0,
+            len:    N,
+        };
         self.capability.verify_access(&operation)?;
 
         let provider = self.ensure_provider()?;
@@ -150,7 +173,6 @@ unsafe impl<const N: usize> Send for CapabilityGuardedProvider<N> {}
 #[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<const N: usize> Sync for CapabilityGuardedProvider<N> {}
 
-
 #[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
     use super::*;
@@ -160,9 +182,9 @@ mod tests {
     fn test_capability_guarded_provider() {
         // Test the CapabilityGuardedProvider directly using the new MemoryFactory
         use crate::capabilities::MemoryFactory;
-        
+
         let provider = MemoryFactory::create::<1024>(CrateId::Foundation).unwrap();
-        
+
         // Test basic provider properties
         assert_eq!(provider.size(), 1024);
     }

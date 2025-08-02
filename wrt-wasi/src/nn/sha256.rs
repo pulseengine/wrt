@@ -64,7 +64,7 @@ impl Sha256 {
         
         // If we have buffered data, fill the buffer first
         if self.buffer_len > 0 {
-            let copy_len = (64 - self.buffer_len).min(data.len);
+            let copy_len = (64 - self.buffer_len).min(data.len();
             self.buffer[self.buffer_len..self.buffer_len + copy_len]
                 .copy_from_slice(&data[..copy_len];
             self.buffer_len += copy_len;

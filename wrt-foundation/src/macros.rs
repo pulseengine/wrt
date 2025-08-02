@@ -7,14 +7,19 @@
 
 /// Zero-configuration memory allocation macro
 ///
-/// **DEPRECATED**: Use `safe_managed_alloc!` instead for better safety guarantees.
+/// **DEPRECATED**: Use `safe_managed_alloc!` instead for better safety
+/// guarantees.
 ///
-/// This macro provides the simplest possible interface for budget-aware memory allocation.
+/// This macro provides the simplest possible interface for budget-aware memory
+/// allocation.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use wrt_foundation::{safe_managed_alloc, CrateId};
+/// use wrt_foundation::{
+///     safe_managed_alloc,
+///     CrateId,
+/// };
 ///
 /// // Simple allocation with automatic cleanup
 /// let provider = safe_managed_alloc!(1024, CrateId::Component)?;
@@ -36,7 +41,8 @@
 ///
 /// # Migration
 ///
-/// Replace `safe_managed_alloc!(size, crate_id)` with `safe_managed_alloc!(size, crate_id)?`
+/// Replace `safe_managed_alloc!(size, crate_id)` with
+/// `safe_managed_alloc!(size, crate_id)?`
 #[deprecated(
     since = "0.1.0",
     note = "Use `safe_managed_alloc!` instead for better safety guarantees"
@@ -60,7 +66,11 @@ macro_rules! managed_alloc {
 /// # Examples
 ///
 /// ```rust
-/// use wrt_foundation::{create_provider, CrateId, safe_memory::NoStdProvider};
+/// use wrt_foundation::{
+///     create_provider,
+///     safe_memory::NoStdProvider,
+///     CrateId,
+/// };
 ///
 /// // Create typed provider
 /// let guard = create_provider!(NoStdProvider<4096>, CrateId::Foundation)?;
@@ -82,7 +92,11 @@ macro_rules! create_provider {
 /// # Examples
 ///
 /// ```rust
-/// use wrt_foundation::{hierarchical_budget, CrateId, MemoryPriority};
+/// use wrt_foundation::{
+///     hierarchical_budget,
+///     CrateId,
+///     MemoryPriority,
+/// };
 ///
 /// let budget = hierarchical_budget! {
 ///     crate_id: CrateId::Component,
@@ -128,7 +142,7 @@ macro_rules! hierarchical_budget {
 /// ```
 #[macro_export]
 macro_rules! memory_region {
-    (start: $start:expr, size: $size:expr) => {{
+    (start: $start:expr,size: $size:expr) => {{
         $crate::enforcement::MemoryRegion::<{ $start }, { $size }>::new()
     }};
 }
@@ -147,7 +161,7 @@ macro_rules! memory_region {
 /// ```
 #[macro_export]
 macro_rules! allocation_token {
-    (size: $size:expr, crate_id: $crate_id:expr) => {{
+    (size: $size:expr,crate_id: $crate_id:expr) => {{
         $crate::enforcement::AllocationToken::<{ $size }>::new($crate_id)
     }};
 }
@@ -166,16 +180,16 @@ macro_rules! allocation_token {
 /// ```
 #[macro_export]
 macro_rules! auto_provider {
-    ($crate_id:expr, typical_usage: "bounded_collections") => {{
+    ($crate_id:expr,typical_usage: "bounded_collections") => {{
         $crate::safe_managed_alloc!(4096, $crate_id)
     }};
-    ($crate_id:expr, typical_usage: "string_processing") => {{
+    ($crate_id:expr,typical_usage: "string_processing") => {{
         $crate::safe_managed_alloc!(8192, $crate_id)
     }};
-    ($crate_id:expr, typical_usage: "temporary_buffers") => {{
+    ($crate_id:expr,typical_usage: "temporary_buffers") => {{
         $crate::safe_managed_alloc!(2048, $crate_id)
     }};
-    ($crate_id:expr, typical_usage: "large_data") => {{
+    ($crate_id:expr,typical_usage: "large_data") => {{
         $crate::safe_managed_alloc!(16384, $crate_id)
     }};
     ($crate_id:expr) => {{
@@ -190,7 +204,10 @@ macro_rules! auto_provider {
 /// # Examples
 ///
 /// ```rust
-/// use wrt_foundation::{debug_alloc, CrateId};
+/// use wrt_foundation::{
+///     debug_alloc,
+///     CrateId,
+/// };
 ///
 /// #[cfg(debug_assertions)]
 /// let guard = debug_alloc!(1024, CrateId::Component, "parsing logic")?;

@@ -21,7 +21,7 @@ use crate::{
 // Stub types when threading is not enabled
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TaskId(pub u64;
+pub struct TaskId(pub u64);
 
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -545,14 +545,14 @@ impl ASILExecutionConfig {
                    self.limits.max_call_depth.is_none() ||
                    self.limits.max_instructions_per_step.is_none() ||
                    self.limits.max_execution_slice_ms.is_none() {
-                    return Err(Error::configuration_error("ASIL-D requires all execution limits to be specified";
+                    return Err(Error::configuration_error("ASIL-D requires all execution limits to be specified"));
                 }
             },
             ASILExecutionMode::C { .. } => {
                 // ASIL-C requires memory and call depth limits
                 if self.limits.max_memory_usage.is_none() ||
                    self.limits.max_call_depth.is_none() {
-                    return Err(Error::configuration_error("ASIL-C requires memory and call depth limits to be specified";
+                    return Err(Error::configuration_error("ASIL-C requires memory and call depth limits to be specified"));
                 }
             },
             _ => {
@@ -566,7 +566,7 @@ impl ASILExecutionConfig {
 impl ExecutionLimitsConfig {
     /// Create limits config from WebAssembly binary metadata
     /// Parses the resource limits custom section for execution constraints
-    pub fn from_binary_metadata(binary_hash: [u8); 32], custom_section_data: &[u8]) -> Result<Self, Error> {
+    pub fn from_binary_metadata(binary_hash: [u8; 32], custom_section_data: &[u8]) -> Result<Self, Error> {
         use wrt_decoder::resource_limits_section::ResourceLimitsSection;
         
         // Parse the resource limits custom section
@@ -649,7 +649,7 @@ impl ExecutionContext {
     /// Create a new execution context for the given ASIL configuration
     pub fn new(asil_config: ASILExecutionConfig) -> Self {
         // Get stack depth limit from configuration
-        let max_stack_depth = asil_config.limits.get_call_depth_limit);
+        let max_stack_depth = asil_config.limits.get_call_depth_limit();
 
         Self {
             component_instance: None,
@@ -683,20 +683,20 @@ impl ExecutionContext {
 
     /// Set the component instance for this execution context
     pub fn set_component_instance(&mut self, instance: Arc<ComponentInstance>) {
-        self.component_instance = Some(instance;
+        self.component_instance = Some(instance);
     }
 
     /// Check if execution can continue based on ASIL constraints
     pub fn can_continue_execution(&self) -> Result<bool, Error> {
         // Check stack depth limits
         if self.stack_depth >= self.max_stack_depth {
-            return Err(Error::runtime_execution_error("Stack depth limit exceeded";
+            return Err(Error::runtime_execution_error("Stack depth limit exceeded"));
         }
 
         // Check ASIL-specific constraints
         match self.asil_config.mode {
             ASILExecutionMode::D { max_fuel_per_slice, .. } => {
-                let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire;
+                let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
                 if fuel_consumed >= max_fuel_per_slice {
                     return Ok(false); // Must yield
                 }
@@ -704,7 +704,7 @@ impl ExecutionContext {
             ASILExecutionMode::B { max_execution_slice_ms, .. } => {
                 // In real implementation, would check actual execution time
                 // For now, use fuel as a proxy
-                let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire;
+                let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
                 if fuel_consumed >= (max_execution_slice_ms as u64 * 10) { // 10 fuel per ms
                     return Ok(false); // Must yield
                 }
@@ -717,7 +717,7 @@ impl ExecutionContext {
 
     /// Record fuel consumption in this context
     pub fn consume_fuel(&self, amount: u64) {
-        self.context_fuel_consumed.fetch_add(amount, Ordering::AcqRel;
+        self.context_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
     }
 
     /// Create a yield point for suspending execution
@@ -732,7 +732,7 @@ impl ExecutionContext {
             .map(|cv| self.convert_component_value_to_value(cv))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire;
+        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
         
         self.last_yield_point = Some(YieldPoint {
             instruction_pointer,
@@ -744,7 +744,7 @@ impl ExecutionContext {
             yield_type: YieldType::ExplicitYield,
             yield_context: self.create_yield_context()?,
             resumption_condition: Some(ResumptionCondition::Manual),
-        };
+        });
         
         Ok(())
     }
@@ -756,7 +756,7 @@ impl ExecutionContext {
         yield_type: YieldType,
         resumption_condition: Option<ResumptionCondition>,
     ) -> Result<(), Error> {
-        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire;
+        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
         
         // Capture current execution state
         let (stack, locals) = self.capture_execution_state()?;
@@ -771,7 +771,7 @@ impl ExecutionContext {
             yield_type,
             yield_context: self.create_yield_context()?,
             resumption_condition,
-        };
+        });
         
         Ok(())
     }
@@ -858,7 +858,7 @@ impl ExecutionContext {
     pub fn reset(&mut self) {
         self.stack_depth = 0;
         self.execution_state = None;
-        self.context_fuel_consumed.store(0, Ordering::SeqCst;
+        self.context_fuel_consumed.store(0, Ordering::SeqCst);
         self.last_yield_point = None;
         self.error_state = None;
     }
@@ -873,7 +873,7 @@ impl ExecutionContext {
         self.function_params = yield_point.locals.clone();
         
         // Restore fuel consumption state
-        self.context_fuel_consumed.store(yield_point.fuel_at_yield, Ordering::SeqCst;
+        self.context_fuel_consumed.store(yield_point.fuel_at_yield, Ordering::SeqCst);
         
         // Restore module state if available
         if let Some(module_state) = &yield_point.yield_context.module_state {
@@ -900,13 +900,13 @@ impl ExecutionContext {
                 },
                 ResumptionCondition::FuelRecovered { fuel_amount } => {
                     // Check if we have recovered enough fuel
-                    let current_fuel = self.context_fuel_consumed.load(Ordering::Acquire;
+                    let current_fuel = self.context_fuel_consumed.load(Ordering::Acquire);
                     Ok(yield_point.fuel_at_yield.saturating_sub(current_fuel) >= *fuel_amount)
                 },
                 ResumptionCondition::TimeElapsed { duration_ms } => {
                     // Check if enough time has elapsed
-                    let current_time = self.get_deterministic_timestamp);
-                    let elapsed = current_time.saturating_sub(yield_point.yield_timestamp;
+                    let current_time = self.get_deterministic_timestamp();
+                    let elapsed = current_time.saturating_sub(yield_point.yield_timestamp);
                     Ok(elapsed >= (*duration_ms as u64))
                 },
                 ResumptionCondition::ExternalEvent { event_id } => {
@@ -953,7 +953,7 @@ impl ExecutionContext {
         resource_id: u64,
     ) -> Result<(), Error> {
         let yield_type = YieldType::AsyncWait { resource_id };
-        let resumption_condition = Some(ResumptionCondition::ResourceAvailable { resource_id };
+        let resumption_condition = Some(ResumptionCondition::ResourceAvailable { resource_id });
         
         self.create_advanced_yield_point(instruction_pointer, yield_type, resumption_condition)
     }
@@ -967,7 +967,7 @@ impl ExecutionContext {
             None
         };
         
-        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire;
+        let fuel_consumed = self.context_fuel_consumed.load(Ordering::Acquire);
         
         self.last_yield_point = Some(YieldPoint {
             instruction_pointer: yield_info.instruction_pointer,
@@ -986,7 +986,7 @@ impl ExecutionContext {
                 function_context: yield_info.function_context,
             },
             resumption_condition: yield_info.resumption_condition,
-        };
+        });
         
         Ok(())
     }
@@ -1087,7 +1087,7 @@ impl WaitableRegistry {
     
     /// Register a new waitable
     pub fn register_waitable(&mut self, component_id: ComponentInstanceId, resource_id: Option<u64>) -> Result<WaitableHandle, Error> {
-        let handle = self.next_handle.fetch_add(1, Ordering::SeqCst;
+        let handle = self.next_handle.fetch_add(1, Ordering::SeqCst);
         let state = WaitableState {
             handle,
             component_id,
@@ -1123,7 +1123,7 @@ impl WaitableRegistry {
         for (index, &handle) in waitables.iter().enumerate() {
             if let Some(waitable) = self.waitables.get(&handle) {
                 if waitable.is_ready {
-                    return Some((handle, index;
+                    return Some((handle, index));
                 }
             }
         }
@@ -1132,7 +1132,7 @@ impl WaitableRegistry {
     
     /// Clean up a waitable
     pub fn remove_waitable(&mut self, handle: WaitableHandle) -> Result<(), Error> {
-        self.waitables.remove(&handle;
+        self.waitables.remove(&handle);
         Ok(())
     }
 }
@@ -1196,7 +1196,7 @@ impl FuelAsyncExecutor {
     /// Create a new fuel-based async executor
     pub fn new() -> Result<Self, Error> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
-        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider)?;
+        let ready_queue = Arc::new(Mutex::new(BoundedVec::new(provider)?));
         let wake_coalescer = crate::async_::fuel_aware_waker::WakeCoalescer::new().ok();
         
         // Initialize ASIL executors
@@ -1254,7 +1254,7 @@ impl FuelAsyncExecutor {
 
     /// Set the global fuel limit for all async operations
     pub fn set_global_fuel_limit(&self, limit: u64) {
-        self.global_fuel_limit.store(limit, Ordering::SeqCst;
+        self.global_fuel_limit.store(limit, Ordering::SeqCst);
     }
 
     /// Set the default verification level for new tasks
@@ -1269,7 +1269,7 @@ impl FuelAsyncExecutor {
                 ErrorCategory::Component,
                 codes::COMPONENT_ALREADY_EXISTS,
                 "Operation failed",
-            ;
+            ));
         }
         
         self.component_registry.insert(component_id, component)?;
@@ -1279,7 +1279,7 @@ impl FuelAsyncExecutor {
     /// Unregister a component instance
     pub fn unregister_component(&mut self, component_id: ComponentInstanceId) -> Result<(), Error> {
         if self.component_registry.remove(&component_id).is_none() {
-            return Err(Error::runtime_execution_error("Component not found";
+            return Err(Error::runtime_execution_error("Component not found"));
         }
         Ok(())
     }
@@ -1320,7 +1320,7 @@ impl FuelAsyncExecutor {
 
     /// Enable or disable fuel enforcement
     pub fn set_fuel_enforcement(&self, enabled: bool) {
-        self.fuel_enforcement.store(enabled, Ordering::SeqCst;
+        self.fuel_enforcement.store(enabled, Ordering::SeqCst);
     }
 
     /// Enable dynamic fuel management
@@ -1328,19 +1328,19 @@ impl FuelAsyncExecutor {
         let mut manager = FuelDynamicManager::new(policy, 1_000_000)?;
         // Register default component
         manager.register_component(ComponentInstanceId::new(0), 100_000, Priority::Normal)?;
-        self.fuel_manager = Some(manager;
+        self.fuel_manager = Some(manager);
         Ok(())
     }
     
     /// Enable preemption support
     pub fn enable_preemption(&mut self, policy: PreemptionPolicy) -> Result<(), Error> {
-        self.preemption_manager = Some(FuelPreemptionManager::new(policy)?;
+        self.preemption_manager = Some(FuelPreemptionManager::new(policy)?);
         Ok(())
     }
 
     /// Enable active fuel monitoring
     pub fn enable_fuel_monitoring(&mut self) -> Result<(), Error> {
-        self.fuel_monitor = Some(FuelMonitor::new()?;
+        self.fuel_monitor = Some(FuelMonitor::new()?);
         Ok(())
     }
 
@@ -1362,13 +1362,13 @@ impl FuelAsyncExecutor {
     /// Clear fuel alerts
     pub fn clear_fuel_alerts(&self) {
         if let Some(monitor) = &self.fuel_monitor {
-            monitor.clear_alerts);
+            monitor.clear_alerts();
         }
     }
 
     /// Set ASIL fuel enforcement policy
     pub fn set_fuel_enforcement_policy(&mut self, policy: ASILFuelEnforcementPolicy) {
-        self.fuel_enforcement_policy = Some(policy;
+        self.fuel_enforcement_policy = Some(policy);
     }
 
     /// Enforce ASIL-specific fuel policy for a task
@@ -1382,8 +1382,8 @@ impl FuelAsyncExecutor {
             None => return Ok(FuelEnforcementDecision::Allow), // No policy, allow
         };
 
-        let fuel_consumed = task.fuel_consumed.load(Ordering::Acquire;
-        let remaining_fuel = task.fuel_budget.saturating_sub(fuel_consumed;
+        let fuel_consumed = task.fuel_consumed.load(Ordering::Acquire);
+        let remaining_fuel = task.fuel_budget.saturating_sub(fuel_consumed);
 
         // Check ASIL-specific enforcement
         match task.execution_context.asil_config.mode {
@@ -1416,19 +1416,19 @@ impl FuelAsyncExecutor {
                 ErrorCategory::Validation,
                 codes::INVALID_INPUT,
                 "Operation failed",
-            ;
+            ));
         }
 
         // Check max step fuel
         if fuel_to_consume > policy.max_step_fuel {
-            return Err(Error::runtime_execution_error("Fuel step limit exceeded";
+            return Err(Error::runtime_execution_error("Fuel step limit exceeded"));
         }
 
         // Check preallocation requirement
         if policy.require_preallocation && remaining_fuel < fuel_to_consume {
             return Ok(FuelEnforcementDecision::Deny {
                 reason: "Insufficient preallocation",
-            };
+            });
         }
 
         Ok(FuelEnforcementDecision::Allow)
@@ -1455,13 +1455,13 @@ impl FuelAsyncExecutor {
                         return Ok(FuelEnforcementDecision::AllowWithTransfer {
                             transfer_amount: transfer_needed,
                             source_component: None, // Would specify source
-                        };
+                        });
                     }
                 }
                 
                 return Ok(FuelEnforcementDecision::Deny {
                     reason: "ASIL-C: Component fuel isolation violation".to_string(),
-                };
+                });
             }
         }
 
@@ -1477,7 +1477,7 @@ impl FuelAsyncExecutor {
         policy: &ASILBPolicy,
     ) -> Result<FuelEnforcementDecision, Error> {
         // Check slice budget
-        let current_slice_consumed = task.execution_context.context_fuel_consumed.load(Ordering::Acquire;
+        let current_slice_consumed = task.execution_context.context_fuel_consumed.load(Ordering::Acquire);
         
         if current_slice_consumed + fuel_to_consume > policy.slice_fuel_budget {
             // Check if rollover is allowed
@@ -1486,13 +1486,13 @@ impl FuelAsyncExecutor {
                 if current_slice_consumed + fuel_to_consume <= policy.slice_fuel_budget + rollover_allowed {
                     return Ok(FuelEnforcementDecision::AllowWithRollover {
                         rollover_amount: (current_slice_consumed + fuel_to_consume) - policy.slice_fuel_budget,
-                    };
+                    });
                 }
             }
             
             return Ok(FuelEnforcementDecision::RequireYield {
                 reason: "ASIL-B: Time slice fuel budget exceeded".to_string(),
-            };
+            });
         }
 
         Ok(FuelEnforcementDecision::Allow)
@@ -1512,7 +1512,7 @@ impl FuelAsyncExecutor {
         if total_consumed > policy.hard_limit {
             return Ok(FuelEnforcementDecision::Deny {
                 reason: "ASIL-A: Hard fuel limit exceeded".to_string(),
-            };
+            });
         }
 
         // Check soft limit
@@ -1521,7 +1521,7 @@ impl FuelAsyncExecutor {
             return Ok(FuelEnforcementDecision::AllowWithWarning {
                 warning: format!("ASIL-A: Soft limit exceeded: {} > {}", 
                     total_consumed, policy.soft_limit),
-            };
+            });
         }
 
         Ok(FuelEnforcementDecision::Allow)
@@ -1596,19 +1596,19 @@ impl FuelAsyncExecutor {
         
         // Check global fuel availability
         if self.fuel_enforcement.load(Ordering::Acquire) {
-            let global_consumed = self.global_fuel_consumed.load(Ordering::Acquire;
-            let global_limit = self.global_fuel_limit.load(Ordering::Acquire;
+            let global_consumed = self.global_fuel_consumed.load(Ordering::Acquire);
+            let global_limit = self.global_fuel_limit.load(Ordering::Acquire);
 
             if global_consumed + allocated_fuel > global_limit {
-                return Err(Error::resource_limit_exceeded("Global fuel limit would be exceeded";
+                return Err(Error::resource_limit_exceeded("Global fuel limit would be exceeded"));
             }
         }
 
         // Generate new task ID
-        let task_id = TaskId::new(self.next_task_id.fetch_add(1, Ordering::AcqRel) as u32;
+        let task_id = TaskId::new(self.next_task_id.fetch_add(1, Ordering::AcqRel) as u32);
 
         // Record task spawn operation
-        record_global_operation(OperationType::FunctionCall, self.default_verification_level;
+        record_global_operation(OperationType::FunctionCall, self.default_verification_level);
 
         // Consume fuel for task spawn
         self.consume_global_fuel(ASYNC_TASK_SPAWN_FUEL)?;
@@ -1623,7 +1623,7 @@ impl FuelAsyncExecutor {
 
         // Try to set component instance for real WebAssembly execution
         if let Some(component_instance) = self.get_component_instance(component_id) {
-            execution_context.set_component_instance(component_instance;
+            execution_context.set_component_instance(component_instance);
         }
 
         let task = FuelAsyncTask {
@@ -1656,7 +1656,7 @@ impl FuelAsyncExecutor {
     /// Poll ready tasks and advance execution
     pub fn poll_tasks(&mut self) -> Result<usize, Error> {
         if self.executor_state != ExecutorState::Running {
-            return Ok(0;
+            return Ok(0);
         }
 
         let mut tasks_polled = 0;
@@ -1724,15 +1724,15 @@ impl FuelAsyncExecutor {
                     // Fallback to no-op waker if self_ref not set
                     create_noop_waker()
                 };
-                let mut context = Context::from_waker(&waker;
+                let mut context = Context::from_waker(&waker);
                 
                 // Update task's waker
-                task.waker = Some(waker.clone();
+                task.waker = Some(waker.clone());
 
                 // Execute using ExecutionContext for real WebAssembly execution
-                record_global_operation(OperationType::FunctionCall, task.verification_level;
+                record_global_operation(OperationType::FunctionCall, task.verification_level);
                 
-                let execution_result = self.execute_task_with_context(task_id, &mut context;
+                let execution_result = self.execute_task_with_context(task_id, &mut context);
                 
                 match execution_result {
                     Ok(Some(result)) => {
@@ -1741,8 +1741,8 @@ impl FuelAsyncExecutor {
                         
                         // Grant credit for unused fuel when task completes
                         if let Some(system) = &mut self.debt_credit_system {
-                            let consumed = task.fuel_consumed.load(Ordering::Acquire;
-                            let unused_fuel = task.fuel_budget.saturating_sub(consumed;
+                            let consumed = task.fuel_consumed.load(Ordering::Acquire);
+                            let unused_fuel = task.fuel_budget.saturating_sub(consumed);
                             
                             if unused_fuel > 0 {
                                 // Grant credit to the component for efficient fuel usage
@@ -1752,16 +1752,16 @@ impl FuelAsyncExecutor {
                                     CreditRestriction::ForComponent { 
                                         component_id: task.component_id 
                                     },
-                                ;
+                                );
                             }
                         }
                         
-                        self.remove_task_fuel_tracking(task_id;
+                        self.remove_task_fuel_tracking(task_id);
                         self.polling_stats.tasks_completed += 1;
                         
                         // Update fuel manager history
                         if let Some(ref mut fuel_mgr) = self.fuel_manager {
-                            let fuel_consumed = task.fuel_consumed.load(Ordering::Acquire;
+                            let fuel_consumed = task.fuel_consumed.load(Ordering::Acquire);
                             fuel_mgr.update_task_history(task_id, fuel_consumed, 1, true).ok();
                         }
                     }
@@ -1774,7 +1774,7 @@ impl FuelAsyncExecutor {
                     Err(_) => {
                         // Task failed
                         task.state = AsyncTaskState::Failed;
-                        self.remove_task_fuel_tracking(task_id;
+                        self.remove_task_fuel_tracking(task_id);
                         self.polling_stats.tasks_failed += 1;
                     }
                 }
@@ -1822,7 +1822,7 @@ impl FuelAsyncExecutor {
                     })?;
                 }
 
-                record_global_operation(OperationType::ControlFlow, task.verification_level;
+                record_global_operation(OperationType::ControlFlow, task.verification_level);
             }
         }
         Ok(())
@@ -1865,7 +1865,7 @@ impl FuelAsyncExecutor {
 
         // Clear ready queue
         if let Ok(mut queue) = self.ready_queue.lock() {
-            queue.clear);
+            queue.clear();
         }
         
         self.executor_state = ExecutorState::Stopped;
@@ -1907,8 +1907,8 @@ impl FuelAsyncExecutor {
         }
 
         // Check if task has sufficient fuel budget
-        let consumed = task.fuel_consumed.load(Ordering::Acquire;
-        let remaining = task.fuel_budget.saturating_sub(consumed;
+        let consumed = task.fuel_consumed.load(Ordering::Acquire);
+        let remaining = task.fuel_budget.saturating_sub(consumed);
         
         if amount > remaining {
             // Not enough fuel - check if debt is allowed
@@ -1919,7 +1919,7 @@ impl FuelAsyncExecutor {
                 if let Ok(credit_used) = system.use_credit(task.component_id, deficit, task.id) {
                     if credit_used >= deficit {
                         // Credit covered the deficit
-                        task.fuel_consumed.fetch_add(amount, Ordering::AcqRel;
+                        task.fuel_consumed.fetch_add(amount, Ordering::AcqRel);
                         self.consume_global_fuel(amount)?;
                         return Ok();
                     }
@@ -1931,18 +1931,18 @@ impl FuelAsyncExecutor {
                         // We'll handle the actual debt incurral after consumption
                         // to ensure atomicity
                     } else {
-                        return Err(Error::runtime_execution_error(&format!("Task {} credit exhausted: deficit {} exceeds credit limit", task.id, remaining_deficit);
+                        return Err(Error::runtime_execution_error(&format!("Task {} credit exhausted: deficit {} exceeds credit limit", task.id, remaining_deficit)));
                     }
                 } else if !self.can_incur_debt(task.id, deficit) {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_LIMIT_EXCEEDED,
                         &format!("Task {} cannot incur additional fuel debt: required {} but remaining budget is {}", task.id, deficit, remaining),
-                    ;
+                    ));
                 }
             } else {
                 // No debt/credit system - strict enforcement
-                return Err(Error::runtime_execution_error(&format!("Insufficient fuel: requested {} but only {} available", amount, remaining);
+                return Err(Error::runtime_execution_error(&format!("Insufficient fuel: requested {} but only {} available", amount, remaining)));
             }
         }
 
@@ -1957,7 +1957,7 @@ impl FuelAsyncExecutor {
                         ErrorCategory::Resource,
                         codes::RESOURCE_LIMIT_EXCEEDED,
                         reason,
-                    ;
+                    ));
                 },
                 FuelEnforcementDecision::AllowWithWarning { warning } => {
                     // Log warning but continue
@@ -1977,12 +1977,12 @@ impl FuelAsyncExecutor {
                         ErrorCategory::Resource,
                         codes::EXECUTION_LIMIT_EXCEEDED,
                         &format!("Task {} must yield: {}", task.id, reason),
-                    ;
+                    ));
                 },
             }
         }
 
-        task.fuel_consumed.fetch_add(amount, Ordering::AcqRel;
+        task.fuel_consumed.fetch_add(amount, Ordering::AcqRel);
         
         // Update fuel monitor if enabled
         // Note: FuelMonitor uses interior mutability (Atomics and Mutex)
@@ -1996,11 +1996,11 @@ impl FuelAsyncExecutor {
 
     fn consume_global_fuel(&self, amount: u64) -> Result<(), Error> {
         if self.fuel_enforcement.load(Ordering::Acquire) {
-            let consumed = self.global_fuel_consumed.fetch_add(amount, Ordering::AcqRel;
-            let limit = self.global_fuel_limit.load(Ordering::Acquire;
+            let consumed = self.global_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
+            let limit = self.global_fuel_limit.load(Ordering::Acquire);
 
             if consumed + amount > limit {
-                return Err(Error::runtime_execution_error(&format!("Global fuel limit exceeded: consumed {} + {} > limit {}", consumed, amount, limit);
+                return Err(Error::runtime_execution_error(&format!("Global fuel limit exceeded: consumed {} + {} > limit {}", consumed, amount, limit)));
             }
         }
         Ok(())
@@ -2008,12 +2008,12 @@ impl FuelAsyncExecutor {
 
     fn remove_task_fuel_tracking(&self, task_id: TaskId) {
         if let Some(task) = self.tasks.get(&task_id) {
-            let consumed = task.fuel_consumed.load(Ordering::Acquire;
-            let remaining = task.fuel_budget.saturating_sub(consumed;
+            let consumed = task.fuel_consumed.load(Ordering::Acquire);
+            let remaining = task.fuel_budget.saturating_sub(consumed);
 
             // Return unused fuel to global pool
             if remaining > 0 && self.fuel_enforcement.load(Ordering::Acquire) {
-                self.global_fuel_consumed.fetch_sub(remaining, Ordering::AcqRel;
+                self.global_fuel_consumed.fetch_sub(remaining, Ordering::AcqRel);
             }
         }
     }
@@ -2031,7 +2031,7 @@ impl FuelAsyncExecutor {
         // Check if execution can continue based on ASIL constraints
         if !task.execution_context.can_continue_execution()? {
             // Must yield due to ASIL constraints
-            return Ok(None;
+            return Ok(None);
         }
 
         // Get the appropriate ASIL executor
@@ -2048,23 +2048,23 @@ impl FuelAsyncExecutor {
             let waker = waker_context.waker().clone();
             match asil_executor.execute_step(task_id, &mut task.execution_context, &waker)? {
                 ExecutionStepResult::Completed(result) => {
-                    return Ok(Some(result;
+                    return Ok(Some(result));
                 },
                 ExecutionStepResult::Yielded => {
-                    return Ok(None;
+                    return Ok(None);
                 },
                 ExecutionStepResult::Waiting => {
                     task.state = AsyncTaskState::Waiting;
-                    return Ok(None;
+                    return Ok(None);
                 },
             }
         }
 
         // Fallback to original execution if no ASIL executor
         // Consume fuel for execution step based on configuration
-        let step_fuel = task.execution_context.asil_config.limits.get_fuel_limit);
+        let step_fuel = task.execution_context.asil_config.limits.get_fuel_limit();
         
-        task.execution_context.consume_fuel(step_fuel;
+        task.execution_context.consume_fuel(step_fuel);
         self.consume_task_fuel(task, step_fuel)?;
 
         // Execute WebAssembly function if component instance is available
@@ -2072,7 +2072,7 @@ impl FuelAsyncExecutor {
             // Real WebAssembly execution using component instance with fuel integration
             match self.execute_wasm_function_with_fuel(task, component_instance, waker_context) {
                 Ok(ExecutionStepResult::Completed(result)) => {
-                    return Ok(Some(result;
+                    return Ok(Some(result));
                 },
                 Ok(ExecutionStepResult::Yielded) => {
                     // Create yield point for resumable execution
@@ -2081,14 +2081,14 @@ impl FuelAsyncExecutor {
                         vec![], // Would be real stack frame
                         vec![], // Would be real locals
                     )?;
-                    return Ok(None;
+                    return Ok(None);
                 },
                 Ok(ExecutionStepResult::Waiting) => {
-                    return Ok(None;
+                    return Ok(None);
                 },
                 Err(e) => {
-                    task.execution_context.error_state = Some(e.clone();
-                    return Err(e;
+                    task.execution_context.error_state = Some(e.clone());
+                    return Err(e);
                 },
             }
         } else {
@@ -2114,7 +2114,7 @@ impl FuelAsyncExecutor {
         // Check stack depth limits
         if task.execution_context.stack_depth >= task.execution_context.max_stack_depth {
             task.execution_context.stack_depth -= 1;
-            return Err(Error::resource_limit_exceeded("Stack depth limit exceeded";
+            return Err(Error::resource_limit_exceeded("Stack depth limit exceeded"));
         }
 
         // Execute based on ASIL mode constraints
@@ -2150,12 +2150,12 @@ impl FuelAsyncExecutor {
         component_instance: &Arc<ComponentInstance>,
     ) -> Result<ExecutionStepResult, Error> {
         // For ASIL-D, execution must be deterministic and bounded
-        let fuel_consumed = task.execution_context.context_fuel_consumed.load(Ordering::Acquire;
+        let fuel_consumed = task.execution_context.context_fuel_consumed.load(Ordering::Acquire);
         
         if let ASILExecutionMode::D { max_fuel_per_slice, .. } = task.execution_context.asil_config.mode {
             if fuel_consumed >= max_fuel_per_slice {
                 // Must yield to maintain deterministic timing
-                return Ok(ExecutionStepResult::Yielded;
+                return Ok(ExecutionStepResult::Yielded);
             }
         }
 
@@ -2163,15 +2163,15 @@ impl FuelAsyncExecutor {
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         
         // Set fuel limit from configuration
-        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit);
-        engine.set_fuel(Some(fuel_limit;
+        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit();
+        engine.set_fuel(Some(fuel_limit));
         
         // Enable deterministic mode
-        engine.set_deterministic_mode(true;
+        engine.set_deterministic_mode(true);
         
         // Set instructions per step from configuration
-        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit);
-        engine.set_max_instructions_per_step(max_instructions;
+        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit();
+        engine.set_max_instructions_per_step(max_instructions);
         
         // Execute single instruction step
         self.execute_single_instruction_step(&mut engine, task, component_instance, fuel_limit)
@@ -2186,30 +2186,30 @@ impl FuelAsyncExecutor {
         // For ASIL-C, ensure spatial, temporal, and resource isolation
         
         // Check temporal isolation - no interference from other tasks
-        let current_time = task.execution_context.get_deterministic_timestamp);
+        let current_time = task.execution_context.get_deterministic_timestamp();
         
         // Check if we need to yield for temporal isolation
         if current_time % 1000 == 0 { // Yield every 1000 fuel units
-            return Ok(ExecutionStepResult::Yielded;
+            return Ok(ExecutionStepResult::Yielded);
         }
         
         // Execute real WebAssembly with isolation constraints from configuration
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         
         // Set fuel limit from configuration
-        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit);
-        engine.set_fuel(Some(fuel_limit;
+        let fuel_limit = task.execution_context.asil_config.limits.get_fuel_limit();
+        engine.set_fuel(Some(fuel_limit));
         
         // Set up isolation constraints from configuration
-        engine.set_memory_isolation(true;
-        let max_stack_depth = task.execution_context.asil_config.limits.get_call_depth_limit);
-        engine.set_max_stack_depth(max_stack_depth;
+        engine.set_memory_isolation(true);
+        let max_stack_depth = task.execution_context.asil_config.limits.get_call_depth_limit();
+        engine.set_max_stack_depth(max_stack_depth);
         
         // Set memory limit from configuration
-        let memory_limit = task.execution_context.asil_config.limits.get_memory_limit);
-        engine.set_max_memory_usage(memory_limit;
+        let memory_limit = task.execution_context.asil_config.limits.get_memory_limit();
+        engine.set_max_memory_usage(memory_limit);
         
-        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit);
+        let max_instructions = task.execution_context.asil_config.limits.get_instructions_limit();
         self.execute_single_instruction_step(&mut engine, task, component_instance, max_instructions)
     }
 
@@ -2222,11 +2222,11 @@ impl FuelAsyncExecutor {
         // For ASIL-B, enforce strict resource limits
         
         if let ASILExecutionMode::B { max_execution_slice_ms, .. } = task.execution_context.asil_config.mode {
-            let fuel_consumed = task.execution_context.context_fuel_consumed.load(Ordering::Acquire;
+            let fuel_consumed = task.execution_context.context_fuel_consumed.load(Ordering::Acquire);
             let max_fuel = max_execution_slice_ms as u64 * 10; // 10 fuel per ms
             
             if fuel_consumed >= max_fuel {
-                return Ok(ExecutionStepResult::Yielded;
+                return Ok(ExecutionStepResult::Yielded);
             }
         }
 
@@ -2236,7 +2236,7 @@ impl FuelAsyncExecutor {
         
         // Set resource limits
         engine.set_max_memory_usage(64 * 1024); // 64KB memory limit
-        engine.set_max_call_depth(10;
+        engine.set_max_call_depth(10);
         
         self.execute_single_instruction_step(&mut engine, task, component_instance, 50)
     }
@@ -2251,7 +2251,7 @@ impl FuelAsyncExecutor {
         
         // Basic error detection
         if task.execution_context.stack_depth > 100 {
-            return Err(Error::runtime_execution_error("Stack depth warning";
+            return Err(Error::runtime_execution_error("Stack depth warning"));
         }
 
         // Execute real WebAssembly with relaxed constraints
@@ -2259,7 +2259,7 @@ impl FuelAsyncExecutor {
         engine.set_fuel(Some(1000)); // More fuel for ASIL-A
         
         // Relaxed limits for ASIL-A
-        engine.set_max_call_depth(50;
+        engine.set_max_call_depth(50);
         
         self.execute_single_instruction_step(&mut engine, task, component_instance, 100)
     }
@@ -2291,7 +2291,7 @@ impl FuelAsyncExecutor {
                 // Check if any waitables are already ready
                 if let Some((ready_handle, index)) = self.waitable_registry.poll_ready_waitables(&waitables) {
                     // A waitable is ready - return immediately
-                    return Ok(ComponentAsyncOperationResult::Waiting { ready_index: Some(index) };
+                    return Ok(ComponentAsyncOperationResult::Waiting { ready_index: Some(index) });
                 }
                 
                 // No waitables ready - create yield point and suspend
@@ -2303,7 +2303,7 @@ impl FuelAsyncExecutor {
                 task.state = AsyncTaskState::Waiting;
                 
                 // Store waitables in task for later polling
-                task.waiting_on_waitables = Some(waitables;
+                task.waiting_on_waitables = Some(waitables);
                 
                 Ok(ComponentAsyncOperationResult::Waiting { ready_index: None })
             },
@@ -2317,7 +2317,7 @@ impl FuelAsyncExecutor {
                 
                 // Consume fuel for yielding
                 self.consume_task_fuel(task, ASYNC_TASK_YIELD_FUEL)?;
-                task.execution_context.consume_fuel(ASYNC_TASK_YIELD_FUEL;
+                task.execution_context.consume_fuel(ASYNC_TASK_YIELD_FUEL);
                 
                 // Monitor yield operation
                 if let Some(monitor) = &self.fuel_monitor {
@@ -2339,7 +2339,7 @@ impl FuelAsyncExecutor {
                 
                 // Consume fuel for polling
                 self.consume_task_fuel(task, ASYNC_TASK_POLL_FUEL)?;
-                task.execution_context.consume_fuel(ASYNC_TASK_POLL_FUEL;
+                task.execution_context.consume_fuel(ASYNC_TASK_POLL_FUEL);
                 
                 // Check if any waitables are ready
                 if let Some((ready_handle, index)) = self.waitable_registry.poll_ready_waitables(&waitables) {
@@ -2408,19 +2408,19 @@ impl FuelAsyncExecutor {
         // 4. Restore fuel consumption state
         // Don't double-count fuel that was already consumed before yield
         let fuel_at_yield = yield_point.fuel_at_yield;
-        let current_fuel = task.execution_context.context_fuel_consumed.load(Ordering::Acquire;
+        let current_fuel = task.execution_context.context_fuel_consumed.load(Ordering::Acquire);
         
         // Ensure we don't go backwards in fuel consumption
         if current_fuel < fuel_at_yield {
-            task.execution_context.context_fuel_consumed.store(fuel_at_yield, Ordering::Release;
+            task.execution_context.context_fuel_consumed.store(fuel_at_yield, Ordering::Release);
         }
 
         // 5. Validate deterministic execution for ASIL-D
         if let ASILExecutionMode::D { deterministic_execution: true, .. } = task.execution_context.asil_config.mode {
             // Verify deterministic timestamp consistency
-            let current_timestamp = task.execution_context.get_deterministic_timestamp);
+            let current_timestamp = task.execution_context.get_deterministic_timestamp();
             if current_timestamp < yield_point.yield_timestamp {
-                return Err(Error::runtime_execution_error("Deterministic execution violation during resume";
+                return Err(Error::runtime_execution_error("Deterministic execution violation during resume"));
             }
         }
 
@@ -2440,7 +2440,7 @@ impl FuelAsyncExecutor {
             Error::validation_invalid_input("Task not found")
         })?;
 
-        task.execution_context.set_component_instance(component_instance;
+        task.execution_context.set_component_instance(component_instance);
         Ok(())
     }
 
@@ -2455,15 +2455,15 @@ impl FuelAsyncExecutor {
         let mut engine = wrt_runtime::stackless::engine::StacklessEngine::new();
         
         // Set fuel limit based on task's remaining fuel budget
-        let consumed = task.fuel_consumed.load(Ordering::Acquire;
-        let remaining_fuel = task.fuel_budget.saturating_sub(consumed;
+        let consumed = task.fuel_consumed.load(Ordering::Acquire);
+        let remaining_fuel = task.fuel_budget.saturating_sub(consumed);
         
         if remaining_fuel == 0 {
-            return Ok(ExecutionStepResult::Yielded;
+            return Ok(ExecutionStepResult::Yielded);
         }
         
         // Set fuel for the engine - this integrates with instruction-level fuel consumption
-        engine.set_fuel(Some(remaining_fuel;
+        engine.set_fuel(Some(remaining_fuel));
         
         // Set verification level to match task's ASIL mode
         let verification_level = match task.execution_context.asil_config.mode {
@@ -2474,10 +2474,10 @@ impl FuelAsyncExecutor {
         };
         
         // Execute a limited number of WebAssembly instructions based on configuration
-        let max_instructions_per_step = task.execution_context.asil_config.limits.get_instructions_limit);
+        let max_instructions_per_step = task.execution_context.asil_config.limits.get_instructions_limit();
         
         // Real WebAssembly execution step
-        let initial_fuel = engine.remaining_fuel().unwrap_or(0;
+        let initial_fuel = engine.remaining_fuel().unwrap_or(0);
         
         // Get function to execute from execution context
         let execution_result = if let Some(yield_point) = &task.execution_context.last_yield_point {
@@ -2489,12 +2489,12 @@ impl FuelAsyncExecutor {
         };
         
         // Update task fuel consumption based on what the engine consumed
-        let final_fuel = engine.remaining_fuel().unwrap_or(0;
-        let fuel_consumed_this_step = initial_fuel.saturating_sub(final_fuel;
+        let final_fuel = engine.remaining_fuel().unwrap_or(0);
+        let fuel_consumed_this_step = initial_fuel.saturating_sub(final_fuel);
         
         // Update task fuel tracking
-        task.fuel_consumed.fetch_add(fuel_consumed_this_step, Ordering::AcqRel;
-        task.execution_context.context_fuel_consumed.fetch_add(fuel_consumed_this_step, Ordering::AcqRel;
+        task.fuel_consumed.fetch_add(fuel_consumed_this_step, Ordering::AcqRel);
+        task.execution_context.context_fuel_consumed.fetch_add(fuel_consumed_this_step, Ordering::AcqRel);
         
         execution_result
     }
@@ -2514,7 +2514,7 @@ impl FuelAsyncExecutor {
         let module_instance = match component_instance.get_core_module_instance(0) {
             Some(instance) => instance,
             None => {
-                return Err(Error::runtime_execution_error("Component instance not found";
+                return Err(Error::runtime_execution_error("Component instance not found"));
             }
         };
         
@@ -2555,7 +2555,7 @@ impl FuelAsyncExecutor {
                 self.waitable_registry.add_waiting_task(waitable_handle, task.id)?;
                 
                 // Update task's waiting list
-                task.waiting_on_waitables = Some(vec![waitable_handle];
+                task.waiting_on_waitables = Some(vec![waitable_handle]);
                 
                 // Create async yield point for resumption
                 task.execution_context.create_async_yield_point(
@@ -2622,7 +2622,7 @@ impl FuelAsyncExecutor {
                 self.waitable_registry.add_waiting_task(waitable_handle, task.id)?;
                 
                 // Update task's waiting list
-                task.waiting_on_waitables = Some(vec![waitable_handle];
+                task.waiting_on_waitables = Some(vec![waitable_handle]);
                 
                 // Update async yield point with new resource
                 task.execution_context.create_async_yield_point(
@@ -2710,7 +2710,7 @@ impl FuelAsyncExecutor {
 
     /// Enable fuel debt/credit system with configuration
     pub fn enable_debt_credit_system(&mut self, config: Option<DebtCreditConfig>) -> Result<(), Error> {
-        let config = config.unwrap_or_default);
+        let config = config.unwrap_or_default();
         
         let system = FuelDebtCreditSystem::new(
             config.max_concurrent_debtors,
@@ -2719,7 +2719,7 @@ impl FuelAsyncExecutor {
             config.global_credit_limit,
         )?;
         
-        self.debt_credit_system = Some(system;
+        self.debt_credit_system = Some(system);
         Ok(())
     }
 
@@ -2790,7 +2790,7 @@ impl FuelAsyncExecutor {
             Error::validation_invalid_state("Debt/credit system not enabled")
         })?;
 
-        let restrictions = restrictions.unwrap_or(CreditRestriction::None;
+        let restrictions = restrictions.unwrap_or(CreditRestriction::None);
         system.grant_credit(component_id, amount, restrictions)
     }
 
@@ -2798,8 +2798,8 @@ impl FuelAsyncExecutor {
     pub fn get_debt_credit_balance(&self, task_id: TaskId) -> DebtCreditBalance {
         if let Some(system) = &self.debt_credit_system {
             if let Some(task) = self.tasks.get(&task_id) {
-                let debt = system.get_task_debt(task_id;
-                let credit = system.get_component_credit(task.component_id;
+                let debt = system.get_task_debt(task_id);
+                let credit = system.get_component_credit(task.component_id);
                 DebtCreditBalance {
                     task_id,
                     component_id: task.component_id,
@@ -2825,11 +2825,11 @@ impl FuelAsyncExecutor {
         
         // First, check if task has debt
         if let Some(system) = &mut self.debt_credit_system {
-            let current_debt = system.get_task_debt(task_id;
+            let current_debt = system.get_task_debt(task_id);
             
             if current_debt > 0 {
                 // Calculate how much fuel goes to debt repayment
-                let debt_payment = fuel_to_allocate.min(current_debt;
+                let debt_payment = fuel_to_allocate.min(current_debt);
                 
                 // Repay debt with interest
                 let interest_rate = match task.execution_context.asil_config.mode {
@@ -2842,12 +2842,12 @@ impl FuelAsyncExecutor {
                 system.repay_debt(task_id, debt_payment, interest_rate)?;
                 
                 // Reduce fuel available for allocation
-                fuel_to_allocate = fuel_to_allocate.saturating_sub(debt_payment;
+                fuel_to_allocate = fuel_to_allocate.saturating_sub(debt_payment);
             }
         }
         
         // Allocate remaining fuel to task budget
-        task.fuel_budget = task.fuel_budget.saturating_add(fuel_to_allocate;
+        task.fuel_budget = task.fuel_budget.saturating_add(fuel_to_allocate);
         
         Ok(fuel_to_allocate)
     }
@@ -3087,7 +3087,7 @@ mod tests {
         fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if !self.yielded {
                 self.yielded = true;
-                cx.waker().wake_by_ref);
+                cx.waker().wake_by_ref();
                 Poll::Pending
             } else {
                 Poll::Ready(Ok(()))
@@ -3098,7 +3098,7 @@ mod tests {
     #[test]
     fn test_executor_creation() {
         let executor = FuelAsyncExecutor::new().unwrap();
-        let status = executor.get_global_fuel_status);
+        let status = executor.get_global_fuel_status();
         
         assert_eq!(status.active_tasks, 0);
         assert_eq!(status.ready_tasks, 0);
@@ -3108,7 +3108,7 @@ mod tests {
     #[test]
     fn test_task_spawning() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(10000;
+        executor.set_global_fuel_limit(10000);
 
         let future = async { Ok(()) };
         let task_id = executor.spawn_task(
@@ -3119,14 +3119,14 @@ mod tests {
         ).unwrap();
 
         let status = executor.get_task_status(task_id).unwrap();
-        assert_eq!(status.state, AsyncTaskState::Ready;
-        assert_eq!(status.fuel_budget, 1000;
+        assert_eq!(status.state, AsyncTaskState::Ready);
+        assert_eq!(status.fuel_budget, 1000);
     }
 
     #[test]
     fn test_fuel_limit_enforcement() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(100;
+        executor.set_global_fuel_limit(100);
 
         let future = async { Ok(()) };
         let result = executor.spawn_task(
@@ -3134,20 +3134,20 @@ mod tests {
             200,  // Exceeds limit
             Priority::Normal,
             future,
-        ;
+        );
 
-        assert!(result.is_err();
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_proper_waker_integration() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(10000;
+        executor.set_global_fuel_limit(10000);
         
         // Create Arc<Mutex<>> wrapper and set self reference
-        let executor_arc = Arc::new(Mutex::new(executor;
+        let executor_arc = Arc::new(Mutex::new(executor));
         if let Ok(mut exec) = executor_arc.lock() {
-            exec.set_self_ref(Arc::downgrade(&executor_arc.clone();
+            exec.set_self_ref(Arc::downgrade(&executor_arc.clone()));
         }
         
         // Spawn a task that yields once
@@ -3167,7 +3167,7 @@ mod tests {
             let polled = exec.poll_tasks().unwrap();
             assert_eq!(polled, 1);
             
-            let stats = exec.get_polling_stats);
+            let stats = exec.get_polling_stats();
             assert_eq!(stats.tasks_yielded, 1);
             assert_eq!(stats.total_polls, 1);
         }
@@ -3178,23 +3178,23 @@ mod tests {
             let polled = exec.poll_tasks().unwrap();
             assert_eq!(polled, 1);
             
-            let stats = exec.get_polling_stats);
+            let stats = exec.get_polling_stats();
             assert_eq!(stats.tasks_completed, 1);
-            assert_eq!(stats.total_polls, 2;
+            assert_eq!(stats.total_polls, 2);
         }
         
         // Verify task is completed
         {
             let exec = executor_arc.lock().unwrap();
             let status = exec.get_task_status(task_id).unwrap();
-            assert_eq!(status.state, AsyncTaskState::Completed;
+            assert_eq!(status.state, AsyncTaskState::Completed);
         }
     }
 
     #[test]
     fn test_polling_statistics() {
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(10000;
+        executor.set_global_fuel_limit(10000);
         
         // Spawn multiple tasks
         for i in 0..3 {

@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_string_table_creation() {
         let table = StringTable::new(TEST_STRING_DATA;
-        assert_eq!(table.size(), TEST_STRING_DATA.len);
+        assert_eq!(table.size(), TEST_STRING_DATA.len();
         assert!(!table.is_empty());
     }
 

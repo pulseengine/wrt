@@ -6,9 +6,19 @@
 //!
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 
-use crate::generic_memory_guard::{GenericMemoryGuard, ManagedMemoryProvider, MemoryCoordinator};
-use crate::{codes, Error, ErrorCategory, Result};
 use core::marker::PhantomData;
+
+use crate::{
+    codes,
+    generic_memory_guard::{
+        GenericMemoryGuard,
+        ManagedMemoryProvider,
+        MemoryCoordinator,
+    },
+    Error,
+    ErrorCategory,
+    Result,
+};
 
 /// Trait for types that can create memory providers
 pub trait ProviderFactory: Sized {
@@ -36,11 +46,11 @@ where
     I: Copy,
 {
     /// The underlying factory
-    factory: F,
+    factory:     F,
     /// The memory coordinator
     coordinator: &'static C,
     /// Phantom data for type parameters
-    _phantom: PhantomData<I>,
+    _phantom:    PhantomData<I>,
 }
 
 impl<F, C, I> GenericBudgetAwareFactory<F, C, I>
@@ -51,7 +61,11 @@ where
 {
     /// Create a new budget-aware factory
     pub fn new(factory: F, coordinator: &'static C) -> Self {
-        Self { factory, coordinator, _phantom: PhantomData }
+        Self {
+            factory,
+            coordinator,
+            _phantom: PhantomData,
+        }
     }
 
     /// Create a provider with budget checking
@@ -78,9 +92,9 @@ pub struct FactoryConfig<F, C, I>
 where
     C: 'static,
 {
-    pub factory: F,
+    pub factory:     F,
     pub coordinator: &'static C,
-    _phantom: PhantomData<I>,
+    _phantom:        PhantomData<I>,
 }
 
 impl<F, C, I> FactoryConfig<F, C, I>
@@ -90,7 +104,11 @@ where
     I: Copy,
 {
     pub fn new(factory: F, coordinator: &'static C) -> Self {
-        Self { factory, coordinator, _phantom: PhantomData }
+        Self {
+            factory,
+            coordinator,
+            _phantom: PhantomData,
+        }
     }
 
     pub fn build(self) -> GenericBudgetAwareFactory<F, C, I> {
@@ -129,7 +147,9 @@ pub mod examples {
         type Provider = SimpleProvider;
 
         fn create_provider(&self, size: usize) -> Result<Self::Provider> {
-            Ok(SimpleProvider { buffer: Vec::with_capacity(size) })
+            Ok(SimpleProvider {
+                buffer: Vec::with_capacity(size),
+            })
         }
     }
 }
@@ -137,7 +157,11 @@ pub mod examples {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory_coordinator::{AllocationId, CrateIdentifier, GenericMemoryCoordinator};
+    use crate::memory_coordinator::{
+        AllocationId,
+        CrateIdentifier,
+        GenericMemoryCoordinator,
+    };
 
     // Test provider
     struct TestProvider {

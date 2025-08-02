@@ -38,10 +38,10 @@ fn test_custom_sections() {
         name: "another-section".to_string(),
         data: vec![5, 6, 7, 8],
     };
-    module.add_custom_section(section2;
+    module.add_custom_section(section2);
 
     // Verify both sections exist
-    assert_eq!(module.custom_sections.len(), 2;
-    assert!(module.find_custom_section("test-section").is_some();
-    assert!(module.find_custom_section("another-section").is_some();
+    assert_eq!(module.custom_sections.len(), 2);
+    assert!(module.find_custom_section("test-section").is_some());
+    assert!(module.find_custom_section("another-section").is_some());
 }

@@ -6,14 +6,18 @@
 //! 3. Enable compile-time verification of memory usage
 //! 4. Integrate seamlessly with existing code
 
+use core::{
+    marker::PhantomData,
+    ops::{
+        Deref,
+        DerefMut,
+    },
+};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
 #[cfg(not(feature = "std"))]
 use hashbrown::HashMap;
-
-use core::marker::PhantomData;
-use core::ops::{Deref, DerefMut};
 
 use super::phantom_budgets::MemoryBudget;
 
@@ -24,26 +28,39 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 // Re-export for convenience
-pub use super::phantom_budgets::{CapacityError, CrateId, CRATE_BUDGETS};
+pub use super::phantom_budgets::{
+    CapacityError,
+    CrateId,
+    CRATE_BUDGETS,
+};
 
 /// Zero-cost wrapper around std::vec::Vec with compile-time budget verification
 #[derive(Debug, Clone)]
 pub struct WrtVec<T, const CRATE: u8, const MAX_SIZE: usize> {
-    inner: Vec<T>,
+    inner:   Vec<T>,
     _budget: PhantomData<MemoryBudget<CRATE, MAX_SIZE>>,
 }
 
 impl<T, const CRATE: u8, const MAX_SIZE: usize> WrtVec<T, CRATE, MAX_SIZE> {
     /// Create new vector with compile-time budget verification
     pub fn new() -> Self {
-        Self { inner: Vec::new(), _budget: PhantomData }
+        Self {
+            inner:   Vec::new(),
+            _budget: PhantomData,
+        }
     }
 
     /// Create with specific capacity (still bounded by MAX_SIZE)
     pub fn with_capacity(capacity: usize) -> Self {
-        assert!(capacity <= MAX_SIZE, "Requested capacity exceeds compile-time limit");
+        assert!(
+            capacity <= MAX_SIZE,
+            "Requested capacity exceeds compile-time limit"
+        );
 
-        Self { inner: Vec::with_capacity(capacity), _budget: PhantomData }
+        Self {
+            inner:   Vec::with_capacity(capacity),
+            _budget: PhantomData,
+        }
     }
 
     /// Push with capacity checking
@@ -59,7 +76,11 @@ impl<T, const CRATE: u8, const MAX_SIZE: usize> WrtVec<T, CRATE, MAX_SIZE> {
     /// Force push (panics if capacity exceeded) - for compatibility
     pub fn force_push(&mut self, item: T) {
         if self.inner.len() >= MAX_SIZE {
-            panic!("WrtVec capacity exceeded: {} >= {}", self.inner.len(), MAX_SIZE);
+            panic!(
+                "WrtVec capacity exceeded: {} >= {}",
+                self.inner.len(),
+                MAX_SIZE
+            );
         }
         self.inner.push(item);
     }
@@ -97,13 +118,14 @@ impl<T, const CRATE: u8, const MAX_SIZE: usize> Default for WrtVec<T, CRATE, MAX
     }
 }
 
-/// Zero-cost wrapper around std::collections::HashMap with compile-time budget verification
+/// Zero-cost wrapper around std::collections::HashMap with compile-time budget
+/// verification
 #[derive(Debug, Clone)]
 pub struct WrtHashMap<K, V, const CRATE: u8, const MAX_SIZE: usize>
 where
     K: std::hash::Hash + Eq,
 {
-    inner: HashMap<K, V>,
+    inner:   HashMap<K, V>,
     _budget: PhantomData<MemoryBudget<CRATE, MAX_SIZE>>,
 }
 
@@ -113,14 +135,23 @@ where
 {
     /// Create new HashMap with compile-time budget verification
     pub fn new() -> Self {
-        Self { inner: HashMap::new(), _budget: PhantomData }
+        Self {
+            inner:   HashMap::new(),
+            _budget: PhantomData,
+        }
     }
 
     /// Create with specific capacity
     pub fn with_capacity(capacity: usize) -> Self {
-        assert!(capacity <= MAX_SIZE, "Requested capacity exceeds compile-time limit");
+        assert!(
+            capacity <= MAX_SIZE,
+            "Requested capacity exceeds compile-time limit"
+        );
 
-        Self { inner: HashMap::with_capacity(capacity), _budget: PhantomData }
+        Self {
+            inner:   HashMap::with_capacity(capacity),
+            _budget: PhantomData,
+        }
     }
 
     /// Insert with capacity checking
@@ -163,7 +194,7 @@ where
 #[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct WrtString<const CRATE: u8, const MAX_SIZE: usize> {
-    inner: String,
+    inner:   String,
     _budget: PhantomData<MemoryBudget<CRATE, MAX_SIZE>>,
 }
 
@@ -171,7 +202,10 @@ pub struct WrtString<const CRATE: u8, const MAX_SIZE: usize> {
 impl<const CRATE: u8, const MAX_SIZE: usize> WrtString<CRATE, MAX_SIZE> {
     /// Create new string with compile-time budget verification
     pub fn new() -> Self {
-        Self { inner: String::new(), _budget: PhantomData }
+        Self {
+            inner:   String::new(),
+            _budget: PhantomData,
+        }
     }
 
     /// Create from str with truncation if needed
@@ -179,7 +213,10 @@ impl<const CRATE: u8, const MAX_SIZE: usize> WrtString<CRATE, MAX_SIZE> {
         if s.len() > MAX_SIZE {
             Err(CapacityError::Exceeded)
         } else {
-            Ok(Self { inner: s.to_string(), _budget: PhantomData })
+            Ok(Self {
+                inner:   s.to_string(),
+                _budget: PhantomData,
+            })
         }
     }
 
@@ -266,7 +303,10 @@ mod tests {
     fn test_wrt_vec_creation() {
         let mut vec: WrtVec<i32, { CrateId::Foundation as u8 }, 100> = WrtVec::new();
         assert_eq!(vec.len(), 0);
-        assert_eq!(WrtVec::<i32, { CrateId::Foundation as u8 }, 100>::max_capacity(), 100);
+        assert_eq!(
+            WrtVec::<i32, { CrateId::Foundation as u8 }, 100>::max_capacity(),
+            100
+        );
 
         // Test successful push
         assert!(vec.push(42).is_ok());

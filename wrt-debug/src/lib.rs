@@ -313,7 +313,7 @@ impl<'a> DwarfDebugInfo<'a> {
         if end > self.module_bytes.len() {
             return Err(Error::parse_error(
                 "Debug line section extends beyond module bounds",
-            ;
+            ));
         }
 
         // Get the debug_line data
@@ -326,12 +326,12 @@ impl<'a> DwarfDebugInfo<'a> {
     /// Check if debug information is available
     pub fn has_debug_info(&self) -> bool {
         #[cfg(feature = "line-info")]
-        let has_line = self.sections.debug_line.is_some);
+        let has_line = self.sections.debug_line.is_some();
         #[cfg(not(feature = "line-info"))]
         let has_line = false;
 
         #[cfg(feature = "debug-info")]
-        let has_info = self.sections.debug_info.is_some);
+        let has_info = self.sections.debug_info.is_some();
         #[cfg(not(feature = "debug-info"))]
         let has_info = false;
 
@@ -358,7 +358,7 @@ impl<'a> DwarfDebugInfo<'a> {
         if info_end > self.module_bytes.len() {
             return Err(Error::parse_error(
                 "Debug info section extends beyond module bounds",
-            ;
+            ));
         }
         let debug_info_data = &self.module_bytes[info_start..info_end];
 
@@ -367,7 +367,7 @@ impl<'a> DwarfDebugInfo<'a> {
         if abbrev_end > self.module_bytes.len() {
             return Err(Error::parse_error(
                 "Debug abbrev section extends beyond module bounds",
-            ;
+            ));
         }
         let debug_abbrev_data = &self.module_bytes[abbrev_start..abbrev_end];
 
@@ -378,7 +378,7 @@ impl<'a> DwarfDebugInfo<'a> {
             if str_end > self.module_bytes.len() {
                 return Err(Error::parse_error(
                     "Debug str section extends beyond module bounds",
-                ;
+                ));
             }
             Some(&self.module_bytes[str_start..str_end])
         } else {
@@ -389,7 +389,7 @@ impl<'a> DwarfDebugInfo<'a> {
         let mut parser = DebugInfoParser::new(debug_info_data, debug_abbrev_data, debug_str_data;
         parser.parse()?;
 
-        self.info_parser = Some(parser;
+        self.info_parser = Some(parser);
         Ok(())
     }
 
@@ -445,7 +445,7 @@ mod tests {
     fn test_create_debug_info() {
         let module_bytes = &[0u8; 100];
         let debug_info = DwarfDebugInfo::new(module_bytes).unwrap();
-        assert!(!debug_info.has_debug_info();
+        assert!(!debug_info.has_debug_info());
     }
 
     #[test]
@@ -454,9 +454,9 @@ mod tests {
         let module_bytes = &[0u8; 100];
         let mut debug_info = DwarfDebugInfo::new(module_bytes).unwrap();
 
-        debug_info.add_section(".debug_line", 10, 20;
+        debug_info.add_section(".debug_line", 10, 20);
         // Note: has_section method doesn't exist, using has_debug_info instead
-        assert!(debug_info.has_debug_info();
+        assert!(debug_info.has_debug_info());
     }
 
     #[test]
@@ -466,7 +466,7 @@ mod tests {
         let line_info = LineInfo::new(data;
 
         // Test initial state
-        assert!(line_info.is_valid();
+        assert!(line_info.is_valid());
     }
 
     #[test]

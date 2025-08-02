@@ -90,7 +90,7 @@ fn test_standalone_name_section() {
     assert_eq!(decoded.component_name, original.component_name;
 
     // Check sort names
-    assert_eq!(decoded.sort_names.len(), original.sort_names.len);
+    assert_eq!(decoded.sort_names.len(), original.sort_names.len();
 
     for i in 0..original.sort_names.len() {
         let (sort1, names1) = &original.sort_names[i];
@@ -101,7 +101,7 @@ fn test_standalone_name_section() {
         assert!(matches!(sort1, _sort2);
 
         // Compare name maps
-        assert_eq!(names1.len(), names2.len);
+        assert_eq!(names1.len(), names2.len();
         for j in 0..names1.len() {
             assert_eq!(names1[j].0, names2[j].0;
             assert_eq!(names1[j].1, names2[j].1;

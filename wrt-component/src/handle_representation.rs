@@ -233,7 +233,7 @@ impl HandleRepresentationManager {
         access_rights: AccessRights,
     ) -> HandleRepresentationResult<ResourceHandle> {
         let handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst;
-        let handle = ResourceHandle::new(handle_id;
+        let handle = ResourceHandle::new(handle_id);
 
         let representation = HandleRepresentation {
             handle,
@@ -359,7 +359,7 @@ impl HandleRepresentationManager {
 
         // Create new handle for target component
         let new_handle_id = self.next_handle_id.fetch_add(1, Ordering::SeqCst;
-        let new_handle = ResourceHandle::new(new_handle_id;
+        let new_handle = ResourceHandle::new(new_handle_id);
 
         // Create shared representation
         let shared_representation = HandleRepresentation {
@@ -805,7 +805,7 @@ mod tests {
     #[test]
     fn test_handle_creation() {
         let mut manager = HandleRepresentationManager::new().unwrap();
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
 
         let resource_type =
             manager.type_registry.create_resource_type(component_id, "test-resource").unwrap();
@@ -828,7 +828,7 @@ mod tests {
     fn test_typed_handle() {
         struct MyResource;
 
-        let handle = ResourceHandle::new(42;
+        let handle = ResourceHandle::new(42);
         let type_id = TypeId(100;
 
         let typed_handle = TypedHandle::<MyResource>::new(handle, type_id;

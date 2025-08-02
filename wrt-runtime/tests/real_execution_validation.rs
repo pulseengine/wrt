@@ -64,7 +64,7 @@ fn test_instruction_parsing_integration() -> Result<()> {
     assert!(!function.body.is_empty(), "Function body should contain parsed instructions");
     assert!(function.body.len() > 0, "Function should have at least one instruction");
     
-    println!("✓ Function has {} parsed instructions", function.body.len);
+    println!("✓ Function has {} parsed instructions", function.body.len());
     Ok(())
 }
 
@@ -79,7 +79,7 @@ fn test_stackless_engine_execution() -> Result<()> {
     
     // Create module instance
     let instance = ModuleInstance::new(runtime_module.clone(), 0)?;
-    let instance_arc = Arc::new(instance;
+    let instance_arc = Arc::new(instance);
     
     // Set current module
     let _instance_idx = engine.set_current_module(instance_arc)?;
@@ -89,13 +89,13 @@ fn test_stackless_engine_execution() -> Result<()> {
     let results = engine.execute(0, 0, args)?;
     
     // Verify execution results
-    assert_eq!(results.len(), 1, "Should return exactly one result";
+    assert_eq!(results.len(), 1, "Should return exactly one result");
     
     if let Value::I32(result) = &results[0] {
-        assert_eq!(*result, 42, "15 + 27 should equal 42";
+        assert_eq!(*result, 42, "15 + 27 should equal 42");
         println!("✓ Real execution successful: 15 + 27 = {}", result);
     } else {
-        return Err(Error::runtime_error("Expected i32 result";
+        return Err(Error::runtime_error("Expected i32 result"));
     }
     
     Ok(())
@@ -127,7 +127,7 @@ fn test_multiple_function_calls() -> Result<()> {
     
     let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
-    let instance_arc = Arc::new(instance;
+    let instance_arc = Arc::new(instance);
     let _instance_idx = engine.set_current_module(instance_arc)?;
     
     // Execute multiple times with different arguments
@@ -144,9 +144,9 @@ fn test_multiple_function_calls() -> Result<()> {
         
         assert_eq!(results.len(), 1);
         if let Value::I32(result) = &results[0] {
-            assert_eq!(*result, expected, "{} + {} should equal {}", a, b, expected;
+            assert_eq!(*result, expected, "{} + {} should equal {}", a, b, expected);
         } else {
-            return Err(Error::runtime_error("Expected i32 result";
+            return Err(Error::runtime_error("Expected i32 result"));
         }
     }
     
@@ -164,7 +164,7 @@ fn test_capability_based_memory_allocation() -> Result<()> {
     let mut test_vec = wrt_foundation::bounded::BoundedVec::<i32, 10, _>::new(provider)?;
     test_vec.push(42)?;
     assert_eq!(test_vec.len(), 1);
-    assert_eq!(test_vec.get(0)?, 42;
+    assert_eq!(test_vec.get(0)?, 42);
     
     println!("✓ Capability-based memory allocation working");
     Ok(())
@@ -182,12 +182,12 @@ fn test_instruction_dispatch_coverage() -> Result<()> {
     // The add function should contain: local.get 0, local.get 1, i32.add, end
     assert!(function.body.len() >= 3, "Add function should have at least 3 instructions");
     
-    println!("✓ Instruction sequence parsed with {} instructions", function.body.len);
+    println!("✓ Instruction sequence parsed with {} instructions", function.body.len();
     
     // Test actual execution to verify dispatcher works
     let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
-    let instance_arc = Arc::new(instance;
+    let instance_arc = Arc::new(instance);
     let _instance_idx = engine.set_current_module(instance_arc)?;
     
     let args = vec![Value::I32(7), Value::I32(11)];
@@ -195,7 +195,7 @@ fn test_instruction_dispatch_coverage() -> Result<()> {
     
     assert_eq!(results.len(), 1);
     if let Value::I32(result) = &results[0] {
-        assert_eq!(*result, 18;
+        assert_eq!(*result, 18);
         println!("✓ Instruction dispatch successful: 7 + 11 = {}", result);
     }
     
@@ -210,7 +210,7 @@ fn test_error_handling_and_bounds() -> Result<()> {
     
     let mut engine = StacklessEngine::new();
     let instance = ModuleInstance::new(runtime_module, 0)?;
-    let instance_arc = Arc::new(instance;
+    let instance_arc = Arc::new(instance);
     let _instance_idx = engine.set_current_module(instance_arc)?;
     
     // Test with wrong number of arguments (should handle gracefully)

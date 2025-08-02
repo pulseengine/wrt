@@ -190,7 +190,7 @@ fn format_u16(mut n: u16, buf: &mut [u8]) -> &str {
         return "0";
     }
 
-    let mut i = buf.len);
+    let mut i = buf.len();
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
@@ -202,7 +202,7 @@ fn format_u16(mut n: u16, buf: &mut [u8]) -> &str {
 
 // Helper to format u32 as hexadecimal
 fn format_hex_u32(mut n: u32, buf: &mut [u8]) -> &str {
-    let mut i = buf.len);
+    let mut i = buf.len();
 
     if n == 0 {
         return "00000000";

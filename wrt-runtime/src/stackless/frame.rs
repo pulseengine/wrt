@@ -325,7 +325,7 @@ impl FrameBehavior for StacklessFrame {
         // Return empty slice and log the error for diagnostics
         // ASIL-compliant: Check if BoundedVec provides mutable access
         if let Ok(len) = self.locals.len() {
-            if let Ok(slice) = self.locals.get_mut(0..len) {
+            if let Ok(slice) = self.locals.get_mut(0..len() {
                 return slice;
             }
         }
@@ -696,7 +696,7 @@ impl FrameBehavior for StacklessFrame {
                 
                 #[cfg(feature = "std")]
                 {
-                    let mut args = ValueStackVec::with_capacity(target_func_type.params.len);
+                    let mut args = ValueStackVec::with_capacity(target_func_type.params.len();
                     
                     // Pop arguments from stack in reverse order (last param first)
                     for _ in 0..target_func_type.params.len() {
@@ -776,7 +776,7 @@ impl FrameBehavior for StacklessFrame {
                 // 6. Pop arguments from stack
                 #[cfg(feature = "std")]
                 {
-                    let mut args = ValueStackVec::with_capacity(actual_func_type.params.len);
+                    let mut args = ValueStackVec::with_capacity(actual_func_type.params.len();
                     for _ in 0..actual_func_type.params.len() {
                         let value = engine.exec_stack.values.pop().map_err(|e| {
                             Error::runtime_stack_underflow("Stack operation error")

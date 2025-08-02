@@ -19,10 +19,19 @@
 // use std::vec::Vec; // This was for the module scope, func_type::create used
 // its own.
 
-use wrt_error::{codes, Error, Result};
+use wrt_error::{
+    codes,
+    Error,
+    Result,
+};
 
 #[cfg(feature = "std")]
-use crate::{BlockType, FuncType, RefType, ValueType as CoreValueType};
+use crate::{
+    BlockType,
+    FuncType,
+    RefType,
+    ValueType as CoreValueType,
+};
 
 /// Convert `RefType` to `ValueType`
 ///
@@ -46,7 +55,9 @@ pub fn val_type_to_ref_type(val_type: CoreValueType) -> Result<RefType> {
     match val_type {
         CoreValueType::FuncRef => Ok(RefType::Funcref),
         CoreValueType::ExternRef => Ok(RefType::Externref),
-        _ => Err(Error::runtime_execution_error("Value type is not a reference type")),
+        _ => Err(Error::runtime_execution_error(
+            "Value type is not a reference type",
+        )),
     }
 }
 
@@ -82,8 +93,14 @@ pub mod func_type {
 
     // Result is imported through crate prelude
 
-    use super::{CoreValueType as ValueType, FuncType};
-    use crate::{MemoryProvider, Result};
+    use super::{
+        CoreValueType as ValueType,
+        FuncType,
+    };
+    use crate::{
+        MemoryProvider,
+        Result,
+    };
 
     /// Verify that a function type conforms to WebAssembly constraints
     ///
@@ -122,7 +139,10 @@ mod tests {
     use crate::{
         memory_sizing::TinyProvider,
         safe_memory::DEFAULT_MEMORY_PROVIDER_CAPACITY,
-        types::{RefType, ValueType as CoreValueType},
+        types::{
+            RefType,
+            ValueType as CoreValueType,
+        },
         values::Value,
     };
 
@@ -138,25 +158,58 @@ mod tests {
         assert_eq!(CoreValueType::ExternRef.to_binary(), 0x6F);
 
         // Test binary to val type conversions (now directly from ValueType)
-        assert_eq!(CoreValueType::from_binary(0x7F).unwrap(), CoreValueType::I32);
-        assert_eq!(CoreValueType::from_binary(0x7E).unwrap(), CoreValueType::I64);
-        assert_eq!(CoreValueType::from_binary(0x7D).unwrap(), CoreValueType::F32);
-        assert_eq!(CoreValueType::from_binary(0x7C).unwrap(), CoreValueType::F64);
-        assert_eq!(CoreValueType::from_binary(0x7B).unwrap(), CoreValueType::V128); // Added for V128
-        assert_eq!(CoreValueType::from_binary(0x70).unwrap(), CoreValueType::FuncRef);
-        assert_eq!(CoreValueType::from_binary(0x6F).unwrap(), CoreValueType::ExternRef);
+        assert_eq!(
+            CoreValueType::from_binary(0x7F).unwrap(),
+            CoreValueType::I32
+        );
+        assert_eq!(
+            CoreValueType::from_binary(0x7E).unwrap(),
+            CoreValueType::I64
+        );
+        assert_eq!(
+            CoreValueType::from_binary(0x7D).unwrap(),
+            CoreValueType::F32
+        );
+        assert_eq!(
+            CoreValueType::from_binary(0x7C).unwrap(),
+            CoreValueType::F64
+        );
+        assert_eq!(
+            CoreValueType::from_binary(0x7B).unwrap(),
+            CoreValueType::V128
+        ); // Added for V128
+        assert_eq!(
+            CoreValueType::from_binary(0x70).unwrap(),
+            CoreValueType::FuncRef
+        );
+        assert_eq!(
+            CoreValueType::from_binary(0x6F).unwrap(),
+            CoreValueType::ExternRef
+        );
         assert!(CoreValueType::from_binary(0x00).is_err());
     }
 
     #[test]
     fn test_ref_type_conversions() {
         // Test RefType to ValueType conversions
-        assert_eq!(ref_type_to_val_type(RefType::Funcref), CoreValueType::FuncRef);
-        assert_eq!(ref_type_to_val_type(RefType::Externref), CoreValueType::ExternRef);
+        assert_eq!(
+            ref_type_to_val_type(RefType::Funcref),
+            CoreValueType::FuncRef
+        );
+        assert_eq!(
+            ref_type_to_val_type(RefType::Externref),
+            CoreValueType::ExternRef
+        );
 
         // Test ValueType to RefType conversions
-        assert_eq!(val_type_to_ref_type(CoreValueType::FuncRef).unwrap(), RefType::Funcref);
-        assert_eq!(val_type_to_ref_type(CoreValueType::ExternRef).unwrap(), RefType::Externref);
+        assert_eq!(
+            val_type_to_ref_type(CoreValueType::FuncRef).unwrap(),
+            RefType::Funcref
+        );
+        assert_eq!(
+            val_type_to_ref_type(CoreValueType::ExternRef).unwrap(),
+            RefType::Externref
+        );
         assert!(val_type_to_ref_type(CoreValueType::I32).is_err());
         assert!(val_type_to_ref_type(CoreValueType::I64).is_err());
         assert!(val_type_to_ref_type(CoreValueType::F32).is_err());
@@ -171,7 +224,10 @@ mod tests {
         let provider = TinyProvider::default();
         let func_type = func_type::create(provider.clone(), &params, &results).unwrap();
 
-        assert_eq!(func_type.params(), &[CoreValueType::I32, CoreValueType::I64]);
+        assert_eq!(
+            func_type.params(),
+            &[CoreValueType::I32, CoreValueType::I64]
+        );
         assert_eq!(func_type.results(), &[CoreValueType::F32]);
 
         // Verification should pass

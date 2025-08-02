@@ -134,31 +134,31 @@ mod tests {
         assert!("".parse::<LogLevel>().is_err();
 
         // Test error message
-        let err = "invalid".parse::<LogLevel>().unwrap_err);
-        assert_eq!(err.message, "Invalid log level";
+        let err = "invalid".parse::<LogLevel>().unwrap_err();
+        assert_eq!(err.message, "Invalid log level");
     }
 
     #[test]
     fn test_log_level_from_string_or_default() {
-        assert_eq!(LogLevel::from_string_or_default("trace"), LogLevel::Trace;
-        assert_eq!(LogLevel::from_string_or_default("debug"), LogLevel::Debug;
-        assert_eq!(LogLevel::from_string_or_default("info"), LogLevel::Info;
+        assert_eq!(LogLevel::from_string_or_default("trace"), LogLevel::Trace);
+        assert_eq!(LogLevel::from_string_or_default("debug"), LogLevel::Debug);
+        assert_eq!(LogLevel::from_string_or_default("info"), LogLevel::Info);
         assert_eq!(LogLevel::from_string_or_default("warn"), LogLevel::Warn;
         assert_eq!(LogLevel::from_string_or_default("error"), LogLevel::Error;
         assert_eq!(LogLevel::from_string_or_default("critical"), LogLevel::Critical;
 
         // Test invalid defaults to Info
-        assert_eq!(LogLevel::from_string_or_default("invalid"), LogLevel::Info;
-        assert_eq!(LogLevel::from_string_or_default(""), LogLevel::Info;
+        assert_eq!(LogLevel::from_string_or_default("invalid"), LogLevel::Info);
+        assert_eq!(LogLevel::from_string_or_default(""), LogLevel::Info);
     }
 
     #[test]
     fn test_log_level_as_str() {
-        assert_eq!(LogLevel::Trace.as_str(), "trace";
-        assert_eq!(LogLevel::Debug.as_str(), "debug";
-        assert_eq!(LogLevel::Info.as_str(), "info";
-        assert_eq!(LogLevel::Warn.as_str(), "warn";
-        assert_eq!(LogLevel::Error.as_str(), "error";
-        assert_eq!(LogLevel::Critical.as_str(), "critical";
+        assert_eq!(LogLevel::Trace.as_str(), "trace");
+        assert_eq!(LogLevel::Debug.as_str(), "debug");
+        assert_eq!(LogLevel::Info.as_str(), "info");
+        assert_eq!(LogLevel::Warn.as_str(), "warn");
+        assert_eq!(LogLevel::Error.as_str(), "error");
+        assert_eq!(LogLevel::Critical.as_str(), "critical");
     }
 }

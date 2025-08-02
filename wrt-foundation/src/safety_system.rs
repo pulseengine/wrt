@@ -10,17 +10,20 @@
 //!
 //! ⚠️ **PRELIMINARY IMPLEMENTATION WARNING** ⚠️
 //!
-//! This safety classification system is in a preliminary state and has NOT undergone
-//! formal certification or validation by standards bodies. The severity scores and
-//! cross-standard mappings are based on research and analysis but should be validated
-//! by qualified safety engineers before use in safety-critical applications.
+//! This safety classification system is in a preliminary state and has NOT
+//! undergone formal certification or validation by standards bodies. The
+//! severity scores and cross-standard mappings are based on research and
+//! analysis but should be validated by qualified safety engineers before use in
+//! safety-critical applications.
 //!
-//! Users MUST conduct their own validation and risk assessment before deploying this
-//! system in safety-critical environments. See documentation for validation guidance.
+//! Users MUST conduct their own validation and risk assessment before deploying
+//! this system in safety-critical environments. See documentation for
+//! validation guidance.
 //!
-//! This module provides safety primitives that support multiple safety standards
-//! including automotive (ISO 26262), aerospace (DO-178C), industrial (IEC 61508),
-//! medical (IEC 62304), railway (EN 50128), and agricultural (ISO 25119).
+//! This module provides safety primitives that support multiple safety
+//! standards including automotive (ISO 26262), aerospace (DO-178C), industrial
+//! (IEC 61508), medical (IEC 62304), railway (EN 50128), and agricultural (ISO
+//! 25119).
 //!
 //! # Supported Safety Standards
 //!
@@ -34,37 +37,55 @@
 //! # Design Principles
 //!
 //! - **Multi-Standard Support**: Cross-standard compatibility and conversion
-//! - **Compile-Time Safety**: Safety levels are known at compile time when possible
+//! - **Compile-Time Safety**: Safety levels are known at compile time when
+//!   possible
 //! - **Runtime Adaptation**: Safety checks can be enhanced at runtime
 //! - **Zero-Cost Abstractions**: Safety primitives add minimal overhead
-//! - **Fail-Safe Design**: All operations fail safely when safety violations occur
-//! - **Severity-Based Mapping**: Universal severity score (0-1000) for comparisons
-//! - **Conservative Approach**: When in doubt, maps to higher safety requirements
+//! - **Fail-Safe Design**: All operations fail safely when safety violations
+//!   occur
+//! - **Severity-Based Mapping**: Universal severity score (0-1000) for
+//!   comparisons
+//! - **Conservative Approach**: When in doubt, maps to higher safety
+//!   requirements
 //!
 //! # Usage
 //!
 //! ```rust
-//! use wrt_foundation::safety_system::{SafetyContext, AsilLevel, SafetyStandard, UniversalSafetyContext};
+//! use wrt_foundation::safety_system::{
+//!     AsilLevel,
+//!     SafetyContext,
+//!     SafetyStandard,
+//!     UniversalSafetyContext,
+//! };
 //!
 //! // Traditional ASIL-only context
 //! const ASIL_CTX: SafetyContext = SafetyContext::new(AsilLevel::AsilC);
 //!
 //! // Multi-standard context
-//! const MULTI_CTX: UniversalSafetyContext = UniversalSafetyContext::new(
-//!     SafetyStandard::Iso26262(AsilLevel::AsilC)
-//! );
+//! const MULTI_CTX: UniversalSafetyContext =
+//!     UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilC));
 //!
 //! // Cross-standard conversion
 //! let asil_c = SafetyStandard::Iso26262(AsilLevel::AsilC);
 //! let equivalent_dal = asil_c.convert_to(SafetyStandardType::Do178c);
 //! ```
 
-use core::sync::atomic::{AtomicU8, Ordering};
-
-use crate::{codes, Error, ErrorCategory, WrtResult};
-
+use core::sync::atomic::{
+    AtomicU8,
+    Ordering,
+};
 #[cfg(feature = "std")]
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{
+    SystemTime,
+    UNIX_EPOCH,
+};
+
+use crate::{
+    codes,
+    Error,
+    ErrorCategory,
+    WrtResult,
+};
 
 /// Automotive Safety Integrity Level (ASIL) classification
 ///
@@ -80,7 +101,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[repr(u8)]
 pub enum AsilLevel {
     /// Quality Management - No safety requirements
-    QM = 0,
+    QM    = 0,
     /// ASIL A - Lowest safety integrity level
     AsilA = 1,
     /// ASIL B - Low safety integrity level  
@@ -331,10 +352,10 @@ pub enum SafetyError {
 }
 
 impl SeverityScore {
-    /// Minimum severity score (no safety requirements)
-    pub const MIN: Self = Self(0);
     /// Maximum severity score (highest safety requirements)
     pub const MAX: Self = Self(1000);
+    /// Minimum severity score (no safety requirements)
+    pub const MIN: Self = Self(0);
 
     /// Create a new severity score
     ///
@@ -377,8 +398,9 @@ pub enum SafetyStandardType {
 impl SafetyStandard {
     /// Get the universal severity score for cross-standard comparison
     ///
-    /// This method maps each safety level to a universal severity score on a 0-1000 scale,
-    /// enabling comparison and conversion between different safety standards.
+    /// This method maps each safety level to a universal severity score on a
+    /// 0-1000 scale, enabling comparison and conversion between different
+    /// safety standards.
     pub const fn severity_score(&self) -> SeverityScore {
         match self {
             // ISO 26262 mapping (automotive)
@@ -468,31 +490,34 @@ impl SafetyStandard {
 ///
 /// # Conservative Mapping Rationale
 ///
-/// This implementation uses a conservative approach when mapping between safety standards:
+/// This implementation uses a conservative approach when mapping between safety
+/// standards:
 ///
-/// 1. **"No Safety" Level Restrictions**: Some standards (IEC 61508, IEC 62304, ISO 25119)
-///    do not have equivalent "no safety" levels. QM (Quality Management) from ISO 26262
-///    cannot convert to these standards because they require some level of safety oversight.
+/// 1. **"No Safety" Level Restrictions**: Some standards (IEC 61508, IEC 62304,
+///    ISO 25119) do not have equivalent "no safety" levels. QM (Quality
+///    Management) from ISO 26262 cannot convert to these standards because they
+///    require some level of safety oversight.
 ///
-/// 2. **Conservative Fallback**: When severity scores don't map exactly, the system chooses
-///    the higher safety level to maintain safety properties.
+/// 2. **Conservative Fallback**: When severity scores don't map exactly, the
+///    system chooses the higher safety level to maintain safety properties.
 ///
-/// 3. **Domain-Specific Constraints**: Medical devices (IEC 62304) cannot have "no safety"
-///    classification as they inherently affect patient safety.
+/// 3. **Domain-Specific Constraints**: Medical devices (IEC 62304) cannot have
+///    "no safety" classification as they inherently affect patient safety.
 ///
-/// 4. **Severity Score Ranges**: Conversion uses overlapping ranges to account for differences
-///    in how standards define severity boundaries.
+/// 4. **Severity Score Ranges**: Conversion uses overlapping ranges to account
+///    for differences in how standards define severity boundaries.
 ///
 /// # REQ Traceability
 /// - REQ_SAFETY_CROSS_001: Cross-standard safety level conversion
-/// - REQ_SAFETY_CONSERVATIVE_001: Conservative mapping approach  
+/// - REQ_SAFETY_CONSERVATIVE_001: Conservative mapping approach
 /// - REQ_SAFETY_DOMAIN_001: Domain-specific safety constraints
 pub trait SafetyStandardConversion {
     /// Convert to equivalent level in another standard
     ///
-    /// This method attempts to find an equivalent safety level in the target standard
-    /// based on severity score mapping. Returns `None` if conversion is not possible
-    /// or would violate domain-specific safety constraints.
+    /// This method attempts to find an equivalent safety level in the target
+    /// standard based on severity score mapping. Returns `None` if
+    /// conversion is not possible or would violate domain-specific safety
+    /// constraints.
     ///
     /// # Conservative Behavior Examples
     ///
@@ -540,7 +565,7 @@ impl SafetyStandardConversion for SafetyStandard {
                     876..=1000 => AsilLevel::AsilD,
                     _ => return None,
                 }))
-            }
+            },
             SafetyStandardType::Do178c => Some(SafetyStandard::Do178c(match severity.value() {
                 0..=100 => DalLevel::DalE,
                 101..=300 => DalLevel::DalD,
@@ -563,13 +588,14 @@ impl SafetyStandardConversion for SafetyStandard {
                     876..=1000 => SilLevel::Sil4,
                     _ => return None,
                 }))
-            }
+            },
             SafetyStandardType::Iec62304 => {
                 if severity.value() == 0 {
                     // CONSERVATIVE DECISION: Medical device software (IEC 62304) inherently affects
                     // patient safety and cannot have "no safety" classification. Even non-critical
                     // medical software must be Class A (no injury or harm possible).
-                    return None; // Medical devices must have some safety classification
+                    return None; // Medical devices must have some safety
+                                 // classification
                 }
                 Some(SafetyStandard::Iec62304(match severity.value() {
                     1..=350 => MedicalClass::ClassA, // Non-life-threatening, no injury possible
@@ -577,7 +603,7 @@ impl SafetyStandardConversion for SafetyStandard {
                     751..=1000 => MedicalClass::ClassC, // Life-threatening or death possible
                     _ => return None,
                 }))
-            }
+            },
             SafetyStandardType::En50128 => Some(SafetyStandard::En50128(match severity.value() {
                 0..=100 => RailwaySil::Sil0,
                 101..=300 => RailwaySil::Sil1,
@@ -591,17 +617,19 @@ impl SafetyStandardConversion for SafetyStandard {
                     // CONSERVATIVE DECISION: Agricultural machinery (ISO 25119) involves equipment
                     // that can cause physical harm. Even low-risk systems must have AgPL-a
                     // classification (no risk of injury to persons).
-                    return None; // Agricultural systems must have some safety level
+                    return None; // Agricultural systems must have some safety
+                                 // level
                 }
                 Some(SafetyStandard::Iso25119(match severity.value() {
                     1..=300 => AgricultureLevel::AgPla, // No risk of injury to persons
                     301..=500 => AgricultureLevel::AgPlb, // Light to moderate injury
                     501..=700 => AgricultureLevel::AgPlc, // Severe to life-threatening injury
                     701..=900 => AgricultureLevel::AgPld, // Life-threatening to fatal (one person)
-                    901..=1000 => AgricultureLevel::AgPle, // Life-threatening to fatal (multiple persons)
+                    901..=1000 => AgricultureLevel::AgPle, // Life-threatening to fatal (multiple
+                    // persons)
                     _ => return None,
                 }))
-            }
+            },
         }
     }
 
@@ -642,20 +670,20 @@ pub struct SafetyContext {
     /// ASIL level determined at compile time
     pub compile_time_asil: AsilLevel,
     /// ASIL level that may be upgraded at runtime
-    runtime_asil: AtomicU8,
+    runtime_asil:          AtomicU8,
     /// Number of safety violations detected
-    violation_count: AtomicU8,
+    violation_count:       AtomicU8,
     /// Operation counter for periodic verification
-    operation_count: AtomicU8,
+    operation_count:       AtomicU8,
 }
 
 impl Clone for SafetyContext {
     fn clone(&self) -> Self {
         Self {
             compile_time_asil: self.compile_time_asil,
-            runtime_asil: AtomicU8::new(self.runtime_asil.load(Ordering::SeqCst)),
-            violation_count: AtomicU8::new(self.violation_count.load(Ordering::SeqCst)),
-            operation_count: AtomicU8::new(self.operation_count.load(Ordering::SeqCst)),
+            runtime_asil:      AtomicU8::new(self.runtime_asil.load(Ordering::SeqCst)),
+            violation_count:   AtomicU8::new(self.violation_count.load(Ordering::SeqCst)),
+            operation_count:   AtomicU8::new(self.operation_count.load(Ordering::SeqCst)),
         }
     }
 }
@@ -670,16 +698,19 @@ impl SafetyContext {
     /// # Examples
     ///
     /// ```rust
-    /// use wrt_foundation::safety_system::{SafetyContext, AsilLevel};
+    /// use wrt_foundation::safety_system::{
+    ///     AsilLevel,
+    ///     SafetyContext,
+    /// };
     ///
     /// const SAFETY_CTX: SafetyContext = SafetyContext::new(AsilLevel::AsilC);
     /// ```
     pub const fn new(compile_time: AsilLevel) -> Self {
         Self {
             compile_time_asil: compile_time,
-            runtime_asil: AtomicU8::new(compile_time as u8),
-            violation_count: AtomicU8::new(0),
-            operation_count: AtomicU8::new(0),
+            runtime_asil:      AtomicU8::new(compile_time as u8),
+            violation_count:   AtomicU8::new(0),
+            operation_count:   AtomicU8::new(0),
         }
     }
 
@@ -709,15 +740,18 @@ impl SafetyContext {
     ///
     /// # One-Way Upgrade Policy (COUNTERINTUITIVE BEHAVIOR)
     ///
-    /// This allows increasing the safety requirements at runtime, but NEVER decreasing
-    /// them below the compile-time level. This one-way policy prevents safety
-    /// degradation attacks and ensures that systems always meet their design-time
-    /// safety requirements.
+    /// This allows increasing the safety requirements at runtime, but NEVER
+    /// decreasing them below the compile-time level. This one-way policy
+    /// prevents safety degradation attacks and ensures that systems always
+    /// meet their design-time safety requirements.
     ///
     /// ## Rationale for One-Way Upgrade
-    /// 1. **Safety Invariant**: Compile-time level represents minimum guaranteed safety
-    /// 2. **Attack Prevention**: Prevents malicious downgrade of safety requirements  
-    /// 3. **Certification Compliance**: Many standards require non-degradable safety levels
+    /// 1. **Safety Invariant**: Compile-time level represents minimum
+    ///    guaranteed safety
+    /// 2. **Attack Prevention**: Prevents malicious downgrade of safety
+    ///    requirements
+    /// 3. **Certification Compliance**: Many standards require non-degradable
+    ///    safety levels
     /// 4. **Fail-Safe Design**: System fails towards higher safety, never lower
     ///
     /// ## REQ Traceability
@@ -727,16 +761,21 @@ impl SafetyContext {
     ///
     /// # Arguments
     ///
-    /// * `new_level` - The new ASIL level to set (must be >= compile-time level)
+    /// * `new_level` - The new ASIL level to set (must be >= compile-time
+    ///   level)
     ///
     /// # Errors
     ///
-    /// Returns `SAFETY_VIOLATION` error if attempting to downgrade below compile-time level.
+    /// Returns `SAFETY_VIOLATION` error if attempting to downgrade below
+    /// compile-time level.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use wrt_foundation::safety_system::{SafetyContext, AsilLevel};
+    /// use wrt_foundation::safety_system::{
+    ///     AsilLevel,
+    ///     SafetyContext,
+    /// };
     ///
     /// let ctx = SafetyContext::new(AsilLevel::AsilB);
     ///
@@ -751,7 +790,9 @@ impl SafetyContext {
         let compile_level_u8 = self.compile_time_asil as u8;
 
         if new_level_u8 < compile_level_u8 {
-            return Err(Error::safety_violation("Cannot downgrade ASIL below compile-time level"));
+            return Err(Error::safety_violation(
+                "Cannot downgrade ASIL below compile-time level",
+            ));
         }
 
         self.runtime_asil.store(new_level_u8, Ordering::Release);
@@ -774,26 +815,29 @@ impl SafetyContext {
         match effective {
             AsilLevel::QM => {
                 // No action required
-            }
+            },
             AsilLevel::AsilA | AsilLevel::AsilB => {
                 // Log violation for audit
                 #[cfg(feature = "std")]
                 {
                     eprintln!("Safety violation #{} detected at {}", count, effective);
                 }
-            }
+            },
             AsilLevel::AsilC | AsilLevel::AsilD => {
                 // For high ASIL levels, consider immediate protective actions
                 #[cfg(feature = "std")]
                 {
-                    eprintln!("CRITICAL: Safety violation #{} detected at {}", count, effective);
+                    eprintln!(
+                        "CRITICAL: Safety violation #{} detected at {}",
+                        count, effective
+                    );
                 }
 
                 // In a real implementation, this might trigger:
                 // - System shutdown
                 // - Failsafe mode activation
                 // - Error reporting to safety monitor
-            }
+            },
         }
 
         count
@@ -867,19 +911,23 @@ impl Default for SafetyContext {
 
 /// Enhanced safety context supporting multiple standards
 ///
-/// This context can handle multiple safety standards simultaneously and provides
-/// cross-standard compatibility checking and conversion.
+/// This context can handle multiple safety standards simultaneously and
+/// provides cross-standard compatibility checking and conversion.
 ///
 /// # Atomic Operations Integration
 ///
-/// This context uses atomic operations extensively for thread-safe operation counting,
-/// violation tracking, and runtime state management. The atomic operations integrate
-/// with WRT's checksum system to ensure data integrity:
+/// This context uses atomic operations extensively for thread-safe operation
+/// counting, violation tracking, and runtime state management. The atomic
+/// operations integrate with WRT's checksum system to ensure data integrity:
 ///
-/// 1. **Atomic Counters**: All counters use memory ordering guarantees to prevent race conditions
-/// 2. **Checksum Validation**: Critical state changes trigger checksum verification when enabled
-/// 3. **Memory Barriers**: Proper acquire/release ordering ensures visibility across threads
-/// 4. **Lock-Free Design**: Avoids deadlocks in safety-critical interrupt contexts
+/// 1. **Atomic Counters**: All counters use memory ordering guarantees to
+///    prevent race conditions
+/// 2. **Checksum Validation**: Critical state changes trigger checksum
+///    verification when enabled
+/// 3. **Memory Barriers**: Proper acquire/release ordering ensures visibility
+///    across threads
+/// 4. **Lock-Free Design**: Avoids deadlocks in safety-critical interrupt
+///    contexts
 ///
 /// # REQ Traceability
 /// - REQ_SAFETY_MULTI_001: Multi-standard safety context support
@@ -890,27 +938,27 @@ impl Default for SafetyContext {
 #[derive(Debug)]
 pub struct UniversalSafetyContext {
     /// Primary safety standard (compile-time)
-    primary_standard: SafetyStandard,
+    primary_standard:    SafetyStandard,
     /// Secondary standards this context must satisfy
     secondary_standards: [Option<SafetyStandard>; 4],
     /// Runtime safety state (stores severity score)
-    runtime_state: core::sync::atomic::AtomicU16,
+    runtime_state:       core::sync::atomic::AtomicU16,
     /// Violation tracking
-    violation_count: AtomicU8,
+    violation_count:     AtomicU8,
     /// Operation counter
-    operation_count: core::sync::atomic::AtomicU32,
+    operation_count:     core::sync::atomic::AtomicU32,
 }
 
 impl Clone for UniversalSafetyContext {
     fn clone(&self) -> Self {
         Self {
-            primary_standard: self.primary_standard,
+            primary_standard:    self.primary_standard,
             secondary_standards: self.secondary_standards,
-            runtime_state: core::sync::atomic::AtomicU16::new(
+            runtime_state:       core::sync::atomic::AtomicU16::new(
                 self.runtime_state.load(Ordering::SeqCst),
             ),
-            violation_count: AtomicU8::new(self.violation_count.load(Ordering::SeqCst)),
-            operation_count: core::sync::atomic::AtomicU32::new(
+            violation_count:     AtomicU8::new(self.violation_count.load(Ordering::SeqCst)),
+            operation_count:     core::sync::atomic::AtomicU32::new(
                 self.operation_count.load(Ordering::SeqCst),
             ),
         }
@@ -925,32 +973,39 @@ impl UniversalSafetyContext {
     ///
     /// # Examples
     /// ```rust
-    /// use wrt_foundation::safety_system::{UniversalSafetyContext, SafetyStandard, AsilLevel};
+    /// use wrt_foundation::safety_system::{
+    ///     AsilLevel,
+    ///     SafetyStandard,
+    ///     UniversalSafetyContext,
+    /// };
     ///
-    /// const CTX: UniversalSafetyContext = UniversalSafetyContext::new(
-    ///     SafetyStandard::Iso26262(AsilLevel::AsilC)
-    /// );
+    /// const CTX: UniversalSafetyContext =
+    ///     UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilC));
     /// ```
     pub const fn new(primary: SafetyStandard) -> Self {
         Self {
-            primary_standard: primary,
+            primary_standard:    primary,
             secondary_standards: [None; 4],
-            runtime_state: core::sync::atomic::AtomicU16::new(primary.severity_score().value()),
-            violation_count: AtomicU8::new(0),
-            operation_count: core::sync::atomic::AtomicU32::new(0),
+            runtime_state:       core::sync::atomic::AtomicU16::new(
+                primary.severity_score().value(),
+            ),
+            violation_count:     AtomicU8::new(0),
+            operation_count:     core::sync::atomic::AtomicU32::new(0),
         }
     }
 
     /// Add secondary standard requirement
     ///
-    /// This allows the context to satisfy multiple safety standards simultaneously.
-    /// The effective severity will be the highest of all standards.
+    /// This allows the context to satisfy multiple safety standards
+    /// simultaneously. The effective severity will be the highest of all
+    /// standards.
     ///
     /// # Arguments
     /// * `standard` - The secondary safety standard to add
     ///
     /// # Errors
-    /// Returns an error if the maximum number of secondary standards is exceeded.
+    /// Returns an error if the maximum number of secondary standards is
+    /// exceeded.
     pub fn add_secondary_standard(&mut self, standard: SafetyStandard) -> WrtResult<()> {
         for slot in &mut self.secondary_standards {
             if slot.is_none() {
@@ -1005,31 +1060,31 @@ impl UniversalSafetyContext {
             match effective_severity.value() {
                 0..=200 => {
                     // Low severity - basic logging
-                }
+                },
                 201..=500 => {
                     eprintln!(
                         "Safety violation #{} detected (severity: {})",
                         count, effective_severity
                     );
-                }
+                },
                 501..=800 => {
                     eprintln!(
                         "HIGH SEVERITY: Safety violation #{} detected (severity: {})",
                         count, effective_severity
                     );
-                }
+                },
                 801..=1000 => {
                     eprintln!(
                         "CRITICAL: Safety violation #{} detected (severity: {})",
                         count, effective_severity
                     );
-                }
+                },
                 _ => {
                     eprintln!(
                         "UNKNOWN SEVERITY: Safety violation #{} detected (severity: {})",
                         count, effective_severity
                     );
-                }
+                },
             }
         }
 
@@ -1043,8 +1098,8 @@ impl UniversalSafetyContext {
 
     /// Check if periodic verification should be performed
     ///
-    /// Based on the effective severity level, this determines whether verification
-    /// should be performed for the current operation.
+    /// Based on the effective severity level, this determines whether
+    /// verification should be performed for the current operation.
     pub fn should_verify(&self) -> bool {
         let effective_severity = self.effective_severity();
 
@@ -1088,7 +1143,10 @@ impl UniversalSafetyContext {
     /// This should only be called during system initialization or controlled
     /// test scenarios.
     pub fn reset(&self) {
-        self.runtime_state.store(self.primary_standard.severity_score().value(), Ordering::Release);
+        self.runtime_state.store(
+            self.primary_standard.severity_score().value(),
+            Ordering::Release,
+        );
         self.violation_count.store(0, Ordering::Release);
         self.operation_count.store(0, Ordering::Release);
     }
@@ -1163,10 +1221,10 @@ impl Default for UniversalSafetyContext {
 /// level and can prevent unsafe operations from proceeding.
 #[derive(Debug)]
 pub struct SafetyGuard<'a> {
-    context: &'a SafetyContext,
+    context:        &'a SafetyContext,
     operation_name: &'static str,
     #[cfg(feature = "std")]
-    start_time: SystemTime,
+    start_time:     SystemTime,
 }
 
 impl<'a> SafetyGuard<'a> {
@@ -1180,7 +1238,9 @@ impl<'a> SafetyGuard<'a> {
         // Check if the context is in a safe state
         if !context.is_safe() {
             context.record_violation();
-            return Err(Error::safety_violation("Safety context is not in a safe state"));
+            return Err(Error::safety_violation(
+                "Safety context is not in a safe state",
+            ));
         }
 
         Ok(Self {
@@ -1221,7 +1281,10 @@ impl<'a> SafetyGuard<'a> {
         {
             let duration = self.start_time.elapsed().unwrap_or_default();
             if self.context.effective_asil().requires_runtime_verification() {
-                println!("Operation '{}' completed in {:?}", self.operation_name, duration);
+                println!(
+                    "Operation '{}' completed in {:?}",
+                    self.operation_name, duration
+                );
             }
         }
         Ok(())
@@ -1235,7 +1298,10 @@ impl<'a> Drop for SafetyGuard<'a> {
         {
             if std::thread::panicking() {
                 self.context.record_violation();
-                eprintln!("Safety guard for '{}' dropped during panic", self.operation_name);
+                eprintln!(
+                    "Safety guard for '{}' dropped during panic",
+                    self.operation_name
+                );
             }
         }
         #[cfg(not(feature = "std"))]
@@ -1253,8 +1319,8 @@ impl<'a> Drop for SafetyGuard<'a> {
 /// the current ASIL requirements, including verification and protection.
 #[derive(Debug)]
 pub struct SafeMemoryAllocation<'a> {
-    data: &'a mut [u8],
-    context: &'a SafetyContext,
+    data:     &'a mut [u8],
+    context:  &'a SafetyContext,
     checksum: u32,
 }
 
@@ -1268,7 +1334,11 @@ impl<'a> SafeMemoryAllocation<'a> {
     pub fn new(data: &'a mut [u8], context: &'a SafetyContext) -> WrtResult<Self> {
         let checksum = Self::calculate_checksum(data);
 
-        Ok(Self { data, context, checksum })
+        Ok(Self {
+            data,
+            context,
+            checksum,
+        })
     }
 
     /// Calculate checksum for memory protection
@@ -1398,47 +1468,48 @@ macro_rules! universal_safety_context {
 
 /// Compile-time standard compatibility check
 ///
-/// This macro verifies at compile time that a context can handle a required standard.
+/// This macro verifies at compile time that a context can handle a required
+/// standard.
 #[macro_export]
 macro_rules! assert_standard_compatibility {
-    ($ctx:expr, Iso26262($level:ident)) => {
+    ($ctx:expr,Iso26262($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iso26262(
                 $crate::safety_system::AsilLevel::$level,
             );
-            // Note: This would need const evaluation support for full compile-time checking
-            // For now, this serves as documentation and type checking
+            // Note: This would need const evaluation support for full compile-time
+            // checking For now, this serves as documentation and type checking
         };
     };
-    ($ctx:expr, Do178c($level:ident)) => {
+    ($ctx:expr,Do178c($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Do178c(
                 $crate::safety_system::DalLevel::$level,
             );
         };
     };
-    ($ctx:expr, Iec61508($level:ident)) => {
+    ($ctx:expr,Iec61508($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iec61508(
                 $crate::safety_system::SilLevel::$level,
             );
         };
     };
-    ($ctx:expr, Iec62304($level:ident)) => {
+    ($ctx:expr,Iec62304($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iec62304(
                 $crate::safety_system::MedicalClass::$level,
             );
         };
     };
-    ($ctx:expr, En50128($level:ident)) => {
+    ($ctx:expr,En50128($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::En50128(
                 $crate::safety_system::RailwaySil::$level,
             );
         };
     };
-    ($ctx:expr, Iso25119($level:ident)) => {
+    ($ctx:expr,Iso25119($level:ident)) => {
         const _: () = {
             let required = $crate::safety_system::SafetyStandard::Iso25119(
                 $crate::safety_system::AgricultureLevel::$level,
@@ -1449,12 +1520,18 @@ macro_rules! assert_standard_compatibility {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{format, vec};
+    use alloc::{
+        format,
+        vec,
+    };
     #[cfg(feature = "std")]
-    use std::{format, vec};
+    use std::{
+        format,
+        vec,
+    };
+
+    use super::*;
 
     #[test]
     fn test_asil_level_ordering() {
@@ -1503,7 +1580,8 @@ mod tests {
 
         // Should not be able to downgrade below compile-time level
         assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilA).is_err());
-        assert_eq!(ctx.effective_asil(), AsilLevel::AsilD); // Should remain unchanged
+        assert_eq!(ctx.effective_asil(), AsilLevel::AsilD); // Should remain
+                                                            // unchanged
     }
 
     #[test]
@@ -1609,18 +1687,42 @@ mod tests {
     #[test]
     fn test_safety_standard_severity_scores() {
         // Test ASIL mapping
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::QM).severity_score().value(), 0);
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilA).severity_score().value(), 250);
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilC).severity_score().value(), 750);
-        assert_eq!(SafetyStandard::Iso26262(AsilLevel::AsilD).severity_score().value(), 1000);
+        assert_eq!(
+            SafetyStandard::Iso26262(AsilLevel::QM).severity_score().value(),
+            0
+        );
+        assert_eq!(
+            SafetyStandard::Iso26262(AsilLevel::AsilA).severity_score().value(),
+            250
+        );
+        assert_eq!(
+            SafetyStandard::Iso26262(AsilLevel::AsilC).severity_score().value(),
+            750
+        );
+        assert_eq!(
+            SafetyStandard::Iso26262(AsilLevel::AsilD).severity_score().value(),
+            1000
+        );
 
         // Test DAL mapping
-        assert_eq!(SafetyStandard::Do178c(DalLevel::DalE).severity_score().value(), 0);
-        assert_eq!(SafetyStandard::Do178c(DalLevel::DalA).severity_score().value(), 1000);
+        assert_eq!(
+            SafetyStandard::Do178c(DalLevel::DalE).severity_score().value(),
+            0
+        );
+        assert_eq!(
+            SafetyStandard::Do178c(DalLevel::DalA).severity_score().value(),
+            1000
+        );
 
         // Test SIL mapping
-        assert_eq!(SafetyStandard::Iec61508(SilLevel::Sil1).severity_score().value(), 250);
-        assert_eq!(SafetyStandard::Iec61508(SilLevel::Sil4).severity_score().value(), 1000);
+        assert_eq!(
+            SafetyStandard::Iec61508(SilLevel::Sil1).severity_score().value(),
+            250
+        );
+        assert_eq!(
+            SafetyStandard::Iec61508(SilLevel::Sil4).severity_score().value(),
+            1000
+        );
     }
 
     #[test]
@@ -1661,7 +1763,10 @@ mod tests {
     #[test]
     fn test_universal_safety_context_creation() {
         let ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilC));
-        assert_eq!(ctx.primary_standard(), SafetyStandard::Iso26262(AsilLevel::AsilC));
+        assert_eq!(
+            ctx.primary_standard(),
+            SafetyStandard::Iso26262(AsilLevel::AsilC)
+        );
         assert_eq!(ctx.effective_severity().value(), 750);
         assert_eq!(ctx.violation_count(), 0);
     }
@@ -1712,9 +1817,18 @@ mod tests {
     #[test]
     #[cfg(any(feature = "std", feature = "alloc"))]
     fn test_safety_standard_display() {
-        assert_eq!(format!("{}", SafetyStandard::Iso26262(AsilLevel::AsilC)), "ISO 26262 ASIL-C");
-        assert_eq!(format!("{}", SafetyStandard::Do178c(DalLevel::DalB)), "DO-178C DAL-B");
-        assert_eq!(format!("{}", SafetyStandard::Iec61508(SilLevel::Sil3)), "IEC 61508 SIL-3");
+        assert_eq!(
+            format!("{}", SafetyStandard::Iso26262(AsilLevel::AsilC)),
+            "ISO 26262 ASIL-C"
+        );
+        assert_eq!(
+            format!("{}", SafetyStandard::Do178c(DalLevel::DalB)),
+            "DO-178C DAL-B"
+        );
+        assert_eq!(
+            format!("{}", SafetyStandard::Iec61508(SilLevel::Sil3)),
+            "IEC 61508 SIL-3"
+        );
     }
 
     #[test]
@@ -1728,10 +1842,16 @@ mod tests {
     #[test]
     fn test_universal_safety_context_macro() {
         let ctx = universal_safety_context!(Iso26262(AsilC));
-        assert_eq!(ctx.primary_standard(), SafetyStandard::Iso26262(AsilLevel::AsilC));
+        assert_eq!(
+            ctx.primary_standard(),
+            SafetyStandard::Iso26262(AsilLevel::AsilC)
+        );
 
         let ctx_dal = universal_safety_context!(Do178c(DalB));
-        assert_eq!(ctx_dal.primary_standard(), SafetyStandard::Do178c(DalLevel::DalB));
+        assert_eq!(
+            ctx_dal.primary_standard(),
+            SafetyStandard::Do178c(DalLevel::DalB)
+        );
     }
 
     #[test]
@@ -1756,7 +1876,8 @@ mod tests {
         // Test conversion to standards that require safety classification
         let qm = SafetyStandard::Iso26262(AsilLevel::QM);
         let converted_to_medical = qm.convert_to(SafetyStandardType::Iec62304);
-        assert!(converted_to_medical.is_none()); // Medical devices must have some safety class
+        assert!(converted_to_medical.is_none()); // Medical devices must have
+                                                 // some safety class
     }
 
     #[test]

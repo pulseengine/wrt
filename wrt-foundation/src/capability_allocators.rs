@@ -1,25 +1,32 @@
 //! Capability-aware allocators
 //!
 //! This module provides safe wrappers for heap allocations that integrate
-//! with the capability system to ensure all allocations are tracked and verified.
+//! with the capability system to ensure all allocations are tracked and
+//! verified.
 
 use core::marker::PhantomData;
+
 use crate::{
-    capabilities::{MemoryCapabilityContext, MemoryOperation},
     budget_aware_provider::CrateId,
-    codes, Error, ErrorCategory, Result,
+    capabilities::{
+        MemoryCapabilityContext,
+        MemoryOperation,
+    },
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::boxed::Box;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::boxed::Box;
-
 #[cfg(any(feature = "std", feature = "alloc"))]
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 /// Capability-aware Box allocator
 pub struct CapabilityBox<T> {
@@ -29,23 +36,16 @@ pub struct CapabilityBox<T> {
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> CapabilityBox<T> {
     /// Allocate a Box with capability verification
-    pub fn new(
-        value: T,
-        context: &MemoryCapabilityContext,
-        crate_id: CrateId,
-    ) -> Result<Box<T>> {
+    pub fn new(value: T, context: &MemoryCapabilityContext, crate_id: CrateId) -> Result<Box<T>> {
         let size = core::mem::size_of::<T>();
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
-        
+
         Ok(Box::new(value))
     }
-    
+
     /// Allocate a Box with default value and capability verification
-    pub fn new_default(
-        context: &MemoryCapabilityContext,
-        crate_id: CrateId,
-    ) -> Result<Box<T>>
+    pub fn new_default(context: &MemoryCapabilityContext, crate_id: CrateId) -> Result<Box<T>>
     where
         T: Default,
     {
@@ -69,10 +69,10 @@ impl<T> CapabilityVec<T> {
         let size = capacity * core::mem::size_of::<T>();
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
-        
+
         Ok(Vec::with_capacity(capacity))
     }
-    
+
     /// Create a Vec from elements with capability verification
     pub fn from_vec(
         elements: Vec<T>,
@@ -82,10 +82,10 @@ impl<T> CapabilityVec<T> {
         let size = elements.capacity() * core::mem::size_of::<T>();
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
-        
+
         Ok(elements)
     }
-    
+
     /// Create a Vec from slice with capability verification
     pub fn from_slice(
         slice: &[T],
@@ -98,7 +98,7 @@ impl<T> CapabilityVec<T> {
         let size = slice.len() * core::mem::size_of::<T>();
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
-        
+
         Ok(slice.to_vec())
     }
 }
@@ -106,17 +106,13 @@ impl<T> CapabilityVec<T> {
 /// Capability-aware allocator trait for any type
 pub trait CapabilityAlloc<T> {
     /// Allocate with capability verification
-    fn capability_alloc(
-        &self,
-        context: &MemoryCapabilityContext,
-        crate_id: CrateId,
-    ) -> Result<T>;
+    fn capability_alloc(&self, context: &MemoryCapabilityContext, crate_id: CrateId) -> Result<T>;
 }
 
 /// Global capability allocation functions for convenience
 pub mod capability_alloc {
     use super::*;
-    
+
     /// Allocate a Box with capability verification
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn capability_box<T>(
@@ -126,7 +122,7 @@ pub mod capability_alloc {
     ) -> Result<Box<T>> {
         CapabilityBox::new(value, context, crate_id)
     }
-    
+
     /// Allocate a Vec with capability verification
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn capability_vec<T>(
@@ -136,7 +132,7 @@ pub mod capability_alloc {
     ) -> Result<Vec<T>> {
         CapabilityVec::new(context, crate_id, capacity)
     }
-    
+
     /// Allocate a Vec from elements with capability verification
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn capability_vec_from<T>(
@@ -172,17 +168,19 @@ macro_rules! capability_vec {
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 mod no_std_impl {
     use super::*;
-    
+
     impl<T> CapabilityBox<T> {
         pub fn new(
             _value: T,
             _context: &MemoryCapabilityContext,
             _crate_id: CrateId,
         ) -> Result<()> {
-            Err(Error::runtime_execution_error("Box allocation not supported in no_std without alloc"))
+            Err(Error::runtime_execution_error(
+                "Box allocation not supported in no_std without alloc",
+            ))
         }
     }
-    
+
     impl<T> CapabilityVec<T> {
         pub fn new(
             _context: &MemoryCapabilityContext,
@@ -192,7 +190,8 @@ mod no_std_impl {
             Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::UNSUPPORTED_OPERATION,
-                "Vec allocation not supported in no_std without alloc"))
+                "Vec allocation not supported in no_std without alloc",
+            ))
         }
     }
 }
@@ -200,50 +199,47 @@ mod no_std_impl {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capabilities::{DynamicMemoryCapability, CapabilityMask};
-    
+    use crate::capabilities::{
+        CapabilityMask,
+        DynamicMemoryCapability,
+    };
+
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_capability_box_allocation() {
-        let mut context = MemoryCapabilityContext::new(
-            crate::verification::VerificationLevel::Standard,
-            false
-        );
-        
+        let mut context =
+            MemoryCapabilityContext::new(crate::verification::VerificationLevel::Standard, false);
+
         // Register capability for testing
         let _ = context.register_dynamic_capability(CrateId::Runtime, 1024);
-        
+
         let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime);
         assert!(boxed_value.is_ok());
         assert_eq!(*boxed_value.unwrap(), 42);
     }
-    
+
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_capability_vec_allocation() {
-        let mut context = MemoryCapabilityContext::new(
-            crate::verification::VerificationLevel::Standard,
-            false
-        );
-        
+        let mut context =
+            MemoryCapabilityContext::new(crate::verification::VerificationLevel::Standard, false);
+
         // Register capability for testing
         let _ = context.register_dynamic_capability(CrateId::Runtime, 1024);
-        
+
         let vec_result = CapabilityVec::<u32>::new(&context, CrateId::Runtime, 10);
         assert!(vec_result.is_ok());
-        
+
         let vec = vec_result.unwrap();
         assert_eq!(vec.capacity(), 10);
     }
-    
+
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_capability_allocation_without_permission() {
-        let context = MemoryCapabilityContext::new(
-            crate::verification::VerificationLevel::Standard,
-            false
-        );
-        
+        let context =
+            MemoryCapabilityContext::new(crate::verification::VerificationLevel::Standard, false);
+
         // Don't register any capabilities
         let boxed_value = CapabilityBox::new(42u32, &context, CrateId::Runtime);
         assert!(boxed_value.is_err());

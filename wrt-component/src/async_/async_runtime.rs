@@ -338,7 +338,7 @@ impl AsyncRuntime {
     /// Start the async runtime
     pub fn start(&mut self) -> Result<()> {
         if self.is_running {
-            return Err(Error::async_executor_state_violation("Runtime is already running";
+            return Err(Error::async_executor_state_violation("Runtime is already running"));
         }
 
         self.is_running = true;
@@ -349,7 +349,7 @@ impl AsyncRuntime {
     /// Stop the async runtime
     pub fn stop(&mut self) -> Result<()> {
         if !self.is_running {
-            return Err(Error::async_executor_state_violation("Runtime is not running";
+            return Err(Error::async_executor_state_violation("Runtime is not running"));
         }
 
         self.is_running = false;
@@ -363,10 +363,10 @@ impl AsyncRuntime {
     /// Execute one iteration of the runtime loop
     pub fn tick(&mut self) -> Result<bool> {
         if !self.is_running {
-            return Ok(false;
+            return Ok(false);
         }
 
-        let start_time = self.get_current_time);
+        let start_time = self.get_current_time();
         
         // Process reactor events
         self.reactor.process_events(&mut self.scheduler)?;
@@ -384,7 +384,7 @@ impl AsyncRuntime {
 
     /// Run the runtime until all tasks complete or timeout
     pub fn run_to_completion(&mut self, timeout_us: Option<u64>) -> Result<()> {
-        let start_time = self.get_current_time);
+        let start_time = self.get_current_time();
         
         while self.is_running {
             let has_work = self.tick()?;
@@ -395,7 +395,7 @@ impl AsyncRuntime {
             
             if let Some(timeout) = timeout_us {
                 if self.get_current_time() - start_time > timeout {
-                    return Err(Error::async_timeout_error("Runtime timeout";
+                    return Err(Error::async_timeout_error("Runtime timeout"));
                 }
             }
         }
@@ -480,7 +480,7 @@ impl AsyncRuntime {
     /// Update runtime configuration
     pub fn update_config(&mut self, config: RuntimeConfig) -> Result<()> {
         if self.is_running && config.max_concurrent_tasks < self.stats.active_tasks as usize {
-            return Err(Error::async_executor_state_violation("Cannot reduce max concurrent tasks below current active count";
+            return Err(Error::async_executor_state_violation("Cannot reduce max concurrent tasks below current active count"));
         }
         
         self.config = config;
@@ -525,9 +525,9 @@ impl TaskScheduler {
             let insert_pos = self.ready_queue
                 .iter()
                 .position(|t| t.priority > task.priority)
-                .unwrap_or(self.ready_queue.len);
+                .unwrap_or(self.ready_queue.len());
             
-            self.ready_queue.insert(insert_pos, task;
+            self.ready_queue.insert(insert_pos, task);
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -600,8 +600,8 @@ impl TaskScheduler {
 
     /// Clean up all tasks
     pub fn cleanup_all_tasks(&mut self) -> Result<()> {
-        self.ready_queue.clear);
-        self.waiting_tasks.clear);
+        self.ready_queue.clear();
+        self.waiting_tasks.clear();
         Ok(())
     }
 
@@ -686,7 +686,7 @@ impl TaskScheduler {
             };
             
             if should_reschedule {
-                let waiting_task = self.waiting_tasks.remove(i;
+                let waiting_task = self.waiting_tasks.remove(i);
                 
                 // Create a new scheduled task
                 let scheduled_task = ScheduledTask {
@@ -741,7 +741,7 @@ impl Reactor {
         #[cfg(not(any(feature = "std", )))]
         {
             while !self.pending_events.is_empty() {
-                let event = self.pending_events.remove(0;
+                let event = self.pending_events.remove(0);
                 self.handle_event(event, scheduler)?;
             }
         }
@@ -863,7 +863,7 @@ mod tests {
     #[test]
     fn test_register_stream() {
         let mut runtime = AsyncRuntime::new().unwrap();
-        let stream = Stream::new(StreamHandle(1), ValType::U32;
+        let stream = Stream::new(StreamHandle(1), ValType::U32);
         
         let handle = runtime.register_stream(stream).unwrap();
         assert_eq!(handle.0, 1);
@@ -873,7 +873,7 @@ mod tests {
     #[test]
     fn test_register_future() {
         let mut runtime = AsyncRuntime::new().unwrap();
-        let future = Future::new(FutureHandle(1), ValType::String;
+        let future = Future::new(FutureHandle(1), ValType::String);
         
         let handle = runtime.register_future(future).unwrap();
         assert_eq!(handle.0, 1);
@@ -883,7 +883,7 @@ mod tests {
     #[test]
     fn test_task_scheduler() {
         let mut scheduler = TaskScheduler::new().unwrap();
-        assert!(scheduler.is_idle();
+        assert!(scheduler.is_idle());
         
         let task = ScheduledTask {
             task_id: TaskId(1),
@@ -896,7 +896,7 @@ mod tests {
         };
         
         scheduler.schedule_task(task).unwrap();
-        assert!(!scheduler.is_idle();
+        assert!(!scheduler.is_idle());
     }
 
     #[test]
@@ -916,19 +916,19 @@ mod tests {
 
     #[test]
     fn test_runtime_config() {
-        let mut config = RuntimeConfig::default());
+        let mut config = RuntimeConfig::default();
         config.max_concurrent_tasks = 64;
         config.task_time_slice_us = 500;
         
         let runtime = AsyncRuntime::with_config(config.clone()).unwrap();
-        assert_eq!(runtime.config.max_concurrent_tasks, 64;
-        assert_eq!(runtime.config.task_time_slice_us, 500;
+        assert_eq!(runtime.config.max_concurrent_tasks, 64);
+        assert_eq!(runtime.config.task_time_slice_us, 500);
     }
 
     #[test]
     fn test_runtime_stats() {
         let runtime = AsyncRuntime::new().unwrap();
-        let stats = runtime.get_stats);
+        let stats = runtime.get_stats();
         
         assert_eq!(stats.tasks_created, 0);
         assert_eq!(stats.tasks_completed, 0);
@@ -937,8 +937,8 @@ mod tests {
 
     #[test]
     fn test_operation_display() {
-        assert_eq!(StreamOperation::Read.to_string(), "read";
-        assert_eq!(FutureOperation::Set.to_string(), "set";
-        assert_eq!(ReactorEventType::StreamReadable.to_string(), "stream-readable";
+        assert_eq!(StreamOperation::Read.to_string(), "read");
+        assert_eq!(FutureOperation::Set.to_string(), "set");
+        assert_eq!(ReactorEventType::StreamReadable.to_string(), "stream-readable");
     }
 }

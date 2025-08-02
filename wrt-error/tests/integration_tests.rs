@@ -16,30 +16,30 @@ mod tests {
 
     #[test]
     fn test_error_creation() {
-        let error = Error::memory_access_out_of_bounds("Test error";
-        assert!(error.is_memory_error();
-        assert_eq!(error.code, codes::MEMORY_ACCESS_OUT_OF_BOUNDS;
+        let error = Error::memory_access_out_of_bounds("Test error");
+        assert!(error.is_memory_error());
+        assert_eq!(error.code, codes::MEMORY_ACCESS_OUT_OF_BOUNDS);
     }
 
     #[test]
     #[cfg(all(feature = "disabled"))]
     fn test_error_from_kind() {
-        let kind = kinds::validation_error("Validation failed";
-        let error = Error::from(kind;
+        let kind = kinds::validation_error("Validation failed");
+        let error = Error::from(kind);
 
         // Just verify the error was created (no specific category check)
-        let error_str = format!("{error}";
+        let error_str = format!("{error}");
         println!("Error string: {}", error_str);
-        assert!(error_str.contains("Validation failed");
+        assert!(error_str.contains("Validation failed"));
     }
 
     #[test]
     fn test_result_with_error() {
-        let result: Result<i32> = Err(Error::runtime_error("Runtime error";
-        assert!(result.is_err();
+        let result: Result<i32> = Err(Error::runtime_error("Runtime error"));
+        assert!(result.is_err());
 
         let error = result.err().unwrap();
-        assert!(error.is_runtime_error();
+        assert!(error.is_runtime_error());
     }
 
     #[test]

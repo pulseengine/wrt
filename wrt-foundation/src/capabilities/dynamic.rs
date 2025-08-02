@@ -1,31 +1,42 @@
 //! Dynamic Memory Capability Implementation
 //!
-//! This capability type allows runtime memory allocation suitable for QM and ASIL-A
-//! safety levels where dynamic allocation is permitted.
+//! This capability type allows runtime memory allocation suitable for QM and
+//! ASIL-A safety levels where dynamic allocation is permitted.
 
 use core::{
     fmt,
     ptr::NonNull,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{
+        AtomicUsize,
+        Ordering,
+    },
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
-
-use crate::{
-    budget_aware_provider::CrateId, codes, safe_memory::Provider, verification::VerificationLevel, Error,
-    ErrorCategory, Result,
-};
-
 use super::{
-    CapabilityMask, MemoryCapability, MemoryGuard, MemoryOperation, MemoryOperationType,
+    CapabilityMask,
+    MemoryCapability,
+    MemoryGuard,
+    MemoryOperation,
+    MemoryOperationType,
     MemoryRegion,
+};
+use crate::{
+    budget_aware_provider::CrateId,
+    codes,
+    safe_managed_alloc,
+    safe_memory::Provider,
+    verification::VerificationLevel,
+    Error,
+    ErrorCategory,
+    Result,
 };
 
 /// Dynamic memory capability that allows runtime allocation
@@ -35,15 +46,15 @@ use super::{
 #[derive(Debug)]
 pub struct DynamicMemoryCapability {
     /// Maximum total allocation allowed
-    max_allocation: usize,
+    max_allocation:     usize,
     /// Currently allocated bytes (tracked atomically)
-    current_allocated: AtomicUsize,
+    current_allocated:  AtomicUsize,
     /// Operations allowed by this capability
     allowed_operations: CapabilityMask,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
     /// Crate that owns this capability
-    owner_crate: CrateId,
+    owner_crate:        CrateId,
 }
 
 impl DynamicMemoryCapability {
@@ -105,7 +116,7 @@ impl DynamicMemoryCapability {
             // Rollback the allocation
             self.current_allocated.fetch_sub(size, Ordering::AcqRel);
             return Err(Error::runtime_execution_error(
-                "Allocation would exceed memory budget limit"
+                "Allocation would exceed memory budget limit",
             ));
         }
         Ok(())
@@ -120,24 +131,25 @@ impl DynamicMemoryCapability {
 impl Clone for DynamicMemoryCapability {
     fn clone(&self) -> Self {
         Self {
-            max_allocation: self.max_allocation,
-            current_allocated: AtomicUsize::new(self.current_allocated.load(Ordering::Acquire)),
+            max_allocation:     self.max_allocation,
+            current_allocated:  AtomicUsize::new(self.current_allocated.load(Ordering::Acquire)),
             allowed_operations: self.allowed_operations,
             verification_level: self.verification_level,
-            owner_crate: self.owner_crate,
+            owner_crate:        self.owner_crate,
         }
     }
 }
 
 impl MemoryCapability for DynamicMemoryCapability {
-    type Region = DynamicMemoryRegion;
     type Guard = DynamicMemoryGuard;
+    type Region = DynamicMemoryRegion;
 
     fn verify_access(&self, operation: &MemoryOperation) -> Result<()> {
         // Check if operation type is allowed
         if !operation.requires_capability(&self.allowed_operations) {
             return Err(super::capability_errors::capability_violation(
-                "Operation not supported by capability mask"));
+                "Operation not supported by capability mask",
+            ));
         }
 
         // Additional checks based on operation type
@@ -148,7 +160,7 @@ impl MemoryCapability for DynamicMemoryCapability {
                         "Allocation would exceed capability limit",
                     ));
                 }
-            }
+            },
             MemoryOperation::Read { offset, len } => {
                 // Basic bounds checking will be done by the guard
                 if *len == 0 {
@@ -156,14 +168,14 @@ impl MemoryCapability for DynamicMemoryCapability {
                         "Zero-length read not allowed",
                     ));
                 }
-            }
+            },
             MemoryOperation::Write { offset, len } => {
                 if *len == 0 {
                     return Err(super::capability_errors::capability_violation(
                         "Zero-length write not allowed",
                     ));
                 }
-            }
+            },
             MemoryOperation::Delegate { subset } => {
                 // Check if delegation is allowed and subset is valid
                 if !self.allowed_operations.delegate {
@@ -176,10 +188,10 @@ impl MemoryCapability for DynamicMemoryCapability {
                         "Delegated size exceeds capability limit",
                     ));
                 }
-            }
+            },
             MemoryOperation::Deallocate => {
                 // Always allowed if deallocate permission exists
-            }
+            },
         }
 
         Ok(())
@@ -206,13 +218,16 @@ impl MemoryCapability for DynamicMemoryCapability {
             // Create raw provider without capability wrapping (we are the capability!)
             // Note: Direct provider creation is required here to avoid circular dependency
             // This is the lowest level of the memory system where capabilities are created
-            let mut provider = crate::safe_memory::NoStdProvider::<65536>::new();
-            provider.resize(size)?;
+            // Create a fixed-size provider for this allocation
+            // Note: This is a limitation of the current system - dynamic sizes require
+            // fixed-size NoStdProvider. For true dynamic allocation, a different approach
+            // is needed.
+            let provider = crate::safe_memory::NoStdProvider::<65536>::default();
             provider
         } else {
             // For larger allocations, we'd need a different strategy
             return Err(Error::runtime_execution_error(
-                "Allocation size exceeds maximum allowed for dynamic capability"
+                "Allocation size exceeds maximum allowed for dynamic capability",
             ));
         };
 
@@ -238,11 +253,11 @@ impl MemoryCapability for DynamicMemoryCapability {
         };
 
         let delegated = DynamicMemoryCapability {
-            max_allocation: delegated_max,
-            current_allocated: AtomicUsize::new(0),
+            max_allocation:     delegated_max,
+            current_allocated:  AtomicUsize::new(0),
             allowed_operations: self.allowed_operations.intersect(&subset),
             verification_level: self.verification_level,
-            owner_crate: self.owner_crate,
+            owner_crate:        self.owner_crate,
         };
 
         Ok(Box::new(delegated))
@@ -270,7 +285,7 @@ impl MemoryCapability for DynamicMemoryCapability {
 /// Dynamic memory region backed by NoStdProvider
 #[derive(Debug)]
 pub struct DynamicMemoryRegion {
-    size: usize,
+    size:     usize,
     provider: crate::safe_memory::NoStdProvider<65536>, // Fixed size for now
 }
 
@@ -288,7 +303,7 @@ impl MemoryRegion for DynamicMemoryRegion {
                 // Get the pointer from the slice
                 NonNull::new(slice.as_ref().as_ptr() as *mut u8)
                     .unwrap_or_else(|| NonNull::dangling())
-            }
+            },
             Err(_) => NonNull::dangling(), // Return dangling pointer if we can't access the memory
         }
     }
@@ -300,8 +315,8 @@ impl MemoryRegion for DynamicMemoryRegion {
 
 /// Dynamic memory guard that protects access to dynamic memory regions
 pub struct DynamicMemoryGuard {
-    region: DynamicMemoryRegion,
-    capability: *const DynamicMemoryCapability, // Raw pointer to avoid lifetime issues
+    region:         DynamicMemoryRegion,
+    capability:     *const DynamicMemoryCapability, // Raw pointer to avoid lifetime issues
     allocated_size: usize,
 }
 
@@ -311,7 +326,11 @@ impl DynamicMemoryGuard {
         capability: &DynamicMemoryCapability,
         allocated_size: usize,
     ) -> Self {
-        Self { region, capability: capability as *const _, allocated_size }
+        Self {
+            region,
+            capability: capability as *const _,
+            allocated_size,
+        }
     }
 
     fn get_capability(&self) -> &DynamicMemoryCapability {
@@ -343,7 +362,7 @@ impl MemoryGuard for DynamicMemoryGuard {
 
         if !self.region.contains_range(offset, len) {
             return Err(Error::runtime_execution_error(
-                "Read range exceeds dynamic memory region bounds"
+                "Read range exceeds dynamic memory region bounds",
             ));
         }
 
@@ -354,14 +373,18 @@ impl MemoryGuard for DynamicMemoryGuard {
     }
 
     fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        let operation = MemoryOperation::Write { offset, len: data.len() };
+        let operation = MemoryOperation::Write {
+            offset,
+            len: data.len(),
+        };
         self.get_capability().verify_access(&operation)?;
 
         if !self.region.contains_range(offset, data.len()) {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write range exceeds dynamic memory region bounds"));
+                "Write range exceeds dynamic memory region bounds",
+            ));
         }
 
         // Write to the provider using get_slice_mut
@@ -419,12 +442,12 @@ mod tests {
             DynamicMemoryCapability::new(1000, CrateId::Foundation, VerificationLevel::Standard);
 
         let subset = CapabilityMask {
-            read: true,
-            write: false,
-            allocate: true,
+            read:       true,
+            write:      false,
+            allocate:   true,
             deallocate: false,
-            delegate: false,
-            max_size: 500,
+            delegate:   false,
+            max_size:   500,
         };
 
         let delegated = capability.delegate(subset).unwrap();

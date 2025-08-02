@@ -295,8 +295,8 @@ asil_level = "ASIL-D"
 
         // Test conversion to ResourceLimitsSection
         let section = config.to_resource_limits_section().unwrap();
-        assert_eq!(section.max_fuel_per_step, Some(1000000;
-        assert_eq!(section.max_memory_usage, Some(64 * 1024 * 1024;
+        assert_eq!(section.max_fuel_per_step, Some(1000000));
+        assert_eq!(section.max_memory_usage, Some(64 * 1024 * 1024));
         assert_eq!(section.qualified_asil_level(), Some("ASIL-D";
     }
 }

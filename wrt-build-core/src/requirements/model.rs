@@ -19,7 +19,7 @@ use crate::config::AsilLevel;
 
 /// Unique identifier for a requirement
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct RequirementId(String;
+pub struct RequirementId(String);
 
 impl RequirementId {
     pub fn new(id: impl Into<String>) -> Self {
@@ -352,20 +352,20 @@ impl RequirementRegistry {
             return 1.0; // 100% compliant if no requirements
         }
 
-        let total_score: f64 = self.requirements.iter().map(|r| r.compliance_score()).sum);
+        let total_score: f64 = self.requirements.iter().map(|r| r.compliance_score()).sum();
 
         total_score / self.requirements.len() as f64
     }
 
     /// Calculate ASIL-specific compliance
     pub fn asil_compliance(&self, asil_level: AsilLevel) -> f64 {
-        let asil_requirements = self.get_requirements_by_asil(asil_level;
+        let asil_requirements = self.get_requirements_by_asil(asil_level);
 
         if asil_requirements.is_empty() {
             return 1.0;
         }
 
-        let total_score: f64 = asil_requirements.iter().map(|r| r.compliance_score()).sum);
+        let total_score: f64 = asil_requirements.iter().map(|r| r.compliance_score()).sum();
 
         total_score / asil_requirements.len() as f64
     }
@@ -381,7 +381,7 @@ impl RequirementRegistry {
             AsilLevel::C,
             AsilLevel::D,
         ] {
-            asil_compliance.insert(*asil, self.asil_compliance(*asil;
+            asil_compliance.insert(*asil, self.asil_compliance(*asil));
         }
 
         ComplianceReport {
@@ -433,25 +433,25 @@ impl ComplianceReport {
     pub fn format_human(&self) -> String {
         let mut output = String::new();
 
-        output.push_str(&format!("📊 Requirements Compliance Report\n";
-        output.push_str(&format!("═══════════════════════════════\n\n";
+        output.push_str(&format!("📊 Requirements Compliance Report\n"));
+        output.push_str(&format!("═══════════════════════════════\n\n"));
 
         output.push_str(&format!(
             "Overall Compliance: {:.1}%\n",
             self.overall_compliance * 100.0
-        ;
+        ));
         output.push_str(&format!(
             "Total Requirements: {}\n",
             self.total_requirements
-        ;
+        ));
         output.push_str(&format!(
             "Verified: {} ({:.1}%)\n",
             self.verified_requirements,
             (self.verified_requirements as f64 / self.total_requirements as f64) * 100.0
-        ;
+        ));
 
-        output.push_str(&format!("\n📈 ASIL Compliance:\n";
-        output.push_str(&format!("──────────────────\n";
+        output.push_str(&format!("\n📈 ASIL Compliance:\n"));
+        output.push_str(&format!("──────────────────\n"));
 
         let mut asil_levels: Vec<_> = self.asil_compliance.iter().collect();
         asil_levels.sort_by_key(|(asil, _)| match asil {
@@ -460,24 +460,24 @@ impl ComplianceReport {
             AsilLevel::B => 2,
             AsilLevel::C => 3,
             AsilLevel::D => 4,
-        };
+        });
 
         for (asil, compliance) in asil_levels {
-            output.push_str(&format!("  {}: {:.1}%\n", asil, compliance * 100.0;
+            output.push_str(&format!("  {}: {:.1}%\n", asil, compliance * 100.0));
         }
 
         if self.unverified_count > 0 {
-            output.push_str(&format!("\n⚠️  Issues Found:\n";
-            output.push_str(&format!("──────────────\n";
-            output.push_str(&format!("  Unverified: {}\n", self.unverified_count;
+            output.push_str(&format!("\n⚠️  Issues Found:\n"));
+            output.push_str(&format!("──────────────\n"));
+            output.push_str(&format!("  Unverified: {}\n", self.unverified_count));
             output.push_str(&format!(
                 "  Missing Implementation: {}\n",
                 self.missing_implementation_count
-            ;
+            ));
             output.push_str(&format!(
                 "  Missing Tests: {}\n",
                 self.missing_testing_count
-            ;
+            ));
         }
 
         output
@@ -496,12 +496,12 @@ mod tests {
             "All memory allocations must be bounded".to_string(),
             RequirementType::Memory,
             AsilLevel::C,
-        ;
+        );
 
-        assert_eq!(req.id.as_str(), "REQ_MEM_001";
-        assert_eq!(req.asil_level, AsilLevel::C;
-        assert!(!req.is_verified();
-        assert!(req.needs_implementation();
+        assert_eq!(req.id.as_str(), "REQ_MEM_001");
+        assert_eq!(req.asil_level, AsilLevel::C);
+        assert!(!req.is_verified());
+        assert!(req.needs_implementation());
     }
 
     #[test]
@@ -512,21 +512,21 @@ mod tests {
             "Test description".to_string(),
             RequirementType::Functional,
             AsilLevel::A,
-        ;
+        );
 
         // Initially no compliance
-        assert_eq!(req.compliance_score(), 0.0;
+        assert_eq!(req.compliance_score(), 0.0);
 
         // Add implementation
         req.add_implementation("src/test.rs".to_string());
         assert!(req.compliance_score() > 0.0);
 
         // Add testing
-        req.set_coverage(CoverageLevel::Comprehensive;
+        req.set_coverage(CoverageLevel::Comprehensive);
         assert!(req.compliance_score() > 0.5);
 
         // Mark as verified
-        req.set_status(VerificationStatus::Verified;
+        req.set_status(VerificationStatus::Verified);
         assert!(req.compliance_score() > 0.8);
     }
 }

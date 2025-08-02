@@ -1,23 +1,34 @@
 //! Generic Memory Coordination System
 //!
-//! This module provides a generic, reusable memory coordination system that can be
-//! used by any crate or project. It's designed to be flexible while enforcing
-//! memory budgets and safety requirements.
+//! This module provides a generic, reusable memory coordination system that can
+//! be used by any crate or project. It's designed to be flexible while
+//! enforcing memory budgets and safety requirements.
 //!
 //! SW-REQ-ID: REQ_MEM_001 - Memory bounds checking
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 //! SW-REQ-ID: REQ_MEM_003 - Automatic cleanup
 
-use crate::{codes, Error, ErrorCategory, Result};
-use wrt_error::helpers::memory_limit_exceeded_error;
-use core::marker::PhantomData;
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
+use core::{
+    marker::PhantomData,
+    sync::atomic::{
+        AtomicBool,
+        AtomicUsize,
+        Ordering,
+    },
+};
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::vec::Vec;
+use wrt_error::helpers::memory_limit_exceeded_error;
+
+use crate::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
 /// Generic crate identifier trait
 ///
@@ -36,19 +47,19 @@ pub trait CrateIdentifier: Copy + Clone + Eq + core::hash::Hash + 'static {
 /// Generic memory coordinator that works with any CrateIdentifier
 pub struct GenericMemoryCoordinator<C: CrateIdentifier, const MAX_CRATES: usize> {
     /// Per-crate allocation tracking
-    crate_allocations: [AtomicUsize; MAX_CRATES],
+    crate_allocations:  [AtomicUsize; MAX_CRATES],
     /// Per-crate budgets
-    crate_budgets: [AtomicUsize; MAX_CRATES],
+    crate_budgets:      [AtomicUsize; MAX_CRATES],
     /// Total system allocation
-    total_allocated: AtomicUsize,
+    total_allocated:    AtomicUsize,
     /// Total system budget
-    total_budget: AtomicUsize,
+    total_budget:       AtomicUsize,
     /// Whether the system is initialized
-    initialized: AtomicBool,
+    initialized:        AtomicBool,
     /// Next allocation ID
     next_allocation_id: AtomicUsize,
     /// Phantom data for crate type
-    _phantom: PhantomData<C>,
+    _phantom:           PhantomData<C>,
 }
 
 impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MAX_CRATES> {
@@ -56,13 +67,13 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
     pub const fn new() -> Self {
         const ATOMIC_ZERO: AtomicUsize = AtomicUsize::new(0);
         Self {
-            crate_allocations: [ATOMIC_ZERO; MAX_CRATES],
-            crate_budgets: [ATOMIC_ZERO; MAX_CRATES],
-            total_allocated: AtomicUsize::new(0),
-            total_budget: AtomicUsize::new(0),
-            initialized: AtomicBool::new(false),
+            crate_allocations:  [ATOMIC_ZERO; MAX_CRATES],
+            crate_budgets:      [ATOMIC_ZERO; MAX_CRATES],
+            total_allocated:    AtomicUsize::new(0),
+            total_budget:       AtomicUsize::new(0),
+            initialized:        AtomicBool::new(false),
             next_allocation_id: AtomicUsize::new(1),
-            _phantom: PhantomData,
+            _phantom:           PhantomData,
         }
     }
 
@@ -77,7 +88,9 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
     {
         // Check if already initialized
         if self.initialized.swap(true, Ordering::AcqRel) {
-            return Err(Error::runtime_execution_error("Memory coordinator already initialized"));
+            return Err(Error::runtime_execution_error(
+                "Memory coordinator already initialized",
+            ));
         }
 
         // Set total budget
@@ -101,7 +114,9 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
         // Verify total doesn't exceed system budget
         if total_assigned > total_budget {
             self.initialized.store(false, Ordering::Release);
-            return Err(memory_limit_exceeded_error("Total crate budgets exceed system budget"));
+            return Err(memory_limit_exceeded_error(
+                "Total crate budgets exceed system budget",
+            ));
         }
 
         Ok(())
@@ -111,7 +126,9 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
     pub fn register_allocation(&self, crate_id: C, size: usize) -> Result<AllocationId> {
         let index = crate_id.as_index();
         if index >= MAX_CRATES {
-            return Err(Error::runtime_execution_error("Crate index out of bounds for allocation registration"));
+            return Err(Error::runtime_execution_error(
+                "Crate index out of bounds for allocation registration",
+            ));
         }
 
         // Check crate budget
@@ -119,7 +136,9 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
         let crate_current = self.crate_allocations[index].load(Ordering::Acquire);
 
         if crate_current.saturating_add(size) > crate_budget {
-            return Err(memory_limit_exceeded_error("Crate allocation would exceed budget"));
+            return Err(memory_limit_exceeded_error(
+                "Crate allocation would exceed budget",
+            ));
         }
 
         // Check total budget
@@ -148,7 +167,7 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
                     // Generate allocation ID
                     let id = self.next_allocation_id.fetch_add(1, Ordering::AcqRel);
                     return Ok(AllocationId(id));
-                }
+                },
                 Err(_) => continue, // Retry
             }
         }
@@ -163,7 +182,9 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
     ) -> Result<()> {
         let index = crate_id.as_index();
         if index >= MAX_CRATES {
-            return Err(Error::runtime_execution_error("Crate index out of bounds for allocation return"));
+            return Err(Error::runtime_execution_error(
+                "Crate index out of bounds for allocation return",
+            ));
         }
 
         // Atomically decrease allocations
@@ -174,7 +195,8 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MA
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Allocation underflow detected - returning more memory than allocated"));
+                "Allocation underflow detected - returning more memory than allocated",
+            ));
         }
 
         // Update total
@@ -224,20 +246,23 @@ pub struct AllocationId(pub usize);
 /// Generic budget configuration
 pub struct BudgetConfig<C: CrateIdentifier> {
     pub crate_id: C,
-    pub budget: usize,
+    pub budget:   usize,
 }
 
 /// Builder for setting up memory coordination
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct MemoryCoordinatorBuilder<C: CrateIdentifier, const MAX_CRATES: usize> {
-    budgets: Vec<BudgetConfig<C>>,
+    budgets:      Vec<BudgetConfig<C>>,
     total_budget: Option<usize>,
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<C: CrateIdentifier, const MAX_CRATES: usize> MemoryCoordinatorBuilder<C, MAX_CRATES> {
     pub fn new() -> Self {
-        Self { budgets: Vec::new(), total_budget: None }
+        Self {
+            budgets:      Vec::new(),
+            total_budget: None,
+        }
     }
 
     /// Add a crate budget
@@ -254,11 +279,14 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> MemoryCoordinatorBuilder<C, MA
 
     /// Build and initialize the coordinator
     pub fn build(self, coordinator: &GenericMemoryCoordinator<C, MAX_CRATES>) -> Result<()> {
-        let total = self.total_budget.ok_or_else(|| {
-            Error::initialization_error("Total budget not specified")
-        })?;
+        let total = self
+            .total_budget
+            .ok_or_else(|| Error::initialization_error("Total budget not specified"))?;
 
-        coordinator.initialize(self.budgets.into_iter().map(|b| (b.crate_id, b.budget)), total)
+        coordinator.initialize(
+            self.budgets.into_iter().map(|b| (b.crate_id, b.budget)),
+            total,
+        )
     }
 }
 

@@ -3,7 +3,12 @@
 //! This example shows how the allocator system is now integrated directly
 //! into wrt-foundation without external dependencies.
 
-use wrt_foundation::allocator::{CapacityError, CrateId, WrtHashMap, WrtVec};
+use wrt_foundation::allocator::{
+    CapacityError,
+    CrateId,
+    WrtHashMap,
+    WrtVec,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 WRT Internal Allocator System Demo");
@@ -30,8 +35,11 @@ fn demo_internal_collections() -> Result<(), Box<dyn std::error::Error>> {
     let mut foundation_vec: WrtVec<i32, { CrateId::Foundation as u8 }, 1000> = WrtVec::new();
     let mut component_vec: WrtVec<String, { CrateId::Component as u8 }, 500> = WrtVec::new();
 
-    println!("✓ Foundation Vec (internal): {} items", foundation_vec.len()));
-    println!("✓ Component Vec (internal): {} items", component_vec.len()));
+    println!(
+        "✓ Foundation Vec (internal): {} items",
+        foundation_vec.len()
+    );
+    println!("✓ Component Vec (internal): {} items", component_vec.len());
 
     // The compiler verifies these allocations fit within crate budgets
     foundation_vec.push(42)?;
@@ -55,8 +63,11 @@ fn demo_foundation_integration() -> Result<(), Box<dyn std::error::Error>> {
     runtime_map.insert("runtime_key".to_string(), 100)?;
     runtime_map.insert("safety_level".to_string(), 95)?;
 
-    println!("Runtime HashMap entries: {}", runtime_map.len()));
-    println!("Safety level: {}", runtime_map.get("safety_level").unwrap_or(&0)));
+    println!("Runtime HashMap entries: {}", runtime_map.len());
+    println!(
+        "Safety level: {}",
+        runtime_map.get("safety_level").unwrap_or(&0)
+    );
 
     // Demonstrate capacity limits
     let mut small_vec: WrtVec<i32, { CrateId::Host as u8 }, 3> = WrtVec::new();
@@ -68,7 +79,7 @@ fn demo_foundation_integration() -> Result<(), Box<dyn std::error::Error>> {
         Ok(_) => println!("Unexpected success"),
         Err(CapacityError::Exceeded) => {
             println!("✓ Capacity enforcement working - safely rejected overflow");
-        }
+        },
     }
 
     println!("✓ Foundation integration complete with safety guarantees!");
@@ -87,12 +98,12 @@ mod tests {
 
         assert!(vec.push(1).is_ok());
         assert!(vec.push(2).is_ok());
-        assert_eq!(vec.len(), 2;
+        assert_eq!(vec.len(), 2);
 
         // Test zero-cost deref
-        vec.sort);
+        vec.sort();
         assert_eq!(vec[0], 1);
-        assert_eq!(vec[1], 2;
+        assert_eq!(vec[1], 2);
     }
 
     #[test]
@@ -101,6 +112,6 @@ mod tests {
 
         assert!(vec.push(1).is_ok());
         assert!(vec.push(2).is_ok());
-        assert_eq!(vec.push(3), Err(CapacityError::Exceeded;
+        assert_eq!(vec.push(3), Err(CapacityError::Exceeded));
     }
 }

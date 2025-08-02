@@ -659,7 +659,7 @@ mod tests {
     #[test]
     fn test_thread_spawn_and_join() {
         let mut manager = ComponentThreadManager::new();
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
 
         let provider = safe_managed_alloc!(65536, CrateId::Component).unwrap();
         let arguments = BoundedVec::new(provider).unwrap();
@@ -685,7 +685,7 @@ mod tests {
     #[test]
     fn test_thread_limits() {
         let manager = ComponentThreadManager::new();
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
 
         assert_eq!(manager.get_component_thread_count(component_id), 0);
         assert!(manager.get_component_threads(component_id).is_empty());

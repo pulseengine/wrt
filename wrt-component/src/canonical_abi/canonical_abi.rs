@@ -259,7 +259,7 @@ impl CanonicalMemory for SimpleMemory {
 
     fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len);
+        let end = start + data.len();
 
         if end > self.data.len() {
             return Err(Error::memory_out_of_bounds("Memory write out of bounds";
@@ -369,7 +369,7 @@ impl CanonicalABI {
             ComponentType::Enum(_) => Ok(4), // discriminant only
             ComponentType::Flags(flags) => {
                 // Each flag is 1 bit, round up to byte boundary
-                let bit_count = flags.len);
+                let bit_count = flags.len();
                 let byte_count = (bit_count + 7) / 8;
                 Ok(byte_count as u32)
             }

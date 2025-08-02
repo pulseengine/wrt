@@ -119,8 +119,8 @@ impl Requirements {
         let mut registry = RequirementRegistry::new();
 
         for req in &self.requirement {
-            let safety_req = req.to_safety_requirement);
-            registry.add_requirement(safety_req;
+            let safety_req = req.to_safety_requirement();
+            registry.add_requirement(safety_req);
         }
 
         registry
@@ -169,7 +169,7 @@ platform = ["all"]
             "{} Created sample requirements.toml at {}",
             "✅".bright_green(),
             path.display()
-        ;
+        );
         Ok(())
     }
 
@@ -184,27 +184,27 @@ platform = ["all"]
 
             // Check source files
             for file in &req.source_files {
-                let path = workspace_root.join(file;
+                let path = workspace_root.join(file);
                 if !path.exists() && !file.contains("*") {
-                    missing_files.push(format!("{} (source for {})", file, req.id;
+                    missing_files.push(format!("{} (source for {})", file, req.id));
                     req_complete = false;
                 }
             }
 
             // Check test files
             for file in &req.test_files {
-                let path = workspace_root.join(file;
+                let path = workspace_root.join(file);
                 if !path.exists() && !file.contains("*") {
-                    missing_files.push(format!("{} (test for {})", file, req.id;
+                    missing_files.push(format!("{} (test for {})", file, req.id));
                     req_complete = false;
                 }
             }
 
             // Check documentation files
             for file in &req.documentation_files {
-                let path = workspace_root.join(file;
+                let path = workspace_root.join(file);
                 if !path.exists() && !file.contains("*") {
-                    missing_files.push(format!("{} (doc for {})", file, req.id;
+                    missing_files.push(format!("{} (doc for {})", file, req.id));
                     req_complete = false;
                 }
             }
@@ -212,7 +212,7 @@ platform = ["all"]
             if req_complete {
                 verified_count += 1;
             } else {
-                incomplete_requirements.push(req.id.clone();
+                incomplete_requirements.push(req.id.clone());
             }
         }
 
@@ -232,9 +232,9 @@ platform = ["all"]
     pub fn generate_traceability_matrix(&self) -> String {
         let mut matrix = String::new();
 
-        matrix.push_str("# Requirements Traceability Matrix\n\n";
-        matrix.push_str("| ID | Name | ASIL | Status | Sources | Tests | Docs |\n";
-        matrix.push_str("|-------|------|------|--------|---------|-------|------|\n";
+        matrix.push_str("# Requirements Traceability Matrix\n\n");
+        matrix.push_str("| ID | Name | ASIL | Status | Sources | Tests | Docs |\n");
+        matrix.push_str("|-------|------|------|--------|---------|-------|------|\n");
 
         for req in &self.requirement {
             matrix.push_str(&format!(
@@ -246,7 +246,7 @@ platform = ["all"]
                 req.source_files.len(),
                 req.test_files.len(),
                 req.documentation_files.len()
-            ;
+            ));
         }
 
         matrix
@@ -262,24 +262,24 @@ impl Requirement {
             self.description.clone(),
             self.parse_requirement_type(),
             self.parse_asil_level(),
-        ;
+        );
 
         // Set verification method
-        req.verification_method = self.parse_verification_method);
+        req.verification_method = self.parse_verification_method();
 
         // Add source files as implementations
         for src in &self.source_files {
-            req.add_implementation(src.clone();
+            req.add_implementation(src.clone());
         }
 
         // Add test files
         for test in &self.test_files {
-            req.add_test(test.clone();
+            req.add_test(test.clone());
         }
 
         // Add documentation
         for doc in &self.documentation_files {
-            req.add_documentation(doc.clone();
+            req.add_documentation(doc.clone());
         }
 
         // Set status based on simple status field
@@ -331,7 +331,7 @@ impl Requirement {
 
     /// Parse verification method from string
     fn parse_verification_method(&self) -> VerificationMethod {
-        let method = self.verification_method.to_lowercase);
+        let method = self.verification_method.to_lowercase();
         if method.contains("inspection") || method.contains("review") {
             VerificationMethod::Inspection
         } else if method.contains("analysis") {
@@ -370,7 +370,7 @@ impl EnhancedRequirementsVerifier {
     /// Load requirements from file and convert to enhanced model
     pub fn load_requirements(&mut self, path: &Path) -> BuildResult<()> {
         let requirements = Requirements::load(path)?;
-        self.registry = requirements.to_registry);
+        self.registry = requirements.to_registry();
         Ok(())
     }
 
@@ -380,7 +380,7 @@ impl EnhancedRequirementsVerifier {
         self.verify_file_references()?;
 
         // Then update status based on verification results
-        self.update_verification_status);
+        self.update_verification_status();
 
         Ok(())
     }
@@ -390,40 +390,40 @@ impl EnhancedRequirementsVerifier {
         for req in &self.registry.requirements {
             // Check implementation files
             for impl_file in &req.implementations {
-                let path = self.workspace_root.join(impl_file;
+                let path = self.workspace_root.join(impl_file);
                 if !path.exists() && !impl_file.contains("*") {
                     println!(
                         "{} Missing implementation file for {}: {}",
                         "⚠️ ".yellow(),
                         req.id,
                         impl_file
-                    ;
+                    );
                 }
             }
 
             // Check test files
             for test_file in &req.tests {
-                let path = self.workspace_root.join(test_file;
+                let path = self.workspace_root.join(test_file);
                 if !path.exists() && !test_file.contains("*") {
                     println!(
                         "{} Missing test file for {}: {}",
                         "⚠️ ".yellow(),
                         req.id,
                         test_file
-                    ;
+                    );
                 }
             }
 
             // Check documentation files
             for doc_file in &req.documentation {
-                let path = self.workspace_root.join(doc_file;
+                let path = self.workspace_root.join(doc_file);
                 if !path.exists() && !doc_file.contains("*") {
                     println!(
                         "{} Missing documentation file for {}: {}",
                         "⚠️ ".yellow(),
                         req.id,
                         doc_file
-                    ;
+                    );
                 }
             }
         }
@@ -443,7 +443,7 @@ impl EnhancedRequirementsVerifier {
                 .chain(req.tests.iter())
                 .chain(req.documentation.iter())
             {
-                let path = self.workspace_root.join(file;
+                let path = self.workspace_root.join(file);
                 if !path.exists() && !file.contains("*") {
                     all_files_exist = false;
                     break;

@@ -384,7 +384,7 @@ mod tests {
             
             if result.fired_timers.len() > 0 {
                 measurement.record_operation(step_start;
-                fired_count += result.fired_timers.len);
+                fired_count += result.fired_timers.len();
             }
             
             if fired_count >= NUM_TIMERS as usize {

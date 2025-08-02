@@ -413,7 +413,7 @@ mod tests {
     #[test]
     fn test_contextual_error() {
         let error = Error::async_async_error("Test error");        
-        let contextual = ContextualError::new(error, VerificationLevel::Basic;
+        let contextual = ContextualError::new(error, VerificationLevel::Basic);
         assert!(contextual.is_ok());
         
         let mut contextual = contextual.unwrap();

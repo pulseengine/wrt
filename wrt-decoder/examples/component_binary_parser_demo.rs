@@ -41,15 +41,15 @@ fn create_demo_component_binary() -> Vec<u8> {
 fn demo_basic_parsing() -> Result<()> {
     println!("=== Basic Component Parsing Demo ===");
 
-    let binary = create_demo_component_binary);
-    println!("Created demo component binary ({} bytes)", binary.len));
+    let binary = create_demo_component_binary();
+    println!("Created demo component binary ({} bytes)", binary.len());
 
     // Parse using convenience function
     let component = parse_component_binary(&binary)?;
     println!("✅ Successfully parsed component");
     println!("   Component name: {:?}", component.name);
-    println!("   Modules: {}", component.modules.len);
-    println!("   Types: {}", component.types.len);
+    println!("   Modules: {}", component.modules.len());
+    println!("   Types: {}", component.types.len());
 
     Ok(())
 }
@@ -58,7 +58,7 @@ fn demo_basic_parsing() -> Result<()> {
 fn demo_validation_levels() -> Result<()> {
     println!("\n=== Validation Levels Demo ===");
 
-    let binary = create_demo_component_binary);
+    let binary = create_demo_component_binary();
 
     // Minimal validation
     let component1 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal)?;
@@ -81,10 +81,10 @@ fn demo_validation_levels() -> Result<()> {
 fn demo_parser_api() -> Result<()> {
     println!("\n=== Parser API Demo ===");
 
-    let binary = create_demo_component_binary);
+    let binary = create_demo_component_binary();
 
     // Create parser with custom validation level
-    let mut parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Strict;
+    let mut parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Strict);
     println!("Created parser with strict validation");
 
     // Parse the component
@@ -126,7 +126,7 @@ fn demo_error_handling() {
 fn demo_cross_environment_compatibility() -> Result<()> {
     println!("\n=== Cross-Environment Compatibility Demo ===");
 
-    let binary = create_demo_component_binary);
+    let binary = create_demo_component_binary();
 
     // Binary std/no_std choice
     let component = parse_component_binary(&binary)?;
@@ -152,7 +152,7 @@ fn main() -> Result<()> {
     demo_basic_parsing()?;
     demo_validation_levels()?;
     demo_parser_api()?;
-    demo_error_handling);
+    demo_error_handling();
     demo_cross_environment_compatibility()?;
 
     println!("\n=== Demo Complete ===");
@@ -167,8 +167,8 @@ mod tests {
 
     #[test]
     fn test_demo_component_binary_creation() {
-        let binary = create_demo_component_binary);
-        assert!(binary.len() >= 12)); // At least header size
+        let binary = create_demo_component_binary();
+        assert!(binary.len() >= 12); // At least header size
         assert_eq!(&binary[0..4], &[0x00, 0x61, 0x73, 0x6D]); // Magic
     }
 
@@ -181,6 +181,6 @@ mod tests {
         assert!(demo_cross_environment_compatibility().is_ok());
 
         // Error handling demo doesn't return Result, so just call it
-        demo_error_handling);
+        demo_error_handling();
     }
 }

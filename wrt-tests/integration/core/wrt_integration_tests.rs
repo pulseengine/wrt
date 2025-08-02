@@ -177,11 +177,11 @@ impl wrt_test_registry::TestCase for ErrorHandlingTest {
         use wrt_error::{Error, kinds};
         
         // Test error creation and properties
-        let validation_error = Error::runtime_execution_error(";
-        let memory_error = Error::new(kinds::ErrorKind::Memory, 2, Some(";
+        let validation_error = Error::runtime_execution_error("Validation error");
+        let memory_error = Error::new(kinds::ErrorKind::Memory, 2, Some("Memory error"));
         
-        assert_eq_test!(validation_error.kind(), kinds::ErrorKind::Validation, "Error kind should be Validation";
-        assert_eq_test!(memory_error.kind(), kinds::ErrorKind::Memory, "Error kind should be Memory";
+        assert_eq_test!(validation_error.kind(), kinds::ErrorKind::Validation, "Error kind should be Validation");
+        assert_eq_test!(memory_error.kind(), kinds::ErrorKind::Memory, "Error kind should be Memory");
         
         Ok(())
     }

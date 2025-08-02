@@ -49,7 +49,7 @@ impl DiagnosticCollection {
                 "safety-verification".to_string(),
             )
             .with_code(code.to_string()),
-        ;
+        );
     }
 
     fn add_warning(&mut self, file: &str, message: String, code: &str) {
@@ -62,7 +62,7 @@ impl DiagnosticCollection {
                 "safety-verification".to_string(),
             )
             .with_code(code.to_string()),
-        ;
+        );
     }
 
     fn add_error(&mut self, file: &str, message: String, code: &str) {
@@ -75,7 +75,7 @@ impl DiagnosticCollection {
                 "safety-verification".to_string(),
             )
             .with_code(code.to_string()),
-        ;
+        );
     }
 }
 
@@ -109,7 +109,7 @@ impl SafetyVerificationFramework {
 
     /// Add a safety requirement to be tracked
     pub fn add_requirement(&mut self, requirement: SafetyRequirement) {
-        self.requirement_registry.add_requirement(requirement;
+        self.requirement_registry.add_requirement(requirement);
     }
 
     /// Load requirements from external source and generate diagnostics
@@ -120,21 +120,21 @@ impl SafetyVerificationFramework {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "safety-verification".to_string(),
-        ;
+        );
 
         // Generate standard safety requirements based on WRT needs
-        let standard_requirements = self.generate_wrt_safety_requirements);
-        let count = standard_requirements.len);
+        let standard_requirements = self.generate_wrt_safety_requirements();
+        let count = standard_requirements.len();
 
         for req in standard_requirements {
-            self.requirement_registry.add_requirement(req;
+            self.requirement_registry.add_requirement(req);
         }
 
         diagnostics.add_info(
             source,
             format!("Loaded {} safety requirements", count),
             "safety-load",
-        ;
+        );
 
         Ok((count, diagnostics))
     }
@@ -147,8 +147,8 @@ impl SafetyVerificationFramework {
         let mut diagnostics =
             DiagnosticCollection::new(self.workspace_root.clone(), "asil-compliance".to_string());
 
-        let requirements = self.requirement_registry.get_requirements_by_asil(target_asil;
-        let total_requirements = requirements.len);
+        let requirements = self.requirement_registry.get_requirements_by_asil(target_asil);
+        let total_requirements = requirements.len();
 
         let mut verified_count = 0;
         let mut missing_implementation_count = 0;
@@ -162,7 +162,7 @@ impl SafetyVerificationFramework {
                     "safety-verification",
                     format!("Requirement {} verified", requirement.id),
                     "requirement-verified",
-                ;
+                );
             }
 
             if requirement.needs_implementation() {
@@ -199,7 +199,7 @@ impl SafetyVerificationFramework {
                     code:         Some("missing-implementation".to_string()),
                     source:       "safety-verification".to_string(),
                     related_info: vec![],
-                };
+                });
 
                 violations.push(violation);
             }
@@ -241,7 +241,7 @@ impl SafetyVerificationFramework {
                     code:         Some("insufficient-testing".to_string()),
                     source:       "safety-verification".to_string(),
                     related_info: vec![],
-                };
+                });
 
                 violations.push(violation);
             }
@@ -273,7 +273,7 @@ impl SafetyVerificationFramework {
                     target_asil, compliance_percentage
                 ),
                 "compliance-pass",
-            ;
+            );
         } else {
             diagnostics.add_error(
                 "safety-verification",
@@ -284,7 +284,7 @@ impl SafetyVerificationFramework {
                     self.get_compliance_threshold(target_asil)
                 ),
                 "compliance-fail",
-            ;
+            );
         }
 
         Ok((result, diagnostics))
@@ -308,7 +308,7 @@ impl SafetyVerificationFramework {
                     };
 
                     if new_coverage > requirement.coverage {
-                        requirement.set_coverage(new_coverage.clone();
+                        requirement.set_coverage(new_coverage.clone());
                         diagnostics.add_info(
                             &result.test_name,
                             format!(
@@ -316,23 +316,23 @@ impl SafetyVerificationFramework {
                                 requirement_id, &new_coverage
                             ),
                             "coverage-update",
-                        ;
+                        );
                     }
 
                     // Mark as verified if sufficiently tested
                     if requirement.coverage >= CoverageLevel::Basic
                         && !requirement.implementations.is_empty()
                     {
-                        requirement.set_status(VerificationStatus::Verified;
+                        requirement.set_status(VerificationStatus::Verified);
                         diagnostics.add_info(
                             &result.test_name,
                             format!("Requirement {} marked as verified", requirement_id),
                             "requirement-verified",
-                        ;
+                        );
                     }
                 } else {
                     requirement
-                        .set_status(VerificationStatus::Failed(result.failure_reason.clone();
+                        .set_status(VerificationStatus::Failed(result.failure_reason.clone()));
                     diagnostics.add_error(
                         &result.test_name,
                         format!(
@@ -340,7 +340,7 @@ impl SafetyVerificationFramework {
                             requirement_id, result.failure_reason
                         ),
                         "verification-failed",
-                    ;
+                    );
                 }
             }
         }
@@ -353,13 +353,13 @@ impl SafetyVerificationFramework {
                     result.execution_time_ms, result.asil_level
                 ),
                 "test-passed",
-            ;
+            );
         } else {
             diagnostics.add_error(
                 &result.test_name,
                 format!("Test failed: {}", result.failure_reason),
                 "test-failed",
-            ;
+            );
         }
 
         self.test_results.push(result);
@@ -381,7 +381,7 @@ impl SafetyVerificationFramework {
         let mut diagnostics =
             DiagnosticCollection::new(self.workspace_root.clone(), "safety-report".to_string());
 
-        let overall_compliance = self.requirement_registry.overall_compliance);
+        let overall_compliance = self.requirement_registry.overall_compliance();
 
         let asil_compliance = [
             AsilLevel::QM,
@@ -411,15 +411,15 @@ impl SafetyVerificationFramework {
             platform_results:   self.platform_verifications.clone(),
         };
 
-        let critical_violations = self.get_critical_violations);
-        let recommendations = self.generate_recommendations);
+        let critical_violations = self.get_critical_violations();
+        let recommendations = self.generate_recommendations();
 
         // Generate diagnostics for report
         diagnostics.add_info(
             "safety-report",
             format!("Overall compliance: {:.1}%", overall_compliance * 100.0),
             "overall-compliance",
-        ;
+        );
 
         diagnostics.add_info(
             "safety-report",
@@ -428,14 +428,14 @@ impl SafetyVerificationFramework {
                 test_summary.passed_tests, test_summary.total_tests
             ),
             "test-summary",
-        ;
+        );
 
         for violation in &critical_violations {
             diagnostics.add_error(
                 "safety-report",
                 format!("Critical violation: {}", violation.description),
                 "critical-violation",
-            ;
+            );
         }
 
         let report = SafetyReport {
@@ -460,37 +460,37 @@ impl SafetyVerificationFramework {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "certification-readiness".to_string(),
-        ;
+        );
 
-        let compliance_result = self.verify_asil_compliance_readonly(asil_level;
-        let required_threshold = self.get_compliance_threshold(asil_level;
-        let coverage_threshold = self.get_coverage_threshold(asil_level;
+        let compliance_result = self.verify_asil_compliance_readonly(asil_level);
+        let required_threshold = self.get_compliance_threshold(asil_level);
+        let coverage_threshold = self.get_coverage_threshold(asil_level);
 
-        let blocking_issues = self.get_blocking_issues_for_asil(asil_level;
+        let blocking_issues = self.get_blocking_issues_for_asil(asil_level);
 
         let is_ready = compliance_result.compliance_percentage >= required_threshold
             && self.coverage_data.overall_coverage() >= coverage_threshold
-            && blocking_issues.is_empty);
+            && blocking_issues.is_empty();
 
         if is_ready {
             diagnostics.add_info(
                 "certification",
                 format!("System is ready for ASIL {} certification", asil_level),
                 "certification-ready",
-            ;
+            );
         } else {
             diagnostics.add_warning(
                 "certification",
                 format!("System not ready for ASIL {} certification", asil_level),
                 "certification-not-ready",
-            ;
+            );
 
             for issue in &blocking_issues {
                 diagnostics.add_error(
                     "certification",
                     format!("Blocking issue: {}", issue),
                     "blocking-issue",
-                ;
+                );
             }
         }
 
@@ -517,7 +517,7 @@ impl SafetyVerificationFramework {
         let mut diagnostics = DiagnosticCollection::new(
             self.workspace_root.clone(),
             "safety-verification".to_string(),
-        ;
+        );
 
         // Add compliance diagnostics for each ASIL level
         for asil in &[
@@ -527,8 +527,8 @@ impl SafetyVerificationFramework {
             AsilLevel::C,
             AsilLevel::D,
         ] {
-            let compliance = self.requirement_registry.asil_compliance(*asil;
-            let threshold = self.get_compliance_threshold(*asil;
+            let compliance = self.requirement_registry.asil_compliance(*asil);
+            let threshold = self.get_compliance_threshold(*asil);
 
             if compliance >= threshold / 100.0 {
                 diagnostics.add_info(
@@ -539,7 +539,7 @@ impl SafetyVerificationFramework {
                         compliance * 100.0
                     ),
                     "asil-compliance",
-                ;
+                );
             } else {
                 diagnostics.add_warning(
                     "safety-verification",
@@ -550,7 +550,7 @@ impl SafetyVerificationFramework {
                         threshold
                     ),
                     "asil-compliance",
-                ;
+                );
             }
         }
 
@@ -564,13 +564,13 @@ impl SafetyVerificationFramework {
                         test.execution_time_ms, test.asil_level
                     ),
                     "test-result",
-                ;
+                );
             } else {
                 diagnostics.add_error(
                     &test.test_name,
                     format!("Test failed: {}", test.failure_reason),
                     "test-result",
-                ;
+                );
             }
         }
 
@@ -605,7 +605,7 @@ impl SafetyVerificationFramework {
                         .to_string(),
                     RequirementType::Memory,
                     AsilLevel::D,
-                ;
+                );
                 req.verification_method = VerificationMethod::FormalProof;
                 req.add_implementation("wrt-foundation/src/safe_allocation.rs".to_string());
                 req.add_test("wrt-foundation/tests/memory_budget_validation.rs".to_string());
@@ -619,12 +619,12 @@ impl SafetyVerificationFramework {
                         .to_string(),
                     RequirementType::Safety,
                     AsilLevel::D,
-                ;
+                );
                 req.verification_method = VerificationMethod::Test;
                 req.add_implementation("wrt-runtime/src/execution.rs".to_string());
                 req.add_test(
                     "wrt-tests/integration/safety_critical_integration_tests.rs".to_string(),
-                ;
+                );
                 req
             },
             {
@@ -635,14 +635,14 @@ impl SafetyVerificationFramework {
                         .to_string(),
                     RequirementType::Safety,
                     AsilLevel::C,
-                ;
+                );
                 req.verification_method = VerificationMethod::Test;
                 req.add_implementation(
                     "wrt-component/src/bounded_resource_management.rs".to_string(),
-                ;
+                );
                 req.add_test(
                     "wrt-component/tests/safety_critical_memory_budget_tests.rs".to_string(),
-                ;
+                );
                 req
             },
             {
@@ -654,7 +654,7 @@ impl SafetyVerificationFramework {
                         .to_string(),
                     RequirementType::Platform,
                     AsilLevel::B,
-                ;
+                );
                 req.verification_method = VerificationMethod::Analysis;
                 req.add_implementation("wrt-platform/src/memory.rs".to_string());
                 req.add_test("wrt-platform/tests/linux_integration_test.rs".to_string());
@@ -697,9 +697,9 @@ impl SafetyVerificationFramework {
         &self,
         target_asil: AsilLevel,
     ) -> ComplianceVerificationResult {
-        let requirements = self.requirement_registry.get_requirements_by_asil(target_asil;
-        let total_requirements = requirements.len);
-        let verified_count = requirements.iter().filter(|r| r.is_verified()).count);
+        let requirements = self.requirement_registry.get_requirements_by_asil(target_asil);
+        let total_requirements = requirements.len();
+        let verified_count = requirements.iter().filter(|r| r.is_verified()).count();
 
         let compliance_percentage = if total_requirements > 0 {
             (verified_count as f64 / total_requirements as f64) * 100.0
@@ -730,7 +730,7 @@ impl SafetyVerificationFramework {
                     violation_type: ViolationType::FailedVerification,
                     description:    format!("Critical requirement {} not verified", req.id),
                     severity:       ViolationSeverity::Critical,
-                };
+                });
             }
         }
 
@@ -740,23 +740,23 @@ impl SafetyVerificationFramework {
     fn get_blocking_issues_for_asil(&self, asil_level: AsilLevel) -> Vec<String> {
         let mut issues = Vec::new();
 
-        let requirements = self.requirement_registry.get_requirements_by_asil(asil_level;
-        let unverified = requirements.iter().filter(|r| !r.is_verified()).count);
+        let requirements = self.requirement_registry.get_requirements_by_asil(asil_level);
+        let unverified = requirements.iter().filter(|r| !r.is_verified()).count();
 
         if unverified > 0 {
             issues.push(format!(
                 "{} unverified requirements for ASIL {}",
                 unverified, asil_level
-            ;
+            ));
         }
 
-        let threshold = self.get_compliance_threshold(asil_level;
+        let threshold = self.get_compliance_threshold(asil_level);
         let current = self.requirement_registry.asil_compliance(asil_level) * 100.0;
         if current < threshold {
             issues.push(format!(
                 "Compliance {:.1}% below required {:.1}%",
                 current, threshold
-            ;
+            ));
         }
 
         issues
@@ -773,12 +773,12 @@ impl SafetyVerificationFramework {
             recommendations.push("Improve code coverage through additional testing".to_string());
         }
 
-        let unverified = self.requirement_registry.get_unverified_requirements);
+        let unverified = self.requirement_registry.get_unverified_requirements();
         if !unverified.is_empty() {
             recommendations.push(format!(
                 "Address {} unverified requirements",
                 unverified.len()
-            ;
+            ));
         }
 
         recommendations
@@ -1013,8 +1013,8 @@ mod tests {
 
     #[test]
     fn test_safety_verification_framework_creation() {
-        let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
-        let (report, _diagnostics) = framework.generate_safety_report);
+        let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp"));
+        let (report, _diagnostics) = framework.generate_safety_report();
 
         assert_eq!(report.overall_compliance, 1.0); // 100% if no requirements
         assert_eq!(report.test_summary.total_tests, 0);
@@ -1022,7 +1022,7 @@ mod tests {
 
     #[test]
     fn test_requirement_addition_and_verification() {
-        let mut framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
+        let mut framework = SafetyVerificationFramework::new(PathBuf::from("/tmp"));
 
         let mut req = SafetyRequirement::new(
             RequirementId::new("TEST_REQ_001"),
@@ -1030,24 +1030,24 @@ mod tests {
             "Test description".to_string(),
             RequirementType::Safety,
             AsilLevel::C,
-        ;
+        );
 
         req.add_implementation("test_impl.rs".to_string());
-        req.set_coverage(CoverageLevel::Basic;
-        req.set_status(VerificationStatus::Verified;
+        req.set_coverage(CoverageLevel::Basic);
+        req.set_status(VerificationStatus::Verified);
 
-        framework.add_requirement(req;
+        framework.add_requirement(req);
 
         let (compliance_result, _diagnostics) =
             framework.verify_asil_compliance(AsilLevel::C).unwrap();
         assert_eq!(compliance_result.total_requirements, 1);
         assert_eq!(compliance_result.verified_requirements, 1);
-        assert_eq!(compliance_result.compliance_percentage, 100.0;
+        assert_eq!(compliance_result.compliance_percentage, 100.0);
     }
 
     #[test]
     fn test_test_result_recording() {
-        let mut framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
+        let mut framework = SafetyVerificationFramework::new(PathBuf::from("/tmp"));
 
         let test_result = TestResult {
             test_name:             "test_memory_safety".to_string(),
@@ -1059,31 +1059,31 @@ mod tests {
             asil_level:            AsilLevel::C,
         };
 
-        let _diagnostics = framework.record_test_result(test_result;
+        let _diagnostics = framework.record_test_result(test_result);
 
-        let (report, _diagnostics) = framework.generate_safety_report);
+        let (report, _diagnostics) = framework.generate_safety_report();
         assert_eq!(report.test_summary.total_tests, 1);
         assert_eq!(report.test_summary.passed_tests, 1);
     }
 
     #[test]
     fn test_certification_readiness() {
-        let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
+        let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp"));
 
-        let (readiness, _diagnostics) = framework.check_certification_readiness(AsilLevel::A;
+        let (readiness, _diagnostics) = framework.check_certification_readiness(AsilLevel::A);
 
         // Should be ready if no requirements (trivially compliant)
         assert!(readiness.is_ready);
-        assert_eq!(readiness.compliance_percentage, 100.0;
+        assert_eq!(readiness.compliance_percentage, 100.0);
     }
 
     #[test]
     fn test_wrt_safety_requirements_generation() {
-        let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp";
-        let requirements = framework.generate_wrt_safety_requirements);
+        let framework = SafetyVerificationFramework::new(PathBuf::from("/tmp"));
+        let requirements = framework.generate_wrt_safety_requirements();
 
         assert!(!requirements.is_empty());
-        assert!(requirements.iter().any(|r| r.id.as_str() == "WRT_MEM_001");
-        assert!(requirements.iter().any(|r| r.id.as_str() == "WRT_RUNTIME_001");
+        assert!(requirements.iter().any(|r| r.id.as_str() == "WRT_MEM_001"));
+        assert!(requirements.iter().any(|r| r.id.as_str() == "WRT_RUNTIME_001"));
     }
 }

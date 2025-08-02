@@ -1,21 +1,23 @@
 //! Budget Provider Compatibility Layer (DEPRECATED)
 //!
-//! This module has been DEPRECATED in favor of the capability-driven memory system.
-//! Use CapabilityFactoryBuilder and safe_capability_alloc! macro instead.
+//! This module has been DEPRECATED in favor of the capability-driven memory
+//! system. Use CapabilityFactoryBuilder and safe_capability_alloc! macro
+//! instead.
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+use crate::capabilities::{
+    CapabilityAwareProvider,
+    DynamicMemoryCapability,
+    ProviderCapabilityExt,
+};
 use crate::{
     budget_aware_provider::CrateId,
     safe_memory::NoStdProvider,
     verification::VerificationLevel,
     Result,
-};
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-use crate::capabilities::{
-    CapabilityAwareProvider, DynamicMemoryCapability, ProviderCapabilityExt
 };
 
 /// DEPRECATED: Use capability-driven memory management instead
@@ -54,24 +56,28 @@ impl BudgetProvider {
     ) -> Result<CapabilityAwareProvider<NoStdProvider<N>>> {
         // Create raw provider and wrap with capability
         use alloc::boxed::Box;
-        use crate::capabilities::DynamicMemoryCapability;
-        use crate::verification::VerificationLevel;
+
+        use crate::{
+            capabilities::DynamicMemoryCapability,
+            verification::VerificationLevel,
+        };
 
         let provider = NoStdProvider::<N>::default();
-        let capability =
-            Box::new(DynamicMemoryCapability::new(N, crate_id, VerificationLevel::Standard));
+        let capability = Box::new(DynamicMemoryCapability::new(
+            N,
+            crate_id,
+            VerificationLevel::Standard,
+        ));
 
         Ok(provider.with_capability(capability, crate_id))
     }
-    
+
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     #[deprecated(
         since = "0.3.0",
         note = "Use NoStdProvider::new() directly in no_std environments"
     )]
-    pub fn new<const N: usize>(
-        _crate_id: CrateId,
-    ) -> Result<NoStdProvider<N>> {
+    pub fn new<const N: usize>(_crate_id: CrateId) -> Result<NoStdProvider<N>> {
         Ok(NoStdProvider::<N>::default())
     }
 
@@ -88,16 +94,13 @@ impl BudgetProvider {
         // Ignore the size parameter and use const generic N
         Self::new::<N>(crate_id)
     }
-    
+
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     #[deprecated(
         since = "0.3.0",
         note = "Use NoStdProvider::new() directly in no_std environments"
     )]
-    pub fn with_size<const N: usize>(
-        _crate_id: CrateId,
-        _size: usize,
-    ) -> Result<NoStdProvider<N>> {
+    pub fn with_size<const N: usize>(_crate_id: CrateId, _size: usize) -> Result<NoStdProvider<N>> {
         Ok(NoStdProvider::<N>::default())
     }
 }

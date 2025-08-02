@@ -156,7 +156,7 @@ impl WasmApplicationManager {
         let result =
             self.agent_registry.call_function(*agent_id, instance_id, function_index, &args);
 
-        let execution_time = start_time.elapsed());
+        let execution_time = start_time.elapsed();
 
         // Create result
         let component_result = ComponentResult {
@@ -246,7 +246,7 @@ impl WasmApplicationManager {
 
         println!("📊 Workflow '{}' completed:", workflow_name);
         println!("   Total execution time: {}ms", total_time);
-        println!("   Successful steps: {}/{}", success_count, results.len()));
+        println!("   Successful steps: {}/{}", success_count, results.len());
 
         Ok(results)
     }
@@ -432,7 +432,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  🔹 Unified agents handle different component types seamlessly");
     println!("  🔹 Execution modes are automatically chosen based on component requirements");
     println!("  🔹 Complex workflows coordinate multiple components efficiently");
-    println!("  🔹 Security-critical components get appropriate protection (CFI)"));
+    println!("  🔹 Security-critical components get appropriate protection (CFI)");
     println!("  🔹 Memory-intensive components use stackless execution");
     println!("  🔹 UI components use async execution for responsiveness");
 

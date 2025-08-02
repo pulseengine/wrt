@@ -98,9 +98,9 @@ impl FuelAsyncScheduler {
     pub fn set_policy(&mut self, policy: SchedulingPolicy) {
         self.policy = policy;
         // Clear queues when policy changes
-        self.priority_queue.clear);
-        self.round_robin_queue.clear);
-        self.round_robin_position.store(0, Ordering::SeqCst;
+        self.priority_queue.clear();
+        self.round_robin_queue.clear();
+        self.round_robin_position.store(0, Ordering::SeqCst);
     }
 
     /// Set the fuel quantum for round-robin scheduling
@@ -117,7 +117,7 @@ impl FuelAsyncScheduler {
         fuel_quota: u64,
         deadline: Option<Duration>,
     ) -> Result<(), Error> {
-        record_global_operation(OperationType::CollectionInsert, self.verification_level;
+        record_global_operation(OperationType::CollectionInsert, self.verification_level);
 
         let scheduled_task = ScheduledTask {
             task_id,
@@ -158,22 +158,22 @@ impl FuelAsyncScheduler {
 
     /// Remove a task from the scheduler
     pub fn remove_task(&mut self, task_id: TaskId) -> Result<(), Error> {
-        record_global_operation(OperationType::CollectionRemove, self.verification_level;
+        record_global_operation(OperationType::CollectionRemove, self.verification_level);
 
-        self.scheduled_tasks.remove(&task_id;
+        self.scheduled_tasks.remove(&task_id);
         
         // Remove from all queues
-        self.priority_queue.retain(|&id| id != task_id;
-        self.round_robin_queue.retain(|&id| id != task_id;
+        self.priority_queue.retain(|&id| id != task_id);
+        self.round_robin_queue.retain(|&id| id != task_id);
 
         Ok(())
     }
 
     /// Get the next task to schedule based on the current policy
     pub fn next_task(&mut self) -> Option<TaskId> {
-        record_global_operation(OperationType::FunctionCall, self.verification_level;
+        record_global_operation(OperationType::FunctionCall, self.verification_level);
 
-        let current_time = self.global_schedule_time.fetch_add(SCHEDULE_TASK_FUEL, Ordering::AcqRel;
+        let current_time = self.global_schedule_time.fetch_add(SCHEDULE_TASK_FUEL, Ordering::AcqRel);
 
         match self.policy {
             SchedulingPolicy::Cooperative => self.next_cooperative_task(),
@@ -196,8 +196,8 @@ impl FuelAsyncScheduler {
             task.last_scheduled.store(
                 self.global_schedule_time.load(Ordering::Acquire),
                 Ordering::Release,
-            ;
-            task.schedule_count.fetch_add(1, Ordering::AcqRel;
+            );
+            task.schedule_count.fetch_add(1, Ordering::AcqRel);
 
             // Re-prioritize if necessary
             if matches!(new_state, AsyncTaskState::Ready) {
@@ -212,7 +212,7 @@ impl FuelAsyncScheduler {
                 }
             }
 
-            record_global_operation(OperationType::CollectionMutate, self.verification_level;
+            record_global_operation(OperationType::CollectionMutate, self.verification_level);
         }
 
         Ok(())
@@ -225,7 +225,7 @@ impl FuelAsyncScheduler {
         for (task_id, task) in self.scheduled_tasks.iter() {
             if let Some(deadline) = task.deadline {
                 let deadline_fuel = deadline.as_millis() as u64; // 1ms = 1 fuel
-                let elapsed = current_time.saturating_sub(task.last_scheduled.load(Ordering::Acquire;
+                let elapsed = current_time.saturating_sub(task.last_scheduled.load(Ordering::Acquire));
 
                 if elapsed > deadline_fuel {
                     violations.push(*task_id);
@@ -233,7 +233,7 @@ impl FuelAsyncScheduler {
             }
         }
 
-        record_global_operation(OperationType::CollectionIterate, self.verification_level;
+        record_global_operation(OperationType::CollectionIterate, self.verification_level);
         violations
     }
 
@@ -246,7 +246,7 @@ impl FuelAsyncScheduler {
 
         for task in self.scheduled_tasks.values() {
             total_fuel_consumed += task.fuel_consumed;
-            total_schedule_count += task.schedule_count.load(Ordering::Acquire;
+            total_schedule_count += task.schedule_count.load(Ordering::Acquire);
 
             match task.state {
                 AsyncTaskState::Ready => ready_tasks += 1,
@@ -273,19 +273,19 @@ impl FuelAsyncScheduler {
         // Simple cooperative scheduling - first ready task
         for (task_id, task) in self.scheduled_tasks.iter() {
             if task.state == AsyncTaskState::Ready {
-                return Some(*task_id;
+                return Some(*task_id);
             }
         }
         None
     }
 
     fn next_priority_task(&mut self) -> Option<TaskId> {
-        record_global_operation(OperationType::CollectionLookup, self.verification_level;
+        record_global_operation(OperationType::CollectionLookup, self.verification_level);
 
         while let Some(task_id) = self.priority_queue.pop() {
             if let Some(task) = self.scheduled_tasks.get(&task_id) {
                 if task.state == AsyncTaskState::Ready {
-                    return Some(task_id;
+                    return Some(task_id);
                 }
             }
         }
@@ -304,16 +304,16 @@ impl FuelAsyncScheduler {
 
                     if task_deadline < earliest_deadline {
                         earliest_deadline = task_deadline;
-                        best_task = Some(*task_id;
+                        best_task = Some(*task_id);
                     }
                 } else if best_task.is_none() {
                     // Tasks without deadlines have lower priority
-                    best_task = Some(*task_id;
+                    best_task = Some(*task_id);
                 }
             }
         }
 
-        record_global_operation(OperationType::CollectionIterate, self.verification_level;
+        record_global_operation(OperationType::CollectionIterate, self.verification_level);
         best_task
     }
 
@@ -322,8 +322,8 @@ impl FuelAsyncScheduler {
             return None;
         }
 
-        let start_pos = self.round_robin_position.load(Ordering::Acquire;
-        let queue_len = self.round_robin_queue.len);
+        let start_pos = self.round_robin_position.load(Ordering::Acquire);
+        let queue_len = self.round_robin_queue.len();
 
         for i in 0..queue_len {
             let pos = (start_pos + i) % queue_len;
@@ -331,8 +331,8 @@ impl FuelAsyncScheduler {
                 if let Some(task) = self.scheduled_tasks.get(&task_id) {
                     if task.state == AsyncTaskState::Ready {
                         // Update position for next round
-                        self.round_robin_position.store((pos + 1) % queue_len, Ordering::Release;
-                        return Some(task_id;
+                        self.round_robin_position.store((pos + 1) % queue_len, Ordering::Release);
+                        return Some(task_id);
                     }
                 }
             }
@@ -344,10 +344,10 @@ impl FuelAsyncScheduler {
     fn insert_priority_queue(&mut self, task_id: TaskId) -> Result<(), Error> {
         let task_priority = self.scheduled_tasks.get(&task_id)
             .map(|t| t.priority)
-            .unwrap_or(Priority::Normal;
+            .unwrap_or(Priority::Normal);
 
         // Insert in priority order (higher priority first)
-        let mut insert_pos = self.priority_queue.len);
+        let mut insert_pos = self.priority_queue.len();
         for (i, &existing_id) in self.priority_queue.iter().enumerate() {
             if let Some(existing_task) = self.scheduled_tasks.get(&existing_id) {
                 if task_priority > existing_task.priority {
@@ -369,13 +369,13 @@ impl FuelAsyncScheduler {
         })?;
 
         // Sort by deadline (earliest first)
-        self.sort_deadline_queue);
+        self.sort_deadline_queue();
         Ok(())
     }
 
     fn sort_deadline_queue(&mut self) {
         // Simple bubble sort for small queues
-        let len = self.priority_queue.len);
+        let len = self.priority_queue.len();
         for i in 0..len {
             for j in 0..len.saturating_sub(1 + i) {
                 if self.should_swap_deadline_tasks(j, j + 1) {
@@ -407,20 +407,20 @@ impl FuelAsyncScheduler {
     }
 
     fn reprioritize_task(&mut self, task_id: TaskId) -> Result<(), Error> {
-        record_global_operation(OperationType::CollectionMutate, self.verification_level;
+        record_global_operation(OperationType::CollectionMutate, self.verification_level);
 
         // Remove task from current position
-        self.priority_queue.retain(|&id| id != task_id;
+        self.priority_queue.retain(|&id| id != task_id);
 
         // Re-insert with current priority
         self.insert_priority_queue(task_id)
     }
 
     fn reorder_deadline_queue(&mut self, _task_id: TaskId) -> Result<(), Error> {
-        record_global_operation(OperationType::CollectionMutate, self.verification_level;
+        record_global_operation(OperationType::CollectionMutate, self.verification_level);
 
         // Re-sort the entire deadline queue
-        self.sort_deadline_queue);
+        self.sort_deadline_queue();
         Ok(())
     }
 }
@@ -467,8 +467,8 @@ mod tests {
             VerificationLevel::Standard,
         ).unwrap();
 
-        let stats = scheduler.get_statistics);
-        assert_eq!(stats.policy, SchedulingPolicy::Cooperative;
+        let stats = scheduler.get_statistics();
+        assert_eq!(stats.policy, SchedulingPolicy::Cooperative);
         assert_eq!(stats.total_tasks, 0);
     }
 
@@ -479,7 +479,7 @@ mod tests {
             VerificationLevel::Standard,
         ).unwrap();
 
-        let task_id = TaskId::new(1;
+        let task_id = TaskId::new(1);
         scheduler.add_task(
             task_id,
             ComponentInstanceId::new(1),
@@ -488,7 +488,7 @@ mod tests {
             None,
         ).unwrap();
 
-        let stats = scheduler.get_statistics);
+        let stats = scheduler.get_statistics();
         assert_eq!(stats.total_tasks, 1);
         assert_eq!(stats.ready_tasks, 1);
     }
@@ -500,8 +500,8 @@ mod tests {
             VerificationLevel::Standard,
         ).unwrap();
 
-        let task1 = TaskId::new(1;
-        let task2 = TaskId::new(2;
+        let task1 = TaskId::new(1);
+        let task2 = TaskId::new(2);
 
         // Add low priority task first
         scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Low, 1000, None).unwrap();
@@ -509,8 +509,8 @@ mod tests {
         scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::High, 1000, None).unwrap();
 
         // High priority task should be scheduled first
-        let next = scheduler.next_task);
-        assert_eq!(next, Some(task2;
+        let next = scheduler.next_task();
+        assert_eq!(next, Some(task2));
     }
 
     #[test]
@@ -520,15 +520,15 @@ mod tests {
             VerificationLevel::Standard,
         ).unwrap();
 
-        let task1 = TaskId::new(1;
-        let task2 = TaskId::new(2;
+        let task1 = TaskId::new(1);
+        let task2 = TaskId::new(2);
 
         scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
         scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
 
         // Should alternate between tasks
-        assert_eq!(scheduler.next_task(), Some(task1;
+        assert_eq!(scheduler.next_task(), Some(task1));
         scheduler.update_task_state(task1, 100, AsyncTaskState::Waiting).unwrap();
-        assert_eq!(scheduler.next_task(), Some(task2;
+        assert_eq!(scheduler.next_task(), Some(task2));
     }
 }

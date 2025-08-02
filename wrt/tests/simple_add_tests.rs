@@ -18,7 +18,7 @@ fn test_simple_add() -> Result<(), Error> {
     "#;
 
     // Parse the WebAssembly text format to binary
-    let wasm_binary = wat::parse_str(wat_code).expect(".expect("Failed to parse WAT"));")
+    let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT");
 
     println!("DEBUG: WASM binary: {:?}", wasm_binary);
 

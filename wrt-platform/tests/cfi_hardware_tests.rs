@@ -11,7 +11,7 @@ use wrt_platform::{
 #[test]
 fn test_arm_bti_availability() {
     // Test BTI hardware detection
-    let bti_available = BranchTargetIdentification::is_available);
+    let bti_available = BranchTargetIdentification::is_available();
 
     // On non-ARM64 platforms, BTI should not be available
     #[cfg(not(target_arch = "aarch64"))]
@@ -297,7 +297,7 @@ fn test_cross_platform_cfi_detection() {
 
     // At least one of these should work on any platform that supports CFI
     // (though none may be available in test environments)
-    let total_features = cfi_features.len);
+    let total_features = cfi_features.len();
     assert!(total_features >= 0, "CFI feature detection should complete successfully");
 }
 

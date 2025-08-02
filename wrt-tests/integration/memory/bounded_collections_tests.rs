@@ -59,9 +59,9 @@ mod bounded_vec_tests {
         }
         
         // Pop elements
-        assert_eq!(vec.pop()?, Some(2;
-        assert_eq!(vec.pop()?, Some(1;
-        assert_eq!(vec.pop()?, Some(0;
+        assert_eq!(vec.pop()?, Some(2));
+        assert_eq!(vec.pop()?, Some(1));
+        assert_eq!(vec.pop()?, Some(0));
         assert_eq!(vec.pop()?, None); // Empty
         
         assert!(vec.is_empty());
@@ -342,7 +342,7 @@ mod bounded_queue_tests {
         queue.enqueue(3)?;
         
         // Dequeue one element
-        assert_eq!(queue.dequeue()?, Some(1;
+        assert_eq!(queue.dequeue()?, Some(1));
         
         // Should be able to enqueue again
         queue.enqueue(4)?;

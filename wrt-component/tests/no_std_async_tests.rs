@@ -18,12 +18,15 @@ extern crate wrt_component;
 extern crate wrt_foundation;
 
 use wrt_component::*;
-use wrt_foundation::{component_value::ComponentValue, types::ValueType};
+use wrt_foundation::{
+    component_value::ComponentValue,
+    types::ValueType,
+};
 
 #[test]
 fn test_async_context_no_std() {
     // Clear any existing context
-    let _ = AsyncContextManager::context_pop);
+    let _ = AsyncContextManager::context_pop();
 
     // Test basic context operations
     let context = AsyncContext::new();
@@ -31,16 +34,16 @@ fn test_async_context_no_std() {
 
     // Set a value with bounded string key
     let key = ContextKey::new("test").unwrap();
-    let value = ContextValue::from_component_value(ComponentValue::I32(42;
+    let value = ContextValue::from_component_value(ComponentValue::I32(42));
     AsyncContextManager::set_context_value(key.clone(), value).unwrap();
 
     // Retrieve value
     let retrieved = AsyncContextManager::get_context_value(&key).unwrap();
-    assert!(retrieved.is_some();
+    assert!(retrieved.is_some());
     assert_eq!(
         retrieved.unwrap().as_component_value().unwrap(),
         &ComponentValue::I32(42)
-    ;
+    );
 
     // Clean up
     AsyncContextManager::context_pop().unwrap();
@@ -55,7 +58,7 @@ fn test_task_management_no_std() {
 
     // Check status
     let status = TaskBuiltins::task_status(task_id).unwrap();
-    assert_eq!(status, TaskStatus::Running;
+    assert_eq!(status, TaskStatus::Running);
 
     // Set metadata with bounded string
     TaskBuiltins::set_task_metadata(task_id, "priority", ComponentValue::I32(5)).unwrap();
@@ -69,12 +72,16 @@ fn test_task_management_no_std() {
 
     // Verify completion
     let final_status = TaskBuiltins::task_status(task_id).unwrap();
-    assert_eq!(final_status, TaskStatus::Completed;
+    assert_eq!(final_status, TaskStatus::Completed);
 }
 
 #[test]
 fn test_waitable_sets_no_std() {
-    use crate::async_types::{Future, FutureHandle, FutureState};
+    use crate::async_types::{
+        Future,
+        FutureHandle,
+        FutureState,
+    };
 
     WaitableSetBuiltins::initialize().unwrap();
 
@@ -84,16 +91,16 @@ fn test_waitable_sets_no_std() {
     // Add future
     let future = Future {
         handle: FutureHandle::new(),
-        state: FutureState::Pending,
+        state:  FutureState::Pending,
     };
     let waitable_id =
         WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
 
     // Check contains
-    assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap();
+    assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap());
 
     // Remove
-    assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap();
+    assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap());
 }
 
 #[test]
@@ -106,7 +113,7 @@ fn test_error_context_no_std() {
 
     // Get debug message
     let message = ErrorContextBuiltins::error_context_debug_message(context_id).unwrap();
-    assert_eq!(message.as_str(), "Test error";
+    assert_eq!(message.as_str(), "Test error");
 
     // Add stack frame with bounded strings
     ErrorContextBuiltins::error_context_add_stack_frame(
@@ -129,7 +136,9 @@ fn test_error_context_no_std() {
 #[test]
 fn test_advanced_threading_no_std() {
     use crate::thread_builtins::{
-        FunctionSignature, ThreadSpawnConfig, ValueType as ThreadValueType,
+        FunctionSignature,
+        ThreadSpawnConfig,
+        ValueType as ThreadValueType,
     };
 
     AdvancedThreadingBuiltins::initialize().unwrap();
@@ -138,7 +147,7 @@ fn test_advanced_threading_no_std() {
     let func_ref = FunctionReference::new(
         "test_fn",
         FunctionSignature {
-            params: vec![],
+            params:  vec![],
             results: vec![],
         },
         0,
@@ -148,7 +157,7 @@ fn test_advanced_threading_no_std() {
 
     let config = ThreadSpawnConfig {
         stack_size: Some(4096),
-        priority: Some(5),
+        priority:   Some(5),
     };
 
     // Spawn thread
@@ -156,7 +165,7 @@ fn test_advanced_threading_no_std() {
 
     // Check state
     let state = AdvancedThreadingBuiltins::thread_state(thread_id).unwrap();
-    assert_eq!(state, AdvancedThreadState::Running;
+    assert_eq!(state, AdvancedThreadState::Running);
 
     // Set thread-local with bounded storage
     AdvancedThreadingBuiltins::thread_local_set(thread_id, 1, ComponentValue::I32(123), None)
@@ -164,13 +173,13 @@ fn test_advanced_threading_no_std() {
 
     // Get thread-local
     let value = AdvancedThreadingBuiltins::thread_local_get(thread_id, 1).unwrap();
-    assert_eq!(value, Some(ComponentValue::I32(123);
+    assert_eq!(value, Some(ComponentValue::I32(123)));
 }
 
 #[test]
 fn test_fixed_length_lists_no_std() {
     // Create list type
-    let list_type = FixedLengthListType::new(ValueType::I32, 3;
+    let list_type = FixedLengthListType::new(ValueType::I32, 3);
     assert!(list_type.validate_size().is_ok());
 
     // Create list
@@ -182,7 +191,7 @@ fn test_fixed_length_lists_no_std() {
     list.push(ComponentValue::I32(3)).unwrap();
 
     // Verify full
-    assert!(list.is_full();
+    assert!(list.is_full());
 
     // Create with predefined elements
     let elements = [
@@ -191,11 +200,11 @@ fn test_fixed_length_lists_no_std() {
         ComponentValue::I32(30),
     ];
     let list2 = FixedLengthList::with_elements(list_type, &elements).unwrap();
-    assert_eq!(list2.current_length(), 3;
+    assert_eq!(list2.current_length(), 3);
 
     // Test utilities
     let zeros = fixed_list_utils::zero_filled(ValueType::Bool, 5).unwrap();
-    assert_eq!(zeros.current_length(), 5;
+    assert_eq!(zeros.current_length(), 5);
 }
 
 #[test]
@@ -204,13 +213,13 @@ fn test_bounded_collections_limits() {
 
     // Context key size limit
     let long_key = "a".repeat(65); // Exceeds MAX_CONTEXT_KEY_SIZE (64)
-    let key_result = ContextKey::new(&long_key;
-    assert!(key_result.is_err();
+    let key_result = ContextKey::new(&long_key);
+    assert!(key_result.is_err());
 
     // Error message size limit
     let long_message = "e".repeat(513); // Exceeds MAX_DEBUG_MESSAGE_SIZE (512)
-    let error_result = ErrorContextBuiltins::error_context_new(&long_message, ErrorSeverity::Error;
-    assert!(error_result.is_err();
+    let error_result = ErrorContextBuiltins::error_context_new(&long_message, ErrorSeverity::Error);
+    assert!(error_result.is_err());
 
     // Task metadata limits
     TaskBuiltins::initialize().unwrap();
@@ -219,8 +228,8 @@ fn test_bounded_collections_limits() {
     // Metadata key size limit
     let long_metadata_key = "m".repeat(33); // Exceeds bounded string size
     let metadata_result =
-        TaskBuiltins::set_task_metadata(task_id, &long_metadata_key, ComponentValue::I32(1;
-    assert!(metadata_result.is_err();
+        TaskBuiltins::set_task_metadata(task_id, &long_metadata_key, ComponentValue::I32(1));
+    assert!(metadata_result.is_err());
 }
 
 #[test]
@@ -241,7 +250,7 @@ fn test_memory_efficiency_no_std() {
     // Set uses bounded collections for waitables
 
     // Binary std/no_std choice
-    assert!(true)); // If we got here, bounded collections work
+    assert!(true); // If we got here, bounded collections work
 }
 
 // Binary std/no_std choice
@@ -257,7 +266,7 @@ fn test_stack_based_operations() {
     ];
 
     // Create fixed list from stack array
-    let list_type = FixedLengthListType::new(ValueType::I32, 3;
+    let list_type = FixedLengthListType::new(ValueType::I32, 3);
     let list = FixedLengthList::with_elements(
         list_type,
         &[
@@ -269,5 +278,5 @@ fn test_stack_based_operations() {
     .unwrap();
 
     // Binary std/no_std choice
-    assert_eq!(list.current_length(), 3;
+    assert_eq!(list.current_length(), 3);
 }

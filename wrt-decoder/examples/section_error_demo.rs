@@ -42,15 +42,15 @@ fn main() {
     println!("Section Size Exceeds Module Error:\n{}\n", error);
 
     // InvalidMagic error
-    let error = invalid_magic(0, binary::WASM_MAGIC, [0x01, 0x02, 0x03, 0x04];
+    let error = invalid_magic(0, binary::WASM_MAGIC, [0x01, 0x02, 0x03, 0x04]);
     println!("Invalid Magic Error:\n{}\n", error);
 
     // UnsupportedVersion error
-    let error = unsupported_version(4, binary::WASM_VERSION, [0x02, 0x00, 0x00, 0x00];
+    let error = unsupported_version(4, binary::WASM_VERSION, [0x02, 0x00, 0x00, 0x00]);
     println!("Unsupported Version Error:\n{}\n", error);
 
     // InvalidValue error
-    let error = invalid_value(0x60, 5, "Invalid limit type in memory section";
+    let error = invalid_value(0x60, 5, "Invalid limit type in memory section");
     println!("Invalid Value Error:\n{}\n", error);
 
     println!("All error types demonstrated successfully!");

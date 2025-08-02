@@ -690,7 +690,7 @@ impl StacklessEngine {
         // Get the function type to determine expected results
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(self.exec_stack.func_idx as usize) {
-                let result_count = func_type.results.len);
+                let result_count = func_type.results.len();
                 
                 // Pop results from stack (in reverse order)
                 for _ in 0..result_count {
@@ -3778,7 +3778,7 @@ impl StacklessEngine {
     
     /// Branch to a label at the given depth
     fn branch_to_label(&mut self, label_depth: u32) -> Result<()> {
-        let labels_len = self.exec_stack.labels.len);
+        let labels_len = self.exec_stack.labels.len();
         if label_depth as usize >= labels_len {
             return Err(Error::runtime_execution_error("Invalid label depth";
         }
@@ -4033,7 +4033,7 @@ impl ControlContext for StacklessEngine {
         // Get function type to determine return arity
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(self.exec_stack.func_idx as usize) {
-                let return_arity = func_type.results.len);
+                let return_arity = func_type.results.len();
                 
                 // Pop the required number of return values from the stack
                 for _ in 0..return_arity {
@@ -4068,7 +4068,7 @@ impl ControlContext for StacklessEngine {
         // Get function type to determine parameter arity
         if let Some(current_module) = &self.current_module {
             if let Ok(func_type) = current_module.get_function_type(func_idx as usize) {
-                let param_arity = func_type.params.len);
+                let param_arity = func_type.params.len();
                 
                 // Pop the required number of arguments from the stack
                 for _ in 0..param_arity {

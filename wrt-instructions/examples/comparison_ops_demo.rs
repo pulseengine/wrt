@@ -196,7 +196,7 @@ fn main() -> Result<()> {
     println!("   Input: 3.14159, 3.14159");
     ComparisonOp::F32Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   3.14159 == 3.14159: {} (true)", result));
+        println!("   3.14159 == 3.14159: {} (true)", result);
     }
     context.stack.clear();
 
@@ -206,7 +206,7 @@ fn main() -> Result<()> {
     println!("   Input: 2.718, 3.14159");
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   2.718 < 3.14159: {} (true)", result));
+        println!("   2.718 < 3.14159: {} (true)", result);
     }
     context.stack.clear();
 
@@ -216,42 +216,42 @@ fn main() -> Result<()> {
     println!("   Input: 5.0, 5.0");
     ComparisonOp::F32Ge.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   5.0 >= 5.0: {} (true)", result));
+        println!("   5.0 >= 5.0: {} (true)", result);
     }
     context.stack.clear();
 
     // 6. Float comparisons (f64)
-    println!("\n6. Float Comparisons (f64):"));
+    println!("\n6. Float Comparisons (f64):");
 
     // f64.ne (not equal)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(3.141592653589793)))?;
     context.push_comparison_value(Value::F64(FloatBits64::from_float(2.718281828459045)))?;
-    println!("   Input: π (3.141592653589793), e (2.718281828459045)"));
+    println!("   Input: π (3.141592653589793), e (2.718281828459045)");
     ComparisonOp::F64Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   π != e: {} (true)", result));
+        println!("   π != e: {} (true)", result);
     }
     context.stack.clear();
 
     // f64.le (less than or equal)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(1.414213562373095)))?; // sqrt(2)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(1.732050807568877)))?; // sqrt(3)
-    println!("   Input: sqrt(2) (1.414213562373095), sqrt(3) (1.732050807568877)"));
+    println!("   Input: sqrt(2) (1.414213562373095), sqrt(3) (1.732050807568877)");
     ComparisonOp::F64Le.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   sqrt(2) <= sqrt(3): {} (true)", result));
+        println!("   sqrt(2) <= sqrt(3): {} (true)", result);
     }
     context.stack.clear();
 
     // 7. Test operations (eqz)
-    println!("\n7. Test Operations (eqz - equals zero):"));
+    println!("\n7. Test Operations (eqz - equals zero):");
 
     // i32.eqz with zero
     context.push_comparison_value(Value::I32(0))?;
     println!("   Input: 0");
     ComparisonOp::I32Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   0 == 0: {} (true)", result));
+        println!("   0 == 0: {} (true)", result);
     }
     context.stack.clear();
 
@@ -260,7 +260,7 @@ fn main() -> Result<()> {
     println!("   Input: 42");
     ComparisonOp::I32Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   42 == 0: {} (false)", result));
+        println!("   42 == 0: {} (false)", result);
     }
     context.stack.clear();
 
@@ -269,7 +269,7 @@ fn main() -> Result<()> {
     println!("   Input: 0i64");
     ComparisonOp::I64Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   0i64 == 0: {} (true)", result));
+        println!("   0i64 == 0: {} (true)", result);
     }
     context.stack.clear();
 

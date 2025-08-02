@@ -27,32 +27,32 @@ mod complete_debug_tests {
 
         // Verify parameter list functionality
         assert_eq!(params.count(), 0);
-        assert!(!params.is_variadic();
+        assert!(!params.is_variadic());
 
         // Test parameter display
         let mut output = String::new();
         params
             .display(|s| {
-                output.push_str(s;
+                output.push_str(s);
                 Ok(())
             })
             .unwrap();
-        assert_eq!(output, "()";
+        assert_eq!(output, "())";
     }
 
     #[test]
     fn test_basic_type_recognition() {
         // Test type encoding
-        assert_eq!(BasicType::from_encoding(0x05, 4), BasicType::SignedInt(4;
-        assert_eq!(BasicType::from_encoding(0x07, 8), BasicType::UnsignedInt(8;
-        assert_eq!(BasicType::from_encoding(0x04, 4), BasicType::Float(4;
+        assert_eq!(BasicType::from_encoding(0x05, 4), BasicType::SignedInt(4));
+        assert_eq!(BasicType::from_encoding(0x07, 8), BasicType::UnsignedInt(8));
+        assert_eq!(BasicType::from_encoding(0x04, 4), BasicType::Float(4));
 
         // Test type names
-        assert_eq!(BasicType::SignedInt(4).type_name(), "i32";
-        assert_eq!(BasicType::UnsignedInt(8).type_name(), "u64";
-        assert_eq!(BasicType::Float(8).type_name(), "f64";
-        assert_eq!(BasicType::Bool.type_name(), "bool";
-        assert_eq!(BasicType::Pointer.type_name(), "ptr";
+        assert_eq!(BasicType::SignedInt(4).type_name(), "i32");
+        assert_eq!(BasicType::UnsignedInt(8).type_name(), "u64");
+        assert_eq!(BasicType::Float(8).type_name(), "f64");
+        assert_eq!(BasicType::Bool.type_name(), "bool");
+        assert_eq!(BasicType::Pointer.type_name(), "ptr");
     }
 
     #[test]
@@ -74,13 +74,13 @@ mod complete_debug_tests {
         inlined.add(func).unwrap();
 
         // Test PC lookup
-        assert!(inlined.has_inlined_at(0x2050);
-        assert!(!inlined.has_inlined_at(0x3000);
+        assert!(inlined.has_inlined_at(0x2050));
+        assert!(!inlined.has_inlined_at(0x3000));
 
         // Test finding multiple inlined functions
         let found: Vec<_> = inlined.find_at_pc(0x2050).collect();
         assert_eq!(found.len(), 1);
-        assert_eq!(found[0].call_line, 42;
+        assert_eq!(found[0].call_line, 42);
     }
 
     #[test]
@@ -90,7 +90,7 @@ mod complete_debug_tests {
 
         // Add some directories
         let string_data = b"\0src\0tests\0lib.rs\0test.rs\0";
-        let string_table = StringTable::new(string_data;
+        let string_table = StringTable::new(string_data);
 
         let src_dir = string_table.get_string(1).unwrap();
         let tests_dir = string_table.get_string(5).unwrap();
@@ -118,12 +118,12 @@ mod complete_debug_tests {
 
         // Test full path resolution
         let path1 = file_table.get_full_path(1).unwrap();
-        assert_eq!(path1.filename(), "lib.rs";
-        assert_eq!(path1.directory.as_ref().unwrap().as_str(), "src";
+        assert_eq!(path1.filename(), "lib.rs");
+        assert_eq!(path1.directory.as_ref().unwrap().as_str(), "src");
 
         let path2 = file_table.get_full_path(2).unwrap();
-        assert_eq!(path2.filename(), "test.rs";
-        assert_eq!(path2.directory.as_ref().unwrap().as_str(), "tests";
+        assert_eq!(path2.filename(), "test.rs");
+        assert_eq!(path2.directory.as_ref().unwrap().as_str(), "tests");
     }
 
     #[test]
@@ -141,7 +141,7 @@ mod complete_debug_tests {
         // Create file table with test data
         let mut file_table = FileTable::new();
         let string_data = b"\0src\0main.rs\0";
-        let string_table = StringTable::new(string_data;
+        let string_table = StringTable::new(string_data);
 
         file_table.add_directory(string_table.get_string(1).unwrap()).unwrap();
 
@@ -158,12 +158,12 @@ mod complete_debug_tests {
         line_info
             .format_location(&file_table)
             .display(|s| {
-                output.push_str(s;
+                output.push_str(s);
                 Ok(())
             })
             .unwrap();
 
-        assert_eq!(output, "src/main.rs:42:8";
+        assert_eq!(output, "src/main.rs:42:8");
     }
 
     #[test]
@@ -199,7 +199,7 @@ mod complete_debug_tests {
         // In actual implementation, the parser tracks CU count
         // This is a conceptual test showing the capability
 
-        let debug_info = DwarfDebugInfo::new(&[];
+        let debug_info = DwarfDebugInfo::new(&[]);
 
         // The parser would set this when parsing multiple CUs
         // assert!(debug_info.has_multiple_cus();
@@ -237,8 +237,8 @@ mod complete_debug_tests {
         // Verify parameter access
         assert_eq!(params.count(), 2;
         assert!(params.get_by_position(0).is_some();
-        assert!(params.get_by_position(1).is_some();
-        assert!(params.get_by_position(2).is_none();
+        assert!(params.get_by_position(1).is_some());
+        assert!(params.get_by_position(2).is_none());
     }
 
     #[test]
@@ -278,7 +278,7 @@ mod complete_debug_tests {
 
         // Check depths
         let depths: Vec<_> = found.iter().map(|f| f.depth).collect();
-        assert!(depths.contains(&0);
-        assert!(depths.contains(&1);
+        assert!(depths.contains(&0));
+        assert!(depths.contains(&1));
     }
 }

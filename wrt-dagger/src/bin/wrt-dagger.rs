@@ -88,13 +88,13 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse);
+    let cli = Cli::parse();
 
     // Set up logging
     if cli.verbose {
-        std::env::set_var("RUST_LOG", "debug";
+        std::env::set_var("RUST_LOG", "debug");
     }
-    env_logger::init);
+    env_logger::init();
 
     // Create container configuration
     let config = ContainerConfigBuilder::new()

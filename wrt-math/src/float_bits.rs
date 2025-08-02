@@ -1,4 +1,3 @@
-
 // WRT - wrt-math
 // Module: Float Bit Patterns
 // SW-REQ-ID: REQ_018 (Partially, as type representation)
@@ -15,12 +14,20 @@
 use alloc::vec::Vec;
 use core::{
     // cmp::Ordering, // Unused import
-    hash::{Hash, Hasher},
+    hash::{
+        Hash,
+        Hasher,
+    },
 };
 
-use wrt_error::{codes, Error, ErrorCategory, Result as WrtResult}; /* Changed ErrorKind to
-                                                                    * ErrorCategory, Added
-                                                                    * Error */
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result as WrtResult,
+}; /* Changed ErrorKind to
+    * ErrorCategory, Added
+    * Error */
 
 use crate::traits::LittleEndian; // Import the trait
 
@@ -113,13 +120,16 @@ impl Hash for FloatBits64 {
 impl LittleEndian for FloatBits32 {
     fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
         if bytes.len() != 4 {
-            return Err(Error::runtime_execution_error("Invalid byte length for f32"));
+            return Err(Error::runtime_execution_error(
+                "Invalid byte length for f32",
+            ));
         }
         let arr: [u8; 4] = bytes.try_into().map_err(|_| {
             Error::new(
                 ErrorCategory::System,
                 codes::CONVERSION_ERROR,
-                "Failed to convert bytes to float bits")
+                "Failed to convert bytes to float bits",
+            )
         })?;
         Ok(FloatBits32(u32::from_le_bytes(arr)))
     }
@@ -133,13 +143,16 @@ impl LittleEndian for FloatBits32 {
 impl LittleEndian for FloatBits64 {
     fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
         if bytes.len() != 8 {
-            return Err(Error::runtime_execution_error("Invalid byte length for f64"));
+            return Err(Error::runtime_execution_error(
+                "Invalid byte length for f64",
+            ));
         }
         let arr: [u8; 8] = bytes.try_into().map_err(|_| {
             Error::new(
                 ErrorCategory::System,
                 codes::CONVERSION_ERROR,
-                "Failed to convert bytes to float bits")
+                "Failed to convert bytes to float bits",
+            )
         })?;
         Ok(FloatBits64(u64::from_le_bytes(arr)))
     }

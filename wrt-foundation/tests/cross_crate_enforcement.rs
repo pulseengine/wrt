@@ -6,11 +6,22 @@
 #[cfg(test)]
 mod cross_crate_enforcement_tests {
     use wrt_foundation::{
-        bounded::{BoundedMap, BoundedString, BoundedVec},
-        budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+        bounded::{
+            BoundedMap,
+            BoundedString,
+            BoundedVec,
+        },
+        budget_aware_provider::{
+            BudgetAwareProviderFactory,
+            CrateId,
+        },
         budget_provider::BudgetProvider,
         memory_system_initializer,
-        runtime_monitoring::{EnforcementPolicy, MonitoringConfig, RuntimeMonitor},
+        runtime_monitoring::{
+            EnforcementPolicy,
+            MonitoringConfig,
+            RuntimeMonitor,
+        },
         safe_memory::SafeMemoryHandler,
         WrtResult,
     };
@@ -25,9 +36,9 @@ mod cross_crate_enforcement_tests {
 
         // Enable strict monitoring
         RuntimeMonitor::enable(MonitoringConfig {
-            check_interval_ms: 50,
-            enforcement_policy: EnforcementPolicy::Strict,
-            alert_threshold_percent: 75,
+            check_interval_ms:          50,
+            enforcement_policy:         EnforcementPolicy::Strict,
+            alert_threshold_percent:    75,
             critical_threshold_percent: 90,
         })?;
 
@@ -54,7 +65,7 @@ mod cross_crate_enforcement_tests {
         // Decode instructions
         for chunk in instruction_buffer.as_slice().chunks(4) {
             if chunk.len() == 4 {
-                let op = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]];
+                let op = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
                 decoded_ops.push(op)?;
             }
         }
@@ -101,7 +112,7 @@ mod cross_crate_enforcement_tests {
         let component_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component)?;
         let format_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Format)?;
 
-        assert!(component_stats.current_allocation >= 64 * 1024 + (10 * 512);
+        assert!(component_stats.current_allocation >= 64 * 1024 + (10 * 512));
         assert!(format_stats.current_allocation >= 32 * 1024);
 
         Ok(())
@@ -113,7 +124,7 @@ mod cross_crate_enforcement_tests {
 
         // Simulate Platform memory mapping
         let platform_provider = BudgetProvider::<{ 1024 * 1024 }>::new(CrateId::Platform)?;
-        let mut memory_map = SafeMemoryHandler::new(platform_provider;
+        let mut memory_map = SafeMemoryHandler::new(platform_provider);
 
         // Write some data
         let data = vec![0xAA; 4096];
@@ -134,7 +145,7 @@ mod cross_crate_enforcement_tests {
 
         assert!(platform_stats.current_allocation >= 1024 * 1024);
         assert!(host_stats.current_allocation >= 64 * 1024);
-        assert_ne!(platform_stats.allocation_count, host_stats.allocation_count;
+        assert_ne!(platform_stats.allocation_count, host_stats.allocation_count);
 
         Ok(())
     }
@@ -168,7 +179,7 @@ mod cross_crate_enforcement_tests {
         let debug_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Debug)?;
         let logging_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Logging)?;
 
-        assert!(debug_stats.current_allocation >= 16 * 1024 + (20 * 256);
+        assert!(debug_stats.current_allocation >= 16 * 1024 + (20 * 256));
         assert!(logging_stats.current_allocation >= 8 * 1024);
 
         Ok(())
@@ -226,11 +237,11 @@ mod cross_crate_enforcement_tests {
         for &crate_id in &crates {
             match BudgetProvider::<{ 2 * 1024 * 1024 }>::new(crate_id) {
                 Ok(provider) => {
-                    allocations.push((crate_id, provider);
-                }
+                    allocations.push((crate_id, provider));
+                },
                 Err(_) => {
                     failed_crates.push(crate_id);
-                }
+                },
             }
         }
 
@@ -240,7 +251,7 @@ mod cross_crate_enforcement_tests {
         assert!(
             allocations.len() < crates.len(),
             "All large allocations succeeded - budget not enforced"
-        ;
+        );
 
         // Verify total doesn't exceed system budget
         let global_stats = BudgetAwareProviderFactory::get_global_stats()?;
@@ -265,7 +276,7 @@ mod cross_crate_enforcement_tests {
 
         // Verify minimal allocation
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Panic)?;
-        assert_eq!(stats.current_allocation, 512;
+        assert_eq!(stats.current_allocation, 512);
         assert_eq!(stats.allocation_count, 1);
 
         Ok(())
@@ -286,7 +297,7 @@ mod cross_crate_enforcement_tests {
 
         // Should use minimal memory
         let stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Intercept)?;
-        assert!(stats.current_allocation <= 2048)); // Small overhead acceptable
+        assert!(stats.current_allocation <= 2048); // Small overhead acceptable
 
         Ok(())
     }
@@ -321,27 +332,27 @@ mod cross_crate_enforcement_tests {
 
         // Runtime: Main execution state
         let runtime_main = BudgetProvider::<{ 512 * 1024 }>::new(CrateId::Runtime)?;
-        all_allocations.push(("runtime_main", runtime_main);
+        all_allocations.push(("runtime_main", runtime_main));
 
         // Component: Type definitions
         let component_types = BudgetProvider::<{ 256 * 1024 }>::new(CrateId::Component)?;
-        all_allocations.push(("component_types", component_types);
+        all_allocations.push(("component_types", component_types));
 
         // Decoder: Instruction decoding
         let decoder_buffer = BudgetProvider::<{ 128 * 1024 }>::new(CrateId::Decoder)?;
-        all_allocations.push(("decoder_buffer", decoder_buffer);
+        all_allocations.push(("decoder_buffer", decoder_buffer));
 
         // Format: Serialization
         let format_buffer = BudgetProvider::<{ 64 * 1024 }>::new(CrateId::Format)?;
-        all_allocations.push(("format_buffer", format_buffer);
+        all_allocations.push(("format_buffer", format_buffer));
 
         // Platform: Memory pages
         let platform_memory = BudgetProvider::<{ 1024 * 1024 }>::new(CrateId::Platform)?;
-        all_allocations.push(("platform_memory", platform_memory);
+        all_allocations.push(("platform_memory", platform_memory));
 
         // Verify system is still healthy
         let health = wrt_foundation::memory_analysis::MemoryAnalyzer::generate_health_report()?;
-        assert!(health.health_score >= 50)); // At least moderate health
+        assert!(health.health_score >= 50); // At least moderate health
         assert_eq!(health.critical_issue_count, 0);
 
         // Get recommendations
@@ -349,7 +360,7 @@ mod cross_crate_enforcement_tests {
 
         // There might be optimization suggestions but no critical issues
         for rec in &recommendations {
-            assert!(rec.estimated_impact <= 50)); // No severe issues
+            assert!(rec.estimated_impact <= 50); // No severe issues
         }
 
         Ok(())

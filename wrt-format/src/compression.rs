@@ -82,7 +82,7 @@ pub fn rle_encode(data: &[u8]) -> Vec<u8> {
         } else {
             // For runs < 4 bytes, use literal encoding
             // [count, byte1, byte2, ...]
-            let literal_length = cmp::min(255, data.len() - i;
+            let literal_length = cmp::min(255, data.len() - i);
             result.push(literal_length as u8);
             for j in 0..literal_length {
                 result.push(data[i + j]);
@@ -103,7 +103,7 @@ pub fn rle_encode(data: &[u8]) -> Vec<u8> {
 #[cfg(feature = "std")]
 pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
     if input.is_empty() {
-        return Ok(Vec::new();
+        return Ok(Vec::new());
     }
 
     let mut result = Vec::new();
@@ -111,7 +111,7 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
 
     while i < input.len() {
         if i >= input.len() {
-            return Err(Error::validation_parse_error("Truncated RLE data";
+            return Err(Error::validation_parse_error("Truncated RLE data"));
         }
 
         let control = input[i];
@@ -120,7 +120,7 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
         if control == 0x00 {
             // RLE sequence: [0x00, count, value]
             if i + 1 >= input.len() {
-                return Err(Error::validation_parse_error("Truncated RLE sequence";
+                return Err(Error::validation_parse_error("Truncated RLE sequence"));
             }
             let count = input[i] as usize;
             i += 1;
@@ -134,10 +134,10 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
             // Literal sequence: [count, byte1, byte2, ...]
             let count = control as usize;
             if i + count > input.len() {
-                return Err(Error::validation_parse_error("Truncated literal sequence";
+                return Err(Error::validation_parse_error("Truncated literal sequence"));
             }
 
-            result.extend_from_slice(&input[i..i + count];
+            result.extend_from_slice(&input[i..i + count]);
             i += count;
         }
     }
@@ -179,7 +179,7 @@ pub fn rle_encode<P: MemoryProvider + Clone + Default + Eq>(data: &[u8]) -> Resu
         } else {
             // For runs < 4 bytes, use literal encoding
             // [count, byte1, byte2, ...]
-            let literal_length = cmp::min(255, data.len() - i;
+            let literal_length = cmp::min(255, data.len() - i);
             result
                 .push(literal_length as u8)
                 .map_err(|_| Error::memory_error("Buffer overflow"))?;
@@ -205,7 +205,7 @@ pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
 ) -> Result<WasmVec<u8, P>> {
     if input.is_empty() {
         return WasmVec::new(P::default())
-            .map_err(|_| Error::memory_error("Failed to create result vector";
+            .map_err(|_| Error::memory_error("Failed to create result vector"));
     }
 
     let mut result = WasmVec::new(P::default())
@@ -214,7 +214,7 @@ pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
 
     while i < input.len() {
         if i >= input.len() {
-            return Err(Error::validation_parse_error("Truncated RLE data";
+            return Err(Error::validation_parse_error("Truncated RLE data"));
         }
 
         let control = input[i];
@@ -223,7 +223,7 @@ pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
         if control == 0x00 {
             // RLE sequence: [0x00, count, value]
             if i + 1 >= input.len() {
-                return Err(Error::validation_parse_error("Truncated RLE sequence";
+                return Err(Error::validation_parse_error("Truncated RLE sequence"));
             }
             let count = input[i] as usize;
             i += 1;
@@ -237,7 +237,7 @@ pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
             // Literal sequence: [count, byte1, byte2, ...]
             let count = control as usize;
             if i + count > input.len() {
-                return Err(Error::validation_parse_error("Truncated literal sequence";
+                return Err(Error::validation_parse_error("Truncated literal sequence"));
             }
 
             for j in 0..count {
@@ -265,25 +265,25 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_rle_encode_decode() {
         let empty: Vec<u8> = vec![];
-        assert_eq!(rle_encode(&empty), empty;
-        assert_eq!(rle_decode(&empty).unwrap(), empty;
+        assert_eq!(rle_encode(&empty), empty);
+        assert_eq!(rle_decode(&empty).unwrap(), empty);
 
         let single = vec![42];
-        let encoded = rle_encode(&single;
+        let encoded = rle_encode(&single);
         // The implementation encodes single values as a literal sequence [length,
         // value] where length is 1 for a single byte
-        assert_eq!(encoded, vec![1, 42];
-        assert_eq!(rle_decode(&encoded).unwrap(), single;
+        assert_eq!(encoded, vec![1, 42]);
+        assert_eq!(rle_decode(&encoded).unwrap(), single);
 
         let repeated = vec![5, 5, 5, 5, 5];
-        let encoded = rle_encode(&repeated;
+        let encoded = rle_encode(&repeated);
         // For 5 repeating elements (runs >= 4), it would encode as [0, 5, 5]
         // where 0 is the marker, 5 is the count, and 5 is the value
-        assert_eq!(encoded, vec![0, 5, 5];
-        assert_eq!(rle_decode(&encoded).unwrap(), repeated;
+        assert_eq!(encoded, vec![0, 5, 5]);
+        assert_eq!(rle_decode(&encoded).unwrap(), repeated);
 
         let mixed = vec![1, 1, 2, 3, 3, 3, 3, 4, 5, 5];
-        let encoded = rle_encode(&mixed;
+        let encoded = rle_encode(&mixed);
         // This would encode as:
         // [2, 1, 1]  - Literal sequence of two bytes (1, 1)
         // [1, 2]     - Literal sequence of one byte (2)
@@ -297,15 +297,15 @@ mod tests {
     fn test_rle_decode_errors() {
         // Test truncated input
         let truncated = vec![0]; // RLE marker without count and value
-        assert!(rle_decode(&truncated).is_err();
+        assert!(rle_decode(&truncated).is_err());
 
         // Test truncated RLE sequence
         let truncated_rle = vec![0, 5]; // Missing value after count
-        assert!(rle_decode(&truncated_rle).is_err();
+        assert!(rle_decode(&truncated_rle).is_err());
 
         // Test truncated literal sequence
         let truncated_literal = vec![5, 1, 2]; // Expecting 5 bytes but only have 2
-        assert!(rle_decode(&truncated_literal).is_err();
+        assert!(rle_decode(&truncated_literal).is_err());
 
         // Test for a zero-length RLE sequence with zero count
         let zero_count = vec![0, 0, 42]; // RLE sequence: [0x00, count=0, value=42]

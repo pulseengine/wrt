@@ -747,7 +747,7 @@ mod tests {
 
         let header = result.unwrap();
         assert_eq!(header.version, 1);
-        assert_eq!(header.size, 8;
+        assert_eq!(header.size, 8);
         assert_eq!(header.section_count, 0);
     }
 

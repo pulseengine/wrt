@@ -32,13 +32,13 @@ pub struct FunctionStats {
 impl wrt_foundation::traits::Checksummable for FunctionStats {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for byte in self.call_count.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
         for byte in self.success_count.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
         for byte in self.error_count.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
     }
 }
@@ -106,29 +106,29 @@ impl Eq for FunctionStats {}
 impl wrt_foundation::traits::Checksummable for FunctionStats {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for byte in self.call_count.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
         for byte in self.success_count.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
         for byte in self.error_count.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
         for byte in self.total_time_ms.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
         if let Some(min) = self.min_time_ms {
             for byte in min.to_le_bytes() {
-                checksum.update(byte;
+                checksum.update(byte);
             }
         }
         if let Some(max) = self.max_time_ms {
             for byte in max.to_le_bytes() {
-                checksum.update(byte;
+                checksum.update(byte);
             }
         }
         for byte in self.avg_time_ms.to_le_bytes() {
-            checksum.update(byte;
+            checksum.update(byte);
         }
     }
 }
@@ -267,7 +267,7 @@ impl StatisticsStrategy {
         target: &str,
         function: &str,
     ) -> Option<FunctionStats> {
-        let key = Self::function_key(source, target, function;
+        let key = Self::function_key(source, target, function);
         match self.stats.read() {
             Ok(stats) => stats.get(&key).cloned(),
             _ => None,
@@ -277,10 +277,10 @@ impl StatisticsStrategy {
     /// Reset all statistics
     pub fn reset(&self) {
         if let Ok(mut stats) = self.stats.write() {
-            stats.clear);
+            stats.clear();
         }
         if let Ok(mut executing) = self.executing.lock() {
-            executing.clear);
+            executing.clear();
         }
     }
 }
@@ -295,9 +295,9 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
         args: &[Value],
     ) -> Result<Vec<Value>> {
         if self.config.track_timing {
-            let key = Self::function_key(source, target, function;
+            let key = Self::function_key(source, target, function);
             if let Ok(mut executing) = self.executing.lock() {
-                executing.insert(key, Instant::now);
+                executing.insert(key, Instant::now());
             }
         }
 
@@ -353,7 +353,7 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
 
                 if let Some(min) = stats.min_time_ms {
                     if elapsed < min {
-                        stats.min_time_ms = Some(elapsed;
+                        stats.min_time_ms = Some(elapsed);
                     }
                 } else {
                     stats.min_time_ms = Some(elapsed;
@@ -361,7 +361,7 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
 
                 if let Some(max) = stats.max_time_ms {
                     if elapsed > max {
-                        stats.max_time_ms = Some(elapsed;
+                        stats.max_time_ms = Some(elapsed);
                     }
                 } else {
                     stats.max_time_ms = Some(elapsed;
@@ -418,7 +418,7 @@ mod tests {
         assert!(stats.contains_key(&key);
 
         let func_stats = stats.get(&key).unwrap();
-        assert_eq!(func_stats.call_count, 2;
+        assert_eq!(func_stats.call_count, 2);
         assert_eq!(func_stats.success_count, 1);
         assert_eq!(func_stats.error_count, 1);
         assert!(func_stats.total_time_ms > 0.0);

@@ -180,8 +180,8 @@ mod tests {
         let buffer3 = pool.allocate(300).unwrap();
         
         // Verify buffer sizes
-        assert_eq!(buffer1.len(), 100;
-        assert_eq!(buffer2.len(), 200;
-        assert_eq!(buffer3.len(), 300;
+        assert_eq!(buffer1.len(), 100);
+        assert_eq!(buffer2.len(), 200);
+        assert_eq!(buffer3.len(), 300);
     }
 }

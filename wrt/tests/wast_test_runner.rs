@@ -705,7 +705,7 @@ impl WastTestRunner {
                     // Test passed, stats already updated in execute_directive
                 },
                 Err(e) => {
-                    eprintln!("WAST directive failed: {}", e)));
+                    eprintln!("WAST directive failed: {}", e);
                     // Error stats already updated in execute_directive
                 },
             }
@@ -733,7 +733,7 @@ impl WastTestRunner {
                 Err(e) => {
                     // In no_std mode, we can't use eprintln!, so we just continue
                     #[cfg(feature = "std")]
-                    eprintln!("WAST directive failed: {}", e)));
+                    eprintln!("WAST directive failed: {}", e);
                     // Error stats already updated in execute_directive
                 },
             }
@@ -918,7 +918,7 @@ pub fn register_wast_tests() {
     };
 
     if let Err(e) = registry.register(Box::new(test_case)) {
-        eprintln!("Failed to register WAST tests: {}", e)));
+        eprintln!("Failed to register WAST tests: {}", e);
     }
 }
 
@@ -963,7 +963,7 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
                     );
                 },
                 Err(e) => {
-                    eprintln!("✗ {} - Error: {}", file_name, e)));
+                    eprintln!("✗ {} - Error: {}", file_name, e);
                     failed_files += 1;
                 },
             }

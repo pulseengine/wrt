@@ -7,15 +7,28 @@
 //! such as `ComponentType`, `InstanceType`, etc. This helps in managing their
 //! storage in a `no_alloc` environment.
 
-use wrt_error::{codes, Error, Result as WrtResult};
+use wrt_error::{
+    codes,
+    Error,
+    Result as WrtResult,
+};
 
 #[cfg(feature = "std")]
 use crate::prelude::format;
 use crate::{
     bounded::BoundedVec,
-    component::{ComponentType, CoreModuleType, InstanceType}, // Add other types as needed
-    traits::BoundedCapacity,                                  // Added import
-    traits::{FromBytes, ReadStream, ToBytes, WriteStream},    // Added imports
+    component::{
+        ComponentType,
+        CoreModuleType,
+        InstanceType,
+    }, // Add other types as needed
+    traits::BoundedCapacity, // Added import
+    traits::{
+        FromBytes,
+        ReadStream,
+        ToBytes,
+        WriteStream,
+    }, // Added imports
     MemoryProvider,
 };
 
@@ -75,9 +88,9 @@ impl FromBytes for TypeRef {
 /// Binary std/no_std choice
 #[derive(Debug)]
 pub struct ComponentTypeStore<P: MemoryProvider + Clone + Default + Eq> {
-    provider: P,
-    component_types: BoundedVec<ComponentType<P>, MAX_STORED_COMPONENT_TYPES, P>,
-    instance_types: BoundedVec<InstanceType<P>, MAX_STORED_INSTANCE_TYPES, P>,
+    provider:          P,
+    component_types:   BoundedVec<ComponentType<P>, MAX_STORED_COMPONENT_TYPES, P>,
+    instance_types:    BoundedVec<InstanceType<P>, MAX_STORED_INSTANCE_TYPES, P>,
     core_module_types: BoundedVec<CoreModuleType<P>, MAX_STORED_CORE_MODULE_TYPES, P>,
     // Add other BoundedVecs for other types like CoreType<P> if they also need to be stored
 }
@@ -96,7 +109,8 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
                 Error::new(
                     wrt_error::ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    "Failed to allocate memory for instance types")
+                    "Failed to allocate memory for instance types",
+                )
             })?,
             core_module_types: BoundedVec::new(provider.clone()).map_err(|e| {
                 Error::runtime_execution_error("Failed to create BoundedVec for core module types")
@@ -112,7 +126,8 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
             Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component type store capacity exceeded")
+                "Component type store capacity exceeded",
+            )
         })?;
         Ok(TypeRef(index))
     }
@@ -129,9 +144,9 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
     /// Adds an `InstanceType` to the store and returns a `TypeRef` to it.
     pub fn add_instance_type(&mut self, itype: InstanceType<P>) -> WrtResult<TypeRef> {
         let index = self.instance_types.len() as u32;
-        self.instance_types.push(itype).map_err(|_e| {
-            Error::runtime_execution_error("Failed to add instance type to store")
-        })?;
+        self.instance_types
+            .push(itype)
+            .map_err(|_e| Error::runtime_execution_error("Failed to add instance type to store"))?;
         Ok(TypeRef(index))
     }
 
@@ -151,7 +166,8 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
             Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                "Core module type store capacity exceeded")
+                "Core module type store capacity exceeded",
+            )
         })?;
         Ok(TypeRef(index))
     }

@@ -287,7 +287,7 @@ pub fn lower_string_with_options(
     }
 
     // Check bounds
-    let total_size = 4 + encoded.len);
+    let total_size = 4 + encoded.len();
     if addr as usize + total_size > memory.len() {
         return Err(Error::runtime_out_of_bounds("String data exceeds memory bounds";
     }

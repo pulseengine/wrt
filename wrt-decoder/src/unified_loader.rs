@@ -199,7 +199,7 @@ pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
         },
     };
 
-    let mut info = WasmInfo::new(format_type, binary.len);
+    let mut info = WasmInfo::new(format_type, binary.len();
 
     match format_type {
         WasmFormat::CoreModule => {
@@ -574,7 +574,7 @@ fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
                 let module_name = core::str::from_utf8(
                     &section_data[inner_offset..inner_offset + module_len as usize],
                 )
-                .unwrap_or("";
+                .unwrap_or("");
                 inner_offset += module_len as usize;
 
                 // Parse import name
@@ -588,7 +588,7 @@ fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
                 let import_name = core::str::from_utf8(
                     &section_data[inner_offset..inner_offset + name_len as usize],
                 )
-                .unwrap_or("";
+                .unwrap_or("");
                 inner_offset += name_len as usize;
 
                 // Check if this is a wasi_builtin import

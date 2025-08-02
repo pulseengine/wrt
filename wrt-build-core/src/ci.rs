@@ -131,7 +131,7 @@ pub struct CiSimulator {
 impl CiSimulator {
     /// Create a new CI simulator
     pub fn new(workspace_root: PathBuf, verbose: bool) -> Self {
-        let simulation_dir = workspace_root.join("target").join("ci-simulation";
+        let simulation_dir = workspace_root.join("target").join("ci-simulation");
         Self {
             workspace_root,
             simulation_dir,
@@ -142,9 +142,9 @@ impl CiSimulator {
     /// Run the full CI simulation
     pub fn run_simulation(&self) -> BuildResult<CiSimulationResults> {
         println!("{} CI Workflow Simulation", "🔄".bright_blue);
-        println!);
+        println!();
 
-        let start_time = Instant::now);
+        let start_time = Instant::now();
         let mut logs = HashMap::new();
 
         // Create simulation directory
@@ -153,10 +153,10 @@ impl CiSimulator {
         })?;
 
         // Step 1: Check prerequisites
-        let prerequisites = self.check_prerequisites);
+        let prerequisites = self.check_prerequisites();
 
         // Step 2: Cache simulation
-        self.simulate_cache);
+        self.simulate_cache();
 
         // Step 3: Workspace syntax check
         let workspace_syntax_valid = self.check_workspace_syntax(&mut logs)?;
@@ -171,7 +171,7 @@ impl CiSimulator {
         let quick_verification = self.run_quick_verification(&prerequisites.kani_installed)?;
 
         // Step 7: Matrix strategy simulation
-        let matrix_strategy = self.simulate_matrix_strategy);
+        let matrix_strategy = self.simulate_matrix_strategy();
 
         // Step 8: Artifact generation
         let artifacts = self.generate_artifacts(
@@ -197,13 +197,13 @@ impl CiSimulator {
             overall_passed,
         )?;
 
-        let duration = start_time.elapsed);
-        println!);
+        let duration = start_time.elapsed();
+        println!();
         println!(
             "{} Simulation completed in {:.2}s",
             "✅".bright_green(),
             duration.as_secs_f64()
-        ;
+        );
 
         Ok(CiSimulationResults {
             timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
@@ -229,7 +229,7 @@ impl CiSimulator {
         // Check Rust
         let (rust_installed, rust_version) = match Command::new("rustc").arg("--version").output() {
             Ok(output) if output.status.success() => {
-                let version = String::from_utf8_lossy(&output.stdout).trim().to_string());
+                let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 println!("  {} Rust: {}", "✓".bright_green(), version);
                 (true, Some(version))
             },
@@ -243,7 +243,7 @@ impl CiSimulator {
         let (cargo_installed, cargo_version) = match Command::new("cargo").arg("--version").output()
         {
             Ok(output) if output.status.success() => {
-                let version = String::from_utf8_lossy(&output.stdout).trim().to_string());
+                let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 println!("  {} Cargo: {}", "✓".bright_green(), version);
                 (true, Some(version))
             },
@@ -260,7 +260,7 @@ impl CiSimulator {
                     .lines()
                     .next()
                     .unwrap_or("")
-                    .to_string());
+                    .to_string();
                 println!("  {} KANI: {}", "✓".bright_green(), version);
                 (true, Some(version))
             },
@@ -268,7 +268,7 @@ impl CiSimulator {
                 println!(
                     "  {} KANI not available (simulation will skip formal verification)",
                     "⚠".bright_yellow()
-                ;
+                );
                 (false, None)
             },
         };
@@ -289,7 +289,7 @@ impl CiSimulator {
 
         // In real CI, this would use actions/cache
         if let Ok(metadata) = fs::read_to_string(self.workspace_root.join("Cargo.lock")) {
-            let cache_key = format!("linux-cargo-kani-{:x}", md5::compute(metadata.as_bytes();
+            let cache_key = format!("linux-cargo-kani-{:x}", md5::compute(metadata.as_bytes()));
             println!("  Cache key would be: {}", cache_key);
         }
 
@@ -312,8 +312,8 @@ impl CiSimulator {
             "STDOUT:\n{}\n\nSTDERR:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        ;
-        logs.insert("syntax-check".to_string(), log_content;
+        );
+        logs.insert("syntax-check".to_string(), log_content);
 
         if output.status.success() {
             println!("  {} Workspace syntax valid", "✓".bright_green);
@@ -339,14 +339,14 @@ impl CiSimulator {
         // Check workspace KANI config
         if let Ok(cargo_toml) = fs::read_to_string(self.workspace_root.join("Cargo.toml")) {
             if cargo_toml.contains("workspace.metadata.kani") {
-                let packages = cargo_toml.matches("name.*=.*\"wrt-").count);
+                let packages = cargo_toml.matches("name.*=.*\"wrt-").count();
                 results.workspace_kani_config = true;
                 results.kani_packages = packages;
                 println!(
                     "  {} Workspace KANI config: {} packages",
                     "✓".bright_green(),
                     packages
-                ;
+                );
             } else {
                 println!("  {} Missing workspace KANI config", "✗".bright_red);
             }
@@ -354,7 +354,7 @@ impl CiSimulator {
 
         // Check integration Kani.toml
         let integration_kani =
-            self.workspace_root.join("wrt-tests").join("integration").join("Kani.toml";
+            self.workspace_root.join("wrt-tests").join("integration").join("Kani.toml");
         if integration_kani.exists() {
             results.integration_kani_toml = true;
             println!("  {} Integration Kani.toml present", "✓".bright_green);
@@ -370,17 +370,17 @@ impl CiSimulator {
         println!("{} Build system validation...", "5️⃣".bright_yellow);
 
         // Check if KANI verification is available via Rust implementation
-        let kani_verify_available = crate::kani::is_kani_available);
+        let kani_verify_available = crate::kani::is_kani_available();
         if kani_verify_available {
             println!(
                 "  {} KANI verification available (Rust implementation)",
                 "✓".bright_green()
-            ;
+            );
         } else {
             println!(
                 "  {} KANI not available (install with: cargo install --locked kani-verifier)",
                 "⚠".bright_yellow()
-            ;
+            );
         }
 
         // Matrix verification is always available via Rust implementation
@@ -388,31 +388,31 @@ impl CiSimulator {
         println!(
             "  {} Matrix verification available (Rust implementation)",
             "✓".bright_green()
-        ;
+        );
 
         // CI simulation is always available via Rust implementation
         let ci_simulation_available = true;
         println!(
             "  {} CI simulation available (Rust implementation)",
             "✓".bright_green()
-        ;
+        );
 
         // Check for legacy script compatibility (optional)
-        let scripts_dir = self.workspace_root.join("scripts";
+        let scripts_dir = self.workspace_root.join("scripts");
         let legacy_scripts_available = scripts_dir.join("kani-verify.sh").exists()
             && scripts_dir.join("simulate-ci.sh").exists()
-            && scripts_dir.join("verify-build-matrix.sh").exists);
+            && scripts_dir.join("verify-build-matrix.sh").exists();
 
         if legacy_scripts_available {
             println!(
                 "  {} Legacy scripts available (for backward compatibility)",
                 "✓".bright_green()
-            ;
+            );
         } else {
             println!(
                 "  {} Some legacy scripts missing (not required)",
                 "⚠".bright_yellow()
-            ;
+            );
         }
 
         Ok(BuildSystemValidationResults {
@@ -427,7 +427,7 @@ impl CiSimulator {
     fn run_quick_verification(&self, kani_available: &bool) -> BuildResult<VerificationResult> {
         println!("{} Quick verification simulation...", "6️⃣".bright_yellow);
 
-        let start = Instant::now);
+        let start = Instant::now();
 
         if *kani_available {
             println!("  Running: cargo kani -p wrt-integration-tests --features kani");
@@ -445,7 +445,7 @@ impl CiSimulator {
             let output = Command::new("cargo")
                 .args(["test", "-p", "wrt-integration-tests", "--features", "kani"])
                 .current_dir(&self.workspace_root)
-                .output);
+                .output();
 
             match output {
                 Ok(result) if result.status.success() => {
@@ -492,13 +492,13 @@ impl CiSimulator {
 
         let asil_levels = vec!["asil-b".to_string(), "asil-c".to_string()];
 
-        let total_combinations = packages.len() * asil_levels.len);
+        let total_combinations = packages.len() * asil_levels.len();
 
         println!(
             "  Matrix dimensions: {} packages × {} ASIL levels",
             packages.len(),
             asil_levels.len()
-        ;
+        );
 
         if self.verbose {
             for package in &packages {
@@ -512,7 +512,7 @@ impl CiSimulator {
             "  {} Matrix simulation complete ({} combinations)",
             "✓".bright_green(),
             total_combinations
-        ;
+        );
 
         MatrixStrategy {
             packages,
@@ -531,7 +531,7 @@ impl CiSimulator {
     ) -> BuildResult<Vec<PathBuf>> {
         println!("{} Artifact generation simulation...", "8️⃣".bright_yellow);
 
-        let artifacts_dir = self.simulation_dir.join("artifacts";
+        let artifacts_dir = self.simulation_dir.join("artifacts");
         fs::create_dir_all(&artifacts_dir).map_err(|e| {
             BuildError::Tool(format!("Failed to create artifacts directory: {}", e))
         })?;
@@ -539,7 +539,7 @@ impl CiSimulator {
         let mut artifacts = Vec::new();
 
         // Generate verification summary
-        let summary_path = artifacts_dir.join("verification_summary.md";
+        let summary_path = artifacts_dir.join("verification_summary.md");
         let summary_content = format!(
             r#"# CI Simulation Report
 
@@ -567,7 +567,7 @@ impl CiSimulator {
             if build_system.kani_verify_available { "✅" } else { "❌" },
             "✅",
             if prerequisites.kani_installed { "✅ Yes" } else { "⚠️ No" }
-        ;
+        );
 
         fs::write(&summary_path, summary_content)
             .map_err(|e| BuildError::Tool(format!("Failed to write summary: {}", e)))?;
@@ -577,7 +577,7 @@ impl CiSimulator {
             "  {} Artifacts generated in {}",
             "✓".bright_green(),
             artifacts_dir.display()
-        ;
+        );
 
         Ok(artifacts)
     }
@@ -594,7 +594,7 @@ impl CiSimulator {
     ) -> BuildResult<()> {
         println!("{} Summary generation...", "9️⃣".bright_yellow);
 
-        let status_path = self.simulation_dir.join("ci-status.txt";
+        let status_path = self.simulation_dir.join("ci-status.txt");
         let status_content = format!(
             r#"CI Workflow Simulation Results
 ==============================
@@ -616,32 +616,32 @@ The CI workflow is ready for GitHub Actions execution.
             if configuration.workspace_kani_config { "✅" } else { "❌" },
             if build_system.kani_verify_available { "✅" } else { "❌" },
             if prerequisites.kani_installed { "✅ READY" } else { "⚠️ SIMULATED" }
-        ;
+        );
 
         fs::write(&status_path, &status_content)
             .map_err(|e| BuildError::Tool(format!("Failed to write status: {}", e)))?;
 
         // Print summary
-        println!);
+        println!();
         println!("{}", "=== Simulation Complete ===".bright_blue);
         println!("{}", status_content);
         println!(
             "Detailed logs available in: {}",
             self.simulation_dir.display()
-        ;
+        );
 
         if prerequisites.kani_installed {
-            println!);
+            println!();
             println!(
                 "{} Ready for full CI execution with KANI",
                 "✅".bright_green()
-            ;
+            );
         } else {
-            println!);
+            println!();
             println!(
                 "{} Install KANI for full verification capability",
                 "⚠️".bright_yellow()
-            ;
+            );
             println!("   cargo install --locked kani-verifier && cargo kani setup");
         }
 

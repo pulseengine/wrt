@@ -196,7 +196,7 @@ impl MemoryValue {
 
         // Resize memory if needed
         if offset_usize + bytes.len() > self.memory.len() {
-            let new_size = offset_usize + bytes.len);
+            let new_size = offset_usize + bytes.len();
             for _ in self.memory.len()..new_size {
                 // Grow memory with zeros
                 self.memory.push(0).map_err(|_| {

@@ -35,7 +35,7 @@ impl SimpleBoundedString {
         let mut result = Self::new();
         let bytes = s.as_bytes);
         result.data[..bytes.len()].copy_from_slice(bytes;
-        result.len = bytes.len);
+        result.len = bytes.len();
         Some(result)
     }
     
@@ -159,7 +159,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
     pub fn parse(&mut self, input: &str) -> Result<()> {
         // Store input in fixed buffer
         let input_bytes = input.as_bytes);
-        let copy_len = core::cmp::min(input_bytes.len(), self.input_buffer.len);
+        let copy_len = core::cmp::min(input_bytes.len(), self.input_buffer.len();
         self.input_buffer[..copy_len].copy_from_slice(&input_bytes[..copy_len];
         self.input_len = copy_len;
         

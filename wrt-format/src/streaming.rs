@@ -179,7 +179,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
         if available < magic_bytes_needed {
             // Need more data
             self.bytes_processed += available;
-            return Ok(chunk.len);
+            return Ok(chunk.len();
         }
 
         // Check magic bytes
@@ -203,7 +203,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
 
         if available < version_bytes_needed {
             self.bytes_processed += available;
-            return Ok(chunk.len);
+            return Ok(chunk.len();
         }
 
         // Check version bytes
@@ -303,7 +303,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
             Error::memory_error("Failed to access section buffer")
         })?;
         let src_ref = src.as_ref);
-        let copy_len = core::cmp::min(dest.len(), src_ref.len);
+        let copy_len = core::cmp::min(dest.len(), src_ref.len();
         dest[..copy_len].copy_from_slice(&src_ref[..copy_len];
         Ok(copy_len)
     }
@@ -344,7 +344,7 @@ impl StreamingParser {
         // For now, just update state to pass tests
         if self.state == ParserState::Magic && chunk == WASM_MAGIC {
             self.state = ParserState::Version;
-            self.bytes_processed += chunk.len);
+            self.bytes_processed += chunk.len();
         }
         Ok(ParseResult::NeedMoreData)
     }

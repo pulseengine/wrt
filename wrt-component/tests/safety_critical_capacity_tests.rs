@@ -17,9 +17,14 @@ use wrt_component::bounded_component_infra::*;
 #[cfg(not(feature = "std"))]
 use wrt_foundation::bounded_collections::BoundedMap as BoundedHashMap;
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     budget_aware_provider::CrateId,
-    managed_alloc, WrtError, WrtResult,
+    managed_alloc,
+    WrtError,
+    WrtResult,
 };
 
 #[cfg(test)]
@@ -125,7 +130,7 @@ mod capacity_limit_tests {
         #[derive(Clone, Debug)]
         struct CallFrame {
             function_idx: u32,
-            return_addr: u32,
+            return_addr:  u32,
         }
 
         let result = new_call_stack::<CallFrame>();
@@ -137,7 +142,7 @@ mod capacity_limit_tests {
         for depth in 0..MAX_CALL_STACK_DEPTH {
             let frame = CallFrame {
                 function_idx: depth as u32,
-                return_addr: (depth * 4) as u32,
+                return_addr:  (depth * 4) as u32,
             };
 
             let push_result = stack.try_push(frame);
@@ -149,7 +154,7 @@ mod capacity_limit_tests {
         // Stack overflow should be caught
         let overflow_frame = CallFrame {
             function_idx: 9999,
-            return_addr: 0,
+            return_addr:  0,
         };
 
         let overflow_result = stack.try_push(overflow_frame);
@@ -193,7 +198,7 @@ mod capacity_limit_tests {
             assert!(insert_result.is_ok(), "Failed to insert at index {}", i);
         }
 
-        assert_eq!(map.len(), 100;
+        assert_eq!(map.len(), 100);
 
         // Verify we can still insert more up to capacity
         let remaining_capacity = MAX_TYPE_DEFINITIONS - 100;
@@ -233,7 +238,7 @@ mod capacity_limit_tests {
         }
 
         assert_eq!(stack.len(), MAX_OPERAND_STACK_SIZE);
-        assert!(stack.is_full();
+        assert!(stack.is_full());
 
         // Pop all values
         for i in (0..MAX_OPERAND_STACK_SIZE).rev() {
@@ -280,7 +285,7 @@ mod capacity_limit_tests {
         let mut vec = vec_result.unwrap();
 
         fn dummy_callback() -> WrtResult<()> {
-            Ok(()))
+            Ok(())
         }
 
         // Fill to capacity
@@ -292,13 +297,13 @@ mod capacity_limit_tests {
 
         // Verify overflow protection
         let overflow = vec.try_push(dummy_callback);
-        assert!(overflow.is_err();
+        assert!(overflow.is_err());
     }
 
     /// Test that clear operations work correctly
     #[test]
     fn test_clear_operations() {
-        let vec_result = new_component_vec::<u32>);
+        let vec_result = new_component_vec::<u32>();
         assert!(vec_result.is_ok());
 
         let mut vec = vec_result.unwrap();
@@ -393,7 +398,7 @@ mod safety_critical_feature_tests {
     #[test]
     fn test_safety_critical_enforcement() {
         // In safety-critical mode, all allocations should use WRT allocator
-        let vec_result = new_component_vec::<u32>);
+        let vec_result = new_component_vec::<u32>();
         assert!(vec_result.is_ok());
 
         let vec = vec_result.unwrap();

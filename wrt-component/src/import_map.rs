@@ -151,7 +151,7 @@ impl SafeImportMap {
 
     /// Get all import names
     pub fn names(&self) -> Result<Vec<String>> {
-        let mut names = Vec::with_capacity(self.imports.len);
+        let mut names = Vec::with_capacity(self.imports.len();
         for i in 0..self.imports.len() {
             if let Ok((name, _)) = self.imports.get(i) {
                 names.push(name);

@@ -42,8 +42,8 @@ fn test_basic_serialization() {
     let (header, data) = extract_state_section(found.unwrap()).unwrap();
 
     // Verify section data
-    assert_eq!(header.section_type, StateSection::Stack;
-    assert_eq!(data, test_data;
+    assert_eq!(header.section_type, StateSection::Stack);
+    assert_eq!(data, test_data);
 }
 
 /// Test that multiple state sections can be created and extracted
@@ -72,9 +72,9 @@ fn test_state_section_format() {
     // Verify extracted data
     assert_eq!(header1.section_type, StateSection::Globals;
     assert_eq!(header1.compression_type, CompressionType::None;
-    assert_eq!(data1, test_data;
+    assert_eq!(data1, test_data);
 
-    assert_eq!(header2.section_type, StateSection::Memory;
-    assert_eq!(header2.compression_type, CompressionType::None;
-    assert_eq!(data2, test_data;
+    assert_eq!(header2.section_type, StateSection::Memory);
+    assert_eq!(header2.compression_type, CompressionType::None);
+    assert_eq!(data2, test_data);
 }

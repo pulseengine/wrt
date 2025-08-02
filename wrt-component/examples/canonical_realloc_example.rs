@@ -92,7 +92,7 @@ mod example {
 
         // Binary std/no_std choice
         let allocations = lower_context.finish()?;
-        println!("Made {} allocations during lowering", allocations.len()));
+        println!("Made {} allocations during lowering", allocations.len());
 
         Ok(())
     }
@@ -121,7 +121,7 @@ mod example {
         println!(
             "Allocated list at ptr: {} with capacity: {}",
             ptr, initial_capacity
-        ;
+        );
 
         // Grow the list
         let new_capacity = 20;
@@ -139,7 +139,7 @@ mod example {
         println!(
             "Reallocated list to ptr: {} with new capacity: {}",
             new_ptr, new_capacity
-        ;
+        );
 
         // Clean up
         {
@@ -152,7 +152,7 @@ mod example {
         // Check metrics
         {
             let manager = realloc_manager.read().unwrap();
-            let metrics = manager.metrics);
+            let metrics = manager.metrics();
             println!("Allocation metrics:");
             println!("  Total allocations: {}", metrics.total_allocations);
             println!("  Total deallocations: {}", metrics.total_deallocations);
@@ -178,7 +178,7 @@ mod example {
             .with_post_return(43); // post-return function index
 
         // Create lift context
-        let mut lift_context = CanonicalLiftContext::new(&instance, &memory, &options;
+        let mut lift_context = CanonicalLiftContext::new(&instance, &memory, &options);
 
         // Binary std/no_std choice
         let ptr1 = lift_context.allocate(100, 8)?;
@@ -227,7 +227,7 @@ mod example {
         // Check metrics
         {
             let manager = realloc_manager.read().unwrap();
-            let metrics = manager.metrics);
+            let metrics = manager.metrics();
             assert_eq!(metrics.total_allocations, 1);
             assert_eq!(metrics.total_deallocations, 1);
             assert!(metrics.total_bytes_allocated >= 64);

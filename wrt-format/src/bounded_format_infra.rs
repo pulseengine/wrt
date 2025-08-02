@@ -4,10 +4,7 @@
 //! to ensure static memory allocation throughout the format structures.
 
 use wrt_foundation::{
-    bounded::{
-        BoundedString,
-        BoundedVec,
-    },
+    bounded::{BoundedString, BoundedVec},
     no_std_hashmap::BoundedHashMap,
     safe_memory::NoStdProvider,
     WrtResult,
@@ -100,7 +97,7 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
@@ -115,7 +112,7 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
@@ -130,7 +127,7 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
@@ -145,31 +142,31 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded module name
 pub fn new_module_name() -> WrtResult<BoundedModuleName> {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded module name from str
 pub fn bounded_module_from_str(s: &str) -> WrtResult<BoundedModuleName> {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     Ok(BoundedString::from_str(s, provider)?)
 }
 
 /// Create a new bounded field name
 pub fn new_field_name() -> WrtResult<BoundedFieldName> {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded field name from str
 pub fn bounded_field_from_str(s: &str) -> WrtResult<BoundedFieldName> {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     Ok(BoundedString::from_str(s, provider)?)
 }
 
@@ -184,7 +181,7 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     BoundedHashMap::new(provider)
 }
 
@@ -199,6 +196,6 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = FormatProvider::default());
+    let provider = FormatProvider::default();
     BoundedHashMap::new(provider)
 }

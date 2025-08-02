@@ -176,7 +176,7 @@ mod integration_tests {
 
         let handle = lifecycle_manager
             .create_resource(resource_type.clone(), metadata1)
-            .expect(".expect("Failed to create resource"));")
+            .expect("Failed to create resource");
 
         // Component 2 borrows resource
         assert!(lifecycle_manager.borrow_resource(handle).is_ok());

@@ -96,15 +96,15 @@ pub fn verify_resource_id_uniqueness() {
     
     let provider = NoStdProvider::<4096>::new();
     let mut resource_ids: BoundedVec<u32, MAX_VERIFICATION_RESOURCES, _> = 
-        BoundedVec::new(provider;
+        BoundedVec::new(provider);
     
     // Generate and verify unique resource IDs
     for i in 0..resource_count {
-        let new_id: u32 = kani::any);
+        let new_id: u32 = kani::any();
         
         // Check uniqueness against existing IDs
         for existing_id in resource_ids.iter() {
-            assert_ne!(new_id, *existing_id, "Resource ID collision detected";
+            assert_ne!(new_id, *existing_id, "Resource ID collision detected");
         }
         
         // Add new ID if space available

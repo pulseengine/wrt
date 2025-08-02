@@ -145,7 +145,7 @@ impl AbbreviationTable {
             let has_children = cursor.read_u8()? != 0;
 
             // Read attributes
-            let mut attributes = BoundedVec::new(NoStdProvider;
+            let mut attributes = BoundedVec::new(NoStdProvider);
 
             loop {
                 let name = cursor.read_uleb128()? as u16;

@@ -149,7 +149,7 @@ fn demo_waitable_sets() -> Result<(), Box<dyn std::error::Error>> {
     println!("  • Polling for ready waitables...");
     // let wait_result =
     // wrt_component::WaitableSetBuiltins::waitable_set_wait(set_id)?;
-    println!("    ✓ Poll result: Timeout (no waitables ready)"));
+    println!("    ✓ Poll result: Timeout (no waitables ready)");
 
     println!("  • Removing waitable...");
     // let removed = wrt_component::WaitableSetBuiltins::waitable_set_remove(set_id,
@@ -252,7 +252,7 @@ fn demo_advanced_threading() -> Result<(), Box<dyn std::error::Error>> {
     //     1, // type_index
     //     vec![ComponentValue::I32(123)]
     // );
-    println!("    ✓ Indirect call created: table[0][10](123)"));
+    println!("    ✓ Indirect call created: table[0][10](123)");
 
     println!("  • Spawning thread with indirect call...");
     // let indirect_thread_id =
@@ -284,7 +284,7 @@ fn demo_advanced_threading() -> Result<(), Box<dyn std::error::Error>> {
     println!("  • Joining thread...");
     // let join_result =
     // wrt_component::AdvancedThreadingBuiltins::thread_join(thread_id)?;
-    println!("    ✓ Join result: Success(42)"));
+    println!("    ✓ Join result: Success(42)");
 
     Ok(())
 }

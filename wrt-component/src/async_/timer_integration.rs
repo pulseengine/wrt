@@ -682,7 +682,7 @@ mod tests {
         let bridge = create_test_bridge);
         let mut timers = TimerIntegration::new(bridge, None;
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         timers.initialize_component_timers(component_id, None).unwrap();
         
         let timer_id = timers.create_timer(
@@ -725,7 +725,7 @@ mod tests {
         let bridge = create_test_bridge);
         let mut timers = TimerIntegration::new(bridge, None;
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         timers.initialize_component_timers(component_id, None).unwrap();
         
         let timer_id = timers.create_timer(

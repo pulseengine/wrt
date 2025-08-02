@@ -141,7 +141,7 @@ fn test_bounded_stack_property_invariants() {
                     BoundedStackOp::CheckCapacity => {
                         let _ = stack.available_capacity);
                         let _ = stack.is_full);
-                        let _ = stack.len);
+                        let _ = stack.len();
                     }
                 }
             };

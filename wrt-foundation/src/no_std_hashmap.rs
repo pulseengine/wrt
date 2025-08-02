@@ -7,7 +7,6 @@
 
 //! A simple HashMap implementation for no_std environments without external
 //! dependencies.
-//!
 #![allow(clippy::needless_continue)]
 #![allow(clippy::if_not_else)]
 #![allow(clippy::needless_pass_by_value)]
@@ -21,11 +20,20 @@
 //! the standard HashMap or external crates like hashbrown, but it provides
 //! the core functionality needed for the WRT ecosystem.
 
-use core::{borrow::Borrow, fmt, hash::Hash, marker::PhantomData};
+use core::{
+    borrow::Borrow,
+    fmt,
+    hash::Hash,
+    marker::PhantomData,
+};
 
 use crate::{
     bounded::BoundedVec,
-    traits::{Checksummable, FromBytes, ToBytes},
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
     verification::Checksum,
     MemoryProvider,
 };
@@ -44,8 +52,8 @@ pub struct SimpleHashMap<
     K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
     V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
 {
-    entries: BoundedVec<Option<Entry<K, V>>, N, P>,
-    len: usize,
+    entries:  BoundedVec<Option<Entry<K, V>>, N, P>,
+    len:      usize,
     _phantom: PhantomData<(K, V, P)>,
 }
 
@@ -59,9 +67,9 @@ where
     K: Clone + PartialEq + Eq,
     V: Clone + PartialEq + Eq,
 {
-    key: K,
+    key:   K,
     value: V,
-    hash: u64,
+    hash:  u64,
 }
 
 impl<K, V> Default for Entry<K, V>
@@ -70,7 +78,11 @@ where
     V: Clone + PartialEq + Eq + Default,
 {
     fn default() -> Self {
-        Self { key: K::default(), value: V::default(), hash: 0 }
+        Self {
+            key:   K::default(),
+            value: V::default(),
+            hash:  0,
+        }
     }
 }
 
@@ -134,7 +146,11 @@ where
             entries.push(None)?;
         }
 
-        Ok(Self { entries, len: 0, _phantom: PhantomData })
+        Ok(Self {
+            entries,
+            len: 0,
+            _phantom: PhantomData,
+        })
     }
 
     /// Returns the number of key-value pairs in the map.
@@ -169,7 +185,8 @@ where
         // algorithm.
 
         // For now, use a basic checksum-style hash
-        hash.wrapping_mul(33).wrapping_add(core::ptr::addr_of!(*key) as *const () as usize as u64)
+        hash.wrapping_mul(33)
+            .wrapping_add(core::ptr::addr_of!(*key) as *const () as usize as u64)
     }
 
     /// Calculates the initial index for a key.
@@ -224,23 +241,25 @@ where
                     entry.value = value;
                     self.entries.set(actual_index, Some(entry))?;
                     return Ok(Some(old_value));
-                }
+                },
                 None => {
                     // Empty slot, insert new entry
                     let entry = Entry { key, value, hash };
                     self.entries.set(actual_index, Some(entry))?;
                     self.len += 1;
                     return Ok(None);
-                }
+                },
                 _ => {
                     // Occupied by a different key, try next slot
                     continue;
-                }
+                },
             }
         }
 
         // This should never happen as we checked if the map is full
-        Err(crate::Error::internal_error("Failed to insert into SimpleHashMap"))
+        Err(crate::Error::internal_error(
+            "Failed to insert into SimpleHashMap",
+        ))
     }
 
     /// Gets a copy of the value associated with the key.
@@ -258,15 +277,15 @@ where
             match self.entries.get(actual_index)? {
                 Some(entry) if entry.hash == hash && entry.key.borrow() == key => {
                     return Ok(Some(entry.value));
-                }
+                },
                 None => {
                     // Empty slot, key doesn't exist
                     return Ok(None);
-                }
+                },
                 _ => {
                     // Occupied by a different key, try next slot
                     continue;
-                }
+                },
             }
         }
 
@@ -292,15 +311,15 @@ where
                     self.entries.set(actual_index, None)?;
                     self.len -= 1;
                     return Ok(Some(value));
-                }
+                },
                 None => {
                     // Empty slot, key doesn't exist
                     return Ok(None);
-                }
+                },
                 _ => {
                     // Occupied by a different key, try next slot
                     continue;
-                }
+                },
             }
         }
 
@@ -321,7 +340,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{safe_managed_alloc, budget_aware_provider::CrateId, safe_memory::NoStdProvider};
+    use crate::{
+        budget_aware_provider::CrateId,
+        safe_managed_alloc,
+        safe_memory::NoStdProvider,
+    };
 
     #[test]
     fn test_simple_hashmap() -> crate::WrtResult<()> {

@@ -274,7 +274,7 @@ impl ResourceManager {
             return Err(ResourceError::LimitExceeded;
         }
 
-        let handle = ResourceHandle::new(self.next_handle_id;
+        let handle = ResourceHandle::new(self.next_handle_id);
         self.next_handle_id += 1;
         self.stats.resources_created += 1;
         self.stats.active_resources += 1;
@@ -482,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_resource_handle_creation() {
-        let handle = ResourceHandle::new(42;
+        let handle = ResourceHandle::new(42);
         assert_eq!(handle.id(), 42;
         assert!(handle.is_valid();
 

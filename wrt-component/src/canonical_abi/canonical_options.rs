@@ -283,7 +283,7 @@ impl<'a> CanonicalLowerContext<'a> {
             }
         };
 
-        let len = encoded.len);
+        let len = encoded.len();
         let align = match self.options.string_encoding {
             StringEncoding::Utf8 | StringEncoding::Latin1 => 1,
             StringEncoding::Utf16Le | StringEncoding::Utf16Be => 2,

@@ -84,7 +84,8 @@ impl ErrorContext {
     }
 
     /// Set recovery strategy
-    #[must_use] pub const fn with_recovery(mut self, strategy: RecoveryStrategy) -> Self {
+    #[must_use]
+    pub const fn with_recovery(mut self, strategy: RecoveryStrategy) -> Self {
         self.recovery_strategy = strategy;
         self
     }
@@ -109,7 +110,8 @@ impl Default for ErrorRecoveryManager {
 
 impl ErrorRecoveryManager {
     /// Create a new error recovery manager
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         let mut strategies = HashMap::new();
 
         // Set default recovery strategies
@@ -132,7 +134,8 @@ impl ErrorRecoveryManager {
     }
 
     /// Get recovery strategy for an error category
-    #[must_use] pub fn get_strategy(&self, category: &ErrorCategory) -> RecoveryStrategy {
+    #[must_use]
+    pub fn get_strategy(&self, category: &ErrorCategory) -> RecoveryStrategy {
         self.strategies.get(category).cloned().unwrap_or_default()
     }
 
@@ -147,7 +150,8 @@ impl ErrorRecoveryManager {
     }
 
     /// Analyze error patterns
-    #[must_use] pub fn analyze_patterns(&self) -> ErrorPatternAnalysis {
+    #[must_use]
+    pub fn analyze_patterns(&self) -> ErrorPatternAnalysis {
         let mut category_counts = HashMap::new();
         let mut location_counts = HashMap::new();
         let mut recent_errors = Vec::new();
@@ -174,7 +178,8 @@ impl ErrorRecoveryManager {
     }
 
     /// Attempt error recovery
-    #[must_use] pub fn recover(&self, error: &Error, context: &ErrorContext) -> RecoveryResult {
+    #[must_use]
+    pub fn recover(&self, error: &Error, context: &ErrorContext) -> RecoveryResult {
         let strategy = match &context.recovery_strategy {
             RecoveryStrategy::Abort => &context.recovery_strategy,
             _ => self.strategies.get(&error.category).unwrap_or(&RecoveryStrategy::Abort),
@@ -232,7 +237,8 @@ pub struct ErrorPatternAnalysis {
 
 impl ErrorPatternAnalysis {
     /// Get the most frequent error category
-    #[must_use] pub fn most_frequent_category(&self) -> Option<ErrorCategory> {
+    #[must_use]
+    pub fn most_frequent_category(&self) -> Option<ErrorCategory> {
         self.category_counts
             .iter()
             .max_by_key(|(_, count)| *count)
@@ -240,7 +246,8 @@ impl ErrorPatternAnalysis {
     }
 
     /// Get the most problematic location
-    #[must_use] pub fn most_problematic_location(&self) -> Option<String> {
+    #[must_use]
+    pub fn most_problematic_location(&self) -> Option<String> {
         self.location_counts
             .iter()
             .max_by_key(|(_, count)| *count)
@@ -248,7 +255,8 @@ impl ErrorPatternAnalysis {
     }
 
     /// Check if error rate is concerning
-    #[must_use] pub fn is_error_rate_high(&self) -> bool {
+    #[must_use]
+    pub fn is_error_rate_high(&self) -> bool {
         self.total_errors > 50 || self.category_counts.values().any(|&count| count > 10)
     }
 }
@@ -266,7 +274,8 @@ pub struct RecoverableError {
 
 impl RecoverableError {
     /// Create a new recoverable error
-    #[must_use] pub fn new(error: Error, context: ErrorContext) -> Self {
+    #[must_use]
+    pub fn new(error: Error, context: ErrorContext) -> Self {
         let manager = ErrorRecoveryManager::new();
         let recovery_suggestion = manager.recover(&error, &context);
 
@@ -293,7 +302,8 @@ pub struct DebugUtils;
 
 impl DebugUtils {
     /// Format error with full debugging information
-    #[must_use] pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
+    #[must_use]
+    pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
         let mut output = String::new();
 
         output.push_str(&format!(
@@ -326,7 +336,8 @@ impl DebugUtils {
     }
 
     /// Create error context for a function
-    #[must_use] pub fn function_context(function_name: &str, module: &str, line: u32) -> ErrorContext {
+    #[must_use]
+    pub fn function_context(function_name: &str, module: &str, line: u32) -> ErrorContext {
         ErrorContext::new(format!("{module}:{line} in {function_name}"))
             .with_context("function", function_name)
             .with_context("module", module)
@@ -334,16 +345,15 @@ impl DebugUtils {
     }
 
     /// Create error context for WASM operations
-    #[must_use] pub fn wasm_context(
+    #[must_use]
+    pub fn wasm_context(
         operation: &str,
         instruction_offset: usize,
         function_index: Option<u32>,
     ) -> ErrorContext {
-        let mut ctx = ErrorContext::new(format!(
-            "WASM {operation} at offset {instruction_offset}"
-        ))
-        .with_context("operation", operation)
-        .with_context("offset", format!("{instruction_offset}"));
+        let mut ctx = ErrorContext::new(format!("WASM {operation} at offset {instruction_offset}"))
+            .with_context("operation", operation)
+            .with_context("offset", format!("{instruction_offset}"));
 
         if let Some(func_idx) = function_index {
             ctx = ctx.with_context("function_index", format!("{func_idx}"));

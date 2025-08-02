@@ -110,7 +110,7 @@ fn test_complex_module_decoding() -> Result<()> {
     assert_eq!(module.memories.len(), 1);
     assert_eq!(module.globals.len(), 1);
     assert_eq!(module.data.len(), 1);
-    assert!(module.start.is_some();
+    assert!(module.start.is_some());
 
     Ok(())
 }
@@ -123,7 +123,7 @@ fn test_invalid_module() {
 
     // Attempt to decode, should return an error
     let result = wrt_decoder::wasm::decode(&invalid_bytes;
-    assert!(result.is_err();
+    assert!(result.is_err());
 
     // Test with truncated module
     let truncated = vec![
@@ -131,8 +131,8 @@ fn test_invalid_module() {
         0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, // Truncated type section
         0x01, 0x05, 0x01, 0x60,
     ];
-    let result = wrt_decoder::wasm::decode(&truncated;
-    assert!(result.is_err();
+    let result = wrt_decoder::wasm::decode(&truncated);
+    assert!(result.is_err());
 }
 
 #[test]

@@ -463,7 +463,7 @@ impl SmartDefaults {
     pub fn suggest_output_format(&self) -> String {
         if let Some(ci) = &self.context.ci_context {
             if ci.is_running_in_ci {
-                return "json".to_string());
+                return "json".to_string();
             }
         }
         "human".to_string()

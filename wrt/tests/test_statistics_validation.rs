@@ -351,7 +351,7 @@ mod statistics_tests {
 
                 if is_auto_passed {
                     auto_passed_features += 1;
-                    println!("  {} - ⚠️  AUTO-PASSED (not really tested)", feature));
+                    println!("  {} - ⚠️  AUTO-PASSED (not really tested)", feature);
                 } else if is_tested {
                     tested_features += 1;
                     println!("  {} - ✓ TESTED", feature);
@@ -367,7 +367,7 @@ mod statistics_tests {
 
         println!("\n=== Coverage Summary ===");
         println!("Total features: {}", total_features);
-        println!("Really tested: {} ({:.1}%)", tested_features, real_coverage));
+        println!("Really tested: {} ({:.1}%)", tested_features, real_coverage);
         println!(
             "Auto-passed: {} ({:.1}%)",
             auto_passed_features,

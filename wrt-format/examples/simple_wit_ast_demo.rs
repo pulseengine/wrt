@@ -7,10 +7,10 @@ fn main() {
     println!("Simple WIT AST Demonstration");
     println!("============================");
 
-    demonstrate_source_spans);
-    demonstrate_primitive_types);
-    demonstrate_type_expressions);
-    demonstrate_function_results);
+    demonstrate_source_spans();
+    demonstrate_primitive_types();
+    demonstrate_type_expressions();
+    demonstrate_function_results();
 
     println!("\n=== WIT AST Implementation Complete ===");
     println!("✓ Source location tracking with SourceSpan");
@@ -39,23 +39,23 @@ fn demonstrate_source_spans() {
     println!(
         "Created span1: start={}, end={}, file_id={}",
         span1.start, span1.end, span1.file_id
-    ;
+    );
     println!(
         "Created span2: start={}, end={}, file_id={}",
         span2.start, span2.end, span2.file_id
-    ;
+    );
 
-    let merged = span1.merge(&span2;
+    let merged = span1.merge(&span2);
     println!(
         "Merged spans: start={}, end={}, file_id={}",
         merged.start, merged.end, merged.file_id
-    ;
+    );
 
-    let empty = SourceSpan::empty);
+    let empty = SourceSpan::empty();
     println!(
         "Empty span: start={}, end={}, file_id={}",
         empty.start, empty.end, empty.file_id
-    ;
+    );
 
     println!("✓ Source location tracking works correctly");
 }
@@ -90,10 +90,10 @@ fn demonstrate_primitive_types() {
     for (name, kind) in &types {
         let prim_type = PrimitiveType { kind: *kind, span };
         println!("✓ Created primitive type: {}", name);
-        assert_eq!(prim_type.kind, *kind;
+        assert_eq!(prim_type.kind, *kind);
     }
 
-    println!("✓ All {} primitive types work correctly", types.len);
+    println!("✓ All {} primitive types work correctly", types.len());
 }
 
 fn demonstrate_type_expressions() {
@@ -113,12 +113,12 @@ fn demonstrate_type_expressions() {
         span,
     };
 
-    let type_expr = TypeExpr::Primitive(string_type;
+    let type_expr = TypeExpr::Primitive(string_type);
 
     match type_expr {
         TypeExpr::Primitive(prim) => {
             println!("✓ Created primitive type expression: {:?}", prim.kind);
-            assert_eq!(prim.kind, PrimitiveKind::String;
+            assert_eq!(prim.kind, PrimitiveKind::String);
         },
         TypeExpr::Named(..) => println!("✓ Named type expression structure available"),
         TypeExpr::List(..) => println!("✓ List type expression structure available"),
@@ -152,7 +152,7 @@ fn demonstrate_function_results() {
     println!("✓ Created function with no results");
 
     // Test default implementation
-    let default_results = FunctionResults::default());
+    let default_results = FunctionResults::default();
     match default_results {
         FunctionResults::None => println!("✓ Default FunctionResults is None"),
         _ => println!("✗ Unexpected default FunctionResults"),
@@ -164,11 +164,11 @@ fn demonstrate_function_results() {
         span,
     };
 
-    let single_result = FunctionResults::Single(TypeExpr::Primitive(u32_type;
+    let single_result = FunctionResults::Single(TypeExpr::Primitive(u32_type));
     match single_result {
         FunctionResults::Single(TypeExpr::Primitive(prim)) => {
             println!("✓ Created function with single U32 result: {:?}", prim.kind);
-            assert_eq!(prim.kind, PrimitiveKind::U32;
+            assert_eq!(prim.kind, PrimitiveKind::U32);
         },
         _ => println!("✗ Unexpected function result type"),
     }

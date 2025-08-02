@@ -24,10 +24,10 @@ where
 {
     match format {
         OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(result)?));
+            println!("{}", serde_json::to_string_pretty(result)?);
         },
         OutputFormat::JsonLines => {
-            println!("{}", serde_json::to_string(result)?));
+            println!("{}", serde_json::to_string(result)?);
         },
         OutputFormat::Human => {
             println!("{}", result);
@@ -149,7 +149,7 @@ impl OutputManager {
             let _ = self.output_result(&response);
         } else {
             let prefix = if self.colored { "❌".bright_red() } else { "❌".normal() };
-            eprintln!("{} {}", prefix, message)));
+            eprintln!("{} {}", prefix, message);
         }
     }
 
@@ -192,7 +192,7 @@ impl OutputManager {
     pub fn header(&self, title: &str) {
         if !self.is_json_mode() {
             if self.colored {
-                println!("{}", title.bright_cyan().bold()));
+                println!("{}", title.bright_cyan().bold());
             } else {
                 println!("{}", title);
             }
@@ -203,7 +203,7 @@ impl OutputManager {
     pub fn subheader(&self, title: &str) {
         if !self.is_json_mode() {
             if self.colored {
-                println!("  {}", title.cyan()));
+                println!("  {}", title.cyan());
             } else {
                 println!("  {}", title);
             }

@@ -12,16 +12,36 @@
 
 // ToOwned is now imported from the prelude
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
-use crate::bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH}; /* Added BoundedString */
+use crate::bounded::{
+    BoundedString,
+    BoundedVec,
+    WasmName,
+    MAX_WASM_NAME_LENGTH,
+}; // Added BoundedString
 use crate::{
     component_value_store::ValueRef,
     traits::{
-        BytesWriter, Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream,
+        BytesWriter,
+        Checksummable,
+        FromBytes,
+        ReadStream,
+        SerializationError,
+        ToBytes,
+        WriteStream,
     },
     verification::Checksum,
-    ComponentValueStore, FloatBits32, FloatBits64, MemoryProvider, Value,
+    ComponentValueStore,
+    FloatBits32,
+    FloatBits64,
+    MemoryProvider,
+    Value,
 }; // Added import for ValueRef
 
 // no_std is configured at the crate level
@@ -31,19 +51,32 @@ extern crate alloc; // Binary std/no_std choice
 // Binary std/no_std choice
 use core::{
     fmt,
-    hash::{Hash, Hasher as CoreHasher},
+    hash::{
+        Hash,
+        Hasher as CoreHasher,
+    },
 };
 #[cfg(feature = "std")]
 use std::borrow::ToOwned;
 
 // Use constants from bounded.rs
 use crate::bounded::{
-    MAX_COMPONENT_ERROR_CONTEXT_ITEMS, MAX_COMPONENT_FIXED_LIST_ITEMS, MAX_COMPONENT_FLAGS,
-    MAX_COMPONENT_LIST_ITEMS, MAX_COMPONENT_RECORD_FIELDS, MAX_COMPONENT_TUPLE_ITEMS,
-    MAX_DESERIALIZED_VALUES, MAX_WASM_STRING_LENGTH as MAX_COMPONENT_STRING_LENGTH,
+    MAX_COMPONENT_ERROR_CONTEXT_ITEMS,
+    MAX_COMPONENT_FIXED_LIST_ITEMS,
+    MAX_COMPONENT_FLAGS,
+    MAX_COMPONENT_LIST_ITEMS,
+    MAX_COMPONENT_RECORD_FIELDS,
+    MAX_COMPONENT_TUPLE_ITEMS,
+    MAX_DESERIALIZED_VALUES,
+    MAX_WASM_STRING_LENGTH as MAX_COMPONENT_STRING_LENGTH,
 };
 #[cfg(feature = "std")]
-use crate::prelude::{format, vec, BTreeMap, ToString as _}; // Removed String, Vec
+use crate::prelude::{
+    format,
+    vec,
+    BTreeMap,
+    ToString as _,
+}; // Removed String, Vec
 
 // Define any component-value specific constants not in bounded.rs
 pub const MAX_STORED_COMPONENT_VALUES: usize = 256; // For ComponentValueStore capacity
@@ -83,7 +116,10 @@ impl FromBytes for ValTypeRef {
 
 // Use constants from bounded.rs
 use crate::bounded::{
-    MAX_TYPE_ENUM_NAMES, MAX_TYPE_FLAGS_NAMES, MAX_TYPE_RECORD_FIELDS, MAX_TYPE_TUPLE_ELEMENTS,
+    MAX_TYPE_ENUM_NAMES,
+    MAX_TYPE_FLAGS_NAMES,
+    MAX_TYPE_RECORD_FIELDS,
+    MAX_TYPE_TUPLE_ELEMENTS,
     MAX_TYPE_VARIANT_CASES,
 };
 
@@ -142,8 +178,11 @@ pub enum ValType<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// `Option` type
     Option(ValTypeRef), // Replaced Box<ValType>
     /// `Result` type with both `Ok` and `Err` types (both optional for void)
-    Result { ok: Option<ValTypeRef>, err: Option<ValTypeRef> }, /* Replaced Result/ResultErr/
-                                                                 * ResultBoth */
+    Result {
+        ok:  Option<ValTypeRef>,
+        err: Option<ValTypeRef>,
+    }, /* Replaced Result/ResultErr/
+        * ResultBoth */
     /// Resource handle (owned)
     Own(u32),
     /// Resource handle (borrowed)
@@ -211,7 +250,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Val
             | ValType::Char
             | ValType::String
             | ValType::Void
-            | ValType::ErrorContext => {} // No extra data for these simple variants
+            | ValType::ErrorContext => {}, // No extra data for these simple variants
             ValType::Ref(id) => id.update_checksum(checksum),
             ValType::Record(fields) => fields.update_checksum(checksum),
             ValType::Variant(cases) => cases.update_checksum(checksum),
@@ -219,7 +258,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Val
             ValType::FixedList(element_type_ref, len) => {
                 element_type_ref.update_checksum(checksum);
                 len.update_checksum(checksum);
-            }
+            },
             ValType::Tuple(elements) => elements.update_checksum(checksum),
             ValType::Flags(names) => names.update_checksum(checksum),
             ValType::Enum(names) => names.update_checksum(checksum),
@@ -227,7 +266,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Val
             ValType::Result { ok, err } => {
                 ok.update_checksum(checksum);
                 err.update_checksum(checksum);
-            }
+            },
             ValType::Own(id) | ValType::Borrow(id) => id.update_checksum(checksum),
         }
     }
@@ -256,65 +295,65 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for ValType<P
             ValType::Ref(id) => {
                 writer.write_u8(13)?;
                 writer.write_u32_le(*id)?;
-            }
+            },
             ValType::Record(fields) => {
                 writer.write_u8(14)?;
                 fields.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ValType::Variant(cases) => {
                 writer.write_u8(15)?;
                 cases.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ValType::List(element_type_ref) => {
                 writer.write_u8(16)?;
                 element_type_ref.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ValType::FixedList(element_type_ref, len) => {
                 writer.write_u8(17)?;
                 element_type_ref.to_bytes_with_provider(writer, provider)?;
                 writer.write_u32_le(*len)?;
-            }
+            },
             ValType::Tuple(elements) => {
                 writer.write_u8(18)?;
                 elements.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ValType::Flags(names) => {
                 writer.write_u8(19)?;
                 names.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ValType::Enum(names) => {
                 writer.write_u8(20)?;
                 names.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ValType::Option(type_ref) => {
                 writer.write_u8(21)?;
                 type_ref.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ValType::Result { ok, err } => {
                 writer.write_u8(22)?;
                 match ok {
                     Some(ok_ref) => {
                         writer.write_u8(1)?;
                         ok_ref.to_bytes_with_provider(writer, provider)?;
-                    }
+                    },
                     None => writer.write_u8(0)?,
                 }
                 match err {
                     Some(err_ref) => {
                         writer.write_u8(1)?;
                         err_ref.to_bytes_with_provider(writer, provider)?;
-                    }
+                    },
                     None => writer.write_u8(0)?,
                 }
-            }
+            },
             ValType::Own(id) => {
                 writer.write_u8(23)?;
                 writer.write_u32_le(*id)?;
-            }
+            },
             ValType::Borrow(id) => {
                 writer.write_u8(24)?;
                 writer.write_u32_le(*id)?;
-            }
+            },
             ValType::Void => writer.write_u8(25)?,
             ValType::ErrorContext => writer.write_u8(26)?,
         }
@@ -345,7 +384,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
             13 => {
                 let id = reader.read_u32_le()?;
                 Ok(ValType::Ref(id))
-            }
+            },
             14 => {
                 let fields = BoundedVec::<
                     (WasmName<MAX_WASM_NAME_LENGTH, P>, ValTypeRef),
@@ -353,7 +392,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::Record(fields))
-            }
+            },
             15 => {
                 let cases = BoundedVec::<
                     (WasmName<MAX_WASM_NAME_LENGTH, P>, Option<ValTypeRef>),
@@ -361,35 +400,35 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::Variant(cases))
-            }
+            },
             16 => {
                 let etr = ValTypeRef::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::List(etr))
-            }
+            },
             17 => {
                 let etr = ValTypeRef::from_bytes_with_provider(reader, provider)?;
                 let len = reader.read_u32_le()?;
                 Ok(ValType::FixedList(etr, len))
-            }
+            },
             18 => {
                 let elements =
                     BoundedVec::<ValTypeRef, MAX_TYPE_TUPLE_ELEMENTS, P>::from_bytes_with_provider(
                         reader, provider,
                     )?;
                 Ok(ValType::Tuple(elements))
-            }
+            },
             19 => {
                 let names = BoundedVec::<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_FLAGS_NAMES, P>::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::Flags(names))
-            }
+            },
             20 => {
                 let names = BoundedVec::<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_ENUM_NAMES, P>::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::Enum(names))
-            }
+            },
             21 => {
                 let type_ref = ValTypeRef::from_bytes_with_provider(reader, provider)?;
                 Ok(ValType::Option(type_ref))
-            }
+            },
             22 => {
                 let ok_present = reader.read_u8()? == 1;
                 let ok_ref = if ok_present {
@@ -403,16 +442,19 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for ValType
                 } else {
                     None
                 };
-                Ok(ValType::Result { ok: ok_ref, err: err_ref })
-            }
+                Ok(ValType::Result {
+                    ok:  ok_ref,
+                    err: err_ref,
+                })
+            },
             23 => {
                 let id = reader.read_u32_le()?;
                 Ok(ValType::Own(id))
-            }
+            },
             24 => {
                 let id = reader.read_u32_le()?;
                 Ok(ValType::Borrow(id))
-            }
+            },
             25 => Ok(ValType::Void),
             26 => Ok(ValType::ErrorContext),
             _ => Err(SerializationError::InvalidFormat.into()),
@@ -496,120 +538,120 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Com
             ComponentValue::Bool(v) => {
                 checksum.update_slice(&[1]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::S8(v) => {
                 checksum.update_slice(&[2]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::U8(v) => {
                 checksum.update_slice(&[3]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::S16(v) => {
                 checksum.update_slice(&[4]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::U16(v) => {
                 checksum.update_slice(&[5]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::S32(v) => {
                 checksum.update_slice(&[6]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::U32(v) => {
                 checksum.update_slice(&[7]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::S64(v) => {
                 checksum.update_slice(&[8]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::U64(v) => {
                 checksum.update_slice(&[9]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::F32(v) => {
                 checksum.update_slice(&[10]);
                 v.update_checksum(checksum);
-            } // v is FloatBits32
+            }, // v is FloatBits32
             ComponentValue::F64(v) => {
                 checksum.update_slice(&[11]);
                 v.update_checksum(checksum);
-            } // v is FloatBits64
+            }, // v is FloatBits64
             ComponentValue::Char(v) => {
                 checksum.update_slice(&[12]);
                 (*v as u32).update_checksum(checksum);
-            } // Checksum char as u32
+            }, // Checksum char as u32
             #[cfg(feature = "std")]
             ComponentValue::String(s) => {
                 checksum.update_slice(&[13]);
                 s.update_checksum(checksum);
-            }
+            },
             #[cfg(not(any(feature = "std")))]
             ComponentValue::String(s) => {
                 checksum.update_slice(&[13]);
                 s.update_checksum(checksum);
-            } // BoundedString
+            }, // BoundedString
             ComponentValue::List(v) => {
                 checksum.update_slice(&[14]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::FixedList(v, len) => {
                 checksum.update_slice(&[15]);
                 v.update_checksum(checksum);
                 len.update_checksum(checksum);
-            }
+            },
             ComponentValue::Record(v) => {
                 checksum.update_slice(&[16]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::Variant(name, opt_v) => {
                 checksum.update_slice(&[17]);
                 name.update_checksum(checksum);
                 opt_v.update_checksum(checksum);
-            }
+            },
             ComponentValue::Tuple(v) => {
                 checksum.update_slice(&[18]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::Flags(v) => {
                 checksum.update_slice(&[19]);
                 v.update_checksum(checksum);
-            }
+            },
             ComponentValue::Enum(name) => {
                 checksum.update_slice(&[20]);
                 name.update_checksum(checksum);
-            }
+            },
             ComponentValue::Option(opt_v) => {
                 checksum.update_slice(&[21]);
                 opt_v.update_checksum(checksum);
-            }
+            },
             ComponentValue::Result(res) => {
                 checksum.update_slice(&[22]);
                 match res {
                     Ok(ok_v) => {
                         checksum.update_slice(&[0]);
                         ok_v.update_checksum(checksum);
-                    }
+                    },
                     Err(err_v) => {
                         checksum.update_slice(&[1]);
                         err_v.update_checksum(checksum);
-                    }
+                    },
                 }
-            }
+            },
             ComponentValue::Own(handle) => {
                 checksum.update_slice(&[23]);
                 handle.update_checksum(checksum);
-            }
+            },
             ComponentValue::Borrow(handle) => {
                 checksum.update_slice(&[24]);
                 handle.update_checksum(checksum);
-            }
+            },
             ComponentValue::ErrorContext(v) => {
                 checksum.update_slice(&[25]);
                 v.update_checksum(checksum);
-            }
+            },
         }
     }
 }
@@ -636,11 +678,11 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> PartialEq for Compone
             (ComponentValue::List(a), ComponentValue::List(b)) => a == b,
             (ComponentValue::FixedList(a_val, a_len), ComponentValue::FixedList(b_val, b_len)) => {
                 a_val == b_val && a_len == b_len
-            }
+            },
             (ComponentValue::Record(a), ComponentValue::Record(b)) => a == b,
             (ComponentValue::Variant(a_name, a_val), ComponentValue::Variant(b_name, b_val)) => {
                 a_name == b_name && a_val == b_val
-            }
+            },
             (ComponentValue::Tuple(a), ComponentValue::Tuple(b)) => a == b,
             (ComponentValue::Flags(a), ComponentValue::Flags(b)) => a == b,
             (ComponentValue::Enum(a), ComponentValue::Enum(b)) => a == b,
@@ -666,60 +708,60 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for Component
             ComponentValue::Bool(b) => {
                 writer.write_u8(1)?;
                 writer.write_u8(if *b { 1 } else { 0 })?;
-            }
+            },
             ComponentValue::S8(val) => {
                 writer.write_u8(2)?;
                 writer.write_i8(*val)?;
-            }
+            },
             ComponentValue::U8(val) => {
                 writer.write_u8(3)?;
                 writer.write_u8(*val)?;
-            }
+            },
             ComponentValue::S16(val) => {
                 writer.write_u8(4)?;
                 writer.write_i16_le(*val)?;
-            }
+            },
             ComponentValue::U16(val) => {
                 writer.write_u8(5)?;
                 writer.write_u16_le(*val)?;
-            }
+            },
             ComponentValue::S32(val) => {
                 writer.write_u8(6)?;
                 writer.write_i32_le(*val)?;
-            }
+            },
             ComponentValue::U32(val) => {
                 writer.write_u8(7)?;
                 writer.write_u32_le(*val)?;
-            }
+            },
             ComponentValue::S64(val) => {
                 writer.write_u8(8)?;
                 writer.write_i64_le(*val)?;
-            }
+            },
             ComponentValue::U64(val) => {
                 writer.write_u8(9)?;
                 writer.write_u64_le(*val)?;
-            }
+            },
             ComponentValue::F32(val) => {
                 writer.write_u8(10)?;
                 val.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::F64(val) => {
                 writer.write_u8(11)?;
                 val.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::Char(c) => {
                 // char is u32
                 writer.write_u8(12)?;
                 writer.write_u32_le(*c as u32)?;
-            }
+            },
             ComponentValue::String(s) => {
                 writer.write_u8(13)?;
                 s.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::List(items) => {
                 writer.write_u8(14)?;
                 items.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::FixedList(items, len) => {
                 writer.write_u8(15)?;
                 items.to_bytes_with_provider(writer, provider)?;
@@ -730,11 +772,11 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for Component
                 // BoundedVec likely serializes its own length, this u32 'len' might be extra.
                 // For now, let's serialize it as it's in the struct.
                 writer.write_u32_le(*len)?;
-            }
+            },
             ComponentValue::Record(fields) => {
                 writer.write_u8(16)?;
                 fields.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::Variant(name, opt_val_ref) => {
                 writer.write_u8(17)?;
                 name.to_bytes_with_provider(writer, provider)?;
@@ -742,57 +784,57 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for Component
                     Some(val_ref) => {
                         writer.write_u8(1)?;
                         val_ref.to_bytes_with_provider(writer, provider)?;
-                    }
+                    },
                     None => writer.write_u8(0)?,
                 }
-            }
+            },
             ComponentValue::Tuple(items) => {
                 writer.write_u8(18)?;
                 items.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::Flags(flags) => {
                 writer.write_u8(19)?;
                 flags.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::Enum(name) => {
                 writer.write_u8(20)?;
                 name.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             ComponentValue::Option(opt_val_ref) => {
                 writer.write_u8(21)?;
                 match opt_val_ref {
                     Some(val_ref) => {
                         writer.write_u8(1)?;
                         val_ref.to_bytes_with_provider(writer, provider)?;
-                    }
+                    },
                     None => writer.write_u8(0)?,
                 }
-            }
+            },
             ComponentValue::Result(res) => {
                 writer.write_u8(22)?;
                 match res {
                     Ok(ok_ref) => {
                         writer.write_u8(1)?;
                         ok_ref.to_bytes_with_provider(writer, provider)?;
-                    }
+                    },
                     Err(err_ref) => {
                         writer.write_u8(0)?;
                         err_ref.to_bytes_with_provider(writer, provider)?;
-                    }
+                    },
                 }
-            }
+            },
             ComponentValue::Own(handle) => {
                 writer.write_u8(23)?;
                 writer.write_u32_le(*handle)?;
-            }
+            },
             ComponentValue::Borrow(handle) => {
                 writer.write_u8(24)?;
                 writer.write_u32_le(*handle)?;
-            }
+            },
             ComponentValue::ErrorContext(items) => {
                 writer.write_u8(25)?;
                 items.to_bytes_with_provider(writer, provider)?;
-            }
+            },
         }
         Ok(())
     }
@@ -818,33 +860,34 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
             10 => {
                 let val = FloatBits32::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::F32(val))
-            }
+            },
             11 => {
                 let val = FloatBits64::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::F64(val))
-            }
+            },
             12 => {
                 let c_val = reader.read_u32_le()?;
-                Ok(ComponentValue::Char(core::char::from_u32(c_val).ok_or_else(|| {
-                    Error::new_static(
-                        ErrorCategory::Parse,
-                        codes::PARSE_ERROR,
-                        "Invalid char value",
-                    )
-                })?))
-            }
+                Ok(ComponentValue::Char(
+                    core::char::from_u32(c_val).ok_or_else(|| {
+                        Error::new_static(
+                            ErrorCategory::Parse,
+                            codes::PARSE_ERROR,
+                            "Invalid char value",
+                        )
+                    })?,
+                ))
+            },
             13 => {
                 // Binary std/no_std choice
                 #[cfg(feature = "std")]
                 {
                     let len = u32::from_bytes_with_provider(reader, provider)? as usize;
                     let mut bytes = vec![0u8; len];
-                    reader.read_exact(&mut bytes).map_err(|_e| {
-                        Error::parse_error("Failed to read string bytes")
-                    })?;
-                    let s = crate::prelude::String::from_utf8(bytes).map_err(|_e| {
-                        Error::parse_error("Invalid UTF-8 in string")
-                    })?;
+                    reader
+                        .read_exact(&mut bytes)
+                        .map_err(|_e| Error::parse_error("Failed to read string bytes"))?;
+                    let s = crate::prelude::String::from_utf8(bytes)
+                        .map_err(|_e| Error::parse_error("Invalid UTF-8 in string"))?;
                     Ok(ComponentValue::String(s))
                 }
                 #[cfg(not(any(feature = "std")))]
@@ -855,19 +898,19 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                         )?;
                     Ok(ComponentValue::String(s))
                 }
-            }
+            },
             14 => {
                 let items =
                     BoundedVec::<ValueRef, MAX_COMPONENT_LIST_ITEMS, P>::from_bytes_with_provider(
                         reader, provider,
                     )?;
                 Ok(ComponentValue::List(items))
-            }
+            },
             15 => {
                 let items = BoundedVec::<ValueRef, MAX_COMPONENT_FIXED_LIST_ITEMS, P>::from_bytes_with_provider(reader, provider)?;
                 let len = reader.read_u32_le()?;
                 Ok(ComponentValue::FixedList(items, len))
-            }
+            },
             16 => {
                 let fields = BoundedVec::<
                     (WasmName<MAX_WASM_NAME_LENGTH, P>, ValueRef),
@@ -875,7 +918,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::Record(fields))
-            }
+            },
             17 => {
                 let name = WasmName::<MAX_WASM_NAME_LENGTH, P>::from_bytes_with_provider(
                     reader, provider,
@@ -886,14 +929,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                     None
                 };
                 Ok(ComponentValue::Variant(name, opt_val_ref))
-            }
+            },
             18 => {
                 let items =
                     BoundedVec::<ValueRef, MAX_COMPONENT_TUPLE_ITEMS, P>::from_bytes_with_provider(
                         reader, provider,
                     )?;
                 Ok(ComponentValue::Tuple(items))
-            }
+            },
             19 => {
                 let flags = BoundedVec::<
                     (WasmName<MAX_WASM_NAME_LENGTH, P>, bool),
@@ -901,13 +944,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                     P,
                 >::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::Flags(flags))
-            }
+            },
             20 => {
                 let name = WasmName::<MAX_WASM_NAME_LENGTH, P>::from_bytes_with_provider(
                     reader, provider,
                 )?;
                 Ok(ComponentValue::Enum(name))
-            }
+            },
             21 => {
                 let opt_val_ref = if reader.read_u8()? == 1 {
                     Some(ValueRef::from_bytes_with_provider(reader, provider)?)
@@ -915,7 +958,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                     None
                 };
                 Ok(ComponentValue::Option(opt_val_ref))
-            }
+            },
             22 => {
                 let is_ok = reader.read_u8()? == 1;
                 if is_ok {
@@ -925,13 +968,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                     let err_ref = ValueRef::from_bytes_with_provider(reader, provider)?;
                     Ok(ComponentValue::Result(Err(err_ref)))
                 }
-            }
+            },
             23 => Ok(ComponentValue::Own(reader.read_u32_le()?)),
             24 => Ok(ComponentValue::Borrow(reader.read_u32_le()?)),
             25 => {
                 let items = BoundedVec::<ValueRef, MAX_COMPONENT_ERROR_CONTEXT_ITEMS, P>::from_bytes_with_provider(reader, provider)?;
                 Ok(ComponentValue::ErrorContext(items))
-            }
+            },
             _ => Err(SerializationError::InvalidFormat.into()),
         }
     }
@@ -955,19 +998,21 @@ pub fn serialize_component_values<
             ComponentValue::Bool(b) => {
                 writer.write_byte(0)?; // Type tag for bool
                 writer.write_byte(if *b { 1 } else { 0 })?;
-            }
+            },
             ComponentValue::U32(v) => {
                 writer.write_byte(1)?; // Type tag for u32
                 writer.write_all(&v.to_le_bytes())?;
-            }
+            },
             ComponentValue::S32(v) => {
                 writer.write_byte(2)?; // Type tag for s32
                 writer.write_all(&v.to_le_bytes())?;
-            }
+            },
             // Add more types as needed for intercept functionality
             _ => {
-                return Err(Error::runtime_execution_error("Unsupported component value type for serialization"));
-            }
+                return Err(Error::runtime_execution_error(
+                    "Unsupported component value type for serialization",
+                ));
+            },
         }
     }
     Ok(())
@@ -983,7 +1028,9 @@ where
     P: Default + Clone + PartialEq + Eq, // Added all required trait bounds
 {
     if types.is_empty() && !data.is_empty() {
-        return Err(Error::runtime_execution_error("Cannot deserialize values: data provided but no types specified"));
+        return Err(Error::runtime_execution_error(
+            "Cannot deserialize values: data provided but no types specified",
+        ));
     }
 
     let mut values = BoundedVec::<ComponentValue<P>, MAX_DESERIALIZED_VALUES, P>::new(P::default())
@@ -1019,17 +1066,21 @@ where
 
                 values.push(cv).map_err(Error::from)?;
                 offset += bytes_read;
-            }
+            },
             Err(e) => {
                 // Convert SerializationError to wrt_error::Error
-                return Err(Error::runtime_execution_error("Failed to deserialize component value"));
-            }
+                return Err(Error::runtime_execution_error(
+                    "Failed to deserialize component value",
+                ));
+            },
         }
     }
 
     if offset != data.len() {
         // If there's leftover data after deserializing all typed values
-        return Err(decoding_error("Unexpected extra data after deserializing all values"));
+        return Err(decoding_error(
+            "Unexpected extra data after deserializing all values",
+        ));
     }
 
     Ok(values)

@@ -17,14 +17,26 @@
 #[cfg(not(feature = "std"))]
 use core::fmt;
 #[cfg(not(feature = "std"))]
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{
+    AtomicU32,
+    Ordering,
+};
 #[cfg(feature = "std")]
 use std::fmt;
 #[cfg(feature = "std")]
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{
+    AtomicU32,
+    Ordering,
+};
 
 use crate::{
-    traits::{FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
+    traits::{
+        FromBytes,
+        ReadStream,
+        SerializationError,
+        ToBytes,
+        WriteStream,
+    },
     WrtResult,
 };
 
@@ -33,16 +45,16 @@ use crate::{
 #[repr(u8)]
 pub enum VerificationLevel {
     /// No verification checks are performed.
-    Off = 0,
+    Off       = 0,
     /// Basic verification checks (e.g., length checks).
-    Basic = 1,
+    Basic     = 1,
     /// Standard verification checks (reasonable default).
     #[default]
-    Standard = 2,
+    Standard  = 2,
     /// Full verification including checksums on every relevant operation.
-    Full = 3,
+    Full      = 3,
     /// Perform verification checks based on sampling.
-    Sampling = 4,
+    Sampling  = 4,
     /// Perform redundant checks in addition to sampling or full checks.
     Redundant = 5,
 }
@@ -73,7 +85,7 @@ impl VerificationLevel {
                 // Get the current counter value and increment it atomically
                 let current = COUNTER.fetch_add(1, Ordering::Relaxed);
                 (current % 256) < u32::from(operation_importance)
-            }
+            },
             Self::Full => true,
             Self::Redundant => true, // Redundant implies Full for standard verification checks
         }
@@ -201,7 +213,10 @@ impl Checksum {
     /// Create a checksum from a u32 value
     #[must_use]
     pub fn from_value(value: u32) -> Self {
-        Self { a: value & 0xFFFF, b: value >> 16 }
+        Self {
+            a: value & 0xFFFF,
+            b: value >> 16,
+        }
     }
 }
 

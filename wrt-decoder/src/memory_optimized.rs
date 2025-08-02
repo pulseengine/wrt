@@ -64,7 +64,7 @@ impl<P: MemoryProvider> MemoryPool<P> {
     /// Return a vector to the instruction pool
     #[cfg(feature = "std")]
     pub fn return_instruction_vector(&mut self, mut vec: std::vec::Vec<u8>) {
-        vec.clear);
+        vec.clear();
         if vec.capacity() <= 1024 {
             // Don't pool overly large vectors
             self.instruction_pools.push(vec);
@@ -80,7 +80,7 @@ impl<P: MemoryProvider> MemoryPool<P> {
     /// Return a vector to the string pool
     #[cfg(feature = "std")]
     pub fn return_string_buffer(&mut self, mut vec: std::vec::Vec<u8>) {
-        vec.clear);
+        vec.clear();
         if vec.capacity() <= 256 {
             // Don't pool overly large vectors
             self.string_pools.push(vec);

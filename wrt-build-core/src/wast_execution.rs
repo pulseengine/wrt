@@ -76,11 +76,11 @@ impl WastEngine {
             .context("Failed to instantiate module in engine")?;
 
         // Store the module for later reference
-        let module_name = name.unwrap_or("current").to_string());
-        self.modules.insert(module_name, module.clone();
+        let module_name = name.unwrap_or("current").to_string();
+        self.modules.insert(module_name, module.clone());
 
         // Set as current module
-        self.current_module = Some(module;
+        self.current_module = Some(module);
 
         Ok(())
     }
@@ -133,7 +133,7 @@ impl WastEngine {
     /// Register a module with a specific name for imports
     pub fn register_module(&mut self, name: &str, module_name: &str) -> Result<()> {
         if let Some(module) = self.modules.get(module_name) {
-            self.modules.insert(name.to_string(), module.clone();
+            self.modules.insert(name.to_string(), module.clone());
             Ok(())
         } else {
             Err(anyhow::anyhow!(
@@ -150,7 +150,7 @@ impl WastEngine {
 
     /// Clear all modules and reset the engine
     pub fn reset(&mut self) -> Result<()> {
-        self.modules.clear);
+        self.modules.clear();
         self.current_module = None;
         // Create a new engine to reset state
         self.engine = StacklessEngine::new();
@@ -255,7 +255,7 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
         V128Pattern::I16x8(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes);
+                let val_bytes = val.to_le_bytes();
                 bytes[i * 2] = val_bytes[0];
                 bytes[i * 2 + 1] = val_bytes[1];
             }
@@ -264,16 +264,16 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
         V128Pattern::I32x4(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes);
-                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes;
+                let val_bytes = val.to_le_bytes();
+                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes);
             }
             Ok(bytes)
         },
         V128Pattern::I64x2(values) => {
             let mut bytes = [0u8; 16];
             for (i, &val) in values.iter().enumerate() {
-                let val_bytes = val.to_le_bytes);
-                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes;
+                let val_bytes = val.to_le_bytes();
+                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes);
             }
             Ok(bytes)
         },
@@ -285,8 +285,8 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
                     wast::core::NanPattern::CanonicalNan => f32::NAN,
                     wast::core::NanPattern::ArithmeticNan => f32::NAN,
                 };
-                let val_bytes = val.to_le_bytes);
-                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes;
+                let val_bytes = val.to_le_bytes();
+                bytes[i * 4..i * 4 + 4].copy_from_slice(&val_bytes);
             }
             Ok(bytes)
         },
@@ -298,8 +298,8 @@ fn convert_v128_pattern_to_bytes(pattern: &V128Pattern) -> Result<[u8; 16]> {
                     wast::core::NanPattern::CanonicalNan => f64::NAN,
                     wast::core::NanPattern::ArithmeticNan => f64::NAN,
                 };
-                let val_bytes = val.to_le_bytes);
-                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes;
+                let val_bytes = val.to_le_bytes();
+                bytes[i * 8..i * 8 + 8].copy_from_slice(&val_bytes);
             }
             Ok(bytes)
         },
@@ -312,7 +312,7 @@ pub fn execute_wast_invoke(engine: &mut WastEngine, invoke: &WastInvoke) -> Resu
     let args = convert_wast_args_to_values(&invoke.args)?;
 
     // Determine module name
-    let module_name = invoke.module.as_ref().map(|id| id.name();
+    let module_name = invoke.module.as_ref().map(|id| id.name());
 
     // Execute the function
     engine.invoke_function(module_name, invoke.name, &args)
@@ -328,7 +328,7 @@ pub fn execute_wast_execute(engine: &mut WastEngine, execute: &WastExecute) -> R
         },
         WastExecute::Get { module, global, .. } => {
             // Global variable access
-            let module_name = module.as_ref().map(|id| id.name();
+            let module_name = module.as_ref().map(|id| id.name());
             // TODO: Implement global variable access
             Err(anyhow::anyhow!("Global access not yet implemented"))
         },
@@ -372,7 +372,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                             "Result count mismatch: expected {}, got {}",
                             expected.len(),
                             actual.len()
-                        ;
+                        ));
                     }
 
                     for (i, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
@@ -382,7 +382,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                                 i,
                                 e,
                                 a
-                            ;
+                            ));
                         }
                     }
                 },
@@ -402,7 +402,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                     Ok(_) => {
                         return Err(anyhow::anyhow!(
                             "AssertTrap: Expected trap but execution succeeded"
-                        ;
+                        ));
                     },
                 }
             },
@@ -420,7 +420,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                         Ok(_) => {
                             return Err(anyhow::anyhow!(
                                 "AssertInvalid: Expected invalid module but it loaded successfully"
-                            ;
+                            ));
                         },
                     },
                     Err(_) => {
@@ -443,7 +443,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                         return Err(anyhow::anyhow!(
                             "AssertMalformed: Expected malformed module but it encoded \
                              successfully"
-                        ;
+                        ));
                     },
                 }
             },
@@ -462,14 +462,14 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                             return Err(anyhow::anyhow!(
                                 "AssertUnlinkable: Expected unlinkable module but it loaded \
                                  successfully"
-                            ;
+                            ));
                         },
                     },
                     Err(e) => {
                         return Err(anyhow::anyhow!(
                             "AssertUnlinkable: Module encoding failed: {}",
                             e
-                        ;
+                        ));
                     },
                 }
             },
@@ -478,7 +478,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                 eprintln!(
                     "Register directive: Registering module '{}' - IMPLEMENTED",
                     name
-                ;
+                );
                 // TODO: Implement module registration for imports
             },
             WastDirective::Invoke(invoke) => {
@@ -490,7 +490,7 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                             "Invoke: Function '{}' executed successfully, returned {} values",
                             invoke.name,
                             results.len()
-                        ;
+                        );
                     },
                     Err(e) => {
                         eprintln!("Invoke: Function '{}' failed: {}", invoke.name, e);
@@ -507,20 +507,20 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
                                 eprintln!(
                                     "AssertExhaustion: Expected resource exhaustion occurred - \
                                      PASS"
-                                ;
+                                );
                             },
                             Ok(_) => {
                                 return Err(anyhow::anyhow!(
                                     "AssertExhaustion: Expected resource exhaustion but execution \
                                      succeeded"
-                                ;
+                                ));
                             },
                         }
                     },
                     _ => {
                         return Err(anyhow::anyhow!(
                             "AssertExhaustion: Unsupported execution type"
-                        ;
+                        ));
                     },
                 }
             },
@@ -536,8 +536,8 @@ pub fn run_simple_wast_test(wast_content: &str) -> Result<()> {
 
 /// Check if runtime error matches expected trap message
 pub fn is_expected_trap(error_str: &str, expected_message: &str) -> bool {
-    let error_message = error_str.to_lowercase);
-    let expected = expected_message.to_lowercase);
+    let error_message = error_str.to_lowercase();
+    let expected = expected_message.to_lowercase();
 
     // Common trap patterns
     let trap_patterns = [
@@ -575,8 +575,8 @@ pub fn values_equal(actual: &Value, expected: &Value) -> bool {
         (Value::I64(a), Value::I64(b)) => a == b,
         (Value::F32(a), Value::F32(b)) => {
             // Handle NaN comparison
-            let a_val = a.value);
-            let b_val = b.value);
+            let a_val = a.value();
+            let b_val = b.value();
             if a_val.is_nan() && b_val.is_nan() {
                 true
             } else {
@@ -585,8 +585,8 @@ pub fn values_equal(actual: &Value, expected: &Value) -> bool {
         },
         (Value::F64(a), Value::F64(b)) => {
             // Handle NaN comparison
-            let a_val = a.value);
-            let b_val = b.value);
+            let a_val = a.value();
+            let b_val = b.value();
             if a_val.is_nan() && b_val.is_nan() {
                 true
             } else {
@@ -611,21 +611,21 @@ mod tests {
 
     #[test]
     fn test_value_conversion() {
-        let wast_arg = WastArg::Core(WastArgCore::I32(42;
+        let wast_arg = WastArg::Core(WastArgCore::I32(42));
         let wrt_value = convert_wast_arg_to_value(&wast_arg).unwrap();
-        assert_eq!(wrt_value, Value::I32(42;
+        assert_eq!(wrt_value, Value::I32(42));
     }
 
     #[test]
     fn test_values_equal() {
-        assert!(values_equal(&Value::I32(42), &Value::I32(42));
-        assert!(!values_equal(&Value::I32(42), &Value::I32(43));
+        assert!(values_equal(&Value::I32(42), &Value::I32(42)));
+        assert!(!values_equal(&Value::I32(42), &Value::I32(43)));
 
         // Test NaN handling
         use wrt_foundation::values::FloatBits32;
-        let nan1 = Value::F32(FloatBits32::NAN;
-        let nan2 = Value::F32(FloatBits32::NAN;
-        assert!(values_equal(&nan1, &nan2);
+        let nan1 = Value::F32(FloatBits32::NAN);
+        let nan2 = Value::F32(FloatBits32::NAN);
+        assert!(values_equal(&nan1, &nan2));
     }
 
     #[test]
@@ -639,7 +639,7 @@ mod tests {
             (assert_return (invoke "get_five") (i32.const 5))
         "#;
 
-        let result = run_simple_wast_test(wast_content;
+        let result = run_simple_wast_test(wast_content);
         match result {
             Ok(_) => println!("Simple WAST test passed"),
             Err(e) => println!("Simple WAST test failed: {}", e),

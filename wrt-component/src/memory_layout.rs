@@ -140,7 +140,7 @@ fn calculate_tuple_layout(types: &[FormatValType<ComponentProvider>]) -> MemoryL
 /// Calculate layout for a variant type
 fn calculate_variant_layout(cases: &[(String, Option<FormatValType<ComponentProvider>>)]) -> MemoryLayout {
     // Discriminant size based on number of cases
-    let discriminant_size = discriminant_size(cases.len);
+    let discriminant_size = discriminant_size(cases.len();
     let discriminant_alignment = discriminant_size;
 
     // Find the largest payload

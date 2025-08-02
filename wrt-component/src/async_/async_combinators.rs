@@ -215,7 +215,7 @@ impl AsyncCombinators {
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
-        let futures_count = futures.len);
+        let futures_count = futures.len();
         
         let combinator_type = CombinatorType::Join {
             futures,
@@ -391,7 +391,7 @@ impl AsyncCombinators {
         }
 
         let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
-        let futures_count = futures.len);
+        let futures_count = futures.len();
         
         let combinator_type = CombinatorType::TryJoin {
             futures,

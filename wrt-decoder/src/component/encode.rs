@@ -602,7 +602,7 @@ mod std_encoding {
             },
             wrt_format::component::FormatValType::Record(fields) => {
                 // Create new vectors of fields to avoid references to temporaries
-                let mut new_fields = Vec::with_capacity(fields.len);
+                let mut new_fields = Vec::with_capacity(fields.len();
                 for (name, field_type) in fields {
                     let new_name = name.clone();
                     let new_field_type = format_val_type_to_val_type(field_type;
@@ -612,7 +612,7 @@ mod std_encoding {
             },
             wrt_format::component::FormatValType::Variant(cases) => {
                 // Create new vectors of cases to avoid references to temporaries
-                let mut new_cases = Vec::with_capacity(cases.len);
+                let mut new_cases = Vec::with_capacity(cases.len();
                 for (name, case_type) in cases {
                     let new_name = name.clone();
                     let new_case_type = case_type.as_ref().map(format_val_type_to_val_type);
@@ -689,8 +689,8 @@ mod std_encoding {
             let binary = encode_component(&component).unwrap();
 
             // Check magic and version
-            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
-            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION;
+            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC);
+            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION);
 
             // Should only have magic and version
             assert_eq!(binary.len(), 8;
@@ -704,8 +704,8 @@ mod std_encoding {
             let binary = encode_component(&component).unwrap();
 
             // Check magic and version
-            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
-            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION;
+            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC);
+            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION);
 
             // Should have name section
             assert!(binary.len() > 8);
@@ -728,8 +728,8 @@ mod std_encoding {
             let binary = encode_component(&component).unwrap();
 
             // Check magic and version
-            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
-            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION;
+            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC);
+            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION);
 
             // Should have core instance section
             assert!(binary.len() > 8);
@@ -751,8 +751,8 @@ mod std_encoding {
             let binary = encode_component(&component).unwrap();
 
             // Check magic and version
-            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
-            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION;
+            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC);
+            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION);
 
             // Should have import section
             assert!(binary.len() > 8);
@@ -774,8 +774,8 @@ mod std_encoding {
             let binary = encode_component(&component).unwrap();
 
             // Check magic and version
-            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC;
-            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION;
+            assert_eq!(&binary[0..4], binary::COMPONENT_MAGIC);
+            assert_eq!(&binary[4..8], binary::COMPONENT_VERSION);
 
             // Should have export section
             assert!(binary.len() > 8);

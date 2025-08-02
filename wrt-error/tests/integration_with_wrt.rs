@@ -30,12 +30,12 @@ mod tests {
 
     #[test]
     fn test_result_operations() {
-        let result: Result<()> = Ok();
+        let result: Result<()> = Ok(());
         assert!(result.is_ok());
-        result.unwrap()); // Should not panic
+        result.unwrap(); // Should not panic
 
-        let error_result: Result<()> = Err(Error::runtime_error("Test error";
-        assert!(error_result.is_err();
+        let error_result: Result<()> = Err(Error::runtime_error("Test error"));
+        assert!(error_result.is_err());
         // Binary std/no_std choice
         // Binary std/no_std choice
         // #[cfg(feature = "std")]
@@ -56,21 +56,21 @@ mod tests {
             // let _mem_error = kinds::MemoryAccessOutOfBoundsError { address: 100, length:
             // 32 }; // Removed this line In std mode, plain format! is from
             // std. Provide a static string for Error::memory_error
-            let error = Error::memory_error("Test memory access out of bounds: addr 100, len 32";
-            assert!(error.is_memory_error();
+            let error = Error::memory_error("Test memory access out of bounds: addr 100, len 32");
+            assert!(error.is_memory_error());
             // Optionally, assert the message if it needs to be specific and static
             assert_eq!(
                 error.message,
                 "Test memory access out of bounds: addr 100, len 32"
-            ;
+            );
         }
 
         #[test]
         fn test_error_conversion_division() {
-            let div_error = kinds::division_by_zero_error);
-            let error = Error::from(div_error;
+            let div_error = kinds::division_by_zero_error();
+            let error = Error::from(div_error);
             // In std mode, plain format! is from std.
-            assert!(format!("{error}").contains("Division by zero");
+            assert!(format!("{error}").contains("Division by zero"));
         }
     }
 }

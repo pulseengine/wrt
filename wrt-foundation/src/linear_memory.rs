@@ -15,33 +15,53 @@
 use core::{
     fmt::Debug,
     ptr::NonNull,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{
+        AtomicUsize,
+        Ordering,
+    },
 };
 
-use wrt_platform::memory::{PageAllocator, WASM_PAGE_SIZE};
+use wrt_platform::memory::{
+    PageAllocator,
+    WASM_PAGE_SIZE,
+};
 
 use crate::{
     prelude::*,
-    safe_memory::{Allocator, Provider, SafeMemoryHandler, Slice, SliceMut, Stats},
+    safe_memory::{
+        Allocator,
+        Provider,
+        SafeMemoryHandler,
+        Slice,
+        SliceMut,
+        Stats,
+    },
     verification::VerificationLevel,
     WrtResult,
 };
 
 /// ASIL-D safe memory operations module
-/// 
+///
 /// This module provides safe wrappers around unsafe memory operations,
 /// centralizing all unsafe code with comprehensive safety documentation.
 mod safe_memory_ops {
     use core::ptr::NonNull;
-    use crate::{Error, ErrorCategory, codes, Result};
+
+    use crate::{
+        codes,
+        Error,
+        ErrorCategory,
+        Result,
+    };
 
     /// Safely create a slice from verified memory bounds
-    /// 
+    ///
     /// # Safety Requirements
-    /// - base_ptr must point to a valid memory region of at least offset + len bytes
+    /// - base_ptr must point to a valid memory region of at least offset + len
+    ///   bytes
     /// - The memory region must remain valid for the returned slice's lifetime
     /// - offset + len must not overflow usize
-    /// 
+    ///
     /// # Arguments
     /// - base_ptr: Verified non-null pointer to the start of memory region
     /// - offset: Byte offset into the memory region (pre-verified)
@@ -55,20 +75,19 @@ mod safe_memory_ops {
         // The base_ptr is guaranteed to be non-null and valid.
         // offset + len has been verified to be within the allocated region.
         // The lifetime 'a is tied to the Provider that owns this memory.
-        let slice = unsafe {
-            core::slice::from_raw_parts(base_ptr.as_ptr().add(offset), len)
-        };
+        let slice = unsafe { core::slice::from_raw_parts(base_ptr.as_ptr().add(offset), len) };
         Ok(slice)
     }
 
     /// Safely create a mutable slice from verified memory bounds
-    /// 
+    ///
     /// # Safety Requirements  
-    /// - base_ptr must point to a valid memory region of at least offset + len bytes
+    /// - base_ptr must point to a valid memory region of at least offset + len
+    ///   bytes
     /// - The memory region must remain valid for the returned slice's lifetime
     /// - offset + len must not overflow usize
     /// - Caller must have exclusive access to the memory region
-    /// 
+    ///
     /// # Arguments
     /// - base_ptr: Verified non-null pointer to the start of memory region
     /// - offset: Byte offset into the memory region (pre-verified)
@@ -82,24 +101,22 @@ mod safe_memory_ops {
         // The base_ptr is guaranteed to be non-null and valid.
         // offset + len has been verified to be within the allocated region.
         // The caller has exclusive access (&mut self) ensuring no data races.
-        let slice = unsafe {
-            core::slice::from_raw_parts_mut(base_ptr.as_ptr().add(offset), len)
-        };
+        let slice = unsafe { core::slice::from_raw_parts_mut(base_ptr.as_ptr().add(offset), len) };
         Ok(slice)
     }
 
     /// Safely copy memory within verified bounds
-    /// 
+    ///
     /// # Safety Requirements
     /// - base_ptr must point to a valid memory region
     /// - src_offset + len and dst_offset + len must be within bounds
     /// - No overflow in offset calculations
     /// - Memory region must be valid for both read and write access
-    /// 
+    ///
     /// # Arguments
     /// - base_ptr: Verified non-null pointer to the start of memory region
     /// - src_offset: Source offset (pre-verified)
-    /// - dst_offset: Destination offset (pre-verified)  
+    /// - dst_offset: Destination offset (pre-verified)
     /// - len: Number of bytes to copy (pre-verified)
     pub(super) fn safe_copy_within_verified_bounds(
         base_ptr: NonNull<u8>,
@@ -157,16 +174,16 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Allocator for PageAllocat
 /// a platform-specific `PageAllocator`.
 #[derive(Debug)]
 pub struct PalMemoryProvider<A: PageAllocator + Send + Sync + Clone + 'static> {
-    allocator: A,
-    adapter: PageAllocatorAdapter<A>,
-    base_ptr: Option<NonNull<u8>>,
-    current_pages: u32,
-    maximum_pages: Option<u32>,
+    allocator:               A,
+    adapter:                 PageAllocatorAdapter<A>,
+    base_ptr:                Option<NonNull<u8>>,
+    current_pages:           u32,
+    maximum_pages:           Option<u32>,
     initial_allocation_size: usize, // Binary std/no_std choice
-    verification_level: VerificationLevel,
+    verification_level:      VerificationLevel,
     // Binary std/no_std choice
-    access_count: AtomicUsize,
-    max_access_size: AtomicUsize,
+    access_count:            AtomicUsize,
+    max_access_size:         AtomicUsize,
 }
 
 // SAFETY: The PalMemoryProvider is Send if the PageAllocator A is Send.
@@ -187,15 +204,15 @@ unsafe impl<A: PageAllocator + Send + Sync + Clone + 'static> Sync for PalMemory
 impl<A: PageAllocator + Send + Sync + Clone + 'static> Clone for PalMemoryProvider<A> {
     fn clone(&self) -> Self {
         Self {
-            allocator: self.allocator.clone(),
-            adapter: self.adapter.clone(),
-            base_ptr: self.base_ptr,
-            current_pages: self.current_pages,
-            maximum_pages: self.maximum_pages,
+            allocator:               self.allocator.clone(),
+            adapter:                 self.adapter.clone(),
+            base_ptr:                self.base_ptr,
+            current_pages:           self.current_pages,
+            maximum_pages:           self.maximum_pages,
             initial_allocation_size: self.initial_allocation_size,
-            verification_level: self.verification_level,
-            access_count: AtomicUsize::new(self.access_count.load(Ordering::Relaxed)),
-            max_access_size: AtomicUsize::new(self.max_access_size.load(Ordering::Relaxed)),
+            verification_level:      self.verification_level,
+            access_count:            AtomicUsize::new(self.access_count.load(Ordering::Relaxed)),
+            max_access_size:         AtomicUsize::new(self.max_access_size.load(Ordering::Relaxed)),
         }
     }
 }
@@ -265,7 +282,8 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "Memory not initialized"));
+                "Memory not initialized",
+            ));
         };
 
         let old_pages = self.current_pages;
@@ -278,7 +296,8 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::CAPACITY_EXCEEDED,
-                    "Growth would exceed maximum page limit"));
+                    "Growth would exceed maximum page limit",
+                ));
             }
         }
 
@@ -306,11 +325,15 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
 }
 
 impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryProvider<A> {
+    type Allocator = PageAllocatorAdapter<A>;
+
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
         use safe_memory_ops::*;
         self.verify_access(offset, len)?;
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error("Memory not initialized: base pointer is null"));
+            return Err(Error::runtime_execution_error(
+                "Memory not initialized: base pointer is null",
+            ));
         };
         self.track_access(offset, len);
         // Use ASIL-D safe memory operation wrapper
@@ -322,12 +345,15 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         self.verify_access(offset, data.len())?;
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error("Cannot write: memory not initialized"));
+            return Err(Error::runtime_execution_error(
+                "Cannot write: memory not initialized",
+            ));
         };
         self.track_access(offset, data.len());
-        // Use ASIL-D safe memory operation wrapper  
-        let dest_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, data.len())
-            .map_err(|_| Error::memory_access_out_of_bounds("Invalid memory write bounds"))?;
+        // Use ASIL-D safe memory operation wrapper
+        let dest_slice =
+            safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, data.len())
+                .map_err(|_| Error::memory_access_out_of_bounds("Invalid memory write bounds"))?;
         dest_slice.copy_from_slice(data);
         Ok(())
     }
@@ -339,7 +365,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         })?;
 
         if end_offset > current_byte_size {
-            return Err(Error::memory_access_out_of_bounds("Access beyond memory bounds"));
+            return Err(Error::memory_access_out_of_bounds(
+                "Access beyond memory bounds",
+            ));
         }
         Ok(())
     }
@@ -360,7 +388,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         // and our view (pages, ptr) is consistent. Deeper integrity (checksums)
         // is handled by Slice/SliceMut.
         if self.base_ptr.is_none() && self.current_pages > 0 {
-            return Err(Error::runtime_execution_error("Memory consistency error: pages allocated but base pointer null"));
+            return Err(Error::runtime_execution_error(
+                "Memory consistency error: pages allocated but base pointer null",
+            ));
         }
         // Binary std/no_std choice
         // checks.
@@ -377,9 +407,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 
     fn memory_stats(&self) -> Stats {
         Stats {
-            total_size: self.size(),
-            access_count: self.access_count.load(Ordering::Relaxed),
-            unique_regions: 0, // Not tracked by this basic provider yet
+            total_size:      self.size(),
+            access_count:    self.access_count.load(Ordering::Relaxed),
+            unique_regions:  0, // Not tracked by this basic provider yet
             max_access_size: self.max_access_size.load(Ordering::Relaxed),
         }
     }
@@ -390,12 +420,19 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
             return Err(Error::new(
                 ErrorCategory::Core,
                 codes::INITIALIZATION_ERROR,
-                "Memory not initialized"));
+                "Memory not initialized",
+            ));
         };
         self.track_access(offset, len);
         // Use ASIL-D safe memory operation wrapper
-        let data_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(base_ptr, offset, len)
-            .map_err(|_| Error::memory_access_out_of_bounds("Failed to create safe mutable slice from verified bounds"))?;
+        let data_slice = safe_memory_ops::safe_slice_mut_from_verified_bounds(
+            base_ptr, offset, len,
+        )
+        .map_err(|_| {
+            Error::memory_access_out_of_bounds(
+                "Failed to create safe mutable slice from verified bounds",
+            )
+        })?;
         SliceMut::with_verification_level(data_slice, self.verification_level)
     }
 
@@ -413,7 +450,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         })?;
 
         let Some(base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error("Cannot copy: memory not initialized"));
+            return Err(Error::runtime_execution_error(
+                "Cannot copy: memory not initialized",
+            ));
         };
 
         // Track access before performing the copy
@@ -424,7 +463,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 
         // Use ASIL-D safe memory operation wrapper
         safe_memory_ops::safe_copy_within_verified_bounds(base_ptr, src_offset, dst_offset, len)
-            .map_err(|_| Error::memory_access_out_of_bounds("Memory copy operation out of bounds"))?;
+            .map_err(|_| {
+                Error::memory_access_out_of_bounds("Memory copy operation out of bounds")
+            })?;
         Ok(())
     }
 
@@ -432,7 +473,9 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         let current_size_bytes = self.size();
         if byte_offset > current_size_bytes {
             if byte_offset > self.capacity() {
-                return Err(Error::runtime_execution_error("Requested byte offset exceeds memory capacity"));
+                return Err(Error::runtime_execution_error(
+                    "Requested byte offset exceeds memory capacity",
+                ));
             }
             // Calculate additional pages needed. Ceiling division.
             let additional_bytes_needed = byte_offset - current_size_bytes;
@@ -449,13 +492,12 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::INVALID_STATE,
-                    "Memory growth succeeded but size is still insufficient"));
+                    "Memory growth succeeded but size is still insufficient",
+                ));
             }
         }
         Ok(())
     }
-
-    type Allocator = PageAllocatorAdapter<A>;
 
     fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
         self.get_allocator().allocate(layout)
@@ -511,57 +553,58 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Drop for PalMemoryProvide
 /// Kani verification proofs for safe memory operations
 #[cfg(kani)]
 mod kani_proofs {
-    use super::safe_memory_ops::*;
     use core::ptr::NonNull;
-    
+
+    use super::safe_memory_ops::*;
+
     /// Verify that safe_slice_from_verified_bounds never creates invalid slices
     #[kani::proof]
     fn verify_safe_slice_bounds() {
         let size: usize = kani::any_where(|&s| s > 0 && s <= 4096);
         let offset: usize = kani::any_where(|&o| o < size);
         let len: usize = kani::any_where(|&l| l <= size - offset);
-        
+
         // Simulate valid memory allocation
         let mut memory = vec![0u8; size];
         let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap();
-        
+
         // This should never panic or create invalid slices
         let result = safe_slice_from_verified_bounds(base_ptr, offset, len);
-        
+
         if let Ok(slice) = result {
             // Verify slice properties
             assert!(slice.len() == len);
             assert!(slice.as_ptr() as usize >= base_ptr.as_ptr() as usize + offset);
         }
     }
-    
+
     /// Verify that safe_slice_mut_from_verified_bounds maintains memory safety
     #[kani::proof]
     fn verify_safe_slice_mut_bounds() {
         let size: usize = kani::any_where(|&s| s > 0 && s <= 4096);
         let offset: usize = kani::any_where(|&o| o < size);
         let len: usize = kani::any_where(|&l| l <= size - offset);
-        
+
         // Simulate valid memory allocation
         let mut memory = vec![0u8; size];
         let base_ptr = NonNull::new(memory.as_mut_ptr()).unwrap();
-        
+
         // This should never panic or create invalid slices
         let result = safe_slice_mut_from_verified_bounds(base_ptr, offset, len);
-        
+
         if let Ok(slice) = result {
             // Verify slice properties
             assert!(slice.len() == len);
             assert!(slice.as_ptr() as usize >= base_ptr.as_ptr() as usize + offset);
         }
     }
-    
+
     /// Verify memory bounds checking never overflows
     #[kani::proof]
     fn verify_no_overflow_in_bounds_check() {
         let offset: usize = kani::any();
         let len: usize = kani::any();
-        
+
         // Verify that overflow detection works correctly
         if let Some(end) = offset.checked_add(len) {
             assert!(end >= offset);

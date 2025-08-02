@@ -98,7 +98,7 @@ impl TextSearcher {
         };
 
         for entry in walker.into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path);
+            let path = entry.path();
 
             // Skip directories
             if !path.is_file() {
@@ -145,7 +145,7 @@ impl TextSearcher {
             // Only include as a violation if it lacks both safety documentation and allow
             // attribute
             if !has_safety_comment && !has_allow_attribute {
-                filtered_matches.push(m.clone();
+                filtered_matches.push(m.clone());
             }
 
             i += 1;
@@ -185,13 +185,13 @@ impl TextSearcher {
                         && unsafe_match.line_number.saturating_sub(prev_match.line_number) <= 5
                     {
                         // Check for SAFETY comment patterns
-                        let line = prev_match.line_content.trim);
+                        let line = prev_match.line_content.trim();
                         if line.contains("SAFETY:")
                             || line.contains("Safety:")
                             || line.contains("# Safety")
                             || line.contains("## Safety")
                         {
-                            return Ok(true;
+                            return Ok(true);
                         }
                     }
                 }
@@ -202,20 +202,20 @@ impl TextSearcher {
         // This handles cases where we might not have all lines in our matches
         if let Ok(content) = fs::read_to_string(&unsafe_match.file_path) {
             let lines: Vec<&str> = content.lines().collect();
-            let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1;
+            let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1);
 
             // Look up to 5 lines before the unsafe block
             for offset in 1..=5 {
                 if unsafe_line_idx >= offset {
                     let prev_line_idx = unsafe_line_idx - offset;
                     if prev_line_idx < lines.len() {
-                        let line = lines[prev_line_idx].trim);
+                        let line = lines[prev_line_idx].trim();
                         if line.contains("SAFETY:")
                             || line.contains("Safety:")
                             || line.contains("# Safety")
                             || line.contains("## Safety")
                         {
-                            return Ok(true;
+                            return Ok(true);
                         }
                     }
                 }
@@ -235,22 +235,22 @@ impl TextSearcher {
 
         // Look for #[allow(unsafe_code)] in the same line or previous lines
         if unsafe_match.line_content.contains("#[allow(unsafe_code)]") {
-            return Ok(true;
+            return Ok(true);
         }
 
         // Check previous lines for the attribute
         if let Ok(content) = fs::read_to_string(&unsafe_match.file_path) {
             let lines: Vec<&str> = content.lines().collect();
-            let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1;
+            let unsafe_line_idx = unsafe_match.line_number.saturating_sub(1);
 
             // Look up to 3 lines before for the attribute
             for offset in 1..=3 {
                 if unsafe_line_idx >= offset {
                     let prev_line_idx = unsafe_line_idx - offset;
                     if prev_line_idx < lines.len() {
-                        let line = lines[prev_line_idx].trim);
+                        let line = lines[prev_line_idx].trim();
                         if line.contains("#[allow(unsafe_code)]") {
-                            return Ok(true;
+                            return Ok(true);
                         }
                     }
                 }
@@ -274,7 +274,7 @@ impl TextSearcher {
 
     /// Check if a file should be included based on patterns
     fn should_include_file(&self, path: &Path) -> bool {
-        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("";
+        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         // Check exclude patterns first
         for exclude_pattern in &self.options.exclude_patterns {
@@ -305,7 +305,7 @@ impl TextSearcher {
 
         if pattern.starts_with("*.") {
             let extension = &pattern[2..];
-            return file_name.ends_with(extension;
+            return file_name.ends_with(extension);
         }
 
         if pattern.contains('*') {
@@ -313,7 +313,7 @@ impl TextSearcher {
             // For now, handle simple cases
             let parts: Vec<&str> = pattern.split('*').collect();
             if parts.len() == 2 {
-                return file_name.starts_with(parts[0]) && file_name.ends_with(parts[1];
+                return file_name.starts_with(parts[0]) && file_name.ends_with(parts[1]);
             }
         }
 
@@ -359,7 +359,7 @@ impl TextSearcher {
                     line_content: line.to_string(),
                     is_comment: self.is_comment_line(line),
                     is_test_context: in_test_module || self.is_test_function(line),
-                };
+                });
             }
         }
 
@@ -368,7 +368,7 @@ impl TextSearcher {
 
     /// Check if a line is a comment
     fn is_comment_line(&self, line: &str) -> bool {
-        let trimmed = line.trim);
+        let trimmed = line.trim();
         trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*")
     }
 
@@ -392,7 +392,7 @@ pub fn count_production_matches(matches: &[SearchMatch]) -> usize {
 pub fn format_matches(matches: &[SearchMatch], max_display: Option<usize>) -> String {
     let mut output = String::new();
 
-    let display_count = max_display.unwrap_or(matches.len()).min(matches.len);
+    let display_count = max_display.unwrap_or(matches.len()).min(matches.len());
 
     for (i, search_match) in matches.iter().take(display_count).enumerate() {
         output.push_str(&format!(
@@ -400,10 +400,10 @@ pub fn format_matches(matches: &[SearchMatch], max_display: Option<usize>) -> St
             search_match.file_path.display(),
             search_match.line_number,
             search_match.line_content.trim()
-        ;
+        ));
 
         if i >= 9 && matches.len() > 10 {
-            output.push_str(&format!("... and {} more matches\n", matches.len() - 10;
+            output.push_str(&format!("... and {} more matches\n", matches.len() - 10));
             break;
         }
     }
@@ -421,38 +421,38 @@ mod tests {
 
     #[test]
     fn test_search_options_default() {
-        let options = SearchOptions::default());
+        let options = SearchOptions::default();
         assert!(options.recursive);
         assert!(options.case_sensitive);
-        assert_eq!(options.include_patterns, vec!["*.rs"];
+        assert_eq!(options.include_patterns, vec!["*.rs"]);
     }
 
     #[test]
     fn test_glob_pattern_matching() {
         let searcher = TextSearcher::new();
 
-        assert!(searcher.matches_glob_pattern("test.rs", "*.rs");
-        assert!(searcher.matches_glob_pattern("main.rs", "*.rs");
-        assert!(!searcher.matches_glob_pattern("test.txt", "*.rs");
-        assert!(searcher.matches_glob_pattern("anything", "*");
+        assert!(searcher.matches_glob_pattern("test.rs", "*.rs"));
+        assert!(searcher.matches_glob_pattern("main.rs", "*.rs"));
+        assert!(!searcher.matches_glob_pattern("test.txt", "*.rs"));
+        assert!(searcher.matches_glob_pattern("anything", "*"));
     }
 
     #[test]
     fn test_comment_detection() {
         let searcher = TextSearcher::new();
 
-        assert!(searcher.is_comment_line("// This is a comment");
-        assert!(searcher.is_comment_line("    // Indented comment");
-        assert!(searcher.is_comment_line("/* Block comment */");
-        assert!(searcher.is_comment_line("    * Documentation");
-        assert!(!searcher.is_comment_line("let x = 5); // Not a comment line";
-        assert!(!searcher.is_comment_line("fn test() {}");
+        assert!(searcher.is_comment_line("// This is a comment"));
+        assert!(searcher.is_comment_line("    // Indented comment"));
+        assert!(searcher.is_comment_line("/* Block comment */"));
+        assert!(searcher.is_comment_line("    * Documentation"));
+        assert!(!searcher.is_comment_line("let x = 5; // Not a comment line"));
+        assert!(!searcher.is_comment_line("fn test() {}"));
     }
 
     #[test]
     fn test_search_in_temp_file() -> Result<(), Box<dyn std::error::Error>> {
         let temp_dir = TempDir::new()?;
-        let file_path = temp_dir.path().join("test.rs";
+        let file_path = temp_dir.path().join("test.rs");
 
         fs::write(
             &file_path,
@@ -462,7 +462,7 @@ fn main() {
         println!("Hello");
     }
     // unsafe comment
-    panic!("error";
+    panic!("error");
     let x = some_option.unwrap();
 }
 "#,

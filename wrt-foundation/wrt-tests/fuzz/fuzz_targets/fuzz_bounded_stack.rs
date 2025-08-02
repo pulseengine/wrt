@@ -77,7 +77,7 @@ fuzz_target!(|input: FuzzInput| {
                 Operation::CheckCapacity => {
                     let _ = stack.available_capacity);
                     let _ = stack.is_full);
-                    let _ = stack.len);
+                    let _ = stack.len();
                 }
                 Operation::ManipulateInternals { operation_type, value } => {
                     // This simulates corruption or direct manipulation

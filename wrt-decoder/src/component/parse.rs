@@ -82,7 +82,7 @@ mod std_parsing {
     pub fn parse_core_module_section(bytes: &[u8]) -> Result<(Vec<Module>, usize)> {
         // Read a vector of modules
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut modules = Vec::with_capacity(count as usize;
+        let mut modules = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read a module binary size
@@ -111,7 +111,7 @@ mod std_parsing {
     pub fn parse_core_instance_section(bytes: &[u8]) -> Result<(Vec<CoreInstance>, usize)> {
         // Read a vector of core instances
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut instances = Vec::with_capacity(count as usize;
+        let mut instances = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Parse the instance expression
@@ -149,7 +149,7 @@ mod std_parsing {
                 let (args_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut args = Vec::with_capacity(args_count as usize;
+                let mut args = Vec::with_capacity(args_count as usize);
                 for _ in 0..args_count {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
@@ -176,7 +176,7 @@ mod std_parsing {
                 let (exports_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(exports_count as usize;
+                let mut exports = Vec::with_capacity(exports_count as usize);
                 for _ in 0..exports_count {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
@@ -236,7 +236,7 @@ mod std_parsing {
     pub fn parse_core_type_section(bytes: &[u8]) -> Result<(Vec<CoreType>, usize)> {
         // Read a vector of core types
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut types = Vec::with_capacity(count as usize;
+        let mut types = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read type definition
@@ -272,7 +272,7 @@ mod std_parsing {
                 let (param_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut params = Vec::with_capacity(param_count as usize;
+                let mut params = Vec::with_capacity(param_count as usize);
                 for _ in 0..param_count {
                     // Read value type
                     if offset >= bytes.len() {
@@ -302,7 +302,7 @@ mod std_parsing {
                 let (result_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut results = Vec::with_capacity(result_count as usize;
+                let mut results = Vec::with_capacity(result_count as usize);
                 for _ in 0..result_count {
                     // Read value type
                     if offset >= bytes.len() {
@@ -340,7 +340,7 @@ mod std_parsing {
                 let (import_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut imports = Vec::with_capacity(import_count as usize;
+                let mut imports = Vec::with_capacity(import_count as usize);
                 for _ in 0..import_count {
                     // Read module name
                     let (module_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
@@ -576,7 +576,7 @@ mod std_parsing {
     pub fn parse_component_section(bytes: &[u8]) -> Result<(Vec<Component>, usize)> {
         // Read a vector of components
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut components = Vec::with_capacity(count as usize;
+        let mut components = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read component size
@@ -613,7 +613,7 @@ mod std_parsing {
     pub fn parse_instance_section(bytes: &[u8]) -> Result<(Vec<Instance>, usize)> {
         // Read a vector of instances
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut instances = Vec::with_capacity(count as usize;
+        let mut instances = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Parse the instance expression
@@ -649,7 +649,7 @@ mod std_parsing {
                 let (args_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut args = Vec::with_capacity(args_count as usize;
+                let mut args = Vec::with_capacity(args_count as usize);
                 for _ in 0..args_count {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
@@ -688,7 +688,7 @@ mod std_parsing {
                 let (exports_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(exports_count as usize;
+                let mut exports = Vec::with_capacity(exports_count as usize);
                 for _ in 0..exports_count {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
@@ -745,7 +745,7 @@ mod std_parsing {
     pub fn parse_canon_section(bytes: &[u8]) -> Result<(Vec<Canon>, usize)> {
         // Read a vector of canon operations
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut canons = Vec::with_capacity(count as usize;
+        let mut canons = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read canon operation
@@ -1024,7 +1024,7 @@ mod std_parsing {
     pub fn parse_component_type_section(bytes: &[u8]) -> Result<(Vec<ComponentType>, usize)> {
         // Read a vector of component types
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut types = Vec::with_capacity(count as usize;
+        let mut types = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read type definition
@@ -1060,7 +1060,7 @@ mod std_parsing {
                 let (import_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut imports = Vec::with_capacity(import_count as usize;
+                let mut imports = Vec::with_capacity(import_count as usize);
                 for _ in 0..import_count {
                     // Read namespace
                     let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
@@ -1135,7 +1135,7 @@ mod std_parsing {
                 let (param_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut params = Vec::with_capacity(param_count as usize;
+                let mut params = Vec::with_capacity(param_count as usize);
                 for _ in 0..param_count {
                     // Read parameter name
                     let (name, bytes_read) = binary::read_string(bytes, offset)?;
@@ -1152,7 +1152,7 @@ mod std_parsing {
                 let (result_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut results = Vec::with_capacity(result_count as usize;
+                let mut results = Vec::with_capacity(result_count as usize);
                 for _ in 0..result_count {
                     // Read result type
                     let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
@@ -1408,7 +1408,7 @@ mod std_parsing {
                 let (param_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut params = Vec::with_capacity(param_count as usize;
+                let mut params = Vec::with_capacity(param_count as usize);
                 for _ in 0..param_count {
                     // Read parameter name
                     let (name, bytes_read) = binary::read_string(bytes, offset)?;
@@ -1425,7 +1425,7 @@ mod std_parsing {
                 let (result_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut results = Vec::with_capacity(result_count as usize;
+                let mut results = Vec::with_capacity(result_count as usize);
                 for _ in 0..result_count {
                     // Read result type
                     let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
@@ -1504,7 +1504,7 @@ mod std_parsing {
                 let (import_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut imports = Vec::with_capacity(import_count as usize;
+                let mut imports = Vec::with_capacity(import_count as usize);
                 for _ in 0..import_count {
                     // Read namespace
                     let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
@@ -1806,7 +1806,7 @@ mod std_parsing {
     pub fn parse_import_section(bytes: &[u8]) -> Result<(Vec<Import>, usize)> {
         // Read a vector of imports
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut imports = Vec::with_capacity(count as usize;
+        let mut imports = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read import name
@@ -1909,7 +1909,7 @@ mod std_parsing {
     pub fn parse_export_section(bytes: &[u8]) -> Result<(Vec<Export>, usize)> {
         // Read a vector of exports
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut exports = Vec::with_capacity(count as usize;
+        let mut exports = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read export name
@@ -2029,7 +2029,7 @@ mod std_parsing {
     pub fn parse_value_section(bytes: &[u8]) -> Result<(Vec<Value>, usize)> {
         // Read a vector of values
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut values = Vec::with_capacity(count as usize;
+        let mut values = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read value type
@@ -2141,7 +2141,7 @@ mod std_parsing {
                 let (args_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut args = Vec::with_capacity(args_count as usize;
+                let mut args = Vec::with_capacity(args_count as usize);
                 for _ in 0..args_count {
                     let (arg_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                     offset += bytes_read;
@@ -2333,7 +2333,7 @@ mod std_parsing {
     pub fn parse_alias_section(bytes: &[u8]) -> Result<(Vec<Alias>, usize)> {
         // Read a vector of aliases
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut aliases = Vec::with_capacity(count as usize;
+        let mut aliases = Vec::with_capacity(count as usize);
 
         for _ in 0..count {
             // Read alias target

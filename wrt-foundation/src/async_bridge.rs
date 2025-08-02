@@ -4,18 +4,32 @@
 //! (stream, future, error-context) and Rust's Future trait when using
 //! the pluggable executor system.
 
-use core::future::Future;
-use core::marker::Unpin;
-use core::pin::Pin;
-use core::task::{Context, Poll};
+use core::{
+    future::Future,
+    marker::Unpin,
+    pin::Pin,
+    task::{
+        Context,
+        Poll,
+    },
+};
 
-use crate::async_executor_simple::{with_async as block_on, ExecutorError};
 #[cfg(feature = "component-model-async")]
 use crate::async_types::{
-    ComponentFuture, ComponentFutureStatus, ComponentStream, FutureHandle, StreamHandle,
+    ComponentFuture,
+    ComponentFutureStatus,
+    ComponentStream,
+    FutureHandle,
+    StreamHandle,
 };
-use crate::types::ValueType as ValType;
-use crate::values::Value;
+use crate::{
+    async_executor_simple::{
+        with_async as block_on,
+        ExecutorError,
+    },
+    types::ValueType as ValType,
+    values::Value,
+};
 
 #[cfg(feature = "component-model-async")]
 /// Bridge a Component Model future to a Rust future
@@ -36,16 +50,16 @@ impl<T: Clone + Send + 'static + Unpin> Future for ComponentFutureBridge<T> {
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Get mutable reference to the inner data
-        let this = self.get_mut);
+        let this = self.get_mut();
 
         // Check Component Model future status
         match this.component_future.poll_status() {
             Ok(ComponentFutureStatus::Ready(value)) => Poll::Ready(Ok(value)),
             Ok(ComponentFutureStatus::Pending) => {
                 // Register waker to be notified when Component Model future completes
-                this.component_future.set_waker(cx.waker().clone();
+                this.component_future.set_waker(cx.waker().clone());
                 Poll::Pending
-            }
+            },
             Err(_) => Poll::Ready(Err(ExecutorError::TaskPanicked)),
         }
     }
@@ -105,9 +119,9 @@ impl ComponentAsyncExt for Value {
                 let component_future = ComponentFuture::new(
                     FutureHandle(future_handle as u32),
                     ValType::I32, // Placeholder type
-                ;
+                );
                 Ok(ComponentFutureBridge::new(component_future))
-            }
+            },
             _ => Err(ExecutorError::Custom("Value is not a future")),
         }
     }
@@ -123,9 +137,9 @@ impl ComponentAsyncExt for Value {
                 let component_stream = ComponentStream::new(
                     StreamHandle(stream_handle as u32),
                     ValType::I32, // Placeholder type
-                ;
+                );
                 Ok(ComponentStreamBridge::new(component_stream))
-            }
+            },
             _ => Err(ExecutorError::Custom("Value is not a stream")),
         }
     }
@@ -146,6 +160,6 @@ mod tests {
     #[test]
     fn test_async_runtime_creation() {
         let runtime = AsyncRuntime::new();
-        assert!(runtime.executor.is_running();
+        assert!(runtime.executor.is_running());
     }
 }

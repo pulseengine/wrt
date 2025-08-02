@@ -218,7 +218,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
                     },
                 }
 
-                println!("    Import {}: {}.{} ({})", i, module, name, kind_name));
+                println!("    Import {}: {}.{} ({})", i, module, name, kind_name);
             }
         }
 
@@ -252,7 +252,7 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
                     _ => "Unknown",
                 };
 
-                println!("    Export {}: {} ({} {})", i, name, kind_name, idx));
+                println!("    Export {}: {} ({} {})", i, name, kind_name, idx);
             }
         }
 
@@ -406,7 +406,7 @@ fn analyze_memory_usage(module: &Module) -> Result<()> {
             i,
             memory.minimum,
             memory.minimum as usize * 65536
-        ;
+        );
 
         if let Some(max) = memory.maximum {
             println!("    maximum={} pages ({} bytes)", max, max as usize * 65536);
@@ -416,8 +416,8 @@ fn analyze_memory_usage(module: &Module) -> Result<()> {
     }
 
     // Check for data sections
-    let data_segments = module.data_sections);
-    println!("Data segments: {}", data_segments.len);
+    let data_segments = module.data_sections();
+    println!("Data segments: {}", data_segments.len());
 
     for (i, data) in data_segments.iter().enumerate() {
         println!(
@@ -425,7 +425,7 @@ fn analyze_memory_usage(module: &Module) -> Result<()> {
             i,
             data.memory_index,
             data.data.len()
-        ;
+        );
 
         match &data.offset {
             wrt_decoder::DataSegmentOffset::Active(expr) => {
@@ -489,7 +489,7 @@ fn analyze_component(binary: &[u8]) -> Result<()> {
             println!(
                 "  {}: {} (index: {})",
                 export.name, export.kind, export.index
-            ;
+            );
         }
     }
 
@@ -500,7 +500,7 @@ fn analyze_component(binary: &[u8]) -> Result<()> {
             println!(
                 "  Module {}: {}.{} ({}, index: {})",
                 import.module_idx, import.module, import.name, import.kind, import.index
-            ;
+            );
         }
     }
 
@@ -511,7 +511,7 @@ fn analyze_component(binary: &[u8]) -> Result<()> {
             println!(
                 "  Module {}: {} ({}, index: {})",
                 export.module_idx, export.name, export.kind, export.index
-            ;
+            );
         }
     }
 
@@ -530,12 +530,12 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
 
     // Check magic bytes
     let magic = &binary[0..4];
-    let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]];
+    let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
 
     println!(
         "Magic bytes: {:02x} {:02x} {:02x} {:02x}",
         magic[0], magic[1], magic[2], magic[3]
-    ;
+    );
     println!("Version: {}", version);
 
     // Identify binary type
@@ -544,7 +544,7 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
     } else if magic == b"\0age" {
         println!("File type: WebAssembly Component");
     } else {
-        println!("File type: Unknown (not a valid WebAssembly binary)"));
+        println!("File type: Unknown (not a valid WebAssembly binary)");
         return Ok();
     }
 
@@ -622,7 +622,7 @@ fn analyze_binary_format(binary: &[u8]) -> Result<()> {
             "Unknown"
         };
 
-        println!("  Section {}: {} (count: {})", id, name, count));
+        println!("  Section {}: {} (count: {})", id, name, count);
     }
 
     Ok(())
@@ -644,13 +644,13 @@ fn main() -> Result<()> {
 
     // Print hexdump of the file header
     println!("\n=== File Header Hexdump ===");
-    hex_dump(&binary, 0, 64;
+    hex_dump(&binary, 0, 64);
 
     // Analyze binary format using wrt-format
     analyze_binary_format(&binary)?;
 
     // Check if it's a component
-    let is_component = wrt_decoder::component::utils::is_component(&binary).unwrap_or(false;
+    let is_component = wrt_decoder::component::utils::is_component(&binary).unwrap_or(false);
 
     if is_component {
         // Analyze as a component

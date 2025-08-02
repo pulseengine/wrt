@@ -487,7 +487,7 @@ pub fn uses_experimental_features(binary: &[u8]) -> bool {
         return false;
     };
 
-    let mut info = VersionInfo::from_version_bytes(version_bytes;
+    let mut info = VersionInfo::from_version_bytes(version_bytes);
     info.detect_experimental_features(binary)
 }
 
@@ -498,14 +498,14 @@ pub mod verification {
     #[cfg(all(kani, any(feature = "std")))]
     #[kani::proof]
     fn verify_leb128_roundtrip() {
-        let value: u32 = kani::any);
+        let value: u32 = kani::any();
         // Limit to reasonable values for test
-        kani::assume(value <= 0xFFFF;
+        kani::assume(value <= 0xFFFF);
 
-        let encoded = super::binary::with_alloc::write_leb128_u32(value;
+        let encoded = super::binary::with_alloc::write_leb128_u32(value);
         let (decoded, _) = super::binary::read_leb128_u32(&encoded, 0).unwrap();
 
-        assert_eq!(value, decoded;
+        assert_eq!(value, decoded);
     }
 }
 
@@ -534,8 +534,8 @@ pub mod no_std_demo {
         let bool_list_ref = registry.add_type(FormatValType::List(bool_ref))?;
 
         // Verify we can retrieve the types
-        assert!(registry.get_type(bool_ref).is_some();
-        assert!(registry.get_type(bool_list_ref).is_some();
+        assert!(registry.get_type(bool_ref).is_some());
+        assert!(registry.get_type(bool_list_ref).is_some());
 
         Ok(())
     }
@@ -548,7 +548,7 @@ pub mod no_std_demo {
         )?;
         let wasm_str = WasmString::<NoStdProvider<1024>>::from_str("hello", provider)
             .map_err(|_| wrt_foundation::bounded::CapacityError)?;
-        assert_eq!(wasm_str.as_str().unwrap(), "hello";
+        assert_eq!(wasm_str.as_str().unwrap(), "hello");
         Ok(())
     }
 
@@ -556,8 +556,8 @@ pub mod no_std_demo {
     pub fn demo_leb128_parsing() -> crate::Result<()> {
         let data = [0x80, 0x01]; // LEB128 encoding of 128
         let (value, consumed) = crate::binary::read_leb128_u32(&data, 0)?;
-        assert_eq!(value, 128;
-        assert_eq!(consumed, 2;
+        assert_eq!(value, 128);
+        assert_eq!(consumed, 2);
         Ok(())
     }
 
@@ -609,7 +609,7 @@ pub mod no_std_demo {
             1024,
             wrt_foundation::budget_aware_provider::CrateId::Format
         )?;
-        let _module = Module::<NoStdProvider<1024>>::default());
+        let _module = Module::<NoStdProvider<1024>>::default();
 
         // Binary std/no_std choice
         Ok(())

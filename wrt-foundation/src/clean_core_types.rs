@@ -1,7 +1,8 @@
 //! Clean core WebAssembly type definitions without provider parameters
 //!
 //! This module provides provider-agnostic core WebAssembly types.
-//! These are the actual types used in WebAssembly modules (not component model types).
+//! These are the actual types used in WebAssembly modules (not component model
+//! types).
 //!
 //! Note: This module requires allocation capabilities (std or alloc feature).
 
@@ -21,7 +22,7 @@ mod types {
     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
     pub struct CoreFuncType {
         /// Function parameter types
-        pub params: Vec<ValueType>,
+        pub params:  Vec<ValueType>,
         /// Function result types  
         pub results: Vec<ValueType>,
     }
@@ -41,7 +42,7 @@ mod types {
         /// Element type (funcref or externref)
         pub element_type: crate::types::RefType,
         /// Table size limits
-        pub limits: crate::types::Limits,
+        pub limits:       crate::types::Limits,
     }
 
     /// Clean core WebAssembly global type without provider parameters
@@ -50,6 +51,6 @@ mod types {
         /// Value type of the global
         pub value_type: ValueType,
         /// Whether the global is mutable
-        pub mutable: bool,
+        pub mutable:    bool,
     }
 }

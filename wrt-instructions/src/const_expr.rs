@@ -93,9 +93,9 @@ impl ConstExprSequence {
     /// Add an instruction to the sequence
     pub fn push(&mut self, instr: ConstExpr) -> Result<()> {
         if self.len >= 16 {
-            return Err(Error::memory_error("Constant expression sequence exceeds maximum size";
+            return Err(Error::memory_error("Constant expression sequence exceeds maximum size"));
         }
-        self.instructions[self.len] = Some(instr;
+        self.instructions[self.len] = Some(instr);
         self.len += 1;
         Ok(())
     }
@@ -138,7 +138,7 @@ impl ConstExprSequence {
             match instr {
                 ConstExpr::I32Const(v) => {
                     #[cfg(feature = "std")]
-                    stack.push(Value::I32(*v);
+                    stack.push(Value::I32(*v));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(*v)).map_err(|_| {
@@ -147,7 +147,7 @@ impl ConstExprSequence {
                 }
                 ConstExpr::I64Const(v) => {
                     #[cfg(feature = "std")]
-                    stack.push(Value::I64(*v);
+                    stack.push(Value::I64(*v));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(*v)).map_err(|_| {
@@ -155,9 +155,9 @@ impl ConstExprSequence {
                     })?;
                 }
                 ConstExpr::F32Const(v) => {
-                    let float_bits = wrt_foundation::values::FloatBits32::from_float(*v;
+                    let float_bits = wrt_foundation::values::FloatBits32::from_float(*v);
                     #[cfg(feature = "std")]
-                    stack.push(Value::F32(float_bits);
+                    stack.push(Value::F32(float_bits));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::F32(float_bits)).map_err(|_| {
@@ -165,9 +165,9 @@ impl ConstExprSequence {
                     })?;
                 }
                 ConstExpr::F64Const(v) => {
-                    let float_bits = wrt_foundation::values::FloatBits64::from_float(*v;
+                    let float_bits = wrt_foundation::values::FloatBits64::from_float(*v);
                     #[cfg(feature = "std")]
-                    stack.push(Value::F64(float_bits);
+                    stack.push(Value::F64(float_bits));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::F64(float_bits)).map_err(|_| {
@@ -190,13 +190,13 @@ impl ConstExprSequence {
                 }
                 ConstExpr::RefFunc(idx) => {
                     if !context.is_valid_func(*idx) {
-                        return Err(Error::validation_error("Invalid function index in const expression";
+                        return Err(Error::validation_error("Invalid function index in const expression"));
                     }
                     
                     let func_ref = wrt_foundation::values::FuncRef { index: *idx };
                     
                     #[cfg(feature = "std")]
-                    stack.push(Value::FuncRef(Some(func_ref);
+                    stack.push(Value::FuncRef(Some(func_ref)));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::FuncRef(Some(func_ref))).map_err(|_| {
@@ -226,7 +226,7 @@ impl ConstExprSequence {
                     let result = wrt_math::i32_add(a_val, b_val)?;
                     
                     #[cfg(feature = "std")]
-                    stack.push(Value::I32(result);
+                    stack.push(Value::I32(result));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
@@ -245,7 +245,7 @@ impl ConstExprSequence {
                     let result = wrt_math::i32_sub(a_val, b_val)?;
                     
                     #[cfg(feature = "std")]
-                    stack.push(Value::I32(result);
+                    stack.push(Value::I32(result));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
@@ -264,7 +264,7 @@ impl ConstExprSequence {
                     let result = wrt_math::i32_mul(a_val, b_val)?;
                     
                     #[cfg(feature = "std")]
-                    stack.push(Value::I32(result);
+                    stack.push(Value::I32(result));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I32(result)).map_err(|_| {
@@ -283,7 +283,7 @@ impl ConstExprSequence {
                     let result = wrt_math::i64_add(a_val, b_val)?;
                     
                     #[cfg(feature = "std")]
-                    stack.push(Value::I64(result);
+                    stack.push(Value::I64(result));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
@@ -302,7 +302,7 @@ impl ConstExprSequence {
                     let result = wrt_math::i64_sub(a_val, b_val)?;
                     
                     #[cfg(feature = "std")]
-                    stack.push(Value::I64(result);
+                    stack.push(Value::I64(result));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
@@ -321,7 +321,7 @@ impl ConstExprSequence {
                     let result = wrt_math::i64_mul(a_val, b_val)?;
                     
                     #[cfg(feature = "std")]
-                    stack.push(Value::I64(result);
+                    stack.push(Value::I64(result));
                     
                     #[cfg(not(feature = "std"))]
                     stack.push(Value::I64(result)).map_err(|_| {
@@ -330,7 +330,7 @@ impl ConstExprSequence {
                 }
                 ConstExpr::End => {
                     // End of expression - return top of stack
-                    return Self::stack_pop(&mut stack;
+                    return Self::stack_pop(&mut stack);
                 }
             }
         }
@@ -376,7 +376,7 @@ impl Validate for ConstExpr {
                 // TODO: Add globals field to ValidationContext
                 // For now, just validate index is reasonable
                 if *idx >= 1000 {
-                    return Err(Error::validation_error("Invalid global index";
+                    return Err(Error::validation_error("Invalid global index"));
                 }
                 // TODO: Get actual global type
                 ctx.push_type(ValueType::I32)?;
@@ -447,7 +447,7 @@ mod tests {
         };
         
         let result = expr.evaluate(&context).unwrap();
-        assert_eq!(result, Value::I32(42;
+        assert_eq!(result, Value::I32(42));
     }
     
     #[test]
@@ -464,7 +464,7 @@ mod tests {
         };
         
         let result = expr.evaluate(&context).unwrap();
-        assert_eq!(result, Value::I32(42;
+        assert_eq!(result, Value::I32(42));
     }
     
     #[test]
@@ -476,13 +476,13 @@ mod tests {
         let context = TestConstExprContext {
             globals: {
                 let mut v = Vec::new();
-                v.push(Value::I32(100);
+                v.push(Value::I32(100));
                 v
             },
             func_count: 0,
         };
         
         let result = expr.evaluate(&context).unwrap();
-        assert_eq!(result, Value::I32(100;
+        assert_eq!(result, Value::I32(100));
     }
 }

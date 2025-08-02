@@ -388,7 +388,7 @@ impl ToBytes for LogMetadata {
         
         size += 1;
         if let Some(ref s) = self.file {
-            size += 4 + s.len);
+            size += 4 + s.len();
         }
         
         size += 1;
@@ -954,7 +954,7 @@ impl BoundedLoggingManager {
     
     /// Remove all loggers for a component
     pub fn remove_component_loggers(&mut self, component_id: ComponentLoggingId) -> usize {
-        let _initial_count = self.loggers.len);
+        let _initial_count = self.loggers.len();
         
         // Manual implementation of retain
         let mut i = 0;

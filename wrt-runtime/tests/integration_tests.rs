@@ -45,8 +45,8 @@ fn test_safe_memory_integration() -> Result<()> {
     // Read function indices back from the table
     for i in 0..5 {
         let func_ref = table.get(i as u32)?;
-        let expected_func_ref = FuncRef::from_index(i as u32;
-        assert_eq!(func_ref, Some(Value::FuncRef(Some(expected_func_ref));
+        let expected_func_ref = FuncRef::from_index(i as u32);
+        assert_eq!(func_ref, Some(Value::FuncRef(Some(expected_func_ref))));
     }
 
     // Initialize a range in the table

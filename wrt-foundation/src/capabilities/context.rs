@@ -3,8 +3,10 @@
 //! This module provides the capability context that replaces global state
 //! with explicit dependency injection of memory capabilities.
 
-use core::{fmt, marker::PhantomData};
-
+use core::{
+    fmt,
+    marker::PhantomData,
+};
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
@@ -13,17 +15,23 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 
-// No HashMap needed - always using static arrays for ASIL-A compliance
-
-use crate::{
-    budget_aware_provider::CrateId, codes, verification::VerificationLevel, Error, ErrorCategory,
-    Result,
-};
 use wrt_error::helpers::memory_limit_exceeded_error;
 
 use super::{
-    dynamic::DynamicMemoryCapability, static_alloc::StaticMemoryCapability,
-    verified::VerifiedMemoryCapability, MemoryCapability, MemoryOperation,
+    dynamic::DynamicMemoryCapability,
+    static_alloc::StaticMemoryCapability,
+    verified::VerifiedMemoryCapability,
+    MemoryCapability,
+    MemoryOperation,
+};
+// No HashMap needed - always using static arrays for ASIL-A compliance
+use crate::{
+    budget_aware_provider::CrateId,
+    codes,
+    verification::VerificationLevel,
+    Error,
+    ErrorCategory,
+    Result,
 };
 
 /// Maximum number of capabilities that can be stored in no_std mode
@@ -168,7 +176,9 @@ impl MemoryCapabilityContext {
             }
         }
         if !inserted {
-            return Err(memory_limit_exceeded_error("Maximum number of capabilities exceeded"));
+            return Err(memory_limit_exceeded_error(
+                "Maximum number of capabilities exceeded",
+            ));
         }
 
         Ok(())
@@ -192,7 +202,6 @@ impl MemoryCapabilityContext {
         let capability = self.get_capability(crate_id)?;
         capability.verify_access(operation)
     }
-
 
     /// Remove a capability for a crate
     pub fn remove_capability(&mut self, crate_id: CrateId) -> Result<()> {
@@ -221,7 +230,9 @@ impl MemoryCapabilityContext {
     /// Check if a crate has a registered capability
     pub fn has_capability(&self, crate_id: CrateId) -> bool {
         // Always use static array logic for ASIL-A compliance
-        self.capabilities.iter().any(|(key, value)| *key == Some(crate_id) && value.is_some())
+        self.capabilities
+            .iter()
+            .any(|(key, value)| *key == Some(crate_id) && value.is_some())
     }
 
     /// List all registered crate IDs
@@ -249,7 +260,10 @@ impl fmt::Debug for MemoryCapabilityContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MemoryCapabilityContext")
             .field("capability_count", &self.capability_count())
-            .field("default_verification_level", &self.default_verification_level)
+            .field(
+                "default_verification_level",
+                &self.default_verification_level,
+            )
             .field("runtime_verification", &self.runtime_verification)
             .finish()
     }
@@ -260,7 +274,7 @@ impl fmt::Debug for MemoryCapabilityContext {
 /// This replaces the raw NoStdProvider with capability-gated access.
 pub struct CapabilityGuardedProvider<const N: usize> {
     capability: Box<dyn AnyMemoryCapability>,
-    _phantom: PhantomData<[u8; N]>,
+    _phantom:   PhantomData<[u8; N]>,
 }
 
 impl<const N: usize> CapabilityGuardedProvider<N> {
@@ -271,10 +285,15 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
         capability.verify_access(&operation)?;
 
         if capability.max_allocation_size() < N {
-            return Err(Error::capability_violation("Provider size exceeds capability limit"));
+            return Err(Error::capability_violation(
+                "Provider size exceeds capability limit",
+            ));
         }
 
-        Ok(Self { capability, _phantom: PhantomData })
+        Ok(Self {
+            capability,
+            _phantom: PhantomData,
+        })
     }
 
     /// Read data with capability verification
@@ -289,7 +308,10 @@ impl<const N: usize> CapabilityGuardedProvider<N> {
 
     /// Write data with capability verification
     pub fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        let operation = MemoryOperation::Write { offset, len: data.len() };
+        let operation = MemoryOperation::Write {
+            offset,
+            len: data.len(),
+        };
         self.capability.verify_access(&operation)?;
 
         // This would delegate to the actual provider implementation
@@ -322,14 +344,17 @@ unsafe impl<const N: usize> Sync for CapabilityGuardedProvider<N> {}
 
 /// Builder for creating capability contexts with different configurations
 pub struct CapabilityContextBuilder {
-    verification_level: VerificationLevel,
+    verification_level:   VerificationLevel,
     runtime_verification: bool,
 }
 
 impl CapabilityContextBuilder {
     /// Create a new builder with default settings
     pub fn new() -> Self {
-        Self { verification_level: VerificationLevel::Standard, runtime_verification: false }
+        Self {
+            verification_level:   VerificationLevel::Standard,
+            runtime_verification: false,
+        }
     }
 
     /// Set the default verification level
@@ -418,7 +443,10 @@ mod tests {
             .with_runtime_verification(true)
             .build();
 
-        assert_eq!(context.default_verification_level, VerificationLevel::Redundant);
+        assert_eq!(
+            context.default_verification_level,
+            VerificationLevel::Redundant
+        );
         assert!(context.runtime_verification);
     }
 }

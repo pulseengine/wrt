@@ -3,19 +3,34 @@
 //! This example shows how to use the visualization and monitoring
 //! features to track memory usage in a WRT application.
 
-use wrt_foundation::{
-    bounded::{BoundedMap, BoundedString, BoundedVec},
-    budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
-    budget_provider::BudgetProvider,
-    budget_visualization::{
-        quick_ascii_dump, quick_debug_dump, BudgetVisualizer, DebugDumper, VisualizationConfig,
-        VisualizationFormat,
-    },
-    memory_system_initializer, WrtResult,
+#[cfg(feature = "std")]
+use std::{
+    thread,
+    time::Duration,
 };
 
-#[cfg(feature = "std")]
-use std::{thread, time::Duration};
+use wrt_foundation::{
+    bounded::{
+        BoundedMap,
+        BoundedString,
+        BoundedVec,
+    },
+    budget_aware_provider::{
+        BudgetAwareProviderFactory,
+        CrateId,
+    },
+    budget_provider::BudgetProvider,
+    budget_visualization::{
+        quick_ascii_dump,
+        quick_debug_dump,
+        BudgetVisualizer,
+        DebugDumper,
+        VisualizationConfig,
+        VisualizationFormat,
+    },
+    memory_system_initializer,
+    WrtResult,
+};
 
 fn main() -> WrtResult<()> {
     println!("🚀 WRT Budget Visualization Demo");
@@ -73,9 +88,9 @@ fn main() -> WrtResult<()> {
     println!("{}", quick_debug_dump()?);
 
     // Cleanup demo
-    drop(foundation_providers;
-    drop(runtime_providers;
-    drop(component_providers;
+    drop(foundation_providers);
+    drop(runtime_providers);
+    drop(component_providers);
 
     println!("🏁 Demo completed successfully!");
     Ok(())
@@ -93,7 +108,7 @@ fn simulate_foundation_startup() -> WrtResult<Vec<BudgetProvider<{ 64 * 1024 }>>
         providers.push(provider);
 
         #[cfg(feature = "std")]
-        thread::sleep(Duration::from_millis(100;
+        thread::sleep(Duration::from_millis(100));
     }
 
     Ok(providers)
@@ -111,7 +126,7 @@ fn simulate_runtime_loading() -> WrtResult<Vec<BudgetProvider<{ 256 * 1024 }>>> 
         providers.push(provider);
 
         #[cfg(feature = "std")]
-        thread::sleep(Duration::from_millis(150;
+        thread::sleep(Duration::from_millis(150));
     }
 
     Ok(providers)
@@ -124,17 +139,17 @@ fn simulate_component_instantiation() -> WrtResult<Vec<Box<dyn core::any::Any>>>
     for i in 0..2 {
         let provider = BudgetProvider::<{ 128 * 1024 }>::new(CrateId::Component)?;
         let component_types = BoundedMap::<u32, BoundedString<64, _>, 50, _>::new(provider)?;
-        allocations.push(Box::new(component_types);
+        allocations.push(Box::new(component_types));
 
         #[cfg(feature = "std")]
-        thread::sleep(Duration::from_millis(100;
+        thread::sleep(Duration::from_millis(100));
     }
 
     // Simulate decoder buffers
     for i in 0..3 {
         let provider = BudgetProvider::<{ 64 * 1024 }>::new(CrateId::Decoder)?;
         let decode_buffer = BoundedVec::<u8, 32768, _>::new(provider)?;
-        allocations.push(Box::new(decode_buffer);
+        allocations.push(Box::new(decode_buffer));
     }
 
     Ok(allocations)
@@ -153,7 +168,10 @@ fn demonstrate_visualization_formats() -> WrtResult<()> {
         include_shared_pool: false,
         ..Default::default()
     };
-    println!("{}\n", BudgetVisualizer::generate_visualization(ascii_config)?);
+    println!(
+        "{}\n",
+        BudgetVisualizer::generate_visualization(ascii_config)?
+    );
 
     // JSON format (for APIs)
     println!("📋 JSON Format (sample):");
@@ -165,8 +183,11 @@ fn demonstrate_visualization_formats() -> WrtResult<()> {
     };
     let json_output = BudgetVisualizer::generate_visualization(json_config)?;
     // Show first 200 characters
-    let preview =
-        if json_output.len() > 200 { format!("{}...", &json_output[..200]) } else { json_output };
+    let preview = if json_output.len() > 200 {
+        format!("{}...", &json_output[..200])
+    } else {
+        json_output
+    };
     println!("{}\n", preview);
 
     // Markdown format (for documentation)
@@ -179,7 +200,7 @@ fn demonstrate_visualization_formats() -> WrtResult<()> {
     };
     let md_output = BudgetVisualizer::generate_visualization(md_config)?;
     let md_lines: Vec<&str> = md_output.lines().take(10).collect();
-    println!("{}\n", md_lines.join("\n");
+    println!("{}\n", md_lines.join("\n"));
 
     Ok(())
 }
@@ -197,18 +218,18 @@ fn demonstrate_monitoring_macros() -> WrtResult<()> {
         let vec2 = BoundedVec::<u8, 8000, _>::new(provider2)?;
 
         (vec1, vec2)
-    };
+    });
 
     let (_vec1, _vec2) = result?;
 
     // Print current memory status
-    wrt_foundation::print_memory_status!("After macro demonstration";
+    wrt_foundation::print_memory_status!("After macro demonstration");
 
     // Assert reasonable memory usage
-    wrt_foundation::assert_memory_usage!(total < 50 * 1024 * 1024, "Total memory too high";
+    wrt_foundation::assert_memory_usage!(total < 50 * 1024 * 1024, "Total memory too high");
 
     // Check memory health
-    wrt_foundation::check_memory_health!("Macro demonstration";
+    wrt_foundation::check_memory_health!("Macro demonstration");
 
     #[cfg(feature = "std")]
     {
@@ -216,7 +237,7 @@ fn demonstrate_monitoring_macros() -> WrtResult<()> {
         println!("⏱️  Benchmarking allocation performance:");
         wrt_foundation::benchmark_allocation!("Small provider creation", 100, {
             let _provider = BudgetProvider::<1024>::new(CrateId::Foundation)?;
-        };
+        });
     }
 
     Ok(())
@@ -231,11 +252,11 @@ fn simulate_memory_pressure() -> WrtResult<()> {
             Ok(provider) => {
                 println!("  ✅ Large allocation {} succeeded", i + 1);
                 pressure_allocations.push(provider);
-            }
+            },
             Err(e) => {
                 println!("  ❌ Large allocation {} failed: {:?}", i + 1, e);
                 break;
-            }
+            },
         }
     }
 
@@ -256,10 +277,10 @@ fn save_reports_example() -> WrtResult<()> {
     fs::create_dir_all("./demo_reports")?;
 
     // Save different formats
-    wrt_foundation::save_visualization!("./demo_reports/budget_report.html", Html;
-    wrt_foundation::save_visualization!("./demo_reports/budget_data.json", Json;
-    wrt_foundation::save_visualization!("./demo_reports/budget_data.csv", Csv;
-    wrt_foundation::save_visualization!("./demo_reports/budget_report.md", Markdown;
+    wrt_foundation::save_visualization!("./demo_reports/budget_report.html", Html);
+    wrt_foundation::save_visualization!("./demo_reports/budget_data.json", Json);
+    wrt_foundation::save_visualization!("./demo_reports/budget_data.csv", Csv);
+    wrt_foundation::save_visualization!("./demo_reports/budget_report.md", Markdown);
 
     println!("✅ Reports saved to ./demo_reports/");
     Ok(())

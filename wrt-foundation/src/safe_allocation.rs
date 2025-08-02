@@ -1,30 +1,45 @@
 //! Safe Memory Allocation API - Capability-Based Version
 //!
-//! This module provides a completely safe alternative to the unsafe memory allocation
-//! patterns using the new capability-based memory management system. It eliminates the 
-//! need for unsafe patterns by providing a safe factory pattern that creates 
-//! collections directly with capability-managed providers.
+//! This module provides a completely safe alternative to the unsafe memory
+//! allocation patterns using the new capability-based memory management system.
+//! It eliminates the need for unsafe patterns by providing a safe factory
+//! pattern that creates collections directly with capability-managed providers.
 //!
 //! SW-REQ-ID: REQ_SAFETY_001 - No unsafe code in allocation
 //! SW-REQ-ID: REQ_MEM_001 - Memory bounds checking  
 //! SW-REQ-ID: REQ_MEM_003 - Automatic cleanup
 //! SW-REQ-ID: REQ_CAP_001 - Capability-based access control
 
-use crate::{
-    bounded::{BoundedString, BoundedVec},
-    bounded_collections::BoundedMap,
-    budget_aware_provider::CrateId,
-    capabilities::{MemoryCapabilityContext, StaticMemoryCapability, DynamicMemoryCapability},
-    codes,
-    safe_memory::NoStdProvider,
-    traits::{Checksummable, FromBytes, ToBytes},
-    verification::VerificationLevel,
-    Error, ErrorCategory, Result,
-};
-
 // Legacy imports for backward compatibility (deprecated)
 #[allow(deprecated)]
-use crate::wrt_memory_system::{NoStdProviderFactory, CapabilityWrtFactory};
+use crate::wrt_memory_system::{
+    CapabilityWrtFactory,
+    NoStdProviderFactory,
+};
+use crate::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    bounded_collections::BoundedMap,
+    budget_aware_provider::CrateId,
+    capabilities::{
+        DynamicMemoryCapability,
+        MemoryCapabilityContext,
+        StaticMemoryCapability,
+    },
+    codes,
+    safe_memory::NoStdProvider,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
+    verification::VerificationLevel,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
 /// Capability-based safe factory for memory providers
 pub struct CapabilityProviderFactory;
@@ -32,7 +47,8 @@ pub struct CapabilityProviderFactory;
 impl CapabilityProviderFactory {
     /// Create a static memory capability-managed provider for ASIL-B/C/D
     ///
-    /// This creates a compile-time verified provider suitable for safety-critical levels.
+    /// This creates a compile-time verified provider suitable for
+    /// safety-critical levels.
     pub fn create_static_provider<const N: usize>(
         crate_id: CrateId,
         verification_level: VerificationLevel,
@@ -42,13 +58,18 @@ impl CapabilityProviderFactory {
 
     /// Create a dynamic memory capability-managed provider for QM/ASIL-A
     ///
-    /// This creates a runtime allocation provider suitable for non-safety-critical levels.
+    /// This creates a runtime allocation provider suitable for
+    /// non-safety-critical levels.
     pub fn create_dynamic_provider(
         crate_id: CrateId,
         max_allocation: usize,
         verification_level: VerificationLevel,
     ) -> Result<DynamicMemoryCapability> {
-        Ok(DynamicMemoryCapability::new(max_allocation, crate_id, verification_level))
+        Ok(DynamicMemoryCapability::new(
+            max_allocation,
+            crate_id,
+            verification_level,
+        ))
     }
 
     /// Create a capability-managed provider using context
@@ -66,8 +87,9 @@ impl CapabilityProviderFactory {
 
 /// Capability-based safe collection factory functions
 ///
-/// These functions create bounded collections using capability-managed memory allocation
-/// suitable for different ASIL levels without requiring unsafe code blocks.
+/// These functions create bounded collections using capability-managed memory
+/// allocation suitable for different ASIL levels without requiring unsafe code
+/// blocks.
 pub mod capability_factories {
     use super::*;
 
@@ -75,19 +97,25 @@ pub mod capability_factories {
     pub fn safe_static_bounded_vec<T, const CAPACITY: usize, const PROVIDER_SIZE: usize>(
         crate_id: CrateId,
         verification_level: VerificationLevel,
-    ) -> Result<(BoundedVec<T, CAPACITY, NoStdProvider<PROVIDER_SIZE>>, StaticMemoryCapability<PROVIDER_SIZE>)>
+    ) -> Result<(
+        BoundedVec<T, CAPACITY, NoStdProvider<PROVIDER_SIZE>>,
+        StaticMemoryCapability<PROVIDER_SIZE>,
+    )>
     where
         T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
     {
-        let capability = CapabilityProviderFactory::create_static_provider::<PROVIDER_SIZE>(crate_id, verification_level)?;
-        
+        let capability = CapabilityProviderFactory::create_static_provider::<PROVIDER_SIZE>(
+            crate_id,
+            verification_level,
+        )?;
+
         // Create provider using safe default construction
         let provider = NoStdProvider::<PROVIDER_SIZE>::default();
-        
+
         let vec = BoundedVec::new(provider).map_err(|_| {
             Error::memory_error("Failed to create capability-managed bounded vector")
         })?;
-        
+
         Ok((vec, capability))
     }
 
@@ -100,7 +128,6 @@ pub mod capability_factories {
     }
 }
 
-
 // safe_managed_alloc macro moved to lib.rs to avoid duplicates
 // It's now the primary allocation interface for WRT
 
@@ -111,7 +138,11 @@ pub mod capability_factories {
 /// # Examples
 ///
 /// ```rust
-/// use wrt_foundation::{capability_managed_alloc, CrateId, MemoryCapabilityContext};
+/// use wrt_foundation::{
+///     capability_managed_alloc,
+///     CrateId,
+///     MemoryCapabilityContext,
+/// };
 ///
 /// let context = MemoryCapabilityContext::new();
 /// // Capability-based allocation with context verification

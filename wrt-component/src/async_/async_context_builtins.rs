@@ -51,11 +51,11 @@ const MAX_CONTEXT_KEY_SIZE: usize = 64;
 /// Context key identifier for async contexts
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg(feature = "std")]
-pub struct ContextKey(String;
+pub struct ContextKey(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg(not(any(feature = "std", )))]
-pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE>;
+pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE>);
 
 impl ContextKey {
     #[cfg(feature = "std")]
@@ -74,7 +74,7 @@ impl ContextKey {
         #[cfg(feature = "std")]
         return &self.0;
         #[cfg(not(any(feature = "std", )))]
-        return self.0.as_str);
+        return self.0.as_str();
     }
 }
 
@@ -151,7 +151,7 @@ impl AsyncContext {
     pub fn set(&mut self, key: ContextKey, value: ContextValue) -> Result<()> {
         #[cfg(feature = "std")]
         {
-            self.data.insert(key, value;
+            self.data.insert(key, value);
             Ok(())
         }
         #[cfg(not(any(feature = "std", )))]
@@ -179,7 +179,7 @@ impl AsyncContext {
     }
 
     pub fn clear(&mut self) {
-        self.data.clear);
+        self.data.clear();
     }
 }
 
@@ -193,13 +193,13 @@ impl Default for AsyncContext {
 #[cfg(feature = "std")]
 thread_local! {
     static ASYNC_CONTEXT_STACK: AtomicRefCell<Vec<AsyncContext>> = 
-        AtomicRefCell::new(Vec::new();
+        AtomicRefCell::new(Vec::new());
 }
 
 /// Global context storage for no_std environments
 #[cfg(not(feature = "std"))]
 static GLOBAL_ASYNC_CONTEXT: AtomicRefCell<Option<AsyncContext>> = 
-    AtomicRefCell::new(None;
+    AtomicRefCell::new(None);
 
 /// Context manager that provides the canonical built-in functions
 pub struct AsyncContextManager;
@@ -239,7 +239,7 @@ impl AsyncContextManager {
     pub fn context_set(context: AsyncContext) -> Result<()> {
         let mut context_ref = GLOBAL_ASYNC_CONTEXT.try_borrow_mut()
             .map_err(|_| Error::runtime_execution_error("Context access failed"))?;
-        *context_ref = Some(context;
+        *context_ref = Some(context);
         Ok(())
     }
 
@@ -279,7 +279,7 @@ impl AsyncContextManager {
 
     /// Set a value in the current context by key
     pub fn set_context_value(key: ContextKey, value: ContextValue) -> Result<()> {
-        let mut context = Self::context_get()?.unwrap_or_default);
+        let mut context = Self::context_get()?.unwrap_or_default();
         context.set(key, value)?;
         Self::context_set(context)
     }
@@ -287,7 +287,7 @@ impl AsyncContextManager {
     /// Remove a value from the current context by key
     pub fn remove_context_value(key: &ContextKey) -> Result<Option<ContextValue>> {
         if let Some(mut context) = Self::context_get()? {
-            let removed = context.remove(key;
+            let removed = context.remove(key);
             Self::context_set(context)?;
             Ok(removed)
         } else {
@@ -298,7 +298,7 @@ impl AsyncContextManager {
     /// Clear all values from the current context
     pub fn clear_context() -> Result<()> {
         if let Some(mut context) = Self::context_get()? {
-            context.clear);
+            context.clear();
             Self::context_set(context)?;
         }
         Ok(())
@@ -379,7 +379,7 @@ pub mod canonical_builtins {
         let context_key = ContextKey::new(key)?;
 
         let component_value = value.into();
-        let context_value = ContextValue::from_component_value(component_value;
+        let context_value = ContextValue::from_component_value(component_value);
         AsyncContextManager::set_context_value(context_key, context_value)
     }
 }
@@ -407,7 +407,7 @@ impl AsyncContextScope {
 impl Drop for AsyncContextScope {
     fn drop(&mut self) {
         // Automatically pop context when scope ends
-        let _ = AsyncContextManager::context_pop);
+        let _ = AsyncContextManager::context_pop();
     }
 }
 
@@ -429,21 +429,21 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let key = ContextKey::new("test-key".to_string());
-            assert_eq!(key.as_str(), "test-key";
+            assert_eq!(key.as_str(), "test-key");
         }
 
         #[cfg(not(any(feature = "std", )))]
         {
             let key = ContextKey::new("test-key").unwrap();
-            assert_eq!(key.as_str(), "test-key";
+            assert_eq!(key.as_str(), "test-key");
         }
     }
 
     #[test]
     fn test_context_value_creation() {
-        let value = ContextValue::from_component_value(ComponentValue::Bool(true;
-        assert!(value.as_component_value().is_some();
-        assert_eq!(value.as_component_value().unwrap(), &ComponentValue::Bool(true;
+        let value = ContextValue::from_component_value(ComponentValue::Bool(true));
+        assert!(value.as_component_value().is_some());
+        assert_eq!(value.as_component_value().unwrap(), &ComponentValue::Bool(true));
     }
 
     #[test]
@@ -456,28 +456,28 @@ mod tests {
         #[cfg(not(any(feature = "std", )))]
         let key = ContextKey::new("test").unwrap();
 
-        let value = ContextValue::from_component_value(ComponentValue::I32(42;
+        let value = ContextValue::from_component_value(ComponentValue::I32(42));
         context.set(key.clone(), value).unwrap();
 
         assert!(!context.is_empty());
         assert_eq!(context.len(), 1);
-        assert!(context.contains_key(&key);
+        assert!(context.contains_key(&key));
 
         let retrieved = context.get(&key).unwrap();
         assert_eq!(
             retrieved.as_component_value().unwrap(),
             &ComponentValue::I32(42)
-        ;
+        );
     }
 
     #[test]
     fn test_context_manager_operations() {
         // Clear any existing context
-        let _ = AsyncContextManager::context_pop);
+        let _ = AsyncContextManager::context_pop();
 
         // Test getting empty context
         let context = AsyncContextManager::context_get().unwrap();
-        assert!(context.is_none();
+        assert!(context.is_none());
 
         // Test setting context
         let new_context = AsyncContext::new();
@@ -485,30 +485,30 @@ mod tests {
 
         // Test getting set context
         let retrieved = AsyncContextManager::context_get().unwrap();
-        assert!(retrieved.is_some();
+        assert!(retrieved.is_some());
     }
 
     #[test]
     fn test_canonical_builtins() {
         // Clear any existing context
-        let _ = AsyncContextManager::context_pop);
+        let _ = AsyncContextManager::context_pop();
 
         // Test context.get when no context
         let result = canonical_builtins::canon_context_get().unwrap();
-        assert_eq!(result, ComponentValue::Bool(false;
+        assert_eq!(result, ComponentValue::Bool(false));
 
         // Test context.set with true
         canonical_builtins::canon_context_set(ComponentValue::Bool(true)).unwrap();
 
         // Test context.get when context exists
         let result = canonical_builtins::canon_context_get().unwrap();
-        assert_eq!(result, ComponentValue::Bool(true;
+        assert_eq!(result, ComponentValue::Bool(true));
     }
 
     #[test]
     fn test_async_context_scope() {
         // Clear any existing context
-        let _ = AsyncContextManager::context_pop);
+        let _ = AsyncContextManager::context_pop();
 
         {
             let context = AsyncContext::new();
@@ -516,11 +516,11 @@ mod tests {
             
             // Context should be available in scope
             let retrieved = AsyncContextManager::context_get().unwrap();
-            assert!(retrieved.is_some();
+            assert!(retrieved.is_some());
         }
 
         // Context should be popped after scope ends
         let retrieved = AsyncContextManager::context_get().unwrap();
-        assert!(retrieved.is_none();
+        assert!(retrieved.is_none());
     }
 }

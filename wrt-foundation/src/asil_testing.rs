@@ -14,19 +14,24 @@
 
 #![allow(unsafe_code)]
 
-use crate::safety_system::AsilLevel;
-
 // Import appropriate types based on environment
 #[cfg(not(feature = "std"))]
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{
+    AtomicBool,
+    Ordering,
+};
 #[cfg(feature = "std")]
-use std::{sync::Mutex, vec::Vec};
+use std::{
+    sync::Mutex,
+    vec::Vec,
+};
 
 // For no_std mode, use bounded collections
 #[cfg(not(feature = "std"))]
 use crate::bounded::BoundedVec;
 #[cfg(not(feature = "std"))]
 use crate::safe_memory::NoStdProvider;
+use crate::safety_system::AsilLevel;
 
 // For no_std environments, use simple arrays or bounded collections
 #[cfg(not(feature = "std"))]
@@ -36,7 +41,8 @@ const MAX_TESTS_NO_STD: usize = 64;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 type TestRegistry = [Option<AsilTestMetadata>; MAX_TESTS_NO_STD];
 
-// For no_std with alloc, use regular Vec (simpler than BoundedVec for this use case)
+// For no_std with alloc, use regular Vec (simpler than BoundedVec for this use
+// case)
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 type TestRegistry = Vec<AsilTestMetadata>;
 
@@ -48,13 +54,13 @@ use alloc::vec::Vec;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct AsilTestMetadata {
     /// ASIL level this test validates
-    pub asil_level: AsilLevel,
+    pub asil_level:     AsilLevel,
     /// Requirement ID this test verifies
     pub requirement_id: &'static str,
     /// Test category
-    pub category: TestCategory,
+    pub category:       TestCategory,
     /// Description of what this test validates
-    pub description: &'static str,
+    pub description:    &'static str,
 }
 
 impl crate::traits::Checksummable for AsilTestMetadata {
@@ -317,39 +323,40 @@ pub fn get_test_statistics() -> TestStatistics {
 /// Test statistics summary
 #[derive(Debug, Default)]
 pub struct TestStatistics {
-    pub total_count: usize,
-    pub qm_count: usize,
-    pub asil_a_count: usize,
-    pub asil_b_count: usize,
-    pub asil_c_count: usize,
-    pub asil_d_count: usize,
-    pub unit_count: usize,
+    pub total_count:       usize,
+    pub qm_count:          usize,
+    pub asil_a_count:      usize,
+    pub asil_b_count:      usize,
+    pub asil_c_count:      usize,
+    pub asil_d_count:      usize,
+    pub unit_count:        usize,
     pub integration_count: usize,
-    pub safety_count: usize,
+    pub safety_count:      usize,
     pub performance_count: usize,
-    pub memory_count: usize,
-    pub resource_count: usize,
+    pub memory_count:      usize,
+    pub resource_count:    usize,
 }
 
 /// Macro to create ASIL-tagged tests
 #[macro_export]
 macro_rules! asil_test {
     (
-        name: $test_name:ident,
-        asil: $asil_level:expr,
-        requirement: $req_id:expr,
-        category: $category:expr,
-        description: $desc:expr,
-        test: $test_body:block
+        name:
+        $test_name:ident,asil:
+        $asil_level:expr,requirement:
+        $req_id:expr,category:
+        $category:expr,description:
+        $desc:expr,test:
+        $test_body:block
     ) => {
         #[test]
         fn $test_name() {
             // Register this test in the ASIL registry
             $crate::asil_testing::register_asil_test($crate::asil_testing::AsilTestMetadata {
-                asil_level: $asil_level,
+                asil_level:     $asil_level,
                 requirement_id: $req_id,
-                category: $category,
-                description: $desc,
+                category:       $category,
+                description:    $desc,
             });
 
             // Run the actual test
@@ -362,11 +369,12 @@ macro_rules! asil_test {
 #[macro_export]
 macro_rules! asil_d_test {
     (
-        name: $test_name:ident,
-        requirement: $req_id:expr,
-        category: $category:expr,
-        description: $desc:expr,
-        test: $test_body:block
+        name:
+        $test_name:ident,requirement:
+        $req_id:expr,category:
+        $category:expr,description:
+        $desc:expr,test:
+        $test_body:block
     ) => {
         $crate::asil_test! {
             name: $test_name,
@@ -383,11 +391,12 @@ macro_rules! asil_d_test {
 #[macro_export]
 macro_rules! asil_c_test {
     (
-        name: $test_name:ident,
-        requirement: $req_id:expr,
-        category: $category:expr,
-        description: $desc:expr,
-        test: $test_body:block
+        name:
+        $test_name:ident,requirement:
+        $req_id:expr,category:
+        $category:expr,description:
+        $desc:expr,test:
+        $test_body:block
     ) => {
         $crate::asil_test! {
             name: $test_name,
@@ -404,11 +413,12 @@ macro_rules! asil_c_test {
 #[macro_export]
 macro_rules! memory_safety_test {
     (
-        name: $test_name:ident,
-        asil: $asil_level:expr,
-        requirement: $req_id:expr,
-        description: $desc:expr,
-        test: $test_body:block
+        name:
+        $test_name:ident,asil:
+        $asil_level:expr,requirement:
+        $req_id:expr,description:
+        $desc:expr,test:
+        $test_body:block
     ) => {
         $crate::asil_test! {
             name: $test_name,
@@ -425,11 +435,12 @@ macro_rules! memory_safety_test {
 #[macro_export]
 macro_rules! resource_safety_test {
     (
-        name: $test_name:ident,
-        asil: $asil_level:expr,
-        requirement: $req_id:expr,
-        description: $desc:expr,
-        test: $test_body:block
+        name:
+        $test_name:ident,asil:
+        $asil_level:expr,requirement:
+        $req_id:expr,description:
+        $desc:expr,test:
+        $test_body:block
     ) => {
         $crate::asil_test! {
             name: $test_name,
@@ -461,10 +472,10 @@ mod tests {
         }
 
         let metadata = AsilTestMetadata {
-            asil_level: AsilLevel::AsilC,
+            asil_level:     AsilLevel::AsilC,
             requirement_id: "REQ_TEST_001",
-            category: TestCategory::Unit,
-            description: "Test ASIL registration",
+            category:       TestCategory::Unit,
+            description:    "Test ASIL registration",
         };
 
         register_asil_test(metadata.clone());
@@ -489,17 +500,17 @@ mod tests {
 
         // Register tests at different ASIL levels
         register_asil_test(AsilTestMetadata {
-            asil_level: AsilLevel::AsilC,
+            asil_level:     AsilLevel::AsilC,
             requirement_id: "REQ_C_001",
-            category: TestCategory::Unit,
-            description: "ASIL-C test",
+            category:       TestCategory::Unit,
+            description:    "ASIL-C test",
         });
 
         register_asil_test(AsilTestMetadata {
-            asil_level: AsilLevel::AsilD,
+            asil_level:     AsilLevel::AsilD,
             requirement_id: "REQ_D_001",
-            category: TestCategory::Safety,
-            description: "ASIL-D test",
+            category:       TestCategory::Safety,
+            description:    "ASIL-D test",
         });
 
         let asil_c_tests = get_tests_by_asil(AsilLevel::AsilC);

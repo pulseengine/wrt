@@ -20,16 +20,16 @@ use crate::async_::async_types::{StreamHandle, FutureHandle};
 // Fallback types when async features are not enabled
 #[cfg(not(feature = "component-model-async"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StreamHandle(pub u32;
+pub struct StreamHandle(pub u32);
 
 #[cfg(not(feature = "component-model-async"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FutureHandle(pub u32;
+pub struct FutureHandle(pub u32);
 
 // Fallback TaskId when threading features are not enabled
 #[cfg(not(feature = "component-model-threading"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TaskId(pub u32;
+pub struct TaskId(pub u32);
 
 /// Canonical ComponentInstance definition for ASIL-D type safety
 /// 

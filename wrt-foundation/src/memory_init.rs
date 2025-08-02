@@ -8,26 +8,33 @@
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 //! SW-REQ-ID: REQ_CAP_001 - Capability-based access control
 
-use crate::{
-    budget_aware_provider::CrateId,
-    budget_verification::{CRATE_BUDGETS, TOTAL_MEMORY_BUDGET},
-    capabilities::MemoryCapabilityContext,
-    verification::VerificationLevel,
-    Error, Result,
-};
-
 // Legacy imports removed - migrated to capability-only system
-use core::sync::atomic::{AtomicBool, Ordering};
-
+use core::sync::atomic::{
+    AtomicBool,
+    Ordering,
+};
 #[cfg(feature = "std")]
 use std::sync::OnceLock;
+
+use crate::{
+    budget_aware_provider::CrateId,
+    budget_verification::{
+        CRATE_BUDGETS,
+        TOTAL_MEMORY_BUDGET,
+    },
+    capabilities::MemoryCapabilityContext,
+    verification::VerificationLevel,
+    Error,
+    Result,
+};
 
 /// Global initialization state
 static MEMORY_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// ASIL-D safe initialization error storage
 /// ASIL-D safe error storage using atomic pointer instead of static mut
-static INIT_ERROR_PTR: core::sync::atomic::AtomicPtr<&'static str> = core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
+static INIT_ERROR_PTR: core::sync::atomic::AtomicPtr<&'static str> =
+    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
 
 /// Global capability context for modern memory management
 #[cfg(feature = "std")]
@@ -39,19 +46,26 @@ static mut GLOBAL_CAPABILITY_CONTEXT: Option<MemoryCapabilityContext> = None;
 /// Get access to the global capability context
 pub fn get_global_capability_context() -> Result<&'static MemoryCapabilityContext> {
     if !MEMORY_INITIALIZED.load(Ordering::Acquire) {
-        return Err(Error::runtime_execution_error("Memory system not initialized"));
+        return Err(Error::runtime_execution_error(
+            "Memory system not initialized",
+        ));
     }
-    
+
     #[cfg(feature = "std")]
     {
-        GLOBAL_CAPABILITY_CONTEXT.get().ok_or_else(|| Error::runtime_execution_error("Global capability context not available"))
+        GLOBAL_CAPABILITY_CONTEXT.get().ok_or_else(|| {
+            Error::runtime_execution_error("Global capability context not available")
+        })
     }
-    
+
     #[cfg(not(feature = "std"))]
     {
-        #[allow(unsafe_code, static_mut_refs)] // Safe: Read-only access to static after initialization
+        #[allow(unsafe_code, static_mut_refs)]
+        // Safe: Read-only access to static after initialization
         unsafe {
-            GLOBAL_CAPABILITY_CONTEXT.as_ref().ok_or_else(|| Error::runtime_execution_error("Global capability context not initialized"))
+            GLOBAL_CAPABILITY_CONTEXT.as_ref().ok_or_else(|| {
+                Error::runtime_execution_error("Global capability context not initialized")
+            })
         }
     }
 }
@@ -91,10 +105,10 @@ impl MemoryInitializer {
         ];
 
         // Legacy coordinator removed - using capability-only system
-        
+
         // Initialize new capability context
         let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
-        
+
         // Register capabilities for all crates based on their budgets
         for (crate_id, budget) in budgets.iter() {
             if *budget > 0 {
@@ -103,20 +117,24 @@ impl MemoryInitializer {
                     // ASIL-D safe error storage using atomic pointer
                     let error_msg: &'static str = "Failed to register crate capability";
                     MEMORY_INITIALIZED.store(false, Ordering::Release);
-                    return Err(Error::runtime_execution_error("Failed to register dynamic capability for crate"));
+                    return Err(Error::runtime_execution_error(
+                        "Failed to register dynamic capability for crate",
+                    ));
                 }
             }
         }
-        
+
         // Store the global context
         #[cfg(feature = "std")]
         {
             if let Err(_) = GLOBAL_CAPABILITY_CONTEXT.set(context) {
                 MEMORY_INITIALIZED.store(false, Ordering::Release);
-                return Err(Error::runtime_execution_error("Failed to set global capability context"));
+                return Err(Error::runtime_execution_error(
+                    "Failed to set global capability context",
+                ));
             }
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             #[allow(unsafe_code)] // Safe: Single-threaded write during initialization
@@ -124,7 +142,7 @@ impl MemoryInitializer {
                 GLOBAL_CAPABILITY_CONTEXT = Some(context);
             }
         }
-        
+
         // Capability system initialization completed successfully
         Ok(())
     }
@@ -142,7 +160,9 @@ impl MemoryInitializer {
             None
         } else {
             #[allow(unsafe_code)] // Safe: pointer was stored by us atomically
-            unsafe { Some(*ptr) }
+            unsafe {
+                Some(*ptr)
+            }
         }
     }
 
@@ -153,11 +173,12 @@ impl MemoryInitializer {
         // ASIL-D safe error reset using atomic pattern
         INIT_ERROR_PTR.store(core::ptr::null_mut(), Ordering::Release);
     }
-    
+
     /// Ensure memory system is initialized (safe to call multiple times)
     ///
     /// This is a convenience method that checks if the memory system is already
-    /// initialized and only initializes it if needed. Safe to call from any context.
+    /// initialized and only initializes it if needed. Safe to call from any
+    /// context.
     pub fn ensure_initialized() -> Result<()> {
         if Self::is_initialized() {
             Ok(())
@@ -213,7 +234,9 @@ pub fn init_crate_memory(crate_id: CrateId) -> Result<()> {
     // Verify crate is properly configured in capability system
     let context = get_global_capability_context()?;
     if !context.has_capability(crate_id) {
-        return Err(Error::runtime_execution_error("Crate has no registered capability"));
+        return Err(Error::runtime_execution_error(
+            "Crate has no registered capability",
+        ));
     }
 
     Ok(())
@@ -241,7 +264,7 @@ mod tests {
         init_crate_memory(CrateId::Component).unwrap();
 
         assert!(MemoryInitializer::is_initialized());
-        
+
         // Verify capability system is working
         let context = get_global_capability_context().unwrap();
         assert!(context.has_capability(CrateId::Component));

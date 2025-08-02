@@ -6,10 +6,17 @@
 #[cfg(test)]
 mod shared_pool_routing_tests {
     use wrt_foundation::{
-        bounded::{BoundedString, BoundedVec},
-        budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
+        bounded::{
+            BoundedString,
+            BoundedVec,
+        },
+        budget_aware_provider::{
+            BudgetAwareProviderFactory,
+            CrateId,
+        },
         budget_provider::BudgetProvider,
-        memory_system_initializer, WrtResult,
+        memory_system_initializer,
+        WrtResult,
     };
 
     fn setup_with_small_shared_pool() -> WrtResult<()> {
@@ -27,7 +34,7 @@ mod shared_pool_routing_tests {
         setup_with_small_shared_pool()?;
 
         // Check the routing threshold
-        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold);
+        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold();
         assert_eq!(threshold, 16 * 1024); // 16KB
 
         // Small allocation should go to shared pool
@@ -134,7 +141,7 @@ mod shared_pool_routing_tests {
         }
 
         // Try one more allocation - should trigger emergency borrowing
-        let borrowed_result = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Runtime;
+        let borrowed_result = BudgetProvider::<{ 32 * 1024 }>::new(CrateId::Runtime);
 
         // In a system with emergency borrowing, this might succeed
         // if other crates have unused budget
@@ -142,11 +149,11 @@ mod shared_pool_routing_tests {
             Ok(_) => {
                 // Emergency borrowing worked
                 println!("Emergency borrowing succeeded");
-            }
+            },
             Err(_) => {
                 // Emergency borrowing couldn't find available budget
                 println!("Emergency borrowing failed - no available budget");
-            }
+            },
         }
 
         Ok(())
@@ -168,7 +175,7 @@ mod shared_pool_routing_tests {
 
         // Verify shared pool tracking
         let shared_stats = BudgetAwareProviderFactory::get_shared_pool_stats()?;
-        assert!(shared_stats.allocated >= 3 * 16384)); // 3 allocations, each rounded up to 16KB
+        assert!(shared_stats.allocated >= 3 * 16384); // 3 allocations, each rounded up to 16KB
 
         // Individual crate budgets should be minimally affected
         for &crate_id in &[CrateId::Foundation, CrateId::Runtime, CrateId::Component] {
@@ -188,13 +195,15 @@ mod shared_pool_routing_tests {
         BudgetAwareProviderFactory::set_auto_routing_enabled(true)?;
 
         // Test threshold queries
-        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold);
-        assert_eq!(threshold, 16 * 1024;
+        let threshold = BudgetAwareProviderFactory::get_auto_routing_threshold();
+        assert_eq!(threshold, 16 * 1024);
 
         // Test shared pool availability checks
-        assert!(BudgetAwareProviderFactory::can_allocate_shared(4096);
-        assert!(BudgetAwareProviderFactory::can_allocate_shared(16384);
-        assert!(!BudgetAwareProviderFactory::can_allocate_shared(10 * 1024 * 1024))); // Too large
+        assert!(BudgetAwareProviderFactory::can_allocate_shared(4096));
+        assert!(BudgetAwareProviderFactory::can_allocate_shared(16384));
+        assert!(!BudgetAwareProviderFactory::can_allocate_shared(
+            10 * 1024 * 1024
+        )); // Too large
 
         Ok(())
     }
@@ -238,10 +247,10 @@ mod shared_pool_routing_tests {
 
         // Verify Foundation crate stats
         let foundation_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Foundation)?;
-        assert_eq!(foundation_stats.provider_count, 3;
+        assert_eq!(foundation_stats.provider_count, 3);
 
         // Large and medium should contribute to crate allocation
-        assert!(foundation_stats.allocated_bytes >= 65536 + 1048576)); // medium + large
+        assert!(foundation_stats.allocated_bytes >= 65536 + 1048576); // medium + large
 
         Ok(())
     }
@@ -256,7 +265,7 @@ mod shared_pool_routing_tests {
         let mut small_allocations = Vec::new();
         for i in 0..10 {
             let provider = BudgetProvider::<1024>::new(CrateId::Decoder)?;
-            small_allocations.push(BoundedVec::<u8, 100, _>::new(provider)?;
+            small_allocations.push(BoundedVec::<u8, 100, _>::new(provider)?);
         }
 
         // Pattern 2: Mixed allocation sizes
@@ -270,8 +279,8 @@ mod shared_pool_routing_tests {
         let shared_stats = BudgetAwareProviderFactory::get_shared_pool_stats()?;
         let global_stats = BudgetAwareProviderFactory::get_global_stats()?;
 
-        assert!(shared_stats.allocated > 0)); // Shared pool used
-        assert!(global_stats.total_allocated_memory > 0)); // Total tracking works
+        assert!(shared_stats.allocated > 0); // Shared pool used
+        assert!(global_stats.total_allocated_memory > 0); // Total tracking works
 
         Ok(())
     }

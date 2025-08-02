@@ -1,4 +1,3 @@
-
 // WRT - wrt-math
 // Module: Math Operations
 // SW-REQ-ID: REQ_018 (Wasm numeric operations)
@@ -13,16 +12,29 @@
 
 // Conditionally import std or core items for f32/f64
 #[cfg(not(feature = "std"))]
-use core::{f32, f64};
+use core::{
+    f32,
+    f64,
+};
 #[cfg(feature = "std")]
-use std::{f32, f64};
+use std::{
+    f32,
+    f64,
+};
 
-use wrt_error::{codes::TrapCode, Error as WrtError, Result};
+use wrt_error::{
+    codes::TrapCode,
+    Error as WrtError,
+    Result,
+};
 
 // Import necessary items from this crate's prelude and wrt-error
-use crate::prelude::{FloatBits32, FloatBits64}; // Result, TrapCode, WrtError should come
-                                                // via wrt_error directly or be aliased in
-                                                // prelude
+use crate::prelude::{
+    FloatBits32,
+    FloatBits64,
+}; // Result, TrapCode, WrtError should come
+   // via wrt_error directly or be aliased in
+   // prelude
 
 // Module-level constants for Wasm conversion boundaries
 const I64_MAX_AS_F32: f32 = 9_223_372_036_854_775_808.0_f32;
@@ -121,7 +133,10 @@ mod no_std_math_trunc {
 // --- Start of no_std math polyfills for rounding ---
 #[cfg(not(feature = "std"))]
 mod no_std_math_rounding {
-    use super::no_std_math_trunc::{trunc_f32_polyfill, trunc_f64_polyfill};
+    use super::no_std_math_trunc::{
+        trunc_f32_polyfill,
+        trunc_f64_polyfill,
+    };
 
     // Polyfill for f32::floor
     pub(super) fn floor_f32_polyfill(f_val: f32) -> f32 {
@@ -247,7 +262,10 @@ mod no_std_math_rounding {
 // --- Start of no_std math polyfills for sqrt ---
 #[cfg(not(feature = "std"))]
 mod no_std_math_sqrt {
-    use crate::float_bits::{FloatBits32, FloatBits64}; // Keep for NAN const access
+    use crate::float_bits::{
+        FloatBits32,
+        FloatBits64,
+    }; // Keep for NAN const access
 
     // Polyfill for f32::sqrt using Newton-Raphson method
     pub(super) fn sqrt_f32_polyfill(f_val: f32) -> f32 {
@@ -783,7 +801,8 @@ pub fn i32_eq(lhs: i32, rhs: i32) -> Result<i32> {
     Ok(i32::from(lhs == rhs))
 }
 
-/// i32.ne: Check if two i32 values are not equal. Returns 1 if not equal, 0 otherwise.
+/// i32.ne: Check if two i32 values are not equal. Returns 1 if not equal, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -803,7 +822,8 @@ pub fn i32_lt_s(lhs: i32, rhs: i32) -> Result<i32> {
     Ok(i32::from(lhs < rhs))
 }
 
-/// i32.lt_u: Unsigned less than comparison. Returns 1 if lhs < rhs, 0 otherwise.
+/// i32.lt_u: Unsigned less than comparison. Returns 1 if lhs < rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -813,7 +833,8 @@ pub fn i32_lt_u(lhs: u32, rhs: u32) -> Result<i32> {
     Ok(i32::from(lhs < rhs))
 }
 
-/// i32.gt_s: Signed greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+/// i32.gt_s: Signed greater than comparison. Returns 1 if lhs > rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -823,7 +844,8 @@ pub fn i32_gt_s(lhs: i32, rhs: i32) -> Result<i32> {
     Ok(i32::from(lhs > rhs))
 }
 
-/// i32.gt_u: Unsigned greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+/// i32.gt_u: Unsigned greater than comparison. Returns 1 if lhs > rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -833,7 +855,8 @@ pub fn i32_gt_u(lhs: u32, rhs: u32) -> Result<i32> {
     Ok(i32::from(lhs > rhs))
 }
 
-/// i32.le_s: Signed less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+/// i32.le_s: Signed less than or equal comparison. Returns 1 if lhs <= rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -843,7 +866,8 @@ pub fn i32_le_s(lhs: i32, rhs: i32) -> Result<i32> {
     Ok(i32::from(lhs <= rhs))
 }
 
-/// i32.le_u: Unsigned less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+/// i32.le_u: Unsigned less than or equal comparison. Returns 1 if lhs <= rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -853,7 +877,8 @@ pub fn i32_le_u(lhs: u32, rhs: u32) -> Result<i32> {
     Ok(i32::from(lhs <= rhs))
 }
 
-/// i32.ge_s: Signed greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+/// i32.ge_s: Signed greater than or equal comparison. Returns 1 if lhs >= rhs,
+/// 0 otherwise.
 ///
 /// # Errors
 ///
@@ -863,7 +888,8 @@ pub fn i32_ge_s(lhs: i32, rhs: i32) -> Result<i32> {
     Ok(i32::from(lhs >= rhs))
 }
 
-/// i32.ge_u: Unsigned greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+/// i32.ge_u: Unsigned greater than or equal comparison. Returns 1 if lhs >=
+/// rhs, 0 otherwise.
 ///
 /// # Errors
 ///
@@ -1132,7 +1158,8 @@ pub fn i64_eq(lhs: i64, rhs: i64) -> Result<i32> {
     Ok(i32::from(lhs == rhs))
 }
 
-/// i64.ne: Check if two i64 values are not equal. Returns 1 if not equal, 0 otherwise.
+/// i64.ne: Check if two i64 values are not equal. Returns 1 if not equal, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -1152,7 +1179,8 @@ pub fn i64_lt_s(lhs: i64, rhs: i64) -> Result<i32> {
     Ok(i32::from(lhs < rhs))
 }
 
-/// i64.lt_u: Unsigned less than comparison. Returns 1 if lhs < rhs, 0 otherwise.
+/// i64.lt_u: Unsigned less than comparison. Returns 1 if lhs < rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -1162,7 +1190,8 @@ pub fn i64_lt_u(lhs: u64, rhs: u64) -> Result<i32> {
     Ok(i32::from(lhs < rhs))
 }
 
-/// i64.gt_s: Signed greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+/// i64.gt_s: Signed greater than comparison. Returns 1 if lhs > rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -1172,7 +1201,8 @@ pub fn i64_gt_s(lhs: i64, rhs: i64) -> Result<i32> {
     Ok(i32::from(lhs > rhs))
 }
 
-/// i64.gt_u: Unsigned greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+/// i64.gt_u: Unsigned greater than comparison. Returns 1 if lhs > rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -1182,7 +1212,8 @@ pub fn i64_gt_u(lhs: u64, rhs: u64) -> Result<i32> {
     Ok(i32::from(lhs > rhs))
 }
 
-/// i64.le_s: Signed less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+/// i64.le_s: Signed less than or equal comparison. Returns 1 if lhs <= rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -1192,7 +1223,8 @@ pub fn i64_le_s(lhs: i64, rhs: i64) -> Result<i32> {
     Ok(i32::from(lhs <= rhs))
 }
 
-/// i64.le_u: Unsigned less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+/// i64.le_u: Unsigned less than or equal comparison. Returns 1 if lhs <= rhs, 0
+/// otherwise.
 ///
 /// # Errors
 ///
@@ -1202,7 +1234,8 @@ pub fn i64_le_u(lhs: u64, rhs: u64) -> Result<i32> {
     Ok(i32::from(lhs <= rhs))
 }
 
-/// i64.ge_s: Signed greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+/// i64.ge_s: Signed greater than or equal comparison. Returns 1 if lhs >= rhs,
+/// 0 otherwise.
 ///
 /// # Errors
 ///
@@ -1212,7 +1245,8 @@ pub fn i64_ge_s(lhs: i64, rhs: i64) -> Result<i32> {
     Ok(i32::from(lhs >= rhs))
 }
 
-/// i64.ge_u: Unsigned greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+/// i64.ge_u: Unsigned greater than or equal comparison. Returns 1 if lhs >=
+/// rhs, 0 otherwise.
 ///
 /// # Errors
 ///
@@ -1337,7 +1371,9 @@ pub fn wasm_f32_floor(val: FloatBits32) -> Result<FloatBits32> {
 pub fn wasm_f32_trunc(val: FloatBits32) -> Result<FloatBits32> {
     // Note: f32_trunc_compat returns f32, we need to ensure bit patterns are
     // preserved if that's critical. .to_bits().from_bits() ensures this.
-    Ok(FloatBits32::from_bits(f32_trunc_compat(val.value()).to_bits()))
+    Ok(FloatBits32::from_bits(
+        f32_trunc_compat(val.value()).to_bits(),
+    ))
 }
 
 /// f32.nearest: Round f32 to nearest integer (ties to even).
@@ -1347,7 +1383,9 @@ pub fn wasm_f32_trunc(val: FloatBits32) -> Result<FloatBits32> {
 /// This function does not currently return an error.
 #[inline]
 pub fn wasm_f32_nearest(val: FloatBits32) -> Result<FloatBits32> {
-    Ok(FloatBits32::from_float(f32_round_ties_to_even_compat(val.value())))
+    Ok(FloatBits32::from_float(f32_round_ties_to_even_compat(
+        val.value(),
+    )))
 }
 
 /// f32.sqrt: Square root of an f32 value.
@@ -1485,7 +1523,9 @@ pub fn wasm_f64_floor(val: FloatBits64) -> Result<FloatBits64> {
 /// f64.trunc: Truncate f64 value (to integer towards zero).
 #[inline]
 pub fn wasm_f64_trunc(val: FloatBits64) -> Result<FloatBits64> {
-    Ok(FloatBits64::from_bits(f64_trunc_compat(val.value()).to_bits()))
+    Ok(FloatBits64::from_bits(
+        f64_trunc_compat(val.value()).to_bits(),
+    ))
 }
 
 /// f64.nearest: Round to nearest integer, ties to even.
@@ -2148,8 +2188,7 @@ pub fn i64_trunc_f64_s(val: FloatBits64) -> Result<i64> {
         // Test: (i64::MAX as f64) is  9223372036854776000.0
         // The spec implies the range of representable values, not the casted bounds.
         // Let's use the numeric literals from spec's Table 15 for bounds check.
-        if !(-9_223_372_036_854_775_808.0_f64..9_223_372_036_854_775_808.0_f64).contains(&d_trunc)
-        {
+        if !(-9_223_372_036_854_775_808.0_f64..9_223_372_036_854_775_808.0_f64).contains(&d_trunc) {
             if d_trunc == -9_223_372_036_854_775_808.0_f64 { // i64::MIN
                  // okay
             } else {

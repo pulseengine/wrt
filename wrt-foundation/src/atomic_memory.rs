@@ -13,15 +13,27 @@
 // Import WrtMutex from wrt-sync
 use wrt_sync::mutex::WrtMutex;
 
-use crate::{
-    operations::{record_global_operation, Type as OperationType},
-    prelude::{Clone, Debug, Eq, PartialEq, Result, Sized},
-    safe_memory::{Provider, SafeMemoryHandler},
-    verification::VerificationLevel,
-};
-
 #[cfg(feature = "std")]
 use crate::prelude::Vec;
+use crate::{
+    operations::{
+        record_global_operation,
+        Type as OperationType,
+    },
+    prelude::{
+        Clone,
+        Debug,
+        Eq,
+        PartialEq,
+        Result,
+        Sized,
+    },
+    safe_memory::{
+        Provider,
+        SafeMemoryHandler,
+    },
+    verification::VerificationLevel,
+};
 
 /// An atomic memory operation handler that ensures write operations and
 /// checksum calculations are performed atomically.
@@ -32,7 +44,7 @@ use crate::prelude::Vec;
 #[derive(Debug)]
 pub struct AtomicMemoryOps<P: Provider> {
     /// The underlying memory handler wrapped in a mutex for atomic operations
-    handler: WrtMutex<SafeMemoryHandler<P>>,
+    handler:            WrtMutex<SafeMemoryHandler<P>>,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
@@ -40,7 +52,7 @@ pub struct AtomicMemoryOps<P: Provider> {
 impl<P: Provider + Clone> Clone for AtomicMemoryOps<P> {
     fn clone(&self) -> Self {
         Self {
-            handler: WrtMutex::new(self.handler.lock().clone()),
+            handler:            WrtMutex::new(self.handler.lock().clone()),
             verification_level: self.verification_level,
         }
     }
@@ -63,7 +75,10 @@ impl<P: Provider> AtomicMemoryOps<P> {
     /// This wraps the handler in a mutex to ensure atomic operations.
     pub fn new(handler: SafeMemoryHandler<P>) -> Self {
         let verification_level = handler.verification_level();
-        Self { handler: WrtMutex::new(handler), verification_level }
+        Self {
+            handler: WrtMutex::new(handler),
+            verification_level,
+        }
     }
 
     /// Creates a new `AtomicMemoryOps` with the provided provider.
@@ -74,9 +89,12 @@ impl<P: Provider> AtomicMemoryOps<P> {
     where
         P: Sized + Clone,
     {
-        let handler = SafeMemoryHandler::new(provider)?;
+        let handler = SafeMemoryHandler::new(provider);
         let verification_level = handler.verification_level();
-        Ok(Self { handler: WrtMutex::new(handler), verification_level })
+        Ok(Self {
+            handler: WrtMutex::new(handler),
+            verification_level,
+        })
     }
 
     /// Reads data from memory with safety guarantees and atomic access.
@@ -264,8 +282,11 @@ impl<T: Provider> AtomicMemoryExt for T {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{safe_managed_alloc, budget_aware_provider::CrateId};
-    use crate::safe_memory::NoStdProvider;
+    use crate::{
+        budget_aware_provider::CrateId,
+        safe_managed_alloc,
+        safe_memory::NoStdProvider,
+    };
 
     // Basic test of atomic write operation
     #[test]

@@ -26,17 +26,43 @@ const MAX_BUILDER_COMPONENT_TYPES: usize = 128;
 const MAX_BUILDER_CORE_TYPES: usize = 128;
 
 use crate::{
-    bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+        WasmName,
+        MAX_WASM_NAME_LENGTH,
+    },
     component::{
-        ComponentAlias, ComponentInstance, ComponentType, CoreInstance, CoreType, Export,
-        ExternType, Import, ImportKey, Namespace, MAX_COMPONENT_ALIASES, MAX_COMPONENT_EXPORTS,
-        MAX_COMPONENT_IMPORTS, MAX_COMPONENT_INSTANCES, MAX_COMPONENT_TYPES, MAX_CORE_INSTANCES,
-        MAX_CORE_TYPES, MAX_NAMESPACE_ELEMENTS, MAX_NAME_LEN,
+        ComponentAlias,
+        ComponentInstance,
+        ComponentType,
+        CoreInstance,
+        CoreType,
+        Export,
+        ExternType,
+        Import,
+        ImportKey,
+        Namespace,
+        MAX_COMPONENT_ALIASES,
+        MAX_COMPONENT_EXPORTS,
+        MAX_COMPONENT_IMPORTS,
+        MAX_COMPONENT_INSTANCES,
+        MAX_COMPONENT_TYPES,
+        MAX_CORE_INSTANCES,
+        MAX_CORE_TYPES,
+        MAX_NAMESPACE_ELEMENTS,
+        MAX_NAME_LEN,
     },
     component_type_store::TypeRef,
-    resource::{Resource, ResourceRepr, ResourceType},
+    resource::{
+        Resource,
+        ResourceRepr,
+        ResourceType,
+    },
     verification::VerificationLevel,
-    Error, MemoryProvider, WrtResult,
+    Error,
+    MemoryProvider,
+    WrtResult,
 };
 
 /// Builder for `ComponentType` instances.
@@ -45,14 +71,14 @@ use crate::{
 /// proper initialization of all collections using bounded collections.
 #[derive(Debug)]
 pub struct ComponentTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
-    provider: P,
-    imports: BoundedVec<Import<P>, MAX_BUILDER_IMPORTS, P>,
-    exports: BoundedVec<Export<P>, MAX_BUILDER_EXPORTS, P>,
-    aliases: BoundedVec<ComponentAlias<P>, MAX_BUILDER_ALIASES, P>,
-    instances: BoundedVec<ComponentInstance<P>, MAX_BUILDER_INSTANCES, P>,
-    core_instances: BoundedVec<CoreInstance<P>, MAX_BUILDER_CORE_INSTANCES, P>,
+    provider:        P,
+    imports:         BoundedVec<Import<P>, MAX_BUILDER_IMPORTS, P>,
+    exports:         BoundedVec<Export<P>, MAX_BUILDER_EXPORTS, P>,
+    aliases:         BoundedVec<ComponentAlias<P>, MAX_BUILDER_ALIASES, P>,
+    instances:       BoundedVec<ComponentInstance<P>, MAX_BUILDER_INSTANCES, P>,
+    core_instances:  BoundedVec<CoreInstance<P>, MAX_BUILDER_CORE_INSTANCES, P>,
     component_types: BoundedVec<TypeRef, MAX_BUILDER_COMPONENT_TYPES, P>,
-    core_types: BoundedVec<CoreType<P>, MAX_BUILDER_CORE_TYPES, P>,
+    core_types:      BoundedVec<CoreType<P>, MAX_BUILDER_CORE_TYPES, P>,
 }
 
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<P> {
@@ -246,16 +272,21 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
 /// Builder for `Import` instances.
 #[derive(Debug)]
 pub struct ImportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
-    provider: P,
+    provider:  P,
     namespace: Option<Namespace<P>>,
-    name: Option<WasmName<MAX_NAME_LEN, P>>,
-    ty: Option<ExternType<P>>,
+    name:      Option<WasmName<MAX_NAME_LEN, P>>,
+    ty:        Option<ExternType<P>>,
 }
 
 #[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ImportBuilder<P> {
     fn default() -> Self {
-        Self { provider: P::default(), namespace: None, name: None, ty: None }
+        Self {
+            provider:  P::default(),
+            namespace: None,
+            name:      None,
+            ty:        None,
+        }
     }
 }
 
@@ -314,7 +345,10 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
 
         let ty = self.ty.ok_or_else(|| Error::validation_error("Import type is required"))?;
 
-        Ok(Import { key: ImportKey { namespace, name }, ty })
+        Ok(Import {
+            key: ImportKey { namespace, name },
+            ty,
+        })
     }
 }
 
@@ -323,15 +357,20 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
 #[derive(Debug)]
 pub struct ExportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     provider: P,
-    name: Option<WasmName<MAX_NAME_LEN, P>>,
-    ty: Option<ExternType<P>>,
-    desc: Option<WasmName<MAX_NAME_LEN, P>>,
+    name:     Option<WasmName<MAX_NAME_LEN, P>>,
+    ty:       Option<ExternType<P>>,
+    desc:     Option<WasmName<MAX_NAME_LEN, P>>,
 }
 
 #[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ExportBuilder<P> {
     fn default() -> Self {
-        Self { provider: P::default(), name: None, ty: None, desc: None }
+        Self {
+            provider: P::default(),
+            name:     None,
+            ty:       None,
+            desc:     None,
+        }
     }
 }
 
@@ -386,7 +425,11 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
 
         let ty = self.ty.ok_or_else(|| Error::validation_error("Export type is required"))?;
 
-        Ok(Export { name, ty, desc: self.desc })
+        Ok(Export {
+            name,
+            ty,
+            desc: self.desc,
+        })
     }
 }
 
@@ -460,7 +503,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
 
     /// Builds and returns a configured `Namespace`.
     pub fn build(self) -> WrtResult<Namespace<P>> {
-        Ok(Namespace { elements: self.elements })
+        Ok(Namespace {
+            elements: self.elements,
+        })
     }
 }
 
@@ -469,7 +514,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
 #[derive(Debug)]
 pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     provider: P,
-    variant: Option<ResourceTypeVariant<P>>,
+    variant:  Option<ResourceTypeVariant<P>>,
 }
 
 #[cfg(feature = "std")]
@@ -483,7 +528,10 @@ enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
 #[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ResourceTypeBuilder<P> {
     fn default() -> Self {
-        Self { provider: P::default(), variant: None }
+        Self {
+            provider: P::default(),
+            variant:  None,
+        }
     }
 }
 
@@ -541,10 +589,10 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
                     fields.push(converted_field)?;
                 }
                 Ok(ResourceType::Record(fields))
-            }
+            },
             ResourceTypeVariant::Aggregate(resource_ids) => {
                 Ok(ResourceType::Aggregate(resource_ids))
-            }
+            },
         }
     }
 }
@@ -552,14 +600,17 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
 #[cfg(all(test,))]
 mod tests {
     use super::*;
-    use crate::{safe_managed_alloc, budget_aware_provider::CrateId, traits::BoundedCapacity};
+    use crate::{
+        budget_aware_provider::CrateId,
+        safe_managed_alloc,
+        traits::BoundedCapacity,
+    };
 
     #[test]
     fn test_component_type_builder() -> WrtResult<()> {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
-        let component_type =
-            ComponentTypeBuilder::new().with_provider(provider.clone()).build()?;
+        let component_type = ComponentTypeBuilder::new().with_provider(provider.clone()).build()?;
 
         // Verify empty collections were created
         assert_eq!(component_type.imports.len(), 0);
@@ -586,8 +637,8 @@ mod tests {
         assert_eq!(namespace.elements.len(), 2);
 
         // Test building from string
-        let namespace = NamespaceBuilder::from_str("wasm:component:model", provider.clone())?
-            .build()?;
+        let namespace =
+            NamespaceBuilder::from_str("wasm:component:model", provider.clone())?.build()?;
 
         assert_eq!(namespace.elements.len(), 3);
         Ok(())

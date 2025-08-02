@@ -197,7 +197,7 @@ mod component_binary_parser {
         /// * `Err(Error)` - Parse error with detailed information
         pub fn parse(&mut self, bytes: &[u8]) -> Result<Component> {
             self.offset = 0;
-            self.size = bytes.len);
+            self.size = bytes.len();
 
             // Validate minimum size
             if bytes.len() < 12 {
@@ -671,10 +671,10 @@ mod component_binary_parser {
         #[test]
         fn test_parser_creation() {
             let parser = ComponentBinaryParser::new();
-            assert_eq!(parser.validation_level, ValidationLevel::Standard;
+            assert_eq!(parser.validation_level, ValidationLevel::Standard);
 
             let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full;
-            assert_eq!(strict_parser.validation_level, ValidationLevel::Full;
+            assert_eq!(strict_parser.validation_level, ValidationLevel::Full);
         }
 
         #[test]

@@ -635,12 +635,12 @@ mod tests {
         #[cfg(not(feature = "std"))]
         let list = FixedLengthList::with_elements(list_type, &elements).unwrap();
 
-        assert_eq!(list.current_length(), 3;
-        assert!(list.is_full();
-        assert_eq!(list.get(0), Some(&ComponentValue::I32(1;
-        assert_eq!(list.get(1), Some(&ComponentValue::I32(2;
-        assert_eq!(list.get(2), Some(&ComponentValue::I32(3;
-        assert_eq!(list.get(3), None;
+        assert_eq!(list.current_length(), 3);
+        assert!(list.is_full());
+        assert_eq!(list.get(0), Some(&ComponentValue::I32(1)));
+        assert_eq!(list.get(1), Some(&ComponentValue::I32(2)));
+        assert_eq!(list.get(2), Some(&ComponentValue::I32(3)));
+        assert_eq!(list.get(3), None);
     }
 
     #[test]
@@ -676,7 +676,7 @@ mod tests {
         assert!(list.push(ComponentValue::I32(1)).is_ok());
         assert!(list.push(ComponentValue::I32(2)).is_ok());
         assert!(list.push(ComponentValue::I32(3)).is_ok());
-        assert!(list.is_full();
+        assert!(list.is_full());
 
         // Try to push when full
         assert!(list.push(ComponentValue::I32(4)).is_err();

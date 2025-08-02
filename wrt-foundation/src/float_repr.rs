@@ -6,13 +6,27 @@
 //! Wrapper types for f32 and f64 ensuring bit-pattern based equality and
 //! hashing, suitable for use in WebAssembly type definitions.
 
-use core::hash::{Hash, Hasher};
+use core::hash::{
+    Hash,
+    Hasher,
+};
 
 // Use Result and Error types from this crate's prelude or error module
-use crate::prelude::{codes, Error, ErrorCategory, Result as WrtResult};
+use crate::prelude::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result as WrtResult,
+};
 use crate::{
     traits::{
-        BytesWriter, Checksummable, FromBytes, LittleEndian, ReadStream, ToBytes, WriteStream,
+        BytesWriter,
+        Checksummable,
+        FromBytes,
+        LittleEndian,
+        ReadStream,
+        ToBytes,
+        WriteStream,
     },
     verification::Checksum,
 };
@@ -158,13 +172,16 @@ impl FromBytes for FloatBits64 {
 impl LittleEndian for FloatBits32 {
     fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
         if bytes.len() != 4 {
-            return Err(Error::runtime_execution_error("Invalid byte length for f32"));
+            return Err(Error::runtime_execution_error(
+                "Invalid byte length for f32",
+            ));
         }
         let arr: [u8; 4] = bytes.try_into().map_err(|_| {
             Error::new(
                 ErrorCategory::System,
                 codes::CONVERSION_ERROR,
-                "Failed to convert bytes to array")
+                "Failed to convert bytes to array",
+            )
         })?;
         Ok(FloatBits32(u32::from_le_bytes(arr)))
     }
@@ -177,13 +194,16 @@ impl LittleEndian for FloatBits32 {
 impl LittleEndian for FloatBits64 {
     fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
         if bytes.len() != 8 {
-            return Err(Error::runtime_execution_error("Invalid byte length for f64"));
+            return Err(Error::runtime_execution_error(
+                "Invalid byte length for f64",
+            ));
         }
         let arr: [u8; 8] = bytes.try_into().map_err(|_| {
             Error::new(
                 ErrorCategory::System,
                 codes::CONVERSION_ERROR,
-                "Failed to convert bytes to array")
+                "Failed to convert bytes to array",
+            )
         })?;
         Ok(FloatBits64(u64::from_le_bytes(arr)))
     }

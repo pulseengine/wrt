@@ -220,7 +220,7 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
     // Construct the path to wast_passed.md in the workspace root
     let passed_file = workspace_root.join("wast_passed.md");
 
-    println!("Looking for wast_passed.md at: {}", passed_file.display()));
+    println!("Looking for wast_passed.md at: {}", passed_file.display());
 
     // Return empty set if file doesn't exist
     if !passed_file.exists() {
@@ -249,7 +249,7 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
         }
     }
 
-    println!("Loaded {} tests from wast_passed.md", passing_tests.len);
+    println!("Loaded {} tests from wast_passed.md", passing_tests.len());
 
     // Another potential issue: relative paths in wast_passed.md are relative to the
     // workspace root Let's make sure we're using absolute paths by resolving
@@ -275,7 +275,7 @@ fn test_wast_files() -> Result<(), Error> {
     let test_dir = workspace_root.join("wrt/testsuite");
 
     if !test_dir.exists() {
-        println!("No testsuite directory found at: {}", test_dir.display()));
+        println!("No testsuite directory found at: {}", test_dir.display());
         println!("Checking external testsuite...");
 
         // Try the external testsuite path
@@ -318,7 +318,7 @@ fn test_wast_files() -> Result<(), Error> {
                 .map(|p| p.to_path_buf())
                 .unwrap_or_else(|_| test_path.clone());
 
-            println!("Running test {}: {}", tests_run, rel_display_path.display()));
+            println!("Running test {}: {}", tests_run, rel_display_path.display());
 
             match runner.run_wast_file(&test_path) {
                 Ok(stats) => {
@@ -333,7 +333,7 @@ fn test_wast_files() -> Result<(), Error> {
                     }
                 },
                 Err(e) => {
-                    println!("❌ FAIL: {} - {}", rel_display_path.display(), e));
+                    println!("❌ FAIL: {} - {}", rel_display_path.display(), e);
                 },
             }
         }
@@ -351,7 +351,7 @@ fn test_wast_files() -> Result<(), Error> {
 
 /// Test the external testsuite with a subset of files
 fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
-    println!("Testing external testsuite at: {}", testsuite_dir.display()));
+    println!("Testing external testsuite at: {}", testsuite_dir.display());
 
     let mut runner = WastTestRunner::new();
 

@@ -32,13 +32,13 @@ mod async_context_tests {
     fn test_context_lifecycle() {
         // Test basic context get/set
         let initial = AsyncContextManager::context_get().unwrap();
-        assert!(initial.is_none();)
+        assert!(initial.is_none());
 
         let context = AsyncContext::new();
         AsyncContextManager::context_set(context.clone()).unwrap();
 
         let retrieved = AsyncContextManager::context_get().unwrap();
-        assert!(retrieved.is_some();)
+        assert!(retrieved.is_some());
 
         // Clean up
         AsyncContextManager::context_pop().unwrap();
@@ -52,7 +52,7 @@ mod async_context_tests {
         AsyncContextManager::set_context_value(key.clone(), value).unwrap();
 
         let retrieved = AsyncContextManager::get_context_value(&key).unwrap();
-        assert!(retrieved.is_some();)
+        assert!(retrieved.is_some());
         assert_eq!(
             retrieved.unwrap().as_component_value().unwrap(),
             &ComponentValue::I32(42)
@@ -70,7 +70,7 @@ mod async_context_tests {
         {
             let _scope = AsyncContextScope::enter_empty().unwrap();
             let context = AsyncContextManager::context_get().unwrap();
-            assert!(context.is_some();)
+            assert!(context.is_some());
         }
 
         // Context should be popped after scope
@@ -99,13 +99,13 @@ mod async_context_tests {
             let level2_val =
                 AsyncContextManager::get_context_value(&ContextKey::new("level2".to_string()))
                     .unwrap();
-            assert!(level2_val.is_some();)
+            assert!(level2_val.is_some());
         }
 
         // Back to level 1, level2 key should be gone
         let level2_val =
             AsyncContextManager::get_context_value(&ContextKey::new("level2".to_string())).unwrap();
-        assert!(level2_val.is_none();)
+        assert!(level2_val.is_none());
     }
 }
 
@@ -132,7 +132,7 @@ mod task_management_tests {
         assert_eq!(final_status, TaskStatus::Completed);
 
         let result = TaskBuiltins::task_wait(task_id).unwrap();
-        assert!(result.is_some();)
+        assert!(result.is_some());
     }
 
     #[test]
@@ -350,19 +350,19 @@ mod error_context_tests {
         .unwrap();
 
         let stack_trace = ErrorContextBuiltins::error_context_stack_trace(context_id).unwrap();
-        assert!(stack_trace.contains("test_function");
-        assert!(stack_trace.contains("test.rs");
+        assert!(stack_trace.contains("test_function"));
+        assert!(stack_trace.contains("test.rs"));
     }
 
     #[test]
     fn test_error_severity_conversions() {
-        assert_eq!(ErrorSeverity::Info.as_u32(), 0));
-        assert_eq!(ErrorSeverity::Warning.as_u32(), 1));
+        assert_eq!(ErrorSeverity::Info.as_u32(), 0);
+        assert_eq!(ErrorSeverity::Warning.as_u32(), 1);
         assert_eq!(ErrorSeverity::Error.as_u32(), 2);
         assert_eq!(ErrorSeverity::Critical.as_u32(), 3);
 
-        assert_eq!(ErrorSeverity::from_u32(0), Some(ErrorSeverity::Info);
-        assert_eq!(ErrorSeverity::from_u32(3), Some(ErrorSeverity::Critical);
+        assert_eq!(ErrorSeverity::from_u32(0), Some(ErrorSeverity::Info));
+        assert_eq!(ErrorSeverity::from_u32(3), Some(ErrorSeverity::Critical));
         assert_eq!(ErrorSeverity::from_u32(999), None);
     }
 }
@@ -381,14 +381,13 @@ mod advanced_threading_tests {
         AdvancedThreadingBuiltins::initialize().unwrap();
 
         let func_ref = FunctionReference::new(
-            
             "test_func".to_string(),
             FunctionSignature {
                 params:  vec![ThreadValueType::I32],
                 results: vec![ThreadValueType::I32],
             },
             0,
-            42)
+            42,
         );
 
         let config = ThreadSpawnConfig {
@@ -408,7 +407,6 @@ mod advanced_threading_tests {
         AdvancedThreadingBuiltins::initialize().unwrap();
 
         let func_ref = FunctionReference::new(
-            
             "test_func".to_string(),
             FunctionSignature {
                 params:  vec![],
@@ -451,7 +449,7 @@ mod advanced_threading_tests {
         );
 
         let value2 = AdvancedThreadingBuiltins::thread_local_get(thread_id, 2).unwrap();
-        assert_eq!(value2, Some(ComponentValue::I32(42));
+        assert_eq!(value2, Some(ComponentValue::I32(42)));
     }
 
     #[test]
@@ -482,7 +480,6 @@ mod advanced_threading_tests {
         AdvancedThreadingBuiltins::initialize().unwrap();
 
         let func_ref = FunctionReference::new(
-            
             "parent_func".to_string(),
             FunctionSignature {
                 params:  vec![],
@@ -504,7 +501,7 @@ mod advanced_threading_tests {
         let child_id =
             AdvancedThreadingBuiltins::thread_spawn_ref(func_ref, config, Some(parent_id)).unwrap();
 
-        assert_ne!(parent_id, child_id;
+        assert_ne!(parent_id, child_id);
     }
 }
 
@@ -516,13 +513,13 @@ mod fixed_length_list_tests {
     fn test_fixed_list_creation() {
         let list_type = FixedLengthListType::new(ValueType::I32, 5);
         assert_eq!(list_type.length(), 5);
-        assert!(!list_type.is_mutable();
+        assert!(!list_type.is_mutable());
         assert_eq!(list_type.size_in_bytes(), 20); // 5 * 4 bytes
 
         let list = FixedLengthList::new(list_type).unwrap();
         assert_eq!(list.length(), 5);
-        assert_eq!(list.current_length(), 0));
-        assert!(!list.is_full();
+        assert_eq!(list.current_length(), 0);
+        assert!(!list.is_full());
     }
 
     #[test]
@@ -535,28 +532,28 @@ mod fixed_length_list_tests {
         list.push(ComponentValue::I32(20)).unwrap();
         list.push(ComponentValue::I32(30)).unwrap();
 
-        assert!(list.is_full();
+        assert!(list.is_full());
         assert_eq!(list.current_length(), 3);
 
         // Test get
-        assert_eq!(list.get(0), Some(&ComponentValue::I32(10));
-        assert_eq!(list.get(1), Some(&ComponentValue::I32(20));
-        assert_eq!(list.get(2), Some(&ComponentValue::I32(30));
+        assert_eq!(list.get(0), Some(&ComponentValue::I32(10)));
+        assert_eq!(list.get(1), Some(&ComponentValue::I32(20)));
+        assert_eq!(list.get(2), Some(&ComponentValue::I32(30)));
         assert_eq!(list.get(3), None);
 
         // Test set
         list.set(1, ComponentValue::I32(25)).unwrap();
-        assert_eq!(list.get(1), Some(&ComponentValue::I32(25));
+        assert_eq!(list.get(1), Some(&ComponentValue::I32(25)));
     }
 
     #[test]
     fn test_fixed_list_type_validation() {
         // Test zero length
         let zero_type = FixedLengthListType::new(ValueType::I32, 0);
-        assert!(zero_type.validate_size().is_err();
+        assert!(zero_type.validate_size().is_err());
 
         // Test valid length
-        let valid_type = FixedLengthListType::new(ValueType::I32, 100;
+        let valid_type = FixedLengthListType::new(ValueType::I32, 100);
         assert!(valid_type.validate_size().is_ok());
     }
 
@@ -565,16 +562,16 @@ mod fixed_length_list_tests {
         // Test zero_filled
         let zeros = fixed_list_utils::zero_filled(ValueType::I32, 3).unwrap();
         assert_eq!(zeros.current_length(), 3);
-        assert_eq!(zeros.get(0), Some(&ComponentValue::I32(0));
-        assert_eq!(zeros.get(1), Some(&ComponentValue::I32(0));
-        assert_eq!(zeros.get(2), Some(&ComponentValue::I32(0));
+        assert_eq!(zeros.get(0), Some(&ComponentValue::I32(0)));
+        assert_eq!(zeros.get(1), Some(&ComponentValue::I32(0)));
+        assert_eq!(zeros.get(2), Some(&ComponentValue::I32(0)));
 
         // Test from_range
         let range = fixed_list_utils::from_range(5, 8).unwrap();
         assert_eq!(range.current_length(), 3);
-        assert_eq!(range.get(0), Some(&ComponentValue::I32(5));
-        assert_eq!(range.get(1), Some(&ComponentValue::I32(6));
-        assert_eq!(range.get(2), Some(&ComponentValue::I32(7));
+        assert_eq!(range.get(0), Some(&ComponentValue::I32(5)));
+        assert_eq!(range.get(1), Some(&ComponentValue::I32(6)));
+        assert_eq!(range.get(2), Some(&ComponentValue::I32(7)));
 
         // Test repeat_element
         let repeated =
@@ -582,7 +579,7 @@ mod fixed_length_list_tests {
                 .unwrap();
         assert_eq!(repeated.current_length(), 4);
         for i in 0..4 {
-            assert_eq!(repeated.get(i), Some(&ComponentValue::Bool(true));
+            assert_eq!(repeated.get(i), Some(&ComponentValue::Bool(true)));
         }
     }
 
@@ -590,17 +587,17 @@ mod fixed_length_list_tests {
     fn test_fixed_list_type_registry() {
         let mut registry = FixedLengthListTypeRegistry::new();
 
-        let type1 = FixedLengthListType::new(ValueType::I32, 10;
+        let type1 = FixedLengthListType::new(ValueType::I32, 10);
         let index1 = registry.register_type(type1.clone()).unwrap();
-        assert_eq!(index1, 0));
+        assert_eq!(index1, 0);
 
-        let type2 = FixedLengthListType::new(ValueType::F64, 5;
+        let type2 = FixedLengthListType::new(ValueType::F64, 5);
         let index2 = registry.register_type(type2).unwrap();
-        assert_eq!(index2, 1));
+        assert_eq!(index2, 1);
 
         // Duplicate should return existing index
         let dup_index = registry.register_type(type1).unwrap();
-        assert_eq!(dup_index, 0));
+        assert_eq!(dup_index, 0);
 
         assert_eq!(registry.type_count(), 2);
 
@@ -610,21 +607,21 @@ mod fixed_length_list_tests {
         assert_eq!(retrieved.length(), 10);
 
         // Test find
-        assert_eq!(registry.find_type(&ValueType::I32, 10), Some(0);
-        assert_eq!(registry.find_type(&ValueType::F64, 5), Some(1);
+        assert_eq!(registry.find_type(&ValueType::I32, 10), Some(0));
+        assert_eq!(registry.find_type(&ValueType::F64, 5), Some(1));
         assert_eq!(registry.find_type(&ValueType::Bool, 10), None);
     }
 
     #[test]
     fn test_list_concatenation() {
-        let list1_type = FixedLengthListType::new(ValueType::I32, 2;
+        let list1_type = FixedLengthListType::new(ValueType::I32, 2);
         let list1 = FixedLengthList::with_elements(
             list1_type,
             vec![ComponentValue::I32(1), ComponentValue::I32(2)],
         )
         .unwrap();
 
-        let list2_type = FixedLengthListType::new(ValueType::I32, 2;
+        let list2_type = FixedLengthListType::new(ValueType::I32, 2);
         let list2 = FixedLengthList::with_elements(
             list2_type,
             vec![ComponentValue::I32(3), ComponentValue::I32(4)],
@@ -633,10 +630,10 @@ mod fixed_length_list_tests {
 
         let concatenated = fixed_list_utils::concatenate(&list1, &list2).unwrap();
         assert_eq!(concatenated.length(), 4);
-        assert_eq!(concatenated.get(0), Some(&ComponentValue::I32(1));
-        assert_eq!(concatenated.get(1), Some(&ComponentValue::I32(2));
-        assert_eq!(concatenated.get(2), Some(&ComponentValue::I32(3));
-        assert_eq!(concatenated.get(3), Some(&ComponentValue::I32(4));
+        assert_eq!(concatenated.get(0), Some(&ComponentValue::I32(1)));
+        assert_eq!(concatenated.get(1), Some(&ComponentValue::I32(2)));
+        assert_eq!(concatenated.get(2), Some(&ComponentValue::I32(3)));
+        assert_eq!(concatenated.get(3), Some(&ComponentValue::I32(4)));
     }
 
     #[test]
@@ -656,9 +653,9 @@ mod fixed_length_list_tests {
 
         let sliced = fixed_list_utils::slice(&list, 1, 3).unwrap();
         assert_eq!(sliced.length(), 3);
-        assert_eq!(sliced.get(0), Some(&ComponentValue::I32(20));
-        assert_eq!(sliced.get(1), Some(&ComponentValue::I32(30));
-        assert_eq!(sliced.get(2), Some(&ComponentValue::I32(40));
+        assert_eq!(sliced.get(0), Some(&ComponentValue::I32(20)));
+        assert_eq!(sliced.get(1), Some(&ComponentValue::I32(30)));
+        assert_eq!(sliced.get(2), Some(&ComponentValue::I32(40)));
     }
 }
 
@@ -692,7 +689,7 @@ mod cross_feature_integration_tests {
         let group =
             AsyncContextManager::get_context_value(&ContextKey::new("task_group".to_string()))
                 .unwrap();
-        assert!(group.is_some();)
+        assert!(group.is_some());
 
         // Complete task
         TaskBuiltins::task_return(task_id, TaskReturn::void()).unwrap();
@@ -762,7 +759,7 @@ mod cross_feature_integration_tests {
 
         // Check for ready items
         let ready = WaitableSetBuiltins::waitable_set_poll_all(set_id).unwrap();
-        assert!(ready.len() >= 1)); // At least the resolved future should be
+        assert!(ready.len() >= 1); // At least the resolved future should be
                                    // ready
     }
 
@@ -771,7 +768,7 @@ mod cross_feature_integration_tests {
         AdvancedThreadingBuiltins::initialize().unwrap();
 
         // Create a fixed list for thread arguments
-        let arg_list_type = FixedLengthListType::new(ValueType::I32, 3;
+        let arg_list_type = FixedLengthListType::new(ValueType::I32, 3);
         let args = FixedLengthList::with_elements(
             arg_list_type,
             vec![
@@ -784,14 +781,13 @@ mod cross_feature_integration_tests {
 
         // Create function reference that takes a list
         let func_ref = FunctionReference::new(
-            
             "list_processor".to_string(),
             FunctionSignature {
                 params:  vec![ThreadValueType::I32], // Simplified for test
                 results: vec![ThreadValueType::I32],
             },
             0,
-            100)
+            100,
         );
 
         let config = ThreadSpawnConfig {
@@ -808,7 +804,7 @@ mod cross_feature_integration_tests {
 
         // Verify stored
         let retrieved = AdvancedThreadingBuiltins::thread_local_get(thread_id, 1).unwrap();
-        assert!(retrieved.is_some();)
+        assert!(retrieved.is_some());
     }
 }
 
@@ -860,7 +856,7 @@ mod benchmarks {
         b.iter(|| {
             AsyncContextManager::set_context_value(key.clone(), value.clone()).unwrap();
             let _ = AsyncContextManager::get_context_value(&key).unwrap();
-        };
+        });
     }
 
     #[bench]
@@ -871,15 +867,15 @@ mod benchmarks {
             let task_id = TaskBuiltins::task_start().unwrap();
             TaskBuiltins::task_return(task_id, TaskReturn::void()).unwrap();
             let _ = TaskBuiltins::task_wait(task_id).unwrap();
-        };
+        });
     }
 
     #[bench]
     fn bench_fixed_list_creation(b: &mut Bencher) {
-        let list_type = FixedLengthListType::new(ValueType::I32, 100;
+        let list_type = FixedLengthListType::new(ValueType::I32, 100);
 
         b.iter(|| {
             let _ = FixedLengthList::new(list_type.clone()).unwrap();
-        };
+        });
     }
 }

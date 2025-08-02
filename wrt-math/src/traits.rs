@@ -1,4 +1,3 @@
-
 // Copyright (c) 2025 R T
 // SPDX-License-Identifier: MIT
 // Project: WRT

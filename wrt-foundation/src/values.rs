@@ -28,21 +28,44 @@ use std;
 use std::fmt;
 
 // Core imports
-use wrt_error::{codes, Error, ErrorCategory, Result as WrtResult};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result as WrtResult,
+};
 
 // Publicly re-export FloatBits32 and FloatBits64 from the local float_repr module
-pub use crate::float_repr::{FloatBits32, FloatBits64};
+pub use crate::float_repr::{
+    FloatBits32,
+    FloatBits64,
+};
 // // use std::format; // Removed: format! should come from prelude
 use crate::traits::LittleEndian as TraitLittleEndian; // Alias trait
-                                                      // Use the canonical LittleEndian trait and BytesWriter from crate::traits
+// Use the canonical LittleEndian trait and BytesWriter from crate::traits
 use crate::traits::{
-    BoundedCapacity, BytesWriter, Checksummable, DefaultMemoryProvider, FromBytes, LittleEndian,
-    ReadStream, ToBytes, WriteStream,
+    BoundedCapacity,
+    BytesWriter,
+    Checksummable,
+    DefaultMemoryProvider,
+    FromBytes,
+    LittleEndian,
+    ReadStream,
+    ToBytes,
+    WriteStream,
 };
-use crate::types::{ValueType, MAX_ARRAY_ELEMENTS, MAX_STRUCT_FIELDS}; // Import ValueType and RefType
+use crate::types::{
+    ValueType,
+    MAX_ARRAY_ELEMENTS,
+    MAX_STRUCT_FIELDS,
+}; // Import ValueType and RefType
 use crate::{
     bounded::BoundedVec,
-    prelude::{Debug, Eq, PartialEq},
+    prelude::{
+        Debug,
+        Eq,
+        PartialEq,
+    },
     verification::Checksum,
     MemoryProvider,
 }; // Added for Checksummable
@@ -55,7 +78,7 @@ pub struct StructRef<
     /// Type index of the struct
     pub type_index: u32,
     /// Field values
-    pub fields: BoundedVec<Value, MAX_STRUCT_FIELDS, P>,
+    pub fields:     BoundedVec<Value, MAX_STRUCT_FIELDS, P>,
 }
 
 impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> StructRef<P> {
@@ -70,8 +93,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> St
         if index < self.fields.len() {
             self.fields.set(index, value).map_err(Error::from).map(|_| ())
         } else {
-            Err(Error::validation_error("Field index out of bounds",
-            ))
+            Err(Error::validation_error("Field index out of bounds"))
         }
     }
 
@@ -103,14 +125,17 @@ pub struct ArrayRef<
     /// Type index of the array
     pub type_index: u32,
     /// Array elements
-    pub elements: BoundedVec<Value, MAX_ARRAY_ELEMENTS, P>,
+    pub elements:   BoundedVec<Value, MAX_ARRAY_ELEMENTS, P>,
 }
 
 impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ArrayRef<P> {
     /// Create a new array reference
     pub fn new(type_index: u32, provider: P) -> WrtResult<Self> {
         let elements = BoundedVec::new(provider).map_err(Error::from)?;
-        Ok(Self { type_index, elements })
+        Ok(Self {
+            type_index,
+            elements,
+        })
     }
 
     /// Create an array with initial size and value
@@ -124,7 +149,10 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ar
         for _ in 0..size {
             elements.push(init_value.clone()).map_err(Error::from)?;
         }
-        Ok(Self { type_index, elements })
+        Ok(Self {
+            type_index,
+            elements,
+        })
     }
 
     /// Get array length
@@ -147,8 +175,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ar
         if index < self.elements.len() {
             self.elements.set(index, value).map_err(Error::from).map(|_| ())
         } else {
-            Err(Error::validation_error("Array index out of bounds",
-            ))
+            Err(Error::validation_error("Array index out of bounds"))
         }
     }
 
@@ -204,10 +231,10 @@ impl PartialEq for Value {
             // Handle NaN comparison for floats: NaN != NaN
             (Value::F32(a), Value::F32(b)) => {
                 (a.value().is_nan() && b.value().is_nan()) || (a.value() == b.value())
-            }
+            },
             (Value::F64(a), Value::F64(b)) => {
                 (a.value().is_nan() && b.value().is_nan()) || (a.value() == b.value())
-            }
+            },
             (Value::V128(a), Value::V128(b)) => a == b,
             (Value::FuncRef(a), Value::FuncRef(b)) => a == b,
             (Value::ExternRef(a), Value::ExternRef(b)) => a == b,
@@ -341,7 +368,8 @@ impl Value {
             (Self::ExternRef(_), ValueType::ExternRef) => true,
             (Self::Ref(_), ValueType::I32) => true,
             (Self::StructRef(Some(s)), ValueType::StructRef(idx)) => s.type_index == *idx,
-            (Self::StructRef(None), ValueType::StructRef(_)) => true, // Null matches any struct type
+            (Self::StructRef(None), ValueType::StructRef(_)) => true, // Null matches any struct
+            // type
             (Self::ArrayRef(Some(a)), ValueType::ArrayRef(idx)) => a.type_index == *idx,
             (Self::ArrayRef(None), ValueType::ArrayRef(_)) => true, // Null matches any array type
             _ => false,
@@ -371,9 +399,7 @@ impl Value {
     pub fn into_i32(self) -> WrtResult<i32> {
         match self {
             Value::I32(v) => Ok(v),
-            _ => {
-                Err(Error::type_error("Value is not an i32"))
-            }
+            _ => Err(Error::type_error("Value is not an i32")),
         }
     }
 
@@ -483,7 +509,7 @@ impl Value {
             Self::V128(v) => Ok(v.bytes),
             Self::I16x8(v) => Ok(v.bytes), // I16x8 is also V128 internally
             _ => Err(Error::runtime_execution_error(
-                "Value is not a V128 or I16x8 type"
+                "Value is not a V128 or I16x8 type",
             )),
         }
     }
@@ -495,17 +521,16 @@ impl Value {
             Value::F32(f_val) => {
                 let f = f_val.value();
                 if f.is_nan() || f.is_infinite() {
-                    Err(Error::type_error(")",
-                    ))
+                    Err(Error::type_error("Invalid f32 to i32 conversion (NaN/Inf)"))
                 } else if f < (i32::MIN as f32) || f > (i32::MAX as f32) {
-                    Err(Error::type_error("Invalid f32 to i32 conversion (overflow)",
+                    Err(Error::type_error(
+                        "Invalid f32 to i32 conversion (overflow)",
                     ))
                 } else {
                     Ok(f as i32)
                 }
-            }
-            _ => Err(Error::type_error("Value is not an f32 for i32 conversion",
-            )),
+            },
+            _ => Err(Error::type_error("Value is not an f32 for i32 conversion")),
         }
     }
 
@@ -516,17 +541,16 @@ impl Value {
             Value::F64(f_val) => {
                 let f = f_val.value();
                 if f.is_nan() || f.is_infinite() {
-                    Err(Error::type_error("Invalid f64 to i64 conversion (NaN/Inf)",
-                    ))
+                    Err(Error::type_error("Invalid f64 to i64 conversion (NaN/Inf)"))
                 } else if f < (i64::MIN as f64) || f > (i64::MAX as f64) {
-                    Err(Error::type_error("Invalid f64 to i64 conversion (overflow)",
+                    Err(Error::type_error(
+                        "Invalid f64 to i64 conversion (overflow)",
                     ))
                 } else {
                     Ok(f as i64)
                 }
-            }
-            _ => Err(Error::type_error("Value is not an f64 for i64 conversion",
-            )),
+            },
+            _ => Err(Error::type_error("Value is not an f64 for i64 conversion")),
         }
     }
 
@@ -556,7 +580,7 @@ impl Value {
                 // represents null. This needs to align with deserialization and
                 // runtime expectations.
                 writer.write_all(&0u32.to_le_bytes())
-            }
+            },
             Value::StructRef(Some(s)) => writer.write_all(&s.type_index.to_le_bytes()),
             Value::StructRef(None) => writer.write_all(&0u32.to_le_bytes()),
             Value::ArrayRef(Some(a)) => writer.write_all(&a.type_index.to_le_bytes()),
@@ -571,38 +595,42 @@ impl Value {
                 if bytes.len() < 4 {
                     return Err(Error::parse_error("Insufficient bytes for I32"));
                 }
-                Ok(Value::I32(i32::from_le_bytes(bytes[0..4].try_into().map_err(|_| {
-                    Error::runtime_execution_error("Failed to convert bytes to i32")
-                })?)))
-            }
+                Ok(Value::I32(i32::from_le_bytes(
+                    bytes[0..4].try_into().map_err(|_| {
+                        Error::runtime_execution_error("Failed to convert bytes to i32")
+                    })?,
+                )))
+            },
             ValueType::I64 => {
                 if bytes.len() < 8 {
                     return Err(Error::parse_error("Insufficient bytes for I64"));
                 }
-                Ok(Value::I64(i64::from_le_bytes(bytes[0..8].try_into().map_err(|_| {
-                    Error::runtime_execution_error("Failed to convert bytes to i64")
-                })?)))
-            }
+                Ok(Value::I64(i64::from_le_bytes(
+                    bytes[0..8].try_into().map_err(|_| {
+                        Error::runtime_execution_error("Failed to convert bytes to i64")
+                    })?,
+                )))
+            },
             ValueType::F32 => {
                 if bytes.len() < 4 {
                     return Err(Error::parse_error("Insufficient bytes for F32"));
                 }
-                Ok(Value::F32(FloatBits32(u32::from_le_bytes(bytes[0..4].try_into().map_err(
-                    |_| {
+                Ok(Value::F32(FloatBits32(u32::from_le_bytes(
+                    bytes[0..4].try_into().map_err(|_| {
                         Error::runtime_execution_error("Failed to convert bytes to f32")
-                    },
-                )?))))
-            }
+                    })?,
+                ))))
+            },
             ValueType::F64 => {
                 if bytes.len() < 8 {
                     return Err(Error::parse_error("Insufficient bytes for F64"));
                 }
-                Ok(Value::F64(FloatBits64(u64::from_le_bytes(bytes[0..8].try_into().map_err(
-                    |_| {
+                Ok(Value::F64(FloatBits64(u64::from_le_bytes(
+                    bytes[0..8].try_into().map_err(|_| {
                         Error::runtime_execution_error("Failed to convert bytes to f64")
-                    },
-                )?))))
-            }
+                    })?,
+                ))))
+            },
             ValueType::V128 | ValueType::I16x8 => {
                 if bytes.len() < 16 {
                     return Err(Error::parse_error("Insufficient bytes for V128/I16x8"));
@@ -614,18 +642,18 @@ impl Value {
                 } else {
                     Ok(Value::I16x8(V128 { bytes: arr }))
                 }
-            }
+            },
             ValueType::FuncRef => {
                 if bytes.len() < 4 {
                     return Err(Error::parse_error("Insufficient bytes for FuncRef"));
                 }
                 let idx = u32::from_le_bytes(bytes[0..4].try_into().map_err(|_| {
                     Error::runtime_execution_error("Failed to convert bytes to FuncRef index")
-                })??);
+                })?);
                 // Assuming 0 or a specific pattern might mean None, for now, always Some.
                 // The interpretation of the index (e.g. if 0 means null) is context-dependent.
                 Ok(Value::FuncRef(Some(FuncRef::from_index(idx))))
-            }
+            },
             ValueType::ExternRef => {
                 if bytes.len() < 4 {
                     return Err(Error::parse_error("Insufficient bytes for ExternRef"));
@@ -634,17 +662,17 @@ impl Value {
                     Error::runtime_execution_error("Failed to convert bytes to ExternRef index")
                 })?);
                 Ok(Value::ExternRef(Some(ExternRef { index: idx })))
-            }
+            },
             ValueType::StructRef(_) => {
                 // For aggregate types, we don't support direct byte deserialization yet
                 // These require more complex GC-aware deserialization
                 Ok(Value::StructRef(None))
-            }
+            },
             ValueType::ArrayRef(_) => {
                 // For aggregate types, we don't support direct byte deserialization yet
                 // These require more complex GC-aware deserialization
                 Ok(Value::ArrayRef(None))
-            }
+            },
         }
     }
 }
@@ -691,14 +719,15 @@ impl LittleEndian for V128 {
     fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
         if bytes.len() != 16 {
             return Err(Error::runtime_execution_error(
-                "V128 requires exactly 16 bytes"
+                "V128 requires exactly 16 bytes",
             ));
         }
         let arr: [u8; 16] = bytes.try_into().map_err(|_| {
             Error::new(
                 ErrorCategory::System,
                 codes::CONVERSION_ERROR,
-                "Failed to convert slice to V128 byte array")
+                "Failed to convert slice to V128 byte array",
+            )
         })?;
         Ok(V128 { bytes: arr })
     }
@@ -866,14 +895,14 @@ impl ToBytes for Value {
                 if let Some(v) = opt_v {
                     v.to_bytes_with_provider(writer, provider)?
                 }
-            }
+            },
             Value::ExternRef(opt_v) => {
                 // Write Some/None flag
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
                 if let Some(v) = opt_v {
                     v.to_bytes_with_provider(writer, provider)?
                 }
-            }
+            },
             Value::Ref(v) => v.to_bytes_with_provider(writer, provider)?,
             Value::StructRef(opt_v) => {
                 // Write Some/None flag
@@ -881,14 +910,14 @@ impl ToBytes for Value {
                 if let Some(v) = opt_v {
                     v.to_bytes_with_provider(writer, provider)?
                 }
-            }
+            },
             Value::ArrayRef(opt_v) => {
                 // Write Some/None flag
                 writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
                 if let Some(v) = opt_v {
                     v.to_bytes_with_provider(writer, provider)?
                 }
-            }
+            },
         }
         Ok(())
     }
@@ -907,23 +936,23 @@ impl FromBytes for Value {
             0 => {
                 let v = i32::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::I32(v))
-            }
+            },
             1 => {
                 let v = i64::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::I64(v))
-            }
+            },
             2 => {
                 let v = FloatBits32::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::F32(v))
-            }
+            },
             3 => {
                 let v = FloatBits64::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::F64(v))
-            }
+            },
             4 => {
                 let v = V128::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::V128(v))
-            }
+            },
             5 => {
                 // FuncRef
                 let is_some = reader.read_u8()? == 1;
@@ -933,7 +962,7 @@ impl FromBytes for Value {
                 } else {
                     Ok(Value::FuncRef(None))
                 }
-            }
+            },
             6 => {
                 // ExternRef
                 let is_some = reader.read_u8()? == 1;
@@ -943,17 +972,17 @@ impl FromBytes for Value {
                 } else {
                     Ok(Value::ExternRef(None))
                 }
-            }
+            },
             7 => {
                 // Ref (u32)
                 let v = u32::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::Ref(v))
-            }
+            },
             8 => {
                 // I16x8 (V128)
                 let v = V128::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::I16x8(v))
-            }
+            },
             9 => {
                 // StructRef
                 let is_some = reader.read_u8()? == 1;
@@ -963,7 +992,7 @@ impl FromBytes for Value {
                 } else {
                     Ok(Value::StructRef(None))
                 }
-            }
+            },
             10 => {
                 // ArrayRef
                 let is_some = reader.read_u8()? == 1;
@@ -973,9 +1002,9 @@ impl FromBytes for Value {
                 } else {
                     Ok(Value::ArrayRef(None))
                 }
-            }
+            },
             _ => Err(Error::runtime_execution_error(
-                "Unknown discriminant byte in Value deserialization"
+                "Unknown discriminant byte in Value deserialization",
             )),
         }
     }
@@ -1086,7 +1115,10 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Fr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{RefType, ValueType};
+    use crate::types::{
+        RefType,
+        ValueType,
+    };
 
     #[test]
     fn test_value_type() {
@@ -1142,13 +1174,31 @@ mod tests {
     fn test_default_for_type() {
         assert_eq!(Value::default_for_type(&ValueType::I32), Value::I32(0));
         assert_eq!(Value::default_for_type(&ValueType::I64), Value::I64(0));
-        assert_eq!(Value::default_for_type(&ValueType::F32), Value::F32(FloatBits32(0)));
-        assert_eq!(Value::default_for_type(&ValueType::F64), Value::F64(FloatBits64(0)));
-        assert_eq!(Value::default_for_type(&ValueType::V128), Value::V128(V128::zero()));
-        assert_eq!(Value::default_for_type(&ValueType::I16x8), Value::I16x8(V128::zero()));
+        assert_eq!(
+            Value::default_for_type(&ValueType::F32),
+            Value::F32(FloatBits32(0))
+        );
+        assert_eq!(
+            Value::default_for_type(&ValueType::F64),
+            Value::F64(FloatBits64(0))
+        );
+        assert_eq!(
+            Value::default_for_type(&ValueType::V128),
+            Value::V128(V128::zero())
+        );
+        assert_eq!(
+            Value::default_for_type(&ValueType::I16x8),
+            Value::I16x8(V128::zero())
+        );
         assert_eq!(Value::default_for_type(&ValueType::FuncRef), Value::Ref(0));
-        assert_eq!(Value::default_for_type(&ValueType::ExternRef), Value::ExternRef(None));
-        assert_eq!(Value::default_for_type(&ValueType::Ref(RefType::Func)), Value::Ref(0));
+        assert_eq!(
+            Value::default_for_type(&ValueType::ExternRef),
+            Value::ExternRef(None)
+        );
+        assert_eq!(
+            Value::default_for_type(&ValueType::Ref(RefType::Func)),
+            Value::Ref(0)
+        );
     }
 
     #[test]
@@ -1162,7 +1212,10 @@ mod tests {
             Value::F32(FloatBits32::from_float(f32::NAN)),
             Value::F32(FloatBits32::from_float(f32::NAN))
         );
-        assert_ne!(Value::F32(FloatBits32::from_float(1.0)), Value::F32(FloatBits32::NAN));
+        assert_ne!(
+            Value::F32(FloatBits32::from_float(1.0)),
+            Value::F32(FloatBits32::NAN)
+        );
         assert_eq!(
             Value::F32(FloatBits32::from_float(1.0)),
             Value::F32(FloatBits32::from_float(1.0))

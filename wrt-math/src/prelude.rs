@@ -1,4 +1,3 @@
-
 // WRT - wrt-math
 // Module: Prelude
 // SW-REQ-ID: N/A
@@ -15,15 +14,15 @@
 pub use alloc::{
     boxed::Box,
     format,
-    string::{String, ToString},
+    string::{
+        String,
+        ToString,
+    },
     vec,
     vec::Vec,
 };
-
 #[cfg(not(feature = "std"))]
-pub use core::{
-    format_args,
-};
+pub use core::format_args;
 // No specific core-only imports needed here for #[cfg(not(feature = "std"))]
 // Project: WRT
 // Module: wrt-math::prelude (SW-REQ-ID-TBD)
@@ -34,16 +33,37 @@ pub use core::{
 /// wrt-error, and this crate's own modules.
 // Core imports for both std and no_std environments
 pub use core::{
-    cmp::{Eq, Ord, PartialEq, PartialOrd},
-    convert::{TryFrom, TryInto},
+    cmp::{
+        Eq,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    },
+    convert::{
+        TryFrom,
+        TryInto,
+    },
     fmt,
-    fmt::{Debug, Display},
+    fmt::{
+        Debug,
+        Display,
+    },
     marker::PhantomData,
     mem,
-    ops::{Add, Div, Mul, Neg, Rem, Shl, Shr, Sub}, /* Common math ops
-                                                    * Add any other core imports needed by this
-                                                    * specific crate */
+    ops::{
+        Add,
+        Div,
+        Mul,
+        Neg,
+        Rem,
+        Shl,
+        Shr,
+        Sub,
+    }, /* Common math ops
+        * Add any other core imports needed by this
+        * specific crate */
 };
+
 // Re-export relevant error types or result aliases if any specific to math ops
 // For now, users will use wrt_error::Result directly or via wrt_foundation::WrtResult
 
@@ -70,9 +90,17 @@ pub use crate as wrt_math;
 
 // Re-export from this crate's modules
 pub use crate::{
-    float_bits::{FloatBits32, FloatBits64},
+    float_bits::{
+        FloatBits32,
+        FloatBits64,
+    },
     ops, // Re-export the whole ops module
-    safety::{RoundingMode, SafeArithmetic, SafeFloat, SafeRounding},
+    safety::{
+        RoundingMode,
+        SafeArithmetic,
+        SafeFloat,
+        SafeRounding,
+    },
     traits::LittleEndian, /* Re-export the trait from its new location
-          * Add other re-exports specific to this crate's modules */
+                           * Add other re-exports specific to this crate's modules */
 };

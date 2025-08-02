@@ -36,7 +36,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse world: {:?}", e);
         },
     }
-    println!);
+    println!();
 
     // Example 2: Simple interface parsing
     println!("Example 2: Parsing a simple interface definition");
@@ -61,7 +61,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse interface: {:?}", e);
         },
     }
-    println!);
+    println!();
 
     // Example 3: Multiple definitions
     println!("Example 3: Parsing multiple definitions");
@@ -85,7 +85,7 @@ fn main() -> Result<(), wrt_error::Error> {
                 "✓ Parsed {} worlds and {} interfaces",
                 parser.world_count(),
                 parser.interface_count()
-            ;
+            );
 
             for world in parser.worlds() {
                 if let Ok(name) = world.name.as_str() {
@@ -103,13 +103,13 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse multiple definitions: {:?}", e);
         },
     }
-    println!);
+    println!();
 
     // Example 4: Testing capacity limits
     println!("Example 4: Testing bounded capacity limits");
     let mut large_input = String::new();
     for i in 0..10 {
-        large_input.push_str(&format!("world world{} {{}}\n", i;
+        large_input.push_str(&format!("world world{} {{}}\n", i));
     }
 
     match parse_wit_bounded(&large_input) {
@@ -117,7 +117,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!(
                 "✓ Parsed {} worlds (capacity limited to 4)",
                 parser.world_count()
-            ;
+            );
             assert!(parser.world_count() <= 4);
 
             for world in parser.worlds() {
@@ -130,7 +130,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!("✗ Failed to parse large input: {:?}", e);
         },
     }
-    println!);
+    println!();
 
     // Example 5: Custom provider
     println!("Example 5: Using custom memory provider");

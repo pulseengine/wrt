@@ -1,27 +1,34 @@
 //! Clean type definitions without provider parameters
 //!
-//! This module provides provider-agnostic core types for the WebAssembly Component Model.
-//! These types are free from memory allocation concerns and can be used in public APIs
-//! without leaking provider implementation details.
+//! This module provides provider-agnostic core types for the WebAssembly
+//! Component Model. These types are free from memory allocation concerns and
+//! can be used in public APIs without leaking provider implementation details.
 //!
 //! Note: This module requires allocation capabilities (std or alloc feature).
 
-// Only compile this module when allocation is available since clean types use Vec/String/Box
+// Only compile this module when allocation is available since clean types use
+// Vec/String/Box
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use types::*;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod types {
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::{
+        boxed::Box,
+        string::String,
+        vec::Vec,
+    };
     #[cfg(not(feature = "std"))]
     use core::fmt;
     #[cfg(feature = "std")]
     use std::fmt;
-
     #[cfg(feature = "std")]
-    use std::{boxed::Box, string::String, vec::Vec};
-
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{boxed::Box, string::String, vec::Vec};
+    use std::{
+        boxed::Box,
+        string::String,
+        vec::Vec,
+    };
 
     /// Clean component model value type without provider parameters
     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -103,12 +110,15 @@ mod types {
         /// Field name
         pub name: String,
         /// Field type
-        pub ty: ValType,
+        pub ty:   ValType,
     }
 
     impl Default for Field {
         fn default() -> Self {
-            Self { name: String::new(), ty: ValType::default() }
+            Self {
+                name: String::new(),
+                ty:   ValType::default(),
+            }
         }
     }
 
@@ -142,16 +152,20 @@ mod types {
     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
     pub struct Case {
         /// Case name
-        pub name: String,
+        pub name:    String,
         /// Case type (optional)
-        pub ty: Option<ValType>,
+        pub ty:      Option<ValType>,
         /// Refinement information
         pub refines: Option<u32>,
     }
 
     impl Default for Case {
         fn default() -> Self {
-            Self { name: String::new(), ty: None, refines: None }
+            Self {
+                name:    String::new(),
+                ty:      None,
+                refines: None,
+            }
         }
     }
 
@@ -168,18 +182,22 @@ mod types {
         }
     }
 
-    /// Result type definition (renamed to avoid conflict with std::result::Result)
+    /// Result type definition (renamed to avoid conflict with
+    /// std::result::Result)
     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
     pub struct Result_ {
         /// Ok type (optional)
-        pub ok: Option<Box<ValType>>,
+        pub ok:  Option<Box<ValType>>,
         /// Error type (optional)
         pub err: Option<Box<ValType>>,
     }
 
     impl Default for Result_ {
         fn default() -> Self {
-            Self { ok: None, err: None }
+            Self {
+                ok:  None,
+                err: None,
+            }
         }
     }
 
@@ -232,7 +250,10 @@ mod types {
         /// Tuple value
         Tuple(Vec<Value>),
         /// Variant value
-        Variant { discriminant: u32, value: Option<Box<Value>> },
+        Variant {
+            discriminant: u32,
+            value:        Option<Box<Value>>,
+        },
         /// Enum value
         Enum(u32),
         /// Option value
@@ -275,25 +296,25 @@ mod types {
                     let element_type =
                         list.first().map(|v| v.value_type()).unwrap_or(ValType::Bool);
                     ValType::List(Box::new(element_type))
-                }
+                },
                 Value::Record(_) => {
                     // For records, we'd need more context to reconstruct the exact type
                     // For now, return a default empty record type
                     ValType::Record(Record::default())
-                }
+                },
                 Value::Tuple(tuple) => {
                     let types = tuple.iter().map(|v| v.value_type()).collect();
                     ValType::Tuple(Tuple { types })
-                }
+                },
                 Value::Variant { .. } => {
                     // For variants, we'd need more context to reconstruct the exact type
                     ValType::Variant(Variant::default())
-                }
+                },
                 Value::Enum(_) => ValType::Enum(Enum::default()),
                 Value::Option(opt) => {
                     let inner_type = opt.as_ref().map(|v| v.value_type()).unwrap_or(ValType::Bool);
                     ValType::Option(Box::new(inner_type))
-                }
+                },
                 Value::Result(result) => {
                     let ok_type = result
                         .as_ref()
@@ -301,8 +322,11 @@ mod types {
                         .and_then(|opt| opt.as_ref())
                         .map(|v| Box::new(v.value_type()));
                     let err_type = result.as_ref().err().map(|v| Box::new(v.value_type()));
-                    ValType::Result(Result_ { ok: ok_type, err: err_type })
-                }
+                    ValType::Result(Result_ {
+                        ok:  ok_type,
+                        err: err_type,
+                    })
+                },
                 Value::Flags(_) => ValType::Flags(Flags::default()),
                 Value::Own(handle) => ValType::Own(*handle),
                 Value::Borrow(handle) => ValType::Borrow(*handle),
@@ -314,14 +338,17 @@ mod types {
     #[derive(Debug, Clone, PartialEq, Eq, Hash)]
     pub struct FuncType {
         /// Function parameter types
-        pub params: Vec<ValType>,
+        pub params:  Vec<ValType>,
         /// Function result types
         pub results: Vec<ValType>,
     }
 
     impl Default for FuncType {
         fn default() -> Self {
-            Self { params: Vec::new(), results: Vec::new() }
+            Self {
+                params:  Vec::new(),
+                results: Vec::new(),
+            }
         }
     }
 
@@ -336,7 +363,10 @@ mod types {
 
     impl Default for MemoryType {
         fn default() -> Self {
-            Self { limits: Limits::default(), shared: false }
+            Self {
+                limits: Limits::default(),
+                shared: false,
+            }
         }
     }
 
@@ -346,12 +376,15 @@ mod types {
         /// Element type
         pub element_type: RefType,
         /// Table limits
-        pub limits: Limits,
+        pub limits:       Limits,
     }
 
     impl Default for TableType {
         fn default() -> Self {
-            Self { element_type: RefType::FuncRef, limits: Limits::default() }
+            Self {
+                element_type: RefType::FuncRef,
+                limits:       Limits::default(),
+            }
         }
     }
 
@@ -361,12 +394,15 @@ mod types {
         /// Value type
         pub value_type: ValType,
         /// Mutability
-        pub mutable: bool,
+        pub mutable:    bool,
     }
 
     impl Default for GlobalType {
         fn default() -> Self {
-            Self { value_type: ValType::Bool, mutable: false }
+            Self {
+                value_type: ValType::Bool,
+                mutable:    false,
+            }
         }
     }
 
@@ -404,16 +440,20 @@ mod types {
     #[derive(Debug, Clone, PartialEq)]
     pub struct ComponentType {
         /// Component imports
-        pub imports: Vec<(String, String, ExternType)>,
+        pub imports:   Vec<(String, String, ExternType)>,
         /// Component exports
-        pub exports: Vec<(String, ExternType)>,
+        pub exports:   Vec<(String, ExternType)>,
         /// Component instances
         pub instances: Vec<ComponentTypeDefinition>,
     }
 
     impl Default for ComponentType {
         fn default() -> Self {
-            Self { imports: Vec::new(), exports: Vec::new(), instances: Vec::new() }
+            Self {
+                imports:   Vec::new(),
+                exports:   Vec::new(),
+                instances: Vec::new(),
+            }
         }
     }
 
@@ -449,7 +489,9 @@ mod types {
 
     impl Default for InstanceType {
         fn default() -> Self {
-            Self { exports: Vec::new() }
+            Self {
+                exports: Vec::new(),
+            }
         }
     }
 
@@ -459,12 +501,15 @@ mod types {
         /// Type name
         pub name: String,
         /// Type definition
-        pub ty: ExternType,
+        pub ty:   ExternType,
     }
 
     impl Default for ComponentTypeDefinition {
         fn default() -> Self {
-            Self { name: String::new(), ty: ExternType::default() }
+            Self {
+                name: String::new(),
+                ty:   ExternType::default(),
+            }
         }
     }
 
@@ -482,8 +527,14 @@ mod types {
         fn test_record_creation() {
             let record = Record {
                 fields: vec![
-                    Field { name: "x".to_string(), ty: ValType::S32 },
-                    Field { name: "y".to_string(), ty: ValType::F64 },
+                    Field {
+                        name: "x".to_string(),
+                        ty:   ValType::S32,
+                    },
+                    Field {
+                        name: "y".to_string(),
+                        ty:   ValType::F64,
+                    },
                 ],
             };
             assert_eq!(record.fields.len(), 2);
@@ -495,13 +546,18 @@ mod types {
             assert_eq!(value.value_type(), ValType::S32);
 
             let list_value = Value::List(vec![Value::S32(1), Value::S32(2)]);
-            assert_eq!(list_value.value_type(), ValType::List(Box::new(ValType::S32)));
+            assert_eq!(
+                list_value.value_type(),
+                ValType::List(Box::new(ValType::S32))
+            );
         }
 
         #[test]
         fn test_func_type_creation() {
-            let func_type =
-                FuncType { params: vec![ValType::S32, ValType::S32], results: vec![ValType::S32] };
+            let func_type = FuncType {
+                params:  vec![ValType::S32, ValType::S32],
+                results: vec![ValType::S32],
+            };
             assert_eq!(func_type.params.len(), 2);
             assert_eq!(func_type.results.len(), 1);
         }

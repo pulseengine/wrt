@@ -73,7 +73,7 @@ impl SourceSpan {
         assert_eq!(
             self.file_id, other.file_id,
             "Cannot merge spans from different files"
-        ;
+        );
         Self {
             start:   self.start.min(other.start),
             end:     self.end.max(other.end),

@@ -5,8 +5,9 @@
 
 /// Create a capability-verified memory provider
 ///
-/// This macro replaces the old `safe_managed_alloc!` with capability verification.
-/// Instead of using a global coordinator, it requires explicit capability injection.
+/// This macro replaces the old `safe_managed_alloc!` with capability
+/// verification. Instead of using a global coordinator, it requires explicit
+/// capability injection.
 ///
 /// # Arguments
 /// * `$capability_context` - The MemoryCapabilityContext to use
@@ -36,7 +37,10 @@
 #[cfg(any(feature = "std", feature = "alloc"))]
 macro_rules! safe_capability_alloc {
     ($capability_context:expr, $crate_id:expr, $size:expr) => {{
-        use $crate::capabilities::{MemoryFactory, MemoryOperation};
+        use $crate::capabilities::{
+            MemoryFactory,
+            MemoryOperation,
+        };
 
         // Use MemoryFactory instead of the old factory pattern
         MemoryFactory::create_wrapped::<$size>($crate_id)
@@ -44,7 +48,7 @@ macro_rules! safe_capability_alloc {
 }
 
 /// No-std version of safe_capability_alloc! macro
-/// 
+///
 /// In no_std environments without alloc, we directly create a NoStdProvider
 /// without the capability wrapper since we can't have dynamic dispatch.
 #[macro_export]
@@ -60,24 +64,24 @@ macro_rules! safe_capability_alloc {
 
 /// Create a capability-verified provider with explicit verification level
 ///
-/// This macro allows specifying the required verification level for the allocation.
+/// This macro allows specifying the required verification level for the
+/// allocation.
 ///
 /// # Arguments
-/// * `$crate_id` - The CrateId requesting allocation  
+/// * `$crate_id` - The CrateId requesting allocation
 /// * `$size` - The size of memory to allocate
 /// * `$verification_level` - Required VerificationLevel
 ///
 /// # Examples
 ///
 /// ```rust,no_run
-/// use wrt_foundation::{budget_aware_provider::CrateId, verification::VerificationLevel};
+/// use wrt_foundation::{
+///     budget_aware_provider::CrateId,
+///     verification::VerificationLevel,
+/// };
 ///
 /// # fn example() -> wrt_foundation::Result<()> {
-/// let provider = safe_verified_alloc!(
-///     CrateId::Foundation,
-///     1024,
-///     VerificationLevel::Redundant
-/// )?;
+/// let provider = safe_verified_alloc!(CrateId::Foundation, 1024, VerificationLevel::Redundant)?;
 /// # Ok(())
 /// # }
 /// ```
@@ -145,7 +149,7 @@ macro_rules! capability_wrap_provider {
 ///
 /// # Variants
 /// * `dynamic($crate_id, $max_size)` - Create with dynamic capability
-/// * `static($crate_id, $size)` - Create with static capability  
+/// * `static($crate_id, $size)` - Create with static capability
 /// * `verified($crate_id, $size, $proofs)` - Create with verified capability
 ///
 /// # Examples
@@ -167,38 +171,49 @@ macro_rules! capability_wrap_provider {
 #[cfg(any(feature = "std", feature = "alloc"))]
 macro_rules! capability_context {
     (dynamic($crate_id:expr, $max_size:expr)) => {{
-        use $crate::capabilities::{MemoryCapabilityContext, DynamicMemoryCapability};
-        use $crate::verification::VerificationLevel;
+        use $crate::{
+            capabilities::{
+                DynamicMemoryCapability,
+                MemoryCapabilityContext,
+            },
+            verification::VerificationLevel,
+        };
 
-        // Create a simple context with dynamic capability for direct use with MemoryFactory
+        // Create a simple context with dynamic capability for direct use with
+        // MemoryFactory
         let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
-        context.register_dynamic_capability($crate_id, $max_size)
-            .map(|_| context)
+        context.register_dynamic_capability($crate_id, $max_size).map(|_| context)
     }};
 
     (static($crate_id:expr, $size:expr)) => {{
-        use $crate::capabilities::{MemoryCapabilityContext};
-        use $crate::verification::VerificationLevel;
+        use $crate::{
+            capabilities::MemoryCapabilityContext,
+            verification::VerificationLevel,
+        };
 
-        // Create a simple context with static capability for direct use with MemoryFactory  
+        // Create a simple context with static capability for direct use with
+        // MemoryFactory
         let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
-        context.register_static_capability::<$size>($crate_id)
-            .map(|_| context)
+        context.register_static_capability::<$size>($crate_id).map(|_| context)
     }};
 
     (verified($crate_id:expr, $size:expr, $proofs:expr)) => {{
-        use $crate::capabilities::{MemoryCapabilityContext};
-        use $crate::verification::VerificationLevel;
+        use $crate::{
+            capabilities::MemoryCapabilityContext,
+            verification::VerificationLevel,
+        };
 
-        // Create a simple context with verified capability for direct use with MemoryFactory
+        // Create a simple context with verified capability for direct use with
+        // MemoryFactory
         let mut context = MemoryCapabilityContext::new(VerificationLevel::Redundant, true);
-        context.register_verified_capability::<$size>($crate_id, $proofs)
+        context
+            .register_verified_capability::<$size>($crate_id, $proofs)
             .map(|_| context)
     }};
 }
 
 /// No-std version of capability_context macro
-/// 
+///
 /// In no_std environments without alloc, we can't have dynamic dispatch,
 /// so this returns a NoStdCapabilityContext as a placeholder.
 #[macro_export]
@@ -206,23 +221,23 @@ macro_rules! capability_context {
 macro_rules! capability_context {
     (dynamic($crate_id:expr, $max_size:expr)) => {{
         // Return a placeholder struct that the no_std macro can use
-        Ok($crate::capabilities::NoStdCapabilityContext { 
+        Ok($crate::capabilities::NoStdCapabilityContext {
             crate_id: $crate_id,
-            size: $max_size,
+            size:     $max_size,
         })
     }};
 
     (static($crate_id:expr, $size:expr)) => {{
-        Ok($crate::capabilities::NoStdCapabilityContext { 
+        Ok($crate::capabilities::NoStdCapabilityContext {
             crate_id: $crate_id,
-            size: $size,
+            size:     $size,
         })
     }};
 
     (verified($crate_id:expr, $size:expr, $proofs:expr)) => {{
-        Ok($crate::capabilities::NoStdCapabilityContext { 
+        Ok($crate::capabilities::NoStdCapabilityContext {
             crate_id: $crate_id,
-            size: $size,
+            size:     $size,
         })
     }};
 }
@@ -233,7 +248,8 @@ macro_rules! capability_context {
 /// to the new capability-driven approach.
 #[deprecated(
     since = "0.3.0",
-    note = "Use safe_capability_alloc! with explicit capability context instead of global coordinator"
+    note = "Use safe_capability_alloc! with explicit capability context instead of global \
+            coordinator"
 )]
 #[macro_export]
 macro_rules! safe_managed_alloc_deprecated {
@@ -245,6 +261,13 @@ macro_rules! safe_managed_alloc_deprecated {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::boxed::Box;
+    #[cfg(feature = "std")]
+    use std::boxed::Box;
+
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    use crate::capabilities::CapabilityFactoryBuilder;
     use crate::{
         budget_aware_provider::CrateId,
         capabilities::DynamicMemoryCapability,
@@ -252,14 +275,6 @@ mod tests {
         safe_memory::NoStdProvider,
         verification::VerificationLevel,
     };
-    
-    #[cfg(feature = "std")]
-    use std::boxed::Box;
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::boxed::Box;
-    
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    use crate::capabilities::CapabilityFactoryBuilder;
 
     #[test]
     fn test_capability_context_macro() {
@@ -298,8 +313,7 @@ mod tests {
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_safe_verified_alloc_macro() {
-        let result =
-            safe_verified_alloc!(CrateId::Foundation, 1024, VerificationLevel::Standard);
+        let result = safe_verified_alloc!(CrateId::Foundation, 1024, VerificationLevel::Standard);
         assert!(result.is_ok());
     }
 }

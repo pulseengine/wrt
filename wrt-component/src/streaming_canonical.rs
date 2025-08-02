@@ -212,7 +212,7 @@ impl StreamingCanonicalAbi {
         direction: StreamDirection,
         options: CanonicalOptions,
     ) -> Result<StreamHandle> {
-        let handle = StreamHandle(self.next_stream_id;
+        let handle = StreamHandle(self.next_stream_id);
         self.next_stream_id += 1;
 
         let context = StreamingContext {
@@ -492,7 +492,7 @@ impl StreamingContext {
             self.backpressure.is_active = false;
         }
 
-        self.backpressure.available_capacity = self.backpressure.high_water_mark.saturating_sub(self.buffer.len);
+        self.backpressure.available_capacity = self.backpressure.high_water_mark.saturating_sub(self.buffer.len();
     }
 }
 

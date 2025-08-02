@@ -82,8 +82,8 @@ impl BufferPool {
         let mut total_capacity = 0;
 
         for (size, buffers) in &self.pools {
-            total_buffers += buffers.len);
-            total_capacity += size * buffers.len);
+            total_buffers += buffers.len();
+            total_capacity += size * buffers.len();
         }
 
         BufferPoolStats { total_buffers, total_capacity, size_count: self.pools.len() }

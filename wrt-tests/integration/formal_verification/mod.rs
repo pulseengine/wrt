@@ -159,7 +159,7 @@ impl KaniTestRunner {
                 |_config: &TestConfig| -> TestResult {
                     Ok(()) // Always pass when KANI not available
                 }
-            ;
+            );
         }
         
         Ok(())

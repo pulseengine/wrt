@@ -499,7 +499,7 @@ impl ArcMemoryExt for Arc<Memory> {
             // Clone and modify through interior mutability
             let mut current_buffer = self.buffer()?;
             let start = offset as usize;
-            let end = start + buffer.len);
+            let end = start + buffer.len();
 
             if end > current_buffer.len() {
                 return Err(Error::memory_error("Memory access out of bounds";

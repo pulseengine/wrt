@@ -237,15 +237,15 @@ pub mod error {
     pub mod kinds {
         /// WASI permission error
         #[derive(Debug, Clone, PartialEq, Eq)]
-        pub struct WasiPermissionError(pub &'static str;
+        pub struct WasiPermissionError(pub &'static str);
         
         /// WASI file system error
         #[derive(Debug, Clone, PartialEq, Eq)]
-        pub struct WasiFileSystemError(pub &'static str;
+        pub struct WasiFileSystemError(pub &'static str);
         
         /// WASI resource error
         #[derive(Debug, Clone, PartialEq, Eq)]
-        pub struct WasiResourceError(pub &'static str;
+        pub struct WasiResourceError(pub &'static str);
     }
 }
 
@@ -288,7 +288,7 @@ mod tests {
     
     #[test]
     fn test_wasi_version_default() {
-        assert_eq!(WasiVersion::default(), WasiVersion::Preview2;
+        assert_eq!(WasiVersion::default(), WasiVersion::Preview2);
     }
     
     #[test]
@@ -306,7 +306,7 @@ mod tests {
         // Ensure all codes are unique
         for (i, &code1) in codes.iter().enumerate() {
             for &code2 in codes.iter().skip(i + 1) {
-                assert_ne!(code1, code2, "Error codes must be unique";
+                assert_ne!(code1, code2, "Error codes must be unique");
             }
         }
     }

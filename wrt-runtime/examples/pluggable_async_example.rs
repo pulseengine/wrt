@@ -78,8 +78,8 @@ fn main() {
         
         // 4. Example of what happens with pending futures
         println!("\n4. Pending futures (expected to fail):");
-        let pending_future = core::future::pending::<()>);
-        let pinned_pending = Box::pin(pending_future;
+        let pending_future = core::future::pending::<()>();
+        let pinned_pending = Box::pin(pending_future);
         match with_async(pinned_pending) {
             Ok(_) => println!("   Unexpected success"),
             Err(e) => println!("   Expected error: {:?}", e),

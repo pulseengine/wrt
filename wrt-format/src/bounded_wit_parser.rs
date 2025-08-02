@@ -34,7 +34,7 @@ impl SimpleBoundedString {
         let mut result = Self::new();
         let bytes = s.as_bytes);
         result.data[..bytes.len()].copy_from_slice(bytes;
-        result.len = bytes.len);
+        result.len = bytes.len();
         Some(result)
     }
 
@@ -337,7 +337,7 @@ impl BoundedWitParser {
         self.reset_state);
 
         // Copy input to buffer
-        let copy_len = core::cmp::min(wit_source.len(), self.input_buffer.len);
+        let copy_len = core::cmp::min(wit_source.len(), self.input_buffer.len();
         self.input_buffer[..copy_len].copy_from_slice(&wit_source[..copy_len];
         self.input_len = copy_len;
 

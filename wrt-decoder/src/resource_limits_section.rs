@@ -1237,7 +1237,7 @@ mod tests {
 
         // Test resource type bounds
         for i in 0..MAX_RESOURCE_TYPES {
-            let resource_name = format!("resource_{}", i;
+            let resource_name = format!("resource_{}", i);
             limits = limits
                 .with_resource_type_limit(
                     &resource_name,

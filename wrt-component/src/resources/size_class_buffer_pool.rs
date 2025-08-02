@@ -171,14 +171,14 @@ impl SizeClassBufferPool {
         // Count buffers in size classes
         for (i, class) in self.size_classes.iter().enumerate() {
             let class_size = 16 << i; // 16, 32, 64, ...
-            total_buffers += class.len);
-            total_capacity += class_size * class.len);
+            total_buffers += class.len();
+            total_capacity += class_size * class.len();
         }
 
         // Count buffers in overflow pools
         for (size, buffers) in &self.overflow_pools {
-            total_buffers += buffers.len);
-            total_capacity += size * buffers.len);
+            total_buffers += buffers.len();
+            total_capacity += size * buffers.len();
         }
 
         BufferPoolStats {

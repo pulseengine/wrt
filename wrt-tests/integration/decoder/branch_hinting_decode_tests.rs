@@ -248,7 +248,7 @@ fn test_decode_instruction_sequence() -> Result<()> {
     assert!(matches!(instr4, Instruction::BrOnNonNull(2));
     
     // Verify we consumed all bytes
-    assert_eq!(offset, bytecode.len);
+    assert_eq!(offset, bytecode.len();
     
     Ok(())
 }

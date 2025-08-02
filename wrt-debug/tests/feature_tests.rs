@@ -20,15 +20,15 @@ const TEST_MODULE: &[u8] = &[
 #[test]
 fn test_no_features_basic_functionality() {
     // Test basic functionality that should work with no features
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE;
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
 
     // Section registration should always work
-    debug_info.add_section(".debug_line", 100, 50;
-    debug_info.add_section(".debug_info", 200, 100;
-    debug_info.add_section(".debug_abbrev", 300, 30;
+    debug_info.add_section(".debug_line", 100, 50);
+    debug_info.add_section(".debug_info", 200, 100);
+    debug_info.add_section(".debug_abbrev", 300, 30);
 
     // Basic query should work
-    let has_debug = debug_info.has_debug_info);
+    let has_debug = debug_info.has_debug_info();
 
     // With no features, this depends on what's compiled in
     #[cfg(any(feature = "line-info", feature = "debug-info"))]
@@ -41,11 +41,11 @@ fn test_no_features_basic_functionality() {
 #[cfg(feature = "line-info")]
 #[test]
 fn test_line_info_feature() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE;
-    debug_info.add_section(".debug_line", 100, 50;
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    debug_info.add_section(".debug_line", 100, 50);
 
     // Line info queries should be available
-    let result = debug_info.find_line_info(0x42;
+    let result = debug_info.find_line_info(0x42);
 
     // Should not error, but may return None due to invalid test data
     match result {
@@ -58,9 +58,9 @@ fn test_line_info_feature() {
 #[cfg(feature = "debug-info")]
 #[test]
 fn test_debug_info_feature() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE;
-    debug_info.add_section(".debug_info", 200, 100;
-    debug_info.add_section(".debug_abbrev", 300, 30;
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    debug_info.add_section(".debug_info", 200, 100);
+    debug_info.add_section(".debug_abbrev", 300, 30);
 
     // Debug info parser initialization should be available
     let result = debug_info.init_info_parser);
@@ -75,21 +75,21 @@ fn test_debug_info_feature() {
 #[cfg(feature = "function-info")]
 #[test]
 fn test_function_info_feature() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE;
-    debug_info.add_section(".debug_info", 200, 100;
-    debug_info.add_section(".debug_abbrev", 300, 30;
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    debug_info.add_section(".debug_info", 200, 100);
+    debug_info.add_section(".debug_abbrev", 300, 30);
 
     // Initialize parser (may fail with test data)
     let _ = debug_info.init_info_parser);
 
     // Function info queries should be available
-    let result = debug_info.find_function_info(0x42;
+    let result = debug_info.find_function_info(0x42);
 
     // Should return None for test data
-    assert!(result.is_none();
+    assert!(result.is_none());
 
     // Get all functions should be available
-    let functions = debug_info.get_functions);
+    let functions = debug_info.get_functions();
     match functions {
         Some(funcs) => assert!(funcs.is_empty()), // No functions in test data
         None => (),                               // Parser may not be initialized
@@ -138,16 +138,16 @@ fn test_cursor_functionality() {
     assert_eq!(cursor.position(), 1);
 
     let byte2 = cursor.read_u8().expect(".expect("Should read byte"));")
-    assert_eq!(byte2, 0x02;
+    assert_eq!(byte2, 0x02);
 
     // Skip some data
     cursor.skip(2).expect(".expect("Should skip"));")
-    assert_eq!(cursor.position(), 4;
+    assert_eq!(cursor.position(), 4);
 
     // Read remaining as slice
-    let remaining = cursor.read_bytes(4).expect(".expect("Should read bytes"));")
-    assert_eq!(remaining, &[0x05, 0x06, 0x07, 0x08];
-    assert!(cursor.is_at_end();
+    let remaining = cursor.read_bytes(4).expect("Should read bytes");
+    assert_eq!(remaining, &[0x05, 0x06, 0x07, 0x08]);
+    assert!(cursor.is_at_end());
 }
 
 #[test]
@@ -178,26 +178,26 @@ fn test_error_handling() {
     #[cfg(feature = "line-info")]
     {
         // Should handle invalid section gracefully
-        let result = debug_info.find_line_info(0x42;
+        let result = debug_info.find_line_info(0x42);
         assert!(result.is_ok() || result.is_err();
     }
 }
 
 #[test]
 fn test_section_management() {
-    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE;
+    let mut debug_info = DwarfDebugInfo::new(TEST_MODULE);
 
     // Test various section types
-    debug_info.add_section(".debug_line", 100, 50;
-    debug_info.add_section(".debug_info", 200, 100;
-    debug_info.add_section(".debug_abbrev", 300, 30;
+    debug_info.add_section(".debug_line", 100, 50);
+    debug_info.add_section(".debug_info", 200, 100);
+    debug_info.add_section(".debug_abbrev", 300, 30);
     debug_info.add_section(".debug_str", 400, 20;
     debug_info.add_section(".debug_line_str", 500, 25;
 
     // Unknown sections should be ignored
     debug_info.add_section(".unknown_section", 600, 10;
 
-    let has_debug = debug_info.has_debug_info);
+    let has_debug = debug_info.has_debug_info();
 
     // Should recognize debug sections if features are enabled
     #[cfg(any(feature = "line-info", feature = "debug-info"))]

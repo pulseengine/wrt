@@ -187,8 +187,8 @@ impl Default for BuiltinHost {
     fn default() -> Self {
         #[cfg(not(feature = "std"))]
         {
-            let string_provider = create_host_provider().expect(".expect("Failed to create host provider"));")
-            let map_provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+            let string_provider = create_host_provider().expect("Failed to create host provider");
+            let map_provider = create_host_provider().expect("Failed to create host provider");
 
             Self {
                 component_name: HostString::from_str("", string_provider.clone())
@@ -241,12 +241,12 @@ impl BuiltinHost {
     #[cfg(not(feature = "std"))]
     #[must_use]
     pub fn new(component_name: &str, host_id: &str) -> Self {
-        let string_provider = create_host_provider().expect(".expect("Failed to create host provider"));")
-        let map_provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+        let string_provider = create_host_provider().expect("Failed to create host provider");
+        let map_provider = create_host_provider().expect("Failed to create host provider");
         let comp_name = HostString::from_str(component_name, string_provider.clone())
-            .expect(".expect("Failed to create component name"));")
+            .expect("Failed to create component name");
         let host_name =
-            HostString::from_str(host_id, string_provider).expect(".expect("Failed to create host id"));")
+            HostString::from_str(host_id, string_provider).expect("Failed to create host id");
 
         Self {
             component_name: comp_name,
@@ -263,7 +263,7 @@ impl BuiltinHost {
     /// * `interceptor` - The interceptor to use
     #[cfg(feature = "std")]
     pub fn set_interceptor(&mut self, interceptor: Arc<dyn BuiltinInterceptor>) {
-        self.interceptor = Some(interceptor;
+        self.interceptor = Some(interceptor);
     }
 
     /// Register a handler for a built-in function
@@ -277,7 +277,7 @@ impl BuiltinHost {
     where
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
     {
-        self.handlers.insert(builtin_type.name().to_string(), Box::new(handler;
+        self.handlers.insert(builtin_type.name().to_string(), Box::new(handler));
     }
 
     /// Register a handler for a built-in function (`no_std` version)
@@ -287,9 +287,9 @@ impl BuiltinHost {
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
     {
         // In no_std mode, we can't store function handlers dynamically
-        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+        let provider = create_host_provider().expect("Failed to create host provider");
         let name = HostString::from_str(builtin_type.name(), provider)
-            .expect(".expect("Failed to create builtin name"));")
+            .expect("Failed to create builtin name");
         let _ = self.handlers.insert(name, HandlerData::default());
     }
 
@@ -304,7 +304,7 @@ impl BuiltinHost {
     where
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + 'static,
     {
-        self.critical_builtins.insert(builtin_type, Box::new(handler;
+        self.critical_builtins.insert(builtin_type, Box::new(handler));
     }
 
     /// Register a fallback for a critical built-in function (`no_std` version)
@@ -335,9 +335,9 @@ impl BuiltinHost {
         #[cfg(not(feature = "std"))]
         {
             // In no_std mode, check if we have any handlers registered
-            let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+            let provider = create_host_provider().expect("Failed to create host provider");
             let name = HostString::from_str(builtin_type.name(), provider)
-                .expect(".expect("Failed to create builtin name"));")
+                .expect("Failed to create builtin name");
             self.handlers.contains_key(&name).unwrap_or(false)
         }
     }
@@ -388,18 +388,18 @@ impl BuiltinHost {
         // Binary std/no_std choice
         #[cfg(feature = "std")]
         if let Some(interceptor) = &self.interceptor {
-            let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id;
-            let component_args = convert_to_component_values(&args;
+            let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);
+            let component_args = convert_to_component_values(&args);
 
             // Before interceptor
             match interceptor.before_builtin(&context, &component_args)? {
                 BeforeBuiltinResult::Continue(modified_args) => {
                     // Convert the modified args back to regular values
-                    let modified_values = convert_from_component_values(&modified_args;
+                    let modified_values = convert_from_component_values(&modified_args);
 
                     // Execute with potentially modified args
                     let result =
-                        self.execute_builtin_internal(engine, builtin_type, modified_values;
+                        self.execute_builtin_internal(engine, builtin_type, modified_values);
 
                     // After interceptor - convert result to component values and back
                     let component_result = match &result {
@@ -436,16 +436,16 @@ impl BuiltinHost {
         builtin_type: BuiltinType,
         args: ValueVec,
     ) -> Result<ValueVec> {
-        let builtin_name = builtin_type.name);
+        let builtin_name = builtin_type.name();
 
         // Try to find the handler
         if let Some(handler) = self.handlers.get(builtin_name) {
-            return handler(engine, args;
+            return handler(engine, args);
         }
 
         // Try to use a fallback for critical built-ins
         if let Some(fallback) = self.critical_builtins.get(&builtin_type) {
-            return fallback(engine, args;
+            return fallback(engine, args);
         }
 
         // No handler or fallback found
@@ -484,7 +484,7 @@ impl Clone for BuiltinHost {
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+            let provider = create_host_provider().expect("Failed to create host provider");
             Self {
                 component_name: self.component_name.clone(),
                 host_id: self.host_id.clone(),
@@ -505,62 +505,62 @@ mod tests {
 
     #[test]
     fn test_builtin_host_basics() {
-        let host = BuiltinHost::new("test-component", "test-host";
+        let host = BuiltinHost::new("test-component", "test-host");
 
-        assert!(!host.is_implemented(BuiltinType::ResourceCreate);
-        assert!(!host.has_fallback(BuiltinType::ResourceCreate);
+        assert!(!host.is_implemented(BuiltinType::ResourceCreate));
+        assert!(!host.has_fallback(BuiltinType::ResourceCreate));
     }
 
     #[test]
     fn test_register_handler() {
-        let mut host = BuiltinHost::new("test-component", "test-host";
+        let mut host = BuiltinHost::new("test-component", "test-host");
 
-        host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(42)];
+        host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(42)]));
 
-        assert!(host.is_implemented(BuiltinType::ResourceCreate);
+        assert!(host.is_implemented(BuiltinType::ResourceCreate));
 
-        let mut engine = );
-        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
+        let mut engine = ();
+        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![]);
 
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(42)];
+        assert_eq!(result.unwrap(), vec![Value::I32(42)]);
     }
 
     #[test]
     fn test_fallback_mechanism() {
-        let mut host = BuiltinHost::new("test-component", "test-host";
+        let mut host = BuiltinHost::new("test-component", "test-host");
 
         // Register a fallback for ResourceCreate
-        host.register_fallback(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)];
+        host.register_fallback(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)]));
 
-        assert!(!host.is_implemented(BuiltinType::ResourceCreate);
-        assert!(host.has_fallback(BuiltinType::ResourceCreate);
+        assert!(!host.is_implemented(BuiltinType::ResourceCreate));
+        assert!(host.has_fallback(BuiltinType::ResourceCreate));
 
-        let mut engine = );
-        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
+        let mut engine = ();
+        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![]);
 
         // Should use the fallback
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(99)];
+        assert_eq!(result.unwrap(), vec![Value::I32(99)]);
 
         // Now register a regular handler
-        host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(42)];
+        host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(42)]));
 
-        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
+        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![]);
 
         // Should use the regular handler, not the fallback
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(42)];
+        assert_eq!(result.unwrap(), vec![Value::I32(42)]);
     }
 
     #[test]
     fn test_nonexistent_builtin() {
-        let host = BuiltinHost::new("test-component", "test-host";
+        let host = BuiltinHost::new("test-component", "test-host");
 
-        let mut engine = );
-        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![];
+        let mut engine = ();
+        let result = host.call_builtin(&mut engine, BuiltinType::ResourceCreate, vec![]);
 
         // Should fail because the built-in is not implemented
-        assert!(result.is_err();
+        assert!(result.is_err());
     }
 }

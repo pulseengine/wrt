@@ -15,15 +15,25 @@ extern crate alloc;
 
 use wrt_component::{
     bounded_component_infra::*,
-    canonical_abi::{CanonicalABI, CanonicalOptions},
+    canonical_abi::{
+        CanonicalABI,
+        CanonicalOptions,
+    },
     resource_management::ResourceTable,
     resources::resource_lifecycle::{
-        Resource, ResourceLifecycleManager, ResourceMetadata, ResourceType,
+        Resource,
+        ResourceLifecycleManager,
+        ResourceMetadata,
+        ResourceType,
     },
 };
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
-    WrtError, WrtResult,
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    WrtError,
+    WrtResult,
 };
 
 #[cfg(test)]
@@ -147,7 +157,7 @@ mod error_handling_tests {
         assert!(table.deallocate(handle).is_ok());
 
         // Double deallocate should error
-        let result = table.deallocate(handle;
+        let result = table.deallocate(handle);
         assert!(result.is_err());
     }
 
@@ -178,17 +188,17 @@ mod error_handling_tests {
         let mut manager = ResourceLifecycleManager::new();
 
         let resource_type = ResourceType {
-            type_idx: 1,
-            name: bounded_component_name_from_str("TestResource").unwrap(),
+            type_idx:   1,
+            name:       bounded_component_name_from_str("TestResource").unwrap(),
             destructor: Some(100),
         };
 
         let metadata = ResourceMetadata {
-            created_at: Some(0),
+            created_at:    Some(0),
             last_accessed: None,
-            creator: 0,
-            owner: 0,
-            user_data: None,
+            creator:       0,
+            owner:         0,
+            user_data:     None,
         };
 
         // Create resource
@@ -369,7 +379,7 @@ mod error_handling_tests {
 
         // Vector should still be usable
         assert_eq!(vec.len(), MAX_COMPONENT_INSTANCES);
-        assert_eq!(vec.pop(), Some(1;
+        assert_eq!(vec.pop(), Some(1));
 
         // Can continue operations after error
         assert!(vec.try_push(3).is_ok());

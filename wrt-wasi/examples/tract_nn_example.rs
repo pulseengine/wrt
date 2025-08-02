@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // In a real implementation, this would be done in initialize_backends
     let mut registry = BackendRegistry::new();
-    registry.register(GraphEncoding::ONNX, Box::new(TractBackendProvider::new();
+    registry.register(GraphEncoding::ONNX, Box::new(TractBackendProvider::new()));
 
     println!("WASI-NN with Tract backend initialized successfully!");
 
@@ -63,13 +63,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("- ONNX model support");
     println!("- No external dependencies");
     println!("- Capability-aware resource management");
-    println!("- Safety level support (QM, ASIL-A, ASIL-B)"));
+    println!("- Safety level support (QM, ASIL-A, ASIL-B)");
 
     Ok(())
 }
 
 #[cfg(not(all(feature = "std", feature = "wasi-nn", feature = "tract")))]
 fn main() {
-    eprintln!("This example requires features: std, wasi-nn, tract")));
-    std::process::exit(1;
+    eprintln!("This example requires features: std, wasi-nn, tract");
+    std::process::exit(1);
 }

@@ -9,21 +9,42 @@
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
     time::Duration,
 };
 
 use wrt_component::{
     async_::{
-        fuel_async_bridge::{AsyncBridgeConfig, FuelAsyncBridge},
+        fuel_async_bridge::{
+            AsyncBridgeConfig,
+            FuelAsyncBridge,
+        },
 
-        fuel_async_channels::{ChannelId, FuelAsyncChannelManager},
+        fuel_async_channels::{
+            ChannelId,
+            FuelAsyncChannelManager,
+        },
         // Phase 1 components
-        fuel_async_executor::{AsyncTaskState, FuelAsyncExecutor},
-        fuel_async_scheduler::{FuelAsyncScheduler, SchedulingPolicy},
-        fuel_preemptive_scheduler::{FuelPreemptiveScheduler, PreemptiveSchedulerConfig},
+        fuel_async_executor::{
+            AsyncTaskState,
+            FuelAsyncExecutor,
+        },
+        fuel_async_scheduler::{
+            FuelAsyncScheduler,
+            SchedulingPolicy,
+        },
+        fuel_preemptive_scheduler::{
+            FuelPreemptiveScheduler,
+            PreemptiveSchedulerConfig,
+        },
         // Phase 2 components
-        fuel_priority_inheritance::{FuelPriorityInheritanceProtocol, ResourceId},
+        fuel_priority_inheritance::{
+            FuelPriorityInheritanceProtocol,
+            ResourceId,
+        },
     },
     prelude::*,
     task_manager::TaskId,
@@ -35,10 +56,10 @@ use wrt_platform::advanced_sync::Priority;
 /// Test future that simulates different types of async work
 struct SimulatedAsyncWork {
     polls_remaining: usize,
-    fuel_per_poll: u64,
-    result: Option<u32>,
-    priority: Priority,
-    can_block: bool,
+    fuel_per_poll:   u64,
+    result:          Option<u32>,
+    priority:        Priority,
+    can_block:       bool,
 }
 
 impl SimulatedAsyncWork {
@@ -98,9 +119,9 @@ mod tests {
         let mut protocol =
             FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
 
-        let high_priority_task = TaskId::new(1;
-        let low_priority_holder = TaskId::new(2;
-        let resource_id = ResourceId::new(1000;
+        let high_priority_task = TaskId::new(1);
+        let low_priority_holder = TaskId::new(2);
+        let resource_id = ResourceId::new(1000);
 
         // Simulate high priority task blocked by low priority task
         protocol
@@ -115,34 +136,35 @@ mod tests {
 
         // Verify priority inheritance occurred
         let effective_priority =
-            protocol.get_effective_priority(low_priority_holder, Priority::Low;
-        assert_eq!(effective_priority, Priority::High;
+            protocol.get_effective_priority(low_priority_holder, Priority::Low);
+        assert_eq!(effective_priority, Priority::High);
 
-        let stats = protocol.get_statistics);
+        let stats = protocol.get_statistics();
         assert_eq!(
             stats.total_inheritances.load(core::sync::atomic::Ordering::Acquire),
             1
-        ;
+        );
         assert_eq!(
             stats.inversions_prevented.load(core::sync::atomic::Ordering::Acquire),
             1
-        ;
+        );
 
         // Release resource and verify cleanup
         let next_holder = protocol.release_resource(resource_id, low_priority_holder).unwrap();
-        assert_eq!(next_holder, Some(high_priority_task;
+        assert_eq!(next_holder, Some(high_priority_task));
 
-        let final_stats = protocol.get_statistics);
+        let final_stats = protocol.get_statistics();
         assert_eq!(
             final_stats.active_chains.load(core::sync::atomic::Ordering::Acquire),
             0
-        ;
+        );
     }
 
     #[test]
     fn test_phase2_async_channels_with_priorities() {
         // Test bounded async channels with priority-aware flow control
-        let mut channel_manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard;
+        let mut channel_manager =
+            FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard).unwrap();
 
         let (sender, receiver) = channel_manager
             .create_channel(
@@ -160,7 +182,7 @@ mod tests {
         // Test immediate send/receive
         assert!(sender.try_send(42).is_ok());
         let received = receiver.try_receive().unwrap();
-        assert_eq!(received, 42;
+        assert_eq!(received, 42);
 
         // Fill channel to test blocking behavior
         for i in 0..5 {
@@ -168,28 +190,28 @@ mod tests {
         }
 
         // Next send should indicate it would block
-        let result = sender.try_send(999;
+        let result = sender.try_send(999);
         assert!(matches!(
             result,
             Err(super::super::async_::fuel_async_channels::ChannelError::WouldBlock(_))
-        ;
+        ));
 
         // Receive messages to make space
         for expected in 0..5 {
             let received = receiver.try_receive().unwrap();
-            assert_eq!(received, expected;
+            assert_eq!(received, expected);
         }
 
         // Verify channel statistics
-        let stats = channel_manager.get_global_stats);
+        let stats = channel_manager.get_global_stats();
         assert_eq!(
             stats.total_channels_created.load(core::sync::atomic::Ordering::Acquire),
             1
-        ;
+        );
         assert_eq!(
             stats.active_channels.load(core::sync::atomic::Ordering::Acquire),
             1
-        ;
+        );
         assert!(stats.total_messages_sent.load(core::sync::atomic::Ordering::Acquire) >= 6);
         assert!(stats.total_messages_received.load(core::sync::atomic::Ordering::Acquire) >= 6);
     }
@@ -198,14 +220,14 @@ mod tests {
     fn test_phase2_preemptive_scheduler() {
         // Test preemptive scheduler with priority and fuel-based time slicing
         let config = PreemptiveSchedulerConfig {
-            default_fuel_quantum: 1000,
-            enable_priority_aging: true,
-            aging_fuel_threshold: 2000,
-            max_priority_boost: 2,
-            enable_deadline_scheduling: true,
+            default_fuel_quantum:        1000,
+            enable_priority_aging:       true,
+            aging_fuel_threshold:        2000,
+            max_priority_boost:          2,
+            enable_deadline_scheduling:  true,
             enable_priority_inheritance: true,
-            min_fuel_quantum: 100,
-            max_fuel_quantum: 5000,
+            min_fuel_quantum:            100,
+            max_fuel_quantum:            5000,
         };
 
         let mut scheduler =
@@ -279,19 +301,19 @@ mod tests {
                     1000, // current fuel time
                 )
                 .unwrap();
-            assert!(should_preempt)); // Should preempt for higher priority
+            assert!(should_preempt); // Should preempt for higher priority
         }
 
         // Verify scheduler statistics
-        let stats = scheduler.get_statistics);
+        let stats = scheduler.get_statistics();
         assert_eq!(
             stats.active_tasks.load(core::sync::atomic::Ordering::Acquire),
             3
-        ;
+        );
         assert_eq!(
             stats.total_tasks_scheduled.load(core::sync::atomic::Ordering::Acquire),
             3
-        ;
+        );
         assert!(stats.total_context_switches.load(core::sync::atomic::Ordering::Acquire) > 0);
     }
 
@@ -301,11 +323,11 @@ mod tests {
 
         // 1. Create async executor with fuel limits
         let mut executor = FuelAsyncExecutor::new().unwrap();
-        executor.set_global_fuel_limit(50000;
-        executor.set_default_verification_level(VerificationLevel::Standard;
+        executor.set_global_fuel_limit(50000);
+        executor.set_default_verification_level(VerificationLevel::Standard);
 
         // 2. Create preemptive scheduler
-        let config = PreemptiveSchedulerConfig::default());
+        let config = PreemptiveSchedulerConfig::default();
         let mut preemptive_scheduler =
             FuelPreemptiveScheduler::new(config, VerificationLevel::Standard).unwrap();
 
@@ -314,7 +336,8 @@ mod tests {
             FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard).unwrap();
 
         // 4. Create channel manager for inter-task communication
-        let mut channel_manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard;
+        let mut channel_manager =
+            FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard).unwrap();
 
         // 5. Set up communication channel between tasks
         let (sender, receiver) = channel_manager
@@ -368,7 +391,7 @@ mod tests {
 
         // High priority producer should run first
         let next_task = preemptive_scheduler.schedule_next_task().unwrap();
-        assert_eq!(next_task, Some(TaskId::new(1;
+        assert_eq!(next_task, Some(TaskId::new(1)));
 
         // Simulate producer sending data
         assert!(sender.try_send(100).is_ok());
@@ -385,13 +408,13 @@ mod tests {
 
         // Consumer should run next
         let next_task = preemptive_scheduler.schedule_next_task().unwrap();
-        assert_eq!(next_task, Some(TaskId::new(2);
+        assert_eq!(next_task, Some(TaskId::new(2)));
 
         // Consumer receives data
         let received1 = receiver.try_receive().unwrap();
         let received2 = receiver.try_receive().unwrap();
-        assert_eq!(received1, 100;
-        assert_eq!(received2, 200;
+        assert_eq!(received1, 100);
+        assert_eq!(received2, 200);
 
         // Consumer runs for a while, then producer becomes ready again
         preemptive_scheduler
@@ -414,53 +437,53 @@ mod tests {
         }
 
         // 8. Verify final system state
-        let executor_stats = executor.get_global_fuel_status);
-        let scheduler_stats = preemptive_scheduler.get_statistics);
-        let protocol_stats = priority_protocol.get_statistics);
-        let channel_stats = channel_manager.get_global_stats);
+        let executor_stats = executor.get_global_fuel_status();
+        let scheduler_stats = preemptive_scheduler.get_statistics();
+        let protocol_stats = priority_protocol.get_statistics();
+        let channel_stats = channel_manager.get_global_stats();
 
         // All components should show activity
         assert_eq!(
             scheduler_stats.active_tasks.load(core::sync::atomic::Ordering::Acquire),
             3
-        ;
+        );
         assert!(
             scheduler_stats
                 .total_context_switches
                 .load(core::sync::atomic::Ordering::Acquire)
                 > 0
-        ;
+        );
         assert!(channel_stats.total_messages_sent.load(core::sync::atomic::Ordering::Acquire) >= 2);
         assert!(
             channel_stats
                 .total_messages_received
                 .load(core::sync::atomic::Ordering::Acquire)
                 >= 2
-        ;
+        );
 
         println!("Phase 2 Integration Test Results:");
         println!(
             "- Executor fuel status: {}/{} fuel used",
             executor_stats.consumed, executor_stats.limit
-        ;
+        );
         println!(
             "- Scheduler: {} active tasks, {} context switches",
             scheduler_stats.active_tasks.load(core::sync::atomic::Ordering::Acquire),
             scheduler_stats
                 .total_context_switches
                 .load(core::sync::atomic::Ordering::Acquire)
-        ;
+        );
         println!(
             "- Channels: {} messages sent, {} received",
             channel_stats.total_messages_sent.load(core::sync::atomic::Ordering::Acquire),
             channel_stats
                 .total_messages_received
                 .load(core::sync::atomic::Ordering::Acquire)
-        ;
+        );
         println!(
             "- Priority inheritance: {} total inheritances",
             protocol_stats.total_inheritances.load(core::sync::atomic::Ordering::Acquire)
-        ;
+        );
     }
 
     #[test]
@@ -472,22 +495,22 @@ mod tests {
         // - Bounded resource usage
 
         // Safety-critical high priority task
-        let safety_critical_task = TaskId::new(1;
+        let safety_critical_task = TaskId::new(1);
         // Normal application task
-        let application_task = TaskId::new(2;
+        let application_task = TaskId::new(2);
         // Background maintenance task
-        let maintenance_task = TaskId::new(3;
+        let maintenance_task = TaskId::new(3);
 
         let mut executor = FuelAsyncExecutor::new().unwrap();
         executor.set_global_fuel_limit(30000); // System-wide resource limit
 
         let config = PreemptiveSchedulerConfig {
-            default_fuel_quantum: 500,    // Small quanta for responsive scheduling
-            enable_priority_aging: false, // Disabled for deterministic behavior
-            enable_deadline_scheduling: true,
+            default_fuel_quantum:        500, // Small quanta for responsive scheduling
+            enable_priority_aging:       false, // Disabled for deterministic behavior
+            enable_deadline_scheduling:  true,
             enable_priority_inheritance: true,
-            min_fuel_quantum: 100,
-            max_fuel_quantum: 2000,
+            min_fuel_quantum:            100,
+            max_fuel_quantum:            2000,
         };
         let mut scheduler = FuelPreemptiveScheduler::new(config, VerificationLevel::Full).unwrap();
 
@@ -529,7 +552,7 @@ mod tests {
 
         // Test 1: Safety-critical task has highest priority
         let first_scheduled = scheduler.schedule_next_task().unwrap();
-        assert_eq!(first_scheduled, Some(safety_critical_task;
+        assert_eq!(first_scheduled, Some(safety_critical_task));
 
         // Test 2: Safety-critical task completes without preemption
         scheduler
@@ -542,7 +565,7 @@ mod tests {
 
         // Test 3: Application task runs next
         let second_scheduled = scheduler.schedule_next_task().unwrap();
-        assert_eq!(second_scheduled, Some(application_task;
+        assert_eq!(second_scheduled, Some(application_task));
 
         // Test 4: Safety-critical task can preempt application task
         scheduler
@@ -564,7 +587,7 @@ mod tests {
         }
 
         // Test 5: Resource isolation via component separation
-        let mut channel_manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Full;
+        let mut channel_manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Full)?;
 
         // Create isolated communication channel
         let (_safety_sender, _safety_receiver) = channel_manager
@@ -581,8 +604,8 @@ mod tests {
             .unwrap();
 
         // Verify system constraints
-        let scheduler_stats = scheduler.get_statistics);
-        let channel_stats = channel_manager.get_global_stats);
+        let scheduler_stats = scheduler.get_statistics();
+        let channel_stats = channel_manager.get_global_stats();
 
         // ASIL-B compliance checks:
         assert!(scheduler_stats.active_tasks.load(core::sync::atomic::Ordering::Acquire) <= 4);
@@ -591,9 +614,9 @@ mod tests {
         // Fuel consumption should be bounded and predictable
         let total_scheduler_fuel = scheduler_stats
             .scheduler_fuel_consumed
-            .load(core::sync::atomic::Ordering::Acquire;
-        assert!(total_scheduler_fuel > 0)); // Scheduler is tracking fuel
-        assert!(total_scheduler_fuel < 1000)); // Overhead is bounded
+            .load(core::sync::atomic::Ordering::Acquire);
+        assert!(total_scheduler_fuel > 0); // Scheduler is tracking fuel
+        assert!(total_scheduler_fuel < 1000); // Overhead is bounded
 
         println!("ASIL-B Compliance Test Results:");
         println!("✓ Priority isolation: Critical tasks scheduled first");
@@ -614,8 +637,8 @@ mod examples {
     pub async fn create_phase2_async_system() -> Result<(), Error> {
         // 1. Create the core async executor
         let mut executor = FuelAsyncExecutor::new()?;
-        executor.set_global_fuel_limit(100000;
-        executor.set_default_verification_level(VerificationLevel::Standard;
+        executor.set_global_fuel_limit(100000);
+        executor.set_default_verification_level(VerificationLevel::Standard);
 
         // 2. Create preemptive scheduler for advanced task management
         let scheduler_config = PreemptiveSchedulerConfig {
@@ -632,7 +655,7 @@ mod examples {
         let priority_protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard)?;
 
         // 4. Create channel manager for async communication
-        let channel_manager = FuelAsyncChannelManager::<String>::new(VerificationLevel::Standard;
+        let channel_manager = FuelAsyncChannelManager::<String>::new(VerificationLevel::Standard)?;
 
         println!("Phase 2 async system created with:");
         println!("- Fuel-based async executor with preemption support");
@@ -648,9 +671,9 @@ mod examples {
         let mut protocol = FuelPriorityInheritanceProtocol::new(VerificationLevel::Standard)?;
 
         // High priority task gets blocked by low priority task holding a resource
-        let resource_id = ResourceId::new(42;
-        let high_priority_task = TaskId::new(1;
-        let low_priority_holder = TaskId::new(2;
+        let resource_id = ResourceId::new(42);
+        let high_priority_task = TaskId::new(1);
+        let low_priority_holder = TaskId::new(2);
 
         // Register the blocking scenario
         protocol.register_blocking(
@@ -663,12 +686,12 @@ mod examples {
 
         // Priority inheritance automatically boosts low priority holder
         let effective_priority =
-            protocol.get_effective_priority(low_priority_holder, Priority::Low;
-        assert_eq!(effective_priority, Priority::High;
+            protocol.get_effective_priority(low_priority_holder, Priority::Low);
+        assert_eq!(effective_priority, Priority::High);
 
         // When resource is released, original priorities are restored
         let next_holder = protocol.release_resource(resource_id, low_priority_holder)?;
-        assert_eq!(next_holder, Some(high_priority_task;
+        assert_eq!(next_holder, Some(high_priority_task));
 
         Ok(())
     }

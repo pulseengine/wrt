@@ -53,7 +53,7 @@ mod validation {
             budget < 50 * 1024,
             "Host functions budget exceeds 50KB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -66,7 +66,7 @@ mod validation {
             budget < 16 * 1024,
             "Function calls budget exceeds 16KB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -81,7 +81,7 @@ mod validation {
             total <= TOTAL_BUDGET / 8, // Use only 1/8 of budget for host layer
             "Host layer exceeds 64KB allocation: {}KB",
             total / 1024
-        ;
+        );
     }
 }
 

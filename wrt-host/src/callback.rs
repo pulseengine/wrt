@@ -292,7 +292,7 @@ impl CallbackRegistry {
         callback_type: CallbackType,
         callback: T,
     ) {
-        self.callbacks.insert(callback_type, Box::new(callback;
+        self.callbacks.insert(callback_type, Box::new(callback));
     }
 
     /// Register a callback (`no_std` version - placeholder)
@@ -672,23 +672,23 @@ mod tests {
     fn test_call_builtin_function() {
         // Create a registry with a host function for resource.create
         let mut registry = CallbackRegistry::new();
-        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
-        registry.register_host_function("wasi_builtin", "resource.create", handler;
+        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)]));
+        registry.register_host_function("wasi_builtin", "resource.create", handler);
 
         // Create a built-in host with a different implementation
-        let mut builtin_host = BuiltinHost::new("test-component", "test-host";
-        builtin_host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)];
+        let mut builtin_host = BuiltinHost::new("test-component", "test-host");
+        builtin_host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)]));
 
         // Test calling via registry - should use the registry's implementation
-        let mut engine = );
+        let mut engine = ();
         let result = registry.call_builtin_function(
             &mut engine,
             &builtin_host,
             BuiltinType::ResourceCreate,
             vec![],
-        ;
+        );
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(42)];
+        assert_eq!(result.unwrap(), vec![Value::I32(42)]);
 
         // Now test with a built-in that's only in the host
         let result = registry.call_builtin_function(
@@ -696,13 +696,13 @@ mod tests {
             &builtin_host,
             BuiltinType::ResourceDrop,
             vec![],
-        ;
+        );
 
         // Should fail because neither registry nor host implements it
-        assert!(result.is_err();
+        assert!(result.is_err());
 
         // Now add it to the host
-        builtin_host.register_handler(BuiltinType::ResourceDrop, |_, _| Ok(vec![Value::I32(55)];
+        builtin_host.register_handler(BuiltinType::ResourceDrop, |_, _| Ok(vec![Value::I32(55)]));
 
         // Try again
         let result = registry.call_builtin_function(
@@ -710,11 +710,11 @@ mod tests {
             &builtin_host,
             BuiltinType::ResourceDrop,
             vec![],
-        ;
+        );
 
         // Should work now
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(55)];
+        assert_eq!(result.unwrap(), vec![Value::I32(55)]);
     }
 }
 

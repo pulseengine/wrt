@@ -9,8 +9,8 @@ fn main() -> Result<(), wrt_error::Error> {
     // Simple test case
     let input = "world test-world {}";
     println!("Testing input: '{}'", input);
-    println!("Input length: {}", input.len()));
-    println!("Input bytes: {:?}", input.as_bytes()));
+    println!("Input length: {}", input.len());
+    println!("Input bytes: {:?}", input.as_bytes());
     println!();
 
     let mut parser = BoundedWitParser::<NoStdProvider<4096>>::new(NoStdProvider::default())?;

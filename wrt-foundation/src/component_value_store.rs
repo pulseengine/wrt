@@ -16,7 +16,10 @@ extern crate alloc;
 use std::format;
 
 // External crate imports
-use wrt_error::{ErrorCategory, Result};
+use wrt_error::{
+    ErrorCategory,
+    Result,
+};
 
 #[cfg(feature = "std")]
 use crate::prelude::BTreeMap;
@@ -24,24 +27,44 @@ use crate::prelude::BTreeMap;
 use crate::{
     // Bounded collections
     bounded::{
-        BoundedError, BoundedString, BoundedVec, WasmName, MAX_COMPONENT_ERROR_CONTEXT_ITEMS,
-        MAX_COMPONENT_FLAGS, MAX_COMPONENT_TUPLE_ITEMS, MAX_WASM_NAME_LENGTH,
+        BoundedError,
+        BoundedString,
+        BoundedVec,
+        WasmName,
+        MAX_COMPONENT_ERROR_CONTEXT_ITEMS,
+        MAX_COMPONENT_FLAGS,
+        MAX_COMPONENT_TUPLE_ITEMS,
+        MAX_WASM_NAME_LENGTH,
         MAX_WASM_STRING_LENGTH,
     },
 
     // Re-exported items
     codes,
     // Component value types
-    component_value::{ComponentValue, ValType, ValTypeRef, MAX_STORED_COMPONENT_VALUES},
+    component_value::{
+        ComponentValue,
+        ValType,
+        ValTypeRef,
+        MAX_STORED_COMPONENT_VALUES,
+    },
 
     // Other types
     prelude::Debug,
     // Traits
     traits::{
-        BytesWriter, Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream,
+        BytesWriter,
+        Checksummable,
+        FromBytes,
+        ReadStream,
+        SerializationError,
+        ToBytes,
+        WriteStream,
     },
 
-    types::{Limits, ValueType},
+    types::{
+        Limits,
+        ValueType,
+    },
     values::Value,
 
     verification::Checksum,
@@ -50,7 +73,10 @@ use crate::{
     SafeMemoryHandler,
     WrtResult,
 };
-use crate::{prelude::*, traits::BoundedCapacity}; // Added import
+use crate::{
+    prelude::*,
+    traits::BoundedCapacity,
+}; // Added import
 
 /// An opaque reference (index) to a `ComponentValue` within the store.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -110,10 +136,10 @@ pub const MAX_TYPE_TO_REF_MAP_ENTRIES: usize = MAX_STORE_TYPES; // Binary std/no
 /// Stores component values and their types, managing references between them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentValueStore<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
-    provider: P,
-    values: BoundedVec<ComponentValue<P>, MAX_STORE_VALUES, P>,
+    provider:        P,
+    values:          BoundedVec<ComponentValue<P>, MAX_STORE_VALUES, P>,
     // ValType is also P-generic, if we store ValTypes here, P needs to be consistent.
-    types: BoundedVec<ValType<P>, MAX_STORE_TYPES, P>,
+    types:           BoundedVec<ValType<P>, MAX_STORE_TYPES, P>,
     // TODO: Implement BoundedHashMap - using a vec pair for now
     type_to_ref_map: BoundedVec<(ValType<P>, ValTypeRef), MAX_TYPE_TO_REF_MAP_ENTRIES, P>,
 }
@@ -129,12 +155,18 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             Error::new(
                 wrt_error::ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_ERROR,
-                "Failed to allocate memory for value types")
+                "Failed to allocate memory for value types",
+            )
         })?;
         let type_map = BoundedVec::new(provider.clone()).map_err(|_e| {
             Error::runtime_execution_error("Failed to create BoundedVec for type-to-ref map")
         })?;
-        Ok(Self { provider, values, types, type_to_ref_map: type_map })
+        Ok(Self {
+            provider,
+            values,
+            types,
+            type_to_ref_map: type_map,
+        })
     }
 
     /// Returns a reference to the memory provider used by this store.
@@ -152,7 +184,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                "Component value store capacity exceeded")
+                "Component value store capacity exceeded",
+            )
         })?;
         Ok(ValueRef(index as usize))
     }
@@ -185,14 +218,18 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         match self.values.get(val_ref.index()).ok() {
             Some(ComponentValue::String(_s_name)) => {
                 // Temporarily disabled due to lifetime issues in no_std mode
-                Err(Error::parse_error("get_string temporarily disabled in no_std mode due to lifetime issues"))
-            }
+                Err(Error::parse_error(
+                    "get_string temporarily disabled in no_std mode due to lifetime issues",
+                ))
+            },
             Some(_other_val) => Err(Error::type_error(
                 // format!("Expected ComponentValue::String, found {:?}", other_val) // format!
                 // Binary std/no_std choice
                 "Type mismatch: Expected ComponentValue::String",
             )),
-            None => Err(Error::runtime_execution_error("Invalid value reference: index out of bounds")),
+            None => Err(Error::runtime_execution_error(
+                "Invalid value reference: index out of bounds",
+            )),
         }
     }
 
@@ -270,7 +307,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         let mut item_value_refs =
             BoundedVec::<ValueRef, MAX_COMPONENT_TUPLE_ITEMS, P>::new(self.provider.clone())
                 .map_err(|e| {
-                    Error::runtime_execution_error("Failed to create BoundedVec for tuple refs (capacity issue)")
+                    Error::runtime_execution_error(
+                        "Failed to create BoundedVec for tuple refs (capacity issue)",
+                    )
                 })?;
 
         for core_val in values {
@@ -283,7 +322,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             // 3. Push the ValueRef to item_value_refs
             item_value_refs.push(value_ref).map_err(|_e: BoundedError| {
                 // e is BoundedError
-                Error::runtime_execution_error("Failed to push ValueRef into BoundedVec for tuple (capacity issue)")
+                Error::runtime_execution_error(
+                    "Failed to push ValueRef into BoundedVec for tuple (capacity issue)",
+                )
             })?;
         }
 
@@ -300,13 +341,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         S: AsRef<str> + Debug,
         P: Clone,
     {
-        let mut flag_values =
-            BoundedVec::<(WasmName<MAX_WASM_NAME_LENGTH, P>, bool), MAX_COMPONENT_FLAGS, P>::new(
-                self.provider.clone(),
-            )
-            .map_err(|_e| {
-                Error::runtime_execution_error("Failed to create BoundedVec for flags")
-            })?;
+        let mut flag_values = BoundedVec::<
+            (WasmName<MAX_WASM_NAME_LENGTH, P>, bool),
+            MAX_COMPONENT_FLAGS,
+            P,
+        >::new(self.provider.clone())
+        .map_err(|_e| Error::runtime_execution_error("Failed to create BoundedVec for flags"))?;
 
         for (name_str, val) in flags {
             let name =
@@ -317,7 +357,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
                 Error::new(
                     wrt_error::ErrorCategory::Resource,
                     codes::RESOURCE_LIMIT_EXCEEDED,
-                    "Flag values capacity exceeded")
+                    "Flag values capacity exceeded",
+                )
             })?;
         }
         let flags_cv = ComponentValue::<P>::Flags(flag_values);
@@ -331,9 +372,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     where
         P: Clone,
     {
-        let name = WasmName::from_str(case.as_ref(), self.provider.clone()).map_err(|_e| {
-            Error::runtime_execution_error("Failed to create enum case name")
-        })?;
+        let name = WasmName::from_str(case.as_ref(), self.provider.clone())
+            .map_err(|_e| Error::runtime_execution_error("Failed to create enum case name"))?;
         let comp_val = ComponentValue::<P>::Enum(name);
         let new_ref = self.add_value(comp_val)?;
         Ok(new_ref.0 as u32)
@@ -419,7 +459,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
             _ => Err(Error::new(
                 ErrorCategory::Type,
                 codes::UNSUPPORTED_OPERATION,
-                "Unsupported core value type for conversion to component value")),
+                "Unsupported core value type for conversion to component value",
+            )),
         }
     }
 }

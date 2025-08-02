@@ -1030,9 +1030,9 @@ fn main() -> Result<()> {
 
             println!("✓ WASI enabled:");
             println!("  - Version: {:?}", config.wasi_version);
-            println!("  - Filesystem paths: {}", args.wasi_fs_paths.len);
-            println!("  - Environment variables: {}", args.wasi_env_vars.len);
-            println!("  - Program arguments: {}", args.wasi_args.len);
+            println!("  - Filesystem paths: {}", args.wasi_fs_paths.len());
+            println!("  - Environment variables: {}", args.wasi_env_vars.len());
+            println!("  - Program arguments: {}", args.wasi_args.len());
         }
     }
 
@@ -1091,7 +1091,7 @@ fn main() -> Result<()> {
             }
         },
         Err(e) => {
-            eprintln!("✗ Execution failed: {}", e)));
+            eprintln!("✗ Execution failed: {}", e);
             process::exit(1);
         },
     }
@@ -1099,7 +1099,7 @@ fn main() -> Result<()> {
     // Complete memory system initialization
     #[cfg(feature = "std")]
     if let Err(e) = wrt_foundation::memory_init::init_wrt_memory() {
-        eprintln!("Warning: Failed to complete memory system: {}", e)));
+        eprintln!("Warning: Failed to complete memory system: {}", e);
     }
 
     Ok(())
@@ -1113,7 +1113,7 @@ fn main() {
     {
         #[allow(unsafe_code)] // Required for allocator initialization
         unsafe {
-            ALLOCATOR.lock().init(HEAP.as_mut_ptr(), HEAP.len);
+            ALLOCATOR.lock().init(HEAP.as_mut_ptr(), HEAP.len());
         }
     }
 

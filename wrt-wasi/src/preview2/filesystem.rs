@@ -72,19 +72,19 @@ mod tests {
     #[test]
     fn test_extract_file_descriptor() {
         let args = vec![Value::U32(42)];
-        assert_eq!(extract_file_descriptor(&args).unwrap(), 42;
+        assert_eq!(extract_file_descriptor(&args).unwrap(), 42);
         
         let invalid_args = vec![Value::String("not_a_fd".to_string())];
-        assert!(extract_file_descriptor(&invalid_args).is_err();
+        assert!(extract_file_descriptor(&invalid_args).is_err());
     }
     
     #[test]
     fn test_extract_length() {
         let args = vec![Value::U32(0), Value::U64(1024)];
-        assert_eq!(extract_length(&args, 1).unwrap(), 1024;
+        assert_eq!(extract_length(&args, 1).unwrap(), 1024);
         
         let args_u32 = vec![Value::U32(0), Value::U32(512)];
-        assert_eq!(extract_length(&args_u32, 1).unwrap(), 512;
+        assert_eq!(extract_length(&args_u32, 1).unwrap(), 512);
     }
     
     #[test]
@@ -93,7 +93,7 @@ mod tests {
         let args = vec![Value::U32(42), Value::List(data)];
         
         let bytes = extract_byte_data(&args, 1)?;
-        assert_eq!(bytes, vec![1, 2, 3];
+        assert_eq!(bytes, vec![1, 2, 3]);
         
         Ok(())
     }
@@ -102,7 +102,7 @@ mod tests {
     fn test_extract_string() -> Result<()> {
         let args = vec![Value::U32(42), Value::String("test.txt".to_string())];
         let path = extract_string(&args, 1)?;
-        assert_eq!(path, "test.txt";
+        assert_eq!(path, "test.txt");
         
         Ok(())
     }

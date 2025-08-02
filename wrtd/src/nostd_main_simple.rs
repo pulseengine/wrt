@@ -60,7 +60,7 @@ impl NoStdRuntime {
     /// Execute a module (returns fuel used or error code)
     pub fn execute_module(&mut self, module_data: &[u8], _function: &str) -> Result<u32, u8> {
         let fuel_used = module_data.len() as u64 / 10;
-        let memory_used = module_data.len);
+        let memory_used = module_data.len();
         
         if fuel_used > self.config.max_fuel {
             return Err(1); // Error code: fuel exceeded

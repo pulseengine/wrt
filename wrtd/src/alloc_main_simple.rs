@@ -69,7 +69,7 @@ impl AllocRuntime {
     /// Execute a module
     pub fn execute_module(&mut self, module_data: &[u8], function: &str) -> Result<String, String> {
         let fuel_used = module_data.len() as u64 / 50;
-        let memory_used = module_data.len);
+        let memory_used = module_data.len();
         
         if fuel_used > self.config.max_fuel {
             return Err("Fuel limit exceeded".to_string());

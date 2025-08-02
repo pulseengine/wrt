@@ -257,7 +257,7 @@ impl CacheManager {
                 WasmFormat::Unknown
             };
 
-            let cache = DecodedCache::new(format_type, binary.len);
+            let cache = DecodedCache::new(format_type, binary.len();
             let cache_size = cache.cache_size_estimate);
 
             // Check if we need to evict entries

@@ -12,12 +12,24 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
 
-use wrt_error::{codes, Error as WrtError, ErrorCategory};
+use wrt_error::{
+    codes,
+    Error as WrtError,
+    ErrorCategory,
+};
 
 use crate::{
     prelude::*,
-    safe_memory::{NoStdProvider, SafeMemoryHandler, Slice, SliceMut, Stats},
-    MemoryProvider as RootMemoryProvider, VerificationLevel, WrtResult,
+    safe_memory::{
+        NoStdProvider,
+        SafeMemoryHandler,
+        Slice,
+        SliceMut,
+        Stats,
+    },
+    MemoryProvider as RootMemoryProvider,
+    VerificationLevel,
+    WrtResult,
 }; // Keep WrtResult, Added RootMemoryProvider etc. // Added WrtError,
    // ErrorCategory, codes
 
@@ -87,7 +99,7 @@ macro_rules! impl_checksummable_for_primitive {
     ($($T:ty),*) => {
         $(impl Checksummable for $T {
             fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-                checksum.update_slice(&self.to_ne_bytes);
+                checksum.update_slice(&self.to_ne_bytes());
             }
         })*
     };
@@ -136,7 +148,7 @@ pub trait BytesWriter {
 #[cfg(feature = "std")]
 impl Checksummable for alloc::string::String {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-        checksum.update_slice(self.as_bytes);
+        checksum.update_slice(self.as_bytes());
     }
 }
 
@@ -210,27 +222,33 @@ impl fmt::Display for SerializationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SerializationError::IncorrectSize => {
-                write!(f, "Incorrect buffer or slice size for serialization/deserialization")
-            }
+                write!(
+                    f,
+                    "Incorrect buffer or slice size for serialization/deserialization"
+                )
+            },
             SerializationError::InvalidFormat => {
                 write!(f, "Invalid data format for deserialization")
-            }
+            },
             SerializationError::Custom(s) => write!(f, "Serialization error: {s}"),
             SerializationError::InvalidSliceLength => {
                 write!(f, "Invalid slice length for serialization/deserialization")
-            }
+            },
             SerializationError::NotEnoughData => {
                 write!(f, "Not enough data to deserialize the object")
-            }
+            },
             SerializationError::IoError => {
-                write!(f, "An I/O operation failed during serialization/deserialization")
-            }
+                write!(
+                    f,
+                    "An I/O operation failed during serialization/deserialization"
+                )
+            },
             SerializationError::UnexpectedEof => {
                 write!(f, "Unexpected end of input during deserialization")
-            }
+            },
             SerializationError::InvalidEnumValue => {
                 write!(f, "Invalid enum value during deserialization")
-            }
+            },
         }
     }
 }
@@ -311,7 +329,9 @@ impl FromBytes for bool {
         match byte {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(WrtError::runtime_execution_error("Invalid boolean value - expected 0 or 1")),
+            _ => Err(WrtError::runtime_execution_error(
+                "Invalid boolean value - expected 0 or 1",
+            )),
         }
     }
     // from_bytes method is provided by the trait with DefaultMemoryProvider
@@ -447,8 +467,8 @@ impl_little_endian_for_primitive! {
 // impl LittleEndian for V128 {
 // fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
 // if bytes.len() < 16 {
-// return Err(wrt_error::Error::runtime_execution_error("Insufficient bytes: ".to_string() +
-// &bytes.len().to_string() ;
+// return Err(wrt_error::Error::runtime_execution_error("Insufficient bytes:
+// ".to_string() + &bytes.len().to_string() ;
 // }
 // let mut arr = [0u8; 16];
 // arr.copy_from_slice(&bytes[..16];
@@ -467,19 +487,32 @@ impl_little_endian_for_primitive! {
 impl From<SerializationError> for WrtError {
     fn from(e: SerializationError) -> Self {
         match e {
-            SerializationError::IncorrectSize => WrtError::foundation_memory_provider_failed("Incorrect buffer size for serialization/deserialization"),
-            SerializationError::InvalidFormat => WrtError::foundation_verification_failed("Foundation invalid data format for deserialization",
+            SerializationError::IncorrectSize => WrtError::foundation_memory_provider_failed(
+                "Incorrect buffer size for serialization/deserialization",
+            ),
+            SerializationError::InvalidFormat => WrtError::foundation_verification_failed(
+                "Foundation invalid data format for deserialization",
             ),
             SerializationError::Custom(s) => {
                 // Create a new static string if necessary, or ensure 's' is always suitable.
                 // For now, assuming 's' is appropriate as per original definition.
                 WrtError::foundation_verification_failed(s)
-            }
-            SerializationError::InvalidSliceLength => WrtError::foundation_memory_provider_failed("Foundation invalid slice length for serialization"),
-            SerializationError::NotEnoughData => WrtError::foundation_memory_provider_failed("Foundation not enough data to deserialize object"),
-            SerializationError::IoError => WrtError::foundation_memory_provider_failed("Foundation I/O operation failed during serialization"),
-            SerializationError::UnexpectedEof => WrtError::foundation_memory_provider_failed("Foundation unexpected end of input during deserialization"),
-            SerializationError::InvalidEnumValue => WrtError::foundation_verification_failed("Foundation invalid enum value during deserialization"),
+            },
+            SerializationError::InvalidSliceLength => WrtError::foundation_memory_provider_failed(
+                "Foundation invalid slice length for serialization",
+            ),
+            SerializationError::NotEnoughData => WrtError::foundation_memory_provider_failed(
+                "Foundation not enough data to deserialize object",
+            ),
+            SerializationError::IoError => WrtError::foundation_memory_provider_failed(
+                "Foundation I/O operation failed during serialization",
+            ),
+            SerializationError::UnexpectedEof => WrtError::foundation_memory_provider_failed(
+                "Foundation unexpected end of input during deserialization",
+            ),
+            SerializationError::InvalidEnumValue => WrtError::foundation_verification_failed(
+                "Foundation invalid enum value during deserialization",
+            ),
         }
     }
 }
@@ -571,10 +604,10 @@ impl<T: ToBytes> ToBytes for Option<T> {
             Some(value) => {
                 writer.write_u8(1u8)?; // Tag for Some
                 value.to_bytes_with_provider(writer, provider)?;
-            }
+            },
             None => {
                 writer.write_u8(0u8)?; // Tag for None
-            }
+            },
         }
         Ok(())
     }
@@ -592,8 +625,10 @@ impl<T: FromBytes> FromBytes for Option<T> {
             1u8 => {
                 let value = T::from_bytes_with_provider(reader, provider)?;
                 Ok(Some(value))
-            }
-            _ => Err(WrtError::runtime_execution_error("Invalid Option tag value - expected 0 or 1")),
+            },
+            _ => Err(WrtError::runtime_execution_error(
+                "Invalid Option tag value - expected 0 or 1",
+            )),
         }
     }
     // from_bytes is provided by the trait
@@ -626,7 +661,8 @@ impl FromBytes for char {
             WrtError::new(
                 ErrorCategory::Parse,
                 codes::VALUE_OUT_OF_RANGE, // Changed from INVALID_DATA
-                "Invalid unicode scalar value for char conversion")
+                "Invalid unicode scalar value for char conversion",
+            )
         })
     }
     // from_bytes is provided by the trait
@@ -644,18 +680,22 @@ pub struct DefaultMemoryProvider(NoStdProvider<0>); // Use 0 for default capacit
 
 impl Default for DefaultMemoryProvider {
     fn default() -> Self {
-        // Note: Using NoStdProvider::<0>::default() here is legitimate as this is 
+        // Note: Using NoStdProvider::<0>::default() here is legitimate as this is
         // the default memory provider implementation for trait-level fallbacks
         Self(NoStdProvider::<0>::default())
     }
 }
 
 impl RootMemoryProvider for DefaultMemoryProvider {
-    type Allocator = NoStdProvider<0>; // Binary std/no_std choice
+    type Allocator = NoStdProvider<0>;
+
+    // Binary std/no_std choice
 
     fn acquire_memory(&self, _layout: core::alloc::Layout) -> WrtResult<*mut u8> {
         // Binary std/no_std choice
-        Err(WrtError::memory_error("DefaultMemoryProvider (NoStdProvider<0>) cannot dynamically allocate memory."))
+        Err(WrtError::memory_error(
+            "DefaultMemoryProvider (NoStdProvider<0>) cannot dynamically allocate memory.",
+        ))
     }
 
     fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
@@ -732,14 +772,17 @@ impl RootMemoryProvider for DefaultMemoryProvider {
 /// reading.
 #[derive(Debug)]
 pub struct ReadStream<'a> {
-    buffer: Slice<'a>,
+    buffer:   Slice<'a>,
     position: usize,
 }
 
 impl<'a> ReadStream<'a> {
     /// Creates a new `ReadStream` from a byte slice.
     pub fn new(slice: Slice<'a>) -> Self {
-        Self { buffer: slice, position: 0 }
+        Self {
+            buffer:   slice,
+            position: 0,
+        }
     }
 
     /// Current reading position in the stream.
@@ -783,30 +826,39 @@ impl<'a> ReadStream<'a> {
     pub fn read_u16_le(&mut self) -> WrtResult<u16> {
         self.read_le_bytes_into_array::<2>().map(u16::from_le_bytes)
     }
+
     pub fn read_i16_le(&mut self) -> WrtResult<i16> {
         self.read_le_bytes_into_array::<2>().map(i16::from_le_bytes)
     }
+
     pub fn read_u32_le(&mut self) -> WrtResult<u32> {
         self.read_le_bytes_into_array::<4>().map(u32::from_le_bytes)
     }
+
     pub fn read_i32_le(&mut self) -> WrtResult<i32> {
         self.read_le_bytes_into_array::<4>().map(i32::from_le_bytes)
     }
+
     pub fn read_u64_le(&mut self) -> WrtResult<u64> {
         self.read_le_bytes_into_array::<8>().map(u64::from_le_bytes)
     }
+
     pub fn read_i64_le(&mut self) -> WrtResult<i64> {
         self.read_le_bytes_into_array::<8>().map(i64::from_le_bytes)
     }
+
     pub fn read_u128_le(&mut self) -> WrtResult<u128> {
         self.read_le_bytes_into_array::<16>().map(u128::from_le_bytes)
     }
+
     pub fn read_i128_le(&mut self) -> WrtResult<i128> {
         self.read_le_bytes_into_array::<16>().map(i128::from_le_bytes)
     }
+
     pub fn read_f32_le(&mut self) -> WrtResult<f32> {
         self.read_le_bytes_into_array::<4>().map(f32::from_le_bytes)
     }
+
     pub fn read_f64_le(&mut self) -> WrtResult<f64> {
         self.read_le_bytes_into_array::<8>().map(f64::from_le_bytes)
     }
@@ -866,7 +918,7 @@ impl<'a> ReadStream<'a> {
 /// It operates on a mutable slice, typically obtained from a `MemoryProvider`.
 #[derive(Debug)]
 pub struct WriteStream<'a> {
-    buffer: SliceMut<'a>,
+    buffer:   SliceMut<'a>,
     position: usize,
     // Provider is not stored directly to avoid lifetime complexities with SliceMut,
     // but can be passed to methods like to_bytes_with_provider if needed by nested types.
@@ -875,7 +927,10 @@ pub struct WriteStream<'a> {
 impl<'a> WriteStream<'a> {
     /// Creates a new `WriteStream` from a mutable byte slice.
     pub fn new(slice: SliceMut<'a>) -> Self {
-        Self { buffer: slice, position: 0 }
+        Self {
+            buffer:   slice,
+            position: 0,
+        }
     }
 
     /// Current writing position in the stream.
@@ -890,7 +945,8 @@ impl<'a> WriteStream<'a> {
 
     fn ensure_capacity(&self, len: usize) -> WrtResult<()> {
         if self.position + len > self.buffer.len() {
-            Err(WrtError::memory_error(// Or a more specific serialization capacity error
+            Err(WrtError::memory_error(
+                // Or a more specific serialization capacity error
                 "Write operation exceeds buffer capacity",
             ))
         } else {
@@ -920,30 +976,39 @@ impl<'a> WriteStream<'a> {
     pub fn write_u16_le(&mut self, value: u16) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_i16_le(&mut self, value: i16) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_u32_le(&mut self, value: u32) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_i32_le(&mut self, value: i32) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_u64_le(&mut self, value: u64) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_i64_le(&mut self, value: i64) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_u128_le(&mut self, value: u128) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_i128_le(&mut self, value: i128) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_f32_le(&mut self, value: f32) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
+
     pub fn write_f64_le(&mut self, value: f64) -> WrtResult<()> {
         self.write_le_bytes_from_array(value.to_le_bytes())
     }
@@ -954,7 +1019,9 @@ impl<'a> WriteStream<'a> {
         } else if core::mem::size_of::<usize>() == 8 {
             self.write_u64_le(value as u64)
         } else {
-            Err(WrtError::system_error("Unsupported usize size for LE write"))
+            Err(WrtError::system_error(
+                "Unsupported usize size for LE write",
+            ))
         }
     }
 
@@ -964,7 +1031,9 @@ impl<'a> WriteStream<'a> {
         } else if core::mem::size_of::<isize>() == 8 {
             self.write_i64_le(value as i64)
         } else {
-            Err(WrtError::system_error("Unsupported isize size for LE write"))
+            Err(WrtError::system_error(
+                "Unsupported isize size for LE write",
+            ))
         }
     }
 
@@ -1010,8 +1079,8 @@ impl<'a> WriteStream<'a> {
 // that returns an owned stream with an internal buffer.         //     // A
 // different WriteStream design might be needed for that (e.g.
 // WriteStream<Vec<u8>>).         // }
-//         // panic!("Default for WriteStream<P> is not generally constructible")
-// Binary std/no_std choice
+//         // panic!("Default for WriteStream<P> is not generally
+// constructible") Binary std/no_std choice
 // implies an empty, unusable stream.         Self {
 //             buffer: SliceMut::empty(), // Creates an empty, unusable slice.
 //             position: 0,
@@ -1026,10 +1095,10 @@ impl<T: Checksummable> Checksummable for Option<T> {
             Some(val) => {
                 checksum.update(1u8); // Discriminant for Some
                 val.update_checksum(checksum);
-            }
+            },
             None => {
                 checksum.update(0u8); // Discriminant for None
-            }
+            },
         }
     }
 }

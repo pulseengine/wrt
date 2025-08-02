@@ -334,7 +334,7 @@ pub mod parsers {
         // Convert wrt_format::Import to wrt_foundation::Import
         // Since Table and Memory are now type aliases to foundation types, this should
         // work directly
-        let mut wrt_imports = Vec::with_capacity(format_imports.len);
+        let mut wrt_imports = Vec::with_capacity(format_imports.len();
         let provider = wrt_foundation::safe_managed_alloc!(
             65536,
             wrt_foundation::budget_aware_provider::CrateId::Decoder

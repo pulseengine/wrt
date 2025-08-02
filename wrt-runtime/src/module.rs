@@ -2116,7 +2116,7 @@ impl wrt_foundation::traits::Checksummable for Module {
 impl wrt_foundation::traits::ToBytes for Module {
     fn serialized_size(&self) -> usize {
         // Simple size calculation for module metadata
-        let name_size = self.name.as_ref().map_or(0, |n| n.len);
+        let name_size = self.name.as_ref().map_or(0, |n| n.len();
         8 + name_size + 1 + 4 + 4 // magic(4) + name_len(4) + name + validated(1) + types_len(4) + functions_len(4)
     }
     

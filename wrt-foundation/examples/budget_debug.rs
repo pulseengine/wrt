@@ -26,7 +26,7 @@ fn main() {
     println!("  Budget: {}", after_stats.budget_bytes);
 
     // Drop the provider
-    drop(provider;
+    drop(provider);
 
     println!("\nAfter drop:");
     let final_stats = BudgetAwareProviderFactory::get_crate_stats(CrateId::Component).unwrap();

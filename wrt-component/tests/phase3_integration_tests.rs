@@ -1022,7 +1022,7 @@ mod examples {
 
         println!("Phase 3 ASIL-C async system created with:");
         println!("- Fuel-aware WCET analysis with 99.9% confidence bounds");
-        println!("- Constrained deadline scheduler (deadline ≤ period)"));
+        println!("- Constrained deadline scheduler (deadline ≤ period)");
         println!("- Hybrid Rate Monotonic + EDF scheduling");
         println!("- ASIL-based criticality mode switching");
         println!("- Real-time WCET enforcement and validation");
@@ -1077,8 +1077,8 @@ mod examples {
         )?;
 
         println!("ASIL-C Engine Control Task configured:");
-        println!("- Period: 10ms (100Hz control rate)"));
-        println!("- Deadline: 8ms (constrained deadline)"));
+        println!("- Period: 10ms (100Hz control rate)");
+        println!("- Deadline: 8ms (constrained deadline)");
         println!("- WCET: {} fuel units", wcet_result.wcet_fuel);
         println!("- BCET: {} fuel units", wcet_result.bcet_fuel);
         println!("- Safety margin: included in WCET analysis");

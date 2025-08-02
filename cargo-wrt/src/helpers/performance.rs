@@ -103,7 +103,7 @@ impl PerformanceOptimizer {
     /// Stop timing a command and record duration
     pub fn stop_timer(&mut self, command: &str) {
         if let Some(start_time) = self.command_timers.remove(command) {
-            let duration = start_time.elapsed());
+            let duration = start_time.elapsed();
             self.metrics.command_times.insert(command.to_string(), duration);
         }
     }

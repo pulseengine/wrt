@@ -94,7 +94,7 @@ fn test_basic_simd_operations() -> Result<()> {
     "#;
 
     // Parse the WebAssembly text format to a binary module
-    let wasm_binary = wat::parse_str(wat_code).expect(".expect("Failed to parse WAT"));")
+    let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT");
 
     // Load the module from binary
     let mut empty_module = Module::new();
@@ -125,21 +125,21 @@ fn test_basic_simd_operations() -> Result<()> {
         .exports
         .iter()
         .find(|e| e.name == "f32x4_splat_test")
-        .expect(".expect("Could not find f32x4_splat_test export"));")
+        .expect("Could not find f32x4_splat_test export");
 
     let f64x2_splat_test_export = engine.instances[0]
         .module
         .exports
         .iter()
         .find(|e| e.name == "f64x2_splat_test")
-        .expect(".expect("Could not find f64x2_splat_test export"));")
+        .expect("Could not find f64x2_splat_test export");
 
     let i32x4_splat_test_export = engine.instances[0]
         .module
         .exports
         .iter()
         .find(|e| e.name == "i32x4_splat_test")
-        .expect(".expect("Could not find i32x4_splat_test export"));")
+        .expect("Could not find i32x4_splat_test export");
 
     // Get only the function index
     let f32x4_splat_test_idx = f32x4_splat_test_export.index;
@@ -158,7 +158,7 @@ fn test_basic_simd_operations() -> Result<()> {
         .exports
         .iter()
         .position(|e| e.name == "f32x4_splat_test")
-        .expect("Could not find f32x4_splat_test position") as u32);
+        .expect("Could not find f32x4_splat_test position") as u32;
 
     println!(
         "DEBUG: Using export index {} for f32x4_splat_test",
@@ -220,7 +220,7 @@ fn test_basic_simd_operations() -> Result<()> {
 
 #[test]
 fn test_simd_dot_product() -> Result<()> {
-    println!("Running simplified SIMD test (replacing dot product test)"));
+    println!("Running simplified SIMD test (replacing dot product test)");
 
     // Create a simplified test that uses basic SIMD operations
     let wat_code = r#"
@@ -234,7 +234,7 @@ fn test_simd_dot_product() -> Result<()> {
     "#;
 
     // Parse the WebAssembly text format to a binary module
-    let wasm_binary = wat::parse_str(wat_code).expect(".expect("Failed to parse WAT"));")
+    let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT");
 
     // Load the module from binary
     let mut empty_module = Module::new();

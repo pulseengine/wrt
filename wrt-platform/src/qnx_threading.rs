@@ -368,7 +368,7 @@ impl PlatformThreadPool for QnxThreadPool {
         }
 
         // Check thread limit
-        let active_count = self.active_threads.read().len);
+        let active_count = self.active_threads.read().len();
         if active_count >= self.config.max_threads {
             return Err(Error::new(
                 ErrorCategory::Resource,

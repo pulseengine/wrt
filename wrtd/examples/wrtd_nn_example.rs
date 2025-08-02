@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(not(all(feature = "std", feature = "wasi", feature = "wasi-nn")))]
 fn main() {
-    eprintln!("This example requires features: std, wasi, wasi-nn")));
+    eprintln!("This example requires features: std, wasi, wasi-nn");
     std::process::exit(1);
 }
 

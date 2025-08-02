@@ -770,7 +770,7 @@ pub fn deserialize_component_value(
             if offset >= data.len() {
                 return Err(Error::parse_error("Not enough data to deserialize Tuple";
             }
-            let mut values = Vec::with_capacity(types.len);
+            let mut values = Vec::with_capacity(types.len();
             for val_type in types {
                 let value = deserialize_component_value(&data[offset..], val_type)?;
                 values.push(value);
@@ -1524,7 +1524,7 @@ mod tests {
             deserialize_component_values_with_stream(&mut reader, &format_types, &handler).unwrap();
 
         // Verify count
-        assert_eq!(values.len(), decoded.len);
+        assert_eq!(values.len(), decoded.len();
 
         // Verify individual values
         assert_eq!(values[0], decoded[0];
@@ -1535,7 +1535,7 @@ mod tests {
         {
             assert_eq!(original, decoded_val;
         } else {
-            panic!("Expected S32 values";
+            panic!("Expected S32 values");
         }
 
         // For String, compare the string values
@@ -1544,7 +1544,7 @@ mod tests {
         {
             assert_eq!(original, decoded_val;
         } else {
-            panic!("Expected String values";
+            panic!("Expected String values");
         }
     }
 }

@@ -52,14 +52,14 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 let mut data = vec![];
 
                 // List length (3)
-                data.extend_from_slice(&[0x03, 0x00, 0x00, 0x00];
+                data.extend_from_slice(&[0x03, 0x00, 0x00, 0x00]);
 
                 // Item 1: 1
-                data.extend_from_slice(&[0x01, 0x00, 0x00, 0x00];
+                data.extend_from_slice(&[0x01, 0x00, 0x00, 0x00]);
                 // Item 2: 2
-                data.extend_from_slice(&[0x02, 0x00, 0x00, 0x00];
+                data.extend_from_slice(&[0x02, 0x00, 0x00, 0x00]);
                 // Item 3: 3
-                data.extend_from_slice(&[0x03, 0x00, 0x00, 0x00];
+                data.extend_from_slice(&[0x03, 0x00, 0x00, 0x00]);
 
                 data
             },
@@ -73,7 +73,7 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 // Some variant (tag = 1)
                 let mut data = vec![0x01];
                 // Value (42)
-                data.extend_from_slice(&[0x2A, 0x00, 0x00, 0x00];
+                data.extend_from_slice(&[0x2A, 0x00, 0x00, 0x00]);
                 data
             },
             expression: None,
@@ -93,7 +93,7 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 // Ok variant (tag = 0)
                 let mut data = vec![0x00];
                 // Value (42)
-                data.extend_from_slice(&[0x2A, 0x00, 0x00, 0x00];
+                data.extend_from_slice(&[0x2A, 0x00, 0x00, 0x00]);
                 data
             },
             expression: None,
@@ -125,7 +125,7 @@ fn test_component_value_encoding_decoding() -> Result<()> {
     // Verify the values were preserved
     // Note: Current decoder implementation doesn't preserve values
     // This should be fixed in a future update
-    assert_eq!(0, decoded.values.len);
+    assert_eq!(0, decoded.values.len());
 
     // Skip value-by-value comparison since no values are preserved
 

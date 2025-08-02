@@ -53,27 +53,27 @@ fn main() {
     // 3. Demonstrate memory pool efficiency
     println!("\n3. Memory Pool Efficiency:");
 
-    let provider = NoStdProvider::<4096>::default());
-    let mut pool = MemoryPool::new(provider;
+    let provider = NoStdProvider::<4096>::default();
+    let mut pool = MemoryPool::new(provider);
 
     // Simulate parsing multiple functions - reusing vectors
     println!("Parsing 5 functions with vector reuse:");
     for i in 1..=5 {
-        let mut instruction_vec = pool.get_instruction_vector);
+        let mut instruction_vec = pool.get_instruction_vector();
 
         // Simulate adding some instructions
         for j in 0..10 {
-            instruction_vec.push((i * 10 + j) as u8;
+            instruction_vec.push((i * 10 + j) as u8);
         }
 
         println!(
             "  Function {}: processed {} instructions",
             i,
             instruction_vec.len()
-        ;
+        );
 
         // Return vector to pool for reuse
-        pool.return_instruction_vector(instruction_vec;
+        pool.return_instruction_vector(instruction_vec);
     }
 
     println!("✓ All vectors returned to pool for reuse");
@@ -86,14 +86,14 @@ fn main() {
 
     if let Ok(()) = check_bounds_u32(declared_count, 2000000, "items") {
         let safe_count = safe_usize_conversion(declared_count, "items").unwrap();
-        let allocated_count = safe_count.min(max_conservative;
+        let allocated_count = safe_count.min(max_conservative);
 
         println!("  Declared count: {}", declared_count);
         println!("  Conservative allocation: {}", allocated_count);
         println!(
             "  Memory saved: {}x reduction",
             declared_count / allocated_count as u32
-        ;
+        );
     }
 
     println!("\n=== Memory Optimization Benefits ===");

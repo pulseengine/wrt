@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn test_generative_type_registry_creation() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
+        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance_id = ComponentInstanceId(1;
 
         let result = registry.create_generative_type(base_type.clone(), instance_id;
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn test_unique_type_ids_across_instances() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
+        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance1 = ComponentInstanceId(1;
         let instance2 = ComponentInstanceId(2;
 
@@ -316,9 +316,9 @@ mod tests {
     #[test]
     fn test_resource_handle_registration() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
+        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance_id = ComponentInstanceId(1;
-        let handle = ResourceHandle::new(100;
+        let handle = ResourceHandle::new(100);
 
         let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();
 
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn test_instance_cleanup() {
         let mut registry = GenerativeTypeRegistry::new();
-        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42;
+        let base_type = ResourceType::<ComponentProvider>::Handle(ResourceHandle::new(42));
         let instance_id = ComponentInstanceId(1;
 
         let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();

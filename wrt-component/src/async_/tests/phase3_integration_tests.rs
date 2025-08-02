@@ -71,7 +71,7 @@ mod tests {
         let mut bridge = create_test_bridge);
         
         // Initialize component for async operations
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Spawn async task from Component Model
@@ -108,7 +108,7 @@ mod tests {
         let bridge = create_test_bridge);
         let mut abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         abi_support.initialize_component_abi(component_id, CanonicalOptions::default()).unwrap();
 
         // Test async function call
@@ -169,7 +169,7 @@ mod tests {
         let abi_support = AsyncCanonicalAbiSupport::new(bridge;
         let mut resource_ops = ResourceAsyncOperations::new(abi_support;
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         resource_ops.initialize_component_resources(component_id, None, None).unwrap();
 
         // Test async resource creation
@@ -212,7 +212,7 @@ mod tests {
         let bridge = create_test_bridge);
         let mut abi_support = AsyncCanonicalAbiSupport::new(bridge;
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         abi_support.initialize_component_abi(component_id, CanonicalOptions::default()).unwrap();
 
         // Test future operations
@@ -269,7 +269,7 @@ mod tests {
     fn test_task_manager_integration() {
         let mut bridge = create_test_bridge);
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Test task.wait implementation
@@ -338,7 +338,7 @@ mod tests {
     fn test_component_suspension() {
         let mut bridge = create_test_bridge);
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Spawn a task
@@ -368,7 +368,7 @@ mod tests {
     fn test_error_handling_and_recovery() {
         let mut bridge = create_test_bridge);
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
 
         // Try to spawn task in uninitialized component

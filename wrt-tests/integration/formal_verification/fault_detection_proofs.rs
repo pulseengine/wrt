@@ -122,7 +122,7 @@ pub fn verify_memory_violation_detection() {
                     
                     // Test safe access patterns
                     if vec.len() > 0 {
-                        let safe_index = access_index % vec.len);
+                        let safe_index = access_index % vec.len();
                         let _value = vec[safe_index]; // Should not panic
                     }
                     

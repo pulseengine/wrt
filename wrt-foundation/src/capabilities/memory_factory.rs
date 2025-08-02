@@ -3,27 +3,31 @@
 //! This module provides a single, simple factory for creating memory providers
 //! with capability verification. Replaces all previous factory patterns.
 
+#[cfg(any(feature = "std", feature = "alloc"))]
+use super::provider_bridge::CapabilityAwareProvider;
+use super::{
+    context::MemoryCapabilityContext,
+    MemoryOperation,
+};
 use crate::{
     budget_aware_provider::CrateId,
     memory_init::get_global_capability_context,
     safe_memory::NoStdProvider,
     safety_monitor::with_safety_monitor,
-    telemetry::{self, Category, Severity, event_codes},
+    telemetry::{
+        self,
+        event_codes,
+        Category,
+        Severity,
+    },
     Result,
 };
-
-use super::{
-    context::MemoryCapabilityContext,
-    MemoryOperation,
-};
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-use super::provider_bridge::CapabilityAwareProvider;
 
 /// Unified memory provider factory
 ///
 /// This factory provides a simple API for creating memory providers with
-/// capability verification. It replaces SafeProviderFactory and CapabilityMemoryFactory.
+/// capability verification. It replaces SafeProviderFactory and
+/// CapabilityMemoryFactory.
 pub struct MemoryFactory;
 
 impl MemoryFactory {
@@ -76,7 +80,7 @@ impl MemoryFactory {
                         N as u64,
                         crate_id as u64,
                     );
-                }
+                },
                 Err(_) => {
                     // Record allocation failure and capability violation
                     monitor.record_allocation_failure(N);
@@ -97,7 +101,7 @@ impl MemoryFactory {
                         N as u64,
                         crate_id as u64,
                     );
-                }
+                },
             }
         });
 
@@ -158,12 +162,12 @@ impl MemoryFactory {
                 Ok(_) => {
                     // Record successful allocation
                     monitor.record_allocation(N);
-                }
+                },
                 Err(_) => {
                     // Record allocation failure and capability violation
                     monitor.record_allocation_failure(N);
                     monitor.record_capability_violation(crate_id);
-                }
+                },
             }
         });
 
@@ -186,15 +190,18 @@ impl MemoryFactory {
     /// Create a provider with explicit capability verification level
     ///
     /// This method verifies that the requesting crate has the necessary
-    /// capability with the required verification level before creating the provider.
+    /// capability with the required verification level before creating the
+    /// provider.
     ///
     /// # Arguments
     /// * `crate_id` - The crate requesting the provider
-    /// * `required_verification_level` - The minimum verification level required
+    /// * `required_verification_level` - The minimum verification level
+    ///   required
     ///
     /// # Returns
     /// * `Ok(NoStdProvider<N>)` - A verified provider ready to use
-    /// * `Err(Error)` - If capability verification fails or verification level is insufficient
+    /// * `Err(Error)` - If capability verification fails or verification level
+    ///   is insufficient
     pub fn create_verified<const N: usize>(
         crate_id: CrateId,
         required_verification_level: crate::verification::VerificationLevel,
@@ -208,32 +215,34 @@ impl MemoryFactory {
     /// # Arguments
     /// * `context` - The capability context to use for verification
     /// * `crate_id` - The crate requesting the provider
-    /// * `required_verification_level` - The minimum verification level required
+    /// * `required_verification_level` - The minimum verification level
+    ///   required
     ///
     /// # Returns
     /// * `Ok(NoStdProvider<N>)` - A verified provider ready to use
-    /// * `Err(Error)` - If capability verification fails or verification level is insufficient
+    /// * `Err(Error)` - If capability verification fails or verification level
+    ///   is insufficient
     pub fn create_verified_with_context<const N: usize>(
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
         required_verification_level: crate::verification::VerificationLevel,
     ) -> Result<NoStdProvider<N>> {
         let capability_result = context.get_capability(crate_id);
-        
+
         // Check verification levels and perform allocation verification
         let final_result = match &capability_result {
             Ok(capability) => {
                 // Check if capability meets required verification level
                 if capability.verification_level() < required_verification_level {
                     Err(crate::Error::runtime_execution_error(
-                        "Capability verification level too low for verified provider"
+                        "Capability verification level too low for verified provider",
                     ))
                 } else {
                     // Verify allocation operation
                     let operation = MemoryOperation::Allocate { size: N };
                     capability.verify_access(&operation)
                 }
-            }
+            },
             Err(e) => Err(e.clone()),
         };
 
@@ -243,12 +252,12 @@ impl MemoryFactory {
                 Ok(_) => {
                     // Record successful allocation
                     monitor.record_allocation(N);
-                }
+                },
                 Err(_) => {
                     // Record allocation failure and capability violation
                     monitor.record_allocation_failure(N);
                     monitor.record_capability_violation(crate_id);
-                }
+                },
             }
         });
 
@@ -269,10 +278,11 @@ impl MemoryFactory {
     pub fn get_safety_report() -> crate::safety_monitor::SafetyReport {
         with_safety_monitor(|monitor| {
             let report = monitor.get_safety_report();
-            
+
             // Record telemetry for health status
             if report.health_score < 80 {
-                let critical_violations = report.budget_violations + report.capability_violations + report.fatal_errors;
+                let critical_violations =
+                    report.budget_violations + report.capability_violations + report.fatal_errors;
                 telemetry::record_event(
                     Severity::Warning,
                     Category::Safety,
@@ -281,7 +291,7 @@ impl MemoryFactory {
                     critical_violations,
                 );
             }
-            
+
             report
         })
     }
@@ -298,14 +308,16 @@ impl MemoryFactory {
     /// Get count of critical safety violations
     ///
     /// # Returns
-    /// * Total count of budget violations, capability violations, double-frees, and fatal errors
+    /// * Total count of budget violations, capability violations, double-frees,
+    ///   and fatal errors
     pub fn get_critical_violations() -> u64 {
         with_safety_monitor(|monitor| monitor.get_critical_violations())
     }
 
     /// Record manual deallocation for safety tracking
     ///
-    /// Call this when memory is manually deallocated to maintain accurate tracking.
+    /// Call this when memory is manually deallocated to maintain accurate
+    /// tracking.
     ///
     /// # Arguments
     /// * `size` - Size of memory being deallocated
@@ -368,9 +380,8 @@ mod tests {
     #[test]
     fn test_memory_factory_api() {
         // Test that the API compiles correctly
-        let _test_fn = || -> Result<NoStdProvider<1024>> {
-            MemoryFactory::create(CrateId::Foundation)
-        };
+        let _test_fn =
+            || -> Result<NoStdProvider<1024>> { MemoryFactory::create(CrateId::Foundation) };
 
         let _test_fn2 = |context: &MemoryCapabilityContext| -> Result<NoStdProvider<1024>> {
             MemoryFactory::create_with_context(context, CrateId::Foundation)
@@ -409,10 +420,12 @@ mod tests {
         });
 
         // Create a capability context for testing
-        use crate::verification::VerificationLevel;
-        use crate::capabilities::MemoryCapabilityContext;
+        use crate::{
+            capabilities::MemoryCapabilityContext,
+            verification::VerificationLevel,
+        };
         let mut context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
-        
+
         // Register a capability for testing
         let _ = context.register_dynamic_capability(CrateId::Foundation, 4096);
 
@@ -442,8 +455,10 @@ mod tests {
         });
 
         // Create a capability context with no capabilities
-        use crate::verification::VerificationLevel;
-        use crate::capabilities::MemoryCapabilityContext;
+        use crate::{
+            capabilities::MemoryCapabilityContext,
+            verification::VerificationLevel,
+        };
         let context = MemoryCapabilityContext::new(VerificationLevel::Standard, false);
 
         // Test failed allocation tracking
@@ -470,10 +485,12 @@ mod tests {
         });
 
         // Create a capability context with low verification level
-        use crate::verification::VerificationLevel;
-        use crate::capabilities::MemoryCapabilityContext;
+        use crate::{
+            capabilities::MemoryCapabilityContext,
+            verification::VerificationLevel,
+        };
         let mut context = MemoryCapabilityContext::new(VerificationLevel::Basic, false);
-        
+
         // Register a basic capability
         let _ = context.register_dynamic_capability(CrateId::Foundation, 4096);
 
@@ -481,7 +498,7 @@ mod tests {
         let result = MemoryFactory::create_verified_with_context::<1024>(
             &context,
             CrateId::Foundation,
-            VerificationLevel::Redundant
+            VerificationLevel::Redundant,
         );
         assert!(result.is_err());
 

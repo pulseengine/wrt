@@ -5,18 +5,16 @@
 //!
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 
-use crate::safe_managed_alloc;
-use crate::{
-    budget_aware_provider::CrateId,
-    memory_coordinator::CrateIdentifier,
-    Error, Result,
-};
-
-use crate::{
-    capabilities::MemoryCapabilityContext,
-};
 #[cfg(any(feature = "std", feature = "alloc"))]
 use crate::capabilities::CapabilityGuardedProvider;
+use crate::{
+    budget_aware_provider::CrateId,
+    capabilities::MemoryCapabilityContext,
+    memory_coordinator::CrateIdentifier,
+    safe_managed_alloc,
+    Error,
+    Result,
+};
 
 /// Sealed trait to prevent external implementation
 mod sealed {
@@ -44,7 +42,9 @@ impl MemoryManaged for MemoryCapabilityContext {
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Self::Guard<N>> {
-        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<N>(context, crate_id)
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<N>(
+            context, crate_id,
+        )
     }
 }
 
@@ -59,21 +59,27 @@ pub struct EnforcedAllocation<const SIZE: usize, const CRATE: usize> {
 impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
     /// Create an enforced allocation
     pub const fn new() -> Self {
-        Self { _phantom: core::marker::PhantomData }
+        Self {
+            _phantom: core::marker::PhantomData,
+        }
     }
 
     /// Materialize the allocation (only possible through managed system)
     pub fn materialize(
-        self, 
+        self,
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<crate::safe_memory::NoStdProvider<SIZE>> {
         // Verify crate ID matches compile-time constant
         if crate_id.as_index() != CRATE {
-            return Err(Error::runtime_execution_error("Crate ID mismatch in enforced allocation"));
+            return Err(Error::runtime_execution_error(
+                "Crate ID mismatch in enforced allocation",
+            ));
         }
 
-        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<SIZE>(context, crate_id)
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<SIZE>(
+            context, crate_id,
+        )
     }
 }
 
@@ -86,12 +92,21 @@ pub struct AllocationToken<const SIZE: usize> {
 impl<const SIZE: usize> AllocationToken<SIZE> {
     /// Create a new allocation token (capability)
     pub const fn new(crate_id: CrateId) -> Self {
-        Self { crate_id, _phantom: core::marker::PhantomData }
+        Self {
+            crate_id,
+            _phantom: core::marker::PhantomData,
+        }
     }
 
     /// Use the token to allocate memory
-    pub fn allocate(self, context: &MemoryCapabilityContext) -> Result<crate::safe_memory::NoStdProvider<SIZE>> {
-        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<SIZE>(context, self.crate_id)
+    pub fn allocate(
+        self,
+        context: &MemoryCapabilityContext,
+    ) -> Result<crate::safe_memory::NoStdProvider<SIZE>> {
+        crate::capabilities::memory_factory::MemoryFactory::create_with_context::<SIZE>(
+            context,
+            self.crate_id,
+        )
     }
 }
 
@@ -106,7 +121,9 @@ impl<const START: usize, const SIZE: usize> MemoryRegion<START, SIZE> {
         // Basic validation - more complex checks moved to where type is instantiated
         assert!(SIZE > 0);
 
-        Self { _phantom: core::marker::PhantomData }
+        Self {
+            _phantom: core::marker::PhantomData,
+        }
     }
 
     /// Get the size of this region
@@ -135,7 +152,7 @@ mod tests {
     #[test]
     fn test_token_allocation() {
         crate::memory_init::MemoryInitializer::initialize().unwrap();
-        
+
         // Create a capability context for testing
         let mut context = MemoryCapabilityContext::default();
         context.register_dynamic_capability(CrateId::Foundation, 1024).unwrap();

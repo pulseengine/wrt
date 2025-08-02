@@ -145,7 +145,7 @@ pub mod kani_verification {
                         results: func_type.results.clone(),
                     };
 
-                    assert_eq!(func_type.params.len(), same_func_type.params.len);
+                    assert_eq!(func_type.params.len(), same_func_type.params.len();
                 }
             }
             1 => {

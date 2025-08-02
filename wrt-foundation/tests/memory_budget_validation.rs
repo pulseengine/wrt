@@ -6,8 +6,14 @@
 #[cfg(test)]
 mod memory_budget_tests {
     use wrt_foundation::{
-        budget_aware_provider::{BudgetAwareProviderFactory, CrateId},
-        memory_analysis::{MemoryAnalyzer, RiskLevel},
+        budget_aware_provider::{
+            BudgetAwareProviderFactory,
+            CrateId,
+        },
+        memory_analysis::{
+            MemoryAnalyzer,
+            RiskLevel,
+        },
         memory_system_initializer,
         platform_discovery::PlatformDiscovery,
         WrtResult,
@@ -19,7 +25,7 @@ mod memory_budget_tests {
         let config = memory_system_initializer::presets::production()?;
 
         // Verify initialization
-        assert!(memory_system_initializer::is_memory_system_initialized();
+        assert!(memory_system_initializer::is_memory_system_initialized());
         assert!(config.wrt_memory_budget > 0);
         assert!(config.crate_budgets.total_allocated() <= config.wrt_memory_budget);
 
@@ -32,22 +38,24 @@ mod memory_budget_tests {
         let platforms = ["embedded", "iot", "desktop"];
 
         for platform_name in &platforms {
-            std::env::set_var("WRT_TEST_PLATFORM", platform_name;
+            std::env::set_var("WRT_TEST_PLATFORM", platform_name);
 
             // Re-initialize for platform
             let config = memory_system_initializer::presets::production()?;
 
             match platform_name {
                 &"embedded" => {
-                    assert!(config.wrt_memory_budget <= 1024 * 1024)); // <= 1MB
-                }
+                    assert!(config.wrt_memory_budget <= 1024 * 1024); // <= 1MB
+                },
                 &"iot" => {
-                    assert!(config.wrt_memory_budget <= 64 * 1024 * 1024)); // <= 64MB
-                }
+                    assert!(config.wrt_memory_budget <= 64 * 1024 * 1024); // <=
+                                                                           // 64MB
+                },
                 &"desktop" => {
-                    assert!(config.wrt_memory_budget >= 64 * 1024 * 1024)); // >= 64MB
-                }
-                _ => {}
+                    assert!(config.wrt_memory_budget >= 64 * 1024 * 1024); // >=
+                                                                           // 64MB
+                },
+                _ => {},
             }
         }
 
@@ -69,11 +77,15 @@ mod memory_budget_tests {
 
         for crate_id in &crates {
             // Try to create a provider
-            let result = BudgetAwareProviderFactory::create_provider::<4096>(*crate_id;
-            assert!(result.is_ok(), "Failed to create provider for {:?}", crate_id);
+            let result = BudgetAwareProviderFactory::create_provider::<4096>(*crate_id);
+            assert!(
+                result.is_ok(),
+                "Failed to create provider for {:?}",
+                crate_id
+            );
 
             // Check budget availability
-            let can_allocate = BudgetAwareProviderFactory::can_allocate(*crate_id, 1024;
+            let can_allocate = BudgetAwareProviderFactory::can_allocate(*crate_id, 1024);
             assert!(can_allocate, "Cannot allocate 1KB for {:?}", crate_id);
         }
 
@@ -85,7 +97,7 @@ mod memory_budget_tests {
         let _ = memory_system_initializer::presets::production()?;
 
         // Enable memory analysis
-        MemoryAnalyzer::enable);
+        MemoryAnalyzer::enable();
 
         // Generate health report
         let health = MemoryAnalyzer::generate_health_report()?;
@@ -95,10 +107,13 @@ mod memory_budget_tests {
         assert!(matches!(
             health.risk_level,
             RiskLevel::Low | RiskLevel::Medium | RiskLevel::High | RiskLevel::Critical
-        ;
+        ));
 
         // In a healthy system, we shouldn't have critical issues
-        assert_eq!(health.critical_issue_count, 0, "Critical memory issues detected!";
+        assert_eq!(
+            health.critical_issue_count, 0,
+            "Critical memory issues detected!"
+        );
 
         Ok(())
     }
@@ -117,7 +132,7 @@ mod memory_budget_tests {
                 "Crate {} exceeds budget with {}% utilization",
                 i,
                 utilization
-            ;
+            );
         }
 
         // Verify total utilization is reasonable
@@ -125,7 +140,7 @@ mod memory_budget_tests {
             analysis.total_utilization <= 90,
             "Total memory utilization too high: {}%",
             analysis.total_utilization
-        ;
+        );
 
         Ok(())
     }
@@ -133,22 +148,25 @@ mod memory_budget_tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_memory_report_generation() -> WrtResult<()> {
-        use wrt_foundation::memory_analysis::{MemoryReportBuilder, ReportFormat};
+        use wrt_foundation::memory_analysis::{
+            MemoryReportBuilder,
+            ReportFormat,
+        };
 
         let _ = memory_system_initializer::presets::production()?;
-        MemoryAnalyzer::enable);
+        MemoryAnalyzer::enable();
 
         // Test different report formats
         let text_report = MemoryReportBuilder::new().format(ReportFormat::Text).build()?;
         assert!(!text_report.is_empty());
-        assert!(text_report.contains("Memory");
+        assert!(text_report.contains("Memory"));
 
         let json_report = MemoryReportBuilder::new().format(ReportFormat::Json).build()?;
-        assert!(json_report.starts_with('{');
-        assert!(json_report.contains("timestamp");
+        assert!(json_report.starts_with('{'));
+        assert!(json_report.contains("timestamp"));
 
         let csv_report = MemoryReportBuilder::new().format(ReportFormat::Csv).build()?;
-        assert!(csv_report.contains("timestamp");
+        assert!(csv_report.contains("timestamp"));
 
         Ok(())
     }
@@ -192,11 +210,14 @@ mod memory_budget_tests {
         let _ = memory_system_initializer::presets::production()?;
 
         // Verify platform optimizations are available
-        let supports_cache_aligned = PlatformOptimizations::supports_optimization("cache_aligned";
-        let supports_simd = PlatformOptimizations::supports_optimization("simd";
+        let supports_cache_aligned = PlatformOptimizations::supports_optimization("cache_aligned");
+        let supports_simd = PlatformOptimizations::supports_optimization("simd");
 
         // At least one optimization should be available
-        assert!(supports_cache_aligned || supports_simd, "No platform optimizations available");
+        assert!(
+            supports_cache_aligned || supports_simd,
+            "No platform optimizations available"
+        );
 
         // Get optimal buffer sizes
         let decode_buffer = PlatformOptimizations::get_optimal_buffer_size("decode")?;

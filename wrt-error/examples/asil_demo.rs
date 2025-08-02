@@ -27,31 +27,31 @@ fn main() {
     // Show current ASIL level
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
     {
-        let current_level = AsilLevel::current);
+        let current_level = AsilLevel::current();
         println!("Current ASIL Level: {}", current_level.name);
-        println!);
+        println!();
     }
 
     #[cfg(not(any(feature = "asil-b", feature = "asil-c", feature = "asil-d")))]
     {
         println!("Current ASIL Level: QM (Quality Management)");
-        println!);
+        println!();
     }
 
     // Demonstrate basic error creation
-    demonstrate_basic_errors);
+    demonstrate_basic_errors();
 
     // Demonstrate ASIL-specific features
     #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
-    demonstrate_asil_features);
+    demonstrate_asil_features();
 
     // Demonstrate safety monitoring (ASIL-C and above)
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
-    demonstrate_safety_monitoring);
+    demonstrate_safety_monitoring();
 
     // Demonstrate ASIL-D specific features
     #[cfg(feature = "asil-d")]
-    demonstrate_asil_d_features);
+    demonstrate_asil_d_features();
 }
 
 fn demonstrate_basic_errors() {
@@ -59,14 +59,14 @@ fn demonstrate_basic_errors() {
     println!("-------------------");
 
     // Create various error types
-    let memory_error = Error::memory_error("Memory allocation failed";
-    let validation_error = Error::validation_error("Invalid input parameter";
-    let runtime_error = Error::runtime_error("Execution failed";
+    let memory_error = Error::memory_error("Memory allocation failed");
+    let validation_error = Error::validation_error("Invalid input parameter");
+    let runtime_error = Error::runtime_error("Execution failed");
 
     println!("Memory Error: {}", memory_error);
     println!("Validation Error: {}", validation_error);
     println!("Runtime Error: {}", runtime_error);
-    println!);
+    println!();
 }
 
 #[cfg(any(feature = "asil-b", feature = "asil-c", feature = "asil-d"))]
@@ -75,28 +75,26 @@ fn demonstrate_asil_features() {
     println!("------------------");
 
     // Create errors and check their ASIL levels
-    let safety_error = Error::safety_violation("Critical safety violation detected";
+    let safety_error = Error::safety_violation("Critical safety violation detected");
     let memory_error = Error::runtime_execution_error(
-        ",
-    ;
-    let type_error = Error::type_mismatch_error(",
-    ;
+        "Memory allocation failed");
+    let type_error = Error::type_mismatch_error("Type validation failed");
 
     println!(
         "Safety Error: {} [Level: {}]",
         safety_error,
         safety_error.asil_level()
-    ;
+    );
     println!(
         "Memory Error: {} [Level: {}]",
         memory_error,
         memory_error.asil_level()
-    ;
+    );
     println!(
         "Type Error: {} [Level: {}]",
         type_error,
         type_error.asil_level()
-    ;
+    );
 
     // Check safe state requirements
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
@@ -105,21 +103,21 @@ fn demonstrate_asil_features() {
         println!(
             "Safety Error requires safe state: {}",
             safety_error.requires_safe_state()
-        ;
+        );
         println!(
             "Memory Error requires safe state: {}",
             memory_error.requires_safe_state()
-        ;
+        );
         println!(
             "Type Error requires safe state: {}",
             type_error.requires_safe_state()
-        ;
+        );
     }
 
     // Create error context
     let context = AsilErrorContext::new(safety_error)
         .with_timestamp(1234567890)
-        .with_module_id(42;
+        .with_module_id(42);
 
     println!("\nError Context:");
     println!("- ASIL Level: {}", context.asil_level.name);
@@ -128,8 +126,8 @@ fn demonstrate_asil_features() {
     println!(
         "- Requires Immediate Action: {}",
         context.requires_immediate_action()
-    ;
-    println!);
+    );
+    println!();
 }
 
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
@@ -149,16 +147,16 @@ fn demonstrate_safety_monitoring() {
 
     // Record errors
     for (i, error) in errors.iter().enumerate() {
-        monitor.record_error(error;
+        monitor.record_error(error);
         println!("Recorded error {}: {}", i + 1, error);
     }
 
     println!("\nTotal errors recorded: {}", monitor.error_count);
 
     // Reset monitor
-    monitor.reset);
+    monitor.reset();
     println!("Monitor reset. Error count: {}", monitor.error_count);
-    println!);
+    println!();
 }
 
 #[cfg(feature = "asil-d")]
@@ -188,8 +186,8 @@ fn demonstrate_asil_d_features() {
     ;
 
     // Demonstrate determinism and redundancy errors
-    let det_error = Error::safety_violation("Non-deterministic behavior detected";
-    let red_error = Error::safety_violation("Redundancy check failed";
+    let det_error = Error::safety_violation("Non-deterministic behavior detected");
+    let red_error = Error::safety_violation("Redundancy check failed");
 
     println!("\nASIL-D Specific Errors:");
     println!("Determinism Error: {}", det_error);
@@ -200,13 +198,13 @@ fn demonstrate_asil_d_features() {
     println!(
         "Memory Error consistent: {}",
         validate_error_consistency(&valid_error)
-    ;
+    );
     println!(
         "Safety Error consistent: {}",
         validate_error_consistency(&valid_safety)
-    ;
+    );
 
-    println!);
+    println!();
 }
 
 // Helper function to demonstrate error propagation
@@ -218,7 +216,7 @@ fn process_with_asil_checks() -> Result<(), Error> {
         // ASIL-B: Return error on failure
         let condition = false;
         if !condition {
-            return Err(Error::validation_error("ASIL-B validation failed";
+            return Err(Error::validation_error("ASIL-B validation failed"));
         }
     }
 
@@ -227,7 +225,7 @@ fn process_with_asil_checks() -> Result<(), Error> {
         // ASIL-C/D: Would panic on failure in real implementation
         let condition = true;
         if !condition {
-            return Err(Error::safety_violation("ASIL-C/D safety check failed";
+            return Err(Error::safety_violation("ASIL-C/D safety check failed"));
         }
     }
 

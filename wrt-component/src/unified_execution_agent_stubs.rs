@@ -182,7 +182,7 @@ pub mod async_stubs {
     
     /// Future handle stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct FutureHandle(pub u32;
+    pub struct FutureHandle(pub u32);
     
     /// Future state stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -194,7 +194,7 @@ pub mod async_stubs {
     
     /// Stream handle stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct StreamHandle(pub u32;
+    pub struct StreamHandle(pub u32);
     
     /// Stream state stub
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

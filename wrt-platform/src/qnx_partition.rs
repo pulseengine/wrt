@@ -415,7 +415,7 @@ impl QnxMemoryPartition {
 
     /// Manually destroy the partition
     pub fn destroy(&self) -> Result<()> {
-        let id = self.partition_id.load(Ordering::Acquire;
+        let id = self.partition_id.load(Ordering::Acquire);
         if id != 0 {
             let result = unsafe { ffi::mem_partition_destroy(id) };
             if result != 0 {
@@ -424,7 +424,7 @@ impl QnxMemoryPartition {
                     1,
                     "Failed to destroy QNX memory partition";
             }
-            self.partition_id.store(0, Ordering::Release;
+            self.partition_id.store(0, Ordering::Release);
         }
         Ok(())
     }
@@ -433,7 +433,7 @@ impl QnxMemoryPartition {
 impl Drop for QnxMemoryPartition {
     fn drop(&mut self) {
         if self.created {
-            let id = self.partition_id.load(Ordering::Acquire;
+            let id = self.partition_id.load(Ordering::Acquire);
             if id != 0 {
                 unsafe {
                     let _ = ffi::mem_partition_destroy(id;

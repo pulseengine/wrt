@@ -209,7 +209,7 @@ fn test_component_binary_parsing() -> Result<()> {
         .custom_sections
         .iter()
         .find(|section| section.name == "component-model-info")
-        .expect(".expect("Component model info section not found"));")
+        .expect("Component model info section not found");
 
     // Verify it's marked as a component
     assert_eq!(component_info.data, vec![0x01]);

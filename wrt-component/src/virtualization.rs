@@ -322,7 +322,7 @@ impl VirtualizationManager {
         }
 
         let instance_id =
-            ComponentInstanceId::new(self.next_virtual_id.fetch_add(1, Ordering::SeqCst;
+            ComponentInstanceId::new(self.next_virtual_id.fetch_add(1, Ordering::SeqCst));
 
         let virtual_component = VirtualComponent {
             instance_id,

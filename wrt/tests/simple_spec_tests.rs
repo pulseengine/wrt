@@ -134,7 +134,7 @@ fn test_simple_memory() -> Result<()> {
     )"#;
 
     // Convert WAT to binary WebAssembly
-    let wasm = wat::parse_str(wat).expect(".expect("Failed to parse WAT"));")
+    let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module from binary
     let mut empty_module = Module::new()?;

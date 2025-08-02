@@ -897,7 +897,7 @@ impl Memory {
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len);
+        let size = buffer.len();
 
         // Track this access for profiling
         self.increment_access_count(offset_usize, size;
@@ -933,7 +933,7 @@ impl Memory {
 
         // Calculate total size and verify bounds
         let offset_usize = wasm_offset_to_usize(offset)?;
-        let size = buffer.len);
+        let size = buffer.len();
         let end = offset_usize.checked_add(size).ok_or_else(|| {
             Error::memory_out_of_bounds("Memory write would overflow")
         })?;
@@ -1056,7 +1056,7 @@ impl Memory {
         }
 
         // Get current data size
-        let data_size = self.data.len);
+        let data_size = self.data.len();
 
         // Get the last byte that would be accessed
         let end_offset = match offset.checked_add(len) {
@@ -2172,8 +2172,8 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, MediumMemoryProvider>> {
         // Handle zero-length reads
         if len == 0 {
-            let provider = MediumMemoryProvider::default());
-            return wrt_foundation::BoundedVec::new(provider;
+            let provider = MediumMemoryProvider::default();
+            return wrt_foundation::BoundedVec::new(provider);
         }
 
         // Convert to usize and check for overflow

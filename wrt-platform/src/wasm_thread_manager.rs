@@ -526,7 +526,7 @@ mod tests {
         let serialized = manager.serialize_component_values(&values).unwrap();
         let deserialized = manager.deserialize_component_values(&serialized).unwrap();
 
-        assert_eq!(values.len(), deserialized.len);
+        assert_eq!(values.len(), deserialized.len();
         assert_eq!(values[0], deserialized[0];
         assert_eq!(values[1], deserialized[1];
         assert_eq!(values[2], deserialized[2];

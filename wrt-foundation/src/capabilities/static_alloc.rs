@@ -1,32 +1,42 @@
 //! Static Memory Capability Implementation
 //!
-//! This capability type provides compile-time verified memory allocation suitable
-//! for ASIL-B and ASIL-C safety levels where static allocation is required.
+//! This capability type provides compile-time verified memory allocation
+//! suitable for ASIL-B and ASIL-C safety levels where static allocation is
+//! required.
 
 use core::{
     fmt,
     marker::PhantomData,
     ptr::NonNull,
-    sync::atomic::{AtomicPtr, Ordering},
+    sync::atomic::{
+        AtomicPtr,
+        Ordering,
+    },
 };
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
-
-use crate::{
-    budget_aware_provider::CrateId, codes, verification::VerificationLevel, Error, ErrorCategory,
-    Result,
-};
-
 use super::{
-    CapabilityMask, MemoryCapability, MemoryGuard, MemoryOperation, MemoryOperationType,
+    CapabilityMask,
+    MemoryCapability,
+    MemoryGuard,
+    MemoryOperation,
+    MemoryOperationType,
     MemoryRegion,
+};
+use crate::{
+    budget_aware_provider::CrateId,
+    codes,
+    verification::VerificationLevel,
+    Error,
+    ErrorCategory,
+    Result,
 };
 
 /// Thread-safe wrapper for NonNull<u8> pointers
@@ -66,17 +76,17 @@ impl Clone for ThreadSafePtr {
 #[derive(Debug, Clone)]
 pub struct StaticMemoryCapability<const N: usize> {
     /// Fixed memory region size (compile-time constant)
-    region_size: usize,
+    region_size:        usize,
     /// Base address of the static region (if available)
-    region_base: ThreadSafePtr,
+    region_base:        ThreadSafePtr,
     /// Operations allowed by this capability
     allowed_operations: CapabilityMask,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
     /// Crate that owns this capability
-    owner_crate: CrateId,
+    owner_crate:        CrateId,
     /// Static buffer for the memory region
-    _phantom: PhantomData<[u8; N]>,
+    _phantom:           PhantomData<[u8; N]>,
 }
 
 impl<const N: usize> StaticMemoryCapability<N> {
@@ -90,12 +100,12 @@ impl<const N: usize> StaticMemoryCapability<N> {
             region_size: N,
             region_base: ThreadSafePtr::new(None),
             allowed_operations: CapabilityMask {
-                read: true,
-                write: true,
-                allocate: true, // Static "allocation" is just claiming the fixed region
+                read:       true,
+                write:      true,
+                allocate:   true, // Static "allocation" is just claiming the fixed region
                 deallocate: true,
-                delegate: true,
-                max_size: N,
+                delegate:   true,
+                max_size:   N,
             },
             verification_level,
             owner_crate,
@@ -129,7 +139,8 @@ impl<const N: usize> StaticMemoryCapability<N> {
     ///
     /// # Safety
     /// The caller must ensure that `region_base` points to a valid memory
-    /// region of at least `N` bytes that will remain valid for the capability's lifetime.
+    /// region of at least `N` bytes that will remain valid for the capability's
+    /// lifetime.
     pub unsafe fn with_static_region(
         region_base: NonNull<u8>,
         owner_crate: CrateId,
@@ -152,8 +163,8 @@ impl<const N: usize> StaticMemoryCapability<N> {
 }
 
 impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
-    type Region = StaticMemoryRegion<N>;
     type Guard = StaticMemoryGuard<N>;
+    type Region = StaticMemoryRegion<N>;
 
     fn verify_access(&self, operation: &MemoryOperation) -> Result<()> {
         // Check if operation type is allowed
@@ -171,21 +182,21 @@ impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
                         "Allocation exceeds compile-time limit",
                     ));
                 }
-            }
+            },
             MemoryOperation::Read { offset, len } => {
                 if offset.saturating_add(*len) > N {
                     return Err(Error::capability_violation(
                         "Read operation exceeds compile-time bounds",
                     ));
                 }
-            }
+            },
             MemoryOperation::Write { offset, len } => {
                 if offset.saturating_add(*len) > N {
                     return Err(Error::capability_violation(
                         "Write operation exceeds compile-time bounds",
                     ));
                 }
-            }
+            },
             MemoryOperation::Delegate { subset } => {
                 if !self.allowed_operations.delegate {
                     return Err(Error::capability_violation(
@@ -197,10 +208,11 @@ impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
                         "Delegated size exceeds compile-time limit",
                     ));
                 }
-            }
+            },
             MemoryOperation::Deallocate => {
-                // Static memory "deallocation" is always safe (it's just releasing the claim)
-            }
+                // Static memory "deallocation" is always safe (it's just
+                // releasing the claim)
+            },
         }
 
         Ok(())
@@ -235,12 +247,12 @@ impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
 
         // Create a delegated static capability with restricted permissions
         let delegated = StaticMemoryCapability::<N> {
-            region_size: core::cmp::min(subset.max_size, N),
-            region_base: self.region_base.clone(),
+            region_size:        core::cmp::min(subset.max_size, N),
+            region_base:        self.region_base.clone(),
             allowed_operations: self.allowed_operations.intersect(&subset),
             verification_level: self.verification_level,
-            owner_crate: self.owner_crate,
-            _phantom: PhantomData,
+            owner_crate:        self.owner_crate,
+            _phantom:           PhantomData,
         };
 
         Ok(Box::new(delegated))
@@ -268,8 +280,8 @@ impl<const N: usize> MemoryCapability for StaticMemoryCapability<N> {
 /// Static memory region with compile-time size verification
 #[derive(Debug)]
 pub struct StaticMemoryRegion<const N: usize> {
-    size: usize,
-    buffer: [u8; N],
+    size:     usize,
+    buffer:   [u8; N],
     base_ptr: ThreadSafePtr,
 }
 
@@ -277,11 +289,15 @@ impl<const N: usize> StaticMemoryRegion<N> {
     fn new(size: usize, base_ptr: Option<NonNull<u8>>) -> Result<Self> {
         if size > N {
             return Err(Error::runtime_execution_error(
-                "Static region size exceeds capability bounds"
+                "Static region size exceeds capability bounds",
             ));
         }
 
-        Ok(Self { size, buffer: [0; N], base_ptr: ThreadSafePtr::new(base_ptr) })
+        Ok(Self {
+            size,
+            buffer: [0; N],
+            base_ptr: ThreadSafePtr::new(base_ptr),
+        })
     }
 
     /// Get access to the static buffer
@@ -313,13 +329,16 @@ impl<const N: usize> MemoryRegion for StaticMemoryRegion<N> {
 
 /// Static memory guard that protects access to static memory regions
 pub struct StaticMemoryGuard<const N: usize> {
-    region: StaticMemoryRegion<N>,
+    region:     StaticMemoryRegion<N>,
     capability: *const StaticMemoryCapability<N>, // Raw pointer to avoid lifetime issues
 }
 
 impl<const N: usize> StaticMemoryGuard<N> {
     fn new(region: StaticMemoryRegion<N>, capability: &StaticMemoryCapability<N>) -> Self {
-        Self { region, capability: capability as *const _ }
+        Self {
+            region,
+            capability: capability as *const _,
+        }
     }
 
     fn get_capability(&self) -> &StaticMemoryCapability<N> {
@@ -350,7 +369,7 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
 
         if !self.region.contains_range(offset, len) {
             return Err(Error::runtime_execution_error(
-                "Read range exceeds static memory region bounds"
+                "Read range exceeds static memory region bounds",
             ));
         }
 
@@ -359,14 +378,18 @@ impl<const N: usize> MemoryGuard for StaticMemoryGuard<N> {
     }
 
     fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        let operation = MemoryOperation::Write { offset, len: data.len() };
+        let operation = MemoryOperation::Write {
+            offset,
+            len: data.len(),
+        };
         self.get_capability().verify_access(&operation)?;
 
         if !self.region.contains_range(offset, data.len()) {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::OUT_OF_BOUNDS,
-                "Write range exceeds static memory region bounds"));
+                "Write range exceeds static memory region bounds",
+            ));
         }
 
         let buffer = self.region.buffer_mut();
@@ -418,10 +441,16 @@ mod tests {
         let capability =
             StaticMemoryCapability::<1000>::new(CrateId::Foundation, VerificationLevel::Standard);
 
-        let valid_read = MemoryOperation::Read { offset: 0, len: 500 };
+        let valid_read = MemoryOperation::Read {
+            offset: 0,
+            len:    500,
+        };
         assert!(capability.verify_access(&valid_read).is_ok());
 
-        let invalid_read = MemoryOperation::Read { offset: 500, len: 600 };
+        let invalid_read = MemoryOperation::Read {
+            offset: 500,
+            len:    600,
+        };
         assert!(capability.verify_access(&invalid_read).is_err());
     }
 

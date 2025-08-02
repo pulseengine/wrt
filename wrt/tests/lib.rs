@@ -209,7 +209,7 @@ mod tests {
     // Engine Tests
     #[test]
     fn test_engine_lifecycle() {
-        let module = Module::new().expect(".expect("Module creation failed"));")
+        let module = Module::new().expect("Module creation failed");
         let mut engine = StacklessEngine::new_with_module(module);
         // Access fields directly
         assert_eq!(engine.execution_stats.instructions_executed, 0);
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_memory_type_checking() {
-        let module = Module::new().expect(".expect("Module creation failed"));")
+        let module = Module::new().expect("Module creation failed");
         let mem = module.get_memory(0)?;
         let mem_type = mem.type_();
 

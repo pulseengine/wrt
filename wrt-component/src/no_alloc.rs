@@ -221,7 +221,7 @@ impl MinimalComponent {
 
         // Create a default header
         let mut header = ComponentHeader::default());
-        header.size = bytes.len);
+        header.size = bytes.len();
 
         // Populate header with basic info
         // This would scan the binary for section info in a real implementation

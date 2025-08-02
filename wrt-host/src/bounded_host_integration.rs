@@ -207,7 +207,7 @@ impl BoundedCallContext {
         parameters: Vec<u8>,
         safety_level: u8,
     ) -> Self {
-        let memory_used = parameters.len);
+        let memory_used = parameters.len();
         Self {
             function_id,
             component_instance,
@@ -275,7 +275,7 @@ impl BoundedCallResult {
     /// * `return_data` - Data returned from the host function
     #[must_use]
     pub fn success(return_data: Vec<u8>) -> Self {
-        let memory_used = return_data.len);
+        let memory_used = return_data.len();
         Self {
             return_data,
             memory_used,
@@ -528,7 +528,7 @@ impl BoundedHostIntegrationManager {
 
     /// Cancel all active calls for a component instance
     pub fn cancel_instance_calls(&mut self, component_instance: ComponentInstanceId) -> usize {
-        let initial_count = self.active_calls.len);
+        let initial_count = self.active_calls.len();
 
         self.active_calls.retain(|call| {
             if call.component_instance == component_instance {
@@ -545,7 +545,7 @@ impl BoundedHostIntegrationManager {
     /// Get integration statistics
     #[must_use]
     pub fn get_statistics(&self) -> HostIntegrationStatistics {
-        let active_calls = self.active_calls.len);
+        let active_calls = self.active_calls.len();
         let max_call_depth = self.active_calls.iter()
             .map(|_| 1) // Simplified depth calculation
             .max()

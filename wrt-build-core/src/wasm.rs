@@ -102,7 +102,7 @@ impl WasmVerifier {
             ))
         })?;
 
-        let start_time = Instant::now);
+        let start_time = Instant::now();
 
         // Parse the module using wrt-decoder unified loader
         let mut imports = Vec::new();
@@ -125,7 +125,7 @@ impl WasmVerifier {
                             };
 
                             if import.module == "wasi_builtin" {
-                                builtin_imports.push(import.name.clone();
+                                builtin_imports.push(import.name.clone());
                             }
 
                             imports.push(wasm_import);
@@ -136,7 +136,7 @@ impl WasmVerifier {
                             exports.push(WasmExport {
                                 name: export.name.clone(),
                                 kind: format!("{:?}", export.export_type),
-                            };
+                            });
                         }
                     },
                     None => {
@@ -145,14 +145,14 @@ impl WasmVerifier {
                 }
             },
             Err(e) => {
-                errors.push(format!("Failed to parse WebAssembly module: {}", e);
+                errors.push(format!("Failed to parse WebAssembly module: {}", e));
             },
         }
 
-        let parse_time = start_time.elapsed);
-        let parse_time_ms = parse_time.as_millis);
-        let module_size = module_bytes.len);
-        let throughput_mbps = (module_size as f64 / 1_048_576.0) / parse_time.as_secs_f64);
+        let parse_time = start_time.elapsed();
+        let parse_time_ms = parse_time.as_millis();
+        let module_size = module_bytes.len();
+        let throughput_mbps = (module_size as f64 / 1_048_576.0) / parse_time.as_secs_f64();
 
         Ok(WasmVerificationResult {
             valid: errors.is_empty(),
@@ -175,7 +175,7 @@ impl WasmVerifier {
         let mut diagnostics = DiagnosticCollection::new(
             self.module_path.parent().unwrap_or(&self.module_path).to_path_buf(),
             "wasm-verify".to_string(),
-        ;
+        );
 
         for (i, error) in result.errors.iter().enumerate() {
             let diagnostic = Diagnostic::new(
@@ -184,7 +184,7 @@ impl WasmVerifier {
                 Severity::Error,
                 error.clone(),
                 "wasm-verifier".to_string(),
-            ;
+            );
             diagnostics.diagnostics.push(diagnostic);
         }
 
@@ -204,14 +204,14 @@ impl WasmVerifier {
         println!("  Sections: {}", result.section_count);
 
         if !result.imports.is_empty() {
-            println!("\n📥 Imports ({}):", result.imports.len));
+            println!("\n📥 Imports ({}):", result.imports.len());
             for import in &result.imports {
                 println!("  - {}::{} ({})", import.module, import.name, import.kind);
             }
         }
 
         if !result.exports.is_empty() {
-            println!("\n📤 Exports ({}):", result.exports.len));
+            println!("\n📤 Exports ({}):", result.exports.len());
             for export in &result.exports {
                 println!("  - {} ({})", export.name, export.kind);
             }
@@ -242,7 +242,7 @@ impl WasmVerifier {
 
 /// Scan a WebAssembly module for builtin imports
 pub fn scan_for_builtins(module_path: impl AsRef<Path>) -> BuildResult<Vec<String>> {
-    let verifier = WasmVerifier::new(module_path;
+    let verifier = WasmVerifier::new(module_path);
     let result = verifier.verify()?;
     Ok(result.builtin_imports)
 }
@@ -254,10 +254,10 @@ pub fn verify_modules(
     let mut results = Vec::new();
 
     for path in module_paths {
-        let path_ref = path.as_ref);
-        let verifier = WasmVerifier::new(path_ref;
+        let path_ref = path.as_ref();
+        let verifier = WasmVerifier::new(path_ref);
         let result = verifier.verify()?;
-        results.push((path_ref.to_string_lossy().to_string(), result;
+        results.push((path_ref.to_string_lossy().to_string(), result));
     }
 
     Ok(results)
@@ -269,7 +269,7 @@ pub fn create_minimal_module() -> Vec<u8> {
     let mut module = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
 
     // Type section (empty)
-    module.extend_from_slice(&[0x01, 0x04, 0x01, 0x60, 0x00, 0x00];
+    module.extend_from_slice(&[0x01, 0x04, 0x01, 0x60, 0x00, 0x00]);
 
     // Import section with wasi_builtin.random
     module.extend_from_slice(&[
@@ -282,7 +282,7 @@ pub fn create_minimal_module() -> Vec<u8> {
         // "random"
         0x72, 0x61, 0x6E, 0x64, 0x6F, 0x6D, 0x00, // Import kind (function)
         0x00, // Type index
-    ];
+    ]);
 
     module
 }
@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_minimal_module_verification() {
-        let module = create_minimal_module);
+        let module = create_minimal_module();
 
         // Write to temporary file
         let mut temp_file = NamedTempFile::new().unwrap();
@@ -309,7 +309,7 @@ mod tests {
         assert!(result.valid);
         assert_eq!(result.version, 1);
         assert_eq!(result.builtin_imports.len(), 1);
-        assert_eq!(result.builtin_imports[0], "random";
+        assert_eq!(result.builtin_imports[0], "random");
     }
 
     #[test]

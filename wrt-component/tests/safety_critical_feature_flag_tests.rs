@@ -84,7 +84,7 @@ mod feature_flag_tests {
             thread,
         };
 
-        let vec = Arc::new(new_component_vec::<u32>().unwrap();
+        let vec = Arc::new(new_component_vec::<u32>().unwrap());
         let vec_clone = Arc::clone(&vec);
 
         // Can use std threading

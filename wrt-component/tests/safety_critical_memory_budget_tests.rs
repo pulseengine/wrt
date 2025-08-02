@@ -173,7 +173,7 @@ mod memory_budget_tests {
 
         for i in 0..MAX_COMPONENT_EXPORTS {
             let key = bounded_export_name_from_str(&format!("export_{:04}", i))
-                .expect(".expect("Failed to create key"));")
+                .expect("Failed to create key");
             let value = [i as u8; 256];
 
             match map.try_insert(key, value) {

@@ -80,7 +80,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i8x16_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let result = _mm_sub_epi8(zero, a_vec);
             
             let mut output = [0u8; 16];
@@ -129,7 +129,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i16x8_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let result = _mm_sub_epi16(zero, a_vec);
             
             let mut output = [0u8; 16];
@@ -179,11 +179,11 @@ impl SimdProvider for X86SimdProvider {
                 let even_prod = _mm_mul_epu32(a_even, b_even);
                 
                 let a_odd = _mm_shuffle_epi32(a_vec, 0xF5); // 0b11110101
-                let b_odd = _mm_shuffle_epi32(b_vec, 0xF5;
-                let odd_prod = _mm_mul_epu32(a_odd, b_odd;
+                let b_odd = _mm_shuffle_epi32(b_vec, 0xF5);
+                let odd_prod = _mm_mul_epu32(a_odd, b_odd);
                 
                 let even_32 = _mm_shuffle_epi32(even_prod, 0x08); // 0b00001000
-                let odd_32 = _mm_shuffle_epi32(odd_prod, 0x08;
+                let odd_32 = _mm_shuffle_epi32(odd_prod, 0x08);
                 _mm_unpacklo_epi32(even_32, odd_32)
             };
             
@@ -196,8 +196,8 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i32x4_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
-            let result = _mm_sub_epi32(zero, a_vec;
+            let zero = _mm_setzero_si128();
+            let result = _mm_sub_epi32(zero, a_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -210,7 +210,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_add_epi64(a_vec, b_vec;
+            let result = _mm_add_epi64(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -222,7 +222,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_sub_epi64(a_vec, b_vec;
+            let result = _mm_sub_epi64(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -254,8 +254,8 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i64x2_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
-            let result = _mm_sub_epi64(zero, a_vec;
+            let zero = _mm_setzero_si128();
+            let result = _mm_sub_epi64(zero, a_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -316,8 +316,8 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_ps(a.as_ptr() as *const f32);
             // Negate by XORing with sign bit mask
-            let sign_mask = _mm_set1_ps(-0.0;
-            let result = _mm_xor_ps(a_vec, sign_mask;
+            let sign_mask = _mm_set1_ps(-0.0);
+            let result = _mm_xor_ps(a_vec, sign_mask);
             
             let mut output = [0u8; 16];
             _mm_storeu_ps(output.as_mut_ptr() as *mut f32, result);
@@ -328,7 +328,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_f32x4_sqrt(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_ps(a.as_ptr() as *const f32);
-            let result = _mm_sqrt_ps(a_vec;
+            let result = _mm_sqrt_ps(a_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_ps(output.as_mut_ptr() as *mut f32, result);
@@ -426,7 +426,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_and_si128(a_vec, b_vec;
+            let result = _mm_and_si128(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -493,7 +493,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_any_true(&self, a: &[u8; 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let cmp = _mm_cmpeq_epi8(a_vec, zero;
             // If all bytes are zero, movemask will be 0xFFFF
             let mask = _mm_movemask_epi8(cmp;
@@ -504,7 +504,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i8x16_all_true(&self, a: &[u8; 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let cmp = _mm_cmpeq_epi8(a_vec, zero;
             // If any byte is zero, movemask will have at least one bit set
             let mask = _mm_movemask_epi8(cmp;
@@ -515,7 +515,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i16x8_all_true(&self, a: &[u8; 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let cmp = _mm_cmpeq_epi16(a_vec, zero;
             // Convert 16-bit comparison to byte mask
             let mask = _mm_movemask_epi8(cmp;
@@ -527,7 +527,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i32x4_all_true(&self, a: &[u8; 16]) -> bool {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let cmp = _mm_cmpeq_epi32(a_vec, zero;
             // Use floating-point movemask for 32-bit values
             let mask = _mm_movemask_ps(_mm_castsi128_ps(cmp;
@@ -610,7 +610,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 8 {
             let offset = (idx as usize) * 2;
-            let bytes = val.to_le_bytes);
+            let bytes = val.to_le_bytes();
             result[offset] = bytes[0];
             result[offset + 1] = bytes[1];
         }
@@ -621,7 +621,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 4 {
             let offset = (idx as usize) * 4;
-            let bytes = val.to_le_bytes);
+            let bytes = val.to_le_bytes();
             result[offset..offset + 4].copy_from_slice(&bytes;
         }
         result
@@ -631,7 +631,7 @@ impl SimdProvider for X86SimdProvider {
         let mut result = *a;
         if idx < 2 {
             let offset = (idx as usize) * 8;
-            let bytes = val.to_le_bytes);
+            let bytes = val.to_le_bytes();
             result[offset..offset + 8].copy_from_slice(&bytes;
         }
         result
@@ -1153,7 +1153,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i8x16_abs(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let neg = _mm_sub_epi8(zero, a_vec);
             let result = _mm_max_epi8(a_vec, neg;
             
@@ -1166,7 +1166,7 @@ impl SimdProvider for X86SimdProvider {
     fn v128_i16x8_abs(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let zero = _mm_setzero_si128);
+            let zero = _mm_setzero_si128();
             let neg = _mm_sub_epi16(zero, a_vec);
             let result = _mm_max_epi16(a_vec, neg;
             

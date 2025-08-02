@@ -88,8 +88,8 @@ fn test_direct_memory_operations() -> Result<()> {
     // Manual checks to diagnose the issue
     {
         let instance = &engine.instances[instance_idx as usize];
-        println!("Created instance with {} memories", instance.memories.len()));
-        println!("Instance has {} memories", instance.memories.len()));
+        println!("Created instance with {} memories", instance.memories.len());
+        println!("Instance has {} memories", instance.memories.len());
         if !instance.memories.is_empty() {
             println!("Memory data around address 100 before any operations:");
             let start = if 100 >= 4 { 96 } else { 0 };

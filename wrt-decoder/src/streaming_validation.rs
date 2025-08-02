@@ -613,7 +613,7 @@ mod tests {
         // Valid LEB128: 42 (0x2A)
         let leb_data = [0x2A];
         let (value, bytes_read) = validator.validate_leb128(&leb_data, 0, false).unwrap();
-        assert_eq!(value, 42;
+        assert_eq!(value, 42);
         assert_eq!(bytes_read, 1);
     }
 

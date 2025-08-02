@@ -629,7 +629,7 @@ impl CanonicalMemory for ComponentMemory {
 
     fn write_bytes(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len);
+        let end = start + data.len();
 
         if end > self.data.len() {
             return Err(Error::memory_out_of_bounds("Memory write out of bounds";

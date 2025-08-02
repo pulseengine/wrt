@@ -161,7 +161,7 @@ impl DaggerPipeline {
         anyhow::bail!(
             "Dagger integration is currently disabled due to API changes in dagger-sdk v0.11+. \
              Please use the local fallback mode or help update the integration."
-        ;
+        );
 
         // TODO: Implement updated Dagger SDK v0.11+ integration
         // The previous implementation was based on older API that has changed
@@ -174,17 +174,17 @@ impl DaggerPipeline {
 
         eprintln!("⚠️  Dagger feature not enabled, falling back to local cargo-wrt execution");
 
-        let mut cmd = Command::new("cargo-wrt";
-        cmd.args(args;
+        let mut cmd = Command::new("cargo-wrt");
+        cmd.args(args);
 
         let output = cmd.output().context("Failed to execute cargo-wrt locally")?;
 
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr;
-            anyhow::bail!("cargo-wrt failed: {}", stderr;
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("cargo-wrt failed: {}", stderr);
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout;
+        let stdout = String::from_utf8_lossy(&output.stdout);
         Ok(stdout.to_string())
     }
 }
@@ -204,13 +204,13 @@ impl ContainerConfigBuilder {
 
     /// Set the base container image
     pub fn base_image(mut self, image: &str) -> Self {
-        self.config.base_image = image.to_string());
+        self.config.base_image = image.to_string();
         self
     }
 
     /// Set the Rust version
     pub fn rust_version(mut self, version: &str) -> Self {
-        self.config.rust_version = version.to_string());
+        self.config.rust_version = version.to_string();
         self
     }
 
@@ -228,7 +228,7 @@ impl ContainerConfigBuilder {
 
     /// Set the working directory
     pub fn work_dir(mut self, dir: &str) -> Self {
-        self.config.work_dir = dir.to_string());
+        self.config.work_dir = dir.to_string();
         self
     }
 

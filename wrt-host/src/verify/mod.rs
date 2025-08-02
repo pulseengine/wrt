@@ -15,15 +15,15 @@ use super::*;
 #[kani::proof]
 fn verify_cloneable_fn() {
     // Create a simple CloneableFn
-    let f = CloneableFn::new(|_args| Ok(vec![];
+    let f = CloneableFn::new(|_args| Ok(vec!()));
 
     // Clone the function
     let f2 = f.clone();
 
     // Verify that both functions work the same
-    let target: Box<dyn std::any::Any> = Box::new();
-    let result1 = f.call(&mut *target, vec![];
-    let result2 = f2.call(&mut *target, vec![];
+    let target: Box<dyn std::any::Any> = Box::new(());
+    let result1 = f.call(&mut *target, vec![]);
+    let result2 = f2.call(&mut *target, vec![]);
 
     // Both should succeed
     assert!(result1.is_ok());

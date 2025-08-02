@@ -32,17 +32,41 @@ use wrt_error::Result;
 // Import error codes
 use crate::codes;
 #[cfg(feature = "std")]
-use crate::prelude::{String, ToString};
+use crate::prelude::{
+    String,
+    ToString,
+};
 // Crate-level imports
 use crate::{
-    bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
-    resource::{Resource, ResourceItem, ResourceRepr, ResourceType, MAX_RESOURCE_FIELD_NAME_LEN},
-    safe_memory::{
-        DefaultNoStdProvider, NoStdProvider, SafeMemoryHandler, DEFAULT_MEMORY_PROVIDER_CAPACITY,
+    bounded::{
+        BoundedStack,
+        BoundedString,
+        BoundedVec,
+        WasmName,
     },
-    traits::{Checksummable, FromBytes, ToBytes},
+    resource::{
+        Resource,
+        ResourceItem,
+        ResourceRepr,
+        ResourceType,
+        MAX_RESOURCE_FIELD_NAME_LEN,
+    },
+    safe_memory::{
+        DefaultNoStdProvider,
+        NoStdProvider,
+        SafeMemoryHandler,
+        DEFAULT_MEMORY_PROVIDER_CAPACITY,
+    },
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
     verification::VerificationLevel,
-    Error, ErrorCategory, MemoryProvider, WrtResult,
+    Error,
+    ErrorCategory,
+    MemoryProvider,
+    WrtResult,
 };
 
 /// Generic builder for bounded collections.
@@ -51,10 +75,10 @@ use crate::{
 /// collections like `BoundedVec`, `BoundedStack`, etc. with proper resource
 /// Binary std/no_std choice
 pub struct BoundedBuilder<T, const N: usize, P: MemoryProvider + Default + Clone> {
-    provider: P,
+    provider:           P,
     verification_level: VerificationLevel,
-    initial_capacity: Option<usize>,
-    _phantom: PhantomData<T>,
+    initial_capacity:   Option<usize>,
+    _phantom:           PhantomData<T>,
 }
 
 impl<T, const N: usize, P: MemoryProvider + Default + Clone> Default for BoundedBuilder<T, N, P>
@@ -63,10 +87,10 @@ where
 {
     fn default() -> Self {
         Self {
-            provider: P::default(),
+            provider:           P::default(),
             verification_level: VerificationLevel::default(),
-            initial_capacity: None,
-            _phantom: PhantomData,
+            initial_capacity:   None,
+            _phantom:           PhantomData,
         }
     }
 }
@@ -117,14 +141,18 @@ where
 
 /// Builder for `BoundedString` and `WasmName` types.
 pub struct StringBuilder<const N: usize, P: MemoryProvider + Default + Clone> {
-    provider: P,
-    initial_content: Option<&'static str>,
+    provider:           P,
+    initial_content:    Option<&'static str>,
     truncate_if_needed: bool,
 }
 
 impl<const N: usize, P: MemoryProvider + Default + Clone> Default for StringBuilder<N, P> {
     fn default() -> Self {
-        Self { provider: P::default(), initial_content: None, truncate_if_needed: false }
+        Self {
+            provider:           P::default(),
+            initial_content:    None,
+            truncate_if_needed: false,
+        }
     }
 }
 
@@ -157,10 +185,10 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
         match (self.initial_content, self.truncate_if_needed) {
             (Some(content), true) => {
                 BoundedString::from_str_truncate(content, self.provider).map_err(Error::from)
-            }
+            },
             (Some(content), false) => {
                 BoundedString::from_str(content, self.provider).map_err(Error::from)
-            }
+            },
             (None, _) => BoundedString::from_str_truncate("", self.provider).map_err(Error::from),
         }
     }
@@ -170,10 +198,10 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
         match (self.initial_content, self.truncate_if_needed) {
             (Some(content), true) => {
                 WasmName::from_str_truncate(content, self.provider).map_err(Error::from)
-            }
+            },
             (Some(content), false) => {
                 WasmName::from_str(content, self.provider).map_err(Error::from)
-            }
+            },
             (None, _) => WasmName::new(self.provider).map_err(Error::from),
         }
     }
@@ -184,15 +212,20 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
 /// This builder provides a fluent API for constructing Resource objects,
 /// which represent WebAssembly component model resources.
 pub struct ResourceBuilder<P: MemoryProvider + Default + Clone + Eq> {
-    id: Option<u32>,
-    repr: Option<ResourceRepr<P>>,
-    name: Option<&'static str>,
+    id:                 Option<u32>,
+    repr:               Option<ResourceRepr<P>>,
+    name:               Option<&'static str>,
     verification_level: VerificationLevel,
 }
 
 impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> Default for ResourceBuilder<P> {
     fn default() -> Self {
-        Self { id: None, repr: None, name: None, verification_level: VerificationLevel::default() }
+        Self {
+            id:                 None,
+            repr:               None,
+            name:               None,
+            verification_level: VerificationLevel::default(),
+        }
     }
 }
 
@@ -249,7 +282,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceBuilder<P> {
                 let wasm_name =
                     WasmName::from_str_truncate(name_str, P::default()).map_err(Error::from)?;
                 Some(wasm_name)
-            }
+            },
             None => None,
         };
 
@@ -262,7 +295,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceBuilder<P> {
 /// This builder provides a fluent API for constructing ResourceType objects
 /// used in the WebAssembly component model.
 pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> {
-    variant: Option<ResourceTypeVariant<P>>,
+    variant:  Option<ResourceTypeVariant<P>>,
     provider: P,
 }
 
@@ -286,7 +319,10 @@ enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
 
 impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> Default for ResourceTypeBuilder<P> {
     fn default() -> Self {
-        Self { variant: None, provider: P::default() }
+        Self {
+            variant:  None,
+            provider: P::default(),
+        }
     }
 }
 
@@ -357,14 +393,14 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
                     bounded_fields.push(bounded_name)?;
                 }
                 Ok(ResourceType::Record(bounded_fields))
-            }
+            },
             ResourceTypeVariant::Aggregate(ids) => {
                 let mut bounded_ids = BoundedVec::new(self.provider)?;
                 for id in ids {
                     bounded_ids.push(id)?;
                 }
                 Ok(ResourceType::Aggregate(bounded_ids))
-            }
+            },
         }
     }
 
@@ -384,12 +420,12 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
                 let mut bounded_fields = BoundedVec::new(self.provider.clone())?;
                 bounded_fields.push(field)?;
                 Ok(ResourceType::Record(bounded_fields))
-            }
+            },
             ResourceTypeVariant::Aggregate(id) => {
                 let mut bounded_ids = BoundedVec::new(self.provider)?;
                 bounded_ids.push(id)?;
                 Ok(ResourceType::Aggregate(bounded_ids))
-            }
+            },
         }
     }
 }
@@ -399,15 +435,20 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
 /// This builder provides a fluent API for constructing ResourceItem objects
 /// used in the WebAssembly component model.
 pub struct ResourceItemBuilder<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> {
-    id: Option<u32>,
-    type_: Option<ResourceType<P>>,
-    name: Option<&'static str>,
+    id:       Option<u32>,
+    type_:    Option<ResourceType<P>>,
+    name:     Option<&'static str>,
     provider: P,
 }
 
 impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> Default for ResourceItemBuilder<P> {
     fn default() -> Self {
-        Self { id: None, type_: None, name: None, provider: P::default() }
+        Self {
+            id:       None,
+            type_:    None,
+            name:     None,
+            provider: P::default(),
+        }
     }
 }
 
@@ -463,7 +504,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceItemBuilder<
             Some(name_str) => {
                 let wasm_name = WasmName::from_str_truncate(name_str, self.provider.clone())?;
                 Some(wasm_name)
-            }
+            },
             None => None,
         };
 
@@ -473,18 +514,18 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceItemBuilder<
 
 /// Builder for memory providers and adapters.
 pub struct MemoryBuilder<P: MemoryProvider + Default + Clone> {
-    provider: P,
-    required_size: Option<usize>,
-    alignment: Option<usize>,
+    provider:           P,
+    required_size:      Option<usize>,
+    alignment:          Option<usize>,
     verification_level: VerificationLevel,
 }
 
 impl<P: MemoryProvider + Default + Clone> Default for MemoryBuilder<P> {
     fn default() -> Self {
         Self {
-            provider: P::default(),
-            required_size: None,
-            alignment: None,
+            provider:           P::default(),
+            required_size:      None,
+            alignment:          None,
             verification_level: VerificationLevel::default(),
         }
     }
@@ -553,11 +594,12 @@ impl<P: MemoryProvider + Default + Clone> MemoryBuilder<P> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::format;
     #[cfg(feature = "std")]
     use std::format;
+
+    use super::*;
 
     #[test]
     fn test_bounded_builder() {
@@ -591,7 +633,7 @@ mod tests {
                 assert_eq!(fields.len(), 2);
                 assert_eq!(fields[0].as_str().unwrap(), "field1");
                 assert_eq!(fields[1].as_str().unwrap(), "field2");
-            }
+            },
             _ => panic!("Expected ResourceType::Record"),
         }
 
@@ -605,7 +647,7 @@ mod tests {
                 assert_eq!(ids[0], 1);
                 assert_eq!(ids[1], 2);
                 assert_eq!(ids[2], 3);
-            }
+            },
             _ => panic!("Expected ResourceType::Aggregate"),
         }
     }
@@ -629,13 +671,16 @@ mod tests {
         let resource_item = builder.build().unwrap();
 
         assert_eq!(resource_item.id, 42);
-        assert_eq!(resource_item.name.unwrap().as_str().unwrap(), "test_resource");
+        assert_eq!(
+            resource_item.name.unwrap().as_str().unwrap(),
+            "test_resource"
+        );
         match &resource_item.type_ {
             ResourceType::Record(fields) => {
                 assert_eq!(fields.len(), 2);
                 assert_eq!(fields[0].as_str().unwrap(), "field1");
                 assert_eq!(fields[1].as_str().unwrap(), "field2");
-            }
+            },
             _ => panic!("Expected ResourceType::Record"),
         }
     }
@@ -669,7 +714,10 @@ mod tests {
             .with_verification_level(VerificationLevel::Full);
 
         let result = builder.build();
-        assert!(result.is_err(), "Deprecated legacy builder should return an error");
+        assert!(
+            result.is_err(),
+            "Deprecated legacy builder should return an error"
+        );
 
         // Verify the error message contains migration guidance
         #[cfg(feature = "std")]

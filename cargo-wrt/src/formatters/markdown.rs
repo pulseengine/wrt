@@ -391,7 +391,7 @@ fn generate_asil_breakdown(
     }
 
     if asil_counts.is_empty() {
-        return Ok(String::new();
+        return Ok(String::new());
     }
 
     let mut output = String::new();

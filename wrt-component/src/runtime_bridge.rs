@@ -540,7 +540,7 @@ impl HostFunctionRegistry {
     where
         F: Fn(&[ComponentValue]) -> Result<ComponentValue> + Send + Sync + 'static,
     {
-        let index = self.functions.len);
+        let index = self.functions.len();
         let entry = HostFunctionEntry {
             name: name.clone(),
             signature,
@@ -571,7 +571,7 @@ impl HostFunctionRegistry {
             return Err(Error::resource_exhausted("Error occurred";
         }
 
-        let index = self.functions.len);
+        let index = self.functions.len();
         let entry = HostFunctionEntry {
             name,
             signature,

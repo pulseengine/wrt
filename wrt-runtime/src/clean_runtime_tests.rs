@@ -82,7 +82,7 @@ impl CleanRuntime {
 
         // Validate argument count
         if args.len() != function.func_type.params.len() {
-            return Err(Error::validation_error("Argument count mismatch";
+            return Err(Error::validation_error("Argument count mismatch"));
         }
 
         // For this test, just return dummy results matching the function signature
@@ -149,7 +149,7 @@ impl CleanMemory {
         let end = start + size as usize;
         
         if end > self.data.len() {
-            return Err(Error::memory_error("Memory access out of bounds";
+            return Err(Error::memory_error("Memory access out of bounds"));
         }
         
         Ok(self.data[start..end].to_vec())
@@ -158,14 +158,14 @@ impl CleanMemory {
     /// Write to memory
     pub fn write(&mut self, offset: u32, data: &[u8]) -> Result<()> {
         let start = offset as usize;
-        let end = start + data.len);
+        let end = start + data.len();
         
         // Grow memory if needed (simplified)
         if end > self.data.len() {
             self.data.resize(end, 0);
         }
         
-        self.data[start..end].copy_from_slice(data;
+        self.data[start..end].copy_from_slice(data);
         Ok(())
     }
 }
@@ -221,8 +221,8 @@ mod tests {
         assert_eq!(runtime.functions.len(), 1);
         
         let function = runtime.get_function(func_id).unwrap();
-        assert_eq!(function.name, "add";
-        assert_eq!(function.func_type.params.len(), 2;
+        assert_eq!(function.name, "add");
+        assert_eq!(function.func_type.params.len(), 2);
         assert_eq!(function.func_type.results.len(), 1);
     }
 
@@ -240,7 +240,7 @@ mod tests {
         assert_eq!(runtime.memories.len(), 1);
         
         let memory = runtime.get_memory(mem_id).unwrap();
-        assert_eq!(memory.name, "mem0";
+        assert_eq!(memory.name, "mem0");
         assert_eq!(memory.memory_type.limits.min, 1);
     }
 
@@ -281,10 +281,10 @@ mod tests {
     #[test]
     fn test_factory_access() {
         let runtime = CleanRuntime::new();
-        let factory = runtime.factory);
+        let factory = runtime.factory();
         
         // Test that we can create bounded strings using the factory
         let bounded_str = factory.create_bounded_string::<64>("test").unwrap();
-        assert_eq!(bounded_str.as_str(), "test";
+        assert_eq!(bounded_str.as_str(), "test");
     }
 }

@@ -87,7 +87,10 @@ pub const fn check_allocation_fits(crate_id: CrateId, size: usize) -> bool {
 /// This will cause a compile error if budgets exceed system memory
 const fn validate_total_budget() {
     let total = calculate_total_budget();
-    assert!(total <= TOTAL_MEMORY_BUDGET, "Total crate budgets exceed system memory budget!");
+    assert!(
+        total <= TOTAL_MEMORY_BUDGET,
+        "Total crate budgets exceed system memory budget!"
+    );
 }
 
 // Force evaluation at compile time
@@ -138,7 +141,10 @@ macro_rules! init_crate_memory {
         #[cfg(all(not(test), feature = "ctor"))]
         #[ctor::ctor]
         fn __init_crate_memory() {
-            use $crate::memory_budget::{CrateId, MEMORY_COORDINATOR};
+            use $crate::memory_budget::{
+                CrateId,
+                MEMORY_COORDINATOR,
+            };
 
             // Register crate with coordinator
             if let Err(e) = MEMORY_COORDINATOR.register_crate($crate_id) {
@@ -151,7 +157,10 @@ macro_rules! init_crate_memory {
         // Manual initialization function for platforms without ctor
         #[cfg(not(feature = "ctor"))]
         pub fn init_memory() {
-            use $crate::memory_budget::{CrateId, MEMORY_COORDINATOR};
+            use $crate::memory_budget::{
+                CrateId,
+                MEMORY_COORDINATOR,
+            };
 
             // Register crate with coordinator
             if let Err(e) = MEMORY_COORDINATOR.register_crate($crate_id) {
@@ -168,16 +177,16 @@ macro_rules! init_crate_memory {
 pub const fn generate_budget_report() -> BudgetReport {
     BudgetReport {
         total_system_memory: TOTAL_MEMORY_BUDGET,
-        total_allocated: calculate_total_budget(),
-        crate_count: CRATE_COUNT,
+        total_allocated:     calculate_total_budget(),
+        crate_count:         CRATE_COUNT,
     }
 }
 
 /// Budget report structure
 pub struct BudgetReport {
     pub total_system_memory: usize,
-    pub total_allocated: usize,
-    pub crate_count: usize,
+    pub total_allocated:     usize,
+    pub crate_count:         usize,
 }
 
 impl BudgetReport {

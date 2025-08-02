@@ -49,7 +49,7 @@ impl StacklessEngine {
         let func_type = module.get_function_type(func_idx as usize)?;
         
         // Pop arguments from the operand stack
-        let mut args = Vec::with_capacity(func_type.params.len);
+        let mut args = Vec::with_capacity(func_type.params.len();
         for _ in 0..func_type.params.len() {
             if self.operand_stack.is_empty() {
                 return Err(Error::runtime_error("Stack underflow";

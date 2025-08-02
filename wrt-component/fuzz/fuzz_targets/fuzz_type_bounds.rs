@@ -36,8 +36,8 @@ fuzz_target!(|data: &[u8]| {
             break;
         }
         
-        let sub_idx = (data[data_offset] as usize) % type_ids.len);
-        let super_idx = (data[data_offset + 1] as usize) % type_ids.len);
+        let sub_idx = (data[data_offset] as usize) % type_ids.len();
+        let super_idx = (data[data_offset + 1] as usize) % type_ids.len();
         
         if sub_idx != super_idx {
             let kind = if data[data_offset + 2] & 0x01 == 0 {
@@ -94,7 +94,7 @@ fuzz_target!(|data: &[u8]| {
     
     // Test removing bounds
     if !type_ids.is_empty() && data.len() > data_offset {
-        let remove_idx = (data[data_offset] as usize) % type_ids.len);
+        let remove_idx = (data[data_offset] as usize) % type_ids.len();
         let _ = bounds_checker.remove_bounds_for_type(type_ids[remove_idx];
     }
     

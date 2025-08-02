@@ -204,7 +204,7 @@ impl TaskManagerAsyncBridge {
         component_id: ComponentInstanceId,
         limits: Option<ComponentResourceLimits>,
     ) -> Result<(), Error> {
-        let limits = limits.unwrap_or_else(|| self.config.default_limits.clone();
+        let limits = limits.unwrap_or_else(|| self.config.default_limits.clone());
         
         // Register with async bridge
         self.async_bridge.register_component(
@@ -250,18 +250,18 @@ impl TaskManagerAsyncBridge {
         })?;
 
         if context.async_state != ComponentAsyncState::Active {
-            return Err(Error::validation_invalid_state("Component async operations not active";
+            return Err(Error::validation_invalid_state("Component async operations not active"));
         }
 
         // Check resource limits
         if context.active_tasks.len() >= context.resource_limits.max_concurrent_tasks {
-            return Err(Error::resource_limit_exceeded("Component async task limit exceeded";
+            return Err(Error::resource_limit_exceeded("Component async task limit exceeded"));
         }
 
         // Create Component Model task
         let component_task_id = {
             let mut tm = self.task_manager.lock()?;
-            tm.spawn_task(TaskType::AsyncOperation, component_id.0, function_index)?
+            tm.spawn_task(TaskType::AsyncOperation, component_id.0, function_index)?;
         };
 
         // Convert future to Result<(), Error> for executor
@@ -308,7 +308,7 @@ impl TaskManagerAsyncBridge {
         })?;
 
         // Update statistics
-        self.bridge_stats.total_async_tasks.fetch_add(1, Ordering::Relaxed;
+        self.bridge_stats.total_async_tasks.fetch_add(1, Ordering::Relaxed);
 
         Ok(component_task_id)
     }

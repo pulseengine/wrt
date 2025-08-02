@@ -1,15 +1,27 @@
 //! Generic RAII Memory Guard
 //!
-//! This module provides a generic RAII guard that can work with any memory provider
-//! and coordinator implementation, making it reusable across different projects.
+//! This module provides a generic RAII guard that can work with any memory
+//! provider and coordinator implementation, making it reusable across different
+//! projects.
 //!
 //! SW-REQ-ID: REQ_MEM_003 - Automatic cleanup
 //! SW-REQ-ID: REQ_ERROR_004 - Safe resource management
 
-use crate::{codes, Error, ErrorCategory, Result};
-use core::marker::PhantomData;
-use core::mem::ManuallyDrop;
-use core::ops::{Deref, DerefMut};
+use core::{
+    marker::PhantomData,
+    mem::ManuallyDrop,
+    ops::{
+        Deref,
+        DerefMut,
+    },
+};
+
+use crate::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
 /// Trait for memory providers that can be managed by the guard
 pub trait ManagedMemoryProvider: Sized {
@@ -51,19 +63,19 @@ where
     I: Copy,
 {
     /// The memory provider, wrapped for controlled cleanup
-    provider: ManuallyDrop<P>,
+    provider:      ManuallyDrop<P>,
     /// Reference to the coordinator
-    coordinator: &'static C,
+    coordinator:   &'static C,
     /// The crate that owns this allocation
-    crate_id: I,
+    crate_id:      I,
     /// Allocation identifier
     allocation_id: C::AllocationId,
     /// Size of the allocation (cached for cleanup)
-    size: usize,
+    size:          usize,
     /// Whether cleanup has been performed
-    cleaned_up: bool,
+    cleaned_up:    bool,
     /// Phantom data for lifetime management
-    _phantom: PhantomData<(C, I)>,
+    _phantom:      PhantomData<(C, I)>,
 }
 
 impl<P, C, I> GenericMemoryGuard<P, C, I>
@@ -119,8 +131,9 @@ where
         self.size
     }
 
-    // Memory providers are managed through capability system with automatic RAII cleanup
-    // Use capability-driven memory management through MemoryFactory instead
+    // Memory providers are managed through capability system with automatic RAII
+    // cleanup Use capability-driven memory management through MemoryFactory
+    // instead
 }
 
 impl<P, C, I> Drop for GenericMemoryGuard<P, C, I>
@@ -181,10 +194,10 @@ pub struct MemoryGuardBuilder<P, C, I>
 where
     C: 'static,
 {
-    provider: Option<P>,
+    provider:    Option<P>,
     coordinator: Option<&'static C>,
-    crate_id: Option<I>,
-    _phantom: PhantomData<(P, C, I)>,
+    crate_id:    Option<I>,
+    _phantom:    PhantomData<(P, C, I)>,
 }
 
 impl<P, C, I> MemoryGuardBuilder<P, C, I>
@@ -194,7 +207,12 @@ where
     I: Copy,
 {
     pub fn new() -> Self {
-        Self { provider: None, coordinator: None, crate_id: None, _phantom: PhantomData }
+        Self {
+            provider:    None,
+            coordinator: None,
+            crate_id:    None,
+            _phantom:    PhantomData,
+        }
     }
 
     pub fn provider(mut self, provider: P) -> Self {
@@ -213,17 +231,17 @@ where
     }
 
     pub fn build(self) -> Result<GenericMemoryGuard<P, C, I>> {
-        let provider = self.provider.ok_or_else(|| {
-            Error::initialization_error("Provider not specified")
-        })?;
+        let provider = self
+            .provider
+            .ok_or_else(|| Error::initialization_error("Provider not specified"))?;
 
-        let coordinator = self.coordinator.ok_or_else(|| {
-            Error::initialization_error("Coordinator not specified")
-        })?;
+        let coordinator = self
+            .coordinator
+            .ok_or_else(|| Error::initialization_error("Coordinator not specified"))?;
 
-        let crate_id = self.crate_id.ok_or_else(|| {
-            Error::initialization_error("Crate ID not specified")
-        })?;
+        let crate_id = self
+            .crate_id
+            .ok_or_else(|| Error::initialization_error("Crate ID not specified"))?;
 
         GenericMemoryGuard::new(provider, coordinator, crate_id)
     }
@@ -236,7 +254,11 @@ pub type MemoryGuard<P, I> =
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory_coordinator::{AllocationId, CrateIdentifier, GenericMemoryCoordinator};
+    use crate::memory_coordinator::{
+        AllocationId,
+        CrateIdentifier,
+        GenericMemoryCoordinator,
+    };
 
     struct TestProvider {
         size: usize,

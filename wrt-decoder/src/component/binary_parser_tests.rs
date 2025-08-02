@@ -82,13 +82,13 @@ mod tests {
     #[test]
     fn test_parser_creation() {
         let parser = ComponentBinaryParser::new();
-        assert_eq!(parser.validation_level, ValidationLevel::Standard;
+        assert_eq!(parser.validation_level, ValidationLevel::Standard);
 
         let minimal_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Minimal;
-        assert_eq!(minimal_parser.validation_level, ValidationLevel::Minimal;
+        assert_eq!(minimal_parser.validation_level, ValidationLevel::Minimal);
 
         let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Strict;
-        assert_eq!(strict_parser.validation_level, ValidationLevel::Strict;
+        assert_eq!(strict_parser.validation_level, ValidationLevel::Strict);
     }
 
     #[test]

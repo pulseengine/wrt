@@ -141,7 +141,7 @@ pub fn create_state_section(
     header.extend_from_slice(&compressed_size.to_le_bytes);
 
     // Create complete section contents: header + compressed data
-    let mut section_data = Vec::with_capacity(header.len() + compressed_data.len);
+    let mut section_data = Vec::with_capacity(header.len() + compressed_data.len();
     section_data.extend_from_slice(&header;
     section_data.extend_from_slice(&compressed_data;
 

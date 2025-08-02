@@ -260,7 +260,7 @@ where
     }
     
     fn deallocate(&mut self, ptr: &mut [u8]) -> core::result::Result<(), Self::Error> {
-        let size = ptr.len);
+        let size = ptr.len();
         if self.allocated_bytes >= size {
             self.allocated_bytes -= size;
         }
