@@ -204,11 +204,11 @@ impl FuelWcetAnalyzer {
         component_id: ComponentInstanceId,
         method: Option<WcetAnalysisMethod>,
     ) -> Result<WcetAnalysisResult, Error> {
-        record_global_operation(OperationType::FunctionCall, self.verification_level;
+        record_global_operation(OperationType::FunctionCall, self.verification_level);
         self.consume_analysis_fuel(WCET_ANALYSIS_FUEL)?;
 
-        let analysis_method = method.unwrap_or(self.config.default_method;
-        let current_time = self.current_fuel_time.load(Ordering::Acquire;
+        let analysis_method = method.unwrap_or(self.config.default_method);
+        let current_time = self.current_fuel_time.load(Ordering::Acquire);
 
         let result = match analysis_method {
             WcetAnalysisMethod::Static => self.perform_static_analysis(task_id, component_id)?,
@@ -222,7 +222,7 @@ impl FuelWcetAnalyzer {
             Error::resource_limit_exceeded("Too many WCET analysis results")
         })?;
 
-        self.stats.total_analyses.fetch_add(1, Ordering::AcqRel;
+        self.stats.total_analyses.fetch_add(1, Ordering::AcqRel);
         Ok(result)
     }
 
@@ -238,10 +238,10 @@ impl FuelWcetAnalyzer {
             return Ok();
         }
 
-        record_global_operation(OperationType::CollectionInsert, self.verification_level;
+        record_global_operation(OperationType::CollectionInsert, self.verification_level);
         self.consume_analysis_fuel(SAMPLE_COLLECTION_FUEL)?;
 
-        let current_time = self.current_fuel_time.load(Ordering::Acquire;
+        let current_time = self.current_fuel_time.load(Ordering::Acquire);
         let sample = ExecutionSample {
             fuel_consumed,
             timestamp: current_time,
@@ -269,7 +269,7 @@ impl FuelWcetAnalyzer {
             })?;
         }
 
-        self.stats.total_samples.fetch_add(1, Ordering::AcqRel;
+        self.stats.total_samples.fetch_add(1, Ordering::AcqRel);
 
         // Update path information if path analysis is enabled
         if let Some(path_id) = path_id {
@@ -298,7 +298,7 @@ impl FuelWcetAnalyzer {
             return Ok();
         }
 
-        record_global_operation(OperationType::CollectionInsert, self.verification_level;
+        record_global_operation(OperationType::CollectionInsert, self.verification_level);
         self.consume_analysis_fuel(PATH_ANALYSIS_FUEL)?;
 
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
@@ -333,7 +333,7 @@ impl FuelWcetAnalyzer {
             })?;
         }
 
-        self.stats.total_paths.fetch_add(1, Ordering::AcqRel;
+        self.stats.total_paths.fetch_add(1, Ordering::AcqRel);
         Ok(())
     }
 
@@ -352,11 +352,11 @@ impl FuelWcetAnalyzer {
             let within_estimate = actual_fuel <= result.wcet_fuel;
             
             if !within_estimate {
-                self.stats.underestimations.fetch_add(1, Ordering::AcqRel;
+                self.stats.underestimations.fetch_add(1, Ordering::AcqRel);
                 log::warn!("WCET underestimation: Task {} consumed {} fuel, estimate was {}", 
-                          task_id.0, actual_fuel, result.wcet_fuel;
+                          task_id.0, actual_fuel, result.wcet_fuel);
             } else if actual_fuel < result.wcet_fuel / 2 {
-                self.stats.overestimations.fetch_add(1, Ordering::AcqRel;
+                self.stats.overestimations.fetch_add(1, Ordering::AcqRel);
             }
 
             // Update accuracy statistics
@@ -366,19 +366,19 @@ impl FuelWcetAnalyzer {
                 } else {
                     result.wcet_fuel - actual_fuel
                 };
-                let accuracy_ratio = 1.0 - (error as f64 / result.wcet_fuel as f64;
+                let accuracy_ratio = 1.0 - (error as f64 / result.wcet_fuel as f64);
                 (accuracy_ratio * 1000.0) as u64
             } else {
                 1000 // 100% accuracy if WCET is 0
             };
             
-            let current_avg = self.stats.average_accuracy.load(Ordering::Acquire;
+            let current_avg = self.stats.average_accuracy.load(Ordering::Acquire);
             let new_avg = if current_avg == 0 {
                 accuracy
             } else {
                 (current_avg + accuracy) / 2
             };
-            self.stats.average_accuracy.store(new_avg, Ordering::Release;
+            self.stats.average_accuracy.store(new_avg, Ordering::Release);
 
             Ok(within_estimate)
         } else {
@@ -431,14 +431,14 @@ impl FuelWcetAnalyzer {
         let samples = self.execution_samples.get(&task_id)
             .ok_or_else(|| Error::resource_not_found("No execution samples available for measurement-based analysis"))?;
         if samples.len() < self.config.min_samples_for_stats {
-            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis";
+            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis"));
         }
 
         let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect();
         let stats = self.calculate_execution_statistics(&fuel_values)?;
 
         // Apply safety margin and statistical confidence
-        let confidence_multiplier = self.calculate_confidence_multiplier(self.config.required_confidence;
+        let confidence_multiplier = self.calculate_confidence_multiplier(self.config.required_confidence);
         let wcet_estimate = ((stats.max_value as f64) + (confidence_multiplier * stats.std_deviation)) as u64;
         let wcet_with_margin = ((wcet_estimate as f64) * self.config.safety_margin_factor) as u64;
 
@@ -499,7 +499,7 @@ impl FuelWcetAnalyzer {
             .ok_or_else(|| Error::resource_not_found("No path history available for hybrid analysis"))?;
 
         if samples.len() < self.config.min_samples_for_stats {
-            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis";
+            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis"));
         }
 
         let fuel_values: Vec<u64> = samples.iter().map(|s| s.fuel_consumed).collect();
@@ -528,23 +528,22 @@ impl FuelWcetAnalyzer {
             return Err(Error::new(
                 ErrorCategory::InvalidInput,
                 codes::INSUFFICIENT_DATA,
-                 "Error message"),
-            ;
+                 "Error message"));
         }
 
         let min_value = *values.iter().min().unwrap();
         let max_value = *values.iter().max().unwrap();
-        let sum: u64 = values.iter().sum);
-        let mean = (sum as f64) / (values.len() as f64;
+        let sum: u64 = values.iter().sum();
+        let mean = (sum as f64) / (values.len() as f64);
 
         let variance = values.iter()
             .map(|&x| {
                 let diff = (x as f64) - mean;
                 diff * diff
             })
-            .sum::<f64>() / (values.len() as f64;
+            .sum::<f64>() / (values.len() as f64);
         
-        let std_deviation = variance.sqrt);
+        let std_deviation = variance.sqrt();
 
         Ok(ExecutionStatistics {
             min_value,
@@ -556,14 +555,14 @@ impl FuelWcetAnalyzer {
 
     fn calculate_percentile(&self, values: &[u64], percentile: f64) -> Result<u64, Error> {
         if values.is_empty() {
-            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis";
+            return Err(Error::runtime_execution_error("Insufficient samples for statistical analysis"));
         }
 
-        let mut sorted_values = values.to_vec);
-        sorted_values.sort_unstable);
+        let mut sorted_values = values.to_vec();
+        sorted_values.sort_unstable();
 
         let index = ((sorted_values.len() as f64) * percentile) as usize;
-        let clamped_index = index.min(sorted_values.len() - 1;
+        let clamped_index = index.min(sorted_values.len() - 1);
         
         Ok(sorted_values[clamped_index])
     }
@@ -603,7 +602,7 @@ impl FuelWcetAnalyzer {
         if let Some(paths) = self.task_paths.get_mut(&task_id) {
             for path in paths.iter_mut() {
                 if path.path_id == path_id {
-                    path.execution_count.fetch_add(1, Ordering::AcqRel;
+                    path.execution_count.fetch_add(1, Ordering::AcqRel);
                     
                     // Add sample if there's space
                     if path.measured_samples.len() < MAX_EXECUTION_SAMPLES {
@@ -612,7 +611,7 @@ impl FuelWcetAnalyzer {
                         })?;
                     } else {
                         // Replace oldest sample
-                        path.measured_samples.remove(0;
+                        path.measured_samples.remove(0);
                         path.measured_samples.push(fuel_consumed).map_err(|_| {
                             Error::resource_limit_exceeded("Failed to add path sample")
                         })?;
@@ -637,7 +636,7 @@ impl FuelWcetAnalyzer {
     }
 
     fn consume_analysis_fuel(&self, amount: u64) -> Result<(), Error> {
-        self.stats.analysis_fuel_consumed.fetch_add(amount, Ordering::AcqRel;
+        self.stats.analysis_fuel_consumed.fetch_add(amount, Ordering::AcqRel);
         Ok(())
     }
 }
@@ -657,37 +656,37 @@ mod tests {
 
     #[test]
     fn test_wcet_analyzer_creation() {
-        let config = WcetAnalyzerConfig::default());
+        let config = WcetAnalyzerConfig::default();
         let analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
-        let stats = analyzer.get_statistics);
+        let stats = analyzer.get_statistics();
         assert_eq!(stats.total_analyses.load(Ordering::Acquire), 0);
         assert_eq!(stats.total_samples.load(Ordering::Acquire), 0);
     }
 
     #[test]
     fn test_execution_sample_collection() {
-        let config = WcetAnalyzerConfig::default());
+        let config = WcetAnalyzerConfig::default();
         let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
-        let task_id = TaskId::new(1;
+        let task_id = TaskId::new(1);
         
         // Collect some samples
         for i in 0..10 {
             analyzer.collect_execution_sample(task_id, 100 + i * 10, Some(1), 0x1234).unwrap();
         }
         
-        let stats = analyzer.get_statistics);
-        assert_eq!(stats.total_samples.load(Ordering::Acquire), 10;
+        let stats = analyzer.get_statistics();
+        assert_eq!(stats.total_samples.load(Ordering::Acquire), 10);
     }
 
     #[test]
     fn test_static_wcet_analysis() {
-        let config = WcetAnalyzerConfig::default());
+        let config = WcetAnalyzerConfig::default();
         let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
-        let task_id = TaskId::new(1;
-        let component_id = ComponentInstanceId::new(1;
+        let task_id = TaskId::new(1);
+        let component_id = ComponentInstanceId::new(1);
         
         // Register a control flow path
         analyzer.register_control_flow_path(task_id, 1, &[1, 2, 3], 500).unwrap();
@@ -712,7 +711,7 @@ mod tests {
         };
         let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
-        let task_id = TaskId::new(1;
+        let task_id = TaskId::new(1);
         
         // Collect enough samples for analysis
         let samples = [100, 120, 110, 130, 105, 125, 115];
@@ -727,17 +726,17 @@ mod tests {
             Some(WcetAnalysisMethod::MeasurementBased),
         ).unwrap();
         
-        assert_eq!(result.method, WcetAnalysisMethod::MeasurementBased;
-        assert_eq!(result.sample_count, 7;
-        assert!(result.wcet_fuel >= 130)); // Should be at least the maximum observed
+        assert_eq!(result.method, WcetAnalysisMethod::MeasurementBased);
+        assert_eq!(result.sample_count, 7);
+        assert!(result.wcet_fuel >= 130); // Should be at least the maximum observed
     }
 
     #[test]
     fn test_wcet_validation() {
-        let config = WcetAnalyzerConfig::default());
+        let config = WcetAnalyzerConfig::default();
         let mut analyzer = FuelWcetAnalyzer::new(config, VerificationLevel::Standard).unwrap();
         
-        let task_id = TaskId::new(1;
+        let task_id = TaskId::new(1);
         
         // Create a WCET result
         let result = WcetAnalysisResult {
@@ -763,7 +762,7 @@ mod tests {
         let exceeds_estimate = analyzer.validate_wcet_estimate(task_id, 1100).unwrap();
         assert!(!exceeds_estimate);
         
-        let stats = analyzer.get_statistics);
+        let stats = analyzer.get_statistics();
         assert_eq!(stats.underestimations.load(Ordering::Acquire), 1);
     }
 }

@@ -134,7 +134,7 @@ where
                 item.update_checksum(&mut self.checksum);
             }
 
-            return Ok();
+            return Ok(());
         }
 
         // Serialize the item
@@ -836,7 +836,7 @@ where
                 item.update_checksum(&mut self.checksum);
             }
 
-            return Ok();
+            return Ok(());
         }
 
         // Serialize the item
@@ -908,7 +908,7 @@ where
                 item.update_checksum(&mut self.checksum);
             }
 
-            return Ok();
+            return Ok(());
         }
 
         // Serialize the item

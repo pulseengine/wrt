@@ -178,7 +178,7 @@ impl<'a> Slice<'a> {
     pub fn verify_integrity_with_importance(&self, importance: u8) -> Result<()> {
         // Skip verification if the level indicates we shouldn't verify
         if !self.verification_level.should_verify(importance) {
-            return Ok();
+            return Ok(());
         }
 
         // If length doesn't match stored value, memory is corrupt
@@ -204,7 +204,7 @@ impl<'a> Slice<'a> {
 
             // Skip detailed checks for low importance non-redundant checks
             if !self.verification_level.should_verify_redundant() && importance < 200 {
-                return Ok();
+                return Ok(());
             }
 
             // Compute current checksum and compare with stored checksum
@@ -386,7 +386,7 @@ impl<'a> SliceMut<'a> {
     /// verification level and the provided importance.
     pub fn verify_integrity_with_importance(&self, importance: u8) -> Result<()> {
         if !self.verification_level.should_verify(importance) {
-            return Ok();
+            return Ok(());
         }
         if self.data.len() != self.length {
             return Err(Error::validation_error(
@@ -407,7 +407,7 @@ impl<'a> SliceMut<'a> {
                 );
             }
             if !self.verification_level.should_verify_redundant() && importance < 200 {
-                return Ok();
+                return Ok(());
             }
             let current_checksum = Checksum::compute(self.data);
             if current_checksum == self.checksum {
@@ -1440,7 +1440,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
             if offset > N {
                 return Err(Error::memory_out_of_bounds("Zero-length access out of capacity"));
             }
-            return Ok();
+            return Ok(());
         }
 
         if offset >= N || offset + len > N {

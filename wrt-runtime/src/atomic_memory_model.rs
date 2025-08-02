@@ -82,7 +82,7 @@ impl AtomicMemoryModel {
         
         // Record operation timing
         #[cfg(feature = "std")]
-        let start_time = Instant::now);
+        let start_time = Instant::now();
         
         // Execute the atomic operation
         let result = match &operation {
@@ -94,7 +94,7 @@ impl AtomicMemoryModel {
                 self.model_stats.store_operations += 1;
                 // Store operations need the value from operands
                 if operands.is_empty() {
-                    return Err(Error::runtime_execution_error("Store operation requires value operand";
+                    return Err(Error::runtime_execution_error("Store operation requires value operand"));
                 }
                 self.execute_store_with_value(thread_id, operation.clone(), operands[0])
             },
@@ -104,14 +104,15 @@ impl AtomicMemoryModel {
                     return Err(Error::new(
                         ErrorCategory::Runtime,
                         wrt_error::codes::RUNTIME_INVALID_ARGUMENT_ERROR,
-                        "RMW operation requires value operand";
+                        "RMW operation requires value operand",
+                    ));
                 }
                 self.execute_rmw_with_value(thread_id, operation.clone(), operands[0])
             },
             AtomicOp::Cmpxchg(_) => {
                 self.model_stats.cmpxchg_operations += 1;
                 if operands.len() < 2 {
-                    return Err(Error::runtime_execution_error("Compare-exchange operation requires two operands";
+                    return Err(Error::runtime_execution_error("Compare-exchange operation requires two operands"));
                 }
                 self.execute_cmpxchg_with_values(thread_id, operation.clone(), operands[0], operands[1])
             },
@@ -128,7 +129,7 @@ impl AtomicMemoryModel {
         // Record operation timing
         #[cfg(feature = "std")]
         {
-            let duration = start_time.elapsed);
+            let duration = start_time.elapsed();
             self.model_stats.total_execution_time += duration.as_nanos() as u64;
             if duration.as_nanos() as u64 > self.model_stats.max_operation_time {
                 self.model_stats.max_operation_time = duration.as_nanos() as u64;
@@ -163,7 +164,7 @@ impl AtomicMemoryModel {
         result.is_consistent = result.data_races.is_empty() 
             && result.ordering_violations.is_empty()
             && result.potential_deadlocks.is_empty()
-            && result.sync_violations.is_empty);
+            && result.sync_violations.is_empty();
         
         Ok(result)
     }
@@ -184,7 +185,7 @@ impl AtomicMemoryModel {
         let mut result = OptimizationResult::new();
         
         // Analyze operation patterns
-        let patterns = self.analyze_operation_patterns);
+        let patterns = self.analyze_operation_patterns();
         
         // Optimize memory ordering policy based on patterns
         if patterns.mostly_sequential {
@@ -205,7 +206,7 @@ impl AtomicMemoryModel {
         result.total_optimizations = 
             u32::from(result.ordering_optimized) +
             u32::from(result.scheduling_optimized) +
-            u32::from(result.layout_optimized;
+            u32::from(result.layout_optimized);
         
         Ok(result)
     }
@@ -216,7 +217,7 @@ impl AtomicMemoryModel {
         let thread_info = self.atomic_context.thread_manager.get_thread_info(thread_id)?;
         
         if !thread_info.is_active() {
-            return Err(Error::runtime_execution_error("Inactive thread cannot perform atomic operations";
+            return Err(Error::runtime_execution_error("Inactive thread cannot perform atomic operations"));
         }
         
         Ok(())
@@ -226,7 +227,7 @@ impl AtomicMemoryModel {
         match self.ordering_policy {
             MemoryOrderingPolicy::StrictSequential => {
                 // Ensure all previous operations complete before this one
-                core::sync::atomic::fence(AtomicOrdering::SeqCst;
+                core::sync::atomic::fence(AtomicOrdering::SeqCst);
             },
             MemoryOrderingPolicy::Relaxed => {
                 // No ordering constraints
@@ -235,16 +236,16 @@ impl AtomicMemoryModel {
                 // Apply ordering based on operation type
                 match &operation {
                     AtomicOp::Load(_) => {
-                        core::sync::atomic::fence(AtomicOrdering::Acquire;
+                        core::sync::atomic::fence(AtomicOrdering::Acquire);
                     },
                     AtomicOp::Store(_) => {
-                        core::sync::atomic::fence(AtomicOrdering::Release;
+                        core::sync::atomic::fence(AtomicOrdering::Release);
                     },
                     AtomicOp::RMW(_) | AtomicOp::Cmpxchg(_) => {
-                        core::sync::atomic::fence(AtomicOrdering::SeqCst;
+                        core::sync::atomic::fence(AtomicOrdering::SeqCst);
                     },
                     AtomicOp::Fence(_) | AtomicOp::WaitNotify(_) => {
-                        core::sync::atomic::fence(AtomicOrdering::SeqCst;
+                        core::sync::atomic::fence(AtomicOrdering::SeqCst);
                     },
                 }
             },
@@ -397,7 +398,7 @@ impl ThreadSyncState {
         #[cfg(feature = "std")]
         {
             // BoundedMap entry API returns the value, not a mutable reference
-            let current = self.sync_operations.get(&thread_id)?.unwrap_or(0;
+            let current = self.sync_operations.get(&thread_id)?.unwrap_or(0);
             self.sync_operations.insert(thread_id, current + 1)?;
         }
         #[cfg(not(feature = "std"))]
@@ -415,7 +416,7 @@ impl ThreadSyncState {
                 }
             }
             if !found {
-                let _ = self.sync_operations.push((thread_id, 1);
+                let _ = self.sync_operations.push((thread_id, 1));
             }
         }
         Ok(())
@@ -557,7 +558,7 @@ pub struct DataRaceReport {
 
 impl wrt_foundation::traits::Checksummable for DataRaceReport {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.memory_address.to_le_bytes);
+        checksum.update_slice(&self.memory_address.to_le_bytes());
     }
 }
 
@@ -582,7 +583,7 @@ impl wrt_foundation::traits::FromBytes for DataRaceReport {
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 8];
         reader.read_exact(&mut bytes)?;
-        let memory_address = usize::from_le_bytes(bytes;
+        let memory_address = usize::from_le_bytes(bytes);
         Ok(Self {
             memory_address,
             ..Default::default()
@@ -603,7 +604,7 @@ pub struct OrderingViolationReport {
 
 impl wrt_foundation::traits::Checksummable for OrderingViolationReport {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[self.thread_id as u8];
+        checksum.update_slice(&[self.thread_id as u8]);
     }
 }
 
@@ -647,7 +648,7 @@ pub struct DeadlockReport {
 
 impl wrt_foundation::traits::Checksummable for DeadlockReport {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(b"deadlock";
+        checksum.update_slice(b"deadlock");
     }
 }
 
@@ -656,7 +657,7 @@ impl wrt_foundation::traits::ToBytes for DeadlockReport {
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self, writer: &mut wrt_foundation::traits::WriteStream<'_>, _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&[0u8); 4])
+        writer.write_all(&[0u8; 4])
     }
 }
 
@@ -679,7 +680,7 @@ pub struct SyncViolationReport {
 
 impl wrt_foundation::traits::Checksummable for SyncViolationReport {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[self.thread_id as u8];
+        checksum.update_slice(&[self.thread_id as u8]);
     }
 }
 
@@ -709,7 +710,7 @@ mod tests {
     
     #[test]
     fn test_memory_ordering_policy() {
-        assert_eq!(MemoryOrderingPolicy::default(), MemoryOrderingPolicy::Adaptive;
+        assert_eq!(MemoryOrderingPolicy::default(), MemoryOrderingPolicy::Adaptive);
     }
     
     #[test]
@@ -736,7 +737,7 @@ mod tests {
             memory.len(),
             thread_manager,
             MemoryOrderingPolicy::default()
-        ;
+        );
         assert!(model.is_ok());
     }
 }

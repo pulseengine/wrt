@@ -622,7 +622,7 @@ where
                 // Was should_recalculate_checksum_on_mutate
                 self.recalculate_checksum();
             }
-            return Ok();
+            return Ok(());
         }
 
         let bytes_written = {
@@ -1062,7 +1062,7 @@ where
                 // Was should_recalculate_checksum_on_mutate
                 self.recalculate_checksum();
             }
-            return Ok();
+            return Ok(());
         }
 
         let bytes_written = {
@@ -1307,7 +1307,7 @@ where
     /// Method to verify checksum for a single item, used by iter
     fn verify_item_checksum_at_offset(&self, offset: usize) -> Result<()> {
         if !self.provider.verification_level().should_verify_redundant() {
-            return Ok();
+            return Ok(());
         }
 
         match self.provider.borrow_slice(offset, self.item_serialized_size) {
@@ -1593,7 +1593,7 @@ where
                 // Add new item to checksum
                 value.update_checksum(&mut self.checksum);
             }
-            return Ok();
+            return Ok(());
         }
 
         // If we're inserting at the end, this is equivalent to push
@@ -1866,7 +1866,7 @@ where
     /// ```
     pub fn truncate(&mut self, new_len: usize) -> core::result::Result<(), BoundedError> {
         if new_len >= self.length {
-            return Ok();
+            return Ok(());
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level);
@@ -1929,14 +1929,14 @@ where
 
         // If indices are the same, nothing to do
         if a == b {
-            return Ok();
+            return Ok(());
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types (no-op since all ZSTs are identical)
         if self.item_serialized_size == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Get both items
@@ -1983,14 +1983,14 @@ where
     /// ```
     pub fn reverse(&mut self) -> core::result::Result<(), BoundedError> {
         if self.length <= 1 {
-            return Ok();
+            return Ok(());
         }
 
         record_global_operation(OperationType::CollectionWrite, self.verification_level);
 
         // Special handling for zero-sized types (no visible effect)
         if self.item_serialized_size == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Swap pairs of elements from the start and end, moving inward
@@ -2036,7 +2036,7 @@ where
 
         // Special handling for zero-sized types (no visible effect)
         if self.item_serialized_size == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Maintain two indices: one for reading (i) and one for writing (write_idx)
@@ -2355,7 +2355,7 @@ where
 
         // Special handling for zero-sized types or empty/single element vectors
         if self.item_serialized_size == 0 || self.length <= 1 {
-            return Ok();
+            return Ok(());
         }
 
         // Collect all elements into a temporary vector for sorting
@@ -2501,7 +2501,7 @@ where
 
         // Special handling for zero-sized types or empty/single element vectors
         if self.item_serialized_size == 0 || self.length <= 1 {
-            return Ok();
+            return Ok(());
         }
 
         // Collect all elements into a temporary vector
@@ -2659,7 +2659,7 @@ where
             for _ in 0..self.length {
                 T::default().update_checksum(&mut self.checksum);
             }
-            return Ok();
+            return Ok(());
         }
 
         // Collect all elements we're keeping
