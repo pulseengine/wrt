@@ -57,7 +57,7 @@ pub struct OptimizedAsyncChannels {
 
 /// Channel identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ChannelId(u64;
+pub struct ChannelId(u64);
 
 /// Sender half of a channel
 #[derive(Debug, Clone)]
@@ -255,7 +255,7 @@ impl OptimizedAsyncChannels {
             max_total_capacity: MAX_CHANNEL_CAPACITY * 4,
             max_message_size: 1024 * 1024, // 1MB
             fuel_budget: 100_000,
-        };
+        });
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentChannelContext {
@@ -285,10 +285,10 @@ impl OptimizedAsyncChannels {
 
         // Check limits
         if context.owned_channels.len() >= context.channel_limits.max_channels {
-            return Err(Error::resource_limit_exceeded("Component channel limit exceeded";
+            return Err(Error::resource_limit_exceeded("Component channel limit exceeded"));
         }
 
-        let channel_id = ChannelId(self.next_channel_id.fetch_add(1, Ordering::AcqRel;
+        let channel_id = ChannelId(self.next_channel_id.fetch_add(1, Ordering::AcqRel));
         let capacity = match channel_type {
             ChannelType::Bounded(cap) => cap,
             ChannelType::Oneshot => 1,
@@ -322,7 +322,7 @@ impl OptimizedAsyncChannels {
         })?;
 
         // Create sender and receiver
-        let channels_weak = Arc::downgrade(&Arc::new(Mutex::new(self);
+        let channels_weak = Arc::downgrade(&Arc::new(Mutex::new(self)));
         
         let sender = ChannelSender {
             channel_id,
@@ -345,7 +345,7 @@ impl OptimizedAsyncChannels {
         context.receivers.insert(channel_id, receiver.clone()).ok();
 
         // Update statistics
-        self.channel_stats.total_channels_created.fetch_add(1, Ordering::Relaxed;
+        self.channel_stats.total_channels_created.fetch_add(1, Ordering::Relaxed);
 
         Ok((sender, receiver))
     }
@@ -363,7 +363,7 @@ impl OptimizedAsyncChannels {
         })?;
 
         if channel.closed.load(Ordering::Acquire) {
-            return Ok(SendResult::Closed;
+            return Ok(SendResult::Closed);
         }
 
         let channel_message = ChannelMessage {
@@ -376,19 +376,19 @@ impl OptimizedAsyncChannels {
         // Try to send message
         let send_result = match &mut channel.buffer {
             ChannelBuffer::Ring { data, head, tail, len } => {
-                let current_len = len.load(Ordering::Acquire;
+                let current_len = len.load(Ordering::Acquire);
                 if current_len >= channel.capacity {
                     if self.global_config.enable_backpressure {
-                        self.channel_stats.backpressure_events.fetch_add(1, Ordering::Relaxed;
+                        self.channel_stats.backpressure_events.fetch_add(1, Ordering::Relaxed);
                         SendResult::WouldBlock
                     } else {
                         SendResult::Full
                     }
                 } else {
-                    let tail_idx = tail.load(Ordering::Acquire;
+                    let tail_idx = tail.load(Ordering::Acquire);
                     data[tail_idx % channel.capacity] = channel_message;
-                    tail.store((tail_idx + 1) % channel.capacity, Ordering::Release;
-                    len.fetch_add(1, Ordering::AcqRel;
+                    tail.store((tail_idx + 1) % channel.capacity, Ordering::Release);
+                    len.fetch_add(1, Ordering::AcqRel);
                     SendResult::Sent
                 }
             },
@@ -406,7 +406,7 @@ impl OptimizedAsyncChannels {
                 if data.is_some() {
                     SendResult::Full
                 } else {
-                    *data = Some(channel_message;
+                    *data = Some(channel_message);
                     SendResult::Sent
                 }
             },
@@ -424,9 +424,9 @@ impl OptimizedAsyncChannels {
 
         if send_result == SendResult::Sent {
             // Update statistics
-            channel.total_sent.fetch_add(1, Ordering::Relaxed;
-            channel.fuel_consumed.fetch_add(CHANNEL_SEND_FUEL, Ordering::Relaxed;
-            self.channel_stats.total_messages_sent.fetch_add(1, Ordering::Relaxed;
+            channel.total_sent.fetch_add(1, Ordering::Relaxed);
+            channel.fuel_consumed.fetch_add(CHANNEL_SEND_FUEL, Ordering::Relaxed);
+            self.channel_stats.total_messages_sent.fetch_add(1, Ordering::Relaxed);
 
             // Wake receivers
             self.wake_receivers(channel)?;
@@ -448,7 +448,7 @@ impl OptimizedAsyncChannels {
         // Try to receive message
         let receive_result = match &mut channel.buffer {
             ChannelBuffer::Ring { data, head, tail, len } => {
-                let current_len = len.load(Ordering::Acquire;
+                let current_len = len.load(Ordering::Acquire);
                 if current_len == 0 {
                     if channel.closed.load(Ordering::Acquire) {
                         ReceiveResult::Closed
@@ -456,10 +456,10 @@ impl OptimizedAsyncChannels {
                         ReceiveResult::WouldBlock
                     }
                 } else {
-                    let head_idx = head.load(Ordering::Acquire;
+                    let head_idx = head.load(Ordering::Acquire);
                     let message = data[head_idx % channel.capacity].clone();
-                    head.store((head_idx + 1) % channel.capacity, Ordering::Release;
-                    len.fetch_sub(1, Ordering::AcqRel;
+                    head.store((head_idx + 1) % channel.capacity, Ordering::Release);
+                    len.fetch_sub(1, Ordering::AcqRel);
                     ReceiveResult::Received(message)
                 }
             },
@@ -471,13 +471,13 @@ impl OptimizedAsyncChannels {
                         ReceiveResult::WouldBlock
                     }
                 } else {
-                    let message = data.remove(0;
+                    let message = data.remove(0);
                     ReceiveResult::Received(message)
                 }
             },
             ChannelBuffer::Single { data, taken } => {
                 if let Some(message) = data.take() {
-                    taken.store(true, Ordering::Release;
+                    taken.store(true, Ordering::Release);
                     ReceiveResult::Received(message)
                 } else if channel.closed.load(Ordering::Acquire) {
                     ReceiveResult::Closed
@@ -494,8 +494,8 @@ impl OptimizedAsyncChannels {
                     }
                 } else {
                     // Get highest priority message
-                    data.sort_by(|a, b| b.priority.cmp(&a.priority;
-                    let priority_msg = data.remove(0;
+                    data.sort_by(|a, b| b.priority.cmp(&a.priority));
+                    let priority_msg = data.remove(0);
                     ReceiveResult::Received(priority_msg.message)
                 }
             },
@@ -503,9 +503,9 @@ impl OptimizedAsyncChannels {
 
         if let ReceiveResult::Received(_) = receive_result {
             // Update statistics
-            channel.total_received.fetch_add(1, Ordering::Relaxed;
-            channel.fuel_consumed.fetch_add(CHANNEL_RECV_FUEL, Ordering::Relaxed;
-            self.channel_stats.total_messages_received.fetch_add(1, Ordering::Relaxed;
+            channel.total_received.fetch_add(1, Ordering::Relaxed);
+            channel.fuel_consumed.fetch_add(CHANNEL_RECV_FUEL, Ordering::Relaxed);
+            self.channel_stats.total_messages_received.fetch_add(1, Ordering::Relaxed);
 
             // Wake senders if backpressure was active
             if self.global_config.enable_backpressure {
@@ -522,14 +522,14 @@ impl OptimizedAsyncChannels {
             Error::validation_invalid_input("Channel not found")
         })?;
 
-        channel.closed.store(true, Ordering::Release;
-        channel.fuel_consumed.fetch_add(CHANNEL_CLOSE_FUEL, Ordering::Relaxed;
+        channel.closed.store(true, Ordering::Release);
+        channel.fuel_consumed.fetch_add(CHANNEL_CLOSE_FUEL, Ordering::Relaxed);
 
         // Wake all waiters
         self.wake_all_waiters(channel)?;
 
         // Update statistics
-        self.channel_stats.total_channel_closes.fetch_add(1, Ordering::Relaxed;
+        self.channel_stats.total_channel_closes.fetch_add(1, Ordering::Relaxed);
 
         Ok(())
     }
@@ -590,11 +590,11 @@ impl OptimizedAsyncChannels {
     fn wake_receivers(&mut self, channel: &mut AsyncChannel) -> Result<(), Error> {
         // Wake all receiver wakers
         for waker in channel.receiver_wakers.drain(..) {
-            waker.wake);
+            waker.wake();
         }
         
         if self.global_config.wake_coalescing {
-            self.channel_stats.wake_coalescings.fetch_add(1, Ordering::Relaxed;
+            self.channel_stats.wake_coalescings.fetch_add(1, Ordering::Relaxed);
         }
         
         Ok(())
@@ -603,7 +603,7 @@ impl OptimizedAsyncChannels {
     fn wake_senders(&mut self, channel: &mut AsyncChannel) -> Result<(), Error> {
         // Wake all sender wakers
         for waker in channel.sender_wakers.drain(..) {
-            waker.wake);
+            waker.wake();
         }
         
         Ok(())
@@ -769,9 +769,9 @@ mod tests {
     use crate::{task_manager::TaskManager, threading::thread_spawn_fuel::FuelTrackedThreadManager};
 
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new();
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
+        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default();
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -780,10 +780,10 @@ mod tests {
 
     #[test]
     fn test_channel_creation() {
-        let bridge = create_test_bridge);
-        let mut channels = OptimizedAsyncChannels::new(bridge, None;
+        let bridge = create_test_bridge();
+        let mut channels = OptimizedAsyncChannels::new(bridge, None);
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         channels.initialize_component_channels(component_id, None).unwrap();
         
         let (sender, receiver) = channels.create_channel(
@@ -791,24 +791,24 @@ mod tests {
             ChannelType::Bounded(32),
         ).unwrap();
         
-        assert_eq!(sender.component_id, component_id;
-        assert_eq!(receiver.component_id, component_id;
+        assert_eq!(sender.component_id, component_id);
+        assert_eq!(receiver.component_id, component_id);
     }
 
     #[test]
     fn test_channel_statistics() {
-        let bridge = create_test_bridge);
-        let channels = OptimizedAsyncChannels::new(bridge, None;
+        let bridge = create_test_bridge();
+        let channels = OptimizedAsyncChannels::new(bridge, None);
         
-        let stats = channels.get_channel_statistics);
+        let stats = channels.get_channel_statistics();
         assert_eq!(stats.total_channels_created, 0);
         assert_eq!(stats.active_channels, 0);
     }
 
     #[test]
     fn test_channel_types() {
-        assert_eq!(ChannelType::Oneshot, ChannelType::Oneshot;
-        assert_ne!(ChannelType::Bounded(32), ChannelType::Unbounded;
+        assert_eq!(ChannelType::Oneshot, ChannelType::Oneshot);
+        assert_ne!(ChannelType::Bounded(32), ChannelType::Unbounded);
         
         match ChannelType::Bounded(64) {
             ChannelType::Bounded(cap) => assert_eq!(cap, 64),

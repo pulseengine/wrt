@@ -125,13 +125,14 @@ struct CombinatorStatistics {
 
 impl AsyncCombinators {
     /// Create new async combinators manager
-    pub fn new(bridge: Arc<Mutex<TaskManagerAsyncBridge>>) -> Self {
-        Self {
+    pub fn new(bridge: Arc<Mutex<TaskManagerAsyncBridge>>) -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+        Ok(Self {
             bridge,
-            active_combinators: BoundedMap::new(provider.clone())?,
+            active_combinators: BoundedMap::new(provider)?,
             next_combinator_id: AtomicU64::new(1),
             combinator_stats: CombinatorStatistics::default(),
-        }
+        })
     }
 
     /// Select first ready future from a collection
@@ -674,14 +675,14 @@ mod tests {
     #[test]
     fn test_combinator_creation() {
         let bridge = create_test_bridge();
-        let combinators = AsyncCombinators::new(bridge);
+        let combinators = AsyncCombinators::new(bridge).unwrap();
         assert_eq!(combinators.active_combinators.len(), 0);
     }
 
     #[test]
     fn test_combinator_statistics() {
         let bridge = create_test_bridge();
-        let combinators = AsyncCombinators::new(bridge);
+        let combinators = AsyncCombinators::new(bridge).unwrap();
         
         let stats = combinators.get_combinator_statistics();
         assert_eq!(stats.total_selects, 0);

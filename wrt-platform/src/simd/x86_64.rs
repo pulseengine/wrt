@@ -743,10 +743,10 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let sign_flip = _mm_set1_epi8(-128_i8;
-            let a_adj = _mm_xor_si128(a_vec, sign_flip;
-            let b_adj = _mm_xor_si128(b_vec, sign_flip;
-            let result = _mm_cmplt_epi8(a_adj, b_adj;
+            let sign_flip = _mm_set1_epi8(-128_i8);
+            let a_adj = _mm_xor_si128(a_vec, sign_flip);
+            let b_adj = _mm_xor_si128(b_vec, sign_flip);
+            let result = _mm_cmplt_epi8(a_adj, b_adj);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -824,10 +824,10 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let sign_flip = _mm_set1_epi16(-32768_i16;
-            let a_adj = _mm_xor_si128(a_vec, sign_flip;
-            let b_adj = _mm_xor_si128(b_vec, sign_flip;
-            let result = _mm_cmplt_epi16(a_adj, b_adj;
+            let sign_flip = _mm_set1_epi16(-32768_i16);
+            let a_adj = _mm_xor_si128(a_vec, sign_flip);
+            let b_adj = _mm_xor_si128(b_vec, sign_flip);
+            let result = _mm_cmplt_epi16(a_adj, b_adj);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -906,8 +906,8 @@ impl SimdProvider for X86SimdProvider {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
             let sign_flip = _mm_set1_epi32(-2147483648_i32;
-            let a_adj = _mm_xor_si128(a_vec, sign_flip;
-            let b_adj = _mm_xor_si128(b_vec, sign_flip;
+            let a_adj = _mm_xor_si128(a_vec, sign_flip);
+            let b_adj = _mm_xor_si128(b_vec, sign_flip);
             let result = _mm_cmplt_epi32(a_adj, b_adj;
             
             let mut output = [0u8; 16];
@@ -1360,9 +1360,9 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let sign_flip = _mm_set1_epi16(-32768_i16;
-            let a_adj = _mm_xor_si128(a_vec, sign_flip;
-            let b_adj = _mm_xor_si128(b_vec, sign_flip;
+            let sign_flip = _mm_set1_epi16(-32768_i16);
+            let a_adj = _mm_xor_si128(a_vec, sign_flip);
+            let b_adj = _mm_xor_si128(b_vec, sign_flip);
             let min_adj = _mm_min_epi16(a_adj, b_adj;
             let result = _mm_xor_si128(min_adj, sign_flip;
             
@@ -1388,9 +1388,9 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let sign_flip = _mm_set1_epi16(-32768_i16;
-            let a_adj = _mm_xor_si128(a_vec, sign_flip;
-            let b_adj = _mm_xor_si128(b_vec, sign_flip;
+            let sign_flip = _mm_set1_epi16(-32768_i16);
+            let a_adj = _mm_xor_si128(a_vec, sign_flip);
+            let b_adj = _mm_xor_si128(b_vec, sign_flip);
             let max_adj = _mm_max_epi16(a_adj, b_adj;
             let result = _mm_xor_si128(max_adj, sign_flip;
             

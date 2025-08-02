@@ -10,13 +10,13 @@ pub enum ASILExecutionMode {
     #[default]
     QM,
     /// ASIL Level A (lowest automotive safety integrity level)
-    ASIL_A,
+    AsilA,
     /// ASIL Level B (medium automotive safety integrity level)
-    ASIL_B,
+    AsilB,
     /// ASIL Level C (high automotive safety integrity level)
-    ASIL_C,
+    AsilC,
     /// ASIL Level D (highest automotive safety integrity level)
-    ASIL_D,
+    AsilD,
 }
 
 /// ASIL execution configuration
@@ -37,10 +37,10 @@ impl ASILExecutionConfig {
     pub fn new(mode: ASILExecutionMode) -> Self {
         let (fuel_limit, memory_limit, max_call_depth) = match mode {
             ASILExecutionMode::QM => (u64::MAX, usize::MAX, 1024),
-            ASILExecutionMode::ASIL_A => (1_000_000, 16 * 1024 * 1024, 512),
-            ASILExecutionMode::ASIL_B => (500_000, 8 * 1024 * 1024, 256),
-            ASILExecutionMode::ASIL_C => (100_000, 4 * 1024 * 1024, 128),
-            ASILExecutionMode::ASIL_D => (50_000, 2 * 1024 * 1024, 64),
+            ASILExecutionMode::AsilA => (1_000_000, 16 * 1024 * 1024, 512),
+            ASILExecutionMode::AsilB => (500_000, 8 * 1024 * 1024, 256),
+            ASILExecutionMode::AsilC => (100_000, 4 * 1024 * 1024, 128),
+            ASILExecutionMode::AsilD => (50_000, 2 * 1024 * 1024, 64),
         };
 
         Self {
@@ -144,7 +144,7 @@ impl ExecutionStats {
 pub fn extract_resource_limits_from_binary(
     _binary: &[u8],
     asil_mode: ASILExecutionMode,
-) -> crate::WrtResult<Option<ASILExecutionConfig>> {
+) -> wrt_error::Result<Option<ASILExecutionConfig>> {
     // TODO: Implement actual resource limits extraction from custom sections
     // For now, return a default configuration based on ASIL mode
     Ok(Some(ASILExecutionConfig::new(asil_mode)))

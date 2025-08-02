@@ -700,7 +700,7 @@ mod tests {
     }
 
     #[test]
-    fn test_boundedvec_is_empty() -> WrtResult<()> {
+    fn test_boundedvec_is_empty() -> wrt_error::Result<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
