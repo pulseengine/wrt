@@ -293,11 +293,11 @@ mod tests {
         assert!(matches!(block_type_idx, BlockType::FuncType(42));
 
         // Test BlockType -> FormatBlockType
-        let format_empty_2 = block_type_to_format_block_type(&block_empty;
-        let format_value_2 = block_type_to_format_block_type(&block_value;
-        let format_type_idx_2 = block_type_to_format_block_type(&block_type_idx;
+        let format_empty_2 = block_type_to_format_block_type(&block_empty);
+        let format_value_2 = block_type_to_format_block_type(&block_value);
+        let format_type_idx_2 = block_type_to_format_block_type(&block_type_idx);
 
-        assert!(matches!(format_empty_2, FormatBlockType::Empty);
+        assert!(matches!(format_empty_2, FormatBlockType::Empty));
         assert!(matches!(
             format_value_2,
             FormatBlockType::ValueType(ValueType::I32)
@@ -333,9 +333,9 @@ mod tests {
         assert_eq!(format_limits_shared.memory64, false;
 
         // Test with memory64
-        let format_limits_mem64 = wrt_limits_to_format_limits(&wrt_limits_min, false, true;
-        assert_eq!(format_limits_mem64.shared, false;
-        assert_eq!(format_limits_mem64.memory64, true;
+        let format_limits_mem64 = wrt_limits_to_format_limits(&wrt_limits_min, false, true);
+        assert_eq!(format_limits_mem64.shared, false);
+        assert_eq!(format_limits_mem64.memory64, true);
 
         // Test FormatLimits -> wrt-foundation Limits
         let wrt_limits_min_2 = format_limits_to_wrt_limits(&format_limits_min).unwrap();

@@ -271,7 +271,7 @@ impl wrt_foundation::traits::Checksummable for CfiTargetType {
             Self::BlockEntry => 4u8,
             Self::FunctionEntry => 5u8,
         };
-        checksum.update_slice(&[discriminant];
+        checksum.update_slice(&[discriminant]);
     }
 }
 
@@ -440,15 +440,15 @@ impl wrt_foundation::traits::ToBytes for CfiExpectedValue {
             Self::None => writer.write_u8(0u8),
             Self::FunctionSignatureHash(hash) => {
                 writer.write_u8(1u8)?;
-                writer.write_all(&hash.to_le_bytes())?)
+                writer.write_all(&hash.to_le_bytes())
             }
             Self::ReturnAddress(addr) => {
                 writer.write_u8(2u8)?;
-                writer.write_all(&addr.to_le_bytes())?)
+                writer.write_all(&addr.to_le_bytes())
             }
             Self::CallSiteId(id) => {
                 writer.write_u8(3u8)?;
-                writer.write_all(&id.to_le_bytes())?)
+                writer.write_all(&id.to_le_bytes())
             }
         }
     }

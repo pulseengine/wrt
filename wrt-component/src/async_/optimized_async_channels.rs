@@ -233,15 +233,16 @@ impl OptimizedAsyncChannels {
     pub fn new(
         bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
         config: Option<ChannelConfiguration>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+        Ok(Self {
             bridge,
             channels: BoundedMap::new(provider.clone())?,
             component_contexts: BoundedMap::new(provider.clone())?,
             next_channel_id: AtomicU64::new(1),
             channel_stats: ChannelStatistics::default(),
             global_config: config.unwrap_or_default(),
-        }
+        })
     }
 
     /// Initialize component for channel operations
@@ -781,7 +782,7 @@ mod tests {
     #[test]
     fn test_channel_creation() {
         let bridge = create_test_bridge();
-        let mut channels = OptimizedAsyncChannels::new(bridge, None);
+        let mut channels = OptimizedAsyncChannels::new(bridge, None).unwrap();
         
         let component_id = ComponentInstanceId::new(1);
         channels.initialize_component_channels(component_id, None).unwrap();
@@ -798,7 +799,7 @@ mod tests {
     #[test]
     fn test_channel_statistics() {
         let bridge = create_test_bridge();
-        let channels = OptimizedAsyncChannels::new(bridge, None);
+        let channels = OptimizedAsyncChannels::new(bridge, None).unwrap();
         
         let stats = channels.get_channel_statistics();
         assert_eq!(stats.total_channels_created, 0);

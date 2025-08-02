@@ -233,7 +233,7 @@ impl TimerIntegration {
             max_timeout_duration_ms: self.timer_config.max_timer_duration_ms,
             max_interval_duration_ms: self.timer_config.max_timer_duration_ms,
             fuel_budget: 50_000,
-        };
+        });
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentTimerContext {
@@ -269,19 +269,19 @@ impl TimerIntegration {
 
         // Check limits
         if context.owned_timers.len() >= context.timer_limits.max_timers {
-            return Err(Error::resource_limit_exceeded("Component timer limit exceeded";
+            return Err(Error::resource_limit_exceeded("Component timer limit exceeded"));
         }
 
         // Validate duration
         if duration_ms > context.timer_limits.max_timeout_duration_ms {
-            return Err(Error::validation_invalid_input("Timer duration exceeds maximum";
+            return Err(Error::validation_invalid_input("Timer duration exceeds maximum"));
         }
 
         if duration_ms < self.timer_config.min_timer_resolution_ms {
-            return Err(Error::validation_invalid_input("Timer duration below minimum resolution";
+            return Err(Error::validation_invalid_input("Timer duration below minimum resolution"));
         }
 
-        let timer_id = TimerId(self.next_timer_id.fetch_add(1, Ordering::AcqRel;
+        let timer_id = TimerId(self.next_timer_id.fetch_add(1, Ordering::AcqRel));
         let current_time = self.get_current_time);
         let expiration_time = current_time + duration_ms;
 
@@ -323,7 +323,7 @@ impl TimerIntegration {
         })?;
 
         // Update statistics
-        self.timer_stats.total_timers_created.fetch_add(1, Ordering::Relaxed;
+        self.timer_stats.total_timers_created.fetch_add(1, Ordering::Relaxed);
         let current_count = self.timers.len() as u32;
         let max_count = self.timer_stats.max_concurrent_timers.load(Ordering::Relaxed;
         if current_count > max_count {
@@ -352,7 +352,7 @@ impl TimerIntegration {
             context.active_timeouts.insert(operation_id, timer_id).ok();
         }
 
-        self.timer_stats.total_timeouts_created.fetch_add(1, Ordering::Relaxed;
+        self.timer_stats.total_timeouts_created.fetch_add(1, Ordering::Relaxed);
 
         Ok(timer_id)
     }
@@ -371,8 +371,8 @@ impl TimerIntegration {
         ).is_ok);
 
         if was_cancelled {
-            timer.fuel_consumed.fetch_add(TIMER_CANCEL_FUEL, Ordering::Relaxed;
-            self.timer_stats.total_timers_cancelled.fetch_add(1, Ordering::Relaxed;
+            timer.fuel_consumed.fetch_add(TIMER_CANCEL_FUEL, Ordering::Relaxed);
+            self.timer_stats.total_timers_cancelled.fetch_add(1, Ordering::Relaxed);
 
             // Remove from component timeout tracking if applicable
             if let TimerType::Timeout { operation_id, .. } = &timer.timer_type {
@@ -422,8 +422,8 @@ impl TimerIntegration {
                 }
 
                 // Fire the timer
-                timer.fired_count.fetch_add(1, Ordering::AcqRel;
-                timer.fuel_consumed.fetch_add(TIMER_FIRE_FUEL, Ordering::Relaxed;
+                timer.fired_count.fetch_add(1, Ordering::AcqRel);
+                timer.fuel_consumed.fetch_add(TIMER_FIRE_FUEL, Ordering::Relaxed);
                 fired_timers.push(timer_id);
 
                 // Wake the timer's waker if available
@@ -445,7 +445,7 @@ impl TimerIntegration {
                     },
                     TimerType::Timeout { operation_id, .. } => {
                         // Timeout expired
-                        self.timer_stats.total_timeouts_expired.fetch_add(1, Ordering::Relaxed;
+                        self.timer_stats.total_timeouts_expired.fetch_add(1, Ordering::Relaxed);
                         
                         // Remove from component timeout tracking
                         if let Some(context) = self.component_contexts.get_mut(&timer.component_id) {
@@ -469,7 +469,7 @@ impl TimerIntegration {
         }
 
         // Update statistics
-        self.timer_stats.total_timers_fired.fetch_add(fired_timers.len() as u64, Ordering::Relaxed;
+        self.timer_stats.total_timers_fired.fetch_add(fired_timers.len() as u64, Ordering::Relaxed);
 
         Ok(TimerProcessResult {
             fired_timers,
@@ -480,7 +480,7 @@ impl TimerIntegration {
 
     /// Advance time (for simulation/testing)
     pub fn advance_time(&mut self, duration_ms: u64) {
-        self.current_time.fetch_add(duration_ms, Ordering::AcqRel;
+        self.current_time.fetch_add(duration_ms, Ordering::AcqRel);
     }
 
     /// Get timer status
@@ -547,7 +547,7 @@ impl TimerIntegration {
             return Ok(false); // Rate limit exceeded
         }
 
-        context.rate_limit_state.fires_this_period.fetch_add(1, Ordering::AcqRel;
+        context.rate_limit_state.fires_this_period.fetch_add(1, Ordering::AcqRel);
         Ok(true)
     }
 
@@ -560,7 +560,7 @@ impl TimerIntegration {
 
             // Add fuel to total consumption
             let fuel_consumed = timer.fuel_consumed.load(Ordering::Acquire;
-            self.timer_stats.total_fuel_consumed.fetch_add(fuel_consumed, Ordering::Relaxed;
+            self.timer_stats.total_fuel_consumed.fetch_add(fuel_consumed, Ordering::Relaxed);
         }
         Ok(())
     }
