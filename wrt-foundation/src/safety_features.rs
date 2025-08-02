@@ -3,7 +3,7 @@
 /// This module provides capability-based safety features that can be composed
 /// to meet various safety standards (ISO 26262, DO-178C, IEC 61508, etc.)
 /// without being tied to specific standard names.
-use crate::WrtResult;
+use wrt_error::Result;
 
 /// Compile-time feature validation
 ///

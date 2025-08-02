@@ -37,7 +37,7 @@ use crate::{
         ToBytes,
         WriteStream,
     },
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// Defines the level of verification to apply for checksums and other checks.
@@ -120,7 +120,7 @@ impl ToBytes for VerificationLevel {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u8(self.to_byte())
     }
 }
@@ -129,7 +129,7 @@ impl FromBytes for VerificationLevel {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let byte = reader.read_u8()?;
         match byte {
             0 => Ok(VerificationLevel::Off),
@@ -231,7 +231,7 @@ impl ToBytes for Checksum {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream, // Provider not directly used for u32
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u32_le(self.value())
     }
 }
@@ -240,7 +240,7 @@ impl FromBytes for Checksum {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream, // Provider not directly used for u32
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let value = reader.read_u32_le()?;
         Ok(Checksum::from_value(value))
     }

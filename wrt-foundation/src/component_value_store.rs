@@ -71,7 +71,7 @@ use crate::{
     Error,
     MemoryProvider,
     SafeMemoryHandler,
-    WrtResult,
+    wrt_error::Result,
 };
 use crate::{
     prelude::*,
@@ -214,7 +214,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     ///
     /// # Errors
     /// Returns an error if the handle is invalid or the value is not a string.
-    pub fn get_string<'a>(&'a self, val_ref: ValueRef) -> WrtResult<&'a str> {
+    pub fn get_string<'a>(&'a self, val_ref: ValueRef) -> wrt_error::Result<&'a str> {
         match self.values.get(val_ref.index()).ok() {
             Some(ComponentValue::String(_s_name)) => {
                 // Temporarily disabled due to lifetime issues in no_std mode

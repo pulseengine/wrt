@@ -26,7 +26,7 @@ use crate::{
         WriteStream,
     },
     verification::Checksum,
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// Maximum number of `BuiltinType` variants, used for `BoundedVec` capacity.
@@ -128,7 +128,7 @@ impl ToBytes for BuiltinType {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         let byte_val = match self {
             BuiltinType::ResourceCreate => 0,
             BuiltinType::ResourceDrop => 1,
@@ -161,7 +161,7 @@ impl FromBytes for BuiltinType {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let val = reader.read_u8()?;
         match val {
             0 => Ok(BuiltinType::ResourceCreate),

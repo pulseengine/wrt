@@ -37,7 +37,7 @@ use crate::{
         Stats,
     },
     verification::VerificationLevel,
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// ASIL-D safe memory operations module
@@ -151,7 +151,7 @@ impl<A: PageAllocator + Send + Sync> PageAllocatorAdapter<A> {
 }
 
 impl<A: PageAllocator + Send + Sync + Clone + 'static> Allocator for PageAllocatorAdapter<A> {
-    fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+    fn allocate(&self, layout: core::alloc::Layout) -> wrt_error::Result<*mut u8> {
         // Convert the layout to pages (rounded up)
         let size_pages = (layout.size() + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
         let mut allocator = self.allocator.clone();
@@ -161,7 +161,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Allocator for PageAllocat
         Ok(ptr.as_ptr())
     }
 
-    fn deallocate(&self, ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
+    fn deallocate(&self, ptr: *mut u8, _layout: core::alloc::Layout) -> wrt_error::Result<()> {
         // Binary std/no_std choice
         // as they typically manage entire memory regions
         Ok(())
@@ -499,11 +499,11 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         Ok(())
     }
 
-    fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+    fn acquire_memory(&self, layout: core::alloc::Layout) -> wrt_error::Result<*mut u8> {
         self.get_allocator().allocate(layout)
     }
 
-    fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
+    fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> wrt_error::Result<()> {
         self.get_allocator().deallocate(ptr, layout)
     }
 

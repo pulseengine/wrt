@@ -7,7 +7,7 @@
 
 use core::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use crate::{
-    WrtResult, Error, ErrorCategory, codes,
+    wrt_error::Result, Error, ErrorCategory, codes,
     budget_aware_provider::CrateId,
     formal_verification::{requires, ensures, invariant},
 };
@@ -70,7 +70,7 @@ impl VerifiedAllocator {
     #[requires!(self.enabled.load(Ordering::Acquire))]
     #[requires!(size > 0)]
     #[ensures!(ret.is_ok() => self.allocated.load(Ordering::Acquire) == old_allocated + size)]
-    pub fn allocate(&self, size: usize) -> WrtResult<VerifiedAllocation> {
+    pub fn allocate(&self, size: usize) -> wrt_error::Result<VerifiedAllocation> {
         // Check preconditions
         if !self.enabled.load(Ordering::Acquire) {
             return Err(Error::runtime_error("Allocator is disabled";

@@ -53,7 +53,7 @@ impl wrt_foundation::traits::ToBytes for FunctionStats {
         &self, 
         writer: &mut wrt_foundation::traits::WriteStream<'a>, 
         _provider: &PStream
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u64_le(self.call_count)?;
         writer.write_u64_le(self.success_count)?;
         writer.write_u64_le(self.error_count)?;
@@ -66,7 +66,7 @@ impl wrt_foundation::traits::FromBytes for FunctionStats {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &PStream
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let call_count = reader.read_u64_le()?;
         let success_count = reader.read_u64_le()?;
         let error_count = reader.read_u64_le()?;
@@ -144,7 +144,7 @@ impl wrt_foundation::traits::ToBytes for FunctionStats {
         &self, 
         writer: &mut wrt_foundation::traits::WriteStream<'a>, 
         _provider: &PStream
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u64_le(self.call_count)?;
         writer.write_u64_le(self.success_count)?;
         writer.write_u64_le(self.error_count)?;
@@ -167,7 +167,7 @@ impl wrt_foundation::traits::FromBytes for FunctionStats {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &PStream
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let call_count = reader.read_u64_le()?;
         let success_count = reader.read_u64_le()?;
         let error_count = reader.read_u64_le()?;

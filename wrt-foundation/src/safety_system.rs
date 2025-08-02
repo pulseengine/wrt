@@ -84,7 +84,6 @@ use crate::{
     codes,
     Error,
     ErrorCategory,
-    WrtResult,
 };
 
 /// Automotive Safety Integrity Level (ASIL) classification
@@ -785,7 +784,7 @@ impl SafetyContext {
     /// // This fails - cannot downgrade below compile-time level
     /// assert!(ctx.upgrade_runtime_asil(AsilLevel::AsilA).is_err());
     /// ```
-    pub fn upgrade_runtime_asil(&self, new_level: AsilLevel) -> WrtResult<()> {
+    pub fn upgrade_runtime_asil(&self, new_level: AsilLevel) -> wrt_error::Result<()> {
         let new_level_u8 = new_level as u8;
         let compile_level_u8 = self.compile_time_asil as u8;
 
@@ -1006,7 +1005,7 @@ impl UniversalSafetyContext {
     /// # Errors
     /// Returns an error if the maximum number of secondary standards is
     /// exceeded.
-    pub fn add_secondary_standard(&mut self, standard: SafetyStandard) -> WrtResult<()> {
+    pub fn add_secondary_standard(&mut self, standard: SafetyStandard) -> wrt_error::Result<()> {
         for slot in &mut self.secondary_standards {
             if slot.is_none() {
                 *slot = Some(standard);
@@ -1234,7 +1233,7 @@ impl<'a> SafetyGuard<'a> {
     ///
     /// * `context` - The safety context to use
     /// * `operation_name` - Name of the operation for logging
-    pub fn new(context: &'a SafetyContext, operation_name: &'static str) -> WrtResult<Self> {
+    pub fn new(context: &'a SafetyContext, operation_name: &'static str) -> wrt_error::Result<Self> {
         // Check if the context is in a safe state
         if !context.is_safe() {
             context.record_violation();
@@ -1262,9 +1261,9 @@ impl<'a> SafetyGuard<'a> {
     }
 
     /// Perform verification if required by the current ASIL level
-    pub fn verify_if_required<F>(&self, verifier: F) -> WrtResult<()>
+    pub fn verify_if_required<F>(&self, verifier: F) -> wrt_error::Result<()>
     where
-        F: FnOnce() -> WrtResult<()>,
+        F: FnOnce() -> wrt_error::Result<()>,
     {
         if self.context.should_verify() {
             verifier().map_err(|_| {
@@ -1276,7 +1275,7 @@ impl<'a> SafetyGuard<'a> {
     }
 
     /// Complete the guarded operation successfully
-    pub fn complete(self) -> WrtResult<()> {
+    pub fn complete(self) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             let duration = self.start_time.elapsed().unwrap_or_default();
@@ -1331,7 +1330,7 @@ impl<'a> SafeMemoryAllocation<'a> {
     ///
     /// * `data` - The allocated memory slice
     /// * `context` - The safety context for verification
-    pub fn new(data: &'a mut [u8], context: &'a SafetyContext) -> WrtResult<Self> {
+    pub fn new(data: &'a mut [u8], context: &'a SafetyContext) -> wrt_error::Result<Self> {
         let checksum = Self::calculate_checksum(data);
 
         Ok(Self {
@@ -1347,7 +1346,7 @@ impl<'a> SafeMemoryAllocation<'a> {
     }
 
     /// Verify memory integrity
-    pub fn verify_integrity(&self) -> WrtResult<()> {
+    pub fn verify_integrity(&self) -> wrt_error::Result<()> {
         if self.context.effective_asil().requires_memory_protection() {
             let current_checksum = Self::calculate_checksum(self.data);
             if current_checksum != self.checksum {
@@ -1364,7 +1363,7 @@ impl<'a> SafeMemoryAllocation<'a> {
     }
 
     /// Get mutable access to the underlying data
-    pub fn data_mut(&mut self) -> WrtResult<&mut [u8]> {
+    pub fn data_mut(&mut self) -> wrt_error::Result<&mut [u8]> {
         self.verify_integrity()?;
         Ok(self.data)
     }
@@ -1618,7 +1617,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safety_guard() -> WrtResult<()> {
+    fn test_safety_guard() -> wrt_error::Result<()> {
         let ctx = SafetyContext::new(AsilLevel::AsilB);
 
         let guard = SafetyGuard::new(&ctx, "test_operation")?;
@@ -1632,7 +1631,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_memory_allocation() -> WrtResult<()> {
+    fn test_safe_memory_allocation() -> wrt_error::Result<()> {
         let ctx = SafetyContext::new(AsilLevel::AsilC);
         let mut data = [1u8, 2u8, 3u8, 4u8];
 
@@ -1661,7 +1660,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safety_guarded_macro() -> WrtResult<()> {
+    fn test_safety_guarded_macro() -> wrt_error::Result<()> {
         let ctx = SafetyContext::new(AsilLevel::AsilA);
 
         let result = safety_guarded!(&ctx, "test_macro_operation", { 42 });
@@ -1772,7 +1771,7 @@ mod tests {
     }
 
     #[test]
-    fn test_universal_safety_context_secondary_standards() -> WrtResult<()> {
+    fn test_universal_safety_context_secondary_standards() -> wrt_error::Result<()> {
         let mut ctx = UniversalSafetyContext::new(SafetyStandard::Iso26262(AsilLevel::AsilB));
 
         // Add higher severity secondary standard

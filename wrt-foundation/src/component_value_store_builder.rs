@@ -23,7 +23,7 @@ use crate::{
     },
     verification::VerificationLevel,
     MemoryProvider,
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// Builder for `ComponentValueStore` instances.
@@ -102,7 +102,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStoreBu
     ///
     /// Returns an error if the component value store cannot be created with the
     /// given provider.
-    pub fn build(self) -> WrtResult<ComponentValueStore<P>> {
+    pub fn build(self) -> wrt_error::Result<ComponentValueStore<P>> {
         // First configure the provider with the specified verification level
         let mut provider = self.provider.clone();
         provider.set_verification_level(self.verification_level);

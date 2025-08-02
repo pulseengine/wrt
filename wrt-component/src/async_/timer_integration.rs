@@ -62,7 +62,7 @@ pub struct TimerIntegration {
 
 /// Timer identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TimerId(u64;
+pub struct TimerId(u64);
 
 /// Timer implementation
 #[derive(Debug)]
@@ -212,9 +212,9 @@ impl TimerIntegration {
         
         Self {
             bridge,
-            timers: BoundedMap::new(provider.clone())?,
-            timer_queue: BoundedBinaryHeap::new(provider).unwrap(),
-            component_contexts: BoundedMap::new(provider.clone())?,
+            timers: BoundedMap::new(provider.clone()).unwrap(),
+            timer_queue: BoundedBinaryHeap::new(provider.clone()).unwrap(),
+            component_contexts: BoundedMap::new(provider).unwrap(),
             next_timer_id: AtomicU64::new(1),
             current_time: AtomicU64::new(0),
             timer_stats: TimerStatistics::default(),
@@ -238,8 +238,8 @@ impl TimerIntegration {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentTimerContext {
             component_id,
-            owned_timers: BoundedVec::new(provider)?,
-            active_timeouts: BoundedMap::new(provider.clone())?,
+            owned_timers: BoundedVec::new(provider.clone())?,
+            active_timeouts: BoundedMap::new(provider)?,
             timer_limits: limits,
             rate_limit_state: RateLimitState {
                 fires_this_period: AtomicU32::new(0),
@@ -282,7 +282,7 @@ impl TimerIntegration {
         }
 
         let timer_id = TimerId(self.next_timer_id.fetch_add(1, Ordering::AcqRel));
-        let current_time = self.get_current_time);
+        let current_time = self.get_current_time();
         let expiration_time = current_time + duration_ms;
 
         let timer = Timer {
@@ -325,9 +325,9 @@ impl TimerIntegration {
         // Update statistics
         self.timer_stats.total_timers_created.fetch_add(1, Ordering::Relaxed);
         let current_count = self.timers.len() as u32;
-        let max_count = self.timer_stats.max_concurrent_timers.load(Ordering::Relaxed;
+        let max_count = self.timer_stats.max_concurrent_timers.load(Ordering::Relaxed);
         if current_count > max_count {
-            self.timer_stats.max_concurrent_timers.store(current_count, Ordering::Relaxed;
+            self.timer_stats.max_concurrent_timers.store(current_count, Ordering::Relaxed);
         }
 
         Ok(timer_id)
@@ -368,7 +368,7 @@ impl TimerIntegration {
             true,
             Ordering::AcqRel,
             Ordering::Acquire,
-        ).is_ok);
+        ).is_ok();
 
         if was_cancelled {
             timer.fuel_consumed.fetch_add(TIMER_CANCEL_FUEL, Ordering::Relaxed);
@@ -377,7 +377,7 @@ impl TimerIntegration {
             // Remove from component timeout tracking if applicable
             if let TimerType::Timeout { operation_id, .. } = &timer.timer_type {
                 if let Some(context) = self.component_contexts.get_mut(&timer.component_id) {
-                    context.active_timeouts.remove(operation_id;
+                    context.active_timeouts.remove(operation_id);
                 }
             }
         }
@@ -387,7 +387,7 @@ impl TimerIntegration {
 
     /// Process expired timers
     pub fn process_timers(&mut self) -> Result<TimerProcessResult, Error> {
-        let current_time = self.get_current_time);
+        let current_time = self.get_current_time();
         let mut fired_timers = Vec::new();
         let mut timers_to_reschedule = Vec::new();
 
@@ -428,7 +428,7 @@ impl TimerIntegration {
 
                 // Wake the timer's waker if available
                 if let Some(waker) = timer.waker.take() {
-                    waker.wake);
+                    waker.wake();
                 }
 
                 // Handle repeating timers
@@ -449,7 +449,7 @@ impl TimerIntegration {
                         
                         // Remove from component timeout tracking
                         if let Some(context) = self.component_contexts.get_mut(&timer.component_id) {
-                            context.active_timeouts.remove(operation_id;
+                            context.active_timeouts.remove(operation_id);
                         }
                         
                         // Mark for cleanup
@@ -489,7 +489,7 @@ impl TimerIntegration {
             Error::validation_invalid_input("Timer not found")
         })?;
 
-        let current_time = self.get_current_time);
+        let current_time = self.get_current_time();
         let time_remaining = if timer.expiration_time > current_time {
             Some(timer.expiration_time - current_time)
         } else {
@@ -533,16 +533,16 @@ impl TimerIntegration {
             Error::validation_invalid_input("Component not found")
         })?;
 
-        let current_time = self.get_current_time);
-        let period_start = context.rate_limit_state.period_start.load(Ordering::Acquire;
+        let current_time = self.get_current_time();
+        let period_start = context.rate_limit_state.period_start.load(Ordering::Acquire);
 
         // Check if we need to reset the period
         if current_time - period_start >= context.rate_limit_state.period_duration_ms {
-            context.rate_limit_state.period_start.store(current_time, Ordering::Release;
-            context.rate_limit_state.fires_this_period.store(0, Ordering::Release;
+            context.rate_limit_state.period_start.store(current_time, Ordering::Release);
+            context.rate_limit_state.fires_this_period.store(0, Ordering::Release);
         }
 
-        let fires_this_period = context.rate_limit_state.fires_this_period.load(Ordering::Acquire;
+        let fires_this_period = context.rate_limit_state.fires_this_period.load(Ordering::Acquire);
         if fires_this_period >= context.rate_limit_state.max_fires_per_period {
             return Ok(false); // Rate limit exceeded
         }
@@ -555,11 +555,11 @@ impl TimerIntegration {
         if let Some(timer) = self.timers.remove(&timer_id) {
             // Remove from component context
             if let Some(context) = self.component_contexts.get_mut(&timer.component_id) {
-                context.owned_timers.retain(|&id| id != timer_id;
+                context.owned_timers.retain(|&id| id != timer_id);
             }
 
             // Add fuel to total consumption
-            let fuel_consumed = timer.fuel_consumed.load(Ordering::Acquire;
+            let fuel_consumed = timer.fuel_consumed.load(Ordering::Acquire);
             self.timer_stats.total_fuel_consumed.fetch_add(fuel_consumed, Ordering::Relaxed);
         }
         Ok(())
@@ -614,15 +614,15 @@ impl CoreFuture for TimerFuture {
             if let Ok(mut timers) = timer_integration.lock() {
                 if let Some(timer) = timers.timers.get_mut(&self.timer_id) {
                     if timer.cancelled.load(Ordering::Acquire) {
-                        return Poll::Ready(Err(Error::runtime_execution_error("Timer cancelled");
+                        return Poll::Ready(Err(Error::runtime_execution_error("Timer cancelled")));
                     }
 
-                    let current_time = timers.get_current_time);
+                    let current_time = timers.get_current_time();
                     if current_time >= timer.expiration_time {
                         Poll::Ready(Ok(()))
                     } else {
                         // Store waker for when timer fires
-                        timer.waker = Some(cx.waker().clone();
+                        timer.waker = Some(cx.waker().clone());
                         Poll::Pending
                     }
                 } else {
@@ -668,9 +668,9 @@ mod tests {
     use crate::{task_manager::TaskManager, threading::thread_spawn_fuel::FuelTrackedThreadManager};
 
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new();
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
+        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default();
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -679,8 +679,8 @@ mod tests {
 
     #[test]
     fn test_timer_creation() {
-        let bridge = create_test_bridge);
-        let mut timers = TimerIntegration::new(bridge, None;
+        let bridge = create_test_bridge();
+        let mut timers = TimerIntegration::new(bridge, None);
         
         let component_id = ComponentInstanceId::new(1);
         timers.initialize_component_timers(component_id, None).unwrap();
@@ -692,29 +692,29 @@ mod tests {
         ).unwrap();
         
         let status = timers.get_timer_status(timer_id).unwrap();
-        assert_eq!(status.component_id, component_id;
-        assert_eq!(status.timer_type, TimerType::Oneshot;
+        assert_eq!(status.component_id, component_id);
+        assert_eq!(status.timer_type, TimerType::Oneshot);
     }
 
     #[test]
     fn test_timer_statistics() {
-        let bridge = create_test_bridge);
-        let timers = TimerIntegration::new(bridge, None;
+        let bridge = create_test_bridge();
+        let timers = TimerIntegration::new(bridge, None);
         
-        let stats = timers.get_timer_statistics);
+        let stats = timers.get_timer_statistics();
         assert_eq!(stats.total_timers_created, 0);
         assert_eq!(stats.active_timers, 0);
     }
 
     #[test]
     fn test_timer_types() {
-        assert_eq!(TimerType::Oneshot, TimerType::Oneshot;
-        assert_ne!(TimerType::Oneshot, TimerType::Interval(1000;
+        assert_eq!(TimerType::Oneshot, TimerType::Oneshot);
+        assert_ne!(TimerType::Oneshot, TimerType::Interval(1000));
         
         match (TimerType::Timeout { operation_id: 42, timeout_duration: 5000 }) {
             TimerType::Timeout { operation_id, timeout_duration } => {
-                assert_eq!(operation_id, 42;
-                assert_eq!(timeout_duration, 5000;
+                assert_eq!(operation_id, 42);
+                assert_eq!(timeout_duration, 5000);
             },
             _ => panic!("Expected timeout timer"),
         }
@@ -722,8 +722,8 @@ mod tests {
 
     #[test]
     fn test_timer_cancellation() {
-        let bridge = create_test_bridge);
-        let mut timers = TimerIntegration::new(bridge, None;
+        let bridge = create_test_bridge();
+        let mut timers = TimerIntegration::new(bridge, None);
         
         let component_id = ComponentInstanceId::new(1);
         timers.initialize_component_timers(component_id, None).unwrap();

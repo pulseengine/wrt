@@ -62,7 +62,7 @@ use crate::{
     verification::VerificationLevel,
     Error,
     MemoryProvider,
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// Builder for `ComponentType` instances.
@@ -83,7 +83,7 @@ pub struct ComponentTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq 
 
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<P> {
     /// Create a new ComponentTypeBuilder with bounded collections
-    pub fn new() -> WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         let provider = P::default();
         Ok(Self {
             imports: BoundedVec::new(provider.clone())?,
@@ -217,7 +217,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
     }
 
     /// Builds and returns a configured `ComponentType`.
-    pub fn build(self) -> WrtResult<ComponentType<P>> {
+    pub fn build(self) -> wrt_error::Result<ComponentType<P>> {
         // Create bounded vectors for each collection
         let mut imports = BoundedVec::new(self.provider.clone())?;
         let mut exports = BoundedVec::new(self.provider.clone())?;
@@ -310,7 +310,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
     }
 
     /// Sets the namespace for the import from a string.
-    pub fn with_namespace_str(mut self, namespace_str: &str) -> WrtResult<Self> {
+    pub fn with_namespace_str(mut self, namespace_str: &str) -> wrt_error::Result<Self> {
         let namespace = Namespace::from_str(namespace_str, self.provider.clone())?;
         self.namespace = Some(namespace);
         Ok(self)
@@ -323,7 +323,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
     }
 
     /// Sets the name for the import from a string.
-    pub fn with_name_str(mut self, name_str: &str) -> WrtResult<Self> {
+    pub fn with_name_str(mut self, name_str: &str) -> wrt_error::Result<Self> {
         let name = WasmName::from_str(name_str, self.provider.clone())?;
         self.name = Some(name);
         Ok(self)
@@ -336,7 +336,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
     }
 
     /// Builds and returns a configured `Import`.
-    pub fn build(self) -> WrtResult<Import<P>> {
+    pub fn build(self) -> wrt_error::Result<Import<P>> {
         let namespace = self
             .namespace
             .ok_or_else(|| Error::validation_error("Import namespace is required"))?;
@@ -394,7 +394,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
     }
 
     /// Sets the name for the export from a string.
-    pub fn with_name_str(mut self, name_str: &str) -> WrtResult<Self> {
+    pub fn with_name_str(mut self, name_str: &str) -> wrt_error::Result<Self> {
         let name = WasmName::from_str(name_str, self.provider.clone())?;
         self.name = Some(name);
         Ok(self)
@@ -413,14 +413,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
     }
 
     /// Sets the description for the export from a string.
-    pub fn with_description_str(mut self, desc_str: &str) -> WrtResult<Self> {
+    pub fn with_description_str(mut self, desc_str: &str) -> wrt_error::Result<Self> {
         let desc = WasmName::from_str(desc_str, self.provider.clone())?;
         self.desc = Some(desc);
         Ok(self)
     }
 
     /// Builds and returns a configured `Export`.
-    pub fn build(self) -> WrtResult<Export<P>> {
+    pub fn build(self) -> wrt_error::Result<Export<P>> {
         let name = self.name.ok_or_else(|| Error::validation_error("Export name is required"))?;
 
         let ty = self.ty.ok_or_else(|| Error::validation_error("Export type is required"))?;
@@ -465,13 +465,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     }
 
     /// Adds an element to the namespace.
-    pub fn with_element(mut self, element: WasmName<MAX_NAME_LEN, P>) -> WrtResult<Self> {
+    pub fn with_element(mut self, element: WasmName<MAX_NAME_LEN, P>) -> wrt_error::Result<Self> {
         self.elements.push(element)?;
         Ok(self)
     }
 
     /// Adds an element to the namespace from a string.
-    pub fn with_element_str(mut self, element_str: &str) -> WrtResult<Self> {
+    pub fn with_element_str(mut self, element_str: &str) -> wrt_error::Result<Self> {
         let element = WasmName::from_str(element_str, self.provider.clone())?;
         self.elements.push(element)?;
         Ok(self)
@@ -481,7 +481,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     pub fn with_elements(
         mut self,
         elements: impl IntoIterator<Item = WasmName<MAX_NAME_LEN, P>>,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         for element in elements {
             self.elements.push(element)?;
         }
@@ -489,7 +489,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     }
 
     /// Creates a namespace from a colon-separated string.
-    pub fn from_str(namespace_str: &str, provider: P) -> WrtResult<Self> {
+    pub fn from_str(namespace_str: &str, provider: P) -> wrt_error::Result<Self> {
         let mut builder = Self::new().with_provider(provider.clone());
 
         for part in namespace_str.split(':') {
@@ -502,7 +502,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     }
 
     /// Builds and returns a configured `Namespace`.
-    pub fn build(self) -> WrtResult<Namespace<P>> {
+    pub fn build(self) -> wrt_error::Result<Namespace<P>> {
         Ok(Namespace {
             elements: self.elements,
         })
@@ -568,7 +568,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
     }
 
     /// Builds and returns a configured `ResourceType`.
-    pub fn build(self) -> WrtResult<ResourceType<P>> {
+    pub fn build(self) -> wrt_error::Result<ResourceType<P>> {
         let variant = self
             .variant
             .ok_or_else(|| Error::validation_error("Resource type variant must be specified"))?;
@@ -607,7 +607,7 @@ mod tests {
     };
 
     #[test]
-    fn test_component_type_builder() -> WrtResult<()> {
+    fn test_component_type_builder() -> wrt_error::Result<()> {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         let component_type = ComponentTypeBuilder::new().with_provider(provider.clone()).build()?;
@@ -624,7 +624,7 @@ mod tests {
     }
 
     #[test]
-    fn test_namespace_builder() -> WrtResult<()> {
+    fn test_namespace_builder() -> wrt_error::Result<()> {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Test building from parts
@@ -645,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn test_resource_type_builder() -> WrtResult<()> {
+    fn test_resource_type_builder() -> wrt_error::Result<()> {
         let provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
 
         // Test record resource type

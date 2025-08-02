@@ -16,7 +16,7 @@ use crate::prelude::{
     codes,
     Error,
     ErrorCategory,
-    Result as WrtResult,
+    Result,
 };
 use crate::{
     traits::{
@@ -84,7 +84,7 @@ impl ToBytes for FloatBits32 {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream, // PStream is not used for primitive types
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, _provider)
     }
 }
@@ -94,7 +94,7 @@ impl FromBytes for FloatBits32 {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream, // PStream is not used for primitive types
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let val = u32::from_bytes_with_provider(reader, _provider)?;
         Ok(FloatBits32(val))
     }
@@ -153,7 +153,7 @@ impl ToBytes for FloatBits64 {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream, // PStream is not used for primitive types
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, _provider)
     }
 }
@@ -163,14 +163,14 @@ impl FromBytes for FloatBits64 {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream, // PStream is not used for primitive types
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let val = u64::from_bytes_with_provider(reader, _provider)?;
         Ok(FloatBits64(val))
     }
 }
 
 impl LittleEndian for FloatBits32 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
+    fn from_le_bytes(bytes: &[u8]) -> wrt_error::Result<Self> {
         if bytes.len() != 4 {
             return Err(Error::runtime_execution_error(
                 "Invalid byte length for f32",
@@ -186,13 +186,13 @@ impl LittleEndian for FloatBits32 {
         Ok(FloatBits32(u32::from_le_bytes(arr)))
     }
 
-    fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) -> WrtResult<()> {
+    fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) -> wrt_error::Result<()> {
         self.0.write_le_bytes(writer)
     }
 }
 
 impl LittleEndian for FloatBits64 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
+    fn from_le_bytes(bytes: &[u8]) -> wrt_error::Result<Self> {
         if bytes.len() != 8 {
             return Err(Error::runtime_execution_error(
                 "Invalid byte length for f64",
@@ -208,7 +208,7 @@ impl LittleEndian for FloatBits64 {
         Ok(FloatBits64(u64::from_le_bytes(arr)))
     }
 
-    fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) -> WrtResult<()> {
+    fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) -> wrt_error::Result<()> {
         self.0.write_le_bytes(writer)
     }
 }

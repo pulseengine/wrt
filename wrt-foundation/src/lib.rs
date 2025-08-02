@@ -736,7 +736,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "std")]
-    fn test_boundedvec_to_vec_std() -> WrtResult<()> {
+    fn test_boundedvec_to_vec_std() -> wrt_error::Result<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
@@ -764,7 +764,7 @@ mod tests {
 
     #[test]
     #[cfg(not(feature = "std"))]
-    fn test_boundedvec_to_vec_no_std() -> WrtResult<()> {
+    fn test_boundedvec_to_vec_no_std() -> wrt_error::Result<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
@@ -794,7 +794,7 @@ mod tests {
     }
 
     #[test]
-    fn test_safe_memory_handler_to_vec() -> WrtResult<()> {
+    fn test_safe_memory_handler_to_vec() -> wrt_error::Result<()> {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]

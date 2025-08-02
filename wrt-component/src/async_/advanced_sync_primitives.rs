@@ -243,7 +243,7 @@ impl AdvancedSyncPrimitives {
             max_rwlocks: 16,
             max_latches: 8,
             fuel_budget: 50_000,
-        };
+        });
 
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context = ComponentSyncContext {
@@ -278,13 +278,13 @@ impl AdvancedSyncPrimitives {
                     false
                 }
             })
-            .count);
+            .count();
 
         if current_mutexes >= context.sync_limits.max_mutexes {
-            return Err(Error::resource_limit_exceeded("Component mutex limit exceeded";
+            return Err(Error::resource_limit_exceeded("Component mutex limit exceeded"));
         }
 
-        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel;
+        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
 
         let primitive = SyncPrimitive {
@@ -326,10 +326,10 @@ impl AdvancedSyncPrimitives {
         })?;
 
         if permits == 0 {
-            return Err(Error::validation_invalid_input("Semaphore must have at least 1 permit";
+            return Err(Error::validation_invalid_input("Semaphore must have at least 1 permit"));
         }
 
-        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel;
+        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
 
         let primitive = SyncPrimitive {
@@ -363,10 +363,10 @@ impl AdvancedSyncPrimitives {
         parties: u32,
     ) -> Result<SyncPrimitiveId, Error> {
         if parties == 0 {
-            return Err(Error::validation_invalid_input("Barrier must have at least 1 party";
+            return Err(Error::validation_invalid_input("Barrier must have at least 1 party"));
         }
 
-        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel;
+        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
 
         let primitive = SyncPrimitive {
@@ -411,7 +411,7 @@ impl AdvancedSyncPrimitives {
             }
         }
 
-        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel;
+        let primitive_id = SyncPrimitiveId(self.next_primitive_id.fetch_add(1, Ordering::AcqRel));
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
 
         let primitive = SyncPrimitive {

@@ -25,7 +25,7 @@ use crate::{
         ToBytes,
         Validatable,
     },
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// WebAssembly memory type supporting both linear and shared memory
@@ -128,7 +128,7 @@ impl ToBytes for MemoryType {
         &self,
         writer: &mut crate::traits::WriteStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             MemoryType::Linear { min, max } => {
                 writer.write_u8(0x00)?; // Linear memory flag
@@ -154,7 +154,7 @@ impl FromBytes for MemoryType {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut crate::traits::ReadStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let memory_flag = reader.read_u8()?;
         let min = reader.read_u32_le()?;
 

@@ -16,7 +16,7 @@ use core::marker::PhantomData;
 
 use crate::{
     Error,
-    WrtResult,
+    wrt_error::Result,
 };
 
 /// Platform capacity configuration for unified types

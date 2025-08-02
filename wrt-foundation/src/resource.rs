@@ -50,7 +50,7 @@ use crate::{
         VerificationLevel,
     },
     MemoryProvider,
-    WrtResult,
+    wrt_error::Result,
 };
 
 // use crate::prelude::{format, ToString, String as PreludeString, Vec as
@@ -348,7 +348,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> ToBytes for ResourceRepr<
         &self,
         writer: &mut WriteStream<'a>,
         stream_provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             ResourceRepr::Primitive(val_type) => {
                 writer.write_u8(0)?; // Tag for Primitive
@@ -375,7 +375,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for ResourceRep
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         stream_provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let tag = reader.read_u8()?;
         match tag {
             0 => {
@@ -468,7 +468,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> ToBytes for Resource<P> {
         &self,
         writer: &mut WriteStream<'a>,
         stream_provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.id.to_bytes_with_provider(writer, stream_provider)?; // u32 doesn't use provider, but trait requires it
         self.repr.to_bytes_with_provider(writer, stream_provider)?;
         self.name.to_bytes_with_provider(writer, stream_provider)?;
@@ -481,7 +481,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for Resource<P>
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         stream_provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let id = u32::from_bytes_with_provider(reader, stream_provider)?; // u32 doesn't use provider, but trait requires it
         let repr = ResourceRepr::<P>::from_bytes_with_provider(reader, stream_provider)?;
         let name = Option::<WasmName<MAX_WASM_NAME_LENGTH, P>>::from_bytes_with_provider(
@@ -529,7 +529,7 @@ impl ToBytes for ResourceTableIdx {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream, // Not used by u32
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.0.to_bytes_with_provider(writer, _provider) // u32's to_bytes
                                                          // doesn't take
                                                          // provider
@@ -540,7 +540,7 @@ impl FromBytes for ResourceTableIdx {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream, // Not used by u32
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let val = u32::from_bytes_with_provider(reader, _provider)?; // u32's from_bytes doesn't take provider
         Ok(ResourceTableIdx(val))
     }
@@ -551,7 +551,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> ToBytes for ResourceType<
         &self,
         writer: &mut WriteStream<'a>,
         stream_provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             ResourceType::Record(fields) => {
                 writer.write_u8(DISCRIMINANT_RESOURCE_TYPE_RECORD)?;
@@ -570,7 +570,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + Debug> FromBytes for ResourceTyp
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         stream_provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let tag = reader.read_u8()?;
         match tag {
             DISCRIMINANT_RESOURCE_TYPE_RECORD => {

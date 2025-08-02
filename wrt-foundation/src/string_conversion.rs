@@ -8,7 +8,7 @@ use crate::{
     bounded::BoundedString,
     MemoryProvider,
     traits::{BoundedCapacity, Checksummable, ToBytes, FromBytes},
-    WrtResult,
+    wrt_error::Result,
 };
 use wrt_error::{Error, Result};
 
@@ -67,7 +67,7 @@ where
     }
     
     /// Get the string content as a &str
-    pub fn as_str(&self) -> WrtResult<&str> {
+    pub fn as_str(&self) -> wrt_error::Result<&str> {
         self.inner.as_str()
     }
     
@@ -108,7 +108,7 @@ where
         &self,
         writer: &mut crate::traits::WriteStream<'a>,
         provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         self.inner.to_bytes_with_provider(writer, provider)
     }
 }
@@ -120,7 +120,7 @@ where
     fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
         reader: &mut crate::traits::ReadStream<'a>,
         provider: &PStream,
-    ) -> WrtResult<Self>
+    ) -> wrt_error::Result<Self>
     where
         Self: Sized,
     {
