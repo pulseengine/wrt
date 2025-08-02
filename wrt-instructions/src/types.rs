@@ -123,7 +123,7 @@ impl wrt_foundation::traits::Checksummable for RefValue {
         match self {
             Self::Null => checksum.update_slice(&[0u8]),
             Self::FuncRef(id) => {
-                checksum.update_slice(&[1u8];
+                checksum.update_slice(&[1u8]);
                 checksum.update_slice(&id.to_le_bytes());
             },
             Self::ExternRef(id) => {
@@ -165,13 +165,13 @@ impl wrt_foundation::traits::FromBytes for RefValue {
             1 => {
                 let mut id_bytes = [0u8; 4];
                 reader.read_exact(&mut id_bytes)?;
-                let id = u32::from_le_bytes(id_bytes;
+                let id = u32::from_le_bytes(id_bytes);
                 Ok(Self::FuncRef(id))
             },
             2 => {
                 let mut id_bytes = [0u8; 4];
                 reader.read_exact(&mut id_bytes)?;
-                let id = u32::from_le_bytes(id_bytes;
+                let id = u32::from_le_bytes(id_bytes);
                 Ok(Self::ExternRef(id))
             },
             _ => Err(Error::validation_error("Invalid discriminant for RefValue")),
@@ -199,7 +199,7 @@ macro_rules! make_vec {
         use wrt_foundation::{safe_managed_alloc, budget_aware_provider::CrateId};
         let provider = safe_managed_alloc!(65536, CrateId::Instructions).unwrap();
         let mut v = BoundedVec::new(provider).unwrap();
-        $(v.push($elem).unwrap());)*
+        $(v.push($elem).unwrap();)*
         v
     }};
 }

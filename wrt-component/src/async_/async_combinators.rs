@@ -50,7 +50,7 @@ pub struct AsyncCombinators {
 
 /// Combinator operation identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CombinatorId(u64;
+pub struct CombinatorId(u64);
 
 /// Combinator operation
 #[derive(Debug)]
@@ -141,14 +141,14 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::validation_invalid_input("Cannot select from empty futures collection";
+            return Err(Error::validation_invalid_input("Cannot select from empty futures collection"));
         }
 
         if futures.len() > MAX_COMBINATOR_FUTURES {
-            return Err(Error::resource_limit_exceeded("Too many futures for select operation";
+            return Err(Error::resource_limit_exceeded("Too many futures for select operation"));
         }
 
-        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
+        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
         
         let combinator_type = CombinatorType::Select {
             futures,
@@ -189,13 +189,13 @@ impl AsyncCombinators {
         };
 
         let mut stored_operation = operation;
-        stored_operation.task_id = Some(task_id;
+        stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
             Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
-        self.combinator_stats.total_selects.fetch_add(1, Ordering::Relaxed;
+        self.combinator_stats.total_selects.fetch_add(1, Ordering::Relaxed);
 
         Ok(combinator_id)
     }
@@ -207,14 +207,14 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::validation_invalid_input("Cannot join empty futures collection";
+            return Err(Error::validation_invalid_input("Cannot join empty futures collection"));
         }
 
         if futures.len() > MAX_COMBINATOR_FUTURES {
-            return Err(Error::resource_limit_exceeded("Too many futures for join operation";
+            return Err(Error::resource_limit_exceeded("Too many futures for join operation"));
         }
 
-        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
+        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
         let futures_count = futures.len();
         
         let combinator_type = CombinatorType::Join {
@@ -251,13 +251,13 @@ impl AsyncCombinators {
         };
 
         let mut stored_operation = operation;
-        stored_operation.task_id = Some(task_id;
+        stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
             Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
-        self.combinator_stats.total_joins.fetch_add(1, Ordering::Relaxed;
+        self.combinator_stats.total_joins.fetch_add(1, Ordering::Relaxed);
 
         Ok(combinator_id)
     }
@@ -269,10 +269,10 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::validation_invalid_input("Cannot race empty futures collection";
+            return Err(Error::validation_invalid_input("Cannot race empty futures collection"));
         }
 
-        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
+        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
         
         let combinator_type = CombinatorType::Race {
             futures,
@@ -310,13 +310,13 @@ impl AsyncCombinators {
         };
 
         let mut stored_operation = operation;
-        stored_operation.task_id = Some(task_id;
+        stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
             Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
-        self.combinator_stats.total_races.fetch_add(1, Ordering::Relaxed;
+        self.combinator_stats.total_races.fetch_add(1, Ordering::Relaxed);
 
         Ok(combinator_id)
     }
@@ -328,7 +328,7 @@ impl AsyncCombinators {
         future: BoxedFuture,
         timeout_ms: u64,
     ) -> Result<CombinatorId, Error> {
-        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
+        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
         
         let combinator_type = CombinatorType::Timeout {
             future,
@@ -369,13 +369,13 @@ impl AsyncCombinators {
         };
 
         let mut stored_operation = operation;
-        stored_operation.task_id = Some(task_id;
+        stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
             Error::resource_limit_exceeded("Too many active combinators")
         })?;
 
-        self.combinator_stats.total_timeouts.fetch_add(1, Ordering::Relaxed;
+        self.combinator_stats.total_timeouts.fetch_add(1, Ordering::Relaxed);
 
         Ok(combinator_id)
     }
@@ -387,10 +387,10 @@ impl AsyncCombinators {
         futures: Vec<BoxedFuture>,
     ) -> Result<CombinatorId, Error> {
         if futures.is_empty() {
-            return Err(Error::validation_invalid_input("Cannot try_join empty futures collection";
+            return Err(Error::validation_invalid_input("Cannot try_join empty futures collection"));
         }
 
-        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
+        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
         let futures_count = futures.len();
         
         let combinator_type = CombinatorType::TryJoin {
@@ -425,7 +425,7 @@ impl AsyncCombinators {
         };
 
         let mut stored_operation = operation;
-        stored_operation.task_id = Some(task_id;
+        stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
             Error::resource_limit_exceeded("Too many active combinators")
@@ -441,7 +441,7 @@ impl AsyncCombinators {
         future_a: BoxedFuture,
         future_b: BoxedFuture,
     ) -> Result<CombinatorId, Error> {
-        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel;
+        let combinator_id = CombinatorId(self.next_combinator_id.fetch_add(1, Ordering::AcqRel));
         
         let combinator_type = CombinatorType::Zip {
             future_a,
@@ -476,7 +476,7 @@ impl AsyncCombinators {
         };
 
         let mut stored_operation = operation;
-        stored_operation.task_id = Some(task_id;
+        stored_operation.task_id = Some(task_id);
 
         self.active_combinators.insert(combinator_id, stored_operation).map_err(|_| {
             Error::resource_limit_exceeded("Too many active combinators")
@@ -575,25 +575,25 @@ impl AsyncCombinators {
             // Update statistics based on combinator type
             match operation.combinator_type {
                 CombinatorType::Select { .. } => {
-                    self.combinator_stats.completed_selects.fetch_add(1, Ordering::Relaxed;
+                    self.combinator_stats.completed_selects.fetch_add(1, Ordering::Relaxed);
                 },
                 CombinatorType::Join { .. } => {
-                    self.combinator_stats.completed_joins.fetch_add(1, Ordering::Relaxed;
+                    self.combinator_stats.completed_joins.fetch_add(1, Ordering::Relaxed);
                 },
                 CombinatorType::Race { .. } => {
-                    self.combinator_stats.completed_races.fetch_add(1, Ordering::Relaxed;
+                    self.combinator_stats.completed_races.fetch_add(1, Ordering::Relaxed);
                 },
                 CombinatorType::Timeout { ref timed_out, .. } => {
                     if timed_out.load(Ordering::Acquire) {
-                        self.combinator_stats.timed_out_operations.fetch_add(1, Ordering::Relaxed;
+                        self.combinator_stats.timed_out_operations.fetch_add(1, Ordering::Relaxed);
                     }
                 },
                 _ => {},
             }
 
             // Add fuel to total consumption
-            let fuel_consumed = operation.fuel_consumed.load(Ordering::Acquire;
-            self.combinator_stats.total_fuel_consumed.fetch_add(fuel_consumed, Ordering::Relaxed;
+            let fuel_consumed = operation.fuel_consumed.load(Ordering::Acquire);
+            self.combinator_stats.total_fuel_consumed.fetch_add(fuel_consumed, Ordering::Relaxed);
         }
         Ok(())
     }
@@ -662,9 +662,9 @@ mod tests {
     use crate::{task_manager::TaskManager, threading::thread_spawn_fuel::FuelTrackedThreadManager};
 
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new();
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
+        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default();
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -673,17 +673,17 @@ mod tests {
 
     #[test]
     fn test_combinator_creation() {
-        let bridge = create_test_bridge);
-        let combinators = AsyncCombinators::new(bridge;
+        let bridge = create_test_bridge();
+        let combinators = AsyncCombinators::new(bridge);
         assert_eq!(combinators.active_combinators.len(), 0);
     }
 
     #[test]
     fn test_combinator_statistics() {
-        let bridge = create_test_bridge);
-        let combinators = AsyncCombinators::new(bridge;
+        let bridge = create_test_bridge();
+        let combinators = AsyncCombinators::new(bridge);
         
-        let stats = combinators.get_combinator_statistics);
+        let stats = combinators.get_combinator_statistics();
         assert_eq!(stats.total_selects, 0);
         assert_eq!(stats.total_joins, 0);
         assert_eq!(stats.total_races, 0);
@@ -692,11 +692,11 @@ mod tests {
 
     #[test]
     fn test_helper_functions() {
-        let timeout_future = create_timeout_future(1000;
-        let delay_future = create_delay_future(500, ComponentValue::U32(42;
+        let timeout_future = create_timeout_future(1000);
+        let delay_future = create_delay_future(500, ComponentValue::U32(42));
         
         // Futures created successfully
-        assert!(!timeout_future.as_ref().as_ptr().is_null();
-        assert!(!delay_future.as_ref().as_ptr().is_null();
+        assert!(!timeout_future.as_ref().as_ptr().is_null());
+        assert!(!delay_future.as_ref().as_ptr().is_null());
     }
 }

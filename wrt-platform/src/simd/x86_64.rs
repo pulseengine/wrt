@@ -235,18 +235,18 @@ impl SimdProvider for X86SimdProvider {
         let mut result = [0u8; 16];
         
         // Extract i64 values
-        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]];
-        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]];
-        let b0 = i64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]];
-        let b1 = i64::from_le_bytes([b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]];
+        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]]);
+        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]]);
+        let b0 = i64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]);
+        let b1 = i64::from_le_bytes([b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]]);
         
         // Multiply
-        let r0 = a0.wrapping_mul(b0;
-        let r1 = a1.wrapping_mul(b1;
+        let r0 = a0.wrapping_mul(b0);
+        let r1 = a1.wrapping_mul(b1);
         
         // Store back
-        result[0..8].copy_from_slice(&r0.to_le_bytes);
-        result[8..16].copy_from_slice(&r1.to_le_bytes);
+        result[0..8].copy_from_slice(&r0.to_le_bytes());
+        result[8..16].copy_from_slice(&r1.to_le_bytes());
         
         result
     }
@@ -339,72 +339,72 @@ impl SimdProvider for X86SimdProvider {
     // f64x2 operations
     fn v128_f64x2_add(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
-            let result = _mm_add_pd(a_vec, b_vec;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
+            let result = _mm_add_pd(a_vec, b_vec);
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
     
     fn v128_f64x2_sub(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
-            let result = _mm_sub_pd(a_vec, b_vec;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
+            let result = _mm_sub_pd(a_vec, b_vec);
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
     
     fn v128_f64x2_mul(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
-            let result = _mm_mul_pd(a_vec, b_vec;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
+            let result = _mm_mul_pd(a_vec, b_vec);
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
     
     fn v128_f64x2_div(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
-            let result = _mm_div_pd(a_vec, b_vec;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
+            let result = _mm_div_pd(a_vec, b_vec);
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
     
     fn v128_f64x2_neg(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
             // Negate by XORing with sign bit mask
-            let sign_mask = _mm_set1_pd(-0.0;
-            let result = _mm_xor_pd(a_vec, sign_mask;
+            let sign_mask = _mm_set1_pd(-0.0);
+            let result = _mm_xor_pd(a_vec, sign_mask);
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
     
     fn v128_f64x2_sqrt(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let result = _mm_sqrt_pd(a_vec;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let result = _mm_sqrt_pd(a_vec);
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
@@ -413,8 +413,8 @@ impl SimdProvider for X86SimdProvider {
     fn v128_not(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
-            let all_ones = _mm_set1_epi32(-1;
-            let result = _mm_xor_si128(a_vec, all_ones;
+            let all_ones = _mm_set1_epi32(-1);
+            let result = _mm_xor_si128(a_vec, all_ones);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -438,7 +438,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_or_si128(a_vec, b_vec;
+            let result = _mm_or_si128(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -450,7 +450,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_xor_si128(a_vec, b_vec;
+            let result = _mm_xor_si128(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -464,7 +464,7 @@ impl SimdProvider for X86SimdProvider {
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
             // _mm_andnot_si128 computes NOT(a) AND b
             // We want a AND NOT(b), so swap arguments
-            let result = _mm_andnot_si128(b_vec, a_vec;
+            let result = _mm_andnot_si128(b_vec, a_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -476,12 +476,12 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let c_vec = _mm_loadu_si128(c.as_ptr() as *const __m128i;
+            let c_vec = _mm_loadu_si128(c.as_ptr() as *const __m128i);
             
             // v128.bitselect: (a & c) | (b & ~c)
-            let a_and_c = _mm_and_si128(a_vec, c_vec;
-            let b_and_not_c = _mm_andnot_si128(c_vec, b_vec;
-            let result = _mm_or_si128(a_and_c, b_and_not_c;
+            let a_and_c = _mm_and_si128(a_vec, c_vec);
+            let b_and_not_c = _mm_andnot_si128(c_vec, b_vec);
+            let result = _mm_or_si128(a_and_c, b_and_not_c);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -494,9 +494,9 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let zero = _mm_setzero_si128();
-            let cmp = _mm_cmpeq_epi8(a_vec, zero;
+            let cmp = _mm_cmpeq_epi8(a_vec, zero);
             // If all bytes are zero, movemask will be 0xFFFF
-            let mask = _mm_movemask_epi8(cmp;
+            let mask = _mm_movemask_epi8(cmp);
             mask != 0xFFFF
         }
     }
@@ -505,9 +505,9 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let zero = _mm_setzero_si128();
-            let cmp = _mm_cmpeq_epi8(a_vec, zero;
+            let cmp = _mm_cmpeq_epi8(a_vec, zero);
             // If any byte is zero, movemask will have at least one bit set
-            let mask = _mm_movemask_epi8(cmp;
+            let mask = _mm_movemask_epi8(cmp);
             mask == 0
         }
     }
@@ -518,7 +518,7 @@ impl SimdProvider for X86SimdProvider {
             let zero = _mm_setzero_si128();
             let cmp = _mm_cmpeq_epi16(a_vec, zero;
             // Convert 16-bit comparison to byte mask
-            let mask = _mm_movemask_epi8(cmp;
+            let mask = _mm_movemask_epi8(cmp);
             // Each i16 produces 2 bits in the mask
             mask == 0
         }
@@ -537,8 +537,8 @@ impl SimdProvider for X86SimdProvider {
     
     fn v128_i64x2_all_true(&self, a: &[u8; 16]) -> bool {
         // SSE2 doesn't have _mm_cmpeq_epi64, check manually
-        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]];
-        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]];
+        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]]);
+        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]]);
         a0 != 0 && a1 != 0
     }
 
@@ -713,7 +713,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_cmpeq_epi8(a_vec, b_vec;
+            let result = _mm_cmpeq_epi8(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -730,7 +730,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_cmplt_epi8(a_vec, b_vec;
+            let result = _mm_cmplt_epi8(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -758,7 +758,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_cmpgt_epi8(a_vec, b_vec;
+            let result = _mm_cmpgt_epi8(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -795,7 +795,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_cmpeq_epi16(a_vec, b_vec;
+            let result = _mm_cmpeq_epi16(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -812,7 +812,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_cmplt_epi16(a_vec, b_vec;
+            let result = _mm_cmplt_epi16(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -839,7 +839,7 @@ impl SimdProvider for X86SimdProvider {
         unsafe {
             let a_vec = _mm_loadu_si128(a.as_ptr() as *const __m128i);
             let b_vec = _mm_loadu_si128(b.as_ptr() as *const __m128i);
-            let result = _mm_cmpgt_epi16(a_vec, b_vec;
+            let result = _mm_cmpgt_epi16(a_vec, b_vec);
             
             let mut output = [0u8; 16];
             _mm_storeu_si128(output.as_mut_ptr() as *mut __m128i, result);
@@ -955,17 +955,17 @@ impl SimdProvider for X86SimdProvider {
     // Comparison operations - i64x2 (limited in SSE2)
     fn v128_i64x2_eq(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         // Manual comparison for i64 since SSE2 doesn't have _mm_cmpeq_epi64
-        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]];
-        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]];
-        let b0 = i64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]];
-        let b1 = i64::from_le_bytes([b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]];
+        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]]);
+        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]]);
+        let b0 = i64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]);
+        let b1 = i64::from_le_bytes([b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]]);
         
         let r0 = if a0 == b0 { -1i64 } else { 0i64 };
         let r1 = if a1 == b1 { -1i64 } else { 0i64 };
         
         let mut result = [0u8; 16];
-        result[0..8].copy_from_slice(&r0.to_le_bytes);
-        result[8..16].copy_from_slice(&r1.to_le_bytes);
+        result[0..8].copy_from_slice(&r0.to_le_bytes());
+        result[8..16].copy_from_slice(&r1.to_le_bytes());
         result
     }
 
@@ -975,17 +975,17 @@ impl SimdProvider for X86SimdProvider {
     }
 
     fn v128_i64x2_lt_s(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
-        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]];
-        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]];
-        let b0 = i64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]];
-        let b1 = i64::from_le_bytes([b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]];
+        let a0 = i64::from_le_bytes([a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]]);
+        let a1 = i64::from_le_bytes([a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]]);
+        let b0 = i64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]]);
+        let b1 = i64::from_le_bytes([b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]]);
         
         let r0 = if a0 < b0 { -1i64 } else { 0i64 };
         let r1 = if a1 < b1 { -1i64 } else { 0i64 };
         
         let mut result = [0u8; 16];
-        result[0..8].copy_from_slice(&r0.to_le_bytes);
-        result[8..16].copy_from_slice(&r1.to_le_bytes);
+        result[0..8].copy_from_slice(&r0.to_le_bytes());
+        result[8..16].copy_from_slice(&r1.to_le_bytes());
         result
     }
 
@@ -1079,72 +1079,72 @@ impl SimdProvider for X86SimdProvider {
     // Comparison operations - f64x2
     fn v128_f64x2_eq(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_cmpeq_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
 
     fn v128_f64x2_ne(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_cmpneq_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
 
     fn v128_f64x2_lt(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_cmplt_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
 
     fn v128_f64x2_gt(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_cmpgt_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
 
     fn v128_f64x2_le(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_cmple_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
 
     fn v128_f64x2_ge(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_cmpge_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
@@ -1251,37 +1251,37 @@ impl SimdProvider for X86SimdProvider {
 
     fn v128_f64x2_abs(&self, a: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
             // Clear sign bit by ANDing with positive infinity
             let sign_mask = _mm_set1_pd(f64::from_bits(0x7FFFFFFFFFFFFFFF;
             let result = _mm_and_pd(a_vec, sign_mask;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
 
     fn v128_f64x2_min(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_min_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }
 
     fn v128_f64x2_max(&self, a: &[u8; 16], b: &[u8; 16]) -> [u8; 16] {
         unsafe {
-            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64;
-            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64;
+            let a_vec = _mm_loadu_pd(a.as_ptr() as *const f64);
+            let b_vec = _mm_loadu_pd(b.as_ptr() as *const f64);
             let result = _mm_max_pd(a_vec, b_vec;
             
             let mut output = [0u8; 16];
-            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result;
+            _mm_storeu_pd(output.as_mut_ptr() as *mut f64, result);
             output
         }
     }

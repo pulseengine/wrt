@@ -96,12 +96,12 @@ mod tests {
         fn new() -> Self {
             Self {
                 locals: {
-                    let mut v = Vec::with_capacity(10;
+                    let mut v = Vec::with_capacity(10);
                     for _ in 0..10 { v.push(Value::I32(0)); }
                     v
                 },
                 globals: {
-                    let mut v = Vec::with_capacity(5;
+                    let mut v = Vec::with_capacity(5);
                     for _ in 0..5 { v.push(Value::I32(0)); }
                     v
                 },
@@ -163,18 +163,18 @@ mod tests {
 
         // Test local.get
         VariableOp::LocalGet(0).execute(&mut context).unwrap();
-        assert_eq!(context.pop_value().unwrap(), Value::I32(42;
+        assert_eq!(context.pop_value().unwrap(), Value::I32(42));
 
         // Test local.set
         context.push_value(Value::I32(123)).unwrap();
         VariableOp::LocalSet(0).execute(&mut context).unwrap();
-        assert_eq!(context.get_local(0).unwrap(), Value::I32(123;
+        assert_eq!(context.get_local(0).unwrap(), Value::I32(123));
 
         // Test local.tee
         context.push_value(Value::I32(999)).unwrap();
         VariableOp::LocalTee(0).execute(&mut context).unwrap();
-        assert_eq!(context.get_local(0).unwrap(), Value::I32(999;
-        assert_eq!(context.pop_value().unwrap(), Value::I32(999;
+        assert_eq!(context.get_local(0).unwrap(), Value::I32(999));
+        assert_eq!(context.pop_value().unwrap(), Value::I32(999));
     }
 
     #[test]
@@ -187,12 +187,12 @@ mod tests {
 
         // Test global.get
         VariableOp::GlobalGet(0).execute(&mut context).unwrap();
-        assert_eq!(context.pop_value().unwrap(), Value::I32(42;
+        assert_eq!(context.pop_value().unwrap(), Value::I32(42));
 
         // Test global.set
         context.push_value(Value::I32(123)).unwrap();
         VariableOp::GlobalSet(0).execute(&mut context).unwrap();
-        assert_eq!(context.get_global(0).unwrap(), Value::I32(123;
+        assert_eq!(context.get_global(0).unwrap(), Value::I32(123));
     }
 
     #[test]
@@ -200,15 +200,15 @@ mod tests {
         let mut context = MockVariableContext::new();
 
         // Test invalid local index
-        let result = VariableOp::LocalGet(100).execute(&mut context;
-        assert!(result.is_err();
+        let result = VariableOp::LocalGet(100).execute(&mut context);
+        assert!(result.is_err());
 
         // Test invalid global index
-        let result = VariableOp::GlobalGet(100).execute(&mut context;
-        assert!(result.is_err();
+        let result = VariableOp::GlobalGet(100).execute(&mut context);
+        assert!(result.is_err());
 
         // Test stack underflow
-        let result = VariableOp::LocalSet(0).execute(&mut context;
-        assert!(result.is_err();
+        let result = VariableOp::LocalSet(0).execute(&mut context);
+        assert!(result.is_err());
     }
 }

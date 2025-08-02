@@ -61,7 +61,7 @@ pub fn format_limits_to_wrt_limits(
     if limits.memory64 {
         return Err(Error::runtime_execution_error(
             "memory64 limits are not supported by the current runtime type system (u32 limits).",
-        ;
+        ));
     }
 
     let min_u32 = limits.min.try_into().map_err(|_| {
@@ -102,13 +102,13 @@ pub fn format_limits_to_wrt_limits(
                 return Err(crate::error::validation_error_dynamic(format!(
                     "Maximum limit ({}) cannot be less than minimum limit ({}).",
                     max_val, min_u32
-                );
+                )));
             }
             #[cfg(not(any(feature = "std")))]
             {
                 return Err(crate::error::validation_error(
                     "Maximum limit cannot be less than minimum limit.",
-                ;
+                ));
             }
         }
     }
@@ -244,11 +244,11 @@ where
             return Err(crate::error::validation_error_dynamic(format!(
                 "Value {} is too small, minimum is {}",
                 value, min
-            );
+            )));
         }
         #[cfg(not(any(feature = "std")))]
         {
-            return Err(crate::error::validation_error("Value is too small";
+            return Err(crate::error::validation_error("Value is too small"));
         }
     }
 
@@ -258,11 +258,11 @@ where
             return Err(crate::error::validation_error_dynamic(format!(
                 "Value {} is too large, maximum is {}",
                 value, max
-            );
+            )));
         }
         #[cfg(not(any(feature = "std")))]
         {
-            return Err(crate::error::validation_error("Value is too large";
+            return Err(crate::error::validation_error("Value is too large"));
         }
     }
 
@@ -301,8 +301,8 @@ mod tests {
         assert!(matches!(
             format_value_2,
             FormatBlockType::ValueType(ValueType::I32)
-        ;
-        assert!(matches!(format_type_idx_2, FormatBlockType::TypeIndex(42));
+        ));
+        assert!(matches!(format_type_idx_2, FormatBlockType::TypeIndex(42)));
     }
 
     #[test]
@@ -314,8 +314,8 @@ mod tests {
             max: Some(20),
         };
 
-        let format_limits_min = wrt_limits_to_format_limits(&wrt_limits_min, false, false;
-        let format_limits_both = wrt_limits_to_format_limits(&wrt_limits_both, false, false;
+        let format_limits_min = wrt_limits_to_format_limits(&wrt_limits_min, false, false);
+        let format_limits_both = wrt_limits_to_format_limits(&wrt_limits_both, false, false);
 
         assert_eq!(format_limits_min.min, 10;
         assert_eq!(format_limits_min.max, None;
@@ -341,11 +341,11 @@ mod tests {
         let wrt_limits_min_2 = format_limits_to_wrt_limits(&format_limits_min).unwrap();
         let wrt_limits_both_2 = format_limits_to_wrt_limits(&format_limits_both).unwrap();
 
-        assert_eq!(wrt_limits_min_2.min, 10;
-        assert_eq!(wrt_limits_min_2.max, None;
+        assert_eq!(wrt_limits_min_2.min, 10);
+        assert_eq!(wrt_limits_min_2.max, None);
 
-        assert_eq!(wrt_limits_both_2.min, 10;
-        assert_eq!(wrt_limits_both_2.max, Some(20;
+        assert_eq!(wrt_limits_both_2.min, 10);
+        assert_eq!(wrt_limits_both_2.max, Some(20));
     }
 
     #[test]
@@ -356,10 +356,10 @@ mod tests {
         assert!(validate_format(10, 1, 10).is_ok());
 
         // Test error cases
-        let too_small = validate_format(0, 1, 10;
-        assert!(too_small.is_err();
+        let too_small = validate_format(0, 1, 10);
+        assert!(too_small.is_err());
 
-        let too_large = validate_format(11, 1, 10;
-        assert!(too_large.is_err();
+        let too_large = validate_format(11, 1, 10);
+        assert!(too_large.is_err());
     }
 }

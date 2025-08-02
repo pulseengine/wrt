@@ -717,7 +717,7 @@ impl wrt_foundation::traits::Checksummable for Modification {
                 checksum.update_slice(&[0u8]);
             },
             Modification::Replace { offset, data } => {
-                checksum.update_slice(&offset.to_le_bytes);
+                checksum.update_slice(&offset.to_le_bytes());
                 checksum.update_slice(&[1u8]); // tag for Replace variant
                 #[cfg(feature = "std")]
                 checksum.update_slice(data);
@@ -729,7 +729,7 @@ impl wrt_foundation::traits::Checksummable for Modification {
                 }
             },
             Modification::Insert { offset, data } => {
-                checksum.update_slice(&offset.to_le_bytes);
+                checksum.update_slice(&offset.to_le_bytes());
                 checksum.update_slice(&[2u8]); // tag for Insert variant
                 #[cfg(feature = "std")]
                 checksum.update_slice(data);
@@ -741,8 +741,8 @@ impl wrt_foundation::traits::Checksummable for Modification {
                 }
             },
             Modification::Remove { offset, length } => {
-                checksum.update_slice(&offset.to_le_bytes);
-                checksum.update_slice(&length.to_le_bytes);
+                checksum.update_slice(&offset.to_le_bytes());
+                checksum.update_slice(&length.to_le_bytes());
                 checksum.update_slice(&[3u8]); // tag for Remove variant
             },
         }

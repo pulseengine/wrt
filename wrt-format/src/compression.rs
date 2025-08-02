@@ -289,7 +289,7 @@ mod tests {
         // [1, 2]     - Literal sequence of one byte (2)
         // [0, 4, 3]  - Run of four 3's
         // [3, 4, 5, 5] - Literal sequence of three bytes (4, 5, 5)
-        assert_eq!(rle_decode(&encoded).unwrap(), mixed;
+        assert_eq!(rle_decode(&encoded).unwrap(), mixed);
     }
 
     #[test]

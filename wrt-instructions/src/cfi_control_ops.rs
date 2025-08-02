@@ -86,7 +86,7 @@ impl Default for CfiControlFlowProtection {
 impl CfiControlFlowProtection {
     /// Create CFI protection with specific level
     pub fn new_with_level(level: CfiProtectionLevel) -> Self {
-        let mut config = Self::default());
+        let mut config = Self::default();
         config.protection_level = level;
         
         // Adjust software config based on protection level
@@ -416,15 +416,15 @@ impl wrt_foundation::traits::Checksummable for CfiExpectedValue {
             Self::None => checksum.update_slice(&[0u8]),
             Self::FunctionSignatureHash(hash) => {
                 checksum.update_slice(&[1u8];
-                checksum.update_slice(&hash.to_le_bytes);
+                checksum.update_slice(&hash.to_le_bytes())?);
             }
             Self::ReturnAddress(addr) => {
                 checksum.update_slice(&[2u8];
-                checksum.update_slice(&addr.to_le_bytes);
+                checksum.update_slice(&addr.to_le_bytes())?);
             }
             Self::CallSiteId(id) => {
                 checksum.update_slice(&[3u8];
-                checksum.update_slice(&id.to_le_bytes);
+                checksum.update_slice(&id.to_le_bytes())?);
             }
         }
     }
@@ -440,15 +440,15 @@ impl wrt_foundation::traits::ToBytes for CfiExpectedValue {
             Self::None => writer.write_u8(0u8),
             Self::FunctionSignatureHash(hash) => {
                 writer.write_u8(1u8)?;
-                writer.write_all(&hash.to_le_bytes())
+                writer.write_all(&hash.to_le_bytes())?)
             }
             Self::ReturnAddress(addr) => {
                 writer.write_u8(2u8)?;
-                writer.write_all(&addr.to_le_bytes())
+                writer.write_all(&addr.to_le_bytes())?)
             }
             Self::CallSiteId(id) => {
                 writer.write_u8(3u8)?;
-                writer.write_all(&id.to_le_bytes())
+                writer.write_all(&id.to_le_bytes())?)
             }
         }
     }
@@ -465,7 +465,7 @@ impl wrt_foundation::traits::FromBytes for CfiExpectedValue {
             1 => {
                 let mut hash_bytes = [0u8; 8];
                 reader.read_exact(&mut hash_bytes)?;
-                let hash = u64::from_le_bytes(hash_bytes;
+                let hash = u64::from_le_bytes(hash_bytes);
                 Ok(Self::FunctionSignatureHash(hash))
             }
             2 => {
@@ -542,20 +542,20 @@ impl wrt_foundation::traits::Checksummable for CfiValidationRequirement {
         match self {
             Self::TypeSignatureCheck { expected_type_index, signature_hash } => {
                 checksum.update_slice(&[0u8];
-                checksum.update_slice(&expected_type_index.to_le_bytes);
-                checksum.update_slice(&signature_hash.to_le_bytes);
+                checksum.update_slice(&expected_type_index.to_le_bytes())?);
+                checksum.update_slice(&signature_hash.to_le_bytes())?);
             }
             Self::ShadowStackCheck => checksum.update_slice(&[1u8]),
             Self::ControlFlowTargetCheck { valid_targets } => {
                 checksum.update_slice(&[2u8];
                 for target in valid_targets.iter() {
-                    checksum.update_slice(&target.to_le_bytes);
+                    checksum.update_slice(&target.to_le_bytes())?);
                 }
             }
             Self::CallingConventionCheck => checksum.update_slice(&[3u8]),
             Self::TemporalCheck { max_duration } => {
                 checksum.update_slice(&[4u8];
-                checksum.update_slice(&max_duration.to_le_bytes);
+                checksum.update_slice(&max_duration.to_le_bytes())?);
             }
         }
     }
@@ -570,8 +570,8 @@ impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
         match self {
             Self::TypeSignatureCheck { expected_type_index, signature_hash } => {
                 writer.write_u8(0u8)?;
-                writer.write_all(&expected_type_index.to_le_bytes())?;
-                writer.write_all(&signature_hash.to_le_bytes())
+                writer.write_all(&expected_type_index.to_le_bytes())?)?;
+                writer.write_all(&signature_hash.to_le_bytes())?)
             }
             Self::ShadowStackCheck => writer.write_u8(1u8),
             Self::ControlFlowTargetCheck { valid_targets } => {
@@ -597,7 +597,7 @@ impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
             Self::CallingConventionCheck => writer.write_u8(3u8),
             Self::TemporalCheck { max_duration } => {
                 writer.write_u8(4u8)?;
-                writer.write_all(&max_duration.to_le_bytes())
+                writer.write_all(&max_duration.to_le_bytes())?)
             }
         }
     }
@@ -617,7 +617,7 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
                 
                 let mut hash_bytes = [0u8; 8];
                 reader.read_exact(&mut hash_bytes)?;
-                let signature_hash = u64::from_le_bytes(hash_bytes;
+                let signature_hash = u64::from_le_bytes(hash_bytes);
                 
                 Ok(Self::TypeSignatureCheck { expected_type_index, signature_hash })
             }
@@ -885,11 +885,11 @@ pub struct ShadowStackEntry {
 
 impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.return_address.0.to_le_bytes);
-        checksum.update_slice(&self.return_address.1.to_le_bytes);
-        checksum.update_slice(&self.signature_hash.to_le_bytes);
-        checksum.update_slice(&self.timestamp.to_le_bytes);
-        checksum.update_slice(&self.call_site_id.to_le_bytes);
+        checksum.update_slice(&self.return_address.0.to_le_bytes())?);
+        checksum.update_slice(&self.return_address.1.to_le_bytes())?);
+        checksum.update_slice(&self.signature_hash.to_le_bytes())?);
+        checksum.update_slice(&self.timestamp.to_le_bytes())?);
+        checksum.update_slice(&self.call_site_id.to_le_bytes())?);
     }
 }
 
@@ -899,11 +899,11 @@ impl wrt_foundation::traits::ToBytes for ShadowStackEntry {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &PStream,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&self.return_address.0.to_le_bytes())?;
-        writer.write_all(&self.return_address.1.to_le_bytes())?;
-        writer.write_all(&self.signature_hash.to_le_bytes())?;
-        writer.write_all(&self.timestamp.to_le_bytes())?;
-        writer.write_all(&self.call_site_id.to_le_bytes())
+        writer.write_all(&self.return_address.0.to_le_bytes())?)?;
+        writer.write_all(&self.return_address.1.to_le_bytes())?)?;
+        writer.write_all(&self.signature_hash.to_le_bytes())?)?;
+        writer.write_all(&self.timestamp.to_le_bytes())?)?;
+        writer.write_all(&self.call_site_id.to_le_bytes())?)
     }
 }
 
@@ -922,7 +922,7 @@ impl wrt_foundation::traits::FromBytes for ShadowStackEntry {
         
         let mut hash_bytes = [0u8; 8];
         reader.read_exact(&mut hash_bytes)?;
-        let signature_hash = u64::from_le_bytes(hash_bytes;
+        let signature_hash = u64::from_le_bytes(hash_bytes);
         
         let mut timestamp_bytes = [0u8; 8];
         reader.read_exact(&mut timestamp_bytes)?;
@@ -970,12 +970,12 @@ impl Default for LandingPadExpectation {
 
 impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes);
-        checksum.update_slice(&self.instruction_offset.to_le_bytes);
+        checksum.update_slice(&self.function_index.to_le_bytes())?);
+        checksum.update_slice(&self.instruction_offset.to_le_bytes())?);
         self.target_type.update_checksum(checksum;
         if let Some(deadline) = self.deadline {
             checksum.update_slice(&[1u8]); // has deadline
-            checksum.update_slice(&deadline.to_le_bytes);
+            checksum.update_slice(&deadline.to_le_bytes())?);
         } else {
             checksum.update_slice(&[0u8]); // no deadline
         }
@@ -989,12 +989,12 @@ impl wrt_foundation::traits::ToBytes for LandingPadExpectation {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &PStream,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&self.function_index.to_le_bytes())?;
-        writer.write_all(&self.instruction_offset.to_le_bytes())?;
+        writer.write_all(&self.function_index.to_le_bytes())?)?;
+        writer.write_all(&self.instruction_offset.to_le_bytes())?)?;
         self.target_type.to_bytes_with_provider(writer, provider)?;
         if let Some(deadline) = self.deadline {
             writer.write_u8(1u8)?; // has deadline
-            writer.write_all(&deadline.to_le_bytes())?;
+            writer.write_all(&deadline.to_le_bytes())?)?;
         } else {
             writer.write_u8(0u8)?; // no deadline
         }
