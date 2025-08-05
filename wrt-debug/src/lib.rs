@@ -386,7 +386,7 @@ impl<'a> DwarfDebugInfo<'a> {
         };
 
         // Create and initialize parser
-        let mut parser = DebugInfoParser::new(debug_info_data, debug_abbrev_data, debug_str_data;
+        let mut parser = DebugInfoParser::new(debug_info_data, debug_abbrev_data, debug_str_data);
         parser.parse()?;
 
         self.info_parser = Some(parser);
@@ -463,7 +463,7 @@ mod tests {
     #[cfg(feature = "line-info")]
     fn test_line_info_basics() {
         let data = &[0u8; 50];
-        let line_info = LineInfo::new(data;
+        let line_info = LineInfo::new(data);
 
         // Test initial state
         assert!(line_info.is_valid());

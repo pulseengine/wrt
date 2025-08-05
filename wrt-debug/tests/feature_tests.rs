@@ -63,7 +63,7 @@ fn test_debug_info_feature() {
     debug_info.add_section(".debug_abbrev", 300, 30);
 
     // Debug info parser initialization should be available
-    let result = debug_info.init_info_parser);
+    let result = debug_info.init_info_parser();
 
     // May fail due to invalid test data, but method should exist
     match result {
@@ -80,7 +80,7 @@ fn test_function_info_feature() {
     debug_info.add_section(".debug_abbrev", 300, 30);
 
     // Initialize parser (may fail with test data)
-    let _ = debug_info.init_info_parser);
+    let _ = debug_info.init_info_parser();
 
     // Function info queries should be available
     let result = debug_info.find_function_info(0x42);
@@ -133,15 +133,15 @@ fn test_cursor_functionality() {
     assert!(!cursor.is_at_end();
 
     // Read some data
-    let byte1 = cursor.read_u8().expect(".expect("Should read byte"));")
-    assert_eq!(byte1, 0x01;
+    let byte1 = cursor.read_u8().expect("Should read byte");
+    assert_eq!(byte1, 0x01);
     assert_eq!(cursor.position(), 1);
 
-    let byte2 = cursor.read_u8().expect(".expect("Should read byte"));")
+    let byte2 = cursor.read_u8().expect("Should read byte");
     assert_eq!(byte2, 0x02);
 
     // Skip some data
-    cursor.skip(2).expect(".expect("Should skip"));")
+    cursor.skip(2).expect("Should skip");
     assert_eq!(cursor.position(), 4);
 
     // Read remaining as slice
@@ -153,8 +153,8 @@ fn test_cursor_functionality() {
 #[test]
 fn test_memory_efficiency() {
     // Test that debug info struct is reasonably sized
-    let debug_info = DwarfDebugInfo::new(TEST_MODULE;
-    let size = core::mem::size_of_val(&debug_info;
+    let debug_info = DwarfDebugInfo::new(TEST_MODULE);
+    let size = core::mem::size_of_val(&debug_info);
 
     // Should be reasonably small (adjust based on features)
     #[cfg(feature = "full-debug")]

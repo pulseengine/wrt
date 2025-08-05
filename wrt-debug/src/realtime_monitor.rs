@@ -157,12 +157,12 @@ impl RealtimeMonitor {
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_err()
         {
-            return Err(Error::runtime_error("Monitor is already running";
+            return Err(Error::runtime_error("Monitor is already running"));
         }
 
         let config = self.config.clone();
-        let active = Arc::new(AtomicBool::new(true;
-        let sample_counter = Arc::new(AtomicUsize::new(0;
+        let active = Arc::new(AtomicBool::new(true));
+        let sample_counter = Arc::new(AtomicUsize::new(0));
         let history = Arc::clone(&self.history);
         let alerts = Arc::clone(&self.alerts);
 
@@ -174,7 +174,7 @@ impl RealtimeMonitor {
                 println!(
                     "🔍 Real-time memory monitor started (interval: {}ms)",
                     config.interval_ms
-                ;
+                );
             }
 
             while active_clone.load(Ordering::Acquire) {
@@ -185,7 +185,7 @@ impl RealtimeMonitor {
                     // Check for alerts
                     if let Some(alert) = Self::check_alerts(&sample, &config) {
                         if config.console_output {
-                            Self::print_alert(&alert;
+                            Self::print_alert(&alert);
                         }
 
                         // Store alert
@@ -194,42 +194,42 @@ impl RealtimeMonitor {
 
                             // Limit alert history
                             if alerts_guard.len() > 100 {
-                                alerts_guard.remove(0;
+                                alerts_guard.remove(0);
                             }
                         }
                     }
 
                     // Store sample in history
                     if let Ok(mut history_guard) = history.lock() {
-                        history_guard.push_back(sample.clone();
+                        history_guard.push_back(sample.clone());
 
                         // Maintain history size
                         while history_guard.len() > config.history_size {
-                            history_guard.pop_front);
+                            history_guard.pop_front();
                         }
                     }
 
                     // Auto-generate visualizations
                     if config.auto_visualize && timestamp % 60 == 0 {
                         // Every minute
-                        let _ = Self::auto_generate_reports(&config;
+                        let _ = Self::auto_generate_reports(&config);
                     }
                 }
 
-                thread::sleep(Duration::from_millis(config.interval_ms;
+                thread::sleep(Duration::from_millis(config.interval_ms));
             }
 
             if config.console_output {
                 println!("🛑 Real-time memory monitor stopped");
             }
-        };
+        });
 
         Ok(())
     }
 
     /// Stop monitoring
     pub fn stop(&self) {
-        self.active.store(false, Ordering::Release;
+        self.active.store(false, Ordering::Release);
     }
 
     /// Check if monitoring is active
@@ -245,7 +245,7 @@ impl RealtimeMonitor {
 
         use wrt_foundation::monitoring::MEMORY_MONITOR;
 
-        let monitor_stats = MEMORY_MONITOR.get_statistics);
+        let monitor_stats = MEMORY_MONITOR.get_statistics();
         let total_allocated = 0; // TODO: Get from capability context
 
         // Collect per-crate utilization
@@ -271,8 +271,8 @@ impl RealtimeMonitor {
 
         for (i, &_crate_id) in crates.iter().enumerate() {
             // TODO: Get allocation info from capability context
-            let allocated = 0; // TODO: context.get_crate_allocation(crate_id;
-            let budget = 0; // TODO: context.get_crate_budget(crate_id;
+            let allocated = 0; // TODO: context.get_crate_allocation(crate_id);
+            let budget = 0; // TODO: context.get_crate_budget(crate_id);
             if budget > 0 {
                 crate_utilization[i] = (allocated * 100) / budget;
             }
@@ -330,7 +330,7 @@ impl RealtimeMonitor {
                         #[cfg(not(any(feature = "std", feature = "alloc")))]
                         message: "Crate memory utilization critical",
                         crate_id: Some(crate_id),
-                    };
+                    });
                 } else if utilization >= config.alert_threshold {
                     return Some(MemoryAlert {
                         timestamp: sample.timestamp,
@@ -343,7 +343,7 @@ impl RealtimeMonitor {
                         #[cfg(not(any(feature = "std", feature = "alloc")))]
                         message: "Crate memory utilization high",
                         crate_id: Some(crate_id),
-                    };
+                    });
                 }
             }
         }
@@ -361,7 +361,7 @@ impl RealtimeMonitor {
                 #[cfg(not(any(feature = "std", feature = "alloc")))]
                 message: "Shared pool utilization critical",
                 crate_id: None,
-            };
+            });
         }
 
         None
@@ -379,7 +379,7 @@ impl RealtimeMonitor {
         println!(
             "{} MEMORY ALERT [{}]: {}",
             icon, alert.timestamp, alert.message
-        ;
+        );
     }
 
     /// Auto-generate visualization reports
@@ -398,19 +398,19 @@ impl RealtimeMonitor {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
-            .as_secs);
+            .as_secs();
 
         // Note: Visualization features will be restored when budget_visualization
         // module is available
-        let json_path = format!("{}/memory_report_{}.json", config.output_dir, timestamp;
-        let html_path = format!("{}/memory_report_{}.html", config.output_dir, timestamp;
+        let json_path = format!("{}/memory_report_{}.json", config.output_dir, timestamp);
+        let html_path = format!("{}/memory_report_{}.html", config.output_dir, timestamp);
 
         // Placeholder for now
-        let _ = fs::write(json_path, "{}";
+        let _ = fs::write(json_path, "{}");
         let _ = fs::write(
             html_path,
             "<html><body>Memory report placeholder</body></html>",
-        ;
+        );
 
         Ok(())
     }
@@ -520,17 +520,17 @@ mod tests {
 
     #[test]
     fn test_monitor_config_default() {
-        let config = MonitorConfig::default());
-        assert_eq!(config.interval_ms, 1000;
-        assert_eq!(config.alert_threshold, 80;
-        assert_eq!(config.critical_threshold, 95;
+        let config = MonitorConfig::default();
+        assert_eq!(config.interval_ms, 1000);
+        assert_eq!(config.alert_threshold, 80);
+        assert_eq!(config.critical_threshold, 95);
     }
 
     #[test]
     fn test_sample_collection() {
-        let _ = wrt_foundation::memory_system_initializer::presets::test);
+        let _ = wrt_foundation::memory_system_initializer::presets::test();
 
-        let sample = RealtimeMonitor::collect_sample(0;
+        let sample = RealtimeMonitor::collect_sample(0);
         assert!(sample.is_ok());
 
         let sample = sample.unwrap();
@@ -540,21 +540,21 @@ mod tests {
 
     #[test]
     fn test_monitor_creation() {
-        let config = MonitorConfig::default());
-        let monitor = RealtimeMonitor::new(config;
+        let config = MonitorConfig::default();
+        let monitor = RealtimeMonitor::new(config);
 
-        assert!(!monitor.is_active();
+        assert!(!monitor.is_active());
     }
 
     #[test]
     fn test_global_monitor_init() {
-        let config = MonitorConfig::default());
+        let config = MonitorConfig::default();
 
         // This might fail if already initialized, which is okay
-        let _ = init_global_monitor(config;
+        let _ = init_global_monitor(config);
 
         // Should be able to get current sample
-        let sample = get_current_sample);
+        let sample = get_current_sample();
         match sample {
             Ok(_) => {},  // Success
             Err(_) => {}, // Expected if memory system not initialized

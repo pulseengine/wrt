@@ -126,9 +126,9 @@ impl AbbreviationTable {
 
     /// Parse abbreviations from data
     pub fn parse(&mut self, data: &[u8]) -> Result<()> {
-        let mut cursor = DwarfCursor::new(data;
+        let mut cursor = DwarfCursor::new(data);
 
-        self.entries.clear);
+        self.entries.clear();
 
         while !cursor.is_at_end() {
             // Read abbreviation code

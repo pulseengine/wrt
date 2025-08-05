@@ -77,7 +77,7 @@ impl<'a> DwarfCursor<'a> {
     /// Read a single byte
     pub fn read_u8(&mut self) -> Result<u8> {
         if self.pos >= self.data.len() {
-            return Err(Error::parse_error("Unexpected end of DWARF data";
+            return Err(Error::parse_error("Unexpected end of DWARF data"));
         }
         let value = self.data[self.pos];
         self.pos += 1;
@@ -87,7 +87,7 @@ impl<'a> DwarfCursor<'a> {
     /// Read a 16-bit value (little-endian)
     pub fn read_u16(&mut self) -> Result<u16> {
         if self.pos + 2 > self.data.len() {
-            return Err(Error::parse_error("Unexpected end of DWARF data";
+            return Err(Error::parse_error("Unexpected end of DWARF data"));
         }
         let value = u16::from_le_bytes([self.data[self.pos], self.data[self.pos + 1]];
         self.pos += 2;
@@ -97,7 +97,7 @@ impl<'a> DwarfCursor<'a> {
     /// Read a 32-bit value (little-endian)
     pub fn read_u32(&mut self) -> Result<u32> {
         if self.pos + 4 > self.data.len() {
-            return Err(Error::parse_error("Unexpected end of DWARF data";
+            return Err(Error::parse_error("Unexpected end of DWARF data"));
         }
         let value = u32::from_le_bytes([
             self.data[self.pos],
@@ -112,7 +112,7 @@ impl<'a> DwarfCursor<'a> {
     /// Read a 64-bit value (little-endian)
     pub fn read_u64(&mut self) -> Result<u64> {
         if self.pos + 8 > self.data.len() {
-            return Err(Error::parse_error("Unexpected end of DWARF data";
+            return Err(Error::parse_error("Unexpected end of DWARF data"));
         }
         let value = u64::from_le_bytes([
             self.data[self.pos],

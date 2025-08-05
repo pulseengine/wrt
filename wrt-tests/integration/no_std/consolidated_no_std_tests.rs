@@ -60,10 +60,10 @@ mod tests {
             let runtime_error = kinds::runtime_error("Runtime error");
 
             let type_name_validation = core::any::type_name_of_val(&validation_error);
-            assert!(type_name_validation.contains("ValidationError");
+            assert!(type_name_validation.contains("ValidationError"));
 
             let type_name_memory = core::any::type_name_of_val(&memory_error);
-            assert!(type_name_memory.contains("MemoryAccessError");
+            assert!(type_name_memory.contains("MemoryAccessError"));
 
             let type_name_runtime = core::any::type_name_of_val(&runtime_error);
             assert!(type_name_runtime.contains("RuntimeError"));
@@ -401,7 +401,7 @@ mod tests {
                 shared: false,
             };
 
-            let types_limits = format_limits_to_types_limits(format_limits;
+            let types_limits = format_limits_to_types_limits(format_limits);
 
             assert_eq!(types_limits.min, 1);
             assert_eq!(types_limits.max, Some(2));
@@ -543,11 +543,10 @@ mod tests {
             use wrt_foundation::ValueType;
 
             // Test that we can use error handling with foundation types
-            let error = Error::runtime_execution_error(",
-            ;
+            let error = Error::runtime_execution_error("Test error message");
 
             let _value_type = ValueType::I32;
-            assert_eq!(error.category, ErrorCategory::Validation;
+            assert_eq!(error.category, ErrorCategory::Validation);
         }
 
         #[test]
@@ -557,7 +556,7 @@ mod tests {
             use wrt_foundation::NoStdProvider;
 
             // Test integration between platform and foundation
-            assert_eq!(WASM_PAGE_SIZE, 65536;
+            assert_eq!(WASM_PAGE_SIZE, 65536);
 
             const CAPACITY: usize = 4;
             let provider = NoStdProvider::<{ CAPACITY * 4 }>::default();
@@ -566,7 +565,7 @@ mod tests {
 
             // Ensure we can store page-related data
             vec.push(WASM_PAGE_SIZE as u32).unwrap();
-            assert_eq!(vec.get(0).unwrap(), WASM_PAGE_SIZE as u32;
+            assert_eq!(vec.get(0).unwrap(), WASM_PAGE_SIZE as u32);
         }
     }
 }
@@ -576,7 +575,7 @@ mod tests {
 // ===========================================
 
 // Panic handler disabled to avoid conflicts with workspace builds
-// #[cfg(all(not(feature = "), not(test)))]
+// #[cfg(all(not(feature = "std"), not(test)))]
 // #[panic_handler]
 // fn panic(_info: &core::panic::PanicInfo) -> ! {
 //     loop {}

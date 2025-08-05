@@ -37,7 +37,7 @@ mod complete_debug_tests {
                 Ok(())
             })
             .unwrap();
-        assert_eq!(output, "())";
+        assert_eq!(output, "()");
     }
 
     #[test]
@@ -235,8 +235,8 @@ mod complete_debug_tests {
         params.add_parameter(param2).unwrap();
 
         // Verify parameter access
-        assert_eq!(params.count(), 2;
-        assert!(params.get_by_position(0).is_some();
+        assert_eq!(params.count(), 2);
+        assert!(params.get_by_position(0).is_some());
         assert!(params.get_by_position(1).is_some());
         assert!(params.get_by_position(2).is_none());
     }
@@ -274,7 +274,7 @@ mod complete_debug_tests {
 
         // PC 0x2100 should find both functions
         let found: Vec<_> = inlined.find_at_pc(0x2100).collect();
-        assert_eq!(found.len(), 2;
+        assert_eq!(found.len(), 2);
 
         // Check depths
         let depths: Vec<_> = found.iter().map(|f| f.depth).collect();
