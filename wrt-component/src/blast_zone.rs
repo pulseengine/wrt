@@ -292,7 +292,7 @@ impl BlastZone {
     /// Add a component to this blast zone
     pub fn add_component(&mut self, component_id: u32) -> WrtResult<()> {
         if self.components.len() >= self.config.max_components {
-            return Err(wrt_error::Error::resource_exhausted("Blast zone at capacity";
+            return Err(wrt_error::Error::resource_exhausted("Blast zone at capacity"));
         }
 
         #[cfg(feature = "std")]
@@ -314,7 +314,7 @@ impl BlastZone {
         #[cfg(feature = "std")]
         {
             if let Some(pos) = self.components.iter().position(|&id| id == component_id) {
-                self.components.remove(pos;
+                self.components.remove(pos);
                 return true;
             }
         }
@@ -322,7 +322,7 @@ impl BlastZone {
         {
             for (i, &id) in self.components.iter().enumerate() {
                 if id == component_id {
-                    let _ = self.components.remove(i;
+                    let _ = self.components.remove(i);
                     return true;
                 }
             }
@@ -392,11 +392,11 @@ impl BlastZone {
         // Update memory usage
         if memory_delta < 0 {
             let decrease = (-memory_delta) as usize;
-            self.memory_used = self.memory_used.saturating_sub(decrease;
+            self.memory_used = self.memory_used.saturating_sub(decrease);
         } else {
             let increase = memory_delta as usize;
             if self.memory_used + increase > self.config.memory_budget {
-                return Err(wrt_error::Error::resource_exhausted("Memory budget exceeded";
+                return Err(wrt_error::Error::resource_exhausted("Memory budget exceeded"));
             }
             self.memory_used += increase;
         }
@@ -404,11 +404,11 @@ impl BlastZone {
         // Update resource usage
         if resource_delta < 0 {
             let decrease = (-resource_delta) as u32;
-            self.resources_used = self.resources_used.saturating_sub(decrease;
+            self.resources_used = self.resources_used.saturating_sub(decrease);
         } else {
             let increase = resource_delta as u32;
             if self.resources_used + increase > self.config.max_resources {
-                return Err(wrt_error::Error::resource_exhausted("Resource limit exceeded";
+                return Err(wrt_error::Error::resource_exhausted("Resource limit exceeded"));
             }
             self.resources_used += increase;
         }
@@ -502,7 +502,7 @@ impl BlastZoneManager {
 
         #[cfg(feature = "std")]
         {
-            self.zones.insert(zone_id, zone;
+            self.zones.insert(zone_id, zone);
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -523,7 +523,7 @@ impl BlastZoneManager {
                 wrt_foundation::wrt_error::Error::invalid_value("Zone not found")
             })?;
             zone.add_component(component_id)?;
-            self.component_zones.insert(component_id, zone_id;
+            self.component_zones.insert(component_id, zone_id);
         }
         #[cfg(not(any(feature = "std", )))]
         {
@@ -536,7 +536,7 @@ impl BlastZoneManager {
                 }
             }
             if !zone_found {
-                return Err(wrt_foundation::wrt_error::Error::invalid_value("Zone not found";
+                return Err(wrt_foundation::wrt_error::Error::invalid_value("Zone not found"));
             }
             self.component_zones.push((component_id, zone_id)).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many component mappings")
@@ -584,7 +584,7 @@ impl BlastZoneManager {
             #[cfg(feature = "std")]
             {
                 let zone = self.zones.get_mut(&zone_id).unwrap();
-                let should_contain = zone.record_failure(component_id, reason, timestamp;
+                let should_contain = zone.record_failure(component_id, reason, timestamp);
                 if should_contain {
                     zone.config.containment_policy
                 } else {
@@ -596,7 +596,7 @@ impl BlastZoneManager {
                 let mut policy = ContainmentPolicy::TerminateComponent;
                 for (zid, zone) in &mut self.zones {
                     if *zid == zone_id {
-                        let should_contain = zone.record_failure(component_id, reason, timestamp;
+                        let should_contain = zone.record_failure(component_id, reason, timestamp);
                         if should_contain {
                             policy = zone.config.containment_policy;
                         }
@@ -609,7 +609,7 @@ impl BlastZoneManager {
 
         // Check global failure threshold
         if self.global_failure_count >= self.global_failure_threshold {
-            return Ok(ContainmentPolicy::QuarantineZone;
+            return Ok(ContainmentPolicy::QuarantineZone);
         }
 
         Ok(containment_policy)
@@ -648,7 +648,7 @@ impl BlastZoneManager {
         {
             for (cid, zone_id) in &self.component_zones {
                 if *cid == component_id {
-                    return Some(*zone_id;
+                    return Some(*zone_id);
                 }
             }
             None
@@ -700,7 +700,7 @@ impl BlastZoneManager {
         {
             for (zid, zone) in &mut self.zones {
                 if *zid == zone_id {
-                    return zone.attempt_recovery);
+                    return zone.attempt_recovery();
                 }
             }
             Err(wrt_foundation::wrt_error::Error::invalid_value("Zone not found"))
@@ -728,8 +728,8 @@ impl BlastZoneManager {
 
     /// Check if a policy matches the interaction
     fn policy_matches(&self, policy: &IsolationPolicy, source_zone: u32, target_zone: u32) -> bool {
-        let source_matches = policy.source_zone.map_or(true, |z| z == source_zone;
-        let target_matches = policy.target_zone.map_or(true, |z| z == target_zone;
+        let source_matches = policy.source_zone.map_or(true, |z| z == source_zone);
+        let target_matches = policy.target_zone.map_or(true, |z| z == target_zone);
         source_matches && target_matches
     }
 }
@@ -772,61 +772,61 @@ mod tests {
     fn test_blast_zone_creation() {
         let config = BlastZoneConfig::new(1, "test-zone")
             .with_isolation_level(IsolationLevel::Memory)
-            .with_failure_threshold(5;
+            .with_failure_threshold(5);
 
         let zone = BlastZone::new(config).unwrap();
-        assert_eq!(zone.health(), ZoneHealth::Healthy;
+        assert_eq!(zone.health(), ZoneHealth::Healthy);
         assert_eq!(zone.component_count(), 0);
     }
 
     #[test]
     fn test_component_assignment() {
-        let config = BlastZoneConfig::new(1, "test-zone";
+        let config = BlastZoneConfig::new(1, "test-zone");
         let mut zone = BlastZone::new(config).unwrap();
 
         zone.add_component(100).unwrap();
         zone.add_component(101).unwrap();
 
-        assert_eq!(zone.component_count(), 2;
-        assert!(zone.contains_component(100);
-        assert!(zone.contains_component(101);
-        assert!(!zone.contains_component(102);
+        assert_eq!(zone.component_count(), 2);
+        assert!(zone.contains_component(100));
+        assert!(zone.contains_component(101));
+        assert!(!zone.contains_component(102));
     }
 
     #[test]
     fn test_failure_handling() {
         let config = BlastZoneConfig::new(1, "test-zone")
-            .with_failure_threshold(2;
+            .with_failure_threshold(2);
         let mut zone = BlastZone::new(config).unwrap();
 
         // First failure - should not trigger containment
-        let should_contain = zone.record_failure(100, "test error", 1000;
+        let should_contain = zone.record_failure(100, "test error", 1000);
         assert!(!should_contain);
-        assert_eq!(zone.health(), ZoneHealth::Degraded;
+        assert_eq!(zone.health(), ZoneHealth::Degraded);
 
         // Second failure - should trigger containment
-        let should_contain = zone.record_failure(101, "another error", 2000;
+        let should_contain = zone.record_failure(101, "another error", 2000);
         assert!(should_contain);
-        assert_eq!(zone.health(), ZoneHealth::Failed;
+        assert_eq!(zone.health(), ZoneHealth::Failed);
     }
 
     #[test]
     fn test_resource_usage() {
         let config = BlastZoneConfig::new(1, "test-zone")
-            .with_memory_budget(1000;
+            .with_memory_budget(1000);
         let mut zone = BlastZone::new(config).unwrap();
 
         // Add memory usage within budget
         zone.update_resource_usage(500, 5).unwrap();
-        assert_eq!(zone.memory_utilization(), 0.5;
+        assert_eq!(zone.memory_utilization(), 0.5);
 
         // Try to exceed budget
         let result = zone.update_resource_usage(600, 0);
-        assert!(result.is_err();
+        assert!(result.is_err());
 
         // Decrease usage
         zone.update_resource_usage(-200, -2).unwrap();
-        assert_eq!(zone.memory_utilization(), 0.3;
+        assert_eq!(zone.memory_utilization(), 0.3);
     }
 
     #[test]
@@ -834,8 +834,8 @@ mod tests {
         let mut manager = BlastZoneManager::new().unwrap();
 
         // Create zones
-        let config1 = BlastZoneConfig::new(1, "zone1";
-        let config2 = BlastZoneConfig::new(2, "zone2";
+        let config1 = BlastZoneConfig::new(1, "zone1");
+        let config2 = BlastZoneConfig::new(2, "zone2");
 
         manager.create_zone(config1).unwrap();
         manager.create_zone(config2).unwrap();
@@ -844,12 +844,12 @@ mod tests {
         manager.assign_component(100, 1).unwrap();
         manager.assign_component(101, 2).unwrap();
 
-        assert_eq!(manager.get_component_zone(100), Some(1;
-        assert_eq!(manager.get_component_zone(101), Some(2;
+        assert_eq!(manager.get_component_zone(100), Some(1));
+        assert_eq!(manager.get_component_zone(101), Some(2));
 
         // Test failure handling
         let policy = manager.handle_failure(100, "test failure", 1000).unwrap();
-        assert_eq!(policy, ContainmentPolicy::TerminateComponent;
+        assert_eq!(policy, ContainmentPolicy::TerminateComponent);
     }
 
     #[test]
@@ -858,9 +858,9 @@ mod tests {
 
         // Create zones with different isolation levels
         let config1 = BlastZoneConfig::new(1, "secure-zone")
-            .with_isolation_level(IsolationLevel::Full;
+            .with_isolation_level(IsolationLevel::Full);
         let config2 = BlastZoneConfig::new(2, "normal-zone")
-            .with_isolation_level(IsolationLevel::Resource;
+            .with_isolation_level(IsolationLevel::Resource);
 
         manager.create_zone(config1).unwrap();
         manager.create_zone(config2).unwrap();
@@ -875,7 +875,7 @@ mod tests {
             required_capabilities: Vec::new(),
             #[cfg(not(any(feature = "std", )))]
             required_capabilities: {
-                let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap_or_else(|_| panic!("Failed to allocate test memory";
+                let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap_or_else(|_| panic!("Failed to allocate test memory"));
                 BoundedVec::new(provider).unwrap()
             },
             max_transfer_size: 0,
@@ -885,26 +885,26 @@ mod tests {
         manager.add_policy(policy).unwrap();
 
         // Check interactions
-        assert!(!manager.is_interaction_allowed(2, 1))); // Should be denied by policy
-        assert!(manager.is_interaction_allowed(1, 2)));  // Should be allowed (higher to lower)
+        assert!(!manager.is_interaction_allowed(2, 1)); // Should be denied by policy
+        assert!(manager.is_interaction_allowed(1, 2));  // Should be allowed (higher to lower)
     }
 
     #[test]
     fn test_zone_recovery() {
         let config = BlastZoneConfig::new(1, "test-zone")
-            .with_recovery_strategy(RecoveryStrategy::RestartComponent;
+            .with_recovery_strategy(RecoveryStrategy::RestartComponent);
         let mut zone = BlastZone::new(config).unwrap();
 
         // Simulate failure
-        zone.record_failure(100, "test error", 1000;
-        zone.record_failure(101, "test error", 2000;
-        zone.record_failure(102, "test error", 3000;
+        zone.record_failure(100, "test error", 1000);
+        zone.record_failure(101, "test error", 2000);
+        zone.record_failure(102, "test error", 3000);
 
-        assert_eq!(zone.health(), ZoneHealth::Failed;
+        assert_eq!(zone.health(), ZoneHealth::Failed);
 
         // Attempt recovery
         let recovered = zone.attempt_recovery().unwrap();
         assert!(recovered);
-        assert_eq!(zone.health(), ZoneHealth::Healthy;
+        assert_eq!(zone.health(), ZoneHealth::Healthy);
     }
 }
