@@ -62,7 +62,7 @@ pub struct AdvancedSyncPrimitives {
 
 /// Synchronization primitive identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SyncPrimitiveId(u64;
+pub struct SyncPrimitiveId(u64);
 
 /// Synchronization primitive
 #[derive(Debug)]
@@ -218,15 +218,16 @@ impl AdvancedSyncPrimitives {
     pub fn new(
         bridge: Arc<Mutex<TaskManagerAsyncBridge>>,
         config: Option<SyncConfiguration>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Error> {
+        let provider = safe_managed_alloc!(4096, CrateId::Component)?;
+        Ok(Self {
             bridge,
             primitives: BoundedMap::new(provider.clone())?,
             component_contexts: BoundedMap::new(provider.clone())?,
             next_primitive_id: AtomicU64::new(1),
             sync_stats: SyncStatistics::default(),
             sync_config: config.unwrap_or_default(),
-        }
+        })
     }
 
     /// Initialize component for sync operations
@@ -309,7 +310,7 @@ impl AdvancedSyncPrimitives {
             Error::resource_limit_exceeded("Component primitive list full")
         })?;
 
-        self.sync_stats.total_mutexes_created.fetch_add(1, Ordering::Relaxed;
+        self.sync_stats.total_mutexes_created.fetch_add(1, Ordering::Relaxed);
 
         Ok(primitive_id)
     }
@@ -351,7 +352,7 @@ impl AdvancedSyncPrimitives {
 
         context.owned_primitives.push(primitive_id).ok();
 
-        self.sync_stats.total_semaphores_created.fetch_add(1, Ordering::Relaxed;
+        self.sync_stats.total_semaphores_created.fetch_add(1, Ordering::Relaxed);
 
         Ok(primitive_id)
     }
@@ -389,7 +390,7 @@ impl AdvancedSyncPrimitives {
             context.owned_primitives.push(primitive_id).ok();
         }
 
-        self.sync_stats.total_barriers_created.fetch_add(1, Ordering::Relaxed;
+        self.sync_stats.total_barriers_created.fetch_add(1, Ordering::Relaxed);
 
         Ok(primitive_id)
     }
@@ -407,7 +408,7 @@ impl AdvancedSyncPrimitives {
             })?;
 
             if !matches!(mutex.primitive_type, SyncPrimitiveType::AsyncMutex { .. }) {
-                return Err(Error::validation_invalid_input("Associated primitive is not a mutex";
+                return Err(Error::validation_invalid_input("Associated primitive is not a mutex"));
             }
         }
 
@@ -432,7 +433,7 @@ impl AdvancedSyncPrimitives {
             context.owned_primitives.push(primitive_id).ok();
         }
 
-        self.sync_stats.total_condvars_created.fetch_add(1, Ordering::Relaxed;
+        self.sync_stats.total_condvars_created.fetch_add(1, Ordering::Relaxed);
 
         Ok(primitive_id)
     }
@@ -454,10 +455,10 @@ impl AdvancedSyncPrimitives {
                 if locked.load(Ordering::Acquire) {
                     // Check for reentrant lock
                     if *is_reentrant && owner.as_ref() == Some(&task_id) {
-                        lock_count.fetch_add(1, Ordering::AcqRel;
-                        primitive.fuel_consumed.fetch_add(MUTEX_LOCK_FUEL, Ordering::Relaxed;
-                        self.sync_stats.total_mutex_locks.fetch_add(1, Ordering::Relaxed;
-                        return Ok(MutexLockResult::Acquired;
+                        lock_count.fetch_add(1, Ordering::AcqRel);
+                        primitive.fuel_consumed.fetch_add(MUTEX_LOCK_FUEL, Ordering::Relaxed);
+                        self.sync_stats.total_mutex_locks.fetch_add(1, Ordering::Relaxed);
+                        return Ok(MutexLockResult::Acquired);
                     }
 
                     // Add to waiters
@@ -474,16 +475,16 @@ impl AdvancedSyncPrimitives {
                         Error::resource_limit_exceeded("Mutex waiter queue full")
                     })?;
 
-                    return Ok(MutexLockResult::WouldBlock;
+                    return Ok(MutexLockResult::WouldBlock);
                 }
 
                 // Acquire the lock
-                locked.store(true, Ordering::Release;
-                *owner = Some(task_id;
-                lock_count.store(1, Ordering::Release;
+                locked.store(true, Ordering::Release);
+                *owner = Some(task_id);
+                lock_count.store(1, Ordering::Release);
 
-                primitive.fuel_consumed.fetch_add(MUTEX_LOCK_FUEL, Ordering::Relaxed;
-                self.sync_stats.total_mutex_locks.fetch_add(1, Ordering::Relaxed;
+                primitive.fuel_consumed.fetch_add(MUTEX_LOCK_FUEL, Ordering::Relaxed);
+                self.sync_stats.total_mutex_locks.fetch_add(1, Ordering::Relaxed);
 
                 Ok(MutexLockResult::Acquired)
             },
@@ -505,29 +506,29 @@ impl AdvancedSyncPrimitives {
             SyncPrimitiveType::AsyncMutex { locked, owner, lock_count, is_reentrant } => {
                 // Verify ownership
                 if owner.as_ref() != Some(&task_id) {
-                    return Err(Error::invalid_state_error("Task does not own mutex";
+                    return Err(Error::invalid_state_error("Task does not own mutex"));
                 }
 
-                let current_count = lock_count.load(Ordering::Acquire;
+                let current_count = lock_count.load(Ordering::Acquire);
                 if current_count == 0 {
-                    return Err(Error::invalid_state_error("Mutex is not locked";
+                    return Err(Error::invalid_state_error("Mutex is not locked"));
                 }
 
                 // Handle reentrant unlock
                 if *is_reentrant && current_count > 1 {
-                    lock_count.fetch_sub(1, Ordering::AcqRel;
-                    primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed;
-                    self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed;
+                    lock_count.fetch_sub(1, Ordering::AcqRel);
+                    primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed);
+                    self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed);
                     return Ok();
                 }
 
                 // Release the lock
                 *owner = None;
-                lock_count.store(0, Ordering::Release;
-                locked.store(false, Ordering::Release;
+                lock_count.store(0, Ordering::Release);
+                locked.store(false, Ordering::Release);
 
-                primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed;
-                self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed;
+                primitive.fuel_consumed.fetch_add(MUTEX_UNLOCK_FUEL, Ordering::Relaxed);
+                self.sync_stats.total_mutex_unlocks.fetch_add(1, Ordering::Relaxed);
 
                 // Wake next waiter
                 self.wake_next_mutex_waiter(primitive)?;
@@ -551,7 +552,7 @@ impl AdvancedSyncPrimitives {
 
         match &mut primitive.primitive_type {
             SyncPrimitiveType::AsyncSemaphore { permits, fair_scheduling, .. } => {
-                let current_permits = permits.load(Ordering::Acquire;
+                let current_permits = permits.load(Ordering::Acquire);
                 
                 if current_permits == 0 {
                     // Add to waiters
@@ -568,13 +569,13 @@ impl AdvancedSyncPrimitives {
                         Error::resource_limit_exceeded("Semaphore waiter queue full")
                     })?;
 
-                    return Ok(SemaphoreAcquireResult::WouldBlock;
+                    return Ok(SemaphoreAcquireResult::WouldBlock);
                 }
 
                 // Acquire permit
-                permits.fetch_sub(1, Ordering::AcqRel;
-                primitive.fuel_consumed.fetch_add(SEMAPHORE_ACQUIRE_FUEL, Ordering::Relaxed;
-                self.sync_stats.total_semaphore_acquires.fetch_add(1, Ordering::Relaxed;
+                permits.fetch_sub(1, Ordering::AcqRel);
+                primitive.fuel_consumed.fetch_add(SEMAPHORE_ACQUIRE_FUEL, Ordering::Relaxed);
+                self.sync_stats.total_semaphore_acquires.fetch_add(1, Ordering::Relaxed);
 
                 Ok(SemaphoreAcquireResult::Acquired)
             },
@@ -590,16 +591,16 @@ impl AdvancedSyncPrimitives {
 
         match &mut primitive.primitive_type {
             SyncPrimitiveType::AsyncSemaphore { permits, max_permits, .. } => {
-                let current_permits = permits.load(Ordering::Acquire;
+                let current_permits = permits.load(Ordering::Acquire);
                 
                 if current_permits >= *max_permits {
-                    return Err(Error::invalid_state_error("Semaphore already at maximum permits";
+                    return Err(Error::invalid_state_error("Semaphore already at maximum permits"));
                 }
 
                 // Release permit
-                permits.fetch_add(1, Ordering::AcqRel;
-                primitive.fuel_consumed.fetch_add(SEMAPHORE_RELEASE_FUEL, Ordering::Relaxed;
-                self.sync_stats.total_semaphore_releases.fetch_add(1, Ordering::Relaxed;
+                permits.fetch_add(1, Ordering::AcqRel);
+                primitive.fuel_consumed.fetch_add(SEMAPHORE_RELEASE_FUEL, Ordering::Relaxed);
+                self.sync_stats.total_semaphore_releases.fetch_add(1, Ordering::Relaxed);
 
                 // Wake next waiter
                 self.wake_next_semaphore_waiter(primitive)?;
@@ -624,21 +625,21 @@ impl AdvancedSyncPrimitives {
         match &mut primitive.primitive_type {
             SyncPrimitiveType::AsyncBarrier { parties, waiting, generation, broken } => {
                 if broken.load(Ordering::Acquire) {
-                    return Err(Error::invalid_state_error("Barrier is broken";
+                    return Err(Error::invalid_state_error("Barrier is broken"));
                 }
 
-                let current_waiting = waiting.fetch_add(1, Ordering::AcqRel;
+                let current_waiting = waiting.fetch_add(1, Ordering::AcqRel);
                 
                 if current_waiting + 1 == *parties {
                     // Last party arrived - release all
-                    generation.fetch_add(1, Ordering::AcqRel;
-                    waiting.store(0, Ordering::Release;
+                    generation.fetch_add(1, Ordering::AcqRel);
+                    waiting.store(0, Ordering::Release);
                     
                     // Wake all waiters
                     self.wake_all_barrier_waiters(primitive)?;
                     
-                    primitive.fuel_consumed.fetch_add(BARRIER_WAIT_FUEL, Ordering::Relaxed;
-                    self.sync_stats.total_barrier_waits.fetch_add(1, Ordering::Relaxed;
+                    primitive.fuel_consumed.fetch_add(BARRIER_WAIT_FUEL, Ordering::Relaxed);
+                    self.sync_stats.total_barrier_waits.fetch_add(1, Ordering::Relaxed);
                     
                     Ok(BarrierWaitResult::Leader)
                 } else {
@@ -696,7 +697,7 @@ impl AdvancedSyncPrimitives {
         let mut waiter_index = None;
         for (i, waiter) in primitive.waiters.iter().enumerate() {
             if waiter.wait_type == WaitType::MutexLock {
-                waiter_index = Some(i;
+                waiter_index = Some(i);
                 break;
             }
         }
@@ -704,10 +705,10 @@ impl AdvancedSyncPrimitives {
         if let Some(index) = waiter_index {
             if let Some(waiter) = primitive.waiters.get(index) {
                 if let Some(waker) = &waiter.waker {
-                    waker.wake_by_ref);
+                    waker.wake_by_ref();
                 }
             }
-            primitive.waiters.remove(index;
+            primitive.waiters.remove(index);
         }
 
         Ok(())
@@ -718,7 +719,7 @@ impl AdvancedSyncPrimitives {
         let mut waiter_index = None;
         for (i, waiter) in primitive.waiters.iter().enumerate() {
             if waiter.wait_type == WaitType::SemaphorePermit {
-                waiter_index = Some(i;
+                waiter_index = Some(i);
                 break;
             }
         }
@@ -726,10 +727,10 @@ impl AdvancedSyncPrimitives {
         if let Some(index) = waiter_index {
             if let Some(waiter) = primitive.waiters.get(index) {
                 if let Some(waker) = &waiter.waker {
-                    waker.wake_by_ref);
+                    waker.wake_by_ref();
                 }
             }
-            primitive.waiters.remove(index;
+            primitive.waiters.remove(index);
         }
 
         Ok(())
@@ -740,13 +741,13 @@ impl AdvancedSyncPrimitives {
         for waiter in primitive.waiters.iter() {
             if waiter.wait_type == WaitType::BarrierWait {
                 if let Some(waker) = &waiter.waker {
-                    waker.wake_by_ref);
+                    waker.wake_by_ref();
                 }
             }
         }
 
         // Remove all barrier waiters
-        primitive.waiters.retain(|waiter| waiter.wait_type != WaitType::BarrierWait;
+        primitive.waiters.retain(|waiter| waiter.wait_type != WaitType::BarrierWait);
 
         Ok(())
     }
@@ -812,7 +813,7 @@ impl Drop for AsyncMutexGuard {
     fn drop(&mut self) {
         if let Some(sync_primitives) = self.sync_primitives.upgrade() {
             if let Ok(mut primitives) = sync_primitives.lock() {
-                let _ = primitives.unlock_async_mutex(self.primitive_id, self.task_id;
+                let _ = primitives.unlock_async_mutex(self.primitive_id, self.task_id);
             }
         }
     }
@@ -828,7 +829,7 @@ impl Drop for AsyncSemaphorePermit {
     fn drop(&mut self) {
         if let Some(sync_primitives) = self.sync_primitives.upgrade() {
             if let Ok(mut primitives) = sync_primitives.lock() {
-                let _ = primitives.release_semaphore(self.primitive_id;
+                let _ = primitives.release_semaphore(self.primitive_id);
             }
         }
     }
@@ -865,7 +866,7 @@ impl CoreFuture for MutexLockFuture {
                         if let Some(primitive) = primitives.primitives.get_mut(&self.primitive_id) {
                             for waiter in primitive.waiters.iter_mut() {
                                 if waiter.task_id == self.task_id {
-                                    waiter.waker = Some(cx.waker().clone();
+                                    waiter.waker = Some(cx.waker().clone());
                                     break;
                                 }
                             }
@@ -889,9 +890,9 @@ mod tests {
     use crate::{task_manager::TaskManager, threading::thread_spawn_fuel::FuelTrackedThreadManager};
 
     fn create_test_bridge() -> Arc<Mutex<TaskManagerAsyncBridge>> {
-        let task_manager = Arc::new(Mutex::new(TaskManager::new();
-        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new();
-        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default());
+        let task_manager = Arc::new(Mutex::new(TaskManager::new()));
+        let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
+        let config = crate::async_::task_manager_async_bridge::BridgeConfiguration::default();
         let bridge = crate::async_::task_manager_async_bridge::TaskManagerAsyncBridge::new(
             task_manager, thread_manager, config
         ).unwrap();
@@ -900,10 +901,10 @@ mod tests {
 
     #[test]
     fn test_sync_primitives_creation() {
-        let bridge = create_test_bridge);
-        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
+        let bridge = create_test_bridge();
+        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None).unwrap();
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         sync_primitives.initialize_component_sync(component_id, None).unwrap();
         
         // Create mutex
@@ -915,7 +916,7 @@ mod tests {
         // Create barrier
         let barrier_id = sync_primitives.create_async_barrier(component_id, 2).unwrap();
         
-        let stats = sync_primitives.get_sync_statistics);
+        let stats = sync_primitives.get_sync_statistics();
         assert_eq!(stats.total_mutexes_created, 1);
         assert_eq!(stats.total_semaphores_created, 1);
         assert_eq!(stats.total_barriers_created, 1);
@@ -923,59 +924,59 @@ mod tests {
 
     #[test]
     fn test_mutex_operations() {
-        let bridge = create_test_bridge);
-        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
+        let bridge = create_test_bridge();
+        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None).unwrap();
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         sync_primitives.initialize_component_sync(component_id, None).unwrap();
         
         let mutex_id = sync_primitives.create_async_mutex(component_id, false).unwrap();
-        let task_id = TaskId::new(1;
+        let task_id = TaskId::new(1);
         
         // Lock mutex
         let result = sync_primitives.lock_async_mutex(mutex_id, task_id, component_id).unwrap();
-        assert_eq!(result, MutexLockResult::Acquired;
+        assert_eq!(result, MutexLockResult::Acquired);
         
         // Try to lock again (should block)
-        let task_id2 = TaskId::new(2;
+        let task_id2 = TaskId::new(2);
         let result2 = sync_primitives.lock_async_mutex(mutex_id, task_id2, component_id).unwrap();
-        assert_eq!(result2, MutexLockResult::WouldBlock;
+        assert_eq!(result2, MutexLockResult::WouldBlock);
         
         // Unlock
         sync_primitives.unlock_async_mutex(mutex_id, task_id).unwrap();
         
-        let stats = sync_primitives.get_sync_statistics);
-        assert_eq!(stats.total_mutex_locks, 2;
+        let stats = sync_primitives.get_sync_statistics();
+        assert_eq!(stats.total_mutex_locks, 2);
         assert_eq!(stats.total_mutex_unlocks, 1);
     }
 
     #[test]
     fn test_semaphore_operations() {
-        let bridge = create_test_bridge);
-        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None;
+        let bridge = create_test_bridge();
+        let mut sync_primitives = AdvancedSyncPrimitives::new(bridge, None).unwrap();
         
-        let component_id = ComponentInstanceId::new(1;
+        let component_id = ComponentInstanceId::new(1);
         sync_primitives.initialize_component_sync(component_id, None).unwrap();
         
         let semaphore_id = sync_primitives.create_async_semaphore(component_id, 2, false).unwrap();
-        let task_id = TaskId::new(1;
+        let task_id = TaskId::new(1);
         
         // Acquire permits
         let result1 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap();
-        assert_eq!(result1, SemaphoreAcquireResult::Acquired;
+        assert_eq!(result1, SemaphoreAcquireResult::Acquired);
         
         let result2 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap();
-        assert_eq!(result2, SemaphoreAcquireResult::Acquired;
+        assert_eq!(result2, SemaphoreAcquireResult::Acquired);
         
         // Try to acquire when exhausted
         let result3 = sync_primitives.acquire_semaphore(semaphore_id, task_id, component_id).unwrap();
-        assert_eq!(result3, SemaphoreAcquireResult::WouldBlock;
+        assert_eq!(result3, SemaphoreAcquireResult::WouldBlock);
         
         // Release permit
         sync_primitives.release_semaphore(semaphore_id).unwrap();
         
-        let stats = sync_primitives.get_sync_statistics);
-        assert_eq!(stats.total_semaphore_acquires, 2;
+        let stats = sync_primitives.get_sync_statistics();
+        assert_eq!(stats.total_semaphore_acquires, 2);
         assert_eq!(stats.total_semaphore_releases, 1);
     }
 }

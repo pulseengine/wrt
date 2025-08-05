@@ -37,7 +37,7 @@ const RESOURCE_TRANSFER_FUEL: u64 = 8;
 
 /// Resource handle type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ResourceHandle(pub u64;
+pub struct ResourceHandle(pub u64);
 
 /// Resource state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,7 +99,7 @@ impl<T> TrackedResource<T> {
         type_name: String,
         verification_level: VerificationLevel,
     ) -> Result<Self> {
-        let created_at = wrt_foundation::operations::global_fuel_consumed);
+        let created_at = wrt_foundation::operations::global_fuel_consumed();
         
         // Record resource creation
         record_global_operation(OperationType::Other)?;
@@ -131,31 +131,31 @@ impl<T> TrackedResource<T> {
         }
         
         // Increment reference count
-        let old_count = self.ref_count.fetch_add(1, Ordering::AcqRel;
+        let old_count = self.ref_count.fetch_add(1, Ordering::AcqRel);
         if old_count >= MAX_RESOURCE_REFS {
-            self.ref_count.fetch_sub(1, Ordering::AcqRel;
-            return Err(Error::resource_limit_exceeded("Maximum resource references exceeded";
+            self.ref_count.fetch_sub(1, Ordering::AcqRel);
+            return Err(Error::resource_limit_exceeded("Maximum resource references exceeded"));
         }
         
         // Update last accessed time and consume fuel
         self.metadata.last_accessed.store(
             wrt_foundation::operations::global_fuel_consumed(),
             Ordering::Release
-        ;
-        self.fuel_consumed.fetch_add(RESOURCE_ACQUIRE_FUEL, Ordering::AcqRel;
+        );
+        self.fuel_consumed.fetch_add(RESOURCE_ACQUIRE_FUEL, Ordering::AcqRel);
         
         Ok(())
     }
     
     /// Release a reference to the resource
     pub fn release(&self) -> Result<bool> {
-        let old_count = self.ref_count.fetch_sub(1, Ordering::AcqRel;
+        let old_count = self.ref_count.fetch_sub(1, Ordering::AcqRel);
         if old_count == 0 {
-            return Err(Error::resource_error("Resource reference count underflow";
+            return Err(Error::resource_error("Resource reference count underflow"));
         }
         
         // Consume fuel
-        self.fuel_consumed.fetch_add(RESOURCE_RELEASE_FUEL, Ordering::AcqRel;
+        self.fuel_consumed.fetch_add(RESOURCE_RELEASE_FUEL, Ordering::AcqRel);
         
         // Return true if this was the last reference
         Ok(old_count == 1)
@@ -208,7 +208,7 @@ impl<T> ResourceGuard<T> {
 impl<T> Drop for ResourceGuard<T> {
     fn drop(&mut self) {
         if !self.released {
-            let _ = self.resource.release);
+            let _ = self.resource.release();
         }
     }
 }
@@ -255,13 +255,13 @@ impl ResourceLifetimeManager {
         verification_level: VerificationLevel,
     ) -> Result<ResourceHandle> {
         // Check fuel budget
-        let current_fuel = self.total_fuel_consumed.load(Ordering::Acquire;
+        let current_fuel = self.total_fuel_consumed.load(Ordering::Acquire);
         if current_fuel.saturating_add(RESOURCE_CREATE_FUEL) > self.global_fuel_budget {
-            return Err(Error::resource_limit_exceeded("Resource fuel budget exceeded";
+            return Err(Error::resource_limit_exceeded("Resource fuel budget exceeded"));
         }
         
         // Generate handle
-        let handle = ResourceHandle(self.next_handle.fetch_add(1, Ordering::AcqRel;
+        let handle = ResourceHandle(self.next_handle.fetch_add(1, Ordering::AcqRel));
         
         // Create tracked resource
         let resource = TrackedResource::new(
@@ -273,13 +273,13 @@ impl ResourceLifetimeManager {
             verification_level,
         )?;
         
-        let arc_resource = Arc::new(resource;
+        let arc_resource = Arc::new(resource);
         
         // Store resource
         self.resources.insert(handle, arc_resource.clone() as Arc<dyn core::any::Any + Send + Sync>)?;
         
         // Update fuel consumption
-        self.total_fuel_consumed.fetch_add(RESOURCE_CREATE_FUEL, Ordering::AcqRel;
+        self.total_fuel_consumed.fetch_add(RESOURCE_CREATE_FUEL, Ordering::AcqRel);
         
         Ok(handle)
     }
@@ -306,9 +306,9 @@ impl ResourceLifetimeManager {
         new_owner: u64,
     ) -> Result<()> {
         // Check fuel
-        let current_fuel = self.total_fuel_consumed.load(Ordering::Acquire;
+        let current_fuel = self.total_fuel_consumed.load(Ordering::Acquire);
         if current_fuel.saturating_add(RESOURCE_TRANSFER_FUEL) > self.global_fuel_budget {
-            return Err(Error::resource_limit_exceeded("Resource fuel budget exceeded";
+            return Err(Error::resource_limit_exceeded("Resource fuel budget exceeded"));
         }
         
         // Remove from our resources
@@ -317,7 +317,7 @@ impl ResourceLifetimeManager {
         })?;
         
         // Update fuel
-        self.total_fuel_consumed.fetch_add(RESOURCE_TRANSFER_FUEL, Ordering::AcqRel;
+        self.total_fuel_consumed.fetch_add(RESOURCE_TRANSFER_FUEL, Ordering::AcqRel);
         
         // Note: In a real implementation, we would notify the new owner
         // For now, we just remove it from our tracking
@@ -333,7 +333,7 @@ impl ResourceLifetimeManager {
         })?;
         
         // Update fuel
-        self.total_fuel_consumed.fetch_add(RESOURCE_DROP_FUEL, Ordering::AcqRel;
+        self.total_fuel_consumed.fetch_add(RESOURCE_DROP_FUEL, Ordering::AcqRel);
         
         Ok(())
     }
@@ -365,7 +365,7 @@ impl ResourceLifetimeManager {
     /// Run all cleanup callbacks
     pub fn run_cleanup(&mut self) -> Result<()> {
         while let Some(callback) = self.cleanup_callbacks.pop() {
-            callback);
+            callback();
         }
         Ok(())
     }
@@ -411,7 +411,7 @@ impl Drop for ResourceScope {
         // Clean up all resources in reverse order
         if let Ok(mut manager) = self.manager.lock() {
             for handle in self.resources.iter().rev() {
-                let _ = manager.drop_resource(*handle;
+                let _ = manager.drop_resource(*handle);
             }
         }
     }
@@ -449,7 +449,7 @@ impl ComponentResourceTracker {
                 component_id,
                 self.global_fuel_budget / 10, // Each component gets 10% of global budget
             )?;
-            let arc_manager = Arc::new(wrt_foundation::sync::Mutex::new(manager;
+            let arc_manager = Arc::new(wrt_foundation::sync::Mutex::new(manager));
             self.managers.insert(component_id, arc_manager.clone())?;
             Ok(arc_manager)
         }
@@ -479,7 +479,7 @@ mod tests {
             Some(1),
             "test_resource",
             VerificationLevel::Basic,
-        ;
+        ).unwrap();
         
         assert!(handle.is_ok());
         let handle = handle.unwrap();
@@ -501,7 +501,7 @@ mod tests {
         
         {
             let guard = ResourceGuard::new(resource.clone()).unwrap();
-            assert_eq!(*guard.get().unwrap(), "test_data";
+            assert_eq!(*guard.get().unwrap(), "test_data");
             assert_eq!(resource.ref_count(), 2); // Original + guard
         }
         
@@ -513,9 +513,9 @@ mod tests {
     fn test_resource_scope() {
         let manager = Arc::new(wrt_foundation::sync::Mutex::new(
             ResourceLifetimeManager::new(1, 1000).unwrap()
-        ;
+        ));
         
-        let mut scope = ResourceScope::new(manager.clone();
+        let mut scope = ResourceScope::new(manager.clone());
         
         let handle = scope.create_resource(
             vec![1, 2, 3],
@@ -541,7 +541,7 @@ mod tests {
             None,
             "resource1",
             VerificationLevel::Basic,
-        ;
+        );
         assert!(result1.is_ok());
         
         // Second resource should fail due to fuel budget
@@ -550,7 +550,7 @@ mod tests {
             None,
             "resource2", 
             VerificationLevel::Basic,
-        ;
-        assert!(result2.is_err();
+        );
+        assert!(result2.is_err());
     }
 }

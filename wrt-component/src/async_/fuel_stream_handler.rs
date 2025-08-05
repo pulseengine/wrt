@@ -94,7 +94,7 @@ impl<T> FuelStream<T> {
         // Check stream state
         match self.state {
             StreamState::Completed | StreamState::Failed | StreamState::Cancelled => {
-                return Poll::Ready(None;
+                return Poll::Ready(None);
             }
             _ => {}
         }
@@ -102,11 +102,11 @@ impl<T> FuelStream<T> {
         // Check for buffered items
         if let Some(item) = self.buffer.pop_front()? {
             self.consume_fuel(STREAM_ITEM_FUEL)?;
-            return Poll::Ready(Some(item;
+            return Poll::Ready(Some(item));
         }
         
         // No items available, register waker
-        self.waker = Some(cx.waker().clone();
+        self.waker = Some(cx.waker().clone());
         self.state = StreamState::Waiting;
         Poll::Pending
     }
@@ -115,7 +115,7 @@ impl<T> FuelStream<T> {
     pub fn yield_item(&mut self, item: T) -> Result<()> {
         // Check if stream is active
         if self.state != StreamState::Active && self.state != StreamState::Waiting {
-            return Err(Error::async_error("Cannot yield to inactive stream";
+            return Err(Error::async_error("Cannot yield to inactive stream"));
         }
         
         // Consume fuel for yielding
@@ -127,7 +127,7 @@ impl<T> FuelStream<T> {
         // Wake any waiting consumers
         if let Some(waker) = self.waker.take() {
             self.state = StreamState::Active;
-            waker.wake);
+            waker.wake();
         }
         
         Ok(())
@@ -140,7 +140,7 @@ impl<T> FuelStream<T> {
         
         // Wake any waiting consumers
         if let Some(waker) = self.waker.take() {
-            waker.wake);
+            waker.wake();
         }
         
         Ok(())
@@ -152,11 +152,11 @@ impl<T> FuelStream<T> {
         self.state = StreamState::Cancelled;
         
         // Clear buffer
-        self.buffer.clear);
+        self.buffer.clear();
         
         // Wake any waiting consumers
         if let Some(waker) = self.waker.take() {
-            waker.wake);
+            waker.wake();
         }
         
         Ok(())
@@ -169,13 +169,13 @@ impl<T> FuelStream<T> {
             self.verification_level,
         )?;
         
-        let total_cost = base_cost.saturating_add(adjusted_cost;
+        let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Stream fuel budget exceeded";
+            return Err(Error::resource_limit_exceeded("Stream fuel budget exceeded"));
         }
         
-        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost;
+        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
         Ok(())
     }
 }
@@ -255,7 +255,7 @@ impl ComponentStream {
         if self.metadata.is_bounded {
             if let Some(max_items) = self.metadata.max_items {
                 if self.value_stream.buffer.len() >= max_items {
-                    return Err(Error::resource_limit_exceeded("Stream buffer limit exceeded";
+                    return Err(Error::resource_limit_exceeded("Stream buffer limit exceeded"));
                 }
             }
         }
@@ -309,7 +309,7 @@ impl FuelStreamManager {
         
         // Check global fuel budget
         if self.total_fuel_consumed.saturating_add(fuel_budget) > self.global_fuel_budget {
-            return Err(Error::resource_limit_exceeded("Global stream fuel budget exceeded";
+            return Err(Error::resource_limit_exceeded("Global stream fuel budget exceeded"));
         }
         
         let stream = ComponentStream::new(
@@ -322,7 +322,7 @@ impl FuelStreamManager {
         )?;
         
         self.streams.insert(stream_id, stream)?;
-        self.total_fuel_consumed = self.total_fuel_consumed.saturating_add(fuel_budget;
+        self.total_fuel_consumed = self.total_fuel_consumed.saturating_add(fuel_budget);
         
         Ok(stream_id)
     }
@@ -330,8 +330,7 @@ impl FuelStreamManager {
     /// Get a mutable reference to a stream
     pub fn get_stream_mut(&mut self, stream_id: u64) -> Result<&mut ComponentStream> {
         self.streams.get_mut(&stream_id).ok_or_else(|| {
-            Error::runtime_execution_error("Error occurred",
-            )
+            Error::runtime_execution_error("Error occurred")
         })
     }
     
@@ -342,8 +341,8 @@ impl FuelStreamManager {
             
             // Reclaim unused fuel
             let unused_fuel = stream.value_stream.fuel_budget
-                .saturating_sub(stream.value_stream.fuel_consumed;
-            self.total_fuel_consumed = self.total_fuel_consumed.saturating_sub(unused_fuel;
+                .saturating_sub(stream.value_stream.fuel_consumed);
+            self.total_fuel_consumed = self.total_fuel_consumed.saturating_sub(unused_fuel);
         }
         
         Ok(())
@@ -374,13 +373,13 @@ mod tests {
     
     #[test]
     fn test_stream_creation() {
-        let stream = FuelStream::<u32>::new(1, 1000, VerificationLevel::Basic;
+        let stream = FuelStream::<u32>::new(1, 1000, VerificationLevel::Basic);
         assert!(stream.is_ok());
         
         let stream = stream.unwrap();
         assert_eq!(stream.id, 1);
-        assert_eq!(stream.state, StreamState::Active;
-        assert_eq!(stream.fuel_consumed, STREAM_CREATE_FUEL;
+        assert_eq!(stream.state, StreamState::Active);
+        assert_eq!(stream.fuel_consumed, STREAM_CREATE_FUEL);
     }
     
     #[test]
@@ -392,8 +391,8 @@ mod tests {
         assert!(stream.yield_item(43).is_ok());
         
         // Poll items
-        let waker = futures_task::noop_waker);
-        let mut cx = Context::from_waker(&waker;
+        let waker = futures_task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
         
         match stream.poll_next(&mut cx) {
             Poll::Ready(Some(42)) => {},
@@ -417,10 +416,10 @@ mod tests {
         let mut stream = FuelStream::<u32>::new(1, 1000, VerificationLevel::Basic).unwrap();
         
         assert!(stream.complete().is_ok());
-        assert_eq!(stream.state, StreamState::Completed;
+        assert_eq!(stream.state, StreamState::Completed);
         
         // Cannot yield to completed stream
-        assert!(stream.yield_item(42).is_err();
+        assert!(stream.yield_item(42).is_err());
     }
     
     #[test]
@@ -428,15 +427,15 @@ mod tests {
         let mut stream = FuelStream::<u32>::new(1, 20, VerificationLevel::Basic).unwrap();
         
         // Consume most of the fuel
-        let waker = futures_task::noop_waker);
-        let mut cx = Context::from_waker(&waker;
+        let waker = futures_task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
         
         // Poll multiple times to exhaust fuel
         for _ in 0..3 {
-            let _ = stream.poll_next(&mut cx;
+            let _ = stream.poll_next(&mut cx);
         }
         
         // Next operation should fail due to fuel exhaustion
-        assert!(stream.yield_item(42).is_err();
+        assert!(stream.yield_item(42).is_err());
     }
 }

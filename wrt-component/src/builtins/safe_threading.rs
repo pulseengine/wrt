@@ -39,19 +39,19 @@ impl BuiltinHandler for SafeThreadingSpawnHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string());
+            return Err(Error::runtime_execution_error("Error occurred".to_string()));
         }
 
         // Extract function ID
         let function_id = match args[0] {
             ComponentValue::U32(id) => id,
             _ => {
-                return Err(Error::component_thread_spawn_failed("Invalid function ID type";
+                return Err(Error::component_thread_spawn_failed("Invalid function ID type"));
             }
         };
 
         // Extract function arguments
-        let function_args = args[1..].to_vec);
+        let function_args = args[1..].to_vec();
 
         // Extract optional priority (if provided as second argument)
         let priority = if args.len() > 1 {
@@ -113,14 +113,14 @@ impl BuiltinHandler for SafeThreadingJoinHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("Error occurred".to_string());
+            return Err(Error::runtime_execution_error("Error occurred".to_string()));
         }
 
         // Extract thread ID
         let thread_id = match args[0] {
             ComponentValue::U64(id) => id,
             _ => {
-                return Err(Error::component_thread_spawn_failed("Invalid thread ID type";
+                return Err(Error::component_thread_spawn_failed("Invalid thread ID type"));
             }
         };
 
@@ -171,27 +171,27 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.is_empty() {
-            return Err(Error::runtime_execution_error("Error occurred".to_string());
+            return Err(Error::runtime_execution_error("Error occurred".to_string()));
         }
 
         // Extract operation type
         let op_type = match &args[0] {
             ComponentValue::String(s) => s.as_str(),
             _ => {
-                return Err(Error::component_thread_spawn_failed("Invalid operation type";
+                return Err(Error::component_thread_spawn_failed("Invalid operation type"));
             }
         };
 
         match op_type {
             "is-running" => {
                 if args.len() != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string());
+                    return Err(Error::runtime_execution_error("Error occurred".to_string()));
                 }
 
                 let thread_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::component_thread_spawn_failed("Invalid thread ID type";
+                        return Err(Error::component_thread_spawn_failed("Invalid thread ID type"));
                     }
                 };
 
@@ -202,13 +202,13 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
             }
             "cancel" => {
                 if args.len() != 2 {
-                    return Err(Error::runtime_execution_error("Error occurred".to_string());
+                    return Err(Error::runtime_execution_error("Error occurred".to_string()));
                 }
 
                 let thread_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::component_thread_spawn_failed("Invalid thread ID type";
+                        return Err(Error::component_thread_spawn_failed("Invalid thread ID type"));
                     }
                 };
 
@@ -225,7 +225,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                     Ok(results) => {
                         let mut response = vec![ComponentValue::U32(results.len() as u32)];
                         for (thread_id, health) in results {
-                            response.push(ComponentValue::U64(thread_id);
+                            response.push(ComponentValue::U64(thread_id));
                             let health_code = match health {
                                 wrt_platform::threading::ThreadHealth::Healthy => 0,
                                 wrt_platform::threading::ThreadHealth::CpuQuotaExceeded => 1,
@@ -233,7 +233,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                                 wrt_platform::threading::ThreadHealth::Deadlocked => 3,
                                 wrt_platform::threading::ThreadHealth::Unresponsive => 4,
                             };
-                            response.push(ComponentValue::U32(health_code);
+                            response.push(ComponentValue::U32(health_code));
                         }
                         Ok(response)
                     }
@@ -247,7 +247,7 @@ impl BuiltinHandler for SafeThreadingStatusHandler {
                 }
             }
             "stats" => {
-                let stats = self.thread_manager.get_stats);
+                let stats = self.thread_manager.get_stats();
                 Ok(vec![
                     ComponentValue::U32(stats.total_threads as u32),
                     ComponentValue::U64(stats.pool_stats.total_spawned),
@@ -292,7 +292,7 @@ pub fn create_safe_threading_handlers(
     };
 
     // Create thread manager
-    let thread_manager = Arc::new(WasmThreadManager::new(config, limits, executor)?;
+    let thread_manager = Arc::new(WasmThreadManager::new(config, limits, executor)?);
 
     // Register the module
     thread_manager.register_module(module_info.clone())?;
@@ -345,27 +345,27 @@ mod tests {
 
     #[test]
     fn test_safe_threading_handlers_creation() {
-        let executor = create_test_executor);
-        let module = create_test_module);
+        let executor = create_test_executor();
+        let module = create_test_module();
 
-        let result = create_safe_threading_handlers(executor, module;
+        let result = create_safe_threading_handlers(executor, module);
         assert!(result.is_ok());
 
         let (_manager, handlers) = result.unwrap();
-        assert_eq!(handlers.len(), 3;
+        assert_eq!(handlers.len(), 3);
     }
 
     #[test]
     fn test_safe_spawn_handler() {
-        let executor = create_test_executor);
-        let module = create_test_module);
+        let executor = create_test_executor();
+        let module = create_test_module();
 
         let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
         let spawn_handler = &handlers[0];
 
         // Test spawn with function ID
         let args = vec![ComponentValue::U32(100)];
-        let result = spawn_handler.execute(&args;
+        let result = spawn_handler.execute(&args);
         assert!(result.is_ok());
 
         let thread_id = match &result.unwrap()[0] {
@@ -377,18 +377,18 @@ mod tests {
 
     #[test]
     fn test_safe_status_handler() {
-        let executor = create_test_executor);
-        let module = create_test_module);
+        let executor = create_test_executor();
+        let module = create_test_module();
 
         let (_manager, handlers) = create_safe_threading_handlers(executor, module).unwrap();
         let status_handler = &handlers[2];
 
         // Test stats operation
         let args = vec![ComponentValue::String("stats".to_string())];
-        let result = status_handler.execute(&args;
+        let result = status_handler.execute(&args);
         assert!(result.is_ok());
 
         let stats = result.unwrap();
-        assert!(stats.len() >= 5)); // Should return multiple statistics
+        assert!(stats.len() >= 5); // Should return multiple statistics
     }
 }

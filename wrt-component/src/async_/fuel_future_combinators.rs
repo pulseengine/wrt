@@ -69,7 +69,7 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Consume fuel for select operation
         if let Err(e) = self.consume_fuel(FUTURE_SELECT_FUEL) {
-            return Poll::Ready(Err(e;
+            return Poll::Ready(Err(e));
         }
 
         // Poll first future
@@ -78,7 +78,7 @@ where
                 Poll::Ready(output) => {
                     self.future1 = None;
                     self.future2 = None;
-                    return Poll::Ready(Ok(output;
+                    return Poll::Ready(Ok(output));
                 }
                 Poll::Pending => {}
             }
@@ -90,7 +90,7 @@ where
                 Poll::Ready(output) => {
                     self.future1 = None;
                     self.future2 = None;
-                    return Poll::Ready(Ok(output;
+                    return Poll::Ready(Ok(output));
                 }
                 Poll::Pending => {}
             }
@@ -107,13 +107,13 @@ impl<F1, F2> FuelSelect<F1, F2> {
             self.verification_level,
         )?;
         
-        let total_cost = base_cost.saturating_add(adjusted_cost;
+        let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded";
+            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
         }
         
-        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost;
+        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
         record_global_operation(OperationType::FutureOperation)?;
         Ok(())
     }
@@ -165,7 +165,7 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Consume fuel for chain operation
         if let Err(e) = self.consume_fuel(FUTURE_CHAIN_FUEL) {
-            return Poll::Ready(Err(e;
+            return Poll::Ready(Err(e));
         }
 
         loop {
@@ -174,8 +174,8 @@ where
                     match Pin::new(future1).poll(cx) {
                         Poll::Ready(output) => {
                             let map_fn = *map_fn;
-                            let future2 = map_fn(output;
-                            self.state = ChainState::Second(future2;
+                            let future2 = map_fn(output);
+                            self.state = ChainState::Second(future2);
                         }
                         Poll::Pending => return Poll::Pending,
                     }
@@ -184,13 +184,13 @@ where
                     match Pin::new(future2).poll(cx) {
                         Poll::Ready(output) => {
                             self.state = ChainState::Done;
-                            return Poll::Ready(Ok(output;
+                            return Poll::Ready(Ok(output));
                         }
                         Poll::Pending => return Poll::Pending,
                     }
                 }
                 ChainState::Done => {
-                    panic!("FuelChain polled after completion";
+                    panic!("FuelChain polled after completion");
                 }
             }
         }
@@ -204,13 +204,13 @@ impl<F1, F2, T> FuelChain<F1, F2, T> {
             self.verification_level,
         )?;
         
-        let total_cost = base_cost.saturating_add(adjusted_cost;
+        let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded";
+            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
         }
         
-        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost;
+        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
         record_global_operation(OperationType::FutureOperation)?;
         Ok(())
     }
@@ -261,7 +261,7 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Consume fuel for join operation
         if let Err(e) = self.consume_fuel(FUTURE_JOIN_FUEL) {
-            return Poll::Ready(Err(e;
+            return Poll::Ready(Err(e));
         }
 
         // Poll first future if not complete
@@ -269,7 +269,7 @@ where
             if let Some(future1) = &mut self.future1 {
                 match Pin::new(future1).poll(cx) {
                     Poll::Ready(output) => {
-                        self.result1 = Some(output;
+                        self.result1 = Some(output);
                         self.future1 = None;
                     }
                     Poll::Pending => {}
@@ -282,7 +282,7 @@ where
             if let Some(future2) = &mut self.future2 {
                 match Pin::new(future2).poll(cx) {
                     Poll::Ready(output) => {
-                        self.result2 = Some(output;
+                        self.result2 = Some(output);
                         self.future2 = None;
                     }
                     Poll::Pending => {}
@@ -306,13 +306,13 @@ impl<F1, F2> FuelJoin<F1, F2> {
             self.verification_level,
         )?;
         
-        let total_cost = base_cost.saturating_add(adjusted_cost;
+        let total_cost = base_cost.saturating_add(adjusted_cost);
         
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded";
+            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
         }
         
-        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost;
+        self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
         record_global_operation(OperationType::FutureOperation)?;
         Ok(())
     }
@@ -399,14 +399,14 @@ impl<T> Future for ComponentFuture<T> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Check fuel budget
         if self.fuel_consumed >= self.fuel_budget {
-            return Poll::Ready(Err(Error::resource_limit_exceeded("Component future fuel exhausted");
+            return Poll::Ready(Err(Error::resource_limit_exceeded("Component future fuel exhausted")));
         }
         
         // Poll inner future
         match self.inner.as_mut().poll(cx) {
             Poll::Ready(output) => Poll::Ready(Ok(output)),
             Poll::Pending => {
-                self.fuel_consumed = self.fuel_consumed.saturating_add(1;
+                self.fuel_consumed = self.fuel_consumed.saturating_add(1);
                 Poll::Pending
             }
         }
@@ -421,9 +421,9 @@ mod tests {
     #[test]
     fn test_fuel_select() {
         // Test select combinator
-        let future1 = ready(42;
-        let future2 = ready(43;
-        let select = FuelSelect::new(future1, future2, 100, VerificationLevel::Basic;
+        let future1 = ready(42);
+        let future2 = ready(43);
+        let select = FuelSelect::new(future1, future2, 100, VerificationLevel::Basic);
         
         // Would need executor to test fully
     }
@@ -431,13 +431,13 @@ mod tests {
     #[test]
     fn test_fuel_chain() {
         // Test chain combinator
-        let future1 = ready(42;
+        let future1 = ready(42);
         let chain = FuelChain::new(
             future1,
             |x| ready(x * 2),
             100,
             VerificationLevel::Basic,
-        ;
+        );
         
         // Would need executor to test fully
     }
@@ -445,9 +445,9 @@ mod tests {
     #[test]
     fn test_fuel_join() {
         // Test join combinator
-        let future1 = ready(42;
-        let future2 = ready("hello";
-        let join = FuelJoin::new(future1, future2, 100, VerificationLevel::Basic;
+        let future1 = ready(42);
+        let future2 = ready("hello");
+        let join = FuelJoin::new(future1, future2, 100, VerificationLevel::Basic);
         
         // Would need executor to test fully
     }

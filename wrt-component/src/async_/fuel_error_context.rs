@@ -112,7 +112,7 @@ impl ContextualError {
         
         self.total_fuel_consumed = self.total_fuel_consumed
             .saturating_add(ERROR_CONTEXT_FUEL)
-            .saturating_add(fuel_cost;
+            .saturating_add(fuel_cost);
         
         // Add to context chain
         self.context_chain.push(context)?;
@@ -131,7 +131,7 @@ impl ContextualError {
         self.total_fuel_consumed = self.total_fuel_consumed
             .saturating_add(ERROR_CHAIN_FUEL)
             .saturating_add(fuel_cost)
-            .saturating_add(other.total_fuel_consumed;
+            .saturating_add(other.total_fuel_consumed);
         
         // Merge context chains
         for context in other.context_chain.iter() {
@@ -158,28 +158,28 @@ impl ContextualError {
         let mut output = String::new();
         
         // Start with the main error
-        output.push_str(&format!("Error: {}\n", self.error.message();
+        output.push_str(&format!("Error: {}\n", self.error.message()));
         
         // Add context chain
         if !self.context_chain.is_empty() {
-            output.push_str("\nError Context Chain:\n";
+            output.push_str("\nError Context Chain:\n");
             for (i, context) in self.context_chain.iter().enumerate() {
                 output.push_str(&format!(
                     "  [{}] Component {}, Task {:?}\n",
                     i, context.component_id, context.task_id
-                ;
+                ));
                 output.push_str(&format!(
                     "      Location: {}\n",
                     context.location.as_str()
-                ;
+                ));
                 output.push_str(&format!(
                     "      Context: {}\n",
                     context.context.as_str()
-                ;
+                ));
                 output.push_str(&format!(
                     "      Fuel consumed: {}\n",
                     context.fuel_consumed
-                ;
+                ));
             }
         }
         
@@ -187,7 +187,7 @@ impl ContextualError {
         output.push_str(&format!(
             "\nTotal fuel consumed: {}\n",
             self.total_fuel_consumed
-        ;
+        ));
         
         Ok(output)
     }
@@ -374,7 +374,7 @@ pub fn async_error(
         ErrorCategory::Async,
         kind.to_code(),
         kind.description(),
-    ;
+    );
     
     let mut contextual = ContextualError::new(error, VerificationLevel::Basic)?;
     
@@ -401,23 +401,23 @@ mod tests {
             "test.rs:10",
             "Test error context",
             100,
-        ;
+        );
         assert!(context.is_ok());
         
         let context = context.unwrap();
         assert_eq!(context.component_id, 1);
-        assert_eq!(context.task_id, Some(42;
-        assert_eq!(context.fuel_consumed, 100;
+        assert_eq!(context.task_id, Some(42));
+        assert_eq!(context.fuel_consumed, 100);
     }
     
     #[test]
     fn test_contextual_error() {
-        let error = Error::async_async_error("Test error");        
+        let error = Error::async_error("Test error");        
         let contextual = ContextualError::new(error, VerificationLevel::Basic);
         assert!(contextual.is_ok());
         
         let mut contextual = contextual.unwrap();
-        assert_eq!(contextual.total_fuel_consumed, ERROR_CREATE_FUEL;
+        assert_eq!(contextual.total_fuel_consumed, ERROR_CREATE_FUEL);
         
         // Add context
         let context = ErrorContext::new(
@@ -434,15 +434,15 @@ mod tests {
     
     #[test]
     fn test_error_propagator() {
-        let propagator = ErrorPropagator::new(1, Some(42), VerificationLevel::Basic;
+        let propagator = ErrorPropagator::new(1, Some(42), VerificationLevel::Basic);
         
-        let error = Error::component_error("Component error");        
+        let error = Error::component_runtime_error("Component error");        
         let wrapped = propagator.wrap_error(
             error,
             "test.rs:30",
             "Error during processing",
             75,
-        ;
+        );
         
         assert!(wrapped.is_ok());
         let wrapped = wrapped.unwrap();
@@ -454,10 +454,10 @@ mod tests {
         assert_eq!(
             AsyncErrorKind::TaskCancelled.to_code(),
             codes::ASYNC_CANCELLED
-        ;
+        );
         assert_eq!(
             AsyncErrorKind::FuelExhausted.description(),
             "Task fuel budget exhausted"
-        ;
+        );
     }
 }
