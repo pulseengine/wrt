@@ -46,11 +46,11 @@ mod tests {
     #[cfg(all(feature = "disabled"))]
     fn test_error_source() {
         // Create an error with a source
-        let stack_error = kinds::stack_underflow);
-        let error = Error::from(stack_error;
+        let stack_error = kinds::stack_underflow();
+        let error = Error::from(stack_error);
 
         // Just verify the error was created with the correct message
-        assert!(format!("{error}").contains("Stack underflow");
+        assert!(format!("{error}").contains("Stack underflow"));
     }
 
     #[test]
@@ -65,9 +65,9 @@ mod tests {
 
         // Test another type of error
         let table_error = kinds::invalid_table_index_error(5;
-        let error = Error::from(table_error;
+        let error = Error::from(table_error);
 
         // Verify the error message mentions index 5
-        assert!(format!("{error}").contains('5');
+        assert!(format!("{error}").contains('5'));
     }
 }

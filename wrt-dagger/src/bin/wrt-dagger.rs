@@ -101,7 +101,7 @@ async fn main() -> Result<()> {
         .base_image(&cli.base_image)
         .rust_version(&cli.rust_version)
         .timeout(cli.timeout)
-        .build);
+        .build()?;
 
     match cli.command {
         Commands::Build => {
@@ -129,7 +129,7 @@ async fn main() -> Result<()> {
             println!(
                 "🔒 Running ASIL-{} verification in container...",
                 asil.to_uppercase()
-            ;
+            );
             let pipeline = DaggerPipeline::new(config).await?;
             let output = pipeline.verify(&asil).await?;
             println!("{}", output);

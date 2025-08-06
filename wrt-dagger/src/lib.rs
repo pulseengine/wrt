@@ -106,7 +106,7 @@ impl DaggerPipeline {
             // Falling back to local execution even with dagger feature enabled
             eprintln!(
                 "⚠️  Dagger SDK integration disabled due to API changes. Using local fallback."
-            ;
+            );
             Ok(Self { config })
         }
 
@@ -269,7 +269,7 @@ pub mod utils {
             .env("CI", "true")
             .env("CARGO_TERM_COLOR", "always")
             .timeout(7200) // 2 hours for CI
-            .build);
+            .build();
 
         DaggerPipeline::new(config).await
     }
@@ -280,7 +280,7 @@ pub mod utils {
             .cache_dependencies(true)
             .env("RUST_LOG", "debug")
             .timeout(1800) // 30 minutes for dev
-            .build);
+            .build();
 
         DaggerPipeline::new(config).await
     }
@@ -293,7 +293,7 @@ pub mod utils {
             .env("KANI_REACH_CHECKS", "1")
             .env("ASIL_LEVEL", "D")
             .timeout(10800) // 3 hours for formal verification
-            .build);
+            .build();
 
         DaggerPipeline::new(config).await
     }
@@ -305,9 +305,9 @@ mod tests {
 
     #[test]
     fn test_container_config_default() {
-        let config = ContainerConfig::default());
-        assert_eq!(config.base_image, "ubuntu:22.04";
-        assert_eq!(config.rust_version, "1.86.0";
+        let config = ContainerConfig::default();
+        assert_eq!(config.base_image, "ubuntu:22.04");
+        assert_eq!(config.rust_version, "1.86.0");
         assert!(!config.system_packages.is_empty());
     }
 
@@ -320,19 +320,19 @@ mod tests {
             .env("DEBUG", "1")
             .work_dir("/app")
             .timeout(1200)
-            .build);
+            .build();
 
-        assert_eq!(config.base_image, "alpine:latest";
-        assert_eq!(config.rust_version, "1.85.0";
-        assert!(config.system_packages.contains(&"git".to_string());
-        assert_eq!(config.environment.get("DEBUG"), Some(&"1".to_string());
-        assert_eq!(config.work_dir, "/app";
-        assert_eq!(config.timeout, 1200;
+        assert_eq!(config.base_image, "alpine:latest");
+        assert_eq!(config.rust_version, "1.85.0");
+        assert!(config.system_packages.contains(&"git".to_string()));
+        assert_eq!(config.environment.get("DEBUG"), Some(&"1".to_string()));
+        assert_eq!(config.work_dir, "/app");
+        assert_eq!(config.timeout, 1200);
     }
 
     #[tokio::test]
     async fn test_pipeline_creation() {
-        let config = ContainerConfig::default());
+        let config = ContainerConfig::default();
         let result = DaggerPipeline::new(config).await;
         assert!(result.is_ok());
     }

@@ -10,7 +10,7 @@
 use wrt_error::{
     codes,
     Error,
-    Result as wrt_error::Result,
+    Result,
 };
 
 #[cfg(feature = "std")]
@@ -160,7 +160,10 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
     }
 
     /// Adds a `CoreModuleType` to the store and returns a `TypeRef` to it.
-    pub fn add_core_module_type(&mut self, cmtype: CoreModuleType<P>) -> wrt_error::Result<TypeRef> {
+    pub fn add_core_module_type(
+        &mut self,
+        cmtype: CoreModuleType<P>,
+    ) -> wrt_error::Result<TypeRef> {
         let index = self.core_module_types.len() as u32;
         self.core_module_types.push(cmtype).map_err(|_e| {
             Error::new(

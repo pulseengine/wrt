@@ -138,7 +138,7 @@ impl IncrementalParser {
 
     /// Set initial source content
     pub fn set_source(&mut self, content: &str) -> Result<()> {
-        self.source.clear);
+        self.source.clear();
         self.total_length = 0;
 
         let provider = wrt_foundation::safe_managed_alloc!(
@@ -193,7 +193,7 @@ impl IncrementalParser {
         // Mark affected nodes as dirty
         if let Some(mut tree) = self.parse_tree.take() {
             Self::mark_dirty_nodes_static(&mut tree, &change.change_type, &mut self.stats;
-            self.parse_tree = Some(tree;
+            self.parse_tree = Some(tree);
         }
 
         // Perform incremental parse
@@ -221,7 +221,7 @@ impl IncrementalParser {
         let mut full_source = String::new();
         for line in &self.source {
             if let Ok(line_str) = line.as_str() {
-                full_source.push_str(line_str;
+                full_source.push_str(line_str);
                 full_source.push('\n');
             }
         }
@@ -257,7 +257,7 @@ impl IncrementalParser {
 
         if let Some(mut tree) = self.parse_tree.take() {
             Self::reparse_dirty_nodes_static(&mut tree)?;
-            self.parse_tree = Some(tree;
+            self.parse_tree = Some(tree);
         }
 
         Ok(())

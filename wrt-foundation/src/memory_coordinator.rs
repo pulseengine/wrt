@@ -21,13 +21,15 @@ use core::{
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_error::helpers::memory_limit_exceeded_error;
+use wrt_error::{
+    helpers::memory_limit_exceeded_error,
+    Result,
+};
 
 use crate::{
     codes,
     Error,
     ErrorCategory,
-    Result,
 };
 
 /// Generic crate identifier trait
@@ -62,10 +64,19 @@ pub struct GenericMemoryCoordinator<C: CrateIdentifier, const MAX_CRATES: usize>
     _phantom:           PhantomData<C>,
 }
 
+const ATOMIC_ZERO: AtomicUsize = AtomicUsize::new(0);
+
+impl<C: CrateIdentifier, const MAX_CRATES: usize> Default
+    for GenericMemoryCoordinator<C, MAX_CRATES>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MAX_CRATES> {
     /// Create a new coordinator with zero budgets
     pub const fn new() -> Self {
-        const ATOMIC_ZERO: AtomicUsize = AtomicUsize::new(0);
         Self {
             crate_allocations:  [ATOMIC_ZERO; MAX_CRATES],
             crate_budgets:      [ATOMIC_ZERO; MAX_CRATES],

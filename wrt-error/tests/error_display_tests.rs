@@ -34,9 +34,9 @@ mod tests {
         assert!(!runtime_error.to_string().is_empty());
         assert!(runtime_error.to_string().contains("execution failed");
 
-        let component_error = ComponentError("component invalid";
+        let component_error = ComponentError("component invalid");
         assert!(!component_error.to_string().is_empty());
-        assert!(component_error.to_string().contains("component invalid");
+        assert!(component_error.to_string().contains("component invalid"));
 
         let memory_error = MemoryAccessError("out of bounds access");
         assert!(!memory_error.to_string().is_empty());
@@ -90,37 +90,37 @@ mod tests {
         assert!(display.contains("Invalid global index");
         assert!(display.contains("101");
 
-        let invalid_data_segment = InvalidDataSegmentIndexError(202;
-        let display = invalid_data_segment.to_string());
+        let invalid_data_segment = InvalidDataSegmentIndexError(202);
+        let display = invalid_data_segment.to_string();
         assert!(!display.is_empty());
-        assert!(display.contains("Invalid data segment index");
-        assert!(display.contains("202");
+        assert!(display.contains("Invalid data segment index"));
+        assert!(display.contains("202"));
 
-        let invalid_function_type = InvalidFunctionTypeError("wrong signature";
+        let invalid_function_type = InvalidFunctionTypeError("wrong signature");
         assert!(!invalid_function_type.to_string().is_empty());
 
-        let not_implemented = NotImplementedError("feature X";
+        let not_implemented = NotImplementedError("feature X");
         assert!(!not_implemented.to_string().is_empty());
 
-        let invalid_value = InvalidValue("NaN";
+        let invalid_value = InvalidValue("NaN");
         assert!(!invalid_value.to_string().is_empty());
 
-        let value_out_of_range = ValueOutOfRangeError("value too large";
+        let value_out_of_range = ValueOutOfRangeError("value too large");
         assert!(!value_out_of_range.to_string().is_empty());
 
-        let invalid_state = InvalidState("corrupted";
+        let invalid_state = InvalidState("corrupted");
         assert!(!invalid_state.to_string().is_empty());
 
-        let decoding_error = DecodingError("malformed data";
+        let decoding_error = DecodingError("malformed data");
         assert!(!decoding_error.to_string().is_empty());
 
-        let execution_limit_exceeded = ExecutionLimitExceeded("timeout";
+        let execution_limit_exceeded = ExecutionLimitExceeded("timeout");
         assert!(!execution_limit_exceeded.to_string().is_empty());
 
-        let execution_timeout = ExecutionTimeoutError("5 seconds";
+        let execution_timeout = ExecutionTimeoutError("5 seconds");
         assert!(!execution_timeout.to_string().is_empty());
 
-        let resource_limit_exceeded = ResourceLimitExceeded("memory full";
+        let resource_limit_exceeded = ResourceLimitExceeded("memory full");
         assert!(!resource_limit_exceeded.to_string().is_empty());
 
         let invalid_argument = InvalidArgumentError("null pointer");
@@ -134,10 +134,10 @@ mod tests {
         let wasm30_construct = UnsupportedWasm30ConstructInWasm20Module {
             construct_name: "advanced_feature",
         };
-        let display = wasm30_construct.to_string());
+        let display = wasm30_construct.to_string();
         assert!(!display.is_empty());
         assert!(display.contains("Unsupported Wasm 3.0 construct");
-        assert!(display.contains("advanced_feature");
+        assert!(display.contains("advanced_feature"));
 
         let wasm30_instruction = InvalidWasm30InstructionImmediate {
             instruction: "complex.instr",
@@ -229,17 +229,17 @@ mod tests {
         };
         let display = simd_error.to_string());
         assert!(!display.is_empty());
-        assert!(display.contains("SIMD operation error");
-        assert!(display.contains("v128.load");
-        assert!(display.contains("misaligned address");
+        assert!(display.contains("SIMD operation error"));
+        assert!(display.contains("v128.load"));
+        assert!(display.contains("misaligned address"));
 
         let tail_call_error = TailCallError {
             message: "stack overflow",
         };
-        let display = tail_call_error.to_string());
+        let display = tail_call_error.to_string();
         assert!(!display.is_empty());
-        assert!(display.contains("Tail call error");
-        assert!(display.contains("stack overflow");
+        assert!(display.contains("Tail call error"));
+        assert!(display.contains("stack overflow"));
     }
 
     #[test]

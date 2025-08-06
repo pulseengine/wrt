@@ -1233,7 +1233,10 @@ impl<'a> SafetyGuard<'a> {
     ///
     /// * `context` - The safety context to use
     /// * `operation_name` - Name of the operation for logging
-    pub fn new(context: &'a SafetyContext, operation_name: &'static str) -> wrt_error::Result<Self> {
+    pub fn new(
+        context: &'a SafetyContext,
+        operation_name: &'static str,
+    ) -> wrt_error::Result<Self> {
         // Check if the context is in a safe state
         if !context.is_safe() {
             context.record_violation();

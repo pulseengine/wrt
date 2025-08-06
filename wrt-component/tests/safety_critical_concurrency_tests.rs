@@ -16,7 +16,12 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
-use std::sync::{Arc, Barrier, Mutex, RwLock};
+use std::sync::{
+    Arc,
+    Barrier,
+    Mutex,
+    RwLock,
+};
 #[cfg(feature = "std")]
 use std::thread;
 
@@ -24,17 +29,32 @@ use wrt_component::{
     bounded_component_infra::*,
     resource_management::ResourceTable,
     resources::{
-        resource_lifecycle::{Resource, ResourceHandle, ResourceState, ResourceType},
+        resource_lifecycle::{
+            Resource,
+            ResourceHandle,
+            ResourceState,
+            ResourceType,
+        },
         ResourceStrategy,
     },
 };
 use wrt_foundation::{
-    bounded::BoundedVec, budget_aware_provider::CrateId, managed_alloc, WrtError, WrtResult,
+    bounded::BoundedVec,
+    budget_aware_provider::CrateId,
+    managed_alloc,
+    WrtError,
+    WrtResult,
 };
 #[cfg(not(feature = "std"))]
-use wrt_platform::threading::{spawn_bounded, JoinHandle};
+use wrt_platform::threading::{
+    spawn_bounded,
+    JoinHandle,
+};
 #[cfg(not(feature = "std"))]
-use wrt_sync::{Mutex, RwLock};
+use wrt_sync::{
+    Mutex,
+    RwLock,
+};
 
 #[cfg(test)]
 mod concurrency_tests {
@@ -91,7 +111,7 @@ mod concurrency_tests {
                 }
 
                 local_handles.len()
-            };
+            });
 
             handles.push(handle);
         }
@@ -251,13 +271,14 @@ mod concurrency_tests {
     #[test]
     fn test_resource_lifecycle_concurrent() {
         use wrt_component::resources::resource_lifecycle::{
-            ResourceLifecycleManager, ResourceMetadata,
+            ResourceLifecycleManager,
+            ResourceMetadata,
         };
 
         // Create mock resource type
         let resource_type = ResourceType {
-            type_idx: 1,
-            name: bounded_component_name_from_str("TestResource").unwrap(),
+            type_idx:   1,
+            name:       bounded_component_name_from_str("TestResource").unwrap(),
             destructor: Some(100),
         };
 
@@ -282,11 +303,11 @@ mod concurrency_tests {
                 // Create resources
                 for i in 0..10 {
                     let metadata = ResourceMetadata {
-                        created_at: Some(i as u64),
+                        created_at:    Some(i as u64),
                         last_accessed: None,
-                        creator: thread_id as u32,
-                        owner: thread_id as u32,
-                        user_data: None,
+                        creator:       thread_id as u32,
+                        owner:         thread_id as u32,
+                        user_data:     None,
                     };
 
                     let mut manager = manager_clone.lock().unwrap();
@@ -311,7 +332,7 @@ mod concurrency_tests {
                 }
 
                 (created, borrowed, released)
-            };
+            });
 
             handles.push(handle);
         }
@@ -370,7 +391,7 @@ mod concurrency_tests {
                 }
 
                 (allocations, failures)
-            };
+            });
 
             handles.push(handle);
         }
@@ -418,7 +439,7 @@ mod concurrency_tests {
                     // Simulate work
                     thread::sleep(std::time::Duration::from_micros(10));
                 }
-            };
+            });
 
             handles.push(handle);
         }
@@ -440,7 +461,7 @@ mod concurrency_tests {
                     // Simulate work
                     thread::sleep(std::time::Duration::from_micros(10));
                 }
-            };
+            });
 
             handles.push(handle);
         }

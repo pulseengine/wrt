@@ -222,8 +222,8 @@ impl MemoryCapability for DynamicMemoryCapability {
             // Note: This is a limitation of the current system - dynamic sizes require
             // fixed-size NoStdProvider. For true dynamic allocation, a different approach
             // is needed.
-            let provider = crate::safe_memory::NoStdProvider::<65536>::default();
-            provider
+
+            crate::safe_memory::NoStdProvider::<65536>::default()
         } else {
             // For larger allocations, we'd need a different strategy
             return Err(Error::runtime_execution_error(
@@ -237,7 +237,7 @@ impl MemoryCapability for DynamicMemoryCapability {
         Ok(guard)
     }
 
-    #[cfg(any(feature = "std"))]
+    #[cfg(feature = "std")]
     fn delegate(
         &self,
         subset: CapabilityMask,
@@ -301,8 +301,7 @@ impl MemoryRegion for DynamicMemoryRegion {
         match self.provider.borrow_slice(0, 1) {
             Ok(slice) => {
                 // Get the pointer from the slice
-                NonNull::new(slice.as_ref().as_ptr() as *mut u8)
-                    .unwrap_or_else(|| NonNull::dangling())
+                NonNull::new(slice.as_ref().as_ptr() as *mut u8).unwrap_or_else(NonNull::dangling)
             },
             Err(_) => NonNull::dangling(), // Return dangling pointer if we can't access the memory
         }

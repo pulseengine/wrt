@@ -102,8 +102,8 @@ mod tests {
 
     #[test]
     fn test_error_creation() {
-        let error = parse_error("test error";
-        assert_eq!(error.category(), ErrorCategory::Parse;
-        assert_eq!(error.code(), codes::PARSE_ERROR;
+        let error = parse_error("test error");
+        assert_eq!(error.category(), ErrorCategory::Parse);
+        assert_eq!(error.code(), codes::PARSE_ERROR);
     }
 }

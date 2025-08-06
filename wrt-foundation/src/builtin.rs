@@ -26,7 +26,6 @@ use crate::{
         WriteStream,
     },
     verification::Checksum,
-    wrt_error::Result,
 };
 
 /// Maximum number of `BuiltinType` variants, used for `BoundedVec` capacity.
@@ -417,9 +416,9 @@ mod tests {
     fn test_all_available() {
         // Should at least contain the resource built-ins
         let available = BuiltinType::all_available();
-        assert!(available.contains(&BuiltinType::ResourceCreate));
-        assert!(available.contains(&BuiltinType::ResourceDrop));
-        assert!(available.contains(&BuiltinType::ResourceRep));
-        assert!(available.contains(&BuiltinType::ResourceGet));
+        assert!(available.contains(&BuiltinType::ResourceCreate).unwrap());
+        assert!(available.contains(&BuiltinType::ResourceDrop).unwrap());
+        assert!(available.contains(&BuiltinType::ResourceRep).unwrap());
+        assert!(available.contains(&BuiltinType::ResourceGet).unwrap());
     }
 }

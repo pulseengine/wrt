@@ -90,7 +90,7 @@ fn test_asil_error_context() {
     assert_eq!(context.error.code, error.code);
     assert_eq!(context.timestamp, Some(123456789));
     assert_eq!(context.module_id, Some(42));
-    assert!(context.requires_immediate_action();
+    assert!(context.requires_immediate_action());
 }
 
 #[cfg(any(feature = "asil-c", feature = "asil-d"))]
@@ -102,8 +102,7 @@ fn test_safety_monitor() {
     assert_eq!(monitor.error_count(), 0);
 
     // Record some errors
-    let error1 = Error::runtime_execution_error(
-        "Memory error");
+    let error1 = Error::runtime_execution_error("Memory error");
     let error2 = Error::safety_violation("Safety error");
 
     monitor.record_error(&error1);
@@ -118,8 +117,7 @@ fn test_safety_monitor() {
 
 #[test]
 fn test_error_display_format() {
-    let error = Error::runtime_execution_error(
-        "Test error");
+    let error = Error::runtime_execution_error("Test error");
     let display = format!("{}", error);
 
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
@@ -150,13 +148,13 @@ fn test_current_asil_level() {
     assert_eq!(current, AsilLevel::AsilD);
 
     #[cfg(all(feature = "asil-c", not(feature = "asil-d")))]
-    assert_eq!(current, AsilLevel::AsilC;
+    assert_eq!(current, AsilLevel::AsilC);
 
     #[cfg(all(feature = "asil-b", not(feature = "asil-c")))]
-    assert_eq!(current, AsilLevel::AsilB;
+    assert_eq!(current, AsilLevel::AsilB);
 
     // Test requirement checking
-    assert!(AsilLevel::meets_requirement(AsilLevel::QM);
+    assert!(AsilLevel::meets_requirement(AsilLevel::QM));
 
     #[cfg(feature = "asil-d")]
     {

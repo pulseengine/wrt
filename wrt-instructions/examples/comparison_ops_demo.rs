@@ -278,7 +278,7 @@ fn main() -> Result<()> {
     println!("   Input: 0x123456789ABCDEF0");
     ComparisonOp::I64Eqz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   0x123456789ABCDEF0 == 0: {} (false)", result));
+        println!("   0x123456789ABCDEF0 == 0: {} (false)", result);
     }
     context.stack.clear();
 
@@ -291,7 +291,7 @@ fn main() -> Result<()> {
     println!("   Input: NaN, NaN");
     ComparisonOp::F32Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   NaN == NaN: {} (false - WebAssembly spec)", result));
+        println!("   NaN == NaN: {} (false - WebAssembly spec)", result);
     }
     context.stack.clear();
 

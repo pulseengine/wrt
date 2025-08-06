@@ -14,10 +14,10 @@
 #![cfg_attr(not(feature = "std"), allow(unused_imports))]
 
 // Standard imports
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 #[cfg(not(feature = "std"))]
 use core::fmt;
@@ -27,7 +27,8 @@ use std::fmt;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_error::Result;
+// Result type alias
+type Result<T> = wrt_error::Result<T>;
 
 // Import error codes
 use crate::codes;
@@ -66,7 +67,6 @@ use crate::{
     Error,
     ErrorCategory,
     MemoryProvider,
-    wrt_error::Result,
 };
 
 /// Generic builder for bounded collections.
@@ -600,6 +600,7 @@ mod tests {
     use std::format;
 
     use super::*;
+    use crate::traits::BoundedCapacity;
 
     #[test]
     fn test_bounded_builder() {
@@ -631,8 +632,8 @@ mod tests {
         match resource_type {
             ResourceType::Record(fields) => {
                 assert_eq!(fields.len(), 2);
-                assert_eq!(fields[0].as_str().unwrap(), "field1");
-                assert_eq!(fields[1].as_str().unwrap(), "field2");
+                assert_eq!(fields.get(0).unwrap().as_str().unwrap(), "field1");
+                assert_eq!(fields.get(1).unwrap().as_str().unwrap(), "field2");
             },
             _ => panic!("Expected ResourceType::Record"),
         }
@@ -644,9 +645,9 @@ mod tests {
         match resource_type {
             ResourceType::Aggregate(ids) => {
                 assert_eq!(ids.len(), 3);
-                assert_eq!(ids[0], 1);
-                assert_eq!(ids[1], 2);
-                assert_eq!(ids[2], 3);
+                assert_eq!(ids.get(0).unwrap(), 1);
+                assert_eq!(ids.get(1).unwrap(), 2);
+                assert_eq!(ids.get(2).unwrap(), 3);
             },
             _ => panic!("Expected ResourceType::Aggregate"),
         }
@@ -678,55 +679,16 @@ mod tests {
         match &resource_item.type_ {
             ResourceType::Record(fields) => {
                 assert_eq!(fields.len(), 2);
-                assert_eq!(fields[0].as_str().unwrap(), "field1");
-                assert_eq!(fields[1].as_str().unwrap(), "field2");
+                assert_eq!(fields.get(0).unwrap().as_str().unwrap(), "field1");
+                assert_eq!(fields.get(1).unwrap().as_str().unwrap(), "field2");
             },
             _ => panic!("Expected ResourceType::Record"),
         }
     }
 
-    #[test]
-    fn test_no_std_provider_builder_migration() {
-        // Test that deprecated builder now returns an error directing to new API
-        let builder = NoStdProviderBuilder::<512>::new()
-            .with_init_size(256)
-            .with_verification_level(VerificationLevel::Full);
+    // NOTE: NoStdProviderBuilder tests removed - use safe_managed_alloc!()
+    // macro instead
 
-        let result = builder.build();
-        assert!(result.is_err(), "Deprecated builder should return an error");
-
-        // Verify the error message contains migration guidance
-        #[cfg(feature = "std")]
-        {
-            let error_msg = format!("{}", result.unwrap_err());
-            assert!(
-                error_msg.contains("WrtProviderFactory"),
-                "Error should mention WrtProviderFactory"
-            );
-        }
-    }
-
-    #[test]
-    fn test_no_std_provider_builder_legacy_migration() {
-        // Test the legacy (non-generic) builder migration
-        let builder = NoStdProviderBuilder1::new()
-            .with_size(1024)
-            .with_verification_level(VerificationLevel::Full);
-
-        let result = builder.build();
-        assert!(
-            result.is_err(),
-            "Deprecated legacy builder should return an error"
-        );
-
-        // Verify the error message contains migration guidance
-        #[cfg(feature = "std")]
-        {
-            let error_msg = format!("{}", result.unwrap_err());
-            assert!(
-                error_msg.contains("WrtProviderFactory"),
-                "Error should mention WrtProviderFactory"
-            );
-        }
-    }
+    // NOTE: NoStdProviderBuilder1 tests removed - use safe_managed_alloc!()
+    // macro instead
 }

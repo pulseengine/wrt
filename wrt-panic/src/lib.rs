@@ -25,16 +25,19 @@
 //!
 //! ### Runtime Configuration
 //! ```rust
-//! use wrt_panic::{PanicContextBuilder, initialize_panic_handler};
 //! use wrt_foundation::safety_system::AsilLevel;
+//! use wrt_panic::{
+//!     initialize_panic_handler,
+//!     PanicContextBuilder,
+//! };
 //!
 //! // Initialize with custom memory budget and safety level
 //! let panic_context = PanicContextBuilder::new()
 //!     .with_memory_budget(2048)  // 2KB for panic information
 //!     .with_safety_level(AsilLevel::AsilD)
-//!     .build);
+//!     .build();
 //!
-//! initialize_panic_handler(panic_context;
+//! initialize_panic_handler(panic_context);
 //! ```
 //!
 //! ## Safety Compliance Features
@@ -269,8 +272,9 @@ fn store_panic_info(info: &core::panic::PanicInfo) {
     // Extract error code from panic message
     #[cfg(feature = "std")]
     {
+        #[allow(clippy::incompatible_msrv)]
         let msg = info.message();
-        let msg_str = std::format!("{}", msg);
+        let msg_str = std::format!("{msg}");
         panic_info.error_code = hash_str(&msg_str);
     }
     #[cfg(not(feature = "std"))]
@@ -588,10 +592,10 @@ mod tests {
     #[test]
     fn test_memory_budget_configuration() {
         // Test default memory budget
-        assert_eq!(current_memory_budget(), DEFAULT_PANIC_MEMORY_BUDGET;
-        
+        assert_eq!(current_memory_budget(), DEFAULT_PANIC_MEMORY_BUDGET);
+
         // Test ASIL level configuration
-        let level = current_asil_level);
+        let level = current_asil_level();
         assert!(matches!(
             level,
             AsilLevel::QM

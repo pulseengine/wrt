@@ -1042,7 +1042,7 @@ impl CanonicalABI {
         // Find the discriminant for this case
         let discriminant = cases.iter()
             .position(|(name, _)| name == case_name)
-            .ok_or_else(|| Error::validation_invalid_type("Error occurred: Variant case not found"))?;
+            .ok_or_else(|| Error::validation_error("Error occurred: Variant case not found"))?;
         
         // Calculate discriminant size based on number of cases
         let discriminant_size = if cases.len() <= 256 { 1 } else if cases.len() <= 65536 { 2 } else { 4 };
@@ -1052,7 +1052,7 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8)?,
             2 => memory.write_u16_le(offset, discriminant as u16)?,
             4 => memory.write_u32_le(offset, discriminant as u32)?,
-            _ => return Err(Error::type_error("Error occurred: Invalid discriminant size calculated")),
+            _ => return Err(Error::validation_error("Error occurred: Invalid discriminant size calculated")),
         }
         
         // If there's a payload, lower it after the discriminant with proper alignment
@@ -1080,7 +1080,7 @@ impl CanonicalABI {
         // Find the discriminant for this case
         let discriminant = cases.iter()
             .position(|name| name == case_name)
-            .ok_or_else(|| Error::validation_invalid_type("Error occurred: Enum case not found"))?;
+            .ok_or_else(|| Error::validation_error("Error occurred: Enum case not found"))?;
         
         // Calculate discriminant size based on number of cases
         let discriminant_size = if cases.len() <= 256 { 1 } else if cases.len() <= 65536 { 2 } else { 4 };
@@ -1090,7 +1090,7 @@ impl CanonicalABI {
             1 => memory.write_u8(offset, discriminant as u8),
             2 => memory.write_u16_le(offset, discriminant as u16),
             4 => memory.write_u32_le(offset, discriminant as u32),
-            _ => return Err(Error::type_error("Error occurred: Invalid discriminant size calculated")),
+            _ => return Err(Error::validation_error("Error occurred: Invalid discriminant size calculated")),
         }
     }
 
@@ -1289,6 +1289,22 @@ impl CanonicalABI {
     }
 }
 
+/// Memory layout information for values
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct MemoryLayout {
+    /// Size in bytes
+    size: usize,
+    /// Alignment requirement in bytes
+    alignment: usize,
+}
+
+impl MemoryLayout {
+    /// Create a new memory layout
+    fn new(size: usize, alignment: usize) -> Self {
+        Self { size, alignment }
+    }
+}
+
 /// Align a value to the specified alignment
 fn align_to(value: usize, alignment: usize) -> usize {
     (value + alignment - 1) & !(alignment - 1)
@@ -1319,22 +1335,22 @@ mod tests {
         // Test bool
         abi.lower_bool(&mut memory, true, 0).unwrap();
         let value = abi.lift_bool(&memory, 0).unwrap();
-        assert_eq!(value, ComponentValue::Bool(true;
+        assert_eq!(value, ComponentValue::Bool(true));
 
         // Test i32
         abi.lower_s32(&mut memory, -42, 10).unwrap();
         let value = abi.lift_s32(&memory, 10).unwrap();
-        assert_eq!(value, ComponentValue::S32(-42;
+        assert_eq!(value, ComponentValue::S32(-42));
 
         // Test f32
         abi.lower_f32(&mut memory, 3.14, 20).unwrap();
         let value = abi.lift_f32(&memory, 20).unwrap();
-        assert_eq!(value, ComponentValue::F32(3.14;
+        assert_eq!(value, ComponentValue::F32(3.14));
 
         // Test char
         abi.lower_char(&mut memory, 'A', 30).unwrap();
         let value = abi.lift_char(&memory, 30).unwrap();
-        assert_eq!(value, ComponentValue::Char('A';
+        assert_eq!(value, ComponentValue::Char('A'));
     }
 
     #[test]
@@ -1377,10 +1393,10 @@ mod tests {
         // Test None option
         abi.lower_option(&mut memory, &None, 0).unwrap();
         let value = abi.lift_option(&memory, &ComponentType::S32, 0).unwrap();
-        assert_eq!(value, ComponentValue::Option(None;
+        assert_eq!(value, ComponentValue::Option(None));
 
         // Test Some option
-        let some_value = Some(Box::new(ComponentValue::S32(42);
+        let some_value = Some(Box::new(ComponentValue::S32(42)));
         abi.lower_option(&mut memory, &some_value, 10).unwrap();
         // Note: This test is simplified and doesn't actually verify the full lifting
         // because the lowering implementation is also simplified
@@ -1393,12 +1409,12 @@ mod tests {
 
         #[cfg(feature = "std")]
         {
-            let _memory = SimpleMemory::new(1024;
+            let _memory = SimpleMemory::new(1024);
         }
 
         #[cfg(all(not(feature = "std")))]
         {
-            let _memory = SimpleMemory::new(1024;
+            let _memory = SimpleMemory::new(1024);
         }
 
         // Test basic operations work
@@ -1427,41 +1443,41 @@ impl Checksummable for ComponentType {
             ComponentType::Char => 11u8.update_checksum(checksum),
             ComponentType::String => 12u8.update_checksum(checksum),
             ComponentType::List(inner) => {
-                13u8.update_checksum(checksum;
-                inner.update_checksum(checksum;
+                13u8.update_checksum(checksum);
+                inner.update_checksum(checksum);
             }
             ComponentType::Record(fields) => {
-                14u8.update_checksum(checksum;
-                fields.len().update_checksum(checksum;
+                14u8.update_checksum(checksum);
+                fields.len().update_checksum(checksum);
             }
             ComponentType::Tuple(types) => {
-                15u8.update_checksum(checksum;
-                types.len().update_checksum(checksum;
+                15u8.update_checksum(checksum);
+                types.len().update_checksum(checksum);
             }
             ComponentType::Variant(cases) => {
-                16u8.update_checksum(checksum;
-                cases.len().update_checksum(checksum;
+                16u8.update_checksum(checksum);
+                cases.len().update_checksum(checksum);
             }
             ComponentType::Enum(cases) => {
-                17u8.update_checksum(checksum;
-                cases.len().update_checksum(checksum;
+                17u8.update_checksum(checksum);
+                cases.len().update_checksum(checksum);
             }
             ComponentType::Option(inner) => {
-                18u8.update_checksum(checksum;
-                inner.update_checksum(checksum;
+                18u8.update_checksum(checksum);
+                inner.update_checksum(checksum);
             }
             ComponentType::Result(ok, err) => {
-                19u8.update_checksum(checksum;
+                19u8.update_checksum(checksum);
                 if let Some(ok) = ok {
-                    ok.update_checksum(checksum;
+                    ok.update_checksum(checksum);
                 }
                 if let Some(err) = err {
-                    err.update_checksum(checksum;
+                    err.update_checksum(checksum);
                 }
             }
             ComponentType::Flags(flags) => {
-                20u8.update_checksum(checksum;
-                flags.len().update_checksum(checksum;
+                20u8.update_checksum(checksum);
+                flags.len().update_checksum(checksum);
             }
         }
     }

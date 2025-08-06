@@ -139,11 +139,11 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             memory_safety_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += memory_safety_proofs::property_count);
+            self.stats.verified_properties += memory_safety_proofs::property_count();
             
             // Also register simplified memory safety tests
             memory_safety_simple::register_tests(self.registry)?;
-            self.stats.verified_properties += memory_safety_simple::property_count);
+            self.stats.verified_properties += memory_safety_simple::property_count();
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -170,7 +170,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             safety_invariants_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += safety_invariants_proofs::property_count);
+            self.stats.verified_properties += safety_invariants_proofs::property_count();
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]
@@ -196,7 +196,7 @@ impl KaniTestRunner {
         #[cfg(any(doc, kani, feature = "kani"))]
         {
             concurrency_proofs::register_tests(self.registry)?;
-            self.stats.verified_properties += concurrency_proofs::property_count);
+            self.stats.verified_properties += concurrency_proofs::property_count();
         }
         
         #[cfg(not(any(doc, kani, feature = "kani")))]

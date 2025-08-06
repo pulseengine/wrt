@@ -96,6 +96,7 @@ use wrt_error::{
     kinds,
     Error,
     ErrorCategory,
+    Result,
 };
 
 // WRT - wrt-foundation
@@ -476,7 +477,6 @@ pub use compile_time_bounds::{
     StackBoundsValidator,
     SystemBoundsValidator,
 };
-#[allow(deprecated)]
 // Capability-based memory system replaces legacy global coordinator
 // Use memory_init::get_global_capability_context() for modern memory management
 
@@ -486,6 +486,7 @@ pub use compile_time_bounds::{
 // pub use validated_collections::{
 //     ValidatedBoundedVec, ValidatedBoundedMap, ValidatedBoundedString,
 // };
+#[allow(deprecated)]
 pub use enforcement::{
     AllocationToken,
     EnforcedAllocation,
@@ -705,7 +706,7 @@ mod tests {
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
         use crate::capabilities::{
-            CapabilityFactoryBuilder,
+            CapabilityProviderFactory,
             ProviderCapabilityExt,
         };
         use crate::safe_memory::NoStdProvider;
@@ -713,7 +714,7 @@ mod tests {
         let base_provider = safe_managed_alloc!(1024, CrateId::Foundation)?;
         #[cfg(any(feature = "std", feature = "alloc"))]
         let provider = {
-            let factory = CapabilityFactoryBuilder::new()
+            let factory = CapabilityProviderFactory::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
                 .build()?;
             factory.create_provider::<1024>(CrateId::Foundation)?
@@ -740,11 +741,11 @@ mod tests {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
-        use crate::capabilities::CapabilityFactoryBuilder;
+        use crate::capabilities::CapabilityProviderFactory;
 
         #[cfg(any(feature = "std", feature = "alloc"))]
         let provider = {
-            let factory = CapabilityFactoryBuilder::new()
+            let factory = CapabilityProviderFactory::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
                 .build()?;
             factory.create_provider::<1024>(CrateId::Foundation)?
@@ -768,11 +769,11 @@ mod tests {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
-        use crate::capabilities::CapabilityFactoryBuilder;
+        use crate::capabilities::CapabilityProviderFactory;
 
         #[cfg(any(feature = "std", feature = "alloc"))]
         let provider = {
-            let factory = CapabilityFactoryBuilder::new()
+            let factory = CapabilityProviderFactory::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
                 .build()?;
             factory.create_provider::<1024>(CrateId::Foundation)?
@@ -798,11 +799,11 @@ mod tests {
         init_test_memory_system();
         // Use capability-driven approach instead of unsafe release
         #[cfg(any(feature = "std", feature = "alloc"))]
-        use crate::capabilities::CapabilityFactoryBuilder;
+        use crate::capabilities::CapabilityProviderFactory;
 
         #[cfg(any(feature = "std", feature = "alloc"))]
         let provider = {
-            let factory = CapabilityFactoryBuilder::new()
+            let factory = CapabilityProviderFactory::new()
                 .with_dynamic_capability(CrateId::Foundation, 1024)?
                 .build()?;
             factory.create_provider::<1024>(CrateId::Foundation)?

@@ -288,7 +288,7 @@ pub mod binary {
     pub fn write_leb128_u32(value: u32) -> BoundedVec<u8, 10, NoStdProvider<64>> {
         if let Ok(provider) = create_decoder_provider::<64>() {
             let mut result =
-                BoundedVec::new(provider).expect(".expect("Failed to create bounded vec for LEB128"));")
+                BoundedVec::new(provider).expect("Failed to create bounded vec for LEB128");
             let mut buffer = [0u8; 10];
             // Simple LEB128 encoding for no_std
             let mut bytes_written = 0;
@@ -349,7 +349,7 @@ pub mod binary {
             bytes_read += 1;
 
             if (byte & 0x80) == 0 {
-                return Ok((value, bytes_read;
+                return Ok((value, bytes_read));
             }
 
             shift += 7;
@@ -446,7 +446,7 @@ pub trait DecoderVecExt<T> {
         Self: Sized;
 
     /// Update checksum (compatible with both std and no_std)
-    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum;
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum);
 
     /// Serialized size (compatible with both std and no_std)
     fn serialized_size(&self) -> usize;
@@ -476,9 +476,9 @@ where
         // Read count first (assuming LEB128 u32 count prefix)
         let mut count_bytes = [0u8; 4];
         reader.read_exact(&mut count_bytes)?;
-        let count = u32::from_le_bytes(count_bytes;
+        let count = u32::from_le_bytes(count_bytes);
 
-        result.reserve(count as usize;
+        result.reserve(count as usize);
         for _ in 0..count {
             let item = T::from_bytes_with_provider(reader, _provider)?;
             result.push(item);
@@ -488,7 +488,7 @@ where
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         for item in self {
-            item.update_checksum(checksum;
+            item.update_checksum(checksum);
         }
     }
 
@@ -536,7 +536,7 @@ where
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         use wrt_foundation::traits::Checksummable;
-        Checksummable::update_checksum(self, checksum;
+        Checksummable::update_checksum(self, checksum);
     }
 
     fn serialized_size(&self) -> usize {
@@ -565,7 +565,7 @@ pub trait DecoderStringExt {
         Self: Sized;
 
     /// Update checksum (compatible with both std and no_std)
-    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum;
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum);
 
     /// Serialized size (compatible with both std and no_std)
     fn serialized_size(&self) -> usize;
@@ -624,7 +624,7 @@ where
 
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         use wrt_foundation::traits::Checksummable;
-        Checksummable::update_checksum(self, checksum;
+        Checksummable::update_checksum(self, checksum);
     }
 
     fn serialized_size(&self) -> usize {

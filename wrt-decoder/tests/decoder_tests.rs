@@ -122,7 +122,7 @@ fn test_invalid_module() {
     let invalid_bytes = vec![0x00, 0x61, 0x73];
 
     // Attempt to decode, should return an error
-    let result = wrt_decoder::wasm::decode(&invalid_bytes;
+    let result = wrt_decoder::wasm::decode(&invalid_bytes);
     assert!(result.is_err());
 
     // Test with truncated module

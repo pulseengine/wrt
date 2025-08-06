@@ -29,15 +29,12 @@ use std::sync::atomic::{
     Ordering,
 };
 
-use crate::{
-    traits::{
-        FromBytes,
-        ReadStream,
-        SerializationError,
-        ToBytes,
-        WriteStream,
-    },
-    wrt_error::Result,
+use crate::traits::{
+    FromBytes,
+    ReadStream,
+    SerializationError,
+    ToBytes,
+    WriteStream,
 };
 
 /// Defines the level of verification to apply for checksums and other checks.

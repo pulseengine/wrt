@@ -22,7 +22,7 @@ use core::sync::atomic::{
 };
 
 use wrt_error::Error as WrtError; // Added for the Result return type
-// Use WrtOnce from wrt-sync crate
+use wrt_error::Result; // Use WrtOnce from wrt-sync crate
 use wrt_sync::once::WrtOnce;
 
 use crate::traits::importance; // Added this import
@@ -253,7 +253,7 @@ impl Type {
     pub fn fuel_cost_for_operation(
         op_type: Type,
         verification_level: VerificationLevel,
-    ) -> Result<u64, WrtError> {
+    ) -> wrt_error::Result<u64> {
         let base_cost = u64::from(op_type.cost());
 
         // Adjust cost based on verification level using scaled integer math

@@ -119,7 +119,7 @@ macro_rules! validate_allocation {
 
             // Additional compile-time checks
             assert!(
-                validator.is_platform_safe(),
+                CompileTimeBoundsValidator::<$size, { $crate_id as usize }>::is_platform_safe(),
                 "Allocation not safe for target platform"
             );
         };

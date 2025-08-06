@@ -243,7 +243,7 @@ impl MemoryFactory {
                     capability.verify_access(&operation)
                 }
             },
-            Err(e) => Err(e.clone()),
+            Err(e) => Err(*e),
         };
 
         // Record safety monitoring events

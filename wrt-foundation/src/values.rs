@@ -10,7 +10,7 @@
 
 #[cfg(feature = "std")]
 // use std::format; // Removed
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use alloc;
 #[cfg(not(feature = "std"))]
 use core::fmt;

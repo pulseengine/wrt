@@ -3,7 +3,6 @@
 /// This module provides capability-based safety features that can be composed
 /// to meet various safety standards (ISO 26262, DO-178C, IEC 61508, etc.)
 /// without being tied to specific standard names.
-use wrt_error::Result;
 
 /// Compile-time feature validation
 ///
@@ -54,7 +53,7 @@ pub mod allocation {
             #[cfg(feature = "dynamic-allocation")]
             {
                 // QM level - dynamic allocation allowed
-                crate::safe_managed_alloc!($size, $crate_id)
+                $crate::safe_managed_alloc!($size, $crate_id)
             }
 
             #[cfg(all(feature = "bounded-collections", not(feature = "static-allocation")))]
@@ -64,7 +63,7 @@ pub mod allocation {
                     $size <= 65536,
                     "ASIL-A/B: allocation size exceeds 64KB limit"
                 );
-                crate::safe_managed_alloc!($size, $crate_id)
+                $crate::safe_managed_alloc!($size, $crate_id)
             }
 
             #[cfg(all(
@@ -75,7 +74,7 @@ pub mod allocation {
                 // ASIL-C level - static allocation only
                 compile_time_assert!($size <= 32768, "ASIL-C: allocation size exceeds 32KB limit");
                 const_assert!($size > 0, "ASIL-C: zero-size allocation not allowed");
-                crate::safe_managed_alloc!($size, $crate_id)
+                $crate::safe_managed_alloc!($size, $crate_id)
             }
 
             #[cfg(feature = "verified-static-allocation")]
@@ -87,7 +86,7 @@ pub mod allocation {
                     $size.is_power_of_two(),
                     "ASIL-D: allocation size must be power of 2"
                 );
-                crate::safe_managed_alloc!($size, $crate_id)
+                $crate::safe_managed_alloc!($size, $crate_id)
             }
         }};
     }

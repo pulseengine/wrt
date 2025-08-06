@@ -29,9 +29,9 @@ fn test_custom_sections() {
     assert_eq!(module.custom_sections.len(), 1);
 
     // Find the custom section
-    let found = module.find_custom_section("test-section";
-    assert!(found.is_some();
-    assert_eq!(found.unwrap().data, vec![1, 2, 3, 4];
+    let found = module.find_custom_section("test-section");
+    assert!(found.is_some());
+    assert_eq!(found.unwrap().data, vec![1, 2, 3, 4]);
 
     // Add another section
     let section2 = CustomSection {

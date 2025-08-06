@@ -3,11 +3,11 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use crate::safe_managed_alloc;
 extern crate alloc;
 
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 use core::fmt;
 #[cfg(not(feature = "std"))]
@@ -50,7 +50,6 @@ use crate::{
         VerificationLevel,
     },
     MemoryProvider,
-    wrt_error::Result,
 };
 
 // use crate::prelude::{format, ToString, String as PreludeString, Vec as

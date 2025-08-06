@@ -67,7 +67,6 @@ use std::vec::Vec;
 pub use crate::prelude::ToString;
 pub use crate::prelude::*;
 // Checksum and VerificationLevel are already imported through prelude
-use crate::wrt_error::Result;
 
 /// A safe slice with integrated checksum for data integrity verification
 #[derive(Clone)]

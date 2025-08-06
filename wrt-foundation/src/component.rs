@@ -6,7 +6,10 @@
 // ToString comes from prelude
 use core::fmt::Debug;
 
-use wrt_error::ErrorCategory;
+use wrt_error::{
+    ErrorCategory,
+    Result,
+};
 
 #[cfg(feature = "std")]
 use crate::component_type_store::TypeRef;
@@ -35,7 +38,6 @@ use crate::{
     },
     Error,
     MemoryProvider,
-    wrt_error::Result,
 };
 
 // Binary std/no_std choice

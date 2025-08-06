@@ -34,11 +34,11 @@ fn main() {
     println!("Unexpected End Error:\n{}\n", error);
 
     // MalformedContent error
-    let error = malformed_content(0x40, 3, "Invalid function type in function section";
+    let error = malformed_content(0x40, 3, "Invalid function type in function section");
     println!("Malformed Content Error:\n{}\n", error);
 
     // SectionSizeExceedsModule error
-    let error = section_size_exceeds_module(4, 100, 50, 0x50;
+    let error = section_size_exceeds_module(4, 100, 50, 0x50);
     println!("Section Size Exceeds Module Error:\n{}\n", error);
 
     // InvalidMagic error

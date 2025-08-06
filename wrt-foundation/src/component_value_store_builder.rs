@@ -13,6 +13,8 @@
 
 use core::fmt::Debug;
 
+use wrt_error::Result;
+
 // Internal imports
 use crate::{
     component_value_store::{
@@ -23,7 +25,6 @@ use crate::{
     },
     verification::VerificationLevel,
     MemoryProvider,
-    wrt_error::Result,
 };
 
 /// Builder for `ComponentValueStore` instances.

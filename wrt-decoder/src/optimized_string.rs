@@ -99,10 +99,10 @@ pub fn copy_utf8_to_bounded(
             ErrorCategory::Parse,
             codes::BUFFER_TOO_SMALL,
             "Buffer too small for string",
-        ;
+        ));
     }
 
     // Copy to buffer
-    buffer[..name_bytes.len()].copy_from_slice(name_bytes;
+    buffer[..name_bytes.len()].copy_from_slice(name_bytes);
     Ok((name_bytes.len(), new_offset))
 }

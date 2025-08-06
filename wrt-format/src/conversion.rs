@@ -279,18 +279,18 @@ mod tests {
     fn test_format_block_type_conversion() {
         // Test FormatBlockType -> BlockType
         let format_empty = FormatBlockType::Empty;
-        let format_value = FormatBlockType::ValueType(ValueType::I32;
-        let format_type_idx = FormatBlockType::TypeIndex(42;
+        let format_value = FormatBlockType::ValueType(ValueType::I32);
+        let format_type_idx = FormatBlockType::TypeIndex(42);
 
-        let block_empty = format_block_type_to_block_type(&format_empty;
-        let block_value = format_block_type_to_block_type(&format_value;
-        let block_type_idx = format_block_type_to_block_type(&format_type_idx;
+        let block_empty = format_block_type_to_block_type(&format_empty);
+        let block_value = format_block_type_to_block_type(&format_value);
+        let block_type_idx = format_block_type_to_block_type(&format_type_idx);
 
-        assert!(matches!(block_empty, BlockType::Value(None));
+        assert!(matches!(block_empty, BlockType::Value(None)));
         // ValueType now requires generic parameter, so we'll check the general
         // structure
-        assert!(matches!(block_value, BlockType::Value(_));
-        assert!(matches!(block_type_idx, BlockType::FuncType(42));
+        assert!(matches!(block_value, BlockType::Value(_)));
+        assert!(matches!(block_type_idx, BlockType::FuncType(42)));
 
         // Test BlockType -> FormatBlockType
         let format_empty_2 = block_type_to_format_block_type(&block_empty);
@@ -317,20 +317,20 @@ mod tests {
         let format_limits_min = wrt_limits_to_format_limits(&wrt_limits_min, false, false);
         let format_limits_both = wrt_limits_to_format_limits(&wrt_limits_both, false, false);
 
-        assert_eq!(format_limits_min.min, 10;
-        assert_eq!(format_limits_min.max, None;
-        assert_eq!(format_limits_min.shared, false;
-        assert_eq!(format_limits_min.memory64, false;
+        assert_eq!(format_limits_min.min, 10);
+        assert_eq!(format_limits_min.max, None);
+        assert_eq!(format_limits_min.shared, false);
+        assert_eq!(format_limits_min.memory64, false);
 
-        assert_eq!(format_limits_both.min, 10;
-        assert_eq!(format_limits_both.max, Some(20;
-        assert_eq!(format_limits_both.shared, false;
-        assert_eq!(format_limits_both.memory64, false;
+        assert_eq!(format_limits_both.min, 10);
+        assert_eq!(format_limits_both.max, Some(20));
+        assert_eq!(format_limits_both.shared, false);
+        assert_eq!(format_limits_both.memory64, false);
 
         // Test with shared memory
-        let format_limits_shared = wrt_limits_to_format_limits(&wrt_limits_min, true, false;
-        assert_eq!(format_limits_shared.shared, true;
-        assert_eq!(format_limits_shared.memory64, false;
+        let format_limits_shared = wrt_limits_to_format_limits(&wrt_limits_min, true, false);
+        assert_eq!(format_limits_shared.shared, true);
+        assert_eq!(format_limits_shared.memory64, false);
 
         // Test with memory64
         let format_limits_mem64 = wrt_limits_to_format_limits(&wrt_limits_min, false, true);

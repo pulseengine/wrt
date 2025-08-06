@@ -7,7 +7,10 @@
 //! SW-REQ-ID: REQ_MEM_002 - Budget enforcement
 //! SW-REQ-ID: REQ_MEM_003 - Automatic cleanup
 
-use wrt_error::helpers::memory_limit_exceeded_error;
+use wrt_error::{
+    helpers::memory_limit_exceeded_error,
+    Result,
+};
 
 use crate::{
     budget_aware_provider::CrateId,
@@ -29,7 +32,6 @@ use crate::{
     safe_memory::NoStdProvider,
     Error,
     ErrorCategory,
-    Result,
 };
 
 /// Maximum number of crates in the WRT system

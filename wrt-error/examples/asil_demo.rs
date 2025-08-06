@@ -178,12 +178,12 @@ fn demonstrate_asil_d_features() {
         "Memory Error: {} - Valid: {}",
         valid_error,
         valid_error.validate_integrity()
-    ;
+    );
     println!(
         "Safety Error: {} - Valid: {}",
         valid_safety,
         valid_safety.validate_integrity()
-    ;
+    );
 
     // Demonstrate determinism and redundancy errors
     let det_error = Error::safety_violation("Non-deterministic behavior detected");

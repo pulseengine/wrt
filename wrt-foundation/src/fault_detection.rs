@@ -4,7 +4,7 @@
 //! violations as required for ASIL-A compliance. It provides runtime monitoring
 //! of memory operations and systematic detection of safety violations.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+// Note: no_std is configured at the crate level
 
 use core::sync::atomic::{
     AtomicBool,

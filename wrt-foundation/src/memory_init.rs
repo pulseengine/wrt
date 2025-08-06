@@ -113,7 +113,7 @@ impl MemoryInitializer {
         for (crate_id, budget) in budgets.iter() {
             if *budget > 0 {
                 // Register dynamic capabilities for all crates
-                if let Err(_) = context.register_dynamic_capability(*crate_id, *budget) {
+                if context.register_dynamic_capability(*crate_id, *budget).is_err() {
                     // ASIL-D safe error storage using atomic pointer
                     let error_msg: &'static str = "Failed to register crate capability";
                     MEMORY_INITIALIZED.store(false, Ordering::Release);

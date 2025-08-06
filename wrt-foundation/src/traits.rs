@@ -16,6 +16,7 @@ use wrt_error::{
     codes,
     Error as WrtError,
     ErrorCategory,
+    Result,
 };
 
 use crate::{
@@ -29,7 +30,6 @@ use crate::{
     },
     MemoryProvider as RootMemoryProvider,
     VerificationLevel,
-    wrt_error::Result,
 }; // Keep wrt_error::Result, Added RootMemoryProvider etc. // Added WrtError,
    // ErrorCategory, codes
 
@@ -57,7 +57,7 @@ pub trait ToFormat<T>: Sized {
     /// # Errors
     ///
     /// Returns an error if the conversion fails.
-    fn to_format(&self) -> crate::wrt_error::Result<T>;
+    fn to_format(&self) -> wrt_error::Result<T>;
 }
 
 /// Trait for types that can update a checksum.
@@ -90,7 +90,7 @@ pub trait ToWrtValue {
     /// # Errors
     ///
     /// Returns an error if the conversion fails.
-    fn to_wrt_value(&self) -> crate::wrt_error::Result<crate::types::ValueType>;
+    fn to_wrt_value(&self) -> wrt_error::Result<crate::types::ValueType>;
 }
 
 // Implementations for primitive types
@@ -475,14 +475,14 @@ impl_little_endian_for_primitive! {
 // Ok(V128::new(arr))
 // }
 //
-// fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) -> wrt_error::Result<()> {
-// writer.write_all(&self.bytes)
+// fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) ->
+// wrt_error::Result<()> { writer.write_all(&self.bytes)
 // }
 // }
 
 // Adding Error conversion for SerializationError -> wrt_error::Error
-// This will be useful if functions returning wrt_error::Result need to propagate
-// SerializationError.
+// This will be useful if functions returning wrt_error::Result need to
+// propagate SerializationError.
 
 impl From<SerializationError> for WrtError {
     fn from(e: SerializationError) -> Self {
@@ -756,7 +756,12 @@ impl RootMemoryProvider for DefaultMemoryProvider {
         self.0.get_slice_mut(offset, len)
     }
 
-    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> wrt_error::Result<()> {
+    fn copy_within(
+        &mut self,
+        src_offset: usize,
+        dst_offset: usize,
+        len: usize,
+    ) -> wrt_error::Result<()> {
         self.0.copy_within(src_offset, dst_offset, len)
     }
 
@@ -966,7 +971,10 @@ impl<'a> WriteStream<'a> {
     }
 
     // Helper for writing little-endian integers
-    fn write_le_bytes_from_array<const N: usize>(&mut self, bytes: [u8; N]) -> wrt_error::Result<()> {
+    fn write_le_bytes_from_array<const N: usize>(
+        &mut self,
+        bytes: [u8; N],
+    ) -> wrt_error::Result<()> {
         self.ensure_capacity(N)?;
         self.buffer.data_mut()?[self.position..self.position + N].copy_from_slice(&bytes);
         self.position += N;

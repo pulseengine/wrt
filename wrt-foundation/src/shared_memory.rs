@@ -25,7 +25,6 @@ use crate::{
         ToBytes,
         Validatable,
     },
-    wrt_error::Result,
 };
 
 /// WebAssembly memory type supporting both linear and shared memory

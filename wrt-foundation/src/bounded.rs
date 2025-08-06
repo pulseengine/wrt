@@ -148,10 +148,10 @@ use std::string::String;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_error::ErrorCategory as WrtErrorCategory; /* And added here as a top-level import -
-                                                    * Keep ErrorCategory qualified */
-// Use the modern Result type from wrt_error
-use wrt_error::Result;
+use wrt_error::ErrorCategory as WrtErrorCategory; // And added here as a top-level import -
+                                                  // Keep ErrorCategory qualified
+                                                  // Use the modern Result type from wrt_error
+type Result<T> = wrt_error::Result<T>;
 
 // Binary std/no_std choice
 

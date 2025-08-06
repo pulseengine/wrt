@@ -597,7 +597,7 @@ mod tests {
     #[test]
     #[cfg(target_os = "linux")]
     fn test_linux_thread_pool_with_cpu_affinity() {
-        let config = ThreadPoolConfig::default());
+        let config = ThreadPoolConfig::default();
         let mut pool = LinuxThreadPool::new(config).unwrap();
 
         pool.set_executor(|_| Ok(vec![];

@@ -117,13 +117,13 @@ pub struct ShadowStackEntry {
             let mut bytes = [0u8; 4];
             
             reader.read_exact(&mut bytes)?;
-            let return_address = u32::from_le_bytes(bytes;)
+            let return_address = u32::from_le_bytes(bytes;
             
             reader.read_exact(&mut bytes)?;
-            let stack_pointer = u32::from_le_bytes(bytes;)
+            let stack_pointer = u32::from_le_bytes(bytes;
             
             reader.read_exact(&mut bytes)?;
-            let function_index = u32::from_le_bytes(bytes;)
+            let function_index = u32::from_le_bytes(bytes;
             
             Ok(Self {
                 return_address,
@@ -367,11 +367,11 @@ impl wrt_foundation::traits::FromBytes for LandingPadExpectation {
     ) -> wrt_foundation::Result<Self> {
         let mut func_bytes = [0u8; 4];
         reader.read_exact(&mut func_bytes)?;
-        let function_index = u32::from_le_bytes(func_bytes;)
+        let function_index = u32::from_le_bytes(func_bytes;
         
         let mut inst_bytes = [0u8; 4];
         reader.read_exact(&mut inst_bytes)?;
-        let instruction_offset = u32::from_le_bytes(inst_bytes;)
+        let instruction_offset = u32::from_le_bytes(inst_bytes;
         
         Ok(Self {
             function_index,

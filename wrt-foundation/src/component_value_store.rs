@@ -71,7 +71,6 @@ use crate::{
     Error,
     MemoryProvider,
     SafeMemoryHandler,
-    wrt_error::Result,
 };
 use crate::{
     prelude::*,

@@ -100,7 +100,10 @@ where
     }
 
     /// Creates a new `BoundedQueue` with a specific verification level.
-    pub fn with_verification_level(provider_arg: P, level: VerificationLevel) -> wrt_error::Result<Self> {
+    pub fn with_verification_level(
+        provider_arg: P,
+        level: VerificationLevel,
+    ) -> wrt_error::Result<Self> {
         let item_serialized_size = T::default().serialized_size();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             return Err(Error::new_static(
@@ -403,7 +406,10 @@ where
     }
 
     /// Creates a new `BoundedMap` with a specific verification level.
-    pub fn with_verification_level(provider_arg: P, level: VerificationLevel) -> wrt_error::Result<Self> {
+    pub fn with_verification_level(
+        provider_arg: P,
+        level: VerificationLevel,
+    ) -> wrt_error::Result<Self> {
         let entries = BoundedVec::with_verification_level(provider_arg, level)?;
 
         Ok(Self {
@@ -666,7 +672,10 @@ where
     }
 
     /// Creates a new `BoundedSet` with a specific verification level.
-    pub fn with_verification_level(provider_arg: P, level: VerificationLevel) -> wrt_error::Result<Self> {
+    pub fn with_verification_level(
+        provider_arg: P,
+        level: VerificationLevel,
+    ) -> wrt_error::Result<Self> {
         let elements = BoundedVec::with_verification_level(provider_arg, level)?;
 
         Ok(Self {
@@ -808,7 +817,10 @@ where
     }
 
     /// Creates a new `BoundedDeque` with a specific verification level.
-    pub fn with_verification_level(provider_arg: P, level: VerificationLevel) -> wrt_error::Result<Self> {
+    pub fn with_verification_level(
+        provider_arg: P,
+        level: VerificationLevel,
+    ) -> wrt_error::Result<Self> {
         let item_serialized_size = T::default().serialized_size();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             return Err(Error::new_static(

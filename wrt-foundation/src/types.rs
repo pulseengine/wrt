@@ -31,7 +31,6 @@ use alloc::collections::{
     BTreeMap as Map,
     BTreeSet as Set,
 };
-// String and Vec handling
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{
     format,
@@ -60,20 +59,19 @@ use std::{
 use wrt_error::{
     Error,
     ErrorCategory,
+    Result,
 };
 
 // Import bounded types
-use crate::bounded::{
-    BoundedError,
-    BoundedVec,
-    WasmName,
-    MAX_WASM_NAME_LENGTH,
-};
 use crate::{
     bounded::{
+        BoundedError,
+        BoundedVec,
+        WasmName,
         MAX_CUSTOM_SECTION_DATA_SIZE,
         MAX_WASM_ITEM_NAME_LENGTH as MAX_ITEM_NAME_LEN,
         MAX_WASM_MODULE_NAME_LENGTH as MAX_MODULE_NAME_LEN,
+        MAX_WASM_NAME_LENGTH,
     },
     codes,
     component::Export,
@@ -95,11 +93,9 @@ use crate::{
     },
     verification::Checksum,
     MemoryProvider,
-    wrt_error::Result,
 };
 
-// Alias wrt_error::Result as Result for this module
-type Result<T> = wrt_error::Result<T>;
+// Result is already imported from wrt_error - no need for alias
 
 // Constants for array bounds in serializable types
 pub const MAX_PARAMS_IN_FUNC_TYPE: usize = 128;
@@ -2352,7 +2348,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
     ///
     /// Returns an error if the name or data cannot be stored due to capacity
     /// limits.
-    #[cfg(any(feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn from_name_and_data(name_str: &str, data_slice: &[u8]) -> Result<Self>
     where
         P: Default, // Ensure P can be defaulted for this convenience function

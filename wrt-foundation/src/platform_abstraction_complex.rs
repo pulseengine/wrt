@@ -15,7 +15,7 @@
 
 use core::marker::PhantomData;
 use wrt_error::{Error, ErrorCategory, Result, codes};
-use crate::safety_system::{SafetyContext, AsilLevel};
+use wrt_error::Result;use crate::safety_system::{SafetyContext, AsilLevel};
 
 // Box for trait objects when allocation is available
 #[cfg(feature = "std")]

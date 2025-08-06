@@ -527,7 +527,7 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_thread_pool_with_cpu_affinity() {
-        let config = ThreadPoolConfig::default());
+        let config = ThreadPoolConfig::default();
         let mut pool = QnxThreadPool::new(config).unwrap();
 
         pool.set_executor(|_| Ok(vec![];

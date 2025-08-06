@@ -203,16 +203,16 @@ impl BuiltinRegistry {
         resource_manager: Arc<Mutex<ResourceManager>>,
     ) -> Self {
         #[cfg(feature = "component-model-async")]
-        let async_store = Arc::new(Mutex::new(async_ops::AsyncValueStore::new();
+        let async_store = Arc::new(Mutex::new(async_ops::AsyncValueStore::new()));
 
         #[cfg(feature = "component-model-error-context")]
-        let error_store = Arc::new(Mutex::new(error::ErrorContextStore::new();
+        let error_store = Arc::new(Mutex::new(error::ErrorContextStore::new()));
 
         // Define a default function executor for threading that just returns an error
         #[cfg(feature = "component-model-threading")]
         let function_executor: FunctionExecutor = Arc::new(|function_id, _args| {
             Err(Error::runtime_execution_error("Function executor not configured"))
-        };
+        });
 
         let mut registry = Self {
             handlers: Vec::new(),
@@ -228,26 +228,26 @@ impl BuiltinRegistry {
         };
 
         // Register default resource handlers
-        let resource_handlers = resource::create_resource_handlers(resource_manager;
+        let resource_handlers = resource::create_resource_handlers(resource_manager);
         for handler in resource_handlers {
-            registry.register_handler(handler;
+            registry.register_handler(handler);
         }
 
         // Register async handlers if the feature is enabled
         #[cfg(feature = "component-model-async")]
         {
-            let async_handlers = async_ops::create_async_handlers(registry.async_store.clone();
+            let async_handlers = async_ops::create_async_handlers(registry.async_store.clone());
             for handler in async_handlers {
-                registry.register_handler(handler;
+                registry.register_handler(handler);
             }
         }
 
         // Register error context handlers if the feature is enabled
         #[cfg(feature = "component-model-error-context")]
         {
-            let error_handlers = error::create_error_handlers);
+            let error_handlers = error::create_error_handlers();
             for handler in error_handlers {
-                registry.register_handler(handler;
+                registry.register_handler(handler);
             }
         }
 
@@ -255,9 +255,9 @@ impl BuiltinRegistry {
         #[cfg(feature = "component-model-threading")]
         {
             let threading_handlers =
-                threading::create_threading_handlers(registry.function_executor.clone();
+                threading::create_threading_handlers(registry.function_executor.clone());
             for handler in threading_handlers {
-                registry.register_handler(handler;
+                registry.register_handler(handler);
             }
         }
 
@@ -271,7 +271,7 @@ impl BuiltinRegistry {
     /// * `handler` - The handler to register
     pub fn register_handler(&mut self, handler: Box<dyn BuiltinHandler>) {
         // Check if we already have a handler for this built-in type
-        let builtin_type = handler.builtin_type);
+        let builtin_type = handler.builtin_type();
         if self.handlers.iter().any(|h| h.builtin_type() == builtin_type) {
             // Replace the existing handler
             let idx = self.handlers.iter().position(|h| h.builtin_type() == builtin_type).unwrap();
@@ -327,7 +327,7 @@ impl BuiltinRegistry {
             .ok_or_else(|| Error::component_not_found("Component not found"))?;
 
         // Create interception context
-        let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id;
+        let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);
 
         // No interceptor currently, just execute
         handler.execute(args)
@@ -350,9 +350,9 @@ impl BuiltinRegistry {
 
         // Re-register threading handlers with the new executor
         let threading_handlers =
-            threading::create_threading_handlers(self.function_executor.clone();
+            threading::create_threading_handlers(self.function_executor.clone());
         for handler in threading_handlers {
-            self.register_handler(handler;
+            self.register_handler(handler);
         }
     }
 }
@@ -407,18 +407,18 @@ mod tests {
             "test-component",
             "test-host",
             Arc::new(Mutex::new(ResourceManager::new())),
-        ;
+        );
 
         // Initially no built-ins are supported
-        assert!(!registry.supports_builtin(BuiltinType::ResourceCreate);
+        assert!(!registry.supports_builtin(BuiltinType::ResourceCreate));
 
         // Register a handler
         registry
-            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate };
+            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate }));
 
         // Now it should be supported
-        assert!(registry.supports_builtin(BuiltinType::ResourceCreate);
-        assert!(!registry.supports_builtin(BuiltinType::ResourceDrop);
+        assert!(registry.supports_builtin(BuiltinType::ResourceCreate));
+        assert!(!registry.supports_builtin(BuiltinType::ResourceDrop));
     }
 
     #[test]
@@ -427,23 +427,23 @@ mod tests {
             "test-component",
             "test-host",
             Arc::new(Mutex::new(ResourceManager::new())),
-        ;
+        );
 
         // Register handlers
         registry
-            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate };
+            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate }));
 
         // Call the built-in
         let args = vec![WrtComponentValue::S32(42)];
-        let result = registry.call(BuiltinType::ResourceCreate, &args;
+        let result = registry.call(BuiltinType::ResourceCreate, &args);
 
         // Verify result
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), args;
+        assert_eq!(result.unwrap(), args);
 
         // Call an unsupported built-in
-        let result = registry.call(BuiltinType::ResourceDrop, &args;
-        assert!(result.is_err();
+        let result = registry.call(BuiltinType::ResourceDrop, &args);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -452,25 +452,25 @@ mod tests {
             "test-component",
             "test-host",
             Arc::new(Mutex::new(ResourceManager::new())),
-        ;
+        );
 
         // Register a handler
         registry
-            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate };
+            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate }));
 
         // Clone the registry
         let cloned = registry.clone();
 
         // Check that the clone works correctly
-        assert!(cloned.supports_builtin(BuiltinType::ResourceCreate);
+        assert!(cloned.supports_builtin(BuiltinType::ResourceCreate));
 
         // Call a built-in on the clone
         let args = vec![WrtComponentValue::S32(42)];
-        let result = cloned.call(BuiltinType::ResourceCreate, &args;
+        let result = cloned.call(BuiltinType::ResourceCreate, &args);
 
         // Verify result
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), args;
+        assert_eq!(result.unwrap(), args);
     }
 
     #[cfg(feature = "component-model-async")]
@@ -482,15 +482,15 @@ mod tests {
             "test-component",
             "test-host",
             Arc::new(Mutex::new(ResourceManager::new())),
-        ;
+        );
 
         // Test the automatic registration of async handlers
-        assert!(registry.supports_builtin(BuiltinType::AsyncNew);
-        assert!(registry.supports_builtin(BuiltinType::AsyncGet);
-        assert!(registry.supports_builtin(BuiltinType::AsyncPoll);
+        assert!(registry.supports_builtin(BuiltinType::AsyncNew));
+        assert!(registry.supports_builtin(BuiltinType::AsyncGet));
+        assert!(registry.supports_builtin(BuiltinType::AsyncPoll));
 
         #[cfg(feature = "std")]
-        assert!(registry.supports_builtin(BuiltinType::AsyncWait);
+        assert!(registry.supports_builtin(BuiltinType::AsyncWait));
 
         // Test creating an async value
         let result = registry.call(BuiltinType::AsyncNew, &[]).unwrap();
@@ -501,22 +501,22 @@ mod tests {
                 // Test polling it (should be pending)
                 let poll_result =
                     registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap();
-                assert_eq!(poll_result, vec![WrtComponentValue::U32(0)];
+                assert_eq!(poll_result, vec![WrtComponentValue::U32(0)]);
 
                 // Complete the async value
-                let store = registry.async_store);
+                let store = registry.async_store();
                 let mut async_store = store.lock().unwrap();
                 async_store.set_result(*id, vec![WrtComponentValue::U32(42)]).unwrap();
 
                 // Test polling again (should be ready)
                 let poll_result =
                     registry.call(BuiltinType::AsyncPoll, &[WrtComponentValue::U32(*id)]).unwrap();
-                assert_eq!(poll_result, vec![WrtComponentValue::U32(1)];
+                assert_eq!(poll_result, vec![WrtComponentValue::U32(1)]);
 
                 // Test getting the result
                 let get_result =
                     registry.call(BuiltinType::AsyncGet, &[WrtComponentValue::U32(*id)]).unwrap();
-                assert_eq!(get_result, vec![WrtComponentValue::U32(42)];
+                assert_eq!(get_result, vec![WrtComponentValue::U32(42)]);
             }
             _ => panic!("Expected U32 result"),
         }

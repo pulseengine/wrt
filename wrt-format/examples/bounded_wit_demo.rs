@@ -143,7 +143,7 @@ fn main() -> Result<(), wrt_error::Error> {
             println!(
                 "✓ Parsed with custom provider: {} worlds",
                 parser.world_count()
-            ;
+            );
         },
         Err(e) => {
             println!("✗ Failed with custom provider: {:?}", e);

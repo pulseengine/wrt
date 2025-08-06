@@ -25,8 +25,8 @@ fn test_parse_encode_call_indirect_larger_type_idx() {
     let bytes = vec![binary::CALL_INDIRECT, 0x80, 0x01, 0x00];
     let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
 
-    assert_eq!(instruction, Instruction::CallIndirect(128, 0);
-    assert_eq!(bytes_read, 4;
+    assert_eq!(instruction, Instruction::CallIndirect(128, 0));
+    assert_eq!(bytes_read, 4);
 
     let encoded = encode_instruction(&instruction).unwrap();
     assert_eq!(encoded, bytes);
@@ -39,7 +39,7 @@ fn test_parse_encode_call_indirect_nonzero_table() {
     let bytes = vec![binary::CALL_INDIRECT, 0x05, 0x01];
     let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
 
-    assert_eq!(instruction, Instruction::CallIndirect(5, 1);
+    assert_eq!(instruction, Instruction::CallIndirect(5, 1));
     assert_eq!(bytes_read, 3);
 
     let encoded = encode_instruction(&instruction).unwrap();
@@ -50,7 +50,7 @@ fn test_parse_encode_call_indirect_nonzero_table() {
 fn test_parse_call_indirect_invalid() {
     // Missing table index byte
     let bytes = vec![binary::CALL_INDIRECT, 0x05];
-    let result = parse_instruction(&bytes;
+    let result = parse_instruction(&bytes);
 
-    assert!(result.is_err();
+    assert!(result.is_err());
 }

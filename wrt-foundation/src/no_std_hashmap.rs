@@ -107,7 +107,7 @@ where
         &self,
         writer: &mut crate::traits::WriteStream<'a>,
         provider: &PStream,
-    ) -> crate::wrt_error::Result<()> {
+    ) -> wrt_error::Result<()> {
         self.key.to_bytes_with_provider(writer, provider)?;
         self.value.to_bytes_with_provider(writer, provider)?;
         self.hash.to_bytes_with_provider(writer, provider)?;
@@ -123,7 +123,7 @@ where
     fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
         reader: &mut crate::traits::ReadStream<'a>,
         provider: &PStream,
-    ) -> crate::wrt_error::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let key = K::from_bytes_with_provider(reader, provider)?;
         let value = V::from_bytes_with_provider(reader, provider)?;
         let hash = u64::from_bytes_with_provider(reader, provider)?;
@@ -138,7 +138,7 @@ where
     V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
 {
     /// Creates a new empty `SimpleHashMap` with the given memory provider.
-    pub fn new(provider: P) -> crate::wrt_error::Result<Self> {
+    pub fn new(provider: P) -> wrt_error::Result<Self> {
         let mut entries = BoundedVec::new(provider)?;
 
         // Pre-populate with None values to indicate empty slots
@@ -198,7 +198,7 @@ where
     ///
     /// If the key already exists, the old value is replaced and returned.
     /// If the map is full and the key doesn't exist, returns an error.
-    pub fn insert(&mut self, key: K, value: V) -> crate::wrt_error::Result<Option<V>>
+    pub fn insert(&mut self, key: K, value: V) -> wrt_error::Result<Option<V>>
     where
         K: Hash,
     {
@@ -263,7 +263,7 @@ where
     }
 
     /// Gets a copy of the value associated with the key.
-    pub fn get<Q: ?Sized>(&self, key: &Q) -> crate::wrt_error::Result<Option<V>>
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> wrt_error::Result<Option<V>>
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -294,7 +294,7 @@ where
     }
 
     /// Removes a key from the map, returning the value if it was present.
-    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> crate::wrt_error::Result<Option<V>>
+    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> wrt_error::Result<Option<V>>
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -328,7 +328,7 @@ where
     }
 
     /// Clears the map, removing all key-value pairs.
-    pub fn clear(&mut self) -> crate::wrt_error::Result<()> {
+    pub fn clear(&mut self) -> wrt_error::Result<()> {
         for i in 0..N {
             self.entries.set(i, None)?;
         }
@@ -347,7 +347,7 @@ mod tests {
     };
 
     #[test]
-    fn test_simple_hashmap() -> crate::wrt_error::Result<()> {
+    fn test_simple_hashmap() -> wrt_error::Result<()> {
         let provider = safe_managed_alloc!(512, CrateId::Foundation)?;
         let mut map = SimpleHashMap::<u32, i32, 8, NoStdProvider<512>>::new(provider)?;
 
@@ -383,7 +383,7 @@ mod tests {
     }
 
     #[test]
-    fn test_full_map() -> crate::wrt_error::Result<()> {
+    fn test_full_map() -> wrt_error::Result<()> {
         let provider = safe_managed_alloc!(256, CrateId::Foundation)?;
         let mut map = SimpleHashMap::<i32, i32, 4, NoStdProvider<256>>::new(provider)?;
 

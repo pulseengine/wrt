@@ -21,6 +21,7 @@ use core::{
     },
 };
 
+use wrt_error::Result;
 use wrt_platform::memory::{
     PageAllocator,
     WASM_PAGE_SIZE,
@@ -37,7 +38,6 @@ use crate::{
         Stats,
     },
     verification::VerificationLevel,
-    wrt_error::Result,
 };
 
 /// ASIL-D safe memory operations module

@@ -317,7 +317,7 @@ mod tests {
             let barrier = Arc::clone(&barrier);
             
             let handle = thread::spawn(move || -> Result<()> {
-                barrier.wait);
+                barrier.wait();
                 
                 for i in 0..operations_per_thread {
                     let offset = (thread_id * operations_per_thread + i) * 4;
@@ -458,19 +458,19 @@ mod tests {
         )?;
         
         let num_operations = 10000;
-        let start_time = std::time::Instant::now);
+        let start_time = std::time::Instant::now();
         
         for i in 0..num_operations {
             let offset = (i % 1000) * 4; // Cycle through different memory locations
             let store_op = AtomicOp::Store(AtomicStoreOp::I32AtomicStore {
                 memarg: MemArg { offset: offset as u32, align: 2 }
-            };
+            });
             
             atomic_model.execute_atomic_operation(0, store_op, &[i as u64])?;
         }
         
-        let duration = start_time.elapsed);
-        let ops_per_second = num_operations as f64 / duration.as_secs_f64);
+        let duration = start_time.elapsed();
+        let ops_per_second = num_operations as f64 / duration.as_secs_f64();
         
         println!("Atomic operations performance: {:.0} ops/sec", ops_per_second);
         assert!(ops_per_second > 1000.0)); // Should be reasonably fast

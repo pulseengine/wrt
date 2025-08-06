@@ -265,11 +265,11 @@ mod tests {
         vec.push(2).unwrap();
         vec.push(3).unwrap();
 
-        let slice = vec.as_slice();
+        let slice = vec.as_slice().unwrap();
         assert_eq!(slice.len(), 3);
-        assert_eq!(slice.get(0), Some(1));
-        assert_eq!(slice.get(1), Some(2));
-        assert_eq!(slice.get(2), Some(3));
+        assert_eq!(slice.get(0), Some(&1));
+        assert_eq!(slice.get(1), Some(&2));
+        assert_eq!(slice.get(2), Some(&3));
     }
 
     #[test]
@@ -288,6 +288,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_bounded_slice_iterator() {
         let provider = NoStdProvider::<1024>::default();
         let mut vec = BoundedVec::<i32, 10, _>::new(provider).unwrap();
@@ -295,8 +296,8 @@ mod tests {
             vec.push(i).unwrap();
         }
 
-        let slice = vec.as_slice();
-        let collected: Vec<i32> = slice.iter().collect();
+        let slice = vec.as_slice().unwrap();
+        let collected: Vec<i32> = slice.iter().copied().collect();
         assert_eq!(collected, vec![0, 1, 2, 3, 4]);
     }
 }

@@ -317,11 +317,12 @@ impl Error {
             | ErrorCategory::RuntimeTrap
             | ErrorCategory::ComponentRuntime => "ASIL-C", /* Memory/trap/component runtime */
             // errors are ASIL-C
-            ErrorCategory::Validation | ErrorCategory::Type | ErrorCategory::PlatformRuntime => {
-                "ASIL-B"
-            }, // Type safety and platform runtime is ASIL-B
-            ErrorCategory::AsyncRuntime => "ASIL-B", // Async runtime errors are ASIL-B
-            _ => "QM",                               // Other errors are Quality Management level
+            ErrorCategory::Validation
+            | ErrorCategory::Type
+            | ErrorCategory::PlatformRuntime
+            | ErrorCategory::AsyncRuntime => "ASIL-B", // Type safety, platform runtime, and
+            // async runtime are ASIL-B
+            _ => "QM", // Other errors are Quality Management level
         }
     }
 

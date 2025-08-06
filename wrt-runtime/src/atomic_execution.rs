@@ -73,7 +73,7 @@ macro_rules! result_vec {
             {
                 let provider = wrt_foundation::safe_managed_alloc!(8192, wrt_foundation::budget_aware_provider::CrateId::Runtime)?;
                 let mut v = wrt_foundation::bounded::BoundedVec::new(provider)?;
-                $(v.push($item)?;)+
+                $(v.push($item)?;+
                 v
             }
         }

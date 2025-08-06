@@ -223,7 +223,7 @@ pub fn get_tests_by_asil(level: AsilLevel) -> [Option<AsilTestMetadata>; MAX_TES
     for test in all_tests.iter() {
         if let Some(test) = test {
             if test.asil_level == level && result_idx < MAX_TESTS_NO_STD {
-                result[result_idx] = Some(test.clone());
+                result[result_idx] = Some(*test);
                 result_idx += 1;
             }
         }
@@ -249,7 +249,7 @@ pub fn get_tests_by_category(
     for test in all_tests.iter() {
         if let Some(test) = test {
             if test.category == category && result_idx < MAX_TESTS_NO_STD {
-                result[result_idx] = Some(test.clone());
+                result[result_idx] = Some(*test);
                 result_idx += 1;
             }
         }
@@ -462,8 +462,9 @@ mod tests {
     fn test_asil_test_registration() {
         // Clear any existing registrations for this test
         #[cfg(feature = "std")]
-        unsafe {
-            TEST_REGISTRY = Mutex::new(Some(Vec::new()));
+        {
+            let mut registry = TEST_REGISTRY.lock().unwrap();
+            *registry = Some(Vec::new());
         }
 
         #[cfg(not(feature = "std"))]
@@ -489,8 +490,9 @@ mod tests {
     fn test_asil_filtering() {
         // Clear registry
         #[cfg(feature = "std")]
-        unsafe {
-            TEST_REGISTRY = Mutex::new(Some(Vec::new()));
+        {
+            let mut registry = TEST_REGISTRY.lock().unwrap();
+            *registry = Some(Vec::new());
         }
 
         #[cfg(not(feature = "std"))]

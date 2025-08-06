@@ -11,7 +11,7 @@
 //! - Monitors capability system integrity
 //! - Enables production diagnostics
 
-#![cfg_attr(not(feature = "std"), no_std)]
+// Note: no_std is configured at the crate level
 
 use crate::{
     capabilities::CapabilityMask,
@@ -128,6 +128,12 @@ pub enum ViolationType {
     MemoryCorruption,
     /// Performance degradation
     PerformanceDegradation,
+}
+
+impl Default for SafetyMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SafetyMonitor {

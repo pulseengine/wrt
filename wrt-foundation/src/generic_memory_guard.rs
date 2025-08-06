@@ -200,6 +200,17 @@ where
     _phantom:    PhantomData<(P, C, I)>,
 }
 
+impl<P, C, I> Default for MemoryGuardBuilder<P, C, I>
+where
+    P: ManagedMemoryProvider,
+    C: MemoryCoordinator<I> + 'static,
+    I: Copy,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<P, C, I> MemoryGuardBuilder<P, C, I>
 where
     P: ManagedMemoryProvider,
@@ -270,7 +281,7 @@ mod tests {
         }
     }
 
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
     struct TestCrateId(u8);
 
     impl CrateIdentifier for TestCrateId {

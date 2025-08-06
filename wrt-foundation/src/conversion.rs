@@ -225,10 +225,10 @@ mod tests {
         let func_type = func_type::create(provider.clone(), &params, &results).unwrap();
 
         assert_eq!(
-            func_type.params(),
+            func_type.params.as_slice().unwrap(),
             &[CoreValueType::I32, CoreValueType::I64]
         );
-        assert_eq!(func_type.results(), &[CoreValueType::F32]);
+        assert_eq!(func_type.results.as_slice().unwrap(), &[CoreValueType::F32]);
 
         // Verification should pass
         assert!(func_type::verify(&func_type).is_ok());
@@ -237,8 +237,8 @@ mod tests {
         let empty_params: [CoreValueType; 0] = [];
         let empty_results: [CoreValueType; 0] = [];
         let func_type_empty = func_type::create(provider, &empty_params, &empty_results).unwrap();
-        assert_eq!(func_type_empty.params(), &[]);
-        assert_eq!(func_type_empty.results(), &[]);
+        assert_eq!(func_type_empty.params.as_slice().unwrap(), &[]);
+        assert_eq!(func_type_empty.results.as_slice().unwrap(), &[]);
         assert!(func_type::verify(&func_type_empty).is_ok());
 
         // Example of a type that might exceed max (depending on

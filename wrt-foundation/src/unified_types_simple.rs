@@ -14,10 +14,7 @@
 
 use core::marker::PhantomData;
 
-use crate::{
-    Error,
-    wrt_error::Result,
-};
+use crate::Error;
 
 /// Platform capacity configuration for unified types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

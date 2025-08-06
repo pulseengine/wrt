@@ -9,7 +9,7 @@
 //! - Zero-overhead when disabled
 //! - Lock-free operation for real-time systems
 
-#![cfg_attr(not(feature = "std"), no_std)]
+// Note: no_std is configured at the crate level
 
 use core::sync::atomic::{
     AtomicBool,
@@ -127,6 +127,12 @@ pub struct TelemetryBuffer<const N: usize> {
     event_count: AtomicU64,
 }
 
+impl<const N: usize> Default for TelemetryBuffer<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const N: usize> TelemetryBuffer<N> {
     /// Create a new telemetry buffer
     pub const fn new() -> Self {
@@ -146,8 +152,8 @@ impl<const N: usize> TelemetryBuffer<N> {
         let packed = ((event.severity as u64) << 56)
             | ((event.category as u64) << 48)
             | ((event.event_code as u64) << 32)
-            | (((event.context1 & 0xFFFF) as u64) << 16)
-            | ((event.context2 & 0xFFFF) as u64);
+            | ((event.context1 & 0xFFFF) << 16)
+            | (event.context2 & 0xFFFF);
 
         // Get write position
         let pos = self.write_pos.fetch_add(1, Ordering::Relaxed) % N as u64;
@@ -171,6 +177,12 @@ pub struct TelemetryConfig {
     min_severity:      AtomicU8,
     /// Timestamp counter
     timestamp_counter: AtomicU64,
+}
+
+impl Default for TelemetryConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TelemetryConfig {

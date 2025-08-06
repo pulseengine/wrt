@@ -56,6 +56,12 @@ pub struct EnforcedAllocation<const SIZE: usize, const CRATE: usize> {
     _phantom: core::marker::PhantomData<[u8; SIZE]>,
 }
 
+impl<const SIZE: usize, const CRATE: usize> Default for EnforcedAllocation<SIZE, CRATE> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const SIZE: usize, const CRATE: usize> EnforcedAllocation<SIZE, CRATE> {
     /// Create an enforced allocation
     pub const fn new() -> Self {
@@ -113,6 +119,12 @@ impl<const SIZE: usize> AllocationToken<SIZE> {
 /// Memory region with compile-time bounds checking
 pub struct MemoryRegion<const START: usize, const SIZE: usize> {
     _phantom: core::marker::PhantomData<[u8; SIZE]>,
+}
+
+impl<const START: usize, const SIZE: usize> Default for MemoryRegion<START, SIZE> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<const START: usize, const SIZE: usize> MemoryRegion<START, SIZE> {

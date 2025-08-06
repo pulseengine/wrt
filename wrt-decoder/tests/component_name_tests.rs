@@ -31,7 +31,7 @@ fn test_component_name_section() {
     let decoded = decode_component(&binary).unwrap();
 
     // Check that the name was preserved
-    assert_eq!(decoded.name, Some("test_component".to_string());
+    assert_eq!(decoded.name, Some("test_component".to_string()));
 }
 
 // Let's create our own ComponentNameSection for testing since we don't know the
@@ -87,10 +87,10 @@ fn test_standalone_name_section() {
     let decoded = parse_component_name_section(&encoded).unwrap();
 
     // Check component name
-    assert_eq!(decoded.component_name, original.component_name;
+    assert_eq!(decoded.component_name, original.component_name);
 
     // Check sort names
-    assert_eq!(decoded.sort_names.len(), original.sort_names.len();
+    assert_eq!(decoded.sort_names.len(), original.sort_names.len());
 
     for i in 0..original.sort_names.len() {
         let (sort1, names1) = &original.sort_names[i];
@@ -101,10 +101,10 @@ fn test_standalone_name_section() {
         assert!(matches!(sort1, _sort2);
 
         // Compare name maps
-        assert_eq!(names1.len(), names2.len();
+        assert_eq!(names1.len(), names2.len());
         for j in 0..names1.len() {
-            assert_eq!(names1[j].0, names2[j].0;
-            assert_eq!(names1[j].1, names2[j].1;
+            assert_eq!(names1[j].0, names2[j].0);
+            assert_eq!(names1[j].1, names2[j].1);
         }
     }
 }
@@ -157,5 +157,5 @@ fn test_custom_section_with_name() {
     let component = decode_component(&binary).unwrap();
 
     // Check that the name was extracted
-    assert_eq!(component.name, Some("test_component".to_string());
+    assert_eq!(component.name, Some("test_component".to_string()));
 }

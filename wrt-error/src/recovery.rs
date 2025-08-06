@@ -72,12 +72,14 @@ impl ErrorContext {
     }
 
     /// Add context information
+    #[must_use]
     pub fn with_context(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.context.insert(key.into(), value.into());
         self
     }
 
     /// Add stack frame
+    #[must_use]
     pub fn with_stack_frame(mut self, frame: impl Into<String>) -> Self {
         self.stack_trace.push(frame.into());
         self
@@ -287,12 +289,15 @@ impl RecoverableError {
     }
 
     /// Convert to a standard Result
+    ///
+    /// # Errors
+    /// Returns an error if the recovery result is `Abort` or `Retry`
     pub fn into_result<T>(self) -> Result<Option<T>> {
         match self.recovery_suggestion {
-            RecoveryResult::Abort => Err(self.error),
-            RecoveryResult::Skip | RecoveryResult::Continue => Ok(None),
-            RecoveryResult::UseDefault => Ok(None), // Caller should provide default
-            RecoveryResult::Retry { .. } => Err(self.error), // Caller should handle retry
+            RecoveryResult::Skip | RecoveryResult::Continue | RecoveryResult::UseDefault => {
+                Ok(None)
+            },
+            RecoveryResult::Retry { .. } | RecoveryResult::Abort => Err(self.error),
         }
     }
 }
@@ -304,33 +309,29 @@ impl DebugUtils {
     /// Format error with full debugging information
     #[must_use]
     pub fn format_detailed_error(error: &Error, context: &ErrorContext) -> String {
+        use core::fmt::Write;
+
         let mut output = String::new();
 
-        output.push_str(&format!(
-            "Error: {} (Code: {})\n",
-            error.message, error.code
-        ));
-        output.push_str(&format!("Category: {:?}\n", error.category));
-        output.push_str(&format!("Location: {}\n", context.location));
+        writeln!(output, "Error: {} (Code: {})", error.message, error.code).unwrap();
+        writeln!(output, "Category: {:?}", error.category).unwrap();
+        writeln!(output, "Location: {}", context.location).unwrap();
 
         if !context.context.is_empty() {
             output.push_str("Context:\n");
             for (key, value) in &context.context {
-                output.push_str(&format!("  {key}: {value}\n"));
+                writeln!(output, "  {key}: {value}").unwrap();
             }
         }
 
         if !context.stack_trace.is_empty() {
             output.push_str("Stack trace:\n");
             for (i, frame) in context.stack_trace.iter().enumerate() {
-                output.push_str(&format!("  {i}: {frame}\n"));
+                writeln!(output, "  {i}: {frame}").unwrap();
             }
         }
 
-        output.push_str(&format!(
-            "Recovery strategy: {:?}\n",
-            context.recovery_strategy
-        ));
+        writeln!(output, "Recovery strategy: {:?}", context.recovery_strategy).unwrap();
 
         output
     }

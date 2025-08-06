@@ -25,6 +25,8 @@ const MAX_BUILDER_CORE_INSTANCES: usize = 64;
 const MAX_BUILDER_COMPONENT_TYPES: usize = 128;
 const MAX_BUILDER_CORE_TYPES: usize = 128;
 
+use wrt_error::Result;
+
 use crate::{
     bounded::{
         BoundedString,
@@ -62,7 +64,6 @@ use crate::{
     verification::VerificationLevel,
     Error,
     MemoryProvider,
-    wrt_error::Result,
 };
 
 /// Builder for `ComponentType` instances.

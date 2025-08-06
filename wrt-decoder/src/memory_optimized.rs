@@ -210,8 +210,8 @@ impl ModuleArena {
                 #[cfg(not(feature = "std"))]
                 {
                     let provider =
-                        crate::prelude::create_decoder_provider::<4096>().unwrap_or_default);
-                    let mut vec = crate::prelude::DecoderVec::new(provider).unwrap_or_default);
+                        crate::prelude::create_decoder_provider::<4096>().unwrap_or_default();
+                    let mut vec = crate::prelude::DecoderVec::new(provider).unwrap_or_default();
                     // Pre-allocate by pushing zeros up to capacity
                     for _ in 0..capacity.min(4096) {
                         let _ = vec.push(0);
@@ -242,7 +242,7 @@ impl ModuleArena {
     /// Reset the arena for reuse
     pub fn reset(&mut self) {
         self.offset = 0;
-        self.buffer.clear);
+        self.buffer.clear();
     }
 }
 

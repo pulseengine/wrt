@@ -70,7 +70,7 @@ impl BuiltinHandler for ResourceCreateHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("resource.create requires exactly one argument";
+            return Err(Error::runtime_execution_error("resource.create requires exactly one argument"));
         }
 
         // Extract the resource representation from args
@@ -81,13 +81,14 @@ impl BuiltinHandler for ResourceCreateHandler {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Parameter,
                     wrt_error::codes::TYPE_MISMATCH,
-                    "Expected U32 or U64 for resource representation";
+                    "Expected U32 or U64 for resource representation",
+                ));
             }
         };
 
         // Create a new resource based on the representation
         let mut manager = self.resource_manager.lock().unwrap();
-        let id = manager.add_host_resource(rep;
+        let id = manager.add_host_resource(rep);
 
         // Return the resource ID
         #[cfg(feature = "std")]
@@ -135,14 +136,15 @@ impl BuiltinHandler for ResourceDropHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Parameter,
                 wrt_error::codes::EXECUTION_ERROR,
-                "resource.drop requires exactly one argument";
+                "resource.drop requires exactly one argument",
+            ));
         }
 
         // Extract the resource ID from args
         let id = match &args[0] {
             ComponentValue::U32(value) => ResourceId(*value),
             _ => {
-                return Err(Error::runtime_execution_error("Expected U32 for resource ID";
+                return Err(Error::runtime_execution_error("Expected U32 for resource ID"));
             }
         };
 
@@ -152,10 +154,11 @@ impl BuiltinHandler for ResourceDropHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Resource,
                 wrt_error::codes::RESOURCE_NOT_FOUND,
-                "Resource not found";
+                "Resource not found",
+            ));
         }
 
-        manager.delete_resource(id;
+        manager.delete_resource(id)?;
 
         // Return empty result
         Ok(vec![])
@@ -186,7 +189,7 @@ impl BuiltinHandler for ResourceRepHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("resource.rep requires exactly one argument";
+            return Err(Error::runtime_execution_error("resource.rep requires exactly one argument"));
         }
 
         // Extract the resource ID from args
@@ -196,14 +199,15 @@ impl BuiltinHandler for ResourceRepHandler {
                 return Err(Error::new(
                     wrt_error::ErrorCategory::Parameter,
                     wrt_error::codes::TYPE_MISMATCH,
-                    "Expected U32 or U64 for resource representation";
+                    "Expected U32 or U64 for resource representation",
+                ));
             }
         };
 
         // Get the resource representation
         let manager = self.resource_manager.lock().unwrap();
         if !manager.has_resource(id) {
-            return Err(Error::runtime_execution_error("Resource not found";
+            return Err(Error::runtime_execution_error("Resource not found"));
         }
 
         // Get the resource as u32
@@ -242,7 +246,8 @@ impl BuiltinHandler for ResourceGetHandler {
             return Err(Error::new(
                 wrt_error::ErrorCategory::Parameter,
                 wrt_error::codes::EXECUTION_ERROR,
-                "resource.get requires exactly one argument";
+                "resource.get requires exactly one argument",
+            ));
         }
 
         // Extract the resource representation from args
@@ -250,7 +255,7 @@ impl BuiltinHandler for ResourceGetHandler {
             ComponentValue::U32(value) => *value,
             ComponentValue::U64(value) => *value as u32,
             _ => {
-                return Err(Error::runtime_execution_error("Expected U32 for resource ID";
+                return Err(Error::runtime_execution_error("Expected U32 for resource ID"));
             }
         };
 
@@ -261,13 +266,13 @@ impl BuiltinHandler for ResourceGetHandler {
         for (resource_id, resource) in manager.get_resources_iter() {
             if let Ok(resource_value) = manager.get_host_resource::<u32>(*resource_id) {
                 if *resource_value.lock().unwrap() == rep {
-                    return Ok(vec![ComponentValue::U32(resource_id.0)];
+                    return Ok(vec![ComponentValue::U32(resource_id.0)]);
                 }
             }
         }
 
         // Not found, create a new one
-        let id = manager.add_host_resource(rep;
+        let id = manager.add_host_resource(rep);
         #[cfg(feature = "std")]
         {
             Ok(vec![ComponentValue::U32(id.0)])
@@ -309,8 +314,8 @@ mod tests {
 
     #[test]
     fn test_resource_create() {
-        let resource_manager = Arc::new(Mutex::new(ResourceManager::new();
-        let handler = ResourceCreateHandler::new(resource_manager.clone();
+        let resource_manager = Arc::new(Mutex::new(ResourceManager::new()));
+        let handler = ResourceCreateHandler::new(resource_manager.clone());
 
         // Test with valid args
         let args = vec![ComponentValue::U32(42)];
@@ -321,20 +326,20 @@ mod tests {
             ComponentValue::U32(id) => {
                 // Verify the resource was created
                 let manager = resource_manager.lock().unwrap();
-                assert!(manager.has_resource(ResourceId(*id));
+                assert!(manager.has_resource(ResourceId(*id)));
             }
             _ => panic!("Expected U32 result"),
         }
 
         // Test with invalid args
         let invalid_args = vec![ComponentValue::String("not a number".into())];
-        let error = handler.execute(&invalid_args;
-        assert!(error.is_err();
+        let error = handler.execute(&invalid_args);
+        assert!(error.is_err());
     }
 
     #[test]
     fn test_resource_drop() {
-        let resource_manager = Arc::new(Mutex::new(ResourceManager::new();
+        let resource_manager = Arc::new(Mutex::new(ResourceManager::new()));
 
         // Create a resource
         let id = {
@@ -342,7 +347,7 @@ mod tests {
             manager.add_host_resource(42)
         };
 
-        let handler = ResourceDropHandler::new(resource_manager.clone();
+        let handler = ResourceDropHandler::new(resource_manager.clone());
 
         // Test with valid args
         let args = vec![ComponentValue::U32(id.0)];
@@ -352,12 +357,12 @@ mod tests {
 
         // Verify the resource was dropped
         let manager = resource_manager.lock().unwrap();
-        assert!(!manager.has_resource(id);
+        assert!(!manager.has_resource(id));
     }
 
     #[test]
     fn test_resource_rep() {
-        let resource_manager = Arc::new(Mutex::new(ResourceManager::new();
+        let resource_manager = Arc::new(Mutex::new(ResourceManager::new()));
 
         // Create a resource
         let id = {
@@ -365,7 +370,7 @@ mod tests {
             manager.add_host_resource(42u32)
         };
 
-        let handler = ResourceRepHandler::new(resource_manager;
+        let handler = ResourceRepHandler::new(resource_manager);
 
         // Test with valid args
         let args = vec![ComponentValue::U32(id.0)];
@@ -374,7 +379,7 @@ mod tests {
         assert_eq!(result.len(), 1);
         match &result[0] {
             ComponentValue::U32(rep) => {
-                assert_eq!(*rep, 42;
+                assert_eq!(*rep, 42);
             }
             _ => panic!("Expected U32 result"),
         }
@@ -382,8 +387,8 @@ mod tests {
 
     #[test]
     fn test_resource_get() {
-        let resource_manager = Arc::new(Mutex::new(ResourceManager::new();
-        let handler = ResourceGetHandler::new(resource_manager.clone();
+        let resource_manager = Arc::new(Mutex::new(ResourceManager::new()));
+        let handler = ResourceGetHandler::new(resource_manager.clone());
 
         // Test with new representation
         let args = vec![ComponentValue::U32(42)];
@@ -402,6 +407,6 @@ mod tests {
             _ => panic!("Expected U32 result"),
         };
 
-        assert_eq!(first_id, second_id;
+        assert_eq!(first_id, second_id);
     }
 }

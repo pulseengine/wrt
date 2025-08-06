@@ -11,7 +11,10 @@ use core::sync::atomic::{
     Ordering,
 };
 
-use wrt_error::helpers::memory_limit_exceeded_error;
+use wrt_error::{
+    helpers::memory_limit_exceeded_error,
+    Result,
+};
 
 // Capability-based imports
 use crate::wrt_memory_system::CapabilityWrtFactory;
@@ -28,7 +31,6 @@ use crate::{
     verification::VerificationLevel,
     Error,
     ErrorCategory,
-    Result,
 };
 
 /// Priority levels for memory allocation
@@ -186,11 +188,12 @@ impl<const MAX_SUB_BUDGETS: usize> HierarchicalBudget<MAX_SUB_BUDGETS> {
 
         for (i, sub_budget) in self.sub_budgets.iter().enumerate() {
             if let Some(budget) = sub_budget {
-                if budget.priority <= min_priority && budget.available() >= size {
-                    if best_idx.is_none() || budget.priority < best_priority {
-                        best_idx = Some(i);
-                        best_priority = budget.priority;
-                    }
+                if budget.priority <= min_priority
+                    && budget.available() >= size
+                    && (best_idx.is_none() || budget.priority < best_priority)
+                {
+                    best_idx = Some(i);
+                    best_priority = budget.priority;
                 }
             }
         }

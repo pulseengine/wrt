@@ -59,7 +59,7 @@ impl PlatformThreadHandle for GenericThreadHandle {
     }
 
     fn terminate(&self) -> Result<()> {
-        self.running.store(false, Ordering::Release;
+        self.running.store(false, Ordering::Release);
         Ok(())
     }
 
@@ -92,7 +92,7 @@ impl GenericThreadPool {
     /// Create new generic thread pool
     pub fn new(config: ThreadPoolConfig) -> Result<Self> {
         // Create a simple executor for now
-        let executor = Arc::new(|_task: WasmTask| -> Result<Vec<u8>> { Ok(vec![]) };
+        let executor = Arc::new(|_task: WasmTask| -> Result<Vec<u8>> { Ok(vec![]) });
 
         Ok(Self {
             config,
@@ -109,7 +109,7 @@ impl GenericThreadPool {
     where
         F: Fn(WasmTask) -> Result<Vec<u8>> + Send + Sync + 'static,
     {
-        self.executor = Arc::new(executor;
+        self.executor = Arc::new(executor);
     }
 }
 
@@ -123,7 +123,7 @@ impl PlatformThreadPool for GenericThreadPool {
     fn spawn_wasm_thread(&self, task: WasmTask) -> Result<ThreadHandle> {
         // Check if shutting down
         if self.shutdown.load(Ordering::Acquire) {
-            return Err(Error::runtime_execution_error("Thread pool is shutting down";
+            return Err(Error::runtime_execution_error("Thread pool is shutting down"));
         }
 
         // Check thread limit
@@ -133,15 +133,15 @@ impl PlatformThreadPool for GenericThreadPool {
                 ErrorCategory::Resource,
                 1,
                 "Thread pool has reached maximum thread limit",
-            ;
+            ));
         }
 
         // Get thread ID
-        let thread_id = self.next_thread_id.fetch_add(1, Ordering::AcqRel;
+        let thread_id = self.next_thread_id.fetch_add(1, Ordering::AcqRel);
 
         // Create shared state
-        let running = Arc::new(AtomicBool::new(false;
-        let stats = Arc::new(WrtMutex::new(ThreadStats::default();
+        let running = Arc::new(AtomicBool::new(false));
+        let stats = Arc::new(WrtMutex::new(ThreadStats::default()));
 
         // Clone for thread
         let task_clone = task.clone();
@@ -149,7 +149,7 @@ impl PlatformThreadPool for GenericThreadPool {
         let running_clone = running.clone();
 
         // Create thread name
-        let thread_name = format!("{}-{}", self.config.name_prefix, thread_id;
+        let thread_name = format!("{}-{}", self.config.name_prefix, thread_id);
 
         // Spawn thread
         let handle = std::thread::Builder::new()
@@ -161,13 +161,13 @@ impl PlatformThreadPool for GenericThreadPool {
             )
             .spawn(move || {
                 // Mark as running
-                running_clone.store(true, Ordering::Release;
+                running_clone.store(true, Ordering::Release);
 
                 // Execute the task
-                let result = executor(task_clone;
+                let result = executor(task_clone);
 
                 // Mark as not running
-                running_clone.store(false, Ordering::Release;
+                running_clone.store(false, Ordering::Release);
 
                 result
             })
@@ -180,11 +180,11 @@ impl PlatformThreadPool for GenericThreadPool {
             handle: Some(handle),
             running,
             stats,
-        };
+        });
 
         // Update statistics
         {
-            let mut stats = self.stats.lock);
+            let mut stats = self.stats.lock();
             stats.active_threads += 1;
             stats.total_spawned += 1;
         }
@@ -198,12 +198,12 @@ impl PlatformThreadPool for GenericThreadPool {
 
     fn shutdown(&mut self, timeout: Duration) -> Result<()> {
         // Set shutdown flag
-        self.shutdown.store(true, Ordering::Release;
+        self.shutdown.store(true, Ordering::Release);
 
         // Wait for threads to complete
-        let start = std::time::Instant::now);
+        let start = std::time::Instant::now();
         while self.active_threads.read().len() > 0 && start.elapsed() < timeout {
-            std::thread::sleep(Duration::from_millis(10;
+            std::thread::sleep(Duration::from_millis(10));
         }
 
         Ok(())
@@ -242,7 +242,7 @@ mod tests {
         let mut pool = GenericThreadPool::new(config).unwrap();
 
         // Set a test executor
-        pool.set_executor(|task| Ok(task.args;
+        pool.set_executor(|task| Ok(task.args));
 
         // Spawn a thread
         let task = WasmTask {
@@ -260,10 +260,10 @@ mod tests {
 
         // Join and verify result
         let result = handle.join().unwrap();
-        assert_eq!(result, vec![1, 2, 3, 4];
+        assert_eq!(result, vec![1, 2, 3, 4]);
 
         // Check stats
-        let stats = pool.get_stats);
+        let stats = pool.get_stats();
         assert_eq!(stats.total_spawned, 1);
     }
 
@@ -291,7 +291,7 @@ mod tests {
         let _handle1 = pool.spawn_wasm_thread(task.clone()).unwrap();
 
         // Second thread should fail due to limit
-        let result2 = pool.spawn_wasm_thread(task;
-        assert!(result2.is_err();
+        let result2 = pool.spawn_wasm_thread(task);
+        assert!(result2.is_err());
     }
 }

@@ -32,6 +32,12 @@ pub struct MemoryMonitor {
     pub budget_overruns_prevented: AtomicU64,
 }
 
+impl Default for MemoryMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MemoryMonitor {
     /// Create a new memory monitor
     pub const fn new() -> Self {

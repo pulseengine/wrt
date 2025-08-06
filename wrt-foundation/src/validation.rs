@@ -18,7 +18,10 @@
 extern crate alloc;
 
 // Added BoundedVec for tests
-use wrt_error::ErrorCategory;
+use wrt_error::{
+    ErrorCategory,
+    Result,
+};
 
 #[cfg(test)]
 use crate::bounded::BoundedVec;
@@ -27,7 +30,7 @@ use crate::prelude::{
 };
 #[cfg(test)]
 use crate::safe_memory::NoStdProvider;
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 // use std::format; // Removed
 #[cfg(feature = "std")]
 // use std::string::String; // Removed
@@ -183,8 +186,8 @@ mod tests {
         ));
 
         // Full level should always validate
-        assert!(should_validate(VerificationLevel::Full, importance::READ);
-        assert!(should_validate(VerificationLevel::Full, 1))); // Even low importance
+        assert!(should_validate(VerificationLevel::Full, importance::READ));
+        assert!(should_validate(VerificationLevel::Full, 1)); // Even low importance
 
         // Assertions for VerificationLevel::Sampling with importance::READ are
         // removed as they are flaky due to the shared atomic counter in
@@ -204,8 +207,8 @@ mod tests {
     fn test_should_validate_redundant() {
         // Only Full level should do redundant validation
         assert!(!should_validate_redundant(VerificationLevel::Off)); // None -> Off
-        assert!(!should_validate_redundant(VerificationLevel::Sampling);
-        assert!(!should_validate_redundant(VerificationLevel::Basic))); // Standard -> Basic (as an example of not Full)
+        assert!(!should_validate_redundant(VerificationLevel::Sampling));
+        assert!(!should_validate_redundant(VerificationLevel::Basic)); // Standard -> Basic (as an example of not Full)
         assert!(should_validate_redundant(VerificationLevel::Full));
     }
 

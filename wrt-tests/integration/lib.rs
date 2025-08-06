@@ -91,26 +91,26 @@ mod tests {
     
     #[test]
     fn memory_suite() {
-        let result = memory::run_tests);
+        let result = memory::run_tests();
         assert!(result.is_success(), "Memory tests failed: {:?}", result);
     }
     
     #[test]
     fn core_suite() {
-        let result = core::run_tests);
+        let result = core::run_tests();
         assert!(result.is_success(), "Core tests failed: {:?}", result);
     }
     
     #[test]
     fn documentation_suite() {
-        let result = documentation::run_tests);
+        let result = documentation::run_tests();
         assert!(result.is_success(), "Documentation tests failed: {:?}", result);
     }
     
     #[test]
     #[cfg(any(doc, kani, feature = "kani"))]
     fn formal_verification_suite() {
-        let result = formal_verification::run_tests);
+        let result = formal_verification::run_tests();
         assert!(result.is_success(), "Formal verification tests failed: {:?}", result);
     }
 }

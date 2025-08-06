@@ -186,7 +186,7 @@ mod tests {
     }
 
     // Test crate ID
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
     struct TestCrateId(u8);
 
     impl CrateIdentifier for TestCrateId {
