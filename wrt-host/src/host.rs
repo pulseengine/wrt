@@ -263,7 +263,7 @@ impl BuiltinHost {
     /// * `interceptor` - The interceptor to use
     #[cfg(feature = "std")]
     pub fn set_interceptor(&mut self, interceptor: Arc<dyn BuiltinInterceptor>) {
-        self.interceptor = Some(interceptor);
+        self.interceptor = Some(interceptor));
     }
 
     /// Register a handler for a built-in function

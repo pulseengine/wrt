@@ -275,7 +275,7 @@ impl CallbackRegistry {
     /// Sets an interceptor for this registry
     #[cfg(feature = "std")]
     pub fn with_interceptor(mut self, interceptor: Arc<LinkInterceptor>) -> Self {
-        self.interceptor = Some(interceptor;
+        self.interceptor = Some(interceptor);
         self
     }
 
@@ -577,7 +577,7 @@ impl Clone for CallbackRegistry {
         #[cfg(feature = "std")]
         {
             if let Some(interceptor) = &self.interceptor {
-                new_registry.interceptor = Some(interceptor.clone();
+                new_registry.interceptor = Some(interceptor.clone());
             }
         }
 

@@ -353,7 +353,14 @@ impl ComponentModelProvider {
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
                 // Return capability-aware empty result
                 // Return empty result vector
-                Ok(vec![])
+                #[cfg(feature = "std")]
+                {
+                    Ok(vec![])
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -369,7 +376,14 @@ impl ComponentModelProvider {
             #[cfg(not(feature = "std"))]
             name: make_string("wasi:filesystem/types.write")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                #[cfg(feature = "std")]
+                {
+                    Ok(vec![])
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -385,7 +399,14 @@ impl ComponentModelProvider {
             #[cfg(not(feature = "std"))]
             name: make_string("wasi:filesystem/types.open-at")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                #[cfg(feature = "std")]
+                {
+                    Ok(vec![])
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -455,7 +476,14 @@ impl ComponentModelProvider {
             #[cfg(not(feature = "std"))]
             name: make_string("wasi:clocks/monotonic-clock.now")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                #[cfg(feature = "std")]
+                {
+                    Ok(vec![])
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -471,7 +499,14 @@ impl ComponentModelProvider {
             #[cfg(not(feature = "std"))]
             name: make_string("wasi:io/streams.write")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                #[cfg(feature = "std")]
+                {
+                    Ok(vec![])
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -487,7 +522,14 @@ impl ComponentModelProvider {
             #[cfg(not(feature = "std"))]
             name: make_string("wasi:random/random.get-random-bytes")?,
             handler: HostFunctionHandler::new(move |_target: &mut dyn Any| {
-                Ok(vec![])
+                #[cfg(feature = "std")]
+                {
+                    Ok(vec![])
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    Ok(value_vec!())
+                }
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
         })
@@ -517,7 +559,7 @@ impl ComponentModelProvider {
                 convert_compat_values_to_foundation(result)
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
-        };
+        });
         
         // Init execution context function
         functions.push(HostFunction {
@@ -533,7 +575,7 @@ impl ComponentModelProvider {
                 convert_compat_values_to_foundation(result)
             }),
             extern_type: ExternType::Function { params: type_vec!(), results: type_vec!() },
-        };
+        });
         
         // Set input function
         functions.push(HostFunction {
