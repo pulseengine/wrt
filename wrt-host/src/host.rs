@@ -8,21 +8,34 @@
 //! as defined in the WebAssembly Component Model.
 
 // Use the prelude for consistent imports
-use crate::prelude::{codes, str, Any, BuiltinType, Error, ErrorCategory, HashMap, Result, Value};
-
 #[cfg(feature = "std")]
 use crate::prelude::Arc;
-
+use crate::prelude::{
+    codes,
+    str,
+    Any,
+    BuiltinType,
+    Error,
+    ErrorCategory,
+    HashMap,
+    Result,
+    Value,
+};
 #[cfg(feature = "std")]
-use crate::prelude::{BeforeBuiltinResult, BuiltinInterceptor, ComponentValue, InterceptContext};
+use crate::prelude::{
+    BeforeBuiltinResult,
+    BuiltinInterceptor,
+    ComponentValue,
+    InterceptContext,
+};
 
-// Type aliases for no_std compatibility
-#[cfg(not(feature = "std"))]
-#[cfg(feature = "std")]
-type HostString = String;
+// Type aliases for no_std compatibility - fixed later
 
 #[cfg(not(feature = "std"))]
-use crate::bounded_host_infra::{HostProvider, HOST_MEMORY_SIZE};
+use crate::bounded_host_infra::{
+    HostProvider,
+    HOST_MEMORY_SIZE,
+};
 
 /// Helper function to create host provider using existing infrastructure
 #[cfg(not(feature = "std"))]
@@ -75,7 +88,7 @@ impl wrt_foundation::traits::ToBytes for HandlerData {
         &self,
         _writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         Ok(())
     }
 }
@@ -85,14 +98,17 @@ impl wrt_foundation::traits::FromBytes for HandlerData {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         _reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(HandlerData::default())
     }
 }
 
 // Conditional imports for WRT allocator
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{CrateId, WrtHashMap};
+use wrt_foundation::allocator::{
+    CrateId,
+    WrtHashMap,
+};
 
 // Handler map type for different configurations
 #[cfg(all(feature = "std", feature = "safety-critical"))]
@@ -171,14 +187,14 @@ fn convert_from_component_values(
 /// WebAssembly built-in function host implementation
 pub struct BuiltinHost {
     /// Component name
-    component_name: HostString,
+    component_name:    HostString,
     /// Host ID
-    host_id: HostString,
+    host_id:           HostString,
     /// Interceptor for built-in calls
     #[cfg(feature = "std")]
-    interceptor: Option<Arc<dyn BuiltinInterceptor>>,
+    interceptor:       Option<Arc<dyn BuiltinInterceptor>>,
     /// Built-in handlers (`builtin_type_name` -> handler)
-    handlers: HandlerMap,
+    handlers:          HandlerMap,
     /// Critical built-ins that should have fallbacks
     critical_builtins: CriticalBuiltinsMap,
 }
@@ -191,11 +207,11 @@ impl Default for BuiltinHost {
             let map_provider = create_host_provider().expect("Failed to create host provider");
 
             Self {
-                component_name: HostString::from_str("", string_provider.clone())
+                component_name:    HostString::from_str("", string_provider.clone())
                     .expect("Failed to create empty string"),
-                host_id: HostString::from_str("", string_provider.clone())
+                host_id:           HostString::from_str("", string_provider.clone())
                     .expect("Failed to create empty string"),
-                handlers: HandlerMap::new(map_provider.clone())
+                handlers:          HandlerMap::new(map_provider.clone())
                     .expect("Failed to create HandlerMap"),
                 critical_builtins: CriticalBuiltinsMap::new(map_provider.clone())
                     .expect("Failed to create CriticalBuiltinsMap"),
@@ -205,10 +221,10 @@ impl Default for BuiltinHost {
         #[cfg(feature = "std")]
         {
             Self {
-                component_name: HostString::default(),
-                host_id: HostString::default(),
-                interceptor: None,
-                handlers: HandlerMap::new(),
+                component_name:    HostString::default(),
+                host_id:           HostString::default(),
+                interceptor:       None,
+                handlers:          HandlerMap::new(),
                 critical_builtins: CriticalBuiltinsMap::new(),
             }
         }
@@ -229,10 +245,10 @@ impl BuiltinHost {
     #[cfg(feature = "std")]
     pub fn new(component_name: &str, host_id: &str) -> Self {
         Self {
-            component_name: component_name.to_string(),
-            host_id: host_id.to_string(),
-            interceptor: None,
-            handlers: HandlerMap::new(),
+            component_name:    component_name.to_string(),
+            host_id:           host_id.to_string(),
+            interceptor:       None,
+            handlers:          HandlerMap::new(),
             critical_builtins: CriticalBuiltinsMap::new(),
         }
     }
@@ -249,9 +265,9 @@ impl BuiltinHost {
             HostString::from_str(host_id, string_provider).expect("Failed to create host id");
 
         Self {
-            component_name: comp_name,
-            host_id: host_name,
-            handlers: HashMap::new(map_provider.clone()).unwrap(),
+            component_name:    comp_name,
+            host_id:           host_name,
+            handlers:          HashMap::new(map_provider.clone()).unwrap(),
             critical_builtins: HashMap::new(map_provider).unwrap(),
         }
     }
@@ -263,7 +279,7 @@ impl BuiltinHost {
     /// * `interceptor` - The interceptor to use
     #[cfg(feature = "std")]
     pub fn set_interceptor(&mut self, interceptor: Arc<dyn BuiltinInterceptor>) {
-        self.interceptor = Some(interceptor));
+        self.interceptor = Some(interceptor);
     }
 
     /// Register a handler for a built-in function
@@ -452,7 +468,8 @@ impl BuiltinHost {
         Err(Error::runtime_error("Built-in function not implemented"))
     }
 
-    /// Internal implementation of `execute_builtin` without interception (`no_std` version)
+    /// Internal implementation of `execute_builtin` without interception
+    /// (`no_std` version)
     #[cfg(not(feature = "std"))]
     fn execute_builtin_internal(
         &self,
@@ -474,10 +491,10 @@ impl Clone for BuiltinHost {
         #[cfg(feature = "std")]
         {
             Self {
-                component_name: self.component_name.clone(),
-                host_id: self.host_id.clone(),
-                interceptor: self.interceptor.clone(),
-                handlers: HandlerMap::new(),
+                component_name:    self.component_name.clone(),
+                host_id:           self.host_id.clone(),
+                interceptor:       self.interceptor.clone(),
+                handlers:          HandlerMap::new(),
                 critical_builtins: CriticalBuiltinsMap::new(),
             }
         }
@@ -486,9 +503,9 @@ impl Clone for BuiltinHost {
         {
             let provider = create_host_provider().expect("Failed to create host provider");
             Self {
-                component_name: self.component_name.clone(),
-                host_id: self.host_id.clone(),
-                handlers: HashMap::new(provider.clone())
+                component_name:    self.component_name.clone(),
+                host_id:           self.host_id.clone(),
+                handlers:          HashMap::new(provider.clone())
                     .expect("HashMap creation should never fail with valid provider"),
                 critical_builtins: HashMap::new(provider)
                     .expect("HashMap creation should never fail with valid provider"),

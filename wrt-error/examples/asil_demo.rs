@@ -76,8 +76,7 @@ fn demonstrate_asil_features() {
 
     // Create errors and check their ASIL levels
     let safety_error = Error::safety_violation("Critical safety violation detected");
-    let memory_error = Error::runtime_execution_error(
-        "Memory allocation failed");
+    let memory_error = Error::runtime_execution_error("Memory allocation failed");
     let type_error = Error::type_mismatch_error("Type validation failed");
 
     println!(
@@ -167,11 +166,9 @@ fn demonstrate_asil_d_features() {
     println!("-----------------------");
 
     // Demonstrate error integrity validation
-    let valid_error = Error::runtime_execution_error(
-        ",
-    ;
-    let valid_safety = Error::safety_violation(",
-    ;
+    let valid_error =
+        Error::runtime_execution_error("Memory allocation failed during runtime execution");
+    let valid_safety = Error::safety_violation("Safety constraint violated in critical path");
 
     println!("Error Integrity Validation:");
     println!(

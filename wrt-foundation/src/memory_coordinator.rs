@@ -64,8 +64,6 @@ pub struct GenericMemoryCoordinator<C: CrateIdentifier, const MAX_CRATES: usize>
     _phantom:           PhantomData<C>,
 }
 
-const ATOMIC_ZERO: AtomicUsize = AtomicUsize::new(0);
-
 impl<C: CrateIdentifier, const MAX_CRATES: usize> Default
     for GenericMemoryCoordinator<C, MAX_CRATES>
 {
@@ -76,10 +74,10 @@ impl<C: CrateIdentifier, const MAX_CRATES: usize> Default
 
 impl<C: CrateIdentifier, const MAX_CRATES: usize> GenericMemoryCoordinator<C, MAX_CRATES> {
     /// Create a new coordinator with zero budgets
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            crate_allocations:  [ATOMIC_ZERO; MAX_CRATES],
-            crate_budgets:      [ATOMIC_ZERO; MAX_CRATES],
+            crate_allocations:  core::array::from_fn(|_| AtomicUsize::new(0)),
+            crate_budgets:      core::array::from_fn(|_| AtomicUsize::new(0)),
             total_allocated:    AtomicUsize::new(0),
             total_budget:       AtomicUsize::new(0),
             initialized:        AtomicBool::new(false),
@@ -265,6 +263,15 @@ pub struct BudgetConfig<C: CrateIdentifier> {
 pub struct MemoryCoordinatorBuilder<C: CrateIdentifier, const MAX_CRATES: usize> {
     budgets:      Vec<BudgetConfig<C>>,
     total_budget: Option<usize>,
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+impl<C: CrateIdentifier, const MAX_CRATES: usize> Default
+    for MemoryCoordinatorBuilder<C, MAX_CRATES>
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]

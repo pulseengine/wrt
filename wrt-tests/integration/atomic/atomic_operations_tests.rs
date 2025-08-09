@@ -308,7 +308,7 @@ mod tests {
         
         let num_threads = 4;
         let operations_per_thread = 100;
-        let barrier = Arc::new(Barrier::new(num_threads;
+        let barrier = Arc::new(Barrier::new(num_threads));
         
         let mut handles = vec![];
         
@@ -324,7 +324,7 @@ mod tests {
                     if offset + 4 <= 1024 {
                         let store_op = AtomicOp::Store(AtomicStoreOp::I32AtomicStore {
                             memarg: MemArg { offset: offset as u32, align: 2 }
-                        };
+                        });
                         
                         let mut model = atomic_model.lock().unwrap();
                         model.execute_atomic_operation(thread_id as ThreadId, store_op, &[i as u64])?;
@@ -369,7 +369,7 @@ mod tests {
         // Test wait operation (simplified - real implementation would block)
         let wait_op = AtomicOp::WaitNotify(AtomicWaitNotifyOp::MemoryAtomicWait32 {
             memarg: MemArg { offset: 0, align: 2 }
-        };
+        });
         
         let result = atomic_model.execute_atomic_operation(thread_id, wait_op, &[])?;
         assert_eq!(result[0], 0); // Successful wait
@@ -439,7 +439,7 @@ mod tests {
         };
         
         let result = atomic_model.execute_atomic_operation(0, store_op, &[]); // No operands
-        assert!(result.is_err();
+        assert!(result.is_err());
         
         Ok(())
     }
@@ -473,7 +473,7 @@ mod tests {
         let ops_per_second = num_operations as f64 / duration.as_secs_f64();
         
         println!("Atomic operations performance: {:.0} ops/sec", ops_per_second);
-        assert!(ops_per_second > 1000.0)); // Should be reasonably fast
+        assert!(ops_per_second > 1000.0); // Should be reasonably fast
         
         Ok(())
     }

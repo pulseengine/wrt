@@ -153,7 +153,7 @@ impl MemoryFactory {
         let operation = MemoryOperation::Allocate { size: N };
         let verification_result = match &capability_result {
             Ok(capability) => capability.verify_access(&operation),
-            Err(e) => Err(e.clone()),
+            Err(e) => Err(*e),
         };
 
         // Record safety monitoring events

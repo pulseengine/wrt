@@ -148,19 +148,19 @@ struct QnxThreadHandle {
 impl PlatformThreadHandle for QnxThreadHandle {
     fn join(self: Box<Self>) -> Result<Vec<u8>> {
         // Join the thread
-        let mut retval: *mut core::ffi::c_void = core::ptr::null_mut);
+        let mut retval: *mut core::ffi::c_void = core::ptr::null_mut();
         let result = unsafe { ffi::pthread_join(self.tid, &mut retval) };
 
         if result != 0 {
-            return Err(Error::runtime_execution_error("QNX thread creation failed";
+            return Err(Error::runtime_execution_error("QNX thread creation failed"));
         }
 
         // Get the result
-        let result = self.result.lock);
+        let result = self.result.lock();
         match &*result {
             Some(Ok(data)) => Ok(data.clone()),
             Some(Err(e)) => Err(e.clone()),
-            None => Err(Error::new(
+            None => Err(Error::new("Thread join error"))
                 ErrorCategory::Platform,
                 1,
                 ")),
@@ -279,7 +279,7 @@ impl QnxThreadPool {
         
         // Initialize attributes
         if unsafe { ffi::pthread_attr_init(&mut attr) } != 0 {
-            return Err(Error::runtime_execution_error("QNX thread priority setting failed";
+            return Err(Error::runtime_execution_error("QNX thread priority setting failed"));
         }
 
         // Set scheduling policy (FIFO for determinism)
@@ -288,7 +288,7 @@ impl QnxThreadPool {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Failed to set thread scheduling policy";
+                "Failed to set thread scheduling policy"));
         }
 
         // Set priority
@@ -301,7 +301,7 @@ impl QnxThreadPool {
 
         if unsafe { ffi::pthread_attr_setschedparam(&mut attr, &sched_param) } != 0 {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
-            return Err(Error::runtime_execution_error("QNX thread join failed";
+            return Err(Error::runtime_execution_error("QNX thread join failed"));
         }
 
         // Set stack size
@@ -315,14 +315,14 @@ impl QnxThreadPool {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Failed to set thread stack size";
+                "Failed to set thread stack size"));
         }
 
         // Don't inherit scheduling from parent
         if unsafe { ffi::pthread_attr_setinheritsched(&mut attr, ffi::PTHREAD_EXPLICIT_SCHED) } != 0
         {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
-            return Err(Error::runtime_execution_error("QNX thread state query failed";
+            return Err(Error::runtime_execution_error("QNX thread state query failed"));
         }
 
         Ok(attr)
@@ -364,7 +364,7 @@ impl PlatformThreadPool for QnxThreadPool {
     fn spawn_wasm_thread(&self, task: WasmTask) -> Result<ThreadHandle> {
         // Check if shutting down
         if self.shutdown.load(Ordering::Acquire) {
-            return Err(Error::runtime_execution_error("Thread pool is shutting down";
+            return Err(Error::runtime_execution_error("Thread pool is shutting down"));
         }
 
         // Check thread limit
@@ -429,7 +429,7 @@ impl PlatformThreadPool for QnxThreadPool {
             unsafe {
                 let _ = Box::from_raw(context_ptr;
             }
-            return Err(Error::runtime_execution_error("Failed to create QNX thread";
+            return Err(Error::runtime_execution_error("Failed to create QNX thread"));
         }
 
         // Create handle
@@ -486,7 +486,9 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore = ") {
+    #[test]
+    #[ignore]
+    fn test_qnx_thread_pool_with_scheduler() {
         let config = ThreadPoolConfig {
             max_threads: 4,
             priority_range: (ThreadPriority::Low, ThreadPriority::High),
@@ -497,6 +499,8 @@ mod tests {
 
         // Set a test executor
         pool.set_executor(|task| {
+            // Executor implementation
+        });
             // Simple echo executor
             Ok(task.args)
         };
@@ -535,7 +539,7 @@ mod tests {
         // Create CPU set for CPUs 0 and 1
         let mut cpu_set = CpuSet::new();
         cpu_set.add(0;
-        cpu_set.add(1;
+        cpu_set.add(1);
 
         let task = WasmTask {
             id: 2,

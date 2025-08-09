@@ -3,15 +3,17 @@
 //! This module provides bounded alternatives for logging collections
 //! ensuring static memory allocation.
 
-
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    budget_aware_provider::CrateId,
     WrtResult,
 };
 
@@ -51,12 +53,12 @@ pub fn new_log_entry_vec() -> WrtResult<BoundedLogEntryVec> {
 /// Create a new bounded logger vector
 pub fn new_logger_vec<T>() -> WrtResult<BoundedLoggerVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable 
-        + wrt_foundation::traits::ToBytes 
-        + wrt_foundation::traits::FromBytes 
-        + Default 
-        + Clone 
-        + PartialEq 
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
         + Eq
         + Sized,
 {

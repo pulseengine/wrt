@@ -3,16 +3,22 @@
 //! This module provides bounded alternatives for host collections
 //! to ensure static memory allocation throughout the host interface.
 
-use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
-    bounded_collections::BoundedMap as BoundedHashMap,
-    capability_context, managed_alloc, safe_capability_alloc, safe_managed_alloc,
-    safe_memory::NoStdProvider,
-    CrateId, WrtResult,
-};
-
 #[cfg(any(feature = "std", feature = "alloc"))]
 use wrt_foundation::capabilities::CapabilityAwareProvider;
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    bounded_collections::BoundedMap as BoundedHashMap,
+    capability_context,
+    managed_alloc,
+    safe_capability_alloc,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    CrateId,
+    WrtResult,
+};
 
 /// Budget-aware memory size for host (64KB)
 pub const HOST_MEMORY_SIZE: usize = 65536;

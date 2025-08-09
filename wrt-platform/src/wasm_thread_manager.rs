@@ -237,6 +237,7 @@ impl WasmThreadManager {
                     ErrorCategory::Validation,
                     1,
                     "Module not found",
+                )
             })?
         };
 

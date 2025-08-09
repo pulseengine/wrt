@@ -76,7 +76,7 @@ impl MacOsFutex {
             lateout("rax") result,
             out("rcx") _,
             out("r11") _,
-        ;
+        );
         #[cfg(target_arch = "aarch64")]
         core::arch::asm!(
             "svc #0x80",
@@ -86,7 +86,7 @@ impl MacOsFutex {
             in("x2") value,
             in("x3") timeout,
             lateout("x0") result,
-        ;
+        );
 
         result
     }
@@ -105,7 +105,7 @@ impl MacOsFutex {
             lateout("rax") result,
             out("rcx") _,
             out("r11") _,
-        ;
+        );
         #[cfg(target_arch = "aarch64")]
         core::arch::asm!(
             "svc #0x80",
@@ -114,7 +114,7 @@ impl MacOsFutex {
             in("x1") addr,
             in("x2") wake_flags,
             lateout("x0") result,
-        ;
+        );
 
         result
     }

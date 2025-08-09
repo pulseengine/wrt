@@ -36,7 +36,11 @@ pub struct CapabilityBox<T> {
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> CapabilityBox<T> {
     /// Allocate a Box with capability verification
-    pub fn new(value: T, context: &MemoryCapabilityContext, crate_id: CrateId) -> Result<Box<T>> {
+    pub fn try_new(
+        value: T,
+        context: &MemoryCapabilityContext,
+        crate_id: CrateId,
+    ) -> Result<Box<T>> {
         let size = core::mem::size_of::<T>();
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
@@ -49,7 +53,7 @@ impl<T> CapabilityBox<T> {
     where
         T: Default,
     {
-        Self::new(T::default(), context, crate_id)
+        Self::try_new(T::default(), context, crate_id)
     }
 }
 
@@ -61,7 +65,7 @@ pub struct CapabilityVec<T> {
 #[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> CapabilityVec<T> {
     /// Create a new Vec with capability verification
-    pub fn new(
+    pub fn try_new(
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
         capacity: usize,
@@ -95,7 +99,7 @@ impl<T> CapabilityVec<T> {
     where
         T: Clone,
     {
-        let size = slice.len() * core::mem::size_of::<T>();
+        let size = core::mem::size_of_val(slice);
         let operation = MemoryOperation::Allocate { size };
         context.verify_operation(crate_id, &operation)?;
 
@@ -120,7 +124,7 @@ pub mod capability_alloc {
         context: &MemoryCapabilityContext,
         crate_id: CrateId,
     ) -> Result<Box<T>> {
-        CapabilityBox::new(value, context, crate_id)
+        CapabilityBox::try_new(value, context, crate_id)
     }
 
     /// Allocate a Vec with capability verification
@@ -130,7 +134,7 @@ pub mod capability_alloc {
         crate_id: CrateId,
         capacity: usize,
     ) -> Result<Vec<T>> {
-        CapabilityVec::new(context, crate_id, capacity)
+        CapabilityVec::try_new(context, crate_id, capacity)
     }
 
     /// Allocate a Vec from elements with capability verification
@@ -170,7 +174,7 @@ mod no_std_impl {
     use super::*;
 
     impl<T> CapabilityBox<T> {
-        pub fn new(
+        pub fn try_new(
             _value: T,
             _context: &MemoryCapabilityContext,
             _crate_id: CrateId,
@@ -182,7 +186,7 @@ mod no_std_impl {
     }
 
     impl<T> CapabilityVec<T> {
-        pub fn new(
+        pub fn try_new(
             _context: &MemoryCapabilityContext,
             _crate_id: CrateId,
             _capacity: usize,

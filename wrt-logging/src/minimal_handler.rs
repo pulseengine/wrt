@@ -3,7 +3,6 @@
 //! This module provides a minimal implementation of logging functionality
 //! that works in pure no_std environments without allocation.
 
-
 use crate::level::LogLevel;
 
 /// Minimal log message for pure `no_std` environments.
@@ -14,7 +13,7 @@ use crate::level::LogLevel;
 #[derive(Debug, Clone, Copy)]
 pub struct MinimalLogMessage {
     /// Log level
-    pub level: LogLevel,
+    pub level:   LogLevel,
     /// Static log message
     pub message: &'static str,
 }
@@ -46,13 +45,13 @@ mod tests {
 
     #[test]
     fn test_minimal_log_message() {
-        let msg = MinimalLogMessage::new(LogLevel::Info, "test message";
-        assert_eq!(msg.level, LogLevel::Info;
-        assert_eq!(msg.message, "test message";
+        let msg = MinimalLogMessage::new(LogLevel::Info, "test message");
+        assert_eq!(msg.level, LogLevel::Info);
+        assert_eq!(msg.message, "test message");
 
         // Test copying
         let msg2 = msg;
-        assert_eq!(msg2.level, LogLevel::Info;
-        assert_eq!(msg2.message, "test message";
+        assert_eq!(msg2.level, LogLevel::Info);
+        assert_eq!(msg2.message, "test message");
     }
 }

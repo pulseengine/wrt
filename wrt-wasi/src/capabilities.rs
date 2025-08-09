@@ -44,7 +44,7 @@ fn create_provider() -> Result<PathProvider> {
             8192,
             WASI_CRATE_ID,
             wrt_foundation::verification::VerificationLevel::Standard,
-        ;
+        ));
         Ok(CapabilityAwareProvider::new(base_provider, capability, WASI_CRATE_ID))
     }
     #[cfg(not(feature = "std"))]
@@ -193,7 +193,7 @@ impl WasiFileSystemCapabilities {
     pub fn is_path_allowed(&self, path: &str) -> bool {
         if self.allowed_paths.is_empty() {
             // If no paths specified, allow current directory for minimal cases
-            return path.starts_with("./") || !path.starts_with('/';
+            return path.starts_with("./") || !path.starts_with('/');
         }
         
         self.allowed_paths.iter().any(|allowed_path| {
@@ -551,9 +551,9 @@ mod tests {
         fs_caps.add_allowed_path("/tmp")?;
         fs_caps.add_allowed_path("/home/user")?;
         
-        assert!(fs_caps.is_path_allowed("/tmp/file.txt");
-        assert!(fs_caps.is_path_allowed("/home/user/docs");
-        assert!(!fs_caps.is_path_allowed("/etc/passwd");
+        assert!(fs_caps.is_path_allowed("/tmp/file.txt"));
+        assert!(fs_caps.is_path_allowed("/home/user/docs"));
+        assert!(!fs_caps.is_path_allowed("/etc/passwd"));
         
         Ok(())
     }
@@ -566,9 +566,9 @@ mod tests {
         env_caps.add_allowed_var("HOME")?;
         
         // When specific vars are listed, only those are allowed
-        assert!(env_caps.is_env_var_allowed("PATH");
-        assert!(env_caps.is_env_var_allowed("HOME");
-        assert!(!env_caps.is_env_var_allowed("SECRET_KEY");
+        assert!(env_caps.is_env_var_allowed("PATH"));
+        assert!(env_caps.is_env_var_allowed("HOME"));
+        assert!(!env_caps.is_env_var_allowed("SECRET_KEY"));
         
         Ok(())
     }

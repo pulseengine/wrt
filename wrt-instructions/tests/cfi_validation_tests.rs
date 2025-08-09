@@ -147,7 +147,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.category(), ErrorCategory::Security);
-        assert!(err.message().contains("ROP");
+        assert!(err.message().contains("ROP"));
     }
 
     #[test]
@@ -274,7 +274,7 @@ mod tests {
         let result = ops.validate_temporal_properties(10000, &context);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.message().contains("side-channel");
+        assert!(err.message().contains("side-channel"));
     }
 
     #[test]
@@ -289,6 +289,6 @@ mod tests {
         let result = ops.validate_temporal_properties(10000, &context);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.message().contains("clock manipulation");
+        assert!(err.message().contains("clock manipulation"));
     }
 }

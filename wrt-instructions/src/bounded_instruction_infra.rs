@@ -3,9 +3,11 @@
 //! This module provides bounded alternatives for instruction collections
 //! to ensure static memory allocation throughout instruction handling.
 
-
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     safe_memory::NoStdProvider,
     WrtResult,
 };
@@ -38,7 +40,8 @@ pub const MAX_CFG_EDGES: usize = 2048;
 pub const MAX_LABEL_LENGTH: usize = 64;
 
 /// Bounded vector for instructions
-pub type BoundedInstructionVec<T> = BoundedVec<T, MAX_INSTRUCTIONS_PER_FUNCTION, InstructionProvider>;
+pub type BoundedInstructionVec<T> =
+    BoundedVec<T, MAX_INSTRUCTIONS_PER_FUNCTION, InstructionProvider>;
 
 /// Bounded vector for branch table targets
 pub type BoundedBrTableTargets = BoundedVec<u32, MAX_BR_TABLE_TARGETS, InstructionProvider>;
@@ -64,7 +67,13 @@ pub type BoundedLabelString = BoundedString<MAX_LABEL_LENGTH, InstructionProvide
 /// Create a new bounded instruction vector
 pub fn new_instruction_vec<T>() -> WrtResult<BoundedInstructionVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = InstructionProvider::default();
     BoundedVec::new(provider)
@@ -79,7 +88,13 @@ pub fn new_br_table_targets() -> WrtResult<BoundedBrTableTargets> {
 /// Create a new bounded basic block vector
 pub fn new_basic_block_vec<T>() -> WrtResult<BoundedBasicBlockVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = InstructionProvider::default();
     BoundedVec::new(provider)
@@ -88,7 +103,13 @@ where
 /// Create a new bounded local variable vector
 pub fn new_local_vec<T>() -> WrtResult<BoundedLocalVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = InstructionProvider::default();
     BoundedVec::new(provider)
@@ -97,7 +118,13 @@ where
 /// Create a new bounded stack vector
 pub fn new_stack_vec<T>() -> WrtResult<BoundedStackVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = InstructionProvider::default();
     BoundedVec::new(provider)
@@ -106,7 +133,13 @@ where
 /// Create a new bounded control frame vector
 pub fn new_control_frame_vec<T>() -> WrtResult<BoundedControlFrameVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = InstructionProvider::default();
     BoundedVec::new(provider)
@@ -115,7 +148,13 @@ where
 /// Create a new bounded CFG edge vector
 pub fn new_cfg_edge_vec<T>() -> WrtResult<BoundedCfgEdgeVec<T>>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     let provider = InstructionProvider::default();
     BoundedVec::new(provider)

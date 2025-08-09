@@ -155,7 +155,7 @@ pub use prelude::*;
 macro_rules! safe_managed_alloc {
     ($size:expr, $crate_id:expr) => {{
         // Ensure memory system is initialized
-        $crate::memory_init::MemoryInitializer::initialize();
+        let _ = $crate::memory_init::MemoryInitializer::initialize();
 
         // Use capability-based allocation
         $crate::wrt_memory_system::CapabilityWrtFactory::create_provider::<$size>($crate_id)

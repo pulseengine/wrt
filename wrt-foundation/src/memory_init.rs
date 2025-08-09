@@ -127,7 +127,7 @@ impl MemoryInitializer {
         // Store the global context
         #[cfg(feature = "std")]
         {
-            if let Err(_) = GLOBAL_CAPABILITY_CONTEXT.set(context) {
+            if GLOBAL_CAPABILITY_CONTEXT.set(context).is_err() {
                 MEMORY_INITIALIZED.store(false, Ordering::Release);
                 return Err(Error::runtime_execution_error(
                     "Failed to set global capability context",

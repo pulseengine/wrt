@@ -38,14 +38,22 @@
 //! # Usage
 //!
 //! ```no_run
-//! use wrt_instructions::memory_ops::{MemoryLoad, MemoryStore};
-//! use wrt_instructions::Value;
-//! use wrt_runtime::Memory;
 //! use wrt_foundation::types::Limits;
+//! use wrt_instructions::{
+//!     memory_ops::{
+//!         MemoryLoad,
+//!         MemoryStore,
+//!     },
+//!     Value,
+//! };
+//! use wrt_runtime::Memory;
 //!
 //! // Create a memory instance
 //! let mem_type = MemoryType {
-//!     limits: Limits { min: 1, max: Some(2) },
+//!     limits: Limits {
+//!         min: 1,
+//!         max: Some(2),
+//!     },
 //! };
 //! let mut memory = Memory::new(mem_type).unwrap();
 //!
@@ -59,12 +67,22 @@
 //! assert_eq!(result, Value::I32(42));
 //! ```
 
-use crate::prelude::{
-    BoundedCapacity, Debug, Error, PartialEq, PureInstruction, Result, Value, ValueType,
-};
-use crate::validation::{validate_memory_op, Validate, ValidationContext};
-use wrt_foundation::{
-    budget_aware_provider::CrateId, safe_managed_alloc, safe_memory::NoStdProvider,
+use crate::{
+    prelude::{
+        BoundedCapacity,
+        Debug,
+        Error,
+        PartialEq,
+        PureInstruction,
+        Result,
+        Value,
+        ValueType,
+    },
+    validation::{
+        validate_memory_op,
+        Validate,
+        ValidationContext,
+    },
 };
 
 /// Memory trait defining the requirements for memory operations
@@ -102,15 +120,15 @@ pub struct MemoryLoad {
     /// Memory index (for multi-memory support)
     pub memory_index: u32,
     /// Memory offset
-    pub offset: u32,
+    pub offset:       u32,
     /// Required alignment
-    pub align: u32,
+    pub align:        u32,
     /// Value type to load
-    pub value_type: ValueType,
+    pub value_type:   ValueType,
     /// Whether this is a signed load (for smaller-than-register loads)
-    pub signed: bool,
+    pub signed:       bool,
     /// Memory access width in bytes (8, 16, 32, 64)
-    pub width: u32,
+    pub width:        u32,
 }
 
 /// Memory store operation
@@ -119,13 +137,13 @@ pub struct MemoryStore {
     /// Memory index (for multi-memory support)
     pub memory_index: u32,
     /// Memory offset
-    pub offset: u32,
+    pub offset:       u32,
     /// Required alignment
-    pub align: u32,
+    pub align:        u32,
     /// Value type to store
-    pub value_type: ValueType,
+    pub value_type:   ValueType,
     /// Memory access width in bytes (8, 16, 32, 64)
-    pub width: u32,
+    pub width:        u32,
 }
 
 impl MemoryLoad {
@@ -871,7 +889,7 @@ pub struct MemoryCopy {
     /// Destination memory index
     pub dest_memory_index: u32,
     /// Source memory index
-    pub src_memory_index: u32,
+    pub src_memory_index:  u32,
 }
 
 /// Memory init operation (WebAssembly bulk memory proposal)
@@ -880,7 +898,7 @@ pub struct MemoryInit {
     /// Memory index
     pub memory_index: u32,
     /// Data segment index
-    pub data_index: u32,
+    pub data_index:   u32,
 }
 
 /// Data drop operation (WebAssembly bulk memory proposal)
@@ -978,7 +996,8 @@ impl MemoryCopy {
     ///
     /// # Arguments
     ///
-    /// * `memory` - The memory to operate on (currently assumes same memory for src/dest)
+    /// * `memory` - The memory to operate on (currently assumes same memory for
+    ///   src/dest)
     /// * `dest` - Destination address (i32)
     /// * `src` - Source address (i32)
     /// * `size` - Number of bytes to copy (i32)
@@ -1375,7 +1394,10 @@ mod tests {
     // Import Vec and vec! based on feature flags
     #[cfg(feature = "std")]
     use std::vec::Vec;
-    use std::{vec, vec::Vec};
+    use std::{
+        vec,
+        vec::Vec,
+    };
 
     use super::*;
 
@@ -1950,7 +1972,8 @@ mod tests {
         let data_segments = MockDataSegments::new();
         let init_op = MemoryInit::new(0, 0);
 
-        // Copy 3 bytes from data segment 0 (starting at offset 1) to memory at offset 100
+        // Copy 3 bytes from data segment 0 (starting at offset 1) to memory at offset
+        // 100
         init_op
             .execute(
                 &mut memory,
@@ -1961,7 +1984,8 @@ mod tests {
             )
             .unwrap();
 
-        // Verify the init worked (should copy bytes [2, 3, 4] from segment [1, 2, 3, 4, 5])
+        // Verify the init worked (should copy bytes [2, 3, 4] from segment [1, 2, 3, 4,
+        // 5])
         let data = memory.read_bytes(100, 3).unwrap();
         #[cfg(feature = "std")]
         {
@@ -2050,7 +2074,8 @@ mod tests {
         // Test with partial page
         let memory = MockMemory::new(65_536 + 100).unwrap(); // 1 page + 100 bytes
         let result = size_op.execute(&memory).unwrap();
-        assert_eq!(result, Value::I32(1)); // Should return 1 (partial pages are truncated)
+        assert_eq!(result, Value::I32(1)); // Should return 1 (partial pages are
+                                           // truncated)
     }
 
     #[test]
@@ -2077,16 +2102,16 @@ mod tests {
 
     // Tests for unified MemoryOp
     struct MockMemoryContext {
-        stack: Vec<Value>,
-        memory: MockMemory,
+        stack:         Vec<Value>,
+        memory:        MockMemory,
         data_segments: MockDataSegments,
     }
 
     impl MockMemoryContext {
         fn new(memory_size: usize) -> Self {
             Self {
-                stack: Vec::new(),
-                memory: MockMemory::new(memory_size).unwrap(),
+                stack:         Vec::new(),
+                memory:        MockMemory::new(memory_size).unwrap(),
                 data_segments: MockDataSegments::new(),
             }
         }

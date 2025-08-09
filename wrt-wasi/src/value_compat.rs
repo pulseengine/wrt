@@ -149,7 +149,7 @@ impl wrt_foundation::traits::ToBytes for Value {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         // Simplified serialization
         let discriminant = match self {
             Value::Bool(_) => 0u8,
@@ -183,7 +183,7 @@ impl wrt_foundation::traits::FromBytes for Value {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         // Simplified deserialization
         let discriminant = reader.read_u8()?;
         match discriminant {

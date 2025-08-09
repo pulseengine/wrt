@@ -598,7 +598,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
     }
 }
 
-#[cfg(all(test,))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::{

@@ -10,19 +10,34 @@
 
 // Use the prelude for consistent imports
 use crate::prelude::{
-    str, Any, BuiltinType, CallbackRegistry, CallbackType, Error, HashSet, HostFunctionHandler,
-    Result, Value,
+    str,
+    Any,
+    BuiltinType,
+    CallbackRegistry,
+    CallbackType,
+    Error,
+    HashSet,
+    HostFunctionHandler,
+    Result,
+    Value,
 };
-
 #[cfg(feature = "std")]
-use crate::prelude::{Arc, BuiltinHost, BuiltinInterceptor, LinkInterceptor};
+use crate::prelude::{
+    Arc,
+    BuiltinHost,
+    BuiltinInterceptor,
+    LinkInterceptor,
+};
 
 // Type aliases for no_std compatibility
 #[cfg(feature = "std")]
 type ValueVec = Vec<Value>;
 
 #[cfg(not(feature = "std"))]
-use crate::bounded_host_infra::{HostProvider, HOST_MEMORY_SIZE};
+use crate::bounded_host_infra::{
+    HostProvider,
+    HOST_MEMORY_SIZE,
+};
 
 #[cfg(not(feature = "std"))]
 type ValueVec = wrt_foundation::BoundedVec<Value, 16, HostProvider>;
@@ -75,14 +90,14 @@ impl Default for HostBuilder {
         #[cfg(feature = "std")]
         {
             Self {
-                registry: CallbackRegistry::new(),
-                required_builtins: HashSet::new(),
+                registry:            CallbackRegistry::new(),
+                required_builtins:   HashSet::new(),
                 builtin_interceptor: None,
-                link_interceptor: None,
-                strict_validation: false,
-                component_name: String::new(),
-                host_id: String::new(),
-                fallback_handlers: Vec::with_capacity(0),
+                link_interceptor:    None,
+                strict_validation:   false,
+                component_name:      String::new(),
+                host_id:             String::new(),
+                fallback_handlers:   Vec::with_capacity(0),
             }
         }
 
@@ -92,7 +107,7 @@ impl Default for HostBuilder {
 
             let provider = create_host_provider().expect("Failed to create host provider");
             Self {
-                registry: CallbackRegistry::new(),
+                registry:          CallbackRegistry::new(),
                 required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
                     let fallback_provider =
                         create_host_provider().expect("Failed to create fallback host provider");
@@ -195,7 +210,7 @@ impl HostBuilder {
                     .expect("ValueVec creation should never fail with valid provider")
             };
             handler(target, args)
-        };
+        });
 
         // Register the handler with the special "wasi_builtin" module name
         // and the built-in type name as the function name
@@ -256,7 +271,8 @@ impl HostBuilder {
             #[cfg(not(feature = "std"))]
             {
                 // In no_std mode, we can't easily iterate over BoundedSet
-                // For now, we'll skip validation since we can't store complex handlers anyway
+                // For now, we'll skip validation since we can't store complex
+                // handlers anyway
             }
         }
 
@@ -328,7 +344,7 @@ impl HostBuilder {
                     .expect("ValueVec creation should never fail with valid provider")
             };
             handler(target, args)
-        };
+        });
 
         self.fallback_handlers.push((builtin_type, handler_fn));
         self
@@ -466,7 +482,10 @@ mod tests {
         use std::sync::Arc;
 
         use wrt_foundation::values::Value;
-        use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
+        use wrt_intercept::{
+            LinkInterceptor,
+            LinkInterceptorStrategy,
+        };
 
         #[derive(Clone)]
         struct MockStrategy;
@@ -555,8 +574,13 @@ mod tests {
         use std::sync::Arc;
         #[cfg(all(not(feature = "std")))]
         use std::sync::Arc;
+
         use wrt_foundation::component_value::ComponentValue;
-        use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
+        use wrt_intercept::{
+            BeforeBuiltinResult,
+            BuiltinInterceptor,
+            InterceptContext,
+        };
 
         struct TestInterceptor;
 

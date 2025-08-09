@@ -129,6 +129,20 @@ where
     _budget: PhantomData<MemoryBudget<CRATE, MAX_SIZE>>,
 }
 
+impl<K, V, const CRATE: u8, const MAX_SIZE: usize> WrtHashMap<K, V, CRATE, MAX_SIZE> where
+    K: std::hash::Hash + Eq
+{
+}
+
+impl<K, V, const CRATE: u8, const MAX_SIZE: usize> Default for WrtHashMap<K, V, CRATE, MAX_SIZE>
+where
+    K: std::hash::Hash + Eq,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K, V, const CRATE: u8, const MAX_SIZE: usize> WrtHashMap<K, V, CRATE, MAX_SIZE>
 where
     K: std::hash::Hash + Eq,

@@ -1,10 +1,20 @@
 //! Type aliases for `no_std` compatibility
 
-use crate::prelude::{Debug, Eq, PartialEq, Value, Error, ErrorCategory, codes};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{BoundedVec, BoundedStack};
+use wrt_foundation::{
+    BoundedStack,
+    BoundedVec,
+};
+
+use crate::prelude::{
+    Debug,
+    Eq,
+    Error,
+    PartialEq,
+    Value,
+};
 
 // CFI-specific types
 /// Maximum number of CFI targets
@@ -27,7 +37,11 @@ pub type CfiTargetVec = BoundedVec<u32, MAX_CFI_TARGETS, NoStdProvider<8192>>;
 pub type CfiRequirementVec = Vec<crate::cfi_control_ops::CfiValidationRequirement>;
 
 #[cfg(not(feature = "std"))]
-pub type CfiRequirementVec = BoundedVec<crate::cfi_control_ops::CfiValidationRequirement, MAX_CFI_REQUIREMENTS, NoStdProvider<8192>>;
+pub type CfiRequirementVec = BoundedVec<
+    crate::cfi_control_ops::CfiValidationRequirement,
+    MAX_CFI_REQUIREMENTS,
+    NoStdProvider<8192>,
+>;
 
 /// CFI target type vector
 #[cfg(feature = "std")]
@@ -35,7 +49,8 @@ pub type CfiTargetTypeVec = Vec<crate::cfi_control_ops::CfiTargetType>;
 
 /// CFI target type vector (`no_std`) - uses platform-aware memory provider
 #[cfg(not(feature = "std"))]
-pub type CfiTargetTypeVec = BoundedVec<crate::cfi_control_ops::CfiTargetType, MAX_CFI_TARGET_TYPES, NoStdProvider<8192>>;
+pub type CfiTargetTypeVec =
+    BoundedVec<crate::cfi_control_ops::CfiTargetType, MAX_CFI_TARGET_TYPES, NoStdProvider<8192>>;
 
 // Additional CFI collection types
 /// Maximum shadow stack size
@@ -50,19 +65,28 @@ pub const MAX_CFI_EXPECTED_VALUES: usize = 16;
 pub type ShadowStackVec = Vec<crate::cfi_control_ops::ShadowStackEntry>;
 
 #[cfg(not(feature = "std"))]
-pub type ShadowStackVec = BoundedVec<crate::cfi_control_ops::ShadowStackEntry, MAX_SHADOW_STACK, NoStdProvider<65536>>;
+pub type ShadowStackVec =
+    BoundedVec<crate::cfi_control_ops::ShadowStackEntry, MAX_SHADOW_STACK, NoStdProvider<65536>>;
 
 #[cfg(feature = "std")]
 pub type LandingPadExpectationVec = Vec<crate::cfi_control_ops::LandingPadExpectation>;
 
 #[cfg(not(feature = "std"))]
-pub type LandingPadExpectationVec = BoundedVec<crate::cfi_control_ops::LandingPadExpectation, MAX_LANDING_PAD_EXPECTATIONS, NoStdProvider<8192>>;
+pub type LandingPadExpectationVec = BoundedVec<
+    crate::cfi_control_ops::LandingPadExpectation,
+    MAX_LANDING_PAD_EXPECTATIONS,
+    NoStdProvider<8192>,
+>;
 
 #[cfg(feature = "std")]
 pub type CfiExpectedValueVec = Vec<crate::cfi_control_ops::CfiExpectedValue>;
 
 #[cfg(not(feature = "std"))]
-pub type CfiExpectedValueVec = BoundedVec<crate::cfi_control_ops::CfiExpectedValue, MAX_CFI_EXPECTED_VALUES, NoStdProvider<8192>>;
+pub type CfiExpectedValueVec = BoundedVec<
+    crate::cfi_control_ops::CfiExpectedValue,
+    MAX_CFI_EXPECTED_VALUES,
+    NoStdProvider<8192>,
+>;
 
 // Collection type aliases that work across all configurations
 #[cfg(feature = "std")]
@@ -88,7 +112,11 @@ pub const MAX_TABLE_SIZE: usize = 65536;
 pub type TableVec = Vec<Vec<RefValue>>;
 
 #[cfg(not(feature = "std"))]
-pub type TableVec = BoundedVec<BoundedVec<RefValue, MAX_TABLE_SIZE, NoStdProvider<65536>>, MAX_TABLES, NoStdProvider<8192>>;
+pub type TableVec = BoundedVec<
+    BoundedVec<RefValue, MAX_TABLE_SIZE, NoStdProvider<65536>>,
+    MAX_TABLES,
+    NoStdProvider<8192>,
+>;
 
 // Locals and globals storage
 pub const MAX_LOCALS: usize = 1024;
@@ -139,7 +167,7 @@ impl wrt_foundation::traits::ToBytes for RefValue {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         match self {
             Self::Null => writer.write_u8(0u8),
             Self::FuncRef(id) => {
@@ -158,7 +186,7 @@ impl wrt_foundation::traits::FromBytes for RefValue {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let discriminant = reader.read_u8()?;
         match discriminant {
             0 => Ok(Self::Null),

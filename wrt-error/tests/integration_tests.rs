@@ -57,14 +57,14 @@ mod tests {
     #[cfg(all(feature = "disabled"))]
     fn test_error_conversion_from_structs() {
         // Test OutOfBoundsError
-        let bounds_error = kinds::out_of_bounds_error("Index out of bounds";
-        let error = Error::from(bounds_error;
+        let bounds_error = kinds::out_of_bounds_error("Index out of bounds");
+        let error = Error::from(bounds_error);
 
         // Just verify the error was created with the correct message
-        assert!(format!("{error}").contains("Index out of bounds");
+        assert!(format!("{error}").contains("Index out of bounds"));
 
         // Test another type of error
-        let table_error = kinds::invalid_table_index_error(5;
+        let table_error = kinds::invalid_table_index_error(5);
         let error = Error::from(table_error);
 
         // Verify the error message mentions index 5

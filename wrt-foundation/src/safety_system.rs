@@ -819,17 +819,14 @@ impl SafetyContext {
                 // Log violation for audit
                 #[cfg(feature = "std")]
                 {
-                    eprintln!("Safety violation #{} detected at {}", count, effective);
+                    eprintln!("Safety violation #{count} detected at {effective}");
                 }
             },
             AsilLevel::AsilC | AsilLevel::AsilD => {
                 // For high ASIL levels, consider immediate protective actions
                 #[cfg(feature = "std")]
                 {
-                    eprintln!(
-                        "CRITICAL: Safety violation #{} detected at {}",
-                        count, effective
-                    );
+                    eprintln!("CRITICAL: Safety violation #{count} detected at {effective}");
                 }
 
                 // In a real implementation, this might trigger:
@@ -1062,26 +1059,25 @@ impl UniversalSafetyContext {
                 },
                 201..=500 => {
                     eprintln!(
-                        "Safety violation #{} detected (severity: {})",
-                        count, effective_severity
+                        "Safety violation #{count} detected (severity: {effective_severity})"
                     );
                 },
                 501..=800 => {
                     eprintln!(
-                        "HIGH SEVERITY: Safety violation #{} detected (severity: {})",
-                        count, effective_severity
+                        "HIGH SEVERITY: Safety violation #{count} detected (severity: \
+                         {effective_severity})"
                     );
                 },
                 801..=1000 => {
                     eprintln!(
-                        "CRITICAL: Safety violation #{} detected (severity: {})",
-                        count, effective_severity
+                        "CRITICAL: Safety violation #{count} detected (severity: \
+                         {effective_severity})"
                     );
                 },
                 _ => {
                     eprintln!(
-                        "UNKNOWN SEVERITY: Safety violation #{} detected (severity: {})",
-                        count, effective_severity
+                        "UNKNOWN SEVERITY: Safety violation #{count} detected (severity: \
+                         {effective_severity})"
                     );
                 },
             }

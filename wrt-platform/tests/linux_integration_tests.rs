@@ -11,7 +11,7 @@ mod linux_tests {
     #[test]
     fn test_linux_allocator_creation() {
         let allocator =
-            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build);
+            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build();
 
         // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
@@ -19,7 +19,7 @@ mod linux_tests {
 
     #[test]
     fn test_linux_futex_creation() {
-        let futex = LinuxFutexBuilder::new().with_initial_value(42).build);
+        let futex = LinuxFutexBuilder::new().with_initial_value(42).build();
 
         // Verify the futex was created successfully
         assert!(core::mem::size_of_val(&futex) > 0);
@@ -27,7 +27,7 @@ mod linux_tests {
 
     #[test]
     fn test_linux_futex_operations() {
-        let futex = LinuxFutexBuilder::new().with_initial_value(42).build);
+        let futex = LinuxFutexBuilder::new().with_initial_value(42).build();
 
         // Test that the futex was created with the correct initial value
         // Note: The FutexLike trait in wrt-platform doesn't expose atomic operations
@@ -51,7 +51,7 @@ mod linux_mte_tests {
             .with_maximum_pages(100)
             .with_guard_pages(true)
             .with_mte_mode(MteMode::Synchronous)
-            .build);
+            .build();
 
         // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
@@ -61,13 +61,13 @@ mod linux_mte_tests {
     fn test_mte_mode_configuration() {
         // Test different MTE modes
         let sync_allocator =
-            LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Synchronous).build);
+            LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Synchronous).build();
 
         let async_allocator =
-            LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Asynchronous).build);
+            LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Asynchronous).build();
 
         let disabled_allocator =
-            LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Disabled).build);
+            LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Disabled).build();
 
         // All should build successfully
         assert!(core::mem::size_of_val(&sync_allocator) > 0);

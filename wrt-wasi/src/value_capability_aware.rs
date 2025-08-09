@@ -434,7 +434,7 @@ impl wrt_foundation::traits::ToBytes for CapabilityAwareValue {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         // Simplified serialization - just write discriminant for now
         match self {
             CapabilityAwareValue::Bool(b) => { writer.write_u8(0)?; writer.write_u8(*b as u8)?; },
@@ -464,7 +464,7 @@ impl wrt_foundation::traits::FromBytes for CapabilityAwareValue {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let discriminant = reader.read_u8()?;
         match discriminant {
             0 => Ok(CapabilityAwareValue::Bool(reader.read_u8()? != 0)),
@@ -499,7 +499,7 @@ impl wrt_foundation::traits::ToBytes for WasiValueBox {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         self.inner.to_bytes_with_provider(writer, provider)
     }
 }
@@ -508,7 +508,7 @@ impl wrt_foundation::traits::FromBytes for WasiValueBox {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let inner = CapabilityAwareValue::from_bytes_with_provider(reader, provider)?;
         Ok(WasiValueBox { inner: alloc::boxed::Box::new(inner) })
     }

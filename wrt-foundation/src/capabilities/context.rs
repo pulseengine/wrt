@@ -47,7 +47,7 @@ const MAX_CAPABILITIES: usize = 32;
 pub struct MemoryCapabilityContext {
     /// Static array of capabilities to ensure no dynamic allocation
     /// Each slot contains an optional (CrateId, Capability) pair
-    capabilities: [(Option<CrateId>, Option<Box<dyn AnyMemoryCapability>>); MAX_CAPABILITIES],
+    capabilities: [CapabilitySlot; MAX_CAPABILITIES],
 
     /// Default verification level for new capabilities
     default_verification_level: VerificationLevel,
@@ -55,6 +55,9 @@ pub struct MemoryCapabilityContext {
     /// Whether runtime verification is enabled
     runtime_verification: bool,
 }
+
+/// Type alias for complex capability storage type
+type CapabilitySlot = (Option<CrateId>, Option<Box<dyn AnyMemoryCapability>>);
 
 /// Trait object wrapper for different capability types
 ///
@@ -105,6 +108,12 @@ where
     }
 }
 
+impl Default for MemoryCapabilityContext {
+    fn default() -> Self {
+        Self::new(VerificationLevel::Standard, false)
+    }
+}
+
 impl MemoryCapabilityContext {
     /// Create a new capability context
     pub fn new(default_verification_level: VerificationLevel, runtime_verification: bool) -> Self {
@@ -114,11 +123,6 @@ impl MemoryCapabilityContext {
             default_verification_level,
             runtime_verification,
         }
-    }
-
-    /// Create a context with default settings
-    pub fn default() -> Self {
-        Self::new(VerificationLevel::Standard, false)
     }
 
     /// Get the default verification level for this context

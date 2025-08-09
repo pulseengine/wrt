@@ -51,7 +51,7 @@ impl BudgetProvider {
         since = "0.3.0",
         note = "Use safe_capability_alloc! macro with capability context"
     )]
-    pub fn new<const N: usize>(
+    pub fn create<const N: usize>(
         crate_id: CrateId,
     ) -> Result<CapabilityAwareProvider<NoStdProvider<N>>> {
         // Create raw provider and wrap with capability
@@ -77,7 +77,7 @@ impl BudgetProvider {
         since = "0.3.0",
         note = "Use NoStdProvider::new() directly in no_std environments"
     )]
-    pub fn new<const N: usize>(_crate_id: CrateId) -> Result<NoStdProvider<N>> {
+    pub fn create_nostd<const N: usize>(_crate_id: CrateId) -> Result<NoStdProvider<N>> {
         Ok(NoStdProvider::<N>::default())
     }
 
@@ -92,7 +92,7 @@ impl BudgetProvider {
         _size: usize,
     ) -> Result<CapabilityAwareProvider<NoStdProvider<N>>> {
         // Ignore the size parameter and use const generic N
-        Self::new::<N>(crate_id)
+        Self::create::<N>(crate_id)
     }
 
     #[cfg(not(any(feature = "std", feature = "alloc")))]

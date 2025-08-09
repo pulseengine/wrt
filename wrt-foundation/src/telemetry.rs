@@ -136,10 +136,8 @@ impl<const N: usize> Default for TelemetryBuffer<N> {
 impl<const N: usize> TelemetryBuffer<N> {
     /// Create a new telemetry buffer
     pub const fn new() -> Self {
-        // Use a const block to initialize the array
-        const INIT: AtomicU64 = AtomicU64::new(0);
         Self {
-            events:      [INIT; N],
+            events:      [const { AtomicU64::new(0) }; N],
             write_pos:   AtomicU64::new(0),
             event_count: AtomicU64::new(0),
         }

@@ -15,9 +15,8 @@ use alloc;
 #[cfg(not(feature = "std"))]
 use core::fmt;
 // use std::boxed::Box; // Temporarily commented to find usages
-#[cfg(feature = "std")]
 // use std::vec::Vec; // Temporarily commented to find usages
-
+#[cfg(feature = "std")]
 // Conditional imports for different environments
 #[cfg(feature = "std")]
 use std;

@@ -5,6 +5,9 @@
 //!
 //! This module requires the `std` feature since it uses std::thread and std::time.
 
+#[cfg(any(feature = "alloc", feature = "std"))]
+extern crate alloc;
+
 use core::{
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::Duration,
@@ -13,7 +16,7 @@ use core::{
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, string::String, sync::Arc};
 #[cfg(feature = "std")]
-use std::{collections::BTreeMap, string::String, sync::Arc};
+use alloc::{collections::BTreeMap, string::String, sync::Arc};
 
 use wrt_sync::{WrtMutex, WrtRwLock};
 

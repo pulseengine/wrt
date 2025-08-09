@@ -249,9 +249,8 @@ pub use crate::{
     SafeSlice,
 };
 // std-only memory provider
-#[cfg(feature = "std")]
 // UnifiedStdProvider is now part of the modern memory system
-
+#[cfg(feature = "std")]
 // Alloc-dependent re-exports
 #[cfg(feature = "std")]
 pub use crate::{

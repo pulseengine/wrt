@@ -301,7 +301,7 @@ fn main() -> Result<()> {
     println!("   Input: NaN, 42.0");
     ComparisonOp::F32Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   NaN != 42.0: {} (true - WebAssembly spec)", result));
+        println!("   NaN != 42.0: {} (true - WebAssembly spec)", result);
     }
     context.stack.clear();
 
@@ -321,10 +321,10 @@ fn main() -> Result<()> {
     // f64 NaN != NaN (should be true)
     context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN)))?;
     context.push_comparison_value(Value::F64(FloatBits64::from_float(f64::NAN)))?;
-    println!("   Input: NaN (f64), NaN (f64)"));
+    println!("   Input: NaN (f64), NaN (f64)");
     ComparisonOp::F64Ne.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   NaN != NaN (f64): {} (true - WebAssembly spec)", result));
+        println!("   NaN != NaN (f64): {} (true - WebAssembly spec)", result);
     }
     context.stack.clear();
 
@@ -337,7 +337,7 @@ fn main() -> Result<()> {
     println!("   Input: -∞, +∞");
     ComparisonOp::F32Lt.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   -∞ < +∞: {} (true)", result));
+        println!("   -∞ c +∞: {} (true)", result);
     }
     context.stack.clear();
 
@@ -347,7 +347,7 @@ fn main() -> Result<()> {
     println!("   Input: -0.0, +0.0");
     ComparisonOp::F64Eq.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   -0.0 == +0.0: {} (true - IEEE 754 spec)", result));
+        println!("   -0.0 == +0.0: {} (true - IEEE 754 spec)", result);
     }
     context.stack.clear();
 
@@ -357,17 +357,17 @@ fn main() -> Result<()> {
     // Maximum i32 values
     context.push_comparison_value(Value::I32(i32::MAX))?;
     context.push_comparison_value(Value::I32(i32::MIN))?;
-    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648)"));
+    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648)");
     ComparisonOp::I32GtS.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
-        println!("   i32::MAX > i32::MIN (signed): {} (true)", result));
+        println!("   i32::MAX e i32::MIN (signed): {} (true)", result);
     }
     context.stack.clear();
 
     // Same values as unsigned comparison
     context.push_comparison_value(Value::I32(i32::MAX))?;
     context.push_comparison_value(Value::I32(i32::MIN))?;
-    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648 = 0x80000000)"));
+    println!("   Input: i32::MAX (2147483647), i32::MIN (-2147483648 = 0x80000000)");
     ComparisonOp::I32LtU.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!(
@@ -378,10 +378,10 @@ fn main() -> Result<()> {
 
     println!("\n=== Demo Complete ===");
     println!("\nKey Takeaways:");
-    println!("- All comparison operations return i32 values (0 for false, 1 for true)"));
+    println!("- All comparison operations return i32 values (0 for false, 1 for true)");
     println!("- Signed vs unsigned comparisons can produce different results");
     println!("- NaN handling follows WebAssembly specification exactly");
-    println!("- Float comparisons handle special values (±∞, ±0, NaN) correctly"));
+    println!("- Float comparisons handle special values (±∞, ±0, NaN) correctly");
     println!("- Integer operations work with full 32-bit and 64-bit ranges");
 
     Ok(())

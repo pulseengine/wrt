@@ -3,12 +3,14 @@
 //! This module provides bounded alternatives for intercept collections
 //! ensuring static memory allocation.
 
-
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     bounded_collections::BoundedMap,
     safe_memory::NoStdProvider,
 };
@@ -33,7 +35,7 @@ pub type BoundedStatsMap = BoundedMap<
     BoundedString<MAX_FUNCTION_NAME_LEN, InterceptProvider>,
     crate::strategies::FunctionStats,
     MAX_FUNCTION_STATS,
-    InterceptProvider
+    InterceptProvider,
 >;
 
 /// Bounded map for executing functions
@@ -41,7 +43,7 @@ pub type BoundedExecutingMap = BoundedMap<
     u64, // Thread ID
     BoundedString<MAX_FUNCTION_NAME_LEN, InterceptProvider>,
     MAX_EXECUTING_FUNCTIONS,
-    InterceptProvider
+    InterceptProvider,
 >;
 
 /// Bounded vector for results
@@ -64,7 +66,13 @@ pub fn new_executing_map() -> Result<BoundedExecutingMap, wrt_error::Error> {
 /// Create a new bounded result vector
 pub fn new_result_vec<T>() -> Result<BoundedResultVec<T>, wrt_error::Error>
 where
-    T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + PartialEq + Eq,
+    T: wrt_foundation::traits::Checksummable
+        + wrt_foundation::traits::ToBytes
+        + wrt_foundation::traits::FromBytes
+        + Default
+        + Clone
+        + PartialEq
+        + Eq,
 {
     // For safety-critical code that forbids unsafe, use direct provider creation
     let provider = InterceptProvider::default();

@@ -8,16 +8,31 @@
 //! WebAssembly components, including host functions and interceptors.
 
 // Use the prelude for consistent imports
-use crate::prelude::{
-    codes, str, Any, BuiltinType, Debug, Eq, Error, ErrorCategory, HashMap, HostFunctionHandler,
-    Ord, PartialEq, PartialOrd, Result, Value,
-};
-
-#[cfg(feature = "std")]
-use crate::prelude::{fmt, Arc, BuiltinHost};
-
 #[cfg(feature = "std")]
 use crate::prelude::LinkInterceptor;
+use crate::prelude::{
+    codes,
+    str,
+    Any,
+    BuiltinType,
+    Debug,
+    Eq,
+    Error,
+    ErrorCategory,
+    HashMap,
+    HostFunctionHandler,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Result,
+    Value,
+};
+#[cfg(feature = "std")]
+use crate::prelude::{
+    fmt,
+    Arc,
+    BuiltinHost,
+};
 
 // Type aliases for no_std compatibility
 // In no_std mode, we can't use Box<dyn Any>, so we'll use a wrapper type
@@ -29,7 +44,10 @@ pub struct CallbackData {
 }
 
 #[cfg(not(feature = "std"))]
-use crate::bounded_host_infra::{HostProvider, HOST_MEMORY_SIZE};
+use crate::bounded_host_infra::{
+    HostProvider,
+    HOST_MEMORY_SIZE,
+};
 
 #[cfg(not(feature = "std"))]
 type CallbackMap = HashMap<CallbackType, CallbackData, 32, HostProvider>;
@@ -75,7 +93,7 @@ pub struct HostFunctionsNoStd {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for HostFunctionsNoStd {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[u8::from(self._has_functions)];
+        checksum.update_slice(&[u8::from(self._has_functions)]);
     }
 }
 
@@ -89,7 +107,7 @@ impl wrt_foundation::traits::ToBytes for HostFunctionsNoStd {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u8(u8::from(self._has_functions))
     }
 }
@@ -99,7 +117,7 @@ impl wrt_foundation::traits::FromBytes for HostFunctionsNoStd {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let has_functions = reader.read_u8()? != 0;
         Ok(HostFunctionsNoStd {
             _has_functions: has_functions,
@@ -128,7 +146,7 @@ pub enum CallbackType {
 // Implement required traits for BoundedMap compatibility
 impl wrt_foundation::traits::Checksummable for CallbackType {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[*self as u8];
+        checksum.update_slice(&[*self as u8]);
     }
 }
 
@@ -141,7 +159,7 @@ impl wrt_foundation::traits::ToBytes for CallbackType {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u8(*self as u8)
     }
 }
@@ -150,7 +168,7 @@ impl wrt_foundation::traits::FromBytes for CallbackType {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         match reader.read_u8()? {
             0 => Ok(CallbackType::Setup),
             1 => Ok(CallbackType::Cleanup),
@@ -165,7 +183,8 @@ impl wrt_foundation::traits::FromBytes for CallbackType {
     }
 }
 
-// Implement required traits for CallbackData to work with BoundedMap in no_std mode
+// Implement required traits for CallbackData to work with BoundedMap in no_std
+// mode
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for CallbackData {
     fn update_checksum(&self, _checksum: &mut wrt_foundation::verification::Checksum) {
@@ -183,7 +202,7 @@ impl wrt_foundation::traits::ToBytes for CallbackData {
         &self,
         _writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         Ok(())
     }
 }
@@ -193,7 +212,7 @@ impl wrt_foundation::traits::FromBytes for CallbackData {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         _reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(CallbackData::default())
     }
 }
@@ -204,7 +223,8 @@ pub struct CallbackRegistry {
     #[cfg(feature = "std")]
     callbacks: HashMap<CallbackType, Box<dyn Any + Send + Sync>>,
 
-    /// Generic callback storage for different types of callbacks (`no_std` version)
+    /// Generic callback storage for different types of callbacks (`no_std`
+    /// version)
     #[cfg(not(feature = "std"))]
     callbacks: CallbackMap,
 
@@ -253,8 +273,8 @@ impl CallbackRegistry {
     #[cfg(feature = "std")]
     pub fn new() -> Self {
         Self {
-            callbacks: HashMap::with_capacity(0),
-            interceptor: None,
+            callbacks:      HashMap::with_capacity(0),
+            interceptor:    None,
             host_functions: HashMap::with_capacity(0),
         }
     }
@@ -263,11 +283,12 @@ impl CallbackRegistry {
     #[must_use]
     #[cfg(not(feature = "std"))]
     pub fn new() -> Self {
-        // In no_std mode, we need to provide memory providers for the bounded collections
+        // In no_std mode, we need to provide memory providers for the bounded
+        // collections
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+        let provider = create_host_provider().expect("Failed to create host provider");
         Self {
-            callbacks: HashMap::new(provider).unwrap_or_default(),
+            callbacks:      HashMap::new(provider).unwrap_or_default(),
             host_functions: HostFunctionsNoStd::default(),
         }
     }
@@ -343,11 +364,11 @@ impl CallbackRegistry {
         function_name: &str,
         handler: HostFunctionHandler,
     ) {
-        let module_name = module_name.to_string());
-        let function_name = function_name.to_string());
+        let module_name = module_name.to_string();
+        let function_name = function_name.to_string();
 
-        let module_functions = self.host_functions.entry(module_name).or_default);
-        module_functions.insert(function_name, handler;
+        let module_functions = self.host_functions.entry(module_name).or_default();
+        module_functions.insert(function_name, handler);
     }
 
     /// Register a host function (`no_std` version)
@@ -410,7 +431,7 @@ impl CallbackRegistry {
                             modified_args,
                         )
                     },
-                ;
+                );
             }
         }
 
@@ -428,7 +449,7 @@ impl CallbackRegistry {
     ) -> Result<ValueVec> {
         if let Some(module_functions) = self.host_functions.get(module_name) {
             if let Some(handler) = module_functions.get(function_name) {
-                return handler.call(engine, args;
+                return handler.call(engine, args);
             }
         }
 
@@ -436,7 +457,8 @@ impl CallbackRegistry {
         Err(Error::runtime_error("Host function not found"))
     }
 
-    /// Internal implementation of `call_host_function` without interception (`no_std` version)
+    /// Internal implementation of `call_host_function` without interception
+    /// (`no_std` version)
     #[cfg(not(feature = "std"))]
     fn call_host_function_internal(
         &self,
@@ -464,7 +486,7 @@ impl CallbackRegistry {
     pub fn get_registered_modules(&self) -> StringVec {
         // In no_std mode, we can't return dynamic module names
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+        let provider = create_host_provider().expect("Failed to create host provider");
         StringVec::new(provider).unwrap_or_default()
     }
 
@@ -485,7 +507,7 @@ impl CallbackRegistry {
     pub fn get_registered_functions(&self, _module_name: &str) -> StringVec {
         // In no_std mode, we can't return dynamic function names
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+        let provider = create_host_provider().expect("Failed to create host provider");
         StringVec::new(provider).unwrap_or_default()
     }
 
@@ -504,7 +526,7 @@ impl CallbackRegistry {
         if let Some(builtin_funcs) = self.host_functions.get("wasi_builtin") {
             for func_name in builtin_funcs.keys() {
                 if let Ok(builtin_type) = func_name.parse::<BuiltinType>() {
-                    builtins.insert(builtin_type;
+                    builtins.insert(builtin_type);
                 }
             }
         }
@@ -512,7 +534,8 @@ impl CallbackRegistry {
         builtins
     }
 
-    /// Get all available built-in types provided by this registry (`no_std` version)
+    /// Get all available built-in types provided by this registry (`no_std`
+    /// version)
     ///
     /// This method returns a set of all built-in types that are available
     /// through this registry's host functions.
@@ -523,10 +546,10 @@ impl CallbackRegistry {
     ) -> wrt_foundation::BoundedSet<BuiltinType, 32, HostProvider> {
         // In no_std mode, we can't dynamically track built-ins
         use crate::bounded_host_infra::create_host_provider;
-        let provider = create_host_provider().expect(".expect("Failed to create host provider"));")
+        let provider = create_host_provider().expect("Failed to create host provider");
         wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| {
             let fallback_provider =
-                create_host_provider().expect(".expect("Failed to create fallback host provider"));")
+                create_host_provider().expect("Failed to create fallback host provider");
             wrt_foundation::BoundedSet::new(fallback_provider)
                 .expect("Failed to create bounded set")
         })
@@ -558,9 +581,9 @@ impl CallbackRegistry {
         args: ValueVec,
     ) -> Result<ValueVec> {
         // First check if we have a direct host function registered
-        let builtin_name = builtin_type.name);
+        let builtin_name = builtin_type.name();
         if self.has_host_function("wasi_builtin", builtin_name) {
-            return self.call_host_function(engine, "wasi_builtin", builtin_name, args;
+            return self.call_host_function(engine, "wasi_builtin", builtin_name, args);
         }
 
         // If not, delegate to the built-in host
@@ -590,7 +613,7 @@ impl Clone for CallbackRegistry {
                         module_name,
                         function_name,
                         handler.clone(),
-                    ;
+                    );
                 }
             }
         }
@@ -609,7 +632,10 @@ impl Clone for CallbackRegistry {
 
 #[cfg(test)]
 mod tests {
-    use wrt_foundation::{builtin::BuiltinType, values::Value};
+    use wrt_foundation::{
+        builtin::BuiltinType,
+        values::Value,
+    };
 
     use super::*;
 
@@ -618,30 +644,30 @@ mod tests {
         let mut registry = CallbackRegistry::new();
 
         // Register a host function
-        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)];
-        registry.register_host_function("test_module", "test_function", handler;
+        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)]));
+        registry.register_host_function("test_module", "test_function", handler);
 
         // Verify it can be found
-        assert!(registry.has_host_function("test_module", "test_function");
-        assert!(!registry.has_host_function("nonexistent", "function");
+        assert!(registry.has_host_function("test_module", "test_function"));
+        assert!(!registry.has_host_function("nonexistent", "function"));
 
         // Call the function
-        let mut engine = );
+        let mut engine = ();
         let result =
-            registry.call_host_function(&mut engine, "test_module", "test_function", vec![];
+            registry.call_host_function(&mut engine, "test_module", "test_function", vec![]);
 
         // Fix the assertion to not rely on PartialEq for Error type
         match result {
             Ok(values) => {
                 assert_eq!(values.len(), 1);
-                assert!(matches!(values[0], Value::I32(42));
+                assert!(matches!(values[0], Value::I32(42)));
             },
             Err(_) => panic!("Expected successful function call"),
         }
 
         // Test calling a nonexistent function
-        let err = registry.call_host_function(&mut engine, "nonexistent", "function", vec![];
-        assert!(err.is_err();
+        let err = registry.call_host_function(&mut engine, "nonexistent", "function", vec![]);
+        assert!(err.is_err());
     }
 
     #[test]
@@ -649,12 +675,12 @@ mod tests {
         let mut registry = CallbackRegistry::new();
 
         // Register a callback
-        registry.register_callback(CallbackType::Intercept, 42;
+        registry.register_callback(CallbackType::Intercept, 42);
 
         // Get the callback
-        let callback = registry.get_callback::<i32>(&CallbackType::Intercept;
-        assert!(callback.is_some();
-        assert_eq!(*callback.unwrap(), 42;
+        let callback = registry.get_callback::<i32>(&CallbackType::Intercept);
+        assert!(callback.is_some());
+        assert_eq!(*callback.unwrap(), 42);
 
         // Modify the callback
         if let Some(callback) = registry.get_callback_mut::<i32>(&CallbackType::Intercept) {
@@ -662,9 +688,9 @@ mod tests {
         }
 
         // Verify it was modified
-        let callback = registry.get_callback::<i32>(&CallbackType::Intercept;
-        assert!(callback.is_some();
-        assert_eq!(*callback.unwrap(), 24;
+        let callback = registry.get_callback::<i32>(&CallbackType::Intercept);
+        assert!(callback.is_some());
+        assert_eq!(*callback.unwrap(), 24);
     }
 
     #[cfg(feature = "std")]
@@ -735,13 +761,14 @@ mod tests {
 #[cfg(feature = "std")]
 pub fn function_key(module_name: &str, function_name: &str) -> String {
     #[cfg(feature = "std")]
-    return format!("{}::{}", module_name, function_name;
+    return format!("{}::{}", module_name, function_name);
 
     #[cfg(all(not(feature = "std")))]
-    return alloc::format!("{}::{}", module_name, function_name;
+    return alloc::format!("{}::{}", module_name, function_name);
 }
 
-/// Generate a unique function key from module and function names (`no_std` version)
+/// Generate a unique function key from module and function names (`no_std`
+/// version)
 ///
 /// Binary `std/no_std` choice
 #[cfg(not(feature = "std"))]
