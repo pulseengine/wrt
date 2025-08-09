@@ -20,6 +20,7 @@ use std::{
     vec::Vec,
 };
 
+use wrt_error::Result;
 use wrt_format::module::Module as WrtModule;
 
 use crate::prelude::*;
@@ -186,7 +187,7 @@ pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
     }
 
     // Check version (1.0 for core modules, different for components)
-    let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]];
+    let version = u32::from_le_bytes([binary[4], binary[5], binary[6], binary[7]]);
     let format_type = match version {
         1 => WasmFormat::CoreModule,
         _ => {
@@ -199,17 +200,17 @@ pub fn load_wasm_unified(binary: &[u8]) -> Result<WasmInfo> {
         },
     };
 
-    let mut info = WasmInfo::new(format_type, binary.len();
+    let mut info = WasmInfo::new(format_type, binary.len());
 
     match format_type {
         WasmFormat::CoreModule => {
             // Parse as core module
-            info.module_info = Some(extract_module_info(binary)?;
+            info.module_info = Some(extract_module_info(binary)?);
             info.builtin_imports = extract_builtin_imports(binary)?;
         },
         WasmFormat::Component => {
             // Parse as component
-            info.component_info = Some(extract_component_info(binary)?;
+            info.component_info = Some(extract_component_info(binary)?);
         },
         WasmFormat::Unknown => {
             return Err(Error::runtime_execution_error("Unknown WebAssembly format"));
@@ -234,7 +235,7 @@ fn detect_component_format(binary: &[u8]) -> Result<bool> {
 
         // Component-specific section IDs (13+)
         if section_id >= 13 {
-            return Ok(true;
+            return Ok(true);
         }
 
         // Skip this section
@@ -340,7 +341,7 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
         if offset + module_len as usize > data.len() {
             return Err(Error::parse_error(
                 "Import module name extends beyond section",
-            ;
+            ));
         }
 
         let module_name = core::str::from_utf8(&data[offset..offset + module_len as usize])
@@ -352,7 +353,7 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
         offset += bytes_read;
 
         if offset + name_len as usize > data.len() {
-            return Err(Error::parse_error("Import name extends beyond section";
+            return Err(Error::parse_error("Import name extends beyond section"));
         }
 
         let import_name = core::str::from_utf8(&data[offset..offset + name_len as usize])
@@ -361,7 +362,7 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
 
         // Parse import kind
         if offset >= data.len() {
-            return Err(Error::parse_error("Missing import kind";
+            return Err(Error::parse_error("Missing import kind"));
         }
 
         let import_kind = data[offset];
@@ -390,17 +391,18 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
                 ImportType::Global
             },
             _ => {
-                return Err(Error::parse_error("Invalid import kind";
+                return Err(Error::parse_error("Invalid import kind"));
             },
         };
 
         #[cfg(feature = "std")]
-        info.imports.push(ImportInfo {
-            module: module_name.to_string(),
-            name: import_name.to_string(),
-            import_type,
-        };
-
+        {
+            info.imports.push(ImportInfo {
+                module: module_name.to_string(),
+                name: import_name.to_string(),
+                import_type,
+            });
+        }
         #[cfg(not(feature = "std"))]
         {
             let provider = create_decoder_provider::<256>()?;
@@ -417,7 +419,7 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
                 module,
                 name,
                 import_type,
-            };
+            });
         }
     }
 
@@ -445,7 +447,7 @@ fn parse_memory_section_info(data: &[u8], info: &mut ModuleInfo) -> Result<()> {
             None
         };
 
-        info.memory_pages = Some((min, max;
+        info.memory_pages = Some((min, max));
     }
 
     Ok(())
@@ -463,7 +465,7 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
         offset += bytes_read;
 
         if offset + name_len as usize > data.len() {
-            return Err(Error::parse_error("Export name extends beyond section";
+            return Err(Error::parse_error("Export name extends beyond section"));
         }
 
         let export_name = core::str::from_utf8(&data[offset..offset + name_len as usize])
@@ -472,7 +474,7 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
 
         // Parse export kind
         if offset >= data.len() {
-            return Err(Error::parse_error("Missing export kind";
+            return Err(Error::parse_error("Missing export kind"));
         }
 
         let export_kind = data[offset];
@@ -488,7 +490,7 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
             2 => ExportType::Memory,
             3 => ExportType::Global,
             _ => {
-                return Err(Error::parse_error("Invalid export kind";
+                return Err(Error::parse_error("Invalid export kind"));
             },
         };
 
@@ -497,7 +499,7 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
             name: export_name.to_string(),
             export_type,
             index,
-        };
+        });
 
         #[cfg(not(feature = "std"))]
         {
@@ -508,7 +510,7 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
                 name,
                 export_type,
                 index,
-            };
+            });
         }
     }
 
@@ -518,7 +520,7 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
 /// Parse start section for start function
 fn parse_start_section_info(data: &[u8], info: &mut ModuleInfo) -> Result<()> {
     let (start_idx, _) = read_leb128_u32(data, 0)?;
-    info.start_function = Some(start_idx;
+    info.start_function = Some(start_idx);
     Ok(())
 }
 
@@ -634,7 +636,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
     for i in 0..5 {
         // Max 5 bytes for u32
         if offset + i >= data.len() {
-            return Err(Error::parse_error("Truncated LEB128 value";
+            return Err(Error::parse_error("Truncated LEB128 value"));
         }
 
         let byte = data[offset + i];
@@ -648,7 +650,7 @@ fn read_leb128_u32(data: &[u8], offset: usize) -> Result<(u32, usize)> {
 
         shift += 7;
         if shift >= 32 {
-            return Err(Error::parse_error("LEB128 value too large for u32";
+            return Err(Error::parse_error("LEB128 value too large for u32"));
         }
     }
 
@@ -664,21 +666,21 @@ mod tests {
         // Simple core module header
         let module = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
         let info = load_wasm_unified(&module).unwrap();
-        assert_eq!(info.format_type, WasmFormat::CoreModule;
-        assert!(info.is_core_module();
-        assert!(!info.is_component();
+        assert_eq!(info.format_type, WasmFormat::CoreModule);
+        assert!(info.is_core_module());
+        assert!(!info.is_component());
     }
 
     #[test]
     fn test_invalid_magic() {
         let invalid = [0x00, 0x61, 0x73, 0x6E, 0x01, 0x00, 0x00, 0x00]; // Wrong magic
-        assert!(load_wasm_unified(&invalid).is_err();
+        assert!(load_wasm_unified(&invalid).is_err());
     }
 
     #[test]
     fn test_too_small() {
         let too_small = [0x00, 0x61, 0x73]; // Too small
-        assert!(load_wasm_unified(&too_small).is_err();
+        assert!(load_wasm_unified(&too_small).is_err());
     }
 
     #[test]
@@ -688,6 +690,6 @@ mod tests {
         let module_info = info.require_module_info().unwrap();
         assert!(module_info.imports.is_empty());
         assert!(module_info.exports.is_empty());
-        assert!(module_info.start_function.is_none();
+        assert!(module_info.start_function.is_none());
     }
 }

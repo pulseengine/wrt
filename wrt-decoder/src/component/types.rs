@@ -202,9 +202,9 @@ mod no_std_types {
 
     impl wrt_foundation::traits::Checksummable for Export {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            self.name.update_checksum(checksum;
-            checksum.update_slice(&[self.kind as u8];
-            checksum.update_slice(&self.index.to_le_bytes);
+            self.name.update_checksum(checksum);
+            checksum.update_slice(&[self.kind as u8]);
+            checksum.update_slice(&self.index.to_le_bytes());
         }
     }
 
@@ -250,9 +250,9 @@ mod no_std_types {
 
     impl wrt_foundation::traits::Checksummable for Import {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            self.module.update_checksum(checksum;
-            self.name.update_checksum(checksum;
-            checksum.update_slice(&[self.kind as u8];
+            self.module.update_checksum(checksum);
+            self.name.update_checksum(checksum);
+            checksum.update_slice(&[self.kind as u8]);
         }
     }
 }
@@ -341,7 +341,7 @@ impl ExportInfo {
             name:      std::string::String::new(),
             kind:      std::string::String::new(),
             type_info: std::string::String::new(),
-        };
+        });
 
         #[cfg(not(feature = "std"))]
         {
@@ -417,7 +417,7 @@ impl ImportInfo {
             name:      std::string::String::new(),
             kind:      std::string::String::new(),
             type_info: std::string::String::new(),
-        };
+        });
 
         #[cfg(not(feature = "std"))]
         {
@@ -707,9 +707,9 @@ impl wrt_foundation::traits::Checksummable for ExportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         #[cfg(feature = "std")]
         {
-            checksum.update_slice(self.name.as_bytes);
-            checksum.update_slice(self.kind.as_bytes);
-            checksum.update_slice(self.type_info.as_bytes);
+            checksum.update_slice(self.name.as_bytes());
+            checksum.update_slice(self.kind.as_bytes());
+            checksum.update_slice(self.type_info.as_bytes());
         }
         #[cfg(not(feature = "std"))]
         {
@@ -813,10 +813,10 @@ impl wrt_foundation::traits::Checksummable for ImportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         #[cfg(feature = "std")]
         {
-            checksum.update_slice(self.module.as_bytes);
-            checksum.update_slice(self.name.as_bytes);
-            checksum.update_slice(self.kind.as_bytes);
-            checksum.update_slice(self.type_info.as_bytes);
+            checksum.update_slice(self.module.as_bytes());
+            checksum.update_slice(self.name.as_bytes());
+            checksum.update_slice(self.kind.as_bytes());
+            checksum.update_slice(self.type_info.as_bytes());
         }
         #[cfg(not(feature = "std"))]
         {

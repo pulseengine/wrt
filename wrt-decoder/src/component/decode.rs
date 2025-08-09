@@ -45,12 +45,12 @@ mod component_decode {
         if bytes.len() < 8 {
             return Err(Error::parse_error(
                 "Component too small (less than 8 bytes)",
-            ;
+            ));
         }
 
         // Check magic number
         if bytes[0..4] != binary::COMPONENT_MAGIC {
-            return Err(Error::parse_error("Invalid component magic number";
+            return Err(Error::parse_error("Invalid component magic number"));
         }
 
         offset = 8;
@@ -59,7 +59,7 @@ mod component_decode {
         while offset < bytes.len() {
             // Read section ID and size
             if offset + 1 > bytes.len() {
-                return Err(Error::parse_error("Unexpected end of component binary";
+                return Err(Error::parse_error("Unexpected end of component binary"));
             }
 
             let section_id = bytes[offset];
@@ -68,13 +68,13 @@ mod component_decode {
             let (section_size, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
                 Ok(result) => result,
                 Err(_) => {
-                    return Err(Error::parse_error("Invalid section size ";
+                    return Err(Error::parse_error("Invalid section size"));
                 },
             };
             offset += bytes_read;
 
             if offset + section_size as usize > bytes.len() {
-                return Err(Error::parse_error("Section size exceeds binary size ";
+                return Err(Error::parse_error("Section size exceeds binary size"));
             }
 
             // Extract section bytes
@@ -97,7 +97,7 @@ mod component_decode {
                                 {
                                     // Apply the component name if available
                                     if let Some(component_name) = name_section.component_name {
-                                        component.name = Some(component_name;
+                                        component.name = Some(component_name);
                                     }
                                 }
                             }
@@ -190,7 +190,7 @@ mod component_decode {
                     // Start section
                     match parse_start_section(section_bytes) {
                         Ok((start, _)) => {
-                            component.start = Some(start;
+                            component.start = Some(start);
                         },
                         Err(_) => {
                             // Continue parsing other sections

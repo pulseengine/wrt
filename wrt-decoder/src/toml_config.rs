@@ -146,13 +146,13 @@ impl TomlResourceLimits {
 
         // Validate resource count
         if self.resources.len() > MAX_RESOURCE_TYPES {
-            return Err(Error::runtime_execution_error("Too many resource types";
+            return Err(Error::runtime_execution_error("Too many resource types"));
         }
 
         // Convert resource type limits
         for (name, toml_limit) in &self.resources {
             if name.len() > MAX_RESOURCE_NAME_LEN {
-                return Err(Error::parse_error("Resource name too long";
+                return Err(Error::parse_error("Resource name too long"));
             }
 
             let mut limit = ResourceTypeLimit::new(provider.clone())?;
@@ -163,13 +163,13 @@ impl TomlResourceLimits {
 
             // Validate custom limits count
             if toml_limit.custom.len() > MAX_CUSTOM_LIMITS_PER_TYPE {
-                return Err(Error::runtime_execution_error("Too many custom limits";
+                return Err(Error::runtime_execution_error("Too many custom limits"));
             }
 
             // Add custom limits
             for (custom_name, value) in &toml_limit.custom {
                 if custom_name.len() > MAX_RESOURCE_NAME_LEN {
-                    return Err(Error::parse_error("Custom limit name too long";
+                    return Err(Error::parse_error("Custom limit name too long"));
                 }
                 limit = limit.with_custom_limit(custom_name, *value)?;
             }
@@ -184,7 +184,7 @@ impl TomlResourceLimits {
 
                 if let Some(asil_level) = &qual.asil_level {
                     if asil_level.len() > MAX_ASIL_STRING_LEN {
-                        return Err(Error::parse_error("ASIL level exceeds max length";
+                        return Err(Error::parse_error("ASIL level exceeds max length"));
                     }
                     section = section.with_qualification(hash, asil_level, provider)?;
                 }
@@ -198,9 +198,9 @@ impl TomlResourceLimits {
 /// Parse memory size with optional suffix (K, M, G)
 #[cfg(feature = "std")]
 fn parse_memory_size(s: &str) -> Result<u64, Error> {
-    let s = s.trim);
+    let s = s.trim();
     if s.is_empty() {
-        return Err(Error::parse_error("Empty memory size";
+        return Err(Error::parse_error("Empty memory size"));
     }
 
     let (num_part, suffix) = if s.ends_with('K') || s.ends_with('k') {
@@ -223,10 +223,10 @@ fn parse_memory_size(s: &str) -> Result<u64, Error> {
 /// Parse hex string to 32-byte hash
 #[cfg(feature = "std")]
 fn parse_hex_hash(hex: &str) -> Result<[u8; 32], Error> {
-    let hex = hex.trim_start_matches("0x";
+    let hex = hex.trim_start_matches("0x");
 
     if hex.len() != 64 {
-        return Err(Error::parse_error("Hash must be 64 hex characters";
+        return Err(Error::parse_error("Hash must be 64 hex characters"));
     }
 
     let mut hash = [0u8; 32];
@@ -244,12 +244,12 @@ mod tests {
 
     #[test]
     fn test_parse_memory_size() {
-        assert_eq!(parse_memory_size("1024").unwrap(), 1024;
-        assert_eq!(parse_memory_size("2K").unwrap(), 2048;
-        assert_eq!(parse_memory_size("4M").unwrap(), 4 * 1024 * 1024;
-        assert_eq!(parse_memory_size("1G").unwrap(), 1024 * 1024 * 1024;
-        assert_eq!(parse_memory_size("100k").unwrap(), 100 * 1024;
-        assert_eq!(parse_memory_size("50m").unwrap(), 50 * 1024 * 1024;
+        assert_eq!(parse_memory_size("1024").unwrap(), 1024);
+        assert_eq!(parse_memory_size("2K").unwrap(), 2048);
+        assert_eq!(parse_memory_size("4M").unwrap(), 4 * 1024 * 1024);
+        assert_eq!(parse_memory_size("1G").unwrap(), 1024 * 1024 * 1024);
+        assert_eq!(parse_memory_size("100k").unwrap(), 100 * 1024);
+        assert_eq!(parse_memory_size("50m").unwrap(), 50 * 1024 * 1024);
     }
 
     #[test]
@@ -288,15 +288,15 @@ asil_level = "ASIL-D"
         assert_eq!(
             config.execution.as_ref().unwrap().max_fuel_per_step,
             Some(1000000)
-        ;
-        assert_eq!(config.resources.len(), 2;
-        assert!(config.resources.contains_key("filesystem");
-        assert!(config.resources.contains_key("network");
+        );
+        assert_eq!(config.resources.len(), 2);
+        assert!(config.resources.contains_key("filesystem"));
+        assert!(config.resources.contains_key("network"));
 
         // Test conversion to ResourceLimitsSection
         let section = config.to_resource_limits_section().unwrap();
         assert_eq!(section.max_fuel_per_step, Some(1000000));
         assert_eq!(section.max_memory_usage, Some(64 * 1024 * 1024));
-        assert_eq!(section.qualified_asil_level(), Some("ASIL-D";
+        assert_eq!(section.qualified_asil_level(), Some("ASIL-D"));
     }
 }

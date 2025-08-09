@@ -280,9 +280,9 @@ mod placeholder_types {
     // Implement required traits for ComponentImport
     impl Checksummable for ComponentImport {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            self.namespace.update_checksum(checksum;
-            self.name.update_checksum(checksum;
-            self.extern_type.update_checksum(checksum;
+            self.namespace.update_checksum(checksum);
+            self.name.update_checksum(checksum);
+            self.extern_type.update_checksum(checksum);
         }
     }
 
@@ -327,8 +327,8 @@ mod placeholder_types {
     // Implement required traits for ComponentExport
     impl Checksummable for ComponentExport {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            self.name.update_checksum(checksum;
-            self.extern_type.update_checksum(checksum;
+            self.name.update_checksum(checksum);
+            self.extern_type.update_checksum(checksum);
         }
     }
 
@@ -366,8 +366,8 @@ mod placeholder_types {
     // Implement required traits for FunctionParam
     impl Checksummable for FunctionParam {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            self.name.update_checksum(checksum;
-            self.val_type.update_checksum(checksum;
+            self.name.update_checksum(checksum);
+            self.val_type.update_checksum(checksum);
         }
     }
 
@@ -410,15 +410,15 @@ mod placeholder_types {
                     checksum.update(0u8); // Tag for Function
                                           // Use manual checksum update for Vec types
                     for param in params.iter() {
-                        param.update_checksum(checksum;
+                        param.update_checksum(checksum);
                     }
                     for result in results.iter() {
-                        result.update_checksum(checksum;
+                        result.update_checksum(checksum);
                     }
                 },
                 ExternType::Value(val_type) => {
                     checksum.update(1u8); // Tag for Value
-                    val_type.update_checksum(checksum;
+                    val_type.update_checksum(checksum);
                 },
                 ExternType::Type(idx) => {
                     checksum.update(2u8); // Tag for Type
@@ -427,16 +427,16 @@ mod placeholder_types {
                 ExternType::Instance { exports } => {
                     checksum.update(3u8); // Tag for Instance
                     for export in exports.iter() {
-                        export.update_checksum(checksum;
+                        export.update_checksum(checksum);
                     }
                 },
                 ExternType::Component { imports, exports } => {
                     checksum.update(4u8); // Tag for Component
                     for import in imports.iter() {
-                        import.update_checksum(checksum;
+                        import.update_checksum(checksum);
                     }
                     for export in exports.iter() {
-                        export.update_checksum(checksum;
+                        export.update_checksum(checksum);
                     }
                 },
             }
@@ -669,14 +669,14 @@ impl<'a> StreamingTypeParser<'a> {
         if data.is_empty() {
             return Err(Error::runtime_execution_error(
                 "Streaming type parser error ",
-            ;
+            ));
         }
 
         // ASIL constraint: Verify data size constraints
         if data.len() > MAX_TYPE_DEFINITION_SIZE {
             return Err(Error::validation_error(
                 "Type definition size exceeds maximum",
-            ;
+            ));
         }
 
         Ok(Self {
@@ -704,7 +704,7 @@ impl<'a> StreamingTypeParser<'a> {
         if type_count > MAX_TYPES_PER_COMPONENT as u32 {
             return Err(Error::validation_error(
                 "Too many component types in section ",
-            ;
+            ));
         }
 
         // Initialize storage using unified provider system
@@ -742,7 +742,7 @@ impl<'a> StreamingTypeParser<'a> {
     /// Parse a single component type from the binary stream
     fn parse_single_component_type(&mut self, type_index: u32) -> Result<ComponentType> {
         if self.offset >= self.data.len() {
-            return Err(Error::parse_error("Unexpected end of type section ";
+            return Err(Error::parse_error("Unexpected end of type section "));
         }
 
         // Read type form
@@ -751,7 +751,7 @@ impl<'a> StreamingTypeParser<'a> {
 
         // ASIL constraint: Check recursion depth
         if self.recursion_depth >= MAX_TYPE_RECURSION_DEPTH {
-            return Err(Error::validation_error("Type recursion depth exceeded ";
+            return Err(Error::validation_error("Type recursion depth exceeded "));
         }
 
         self.recursion_depth += 1;
@@ -763,7 +763,7 @@ impl<'a> StreamingTypeParser<'a> {
             0x43 => self.parse_value_type_definition()?,
             0x44 => self.parse_resource_type_definition()?,
             _ => {
-                return Err(Error::parse_error("Unknown component type form ";
+                return Err(Error::parse_error("Unknown component type form "));
             },
         };
 
@@ -948,7 +948,7 @@ impl<'a> StreamingTypeParser<'a> {
         if self.offset >= self.data.len() {
             return Err(Error::parse_error(
                 "Unexpected end while reading extern type ",
-            ;
+            ));
         }
 
         let extern_form = self.data[self.offset];
@@ -1048,7 +1048,7 @@ impl<'a> StreamingTypeParser<'a> {
         if self.offset >= self.data.len() {
             return Err(Error::parse_error(
                 "Unexpected end while reading value type ",
-            ;
+            ));
         }
 
         let val_form = self.data[self.offset];
@@ -1088,7 +1088,7 @@ impl<'a> StreamingTypeParser<'a> {
                 };
                 #[cfg(feature = "std")]
                 let empty_fields = DecoderVec::new();
-                return Ok(FormatValType::Record(empty_fields;
+                return Ok(FormatValType::Record(empty_fields));
             },
             0x71 => {
                 // Variant type - simplified for streaming
@@ -1116,7 +1116,7 @@ impl<'a> StreamingTypeParser<'a> {
                 };
                 #[cfg(feature = "std")]
                 let empty_cases = DecoderVec::new();
-                return Ok(FormatValType::Variant(empty_cases;
+                return Ok(FormatValType::Variant(empty_cases));
             },
             0x70 => {
                 // List type
@@ -1152,7 +1152,7 @@ impl<'a> StreamingTypeParser<'a> {
                 };
                 #[cfg(feature = "std")]
                 let empty_elements = DecoderVec::new();
-                return Ok(FormatValType::Tuple(empty_elements;
+                return Ok(FormatValType::Tuple(empty_elements));
             },
             0x6E => {
                 // Own resource
@@ -1184,7 +1184,7 @@ impl<'a> StreamingTypeParser<'a> {
         if self.offset >= self.data.len() {
             return Err(Error::parse_error(
                 "Unexpected end while reading resource representation",
-            ;
+            ));
         }
 
         let repr_form = self.data[self.offset];
@@ -1214,7 +1214,7 @@ impl<'a> StreamingTypeParser<'a> {
                 .map_err(|_| Error::runtime_execution_error("Streaming type parser error "))?
         };
         #[cfg(feature = "std")]
-        let bounded_string = DecoderString::from(string_str;
+        let bounded_string = DecoderString::from(string_str);
 
         Ok(bounded_string)
     }
@@ -1319,7 +1319,7 @@ mod tests {
             #[cfg(not(feature = "std"))]
             data.push((count & 0x7F) as u8 | 0x80).unwrap();
             #[cfg(feature = "std")]
-            data.push((count & 0x7F) as u8 | 0x80;
+            data.push(((count & 0x7F) as u8) | 0x80);
             count >>= 7;
         }
         #[cfg(not(feature = "std"))]
@@ -1329,7 +1329,7 @@ mod tests {
 
         let mut parser = StreamingTypeParser::new(&data, VerificationLevel::Standard).unwrap();
 
-        assert!(parser.parse().is_err();
+        assert!(parser.parse().is_err());
         Ok(())
     }
 

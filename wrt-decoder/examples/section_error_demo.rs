@@ -22,15 +22,15 @@ fn main() {
     println!("====================================\n");
 
     // MissingSection error
-    let error = missing_section(1, "Import section required for WASI modules";
+    let error = missing_section(1, "Import section required for WASI modules");
     println!("Missing Section Error:\n{}\n", error);
 
     // InvalidSection error
-    let error = invalid_section(2, 0x20, "Invalid count value in import section";
+    let error = invalid_section(2, 0x20, "Invalid count value in import section");
     println!("Invalid Section Error:\n{}\n", error);
 
     // UnexpectedEnd error
-    let error = unexpected_end(0x30, 10, 5;
+    let error = unexpected_end(0x30, 10, 5);
     println!("Unexpected End Error:\n{}\n", error);
 
     // MalformedContent error

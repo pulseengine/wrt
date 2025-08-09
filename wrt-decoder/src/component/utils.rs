@@ -16,8 +16,8 @@ use crate::{
 #[cfg(feature = "std")]
 pub fn add_section(binary: &mut Vec<u8>, section_id: u8, content: &[u8]) {
     binary.push(section_id);
-    binary.extend(write_leb128_u32(content.len() as u32;
-    binary.extend_from_slice(content;
+    binary.extend(write_leb128_u32(content.len() as u32));
+    binary.extend_from_slice(content);
 }
 
 /// Add a section to the binary with the given ID and content (no_std version)
@@ -31,13 +31,13 @@ pub fn add_section(
     section_id: u8,
     content: &[u8],
 ) {
-    let _ = binary.try_push(section_id;
-    let leb_bytes = write_leb128_u32(content.len() as u32;
+    let _ = binary.try_push(section_id);
+    let leb_bytes = write_leb128_u32(content.len() as u32);
     for byte in leb_bytes.iter() {
-        let _ = binary.try_push(byte;
+        let _ = binary.try_push(*byte);
     }
     for &byte in content {
-        let _ = binary.try_push(byte;
+        let _ = binary.try_push(byte);
     }
 }
 
@@ -92,11 +92,11 @@ pub fn is_component(bytes: &[u8]) -> Result<bool> {
     if bytes.len() < 8 {
         return Err(Error::parse_error(
             "Binary too short for WebAssembly header",
-        ;
+        ));
     }
 
     if bytes[0..4] != binary::WASM_MAGIC {
-        return Err(Error::parse_error("Invalid WebAssembly magic bytes";
+        return Err(Error::parse_error("Invalid WebAssembly magic bytes"));
     }
 
     // Check for component layer
@@ -109,7 +109,7 @@ pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(FormatValType, usi
     if offset >= bytes.len() {
         return Err(Error::parse_error(
             "Unexpected end of binary when parsing ValType",
-        ;
+        ));
     }
 
     let val_type_byte = bytes[offset];
@@ -128,7 +128,7 @@ pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(FormatValType, usi
         0x0B => FormatValType::Char,
         0x0C => FormatValType::String,
         _ => {
-            return Err(Error::parse_error("Unknown ValType byte";
+            return Err(Error::parse_error("Unknown ValType byte"));
         },
     };
 

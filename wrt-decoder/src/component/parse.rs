@@ -90,7 +90,7 @@ mod std_parsing {
             offset += bytes_read;
 
             if offset + module_size as usize > bytes.len() {
-                return Err(Error::parse_error("Module size exceeds section size ";
+                return Err(Error::parse_error("Module size exceeds section size"));
             }
 
             // Extract the module binary
@@ -132,7 +132,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::parse_error(
                 "Unexpected end of input while parsing core instance expression",
-            ;
+            ));
         }
 
         // Read the expression tag
@@ -154,7 +154,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read instance index
                     let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -181,13 +181,13 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read kind byte
                     if offset >= bytes.len() {
                         return Err(Error::from(kinds::ParseError(
                             "Unexpected end of input while parsing export kind",
-                        );
+                        )));
                     }
                     let kind_byte = bytes[offset];
                     offset += 1;
@@ -212,7 +212,7 @@ mod std_parsing {
                             wrt_format::component::CoreSort::Instance
                         },
                         _ => {
-                            return Err(Error::from(kinds::ParseError("Invalid core sort kind");
+                            return Err(Error::from(kinds::ParseError("Invalid core sort kind")));
                         },
                     };
 
@@ -257,7 +257,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing core type definition",
-            );
+            )));
         }
 
         // Read the form tag
@@ -278,7 +278,7 @@ mod std_parsing {
                     if offset >= bytes.len() {
                         return Err(Error::from(kinds::ParseError(
                             "Unexpected end of input while parsing function parameter type",
-                        );
+                        )));
                     }
 
                     let vtype = match bytes[offset] {
@@ -290,7 +290,7 @@ mod std_parsing {
                         binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                         binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                         _ => {
-                            return Err(Error::from(kinds::ParseError("Invalid value type");
+                            return Err(Error::from(kinds::ParseError("Invalid value type")));
                         },
                     };
 
@@ -308,7 +308,7 @@ mod std_parsing {
                     if offset >= bytes.len() {
                         return Err(Error::from(kinds::ParseError(
                             "Unexpected end of input while parsing function result type",
-                        );
+                        )));
                     }
 
                     let vtype = match bytes[offset] {
@@ -320,7 +320,7 @@ mod std_parsing {
                         binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                         binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                         _ => {
-                            return Err(Error::from(kinds::ParseError("Invalid value type");
+                            return Err(Error::from(kinds::ParseError("Invalid value type")));
                         },
                     };
 
@@ -345,36 +345,36 @@ mod std_parsing {
                     // Read module name
                     let (module_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let module_name = bytes_to_string(module_name_bytes;
+                    let module_name = bytes_to_string(module_name_bytes)?;
 
                     // Read field name
                     let (field_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let field_name = bytes_to_string(field_name_bytes;
+                    let field_name = bytes_to_string(field_name_bytes)?;
 
                     // Read import type
                     let (import_type, bytes_read) = parse_core_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    imports.push((module_name, field_name, import_type);
+                    imports.push((module_name, field_name, import_type));
                 }
 
                 // Read export vector
                 let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(export_count as usize;
+                let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read export name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read export type
                     let (export_type, bytes_read) = parse_core_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    exports.push((name, export_type);
+                    exports.push((name, export_type));
                 }
 
                 Ok((
@@ -393,7 +393,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing core external type",
-            );
+            )));
         }
 
         // Read the type tag
@@ -446,14 +446,14 @@ mod std_parsing {
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing table element type",
-                    );
+                    )));
                 }
 
                 let element_type = match bytes[offset] {
                     binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
-                        return Err(Error::from(kinds::ParseError("Invalid table element type");
+                        return Err(Error::from(kinds::ParseError("Invalid table element type")));
                     },
                 };
                 offset += 1;
@@ -462,7 +462,7 @@ mod std_parsing {
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing table limits",
-                    );
+                    )));
                 }
 
                 let limit_flag = bytes[offset];
@@ -497,7 +497,7 @@ mod std_parsing {
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing memory limits",
-                    );
+                    )));
                 }
 
                 let limit_flag = bytes[offset];
@@ -531,7 +531,7 @@ mod std_parsing {
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing global value type",
-                    );
+                    )));
                 }
 
                 let value_type = match bytes[offset] {
@@ -543,7 +543,7 @@ mod std_parsing {
                     binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
-                        return Err(Error::from(kinds::ParseError("Invalid global value type");
+                        return Err(Error::from(kinds::ParseError("Invalid global value type")));
                     },
                 };
                 offset += 1;
@@ -552,7 +552,7 @@ mod std_parsing {
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing global mutability",
-                    );
+                    )));
                 }
 
                 let mutable = bytes[offset] != 0;
@@ -586,7 +586,7 @@ mod std_parsing {
             if offset + component_size as usize > bytes.len() {
                 return Err(Error::from(kinds::ParseError(
                     "Component size exceeds section size",
-                );
+                )));
             }
 
             // Extract the component binary
@@ -599,7 +599,7 @@ mod std_parsing {
                 Err(_e) => {
                     return Err(Error::from(kinds::ParseError(
                         "Failed to parse nested component",
-                    );
+                    )));
                 },
             }
 
@@ -632,7 +632,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing instance expression",
-            );
+            )));
         }
 
         // Read the expression tag
@@ -654,13 +654,13 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read sort byte
                     if offset >= bytes.len() {
                         return Err(Error::from(kinds::ParseError(
                             "Unexpected end of input while parsing instantiation argument sort",
-                        );
+                        )));
                     }
                     let sort_byte = bytes[offset];
                     offset += 1;
@@ -693,13 +693,13 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read sort byte
                     if offset >= bytes.len() {
                         return Err(Error::from(kinds::ParseError(
                             "Unexpected end of input while parsing export sort",
-                        );
+                        )));
                     }
                     let sort_byte = bytes[offset];
                     offset += 1;
@@ -766,7 +766,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing canon operation",
-            );
+            )));
         }
 
         // Read the operation tag
@@ -869,7 +869,7 @@ mod std_parsing {
             if offset >= bytes.len() {
                 return Err(Error::from(kinds::ParseError(
                     "Unexpected end of input while parsing string encoding",
-                );
+                )));
             }
 
             let encoding_byte = bytes[offset];
@@ -881,7 +881,7 @@ mod std_parsing {
                 0x02 => wrt_format::component::StringEncoding::Latin1,
                 0x03 => wrt_format::component::StringEncoding::ASCII,
                 _ => {
-                    return Err(Error::from(kinds::ParseError("Invalid string encoding");
+                    return Err(Error::from(kinds::ParseError("Invalid string encoding")));
                 },
             };
 
@@ -931,7 +931,7 @@ mod std_parsing {
             if offset >= bytes.len() {
                 return Err(Error::from(kinds::ParseError(
                     "Unexpected end of input while parsing string encoding",
-                );
+                )));
             }
 
             let encoding_byte = bytes[offset];
@@ -943,7 +943,7 @@ mod std_parsing {
                 0x02 => wrt_format::component::StringEncoding::Latin1,
                 0x03 => wrt_format::component::StringEncoding::ASCII,
                 _ => {
-                    return Err(Error::from(kinds::ParseError("Invalid string encoding");
+                    return Err(Error::from(kinds::ParseError("Invalid string encoding")));
                 },
             };
 
@@ -976,7 +976,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing resource operation",
-            );
+            )));
         }
 
         // Read the tag
@@ -1045,7 +1045,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing component type definition",
-            );
+            )));
         }
 
         // Read the form tag
@@ -1065,36 +1065,36 @@ mod std_parsing {
                     // Read namespace
                     let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let namespace = bytes_to_string(namespace_bytes;
+                    let namespace = bytes_to_string(namespace_bytes)?;
 
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    imports.push((namespace, name, extern_type);
+                    imports.push((namespace, name, extern_type));
                 }
 
                 // Read export vector
                 let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(export_count as usize;
+                let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    exports.push((name, extern_type);
+                    exports.push((name, extern_type));
                 }
 
                 Ok((
@@ -1109,18 +1109,18 @@ mod std_parsing {
                 let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(export_count as usize;
+                let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    exports.push((name, extern_type);
+                    exports.push((name, extern_type));
                 }
 
                 Ok((
@@ -1145,7 +1145,7 @@ mod std_parsing {
                     let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    params.push((name, val_type);
+                    params.push((name, val_type));
                 }
 
                 // Read result vector
@@ -1168,7 +1168,7 @@ mod std_parsing {
                             .map(|(name, ty)| {
                                 let name_str = core::str::from_utf8(name)
                                     .unwrap_or("invalid_utf8")
-                                    .to_string());
+                                    .to_string();
                                 (name_str, val_type_to_format_val_type(ty))
                             })
                             .collect(),
@@ -1202,7 +1202,7 @@ mod std_parsing {
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing resource nullable flag",
-                    );
+                    )));
                 }
                 let nullable = bytes[offset] != 0;
                 offset += 1;
@@ -1228,7 +1228,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing resource representation",
-            );
+            )));
         }
 
         // Read the tag
@@ -1258,7 +1258,7 @@ mod std_parsing {
                 };
                 offset += bytes_read;
 
-                let mut fields = Vec::with_capacity(field_count as usize;
+                let mut fields = Vec::with_capacity(field_count as usize);
                 for _i in 0..field_count {
                     // Read field name
                     let (name_bytes, bytes_read) = match binary::read_string(bytes, offset) {
@@ -1270,7 +1270,7 @@ mod std_parsing {
                         },
                     };
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     fields.push(name);
                 }
@@ -1308,7 +1308,7 @@ mod std_parsing {
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ALLOCATION_FAILED,
                                 "Failed to allocate memory for string",
-                            ;
+                            ));
                         }
                     }
                     Ok::<
@@ -1343,7 +1343,7 @@ mod std_parsing {
                 };
                 offset += bytes_read;
 
-                let mut indices = Vec::with_capacity(index_count as usize;
+                let mut indices = Vec::with_capacity(index_count as usize);
                 for _i in 0..index_count {
                     // Read type index
                     let (idx, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
@@ -1374,7 +1374,7 @@ mod std_parsing {
                         if bounded_indices.push(idx).is_err() {
                             return Err(Error::runtime_execution_error(
                                 "Failed to push index to bounded vector",
-                            ;
+                            ));
                         }
                     }
                     resource::ResourceRepresentation::Aggregate(bounded_indices)
@@ -1393,7 +1393,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::parse_error(
                 "Unexpected end of input while parsing external type",
-            ;
+            ));
         }
 
         // Read the tag
@@ -1418,7 +1418,7 @@ mod std_parsing {
                     let (val_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    params.push((name, val_type);
+                    params.push((name, val_type));
                 }
 
                 // Read result vector
@@ -1441,7 +1441,7 @@ mod std_parsing {
                             .map(|(name, ty)| {
                                 let name_str = core::str::from_utf8(name)
                                     .unwrap_or("invalid_utf8")
-                                    .to_string());
+                                    .to_string();
                                 (name_str, val_type_to_format_val_type(ty))
                             })
                             .collect(),
@@ -1478,18 +1478,18 @@ mod std_parsing {
                 let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(export_count as usize;
+                let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read export name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read export type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    exports.push((name, extern_type);
+                    exports.push((name, extern_type));
                 }
 
                 Ok((
@@ -1509,36 +1509,36 @@ mod std_parsing {
                     // Read namespace
                     let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let namespace = bytes_to_string(namespace_bytes;
+                    let namespace = bytes_to_string(namespace_bytes)?;
 
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    imports.push((namespace, name, extern_type);
+                    imports.push((namespace, name, extern_type));
                 }
 
                 // Read export vector
                 let (export_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut exports = Vec::with_capacity(export_count as usize;
+                let mut exports = Vec::with_capacity(export_count as usize);
                 for _ in 0..export_count {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    exports.push((name, extern_type);
+                    exports.push((name, extern_type));
                 }
 
                 Ok((
@@ -1555,7 +1555,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::parse_error(
                 "Unexpected end of input while parsing value type",
-            ;
+            ));
         }
 
         // Read the type tag
@@ -1587,18 +1587,18 @@ mod std_parsing {
                 let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut fields = Vec::with_capacity(field_count as usize;
+                let mut fields = Vec::with_capacity(field_count as usize);
                 for _ in 0..field_count {
                     // Read field name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read field type
                     let (field_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                     offset += bytes_read;
 
-                    fields.push((name, field_type);
+                    fields.push((name, field_type));
                 }
 
                 Ok((wrt_format::component::FormatValType::Record(fields), offset))
@@ -1608,12 +1608,12 @@ mod std_parsing {
                 let (case_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut cases = Vec::with_capacity(case_count as usize;
+                let mut cases = Vec::with_capacity(case_count as usize);
                 for _ in 0..case_count {
                     // Read case name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
 
                     // Read case type flag
                     let has_type = bytes[offset] != 0;
@@ -1623,10 +1623,10 @@ mod std_parsing {
                     if has_type {
                         let (ty, bytes_read) = parse_val_type(&bytes[offset..])?;
                         offset += bytes_read;
-                        case_type = Some(ty;
+                        case_type = Some(ty);
                     }
 
-                    cases.push((name, case_type);
+                    cases.push((name, case_type));
                 }
 
                 Ok((wrt_format::component::FormatValType::Variant(cases), offset))
@@ -1659,7 +1659,7 @@ mod std_parsing {
                 let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut fields = Vec::with_capacity(field_count as usize;
+                let mut fields = Vec::with_capacity(field_count as usize);
                 for _ in 0..field_count {
                     let (field_type, bytes_read) = parse_val_type(&bytes[offset..])?;
                     offset += bytes_read;
@@ -1673,11 +1673,11 @@ mod std_parsing {
                 let (flag_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut flags = Vec::with_capacity(flag_count as usize;
+                let mut flags = Vec::with_capacity(flag_count as usize);
                 for _ in 0..flag_count {
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
                     flags.push(name);
                 }
 
@@ -1688,11 +1688,11 @@ mod std_parsing {
                 let (variant_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
                 offset += bytes_read;
 
-                let mut variants = Vec::with_capacity(variant_count as usize;
+                let mut variants = Vec::with_capacity(variant_count as usize);
                 for _ in 0..variant_count {
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes;
+                    let name = bytes_to_string(name_bytes)?;
                     variants.push(name);
                 }
 
@@ -1779,7 +1779,7 @@ mod std_parsing {
         let (arg_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
         offset += bytes_read;
 
-        let mut args = Vec::with_capacity(arg_count as usize;
+        let mut args = Vec::with_capacity(arg_count as usize);
         for _ in 0..arg_count {
             // Read argument index
             let (arg_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -1812,11 +1812,11 @@ mod std_parsing {
             // Read import name
             let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
             offset += bytes_read;
-            let namespace = bytes_to_string(namespace_bytes;
+            let namespace = bytes_to_string(namespace_bytes)?;
 
             let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
             offset += bytes_read;
-            let name = bytes_to_string(name_bytes;
+            let name = bytes_to_string(name_bytes)?;
 
             // Check if there are nested namespaces or package information
             let provider = crate::prelude::create_decoder_provider::<1024>()?;
@@ -1837,7 +1837,7 @@ mod std_parsing {
                     for _ in 0..nested_count {
                         let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                         offset += bytes_read;
-                        let nested_name = bytes_to_string(nested_name_bytes;
+                        let nested_name = bytes_to_string(nested_name_bytes)?;
                         nested.push(nested_name);
                     }
                 }
@@ -1851,7 +1851,7 @@ mod std_parsing {
                         // Read package name
                         let (package_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                         offset += bytes_read;
-                        let package_name = bytes_to_string(package_name_bytes;
+                        let package_name = bytes_to_string(package_name_bytes)?;
 
                         // Read version flag
                         let has_version = bytes[offset] != 0;
@@ -1861,8 +1861,8 @@ mod std_parsing {
                         if has_version {
                             let (ver_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                             offset += bytes_read;
-                            let ver = bytes_to_string(ver_bytes;
-                            version = Some(ver;
+                            let ver = bytes_to_string(ver_bytes)?;
+                            version = Some(ver);
                         }
 
                         // Read hash flag
@@ -1873,15 +1873,15 @@ mod std_parsing {
                         if has_hash {
                             let (h_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                             offset += bytes_read;
-                            let h = bytes_to_string(h_bytes;
-                            hash = Some(h;
+                            let h = bytes_to_string(h_bytes)?;
+                            hash = Some(h);
                         }
 
                         package = Some(wrt_format::component::PackageReference {
                             name: package_name,
                             version,
                             hash,
-                        };
+                        });
                     }
                 }
             }
@@ -1899,7 +1899,7 @@ mod std_parsing {
                     package,
                 },
                 ty:   extern_type,
-            };
+            });
         }
 
         Ok((imports, offset))
@@ -1915,13 +1915,13 @@ mod std_parsing {
             // Read export name
             let (basic_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
             offset += bytes_read;
-            let basic_name = bytes_to_string(basic_name_bytes;
+            let basic_name = bytes_to_string(basic_name_bytes)?;
 
             // Read flags
             if offset >= bytes.len() {
                 return Err(Error::from(kinds::ParseError(
                     "Unexpected end of input while parsing export flags",
-                );
+                )));
             }
             let flags = bytes[offset];
             offset += 1;
@@ -1936,7 +1936,7 @@ mod std_parsing {
             let semver = if has_semver {
                 let (ver_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let ver = bytes_to_string(ver_bytes;
+                let ver = bytes_to_string(ver_bytes)?;
                 Some(ver)
             } else {
                 None
@@ -1946,7 +1946,7 @@ mod std_parsing {
             let integrity = if has_integrity {
                 let (hash_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let hash = bytes_to_string(hash_bytes;
+                let hash = bytes_to_string(hash_bytes)?;
                 Some(hash)
             } else {
                 None
@@ -1962,7 +1962,7 @@ mod std_parsing {
                 for _ in 0..nested_count {
                     let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let nested_name = bytes_to_string(nested_name_bytes;
+                    let nested_name = bytes_to_string(nested_name_bytes)?;
                     nested_names.push(nested_name);
                 }
                 nested_names
@@ -1983,7 +1983,7 @@ mod std_parsing {
             if offset >= bytes.len() {
                 return Err(Error::from(kinds::ParseError(
                     "Unexpected end of input while parsing export sort",
-                );
+                )));
             }
             let sort_byte = bytes[offset];
             offset += 1;
@@ -1999,7 +1999,7 @@ mod std_parsing {
             if offset >= bytes.len() {
                 return Err(Error::from(kinds::ParseError(
                     "Unexpected end of input while parsing export type flag",
-                );
+                )));
             }
             let has_type = bytes[offset] != 0;
             offset += 1;
@@ -2019,7 +2019,7 @@ mod std_parsing {
                 sort,
                 idx,
                 ty,
-            };
+            });
         }
 
         Ok((exports, offset))
@@ -2043,12 +2043,12 @@ mod std_parsing {
             if offset + data_size as usize > bytes.len() {
                 return Err(Error::from(kinds::ParseError(
                     "Value data size exceeds section size",
-                );
+                )));
             }
 
             // Extract the value data
             let data_end = offset + data_size as usize;
-            let data = bytes[offset..data_end].to_vec);
+            let data = bytes[offset..data_end].to_vec();
             offset = data_end;
 
             // Check for expression flag
@@ -2060,7 +2060,7 @@ mod std_parsing {
                 if has_expr {
                     let (expr, bytes_read) = parse_value_expression(&bytes[offset..])?;
                     offset += bytes_read;
-                    expression = Some(expr;
+                    expression = Some(expr);
                 }
             }
 
@@ -2073,8 +2073,8 @@ mod std_parsing {
                 if has_name {
                     let (value_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let value_name = bytes_to_string(value_name_bytes;
-                    name = Some(value_name;
+                    let value_name = bytes_to_string(value_name_bytes)?;
+                    name = Some(value_name);
                 }
             }
 
@@ -2084,7 +2084,7 @@ mod std_parsing {
                 data,
                 expression,
                 name,
-            };
+            });
         }
 
         Ok((values, offset))
@@ -2097,7 +2097,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing value expression",
-            );
+            )));
         }
 
         // Read the expression tag
@@ -2174,7 +2174,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing constant value",
-            );
+            )));
         }
 
         // Read the value tag
@@ -2202,13 +2202,13 @@ mod std_parsing {
             },
             0x03 => {
                 // S16 value
-                let value = i16::from_le_bytes([bytes[offset], bytes[offset + 1]];
+                let value = i16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
                 offset += 2;
                 Ok((wrt_format::component::ConstValue::S16(value), offset))
             },
             0x04 => {
                 // U16 value
-                let value = u16::from_le_bytes([bytes[offset], bytes[offset + 1]];
+                let value = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
                 offset += 2;
                 Ok((wrt_format::component::ConstValue::U16(value), offset))
             },
@@ -2219,7 +2219,7 @@ mod std_parsing {
                     bytes[offset + 1],
                     bytes[offset + 2],
                     bytes[offset + 3],
-                ];
+                ]);
                 offset += 4;
                 Ok((wrt_format::component::ConstValue::S32(value), offset))
             },
@@ -2230,7 +2230,7 @@ mod std_parsing {
                     bytes[offset + 1],
                     bytes[offset + 2],
                     bytes[offset + 3],
-                ];
+                ]);
                 offset += 4;
                 Ok((wrt_format::component::ConstValue::U32(value), offset))
             },
@@ -2245,7 +2245,7 @@ mod std_parsing {
                     bytes[offset + 5],
                     bytes[offset + 6],
                     bytes[offset + 7],
-                ];
+                ]);
                 offset += 8;
                 Ok((wrt_format::component::ConstValue::S64(value), offset))
             },
@@ -2260,7 +2260,7 @@ mod std_parsing {
                     bytes[offset + 5],
                     bytes[offset + 6],
                     bytes[offset + 7],
-                ];
+                ]);
                 offset += 8;
                 Ok((wrt_format::component::ConstValue::U64(value), offset))
             },
@@ -2271,8 +2271,8 @@ mod std_parsing {
                     bytes[offset + 1],
                     bytes[offset + 2],
                     bytes[offset + 3],
-                ];
-                let value = f32::from_bits(value_bits;
+                ]);
+                let value = f32::from_bits(value_bits);
                 offset += 4;
                 Ok((wrt_format::component::ConstValue::F32(value), offset))
             },
@@ -2287,8 +2287,8 @@ mod std_parsing {
                     bytes[offset + 5],
                     bytes[offset + 6],
                     bytes[offset + 7],
-                ];
-                let value = f64::from_bits(value_bits;
+                ]);
+                let value = f64::from_bits(value_bits);
                 offset += 8;
                 Ok((wrt_format::component::ConstValue::F64(value), offset))
             },
@@ -2300,7 +2300,7 @@ mod std_parsing {
                 // Convert bytes to string and validate that it's a single Unicode scalar value
                 let value_string = core::str::from_utf8(value_str)
                     .map_err(|_| Error::parse_error("Invalid UTF-8 in char value "))?;
-                let mut chars = value_string.chars);
+                let mut chars = value_string.chars();
                 let first_char = chars.next().ok_or_else(|| {
                     Error::from(kinds::ParseError(
                         "Empty string found when parsing char value",
@@ -2309,7 +2309,7 @@ mod std_parsing {
                 if chars.next().is_some() {
                     return Err(Error::from(kinds::ParseError(
                         "Multiple characters found when parsing char value",
-                    );
+                    )));
                 }
 
                 Ok((wrt_format::component::ConstValue::Char(first_char), offset))
@@ -2318,7 +2318,7 @@ mod std_parsing {
                 // String value
                 let (value_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let value = bytes_to_string(value_bytes;
+                let value = bytes_to_string(value_bytes)?;
                 Ok((wrt_format::component::ConstValue::String(value), offset))
             },
             0x0D => {
@@ -2352,7 +2352,7 @@ mod std_parsing {
         if bytes.is_empty() {
             return Err(Error::from(kinds::ParseError(
                 "Unexpected end of input while parsing alias target",
-            );
+            )));
         }
 
         // Read the target tag
@@ -2370,13 +2370,13 @@ mod std_parsing {
                 // Read export name
                 let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let name = bytes_to_string(name_bytes;
+                let name = bytes_to_string(name_bytes)?;
 
                 // Read kind byte
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing core export kind",
-                    );
+                    )));
                 }
                 let kind_byte = bytes[offset];
                 offset += 1;
@@ -2393,7 +2393,7 @@ mod std_parsing {
                         wrt_format::component::CoreSort::Instance
                     },
                     _ => {
-                        return Err(Error::from(kinds::ParseError("Invalid core sort kind");
+                        return Err(Error::from(kinds::ParseError("Invalid core sort kind")));
                     },
                 };
 
@@ -2416,13 +2416,13 @@ mod std_parsing {
                 // Read export name
                 let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let name = bytes_to_string(name_bytes;
+                let name = bytes_to_string(name_bytes)?;
 
                 // Read kind byte
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing export kind",
-                    );
+                    )));
                 }
                 let kind_byte = bytes[offset];
                 offset += 1;
@@ -2450,7 +2450,7 @@ mod std_parsing {
                 if offset >= bytes.len() {
                     return Err(Error::from(kinds::ParseError(
                         "Unexpected end of input while parsing outer kind",
-                    );
+                    )));
                 }
                 let kind_byte = bytes[offset];
                 offset += 1;
@@ -2675,7 +2675,7 @@ mod no_std_parsing {
         Value,
         Module,
         ComponentType
-    ;
+    );
 
     // Type aliases for bounded parsing results
     type ParseProvider = NoStdProvider<4096>;
@@ -2710,75 +2710,75 @@ mod no_std_parsing {
     pub fn parse_core_module_section(_bytes: &[u8]) -> Result<(ParseVec<Module>, usize)> {
         // Simplified parsing for no_std - only basic validation
         if _bytes.len() < 8 {
-            return Err(Error::parse_error("Section data too short ";
+            return Err(Error::parse_error("Section data too short"));
         }
 
         // Return empty parsed result - complex module parsing requires std
-        let empty_vec = create_empty_parse_vec::<Module>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Module>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     /// No_std parse core instance section with safety bounds
     pub fn parse_core_instance_section(_bytes: &[u8]) -> Result<(ParseVec<CoreInstance>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<CoreInstance>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<CoreInstance>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     /// No_std parse core type section with safety bounds
     pub fn parse_core_type_section(_bytes: &[u8]) -> Result<(ParseVec<CoreType>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<CoreType>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<CoreType>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     /// No_std parse component section with safety bounds
     pub fn parse_component_section(_bytes: &[u8]) -> Result<(ParseVec<Component>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<Component>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Component>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     /// No_std parse instance section with safety bounds
     pub fn parse_instance_section(_bytes: &[u8]) -> Result<(ParseVec<Instance>, usize)> {
         // Simplified parsing for no_std
-        let empty_vec = create_empty_parse_vec::<Instance>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Instance>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     /// Additional parsing functions required by other modules
     pub fn parse_component_type_section(_bytes: &[u8]) -> Result<(ParseVec<ComponentType>, usize)> {
-        let empty_vec = create_empty_parse_vec::<ComponentType>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<ComponentType>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     pub fn parse_import_section(_bytes: &[u8]) -> Result<(ParseVec<Import>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Import>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Import>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     pub fn parse_export_section(_bytes: &[u8]) -> Result<(ParseVec<Export>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Export>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Export>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     pub fn parse_start_section(_bytes: &[u8]) -> Result<(ParseVec<Start>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Start>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Start>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     pub fn parse_alias_section(_bytes: &[u8]) -> Result<(ParseVec<Alias>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Alias>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Alias>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     pub fn parse_canon_section(_bytes: &[u8]) -> Result<(ParseVec<Canon>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Canon>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Canon>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 
     pub fn parse_value_section(_bytes: &[u8]) -> Result<(ParseVec<Value>, usize)> {
-        let empty_vec = create_empty_parse_vec::<Value>().unwrap_or_default);
+        let empty_vec = create_empty_parse_vec::<Value>().unwrap_or_default();
         Ok((empty_vec, 0))
     }
 }

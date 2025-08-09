@@ -20,7 +20,11 @@ use wrt_format::{
     write_string_bounded,
 };
 #[cfg(not(feature = "std"))]
-use wrt_foundation::traits::BoundedCapacity;
+use wrt_foundation::{
+    capabilities::CapabilityAwareProvider,
+    safe_memory::NoStdProvider,
+    traits::BoundedCapacity,
+};
 
 use crate::{
     prelude::*,
@@ -34,6 +38,12 @@ type GeneratedNameSectionData = std::vec::Vec<u8>;
 #[cfg(not(feature = "std"))]
 type GeneratedNameSectionData =
     wrt_foundation::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<4096>>;
+
+// Type aliases for capability-aware providers to avoid rustfmt issues
+#[cfg(not(feature = "std"))]
+type SmallProvider = CapabilityAwareProvider<NoStdProvider<5>>;
+#[cfg(not(feature = "std"))]
+type StringProvider = CapabilityAwareProvider<NoStdProvider<512>>;
 
 /// WebAssembly Component Model name section subsection types
 pub const COMPONENT_NAME_COMPONENT: u8 = 0;
@@ -158,7 +168,7 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
             }
         }
         #[cfg(feature = "std")]
-        let name = std::string::String::from_utf8_lossy(&bytes).to_string());
+        let name = std::string::String::from_utf8_lossy(&bytes).to_string();
         #[cfg(not(feature = "std"))]
         let name = ""; // Simplified for no_std
         Ok(NameMapEntry { index, name })
@@ -217,7 +227,7 @@ impl wrt_foundation::traits::FromBytes for SortIdentifier {
 
 impl wrt_foundation::traits::Checksummable for SortIdentifier {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&[*self as u8];
+        checksum.update_slice(&[*self as u8]);
     }
 }
 
@@ -235,7 +245,7 @@ impl NameMap {
         #[cfg(feature = "std")]
         let entries = std::vec::Vec::new();
         #[cfg(not(feature = "std"))]
-        let entries = wrt_foundation::BoundedVec::default());
+        let entries = wrt_foundation::BoundedVec::default();
 
         Self { entries }
     }
@@ -266,7 +276,7 @@ impl NameMap {
 
             // Parse name
             if current_offset >= data.len() {
-                return Err(Error::parse_error("Truncated name in name map";
+                return Err(Error::parse_error("Truncated name in name map"));
             }
 
             // Use wrt-format's read_string to parse the name
@@ -274,7 +284,7 @@ impl NameMap {
             current_offset += name_len;
 
             #[cfg(feature = "std")]
-            let name = std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default);
+            let name = std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default();
             #[cfg(not(feature = "std"))]
             let name = ""; // Simplified for no_std
 
@@ -348,7 +358,7 @@ impl wrt_foundation::traits::Checksummable for NameMap {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         checksum.update_slice(&(self.entries.len() as u32).to_le_bytes);
         for entry in &self.entries {
-            entry.update_checksum(checksum;
+            entry.update_checksum(checksum);
         }
     }
 }
@@ -386,7 +396,7 @@ pub struct ComponentNameSection {
 
 /// Parse a WebAssembly Component Model name section
 pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection> {
-    let mut name_section = ComponentNameSection::default());
+    let mut name_section = ComponentNameSection::default();
     let mut offset = 0;
 
     while offset < data.len() {
@@ -408,7 +418,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
         if subsection_end > data.len() {
             return Err(Error::parse_error(
                 "Component name subsection size exceeds data size",
-            ;
+            ));
         }
 
         let subsection_data = &data[subsection_start..subsection_end];
@@ -421,8 +431,8 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                     #[cfg(feature = "std")]
                     {
                         let name =
-                            std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default);
-                        name_section.component_name = Some(name;
+                            std::string::String::from_utf8(name_bytes.to_vec()).unwrap_or_default();
+                        name_section.component_name = Some(name);
                     }
                     #[cfg(not(feature = "std"))]
                     {
@@ -431,7 +441,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                                 if let Ok(name) =
                                     wrt_foundation::BoundedString::from_str(name_str, provider)
                                 {
-                                    name_section.component_name = Some(name;
+                                    name_section.component_name = Some(name);
                                 }
                             }
                         }
@@ -450,10 +460,10 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                         pos += name_map_size;
 
                         #[cfg(feature = "std")]
-                        name_section.sort_names.push((sort, name_map);
+                        name_section.sort_names.push((sort, name_map));
                         #[cfg(not(feature = "std"))]
                         {
-                            let _ = name_section.sort_names.push((sort, name_map);
+                            let _ = name_section.sort_names.push((sort, name_map));
                         }
                     }
                 }
@@ -501,7 +511,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
 
 fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
     if pos >= bytes.len() {
-        return Err(Error::parse_error("Unexpected end of input";
+        return Err(Error::parse_error("Unexpected end of input"));
     }
 
     let sort_byte = bytes[pos];
@@ -519,7 +529,7 @@ fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
         10 => SortIdentifier::CoreInstance,
         11 => SortIdentifier::Value,
         _ => {
-            return Err(Error::parse_error("Invalid sort identifier";
+            return Err(Error::parse_error("Invalid sort identifier"));
         },
     };
 
@@ -569,12 +579,12 @@ pub fn generate_component_name_section(
 
         #[cfg(feature = "std")]
         {
-            let name_bytes = write_string(name;
-            subsection_data.extend_from_slice(&name_bytes;
+            let name_bytes = write_string(name)?;
+            subsection_data.extend_from_slice(&name_bytes);
         }
         #[cfg(not(feature = "std"))]
         {
-            let name_str = name.as_str().unwrap_or("";
+            let name_str = name.as_str().unwrap_or("");
             let name_bytes = write_string(name_str)?;
             for i in 0..name_bytes.len() {
                 if let Ok(byte) = name_bytes.get(i) {
@@ -586,8 +596,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32;
-            data.extend_from_slice(&subsection_data;
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
         {
@@ -607,10 +617,10 @@ pub fn generate_component_name_section(
 
     // Sort names
     #[cfg(feature = "std")]
-    let sort_names_empty = name_section.sort_names.is_empty);
+    let sort_names_empty = name_section.sort_names.is_empty();
     #[cfg(not(feature = "std"))]
     let sort_names_empty =
-        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.sort_names;
+        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.sort_names);
 
     if !sort_names_empty {
         // Name type
@@ -636,7 +646,7 @@ pub fn generate_component_name_section(
         for (sort, name_map) in &name_section.sort_names {
             let sort_bytes = generate_sort(&sort)?;
             #[cfg(feature = "std")]
-            subsection_data.extend_from_slice(&sort_bytes;
+            subsection_data.extend_from_slice(&sort_bytes);
             #[cfg(not(feature = "std"))]
             for i in 0..sort_bytes.len() {
                 if let Ok(byte) = sort_bytes.get(i) {
@@ -646,7 +656,7 @@ pub fn generate_component_name_section(
 
             let name_map_bytes = generate_name_map(&name_map)?;
             #[cfg(feature = "std")]
-            subsection_data.extend_from_slice(&name_map_bytes;
+            subsection_data.extend_from_slice(&name_map_bytes);
             #[cfg(not(feature = "std"))]
             for i in 0..name_map_bytes.len() {
                 if let Ok(byte) = name_map_bytes.get(i) {
@@ -658,8 +668,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32;
-            data.extend_from_slice(&subsection_data;
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
         {
@@ -679,10 +689,10 @@ pub fn generate_component_name_section(
 
     // Import names
     #[cfg(feature = "std")]
-    let import_names_empty = name_section.import_names.entries.is_empty);
+    let import_names_empty = name_section.import_names.entries.is_empty();
     #[cfg(not(feature = "std"))]
     let import_names_empty =
-        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.import_names.entries;
+        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.import_names.entries);
 
     if !import_names_empty {
         // Name type
@@ -694,8 +704,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32;
-            data.extend_from_slice(&subsection_data;
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
         {
@@ -715,10 +725,10 @@ pub fn generate_component_name_section(
 
     // Export names
     #[cfg(feature = "std")]
-    let export_names_empty = name_section.export_names.entries.is_empty);
+    let export_names_empty = name_section.export_names.entries.is_empty();
     #[cfg(not(feature = "std"))]
     let export_names_empty =
-        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.export_names.entries;
+        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.export_names.entries);
 
     if !export_names_empty {
         // Name type
@@ -730,8 +740,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32;
-            data.extend_from_slice(&subsection_data;
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
         {
@@ -751,10 +761,10 @@ pub fn generate_component_name_section(
 
     // Canonical names
     #[cfg(feature = "std")]
-    let canonical_names_empty = name_section.canonical_names.entries.is_empty);
+    let canonical_names_empty = name_section.canonical_names.entries.is_empty();
     #[cfg(not(feature = "std"))]
     let canonical_names_empty =
-        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.canonical_names.entries;
+        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.canonical_names.entries);
 
     if !canonical_names_empty {
         // Name type
@@ -766,8 +776,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32;
-            data.extend_from_slice(&subsection_data;
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
         {
@@ -787,10 +797,10 @@ pub fn generate_component_name_section(
 
     // Type names
     #[cfg(feature = "std")]
-    let type_names_empty = name_section.type_names.entries.is_empty);
+    let type_names_empty = name_section.type_names.entries.is_empty();
     #[cfg(not(feature = "std"))]
     let type_names_empty =
-        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.type_names.entries;
+        wrt_foundation::traits::BoundedCapacity::is_empty(&name_section.type_names.entries);
 
     if !type_names_empty {
         // Name type
@@ -802,8 +812,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32;
-            data.extend_from_slice(&subsection_data;
+            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
         {
@@ -880,15 +890,15 @@ fn generate_name_map(names: &NameMap) -> Result<std::vec::Vec<u8>> {
     let mut data = std::vec::Vec::new();
 
     // Number of entries
-    data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32;
+    data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32)?);
 
     // Each entry
     for entry in &names.entries {
         // Index
-        data.extend_from_slice(&write_leb128_u32(entry.index;
+        data.extend_from_slice(&write_leb128_u32(entry.index)?);
 
         // Name
-        data.extend_from_slice(&write_string(&entry.name;
+        data.extend_from_slice(&write_string(&entry.name)?);
     }
 
     Ok(data)
@@ -953,15 +963,7 @@ fn generate_name_map(
 // For no_std, they need to return Result with BoundedVec
 
 #[cfg(not(feature = "std"))]
-fn write_leb128_u32(
-    value: u32,
-) -> Result<
-    wrt_foundation::BoundedVec<
-        u8,
-        5,
-        wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<5>>,
-    >,
-> {
+fn write_leb128_u32(value: u32) -> Result<wrt_foundation::BoundedVec<u8, 5, SmallProvider>> {
     use wrt_foundation::{
         budget_aware_provider::CrateId,
         safe_managed_alloc,
@@ -974,15 +976,7 @@ fn write_leb128_u32(
 }
 
 #[cfg(not(feature = "std"))]
-fn write_string(
-    value: &str,
-) -> Result<
-    wrt_foundation::BoundedVec<
-        u8,
-        512,
-        wrt_foundation::CapabilityAwareProvider<wrt_foundation::NoStdProvider<512>>,
-    >,
-> {
+fn write_string(value: &str) -> Result<wrt_foundation::BoundedVec<u8, 512, StringProvider>> {
     use wrt_foundation::{
         budget_aware_provider::CrateId,
         safe_managed_alloc,
@@ -1020,7 +1014,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip_component_name() {
-        let mut name_section = ComponentNameSection::default());
+        let mut name_section = ComponentNameSection::default();
         #[cfg(feature = "std")]
         {
             name_section.component_name = Some("test_component".to_string());
@@ -1031,7 +1025,7 @@ mod tests {
                 if let Ok(name) =
                     wrt_foundation::BoundedString::from_str("test_component", provider)
                 {
-                    name_section.component_name = Some(name;
+                    name_section.component_name = Some(name);
                 }
             }
         }
@@ -1040,18 +1034,18 @@ mod tests {
         let parsed = parse_component_name_section(&bytes).unwrap();
 
         #[cfg(feature = "std")]
-        assert_eq!(parsed.component_name, Some("test_component".to_string());
+        assert_eq!(parsed.component_name, Some("test_component".to_string()));
         #[cfg(not(feature = "std"))]
         {
             if let Some(ref name) = parsed.component_name {
-                assert_eq!(name.as_str().unwrap_or(""), "test_component";
+                assert_eq!(name.as_str().unwrap_or(""), "test_component");
             }
         }
     }
 
     #[test]
     fn test_roundtrip_sort_names() {
-        let mut name_section = ComponentNameSection::default());
+        let mut name_section = ComponentNameSection::default();
 
         let mut name_map = NameMap::new();
         #[cfg(feature = "std")]
@@ -1059,37 +1053,37 @@ mod tests {
             name_map.entries.push(NameMapEntry {
                 index: 0,
                 name:  "func0".to_string(),
-            };
+            });
             name_map.entries.push(NameMapEntry {
                 index: 1,
                 name:  "func1".to_string(),
-            };
+            });
         }
         #[cfg(not(feature = "std"))]
         {
             let _ = name_map.entries.push(NameMapEntry {
                 index: 0,
                 name:  "func0",
-            };
+            });
             let _ = name_map.entries.push(NameMapEntry {
                 index: 1,
                 name:  "func1",
-            };
+            });
         }
 
         #[cfg(feature = "std")]
-        name_section.sort_names.push((SortIdentifier::Function, name_map);
+        name_section.sort_names.push((SortIdentifier::Function, name_map));
         #[cfg(not(feature = "std"))]
         {
-            let _ = name_section.sort_names.push((SortIdentifier::Function, name_map);
+            let _ = name_section.sort_names.push((SortIdentifier::Function, name_map));
         }
 
         let bytes = generate_component_name_section(&name_section).unwrap();
         let parsed = parse_component_name_section(&bytes).unwrap();
 
         assert_eq!(parsed.sort_names.len(), 1);
-        assert!(matches!(parsed.sort_names[0].0, SortIdentifier::Function);
-        assert_eq!(parsed.sort_names[0].1.entries.len(), 2;
+        assert!(matches!(parsed.sort_names[0].0, SortIdentifier::Function));
+        assert_eq!(parsed.sort_names[0].1.entries.len(), 2);
         assert_eq!(parsed.sort_names[0].1.entries[0].index, 0);
         #[cfg(feature = "std")]
         {

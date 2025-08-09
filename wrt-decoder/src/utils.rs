@@ -66,7 +66,7 @@ pub fn verify_binary_header(data: &[u8]) -> Result<()> {
 
         return Err(Error::runtime_execution_error(
             "Invalid WebAssembly version",
-        ;
+        ));
     }
 
     Ok(())

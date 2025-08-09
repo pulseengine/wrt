@@ -241,54 +241,74 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
         }
     };
 
-    #[cfg(feature = "std")]
-    return Ok(ComponentSummary {
-        #[cfg(feature = "std")]
-        name: "".to_string(),
-        #[cfg(not(feature = "std"))]
-        name: {
+    {
+        let name = if cfg!(feature = "std") {
+            "".to_string()
+        } else {
             let provider = wrt_foundation::safe_managed_alloc!(
                 4096,
                 wrt_foundation::budget_aware_provider::CrateId::Decoder
             )?;
             AnalysisString::from_str("", provider)?
-        },
-        core_modules_count: component.modules.len() as u32,
-        core_instances_count: component.core_instances.len() as u32,
-        imports_count: component.imports.len() as u32,
-        exports_count: component.exports.len() as u32,
-        aliases_count: component.aliases.len() as u32,
-        #[cfg(feature = "std")]
-        module_info: std::vec::Vec::new(),
-        #[cfg(feature = "std")]
-        export_info: std::vec::Vec::new(),
-        #[cfg(feature = "std")]
-        import_info: std::vec::Vec::new(),
-        #[cfg(not(feature = "std"))]
-        module_info: {
-            let provider = wrt_foundation::safe_managed_alloc!(
-                4096,
-                wrt_foundation::budget_aware_provider::CrateId::Decoder
-            )?;
-            AnalysisVec::new(provider)?
-        },
-        #[cfg(not(feature = "std"))]
-        export_info: {
-            let provider = wrt_foundation::safe_managed_alloc!(
-                4096,
-                wrt_foundation::budget_aware_provider::CrateId::Decoder
-            )?;
-            AnalysisVec::new(provider)?
-        },
-        #[cfg(not(feature = "std"))]
-        import_info: {
-            let provider = wrt_foundation::safe_managed_alloc!(
-                4096,
-                wrt_foundation::budget_aware_provider::CrateId::Decoder
-            )?;
-            AnalysisVec::new(provider)?
-        },
-    };
+        };
+
+        let module_info = {
+            #[cfg(feature = "std")]
+            {
+                std::vec::Vec::new()
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                let provider = wrt_foundation::safe_managed_alloc!(
+                    4096,
+                    wrt_foundation::budget_aware_provider::CrateId::Decoder
+                )?;
+                AnalysisVec::new(provider)?
+            }
+        };
+
+        let export_info = {
+            #[cfg(feature = "std")]
+            {
+                std::vec::Vec::new()
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                let provider = wrt_foundation::safe_managed_alloc!(
+                    4096,
+                    wrt_foundation::budget_aware_provider::CrateId::Decoder
+                )?;
+                AnalysisVec::new(provider)?
+            }
+        };
+
+        let import_info = {
+            #[cfg(feature = "std")]
+            {
+                std::vec::Vec::new()
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                let provider = wrt_foundation::safe_managed_alloc!(
+                    4096,
+                    wrt_foundation::budget_aware_provider::CrateId::Decoder
+                )?;
+                AnalysisVec::new(provider)?
+            }
+        };
+
+        Ok(ComponentSummary {
+            name,
+            core_modules_count: component.modules.len() as u32,
+            core_instances_count: component.core_instances.len() as u32,
+            imports_count: component.imports.len() as u32,
+            exports_count: component.exports.len() as u32,
+            aliases_count: component.aliases.len() as u32,
+            module_info,
+            export_info,
+            import_info,
+        })
+    }
 
     #[cfg(not(feature = "std"))]
     Ok(component)
@@ -396,7 +416,7 @@ pub fn analyze_component_extended(
         Vec::new(), // Export info
         Vec::new(), // Module import info
         Vec::new(), // Module export info
-    ;
+    ));
 
     #[cfg(not(feature = "std"))]
     {
@@ -527,8 +547,8 @@ impl wrt_foundation::traits::FromBytes for CoreModuleInfo {
 #[cfg(not(feature = "std"))]
 impl wrt_foundation::traits::Checksummable for CoreModuleInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.idx.to_le_bytes);
-        checksum.update_slice(&(self.size as u64).to_le_bytes);
+        checksum.update_slice(&self.idx.to_le_bytes());
+        checksum.update_slice(&(self.size as u64).to_le_bytes());
     }
 }
 
@@ -588,9 +608,9 @@ impl wrt_foundation::traits::FromBytes for ExtendedImportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ExtendedImportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.namespace.as_bytes);
-        checksum.update_slice(self.name.as_bytes);
-        checksum.update_slice(self.kind.as_bytes);
+        checksum.update_slice(self.namespace.as_bytes());
+        checksum.update_slice(self.name.as_bytes());
+        checksum.update_slice(self.kind.as_bytes());
     }
 }
 
@@ -672,9 +692,9 @@ impl wrt_foundation::traits::FromBytes for ExtendedExportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ExtendedExportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.name.as_bytes);
-        checksum.update_slice(self.kind.as_bytes);
-        checksum.update_slice(&self.index.to_le_bytes);
+        checksum.update_slice(self.name.as_bytes());
+        checksum.update_slice(self.kind.as_bytes());
+        checksum.update_slice(&self.index.to_le_bytes());
     }
 }
 
@@ -758,11 +778,11 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ModuleImportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.module.as_bytes);
-        checksum.update_slice(self.name.as_bytes);
-        checksum.update_slice(self.kind.as_bytes);
-        checksum.update_slice(&self.index.to_le_bytes);
-        checksum.update_slice(&self.module_idx.to_le_bytes);
+        checksum.update_slice(self.module.as_bytes());
+        checksum.update_slice(self.name.as_bytes());
+        checksum.update_slice(self.kind.as_bytes());
+        checksum.update_slice(&self.index.to_le_bytes());
+        checksum.update_slice(&self.module_idx.to_le_bytes());
     }
 }
 
@@ -842,9 +862,9 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
 #[cfg(feature = "std")]
 impl wrt_foundation::traits::Checksummable for ModuleExportInfo {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(self.name.as_bytes);
-        checksum.update_slice(self.kind.as_bytes);
-        checksum.update_slice(&self.index.to_le_bytes);
-        checksum.update_slice(&self.module_idx.to_le_bytes);
+        checksum.update_slice(self.name.as_bytes());
+        checksum.update_slice(self.kind.as_bytes());
+        checksum.update_slice(&self.index.to_le_bytes());
+        checksum.update_slice(&self.module_idx.to_le_bytes());
     }
 }

@@ -98,7 +98,7 @@ fn test_standalone_name_section() {
 
         // Compare sorts (using debug representation since Sort doesn't implement
         // PartialEq)
-        assert!(matches!(sort1, _sort2);
+        assert!(matches!(sort1, _sort2));
 
         // Compare name maps
         assert_eq!(names1.len(), names2.len());
@@ -136,22 +136,22 @@ fn test_custom_section_with_name() {
 
     // Create custom section content with "name" as the identifier
     let mut custom_section_content = Vec::new();
-    custom_section_content.extend_from_slice(&binary::write_string("name";
-    custom_section_content.extend_from_slice(&name_section_data;
+    custom_section_content.extend_from_slice(&binary::write_string("name"));
+    custom_section_content.extend_from_slice(&name_section_data);
 
     // Create a component with just the custom section
     let mut binary = Vec::new();
 
     // Component preamble
-    binary.extend_from_slice(&binary::COMPONENT_MAGIC;
-    binary.extend_from_slice(&binary::COMPONENT_VERSION;
+    binary.extend_from_slice(&binary::COMPONENT_MAGIC);
+    binary.extend_from_slice(&binary::COMPONENT_VERSION);
 
     // Custom section
     binary.push(binary::COMPONENT_CUSTOM_SECTION_ID);
     binary.extend_from_slice(&binary::write_leb128_u32(
         custom_section_content.len() as u32
-    ;
-    binary.extend_from_slice(&custom_section_content;
+    ));
+    binary.extend_from_slice(&custom_section_content);
 
     // Decode the binary
     let component = decode_component(&binary).unwrap();

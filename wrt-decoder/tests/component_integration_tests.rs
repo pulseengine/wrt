@@ -40,7 +40,7 @@ mod tests {
                 params:  vec![("param".to_string(), FormatValType::S32)],
                 results: vec![FormatValType::S32],
             },
-        };
+        });
 
         // Add a simple function export
         component.exports.push(wrt_format::component::Export {

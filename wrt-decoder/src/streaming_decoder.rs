@@ -44,7 +44,7 @@ impl<'a> StreamingDecoder<'a> {
     /// Create a new streaming decoder (std version)
     #[cfg(feature = "std")]
     pub fn new(binary: &'a [u8]) -> Result<Self> {
-        let module = WrtModule::default());
+        let module = WrtModule::default();
 
         Ok(Self {
             binary,
@@ -61,7 +61,7 @@ impl<'a> StreamingDecoder<'a> {
             8192,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
         )?;
-        let module = WrtModule::default());
+        let module = WrtModule::default();
 
         Ok(Self {
             binary,
@@ -77,7 +77,7 @@ impl<'a> StreamingDecoder<'a> {
         if self.binary.len() < 8 {
             return Err(Error::parse_error(
                 "Binary too small for WebAssembly header",
-            ;
+            ));
         }
 
         // Check magic number
@@ -209,7 +209,7 @@ impl<'a> StreamingDecoder<'a> {
         if count > 1 && !self.platform_limits.max_components > 0 {
             return Err(Error::resource_exhausted(
                 "Multiple memories not supported on this platform",
-            ;
+            ));
         }
 
         // Process each memory one at a time
@@ -264,7 +264,7 @@ impl<'a> StreamingDecoder<'a> {
                 name: export_name,
                 kind,
                 index,
-            };
+            });
         }
 
         Ok(())
@@ -273,7 +273,7 @@ impl<'a> StreamingDecoder<'a> {
     /// Process start section
     fn process_start_section(&mut self, data: &[u8]) -> Result<()> {
         let (start_idx, _) = read_leb128_u32(data, 0)?;
-        self.module.start = Some(start_idx;
+        self.module.start = Some(start_idx);
         Ok(())
     }
 
@@ -304,7 +304,7 @@ impl<'a> StreamingDecoder<'a> {
             // For now, copy the body - but this could be optimized further
             if let Some(func) = self.module.functions.get_mut(i as usize) {
                 let body_data = &data[offset..body_end];
-                func.code.extend_from_slice(body_data;
+                func.code.extend_from_slice(body_data);
             }
 
             offset = body_end;

@@ -108,9 +108,9 @@ pub struct ComponentType {
 // Implement required traits for ComponentExport
 impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> Checksummable for ComponentExport<P> {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.name.update_checksum(checksum;
-        self.type_index.update_checksum(checksum;
-        self.kind.update_checksum(checksum;
+        self.name.update_checksum(checksum);
+        self.type_index.update_checksum(checksum);
+        self.kind.update_checksum(checksum);
     }
 }
 
@@ -143,8 +143,8 @@ impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> FromBytes for Compone
 // Implement required traits for ComponentImport
 impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> Checksummable for ComponentImport<P> {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.name.update_checksum(checksum;
-        self.type_index.update_checksum(checksum;
+        self.name.update_checksum(checksum);
+        self.type_index.update_checksum(checksum);
     }
 }
 
@@ -175,9 +175,9 @@ impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> FromBytes for Compone
 // Implement required traits for ComponentSection
 impl Checksummable for ComponentSection {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.id.update_checksum(checksum;
-        self.size.update_checksum(checksum;
-        (self.offset as u32).update_checksum(checksum;
+        self.id.update_checksum(checksum);
+        self.size.update_checksum(checksum);
+        (self.offset as u32).update_checksum(checksum);
     }
 }
 
@@ -210,7 +210,7 @@ impl FromBytes for ComponentSection {
 // Implement required traits for ComponentType
 impl Checksummable for ComponentType {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.form.update_checksum(checksum;
+        self.form.update_checksum(checksum);
     }
 }
 
@@ -238,7 +238,7 @@ impl FromBytes for ComponentType {
 // Implement required traits for ComponentInstance
 impl Checksummable for ComponentInstance {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        self.type_index.update_checksum(checksum;
+        self.type_index.update_checksum(checksum);
     }
 }
 
@@ -272,7 +272,7 @@ impl Default for ComponentValueType {
 
 impl Checksummable for ComponentValueType {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        (*self as u8).update_checksum(checksum;
+        (*self as u8).update_checksum(checksum);
     }
 }
 

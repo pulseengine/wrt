@@ -150,7 +150,7 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
         return Err(create_error(
             NoAllocErrorCode::InvalidHeader,
             "WebAssembly binary too small (less than 8 bytes)",
-        ;
+        ));
     }
 
     // Check magic number
@@ -158,7 +158,7 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
         return Err(create_error(
             NoAllocErrorCode::InvalidHeader,
             "Invalid WebAssembly magic number",
-        ;
+        ));
     }
 
     // Check version
@@ -167,7 +167,7 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
         return Err(create_error(
             NoAllocErrorCode::UnsupportedFeature,
             "Unsupported WebAssembly version",
-        ;
+        ));
     }
 
     Ok(())
@@ -195,11 +195,11 @@ pub fn create_memory_provider(
         return Err(create_error(
             NoAllocErrorCode::ModuleTooLarge,
             "WebAssembly module too large for no_alloc decoding",
-        ;
+        ));
     }
 
     // Create a no_std provider with the maximum module size
-    let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default());
+    let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default();
 
     // Write the bytes to the provider
     use wrt_foundation::safe_memory::Provider;
@@ -343,7 +343,7 @@ impl WasmModuleHeader {
         for section in &self.sections {
             if let Some(section_info) = section {
                 if section_info.id == id {
-                    return Some((section_info.offset, section_info.size;
+                    return Some((section_info.offset, section_info.size));
                 }
             }
         }
@@ -373,7 +373,7 @@ impl WasmModuleHeader {
                             return Some((
                                 section_info.offset + name_size,
                                 section_info.size - name_size as u32,
-                            ;
+                            ));
                         }
                     }
                 }
@@ -412,7 +412,7 @@ pub fn decode_module_header(
     verify_wasm_header(bytes)?;
 
     // Extract version from the header
-    let version = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]];
+    let version = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
 
     let mut header = WasmModuleHeader {
         version,
@@ -440,7 +440,7 @@ pub fn decode_module_header(
 
         // Read section ID
         let section_id = bytes[offset];
-        let section_id_enum = SectionId::from(section_id;
+        let section_id_enum = SectionId::from(section_id);
         offset += 1;
 
         // Read section size (LEB128 encoded)
@@ -461,7 +461,7 @@ pub fn decode_module_header(
             id:     section_id_enum,
             size:   section_size,
             offset: section_data_offset,
-        };
+        });
 
         // Update header based on section type
         header.section_count += 1;
@@ -605,7 +605,7 @@ fn validate_section_order(header: &WasmModuleHeader) -> Result<()> {
                     return Err(create_error(
                         NoAllocErrorCode::ValidationError,
                         "Invalid section order",
-                    ;
+                    ));
                 }
                 last_id = id;
             }
@@ -632,7 +632,7 @@ fn validate_code_section(header: &WasmModuleHeader, bytes: &[u8]) -> Result<()> 
             return Err(create_error(
                 NoAllocErrorCode::BoundsCheckFailed,
                 "Code section extends beyond binary",
-            ;
+            ));
         }
 
         // In a full implementation, we would validate the code here
@@ -660,7 +660,7 @@ fn validate_memory_safety(header: &WasmModuleHeader, bytes: &[u8]) -> Result<()>
                 return Err(create_error(
                     NoAllocErrorCode::BoundsCheckFailed,
                     "Memory section extends beyond binary",
-                ;
+                ));
             }
 
             // In a full implementation, we would validate memory here
@@ -675,7 +675,7 @@ fn validate_memory_safety(header: &WasmModuleHeader, bytes: &[u8]) -> Result<()>
                 return Err(create_error(
                     NoAllocErrorCode::BoundsCheckFailed,
                     "Data section extends beyond binary",
-                ;
+                ));
             }
 
             // In a full implementation, we would validate data here
@@ -705,7 +705,7 @@ pub fn extract_section_info(bytes: &[u8], section_id: SectionId) -> Result<Optio
     for section in &header.sections {
         if let Some(section_info) = section {
             if section_info.id == section_id {
-                return Ok(Some(section_info.clone();
+                return Ok(Some(section_info.clone()));
             }
         }
     }
@@ -722,27 +722,27 @@ mod tests {
 
     #[test]
     fn test_verify_wasm_header_valid() {
-        let result = verify_wasm_header(&MINIMAL_MODULE;
+        let result = verify_wasm_header(&MINIMAL_MODULE);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_verify_wasm_header_invalid_magic() {
         let invalid_magic = [0x00, 0x61, 0x73, 0x00, 0x01, 0x00, 0x00, 0x00];
-        let result = verify_wasm_header(&invalid_magic;
-        assert!(result.is_err();
+        let result = verify_wasm_header(&invalid_magic);
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_verify_wasm_header_invalid_version() {
         let invalid_version = [0x00, 0x61, 0x73, 0x6D, 0x02, 0x00, 0x00, 0x00];
-        let result = verify_wasm_header(&invalid_version;
-        assert!(result.is_err();
+        let result = verify_wasm_header(&invalid_version);
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_decode_module_header_minimal() {
-        let result = decode_module_header_simple(&MINIMAL_MODULE;
+        let result = decode_module_header_simple(&MINIMAL_MODULE);
         assert!(result.is_ok());
 
         let header = result.unwrap();
@@ -753,14 +753,14 @@ mod tests {
 
     #[test]
     fn test_section_id_from_u8() {
-        assert_eq!(SectionId::from(0), SectionId::Custom;
-        assert_eq!(SectionId::from(1), SectionId::Type;
-        assert_eq!(SectionId::from(255), SectionId::Unknown;
+        assert_eq!(SectionId::from(0), SectionId::Custom);
+        assert_eq!(SectionId::from(1), SectionId::Type);
+        assert_eq!(SectionId::from(255), SectionId::Unknown);
     }
 
     #[test]
     fn test_validate_module_no_alloc() {
-        let result = validate_module_no_alloc(&MINIMAL_MODULE, ValidatorType::Basic;
+        let result = validate_module_no_alloc(&MINIMAL_MODULE, ValidatorType::Basic);
         assert!(result.is_ok());
     }
 }

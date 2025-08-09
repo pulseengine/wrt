@@ -49,7 +49,7 @@ mod validation {
             budget < 200 * 1024,
             "Custom sections budget exceeds 200KB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -63,7 +63,7 @@ mod validation {
             budget < 300 * 1024,
             "Branch hints budget exceeds 300KB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -78,7 +78,7 @@ mod validation {
             total <= TOTAL_BUDGET,
             "Total budget exceeds 512KB: {}KB",
             total / 1024
-        ;
+        );
     }
 }
 

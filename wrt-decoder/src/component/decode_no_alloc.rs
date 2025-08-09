@@ -50,10 +50,13 @@ use wrt_foundation::{
     NoStdProvider,
 };
 
+// Type aliases for cleaner signatures
+type DecoderProvider = DecoderProvider;
+
 // Helper functions to create properly sized providers
-fn create_provider_1024() -> Result<CapabilityAwareProvider<NoStdProvider<1024>>> {
+fn create_provider_1024() -> Result<DecoderProvider> {
     let context: wrt_foundation::WrtResult<_> =
-        capability_context!(dynamic(CrateId::Decoder, 1024;
+        capability_context!(dynamic(CrateId::Decoder, 1024));
     let context = context?;
     safe_capability_alloc!(context, CrateId::Decoder, 1024)
 }
@@ -62,7 +65,7 @@ fn create_provider_1024() -> Result<CapabilityAwareProvider<NoStdProvider<1024>>
 /// Returns (name_bytes, total_bytes_read)
 fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
     if offset >= data.len() {
-        return Err(Error::parse_error("Offset beyond data";
+        return Err(Error::parse_error("Offset beyond data"));
     }
 
     // Read length as LEB128
@@ -71,7 +74,7 @@ fn read_name(data: &[u8], offset: usize) -> Result<(&[u8], usize)> {
     let name_end = name_start + name_len as usize;
 
     if name_end > data.len() {
-        return Err(Error::parse_error("Name extends beyond data";
+        return Err(Error::parse_error("Name extends beyond data"));
     }
 
     Ok((&data[name_start..name_end], leb_bytes + name_len as usize))
@@ -209,7 +212,7 @@ pub fn verify_component_header(bytes: &[u8]) -> Result<()> {
         return Err(create_error(
             NoAllocErrorCode::InvalidHeader,
             "Component binary too small (less than 8 bytes)",
-        ;
+        ));
     }
 
     // Check magic number for component
@@ -217,7 +220,7 @@ pub fn verify_component_header(bytes: &[u8]) -> Result<()> {
         return Err(create_error(
             NoAllocErrorCode::InvalidHeader,
             "Invalid WebAssembly Component magic number",
-        ;
+        ));
     }
 
     Ok(())
@@ -234,23 +237,13 @@ pub struct ComponentHeader {
     /// Number of sections detected in the component
     pub section_count:      u8,
     /// Component types
-    pub types: BoundedVec<
-        ComponentType,
-        MAX_COMPONENT_TYPES,
-        CapabilityAwareProvider<NoStdProvider<1024>>,
-    >,
+    pub types:              BoundedVec<ComponentType, MAX_COMPONENT_TYPES, DecoderProvider>,
     /// Component exports
-    pub exports: BoundedVec<
-        ComponentExport<CapabilityAwareProvider<NoStdProvider<1024>>>,
-        MAX_COMPONENT_EXPORTS,
-        CapabilityAwareProvider<NoStdProvider<1024>>,
-    >,
+    pub exports:
+        BoundedVec<ComponentExport<DecoderProvider>, MAX_COMPONENT_EXPORTS, DecoderProvider>,
     /// Component imports
-    pub imports: BoundedVec<
-        ComponentImport<CapabilityAwareProvider<NoStdProvider<1024>>>,
-        MAX_COMPONENT_IMPORTS,
-        CapabilityAwareProvider<NoStdProvider<1024>>,
-    >,
+    pub imports:
+        BoundedVec<ComponentImport<DecoderProvider>, MAX_COMPONENT_IMPORTS, DecoderProvider>,
     /// Whether the component contains a start function
     pub has_start:          bool,
     /// Whether the component contains core modules
@@ -272,7 +265,7 @@ impl ComponentHeader {
             // Create capability-aware provider as fallback using default
             use wrt_foundation::capabilities::CapabilityAwareProvider;
             CapabilityAwareProvider::default()
-        };
+        });
         Self {
             size: 0,
             section_count: 0,
@@ -301,7 +294,7 @@ impl ComponentHeader {
         for section in &self.sections {
             if let Some(section_info) = section {
                 if section_info.id == id {
-                    return Some((section_info.offset, section_info.size;
+                    return Some((section_info.offset, section_info.size));
                 }
             }
         }
@@ -331,7 +324,7 @@ impl ComponentHeader {
                             return Some((
                                 section_info.offset + name_size,
                                 section_info.size - name_size as u32,
-                            ;
+                            ));
                         }
                     }
                 }
@@ -364,7 +357,7 @@ pub fn decode_component_header(
     let _provider = create_memory_provider(bytes, verification_level)?;
 
     // Initialize the component header
-    let mut header = ComponentHeader::new(verification_level;
+    let mut header = ComponentHeader::new(verification_level);
     header.size = bytes.len();
 
     // Create empty collections for the component header
@@ -389,7 +382,7 @@ pub fn decode_component_header(
 
         // Read section ID
         let section_id = bytes[offset];
-        let section_id_enum = ComponentSectionId::from(section_id;
+        let section_id_enum = ComponentSectionId::from(section_id);
         offset += 1;
 
         // Read section size (LEB128 encoded)
@@ -410,7 +403,7 @@ pub fn decode_component_header(
             id:     section_id_enum,
             size:   section_size,
             offset: section_data_offset,
-        };
+        });
 
         // Update header based on section type
         header.section_count += 1;
@@ -503,9 +496,9 @@ fn check_for_resource_types(bytes: &[u8], offset: usize, size: u32) -> bool {
 fn scan_component_imports(
     section_data: &[u8],
     imports: &mut BoundedVec<
-        ComponentImport<CapabilityAwareProvider<NoStdProvider<1024>>>,
+        ComponentImport<DecoderProvider>,
         MAX_COMPONENT_IMPORTS,
-        CapabilityAwareProvider<NoStdProvider<1024>>,
+        DecoderProvider,
     >,
 ) -> Result<()> {
     if section_data.is_empty() {
@@ -569,9 +562,9 @@ fn scan_component_imports(
 fn scan_component_exports(
     section_data: &[u8],
     exports: &mut BoundedVec<
-        ComponentExport<CapabilityAwareProvider<NoStdProvider<1024>>>,
+        ComponentExport<DecoderProvider>,
         MAX_COMPONENT_EXPORTS,
-        CapabilityAwareProvider<NoStdProvider<1024>>,
+        DecoderProvider,
     >,
 ) -> Result<()> {
     if section_data.is_empty() {
@@ -635,11 +628,7 @@ fn scan_component_exports(
 /// * `Result<()>` - Ok if successful
 fn scan_component_types(
     section_data: &[u8],
-    types: &mut BoundedVec<
-        ComponentType,
-        MAX_COMPONENT_TYPES,
-        CapabilityAwareProvider<NoStdProvider<1024>>,
-    >,
+    types: &mut BoundedVec<ComponentType, MAX_COMPONENT_TYPES, DecoderProvider>,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok();
@@ -709,39 +698,39 @@ pub fn describe_component_structure(bytes: &[u8]) -> Result<String> {
         header.types.iter().count(),
         header.exports.iter().count(),
         header.imports.iter().count()
-    ;
+    );
 
     // Add capability information
-    description.push_str("Capabilities:\n";
+    description.push_str("Capabilities:\n");
     if header.has_start {
-        description.push_str("- Has start function\n";
+        description.push_str("- Has start function\n");
     }
     if header.has_core_modules {
-        description.push_str("- Contains core modules\n";
+        description.push_str("- Contains core modules\n");
     }
     if header.has_sub_components {
-        description.push_str("- Contains sub-components\n";
+        description.push_str("- Contains sub-components\n");
     }
     if header.uses_resources {
-        description.push_str("- Uses resource types\n";
+        description.push_str("- Uses resource types\n");
     }
 
     // Add export names if available
     if !header.exports.is_empty() {
-        description.push_str("Export names:\n";
+        description.push_str("Export names:\n");
         for export in header.exports.iter() {
             if let Ok(name_str) = export.name.as_str() {
-                description.push_str(&format!("- {}\n", name_str;
+                description.push_str(&format!("- {}\n", name_str));
             }
         }
     }
 
     // Add import names if available
     if !header.imports.is_empty() {
-        description.push_str("Import names:\n";
+        description.push_str("Import names:\n");
         for import in header.imports.iter() {
             if let Ok(name_str) = import.name.as_str() {
-                description.push_str(&format!("- {}\n", name_str;
+                description.push_str(&format!("- {}\n", name_str));
             }
         }
     }
@@ -833,7 +822,7 @@ fn validate_component_section_order(header: &ComponentHeader) -> Result<()> {
                     return Err(create_error(
                         NoAllocErrorCode::ValidationError,
                         "Invalid component section order",
-                    ;
+                    ));
                 }
                 last_id = id;
             }
@@ -859,7 +848,7 @@ fn validate_component_types(header: &ComponentHeader, bytes: &[u8]) -> Result<()
             return Err(create_error(
                 NoAllocErrorCode::BoundsCheckFailed,
                 "Component type section extends beyond binary",
-            ;
+            ));
         }
 
         // In a full implementation, we would validate the types here
@@ -886,7 +875,7 @@ fn validate_component_imports_exports(header: &ComponentHeader, bytes: &[u8]) ->
             return Err(create_error(
                 NoAllocErrorCode::BoundsCheckFailed,
                 "Component import section extends beyond binary",
-            ;
+            ));
         }
 
         // In a full implementation, we would validate imports here
@@ -898,7 +887,7 @@ fn validate_component_imports_exports(header: &ComponentHeader, bytes: &[u8]) ->
             return Err(create_error(
                 NoAllocErrorCode::BoundsCheckFailed,
                 "Component export section extends beyond binary",
-            ;
+            ));
         }
 
         // In a full implementation, we would validate exports here
@@ -929,7 +918,7 @@ fn validate_component_resources(header: &ComponentHeader, bytes: &[u8]) -> Resul
             return Err(create_error(
                 NoAllocErrorCode::BoundsCheckFailed,
                 "Component type section extends beyond binary",
-            ;
+            ));
         }
 
         // In a full implementation, we would validate resource types here
@@ -961,7 +950,7 @@ pub fn extract_component_section_info(
     for section in &header.sections {
         if let Some(section_info) = section {
             if section_info.id == section_id {
-                return Ok(Some(section_info.clone();
+                return Ok(Some(section_info.clone()));
             }
         }
     }
@@ -978,30 +967,30 @@ mod tests {
 
     #[test]
     fn test_verify_component_header_valid() {
-        let result = verify_component_header(&MINIMAL_COMPONENT;
+        let result = verify_component_header(&MINIMAL_COMPONENT);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_verify_component_header_invalid_magic() {
         let invalid_magic = [0x00, 0x61, 0x73, 0x00, 0x0A, 0x00, 0x01, 0x00];
-        let result = verify_component_header(&invalid_magic;
-        assert!(result.is_err();
+        let result = verify_component_header(&invalid_magic);
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_component_section_id_from_u8() {
-        assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom;
+        assert_eq!(ComponentSectionId::from(0), ComponentSectionId::Custom);
         assert_eq!(
             ComponentSectionId::from(1),
             ComponentSectionId::ComponentType
-        ;
-        assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown;
+        );
+        assert_eq!(ComponentSectionId::from(255), ComponentSectionId::Unknown);
     }
 
     #[test]
     fn test_decode_component_header_minimal() {
-        let result = decode_component_header_simple(&MINIMAL_COMPONENT;
+        let result = decode_component_header_simple(&MINIMAL_COMPONENT);
         assert!(result.is_ok());
 
         let header = result.unwrap();
@@ -1014,7 +1003,7 @@ mod tests {
 
     #[test]
     fn test_validate_component_no_alloc() {
-        let result = validate_component_no_alloc(&MINIMAL_COMPONENT, ComponentValidatorType::Basic;
+        let result = validate_component_no_alloc(&MINIMAL_COMPONENT, ComponentValidatorType::Basic);
         assert!(result.is_ok());
     }
 }

@@ -151,7 +151,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     for ResourceTypeLimit<P>
 {
     fn default() -> Self {
-        let provider = P::default());
+        let provider = P::default();
         Self {
             max_handles:               None,
             max_memory:                None,
@@ -167,15 +167,15 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 {
     fn update_checksum(&self, checksum: &mut Checksum) {
         if let Some(max_handles) = self.max_handles {
-            checksum.update_slice(&max_handles.to_le_bytes);
+            checksum.update_slice(&max_handles.to_le_bytes());
         }
         if let Some(max_memory) = self.max_memory {
-            checksum.update_slice(&max_memory.to_le_bytes);
+            checksum.update_slice(&max_memory.to_le_bytes());
         }
         if let Some(max_ops) = self.max_operations_per_second {
-            checksum.update_slice(&max_ops.to_le_bytes);
+            checksum.update_slice(&max_ops.to_le_bytes());
         }
-        self.custom_limits.update_checksum(checksum;
+        self.custom_limits.update_checksum(checksum);
     }
 }
 
@@ -256,7 +256,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
 {
     fn default() -> Self {
         // Use safe default provider construction for ASIL-D
-        let provider = P::default());
+        let provider = P::default();
         Self {
             version:                   RESOURCE_LIMITS_VERSION,
             max_fuel_per_step:         None,
@@ -363,15 +363,15 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     ) -> Result<Self, Error> {
         // Validate ASIL-D bounds
         if resource_type.len() > MAX_RESOURCE_NAME_LEN {
-            return Err(Error::parse_error("Invalid parameter ";
+            return Err(Error::parse_error("Invalid parameter "));
         }
 
         if self.resource_type_limits.len() >= MAX_RESOURCE_TYPES {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
         // Create bounded string for resource type name using a default provider
-        let provider = P::default());
+        let provider = P::default();
         let resource_name = BoundedString::from_str(resource_type, provider)
             .map_err(|_| Error::parse_error("Failed to create resource name "))?;
 
@@ -390,14 +390,14 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         provider: P,
     ) -> Result<Self, Error> {
         if asil_level.len() > MAX_ASIL_STRING_LEN {
-            return Err(Error::parse_error("Invalid parameter ";
+            return Err(Error::parse_error("Invalid parameter "));
         }
 
         let bounded_asil_level = BoundedString::from_str(asil_level, provider)
             .map_err(|_| Error::parse_error("Failed to create bounded string for ASIL level "))?;
 
-        self.qualification_hash = Some(hash;
-        self.qualified_asil_level = Some(bounded_asil_level;
+        self.qualification_hash = Some(hash);
+        self.qualified_asil_level = Some(bounded_asil_level);
         Ok(self)
     }
 
@@ -426,7 +426,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         if !self.is_complete_for_asil_d() {
             return Err(Error::parse_error(
                 "ASIL-D requires all execution limits to be specified ",
-            ;
+            ));
         }
 
         // Validate each limit is within reasonable bounds for ASIL-D
@@ -438,7 +438,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                 // 1M fuel per step max for determinism
                 return Err(Error::parse_error(
                     "ASIL-D fuel limit too high for deterministic execution ",
-                ;
+                ));
             }
         }
 
@@ -447,7 +447,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                 // 1GB max for ASIL-D
                 return Err(Error::parse_error(
                     "ASIL-D memory limit too high for deterministic execution ",
-                ;
+                ));
             }
         }
 
@@ -461,13 +461,13 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     /// Returns the encoded data and the actual size used
     pub fn encode_to_buffer(&self, buffer: &mut [u8]) -> Result<usize, Error> {
         if buffer.len() < MAX_ENCODED_SIZE {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
         let mut offset = 0;
 
         // Write version (4 bytes)
-        buffer[offset..offset + 4].copy_from_slice(&self.version.to_le_bytes);
+        buffer[offset..offset + 4].copy_from_slice(&self.version.to_le_bytes());
         offset += 4;
 
         // Write optional fields
@@ -480,7 +480,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
         // Write resource type limits count + data
         let resource_count = self.resource_type_limits.len() as u32;
-        buffer[offset..offset + 4].copy_from_slice(&resource_count.to_le_bytes);
+        buffer[offset..offset + 4].copy_from_slice(&resource_count.to_le_bytes());
         offset += 4;
 
         // TODO: Fix iteration over BoundedMap - need to implement proper key-value
@@ -493,7 +493,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         if let Some(hash) = &self.qualification_hash {
             buffer[offset] = 1; // present
             offset += 1;
-            buffer[offset..offset + 32].copy_from_slice(hash;
+            buffer[offset..offset + 32].copy_from_slice(hash);
             offset += 32;
         } else {
             buffer[offset] = 0; // not present
@@ -522,7 +522,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         let mut encoded = Vec::new();
 
         // Write version (4 bytes)
-        encoded.extend_from_slice(&self.version.to_le_bytes);
+        encoded.extend_from_slice(&self.version.to_le_bytes());
 
         // Write optional fields as presence byte + value
         self.encode_optional_u64(&mut encoded, self.max_fuel_per_step)?;
@@ -537,10 +537,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                 ErrorCategory::Parse,
                 codes::CAPACITY_EXCEEDED,
                 "Capacity exceeded",
-            ;
+            ));
         }
 
-        encoded.extend_from_slice(&(self.resource_type_limits.len() as u32).to_le_bytes);
+        encoded.extend_from_slice(&(self.resource_type_limits.len() as u32).to_le_bytes());
         // TODO: Fix iteration over BoundedMap
         // for (name, limits) in self.resource_type_limits.iter() {
         //     self.encode_string(&mut encoded, name.as_str())?;
@@ -550,7 +550,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         // Write optional qualification info
         if let Some(hash) = &self.qualification_hash {
             encoded.push(1); // present
-            encoded.extend_from_slice(hash;
+            encoded.extend_from_slice(hash);
         } else {
             encoded.push(0); // not present
         }
@@ -564,7 +564,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
         // Validate ASIL-D size bounds
         if encoded.len() > MAX_ENCODED_SIZE {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
         Ok(encoded)
@@ -581,22 +581,22 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                 ErrorCategory::Parse,
                 codes::CAPACITY_EXCEEDED,
                 "Capacity exceeded",
-            ;
+            ));
         }
 
         let mut offset = 0;
 
         // Read version (4 bytes)
         if data.len() < 4 {
-            return Err(Error::parse_error("Resource limits data too short";
+            return Err(Error::parse_error("Resource limits data too short"));
         }
 
-        let version = u32::from_le_bytes([data[0], data[1], data[2], data[3]];
+        let version = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
         offset += 4;
 
         // Validate version compatibility
         if version > RESOURCE_LIMITS_VERSION {
-            return Err(Error::parse_error("Unsupported resource limits version ";
+            return Err(Error::parse_error("Unsupported resource limits version "));
         }
 
         // Read optional fields
@@ -617,7 +617,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
         // Read resource type limits
         if offset + 4 > data.len() {
-            return Err(Error::parse_error("Resource limits data truncated ";
+            return Err(Error::parse_error("Resource limits data truncated "));
         }
 
         let resource_count = u32::from_le_bytes([
@@ -629,11 +629,11 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         offset += 4;
 
         if resource_count > MAX_RESOURCE_TYPES {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
         // TODO: Update for bounded types
-        let provider = P::default());
+        let provider = P::default();
         let mut resource_type_limits = BoundedMap::new(provider.clone()).map_err(|_| {
             Error::new(
                 ErrorCategory::Memory,
@@ -659,7 +659,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
         // Read optional qualification info
         if offset >= data.len() {
-            return Err(Error::parse_error("Invalid parameter ";
+            return Err(Error::parse_error("Invalid parameter "));
         }
 
         let qualification_hash = if data[offset] == 1 {
@@ -667,10 +667,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             if offset + 32 > data.len() {
                 return Err(Error::parse_error(
                     "Resource limits qualification hash truncated ",
-                ;
+                ));
             }
             let mut hash = [0u8; 32];
-            hash.copy_from_slice(&data[offset..offset + 32];
+            hash.copy_from_slice(&data[offset..offset + 32]);
             offset += 32;
             Some(hash)
         } else {
@@ -713,7 +713,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     /// Validate ASIL-D bounds constraints
     fn validate_bounds(&self) -> Result<(), Error> {
         if self.resource_type_limits.len() > MAX_RESOURCE_TYPES {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
         // TODO: Fix iteration over BoundedMap
@@ -732,7 +732,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
         if let Some(asil_level) = &self.qualified_asil_level {
             if asil_level.len() > MAX_ASIL_STRING_LEN {
-                return Err(Error::parse_error("Invalid handles";
+                return Err(Error::parse_error("Invalid handles"));
             }
         }
 
@@ -749,10 +749,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     ) -> Result<usize, Error> {
         if let Some(val) = value {
             if offset + 9 > buffer.len() {
-                return Err(Error::runtime_execution_error("Buffer overflow";
+                return Err(Error::runtime_execution_error("Buffer overflow"));
             }
             buffer[offset] = 1; // present
-            buffer[offset + 1..offset + 9].copy_from_slice(&val.to_le_bytes);
+            buffer[offset + 1..offset + 9].copy_from_slice(&val.to_le_bytes());
             Ok(offset + 9)
         } else {
             if offset >= buffer.len() {
@@ -760,7 +760,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                     ErrorCategory::Memory,
                     codes::OUT_OF_MEMORY,
                     "Capacity exceeded",
-                ;
+                ));
             }
             buffer[offset] = 0; // not present
             Ok(offset + 1)
@@ -775,10 +775,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     ) -> Result<usize, Error> {
         if let Some(val) = value {
             if offset + 5 > buffer.len() {
-                return Err(Error::runtime_execution_error("Buffer overflow";
+                return Err(Error::runtime_execution_error("Buffer overflow"));
             }
             buffer[offset] = 1; // present
-            buffer[offset + 1..offset + 5].copy_from_slice(&val.to_le_bytes);
+            buffer[offset + 1..offset + 5].copy_from_slice(&val.to_le_bytes());
             Ok(offset + 5)
         } else {
             if offset >= buffer.len() {
@@ -786,7 +786,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                     ErrorCategory::Memory,
                     codes::OUT_OF_MEMORY,
                     "Capacity exceeded",
-                ;
+                ));
             }
             buffer[offset] = 0; // not present
             Ok(offset + 1)
@@ -800,16 +800,16 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         s: &str,
     ) -> Result<usize, Error> {
         if s.len() > MAX_RESOURCE_NAME_LEN {
-            return Err(Error::parse_error("String exceeds ASIL length bounds";
+            return Err(Error::parse_error("String exceeds ASIL length bounds"));
         }
 
-        let len_bytes = (s.len() as u32).to_le_bytes);
+        let len_bytes = (s.len() as u32).to_le_bytes();
         if offset + 4 + s.len() > buffer.len() {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
-        buffer[offset..offset + 4].copy_from_slice(&len_bytes;
-        buffer[offset + 4..offset + 4 + s.len()].copy_from_slice(s.as_bytes);
+        buffer[offset..offset + 4].copy_from_slice(&len_bytes);
+        buffer[offset + 4..offset + 4 + s.len()].copy_from_slice(s.as_bytes());
         Ok(offset + 4 + s.len())
     }
 
@@ -830,14 +830,14 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                 ErrorCategory::Parse,
                 codes::CAPACITY_EXCEEDED,
                 "Capacity exceeded",
-            ;
+            ));
         }
 
-        let count_bytes = (limits.custom_limits.len() as u32).to_le_bytes);
+        let count_bytes = (limits.custom_limits.len() as u32).to_le_bytes();
         if offset + 4 > buffer.len() {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
-        buffer[offset..offset + 4].copy_from_slice(&count_bytes;
+        buffer[offset..offset + 4].copy_from_slice(&count_bytes);
         offset += 4;
 
         // TODO: Fix iteration over BoundedMap
@@ -849,7 +849,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         //             codes::OUT_OF_MEMORY,
         //             ";
         //     }
-        //     buffer[offset..offset + 8].copy_from_slice(&value.to_le_bytes);
+        //     buffer[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
         //     offset += 8;
         // }
 
@@ -860,7 +860,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     fn encode_optional_u64(&self, buffer: &mut Vec<u8>, value: Option<u64>) -> Result<(), Error> {
         if let Some(val) = value {
             buffer.push(1); // present
-            buffer.extend_from_slice(&val.to_le_bytes);
+            buffer.extend_from_slice(&val.to_le_bytes());
         } else {
             buffer.push(0); // not present
         }
@@ -870,7 +870,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     fn encode_optional_u32(&self, buffer: &mut Vec<u8>, value: Option<u32>) -> Result<(), Error> {
         if let Some(val) = value {
             buffer.push(1); // present
-            buffer.extend_from_slice(&val.to_le_bytes);
+            buffer.extend_from_slice(&val.to_le_bytes());
         } else {
             buffer.push(0); // not present
         }
@@ -879,11 +879,11 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
     fn encode_string(&self, buffer: &mut Vec<u8>, s: &str) -> Result<(), Error> {
         if s.len() > MAX_RESOURCE_NAME_LEN {
-            return Err(Error::parse_error("String exceeds ASIL length bounds";
+            return Err(Error::parse_error("String exceeds ASIL length bounds"));
         }
 
-        buffer.extend_from_slice(&(s.len() as u32).to_le_bytes);
-        buffer.extend_from_slice(s.as_bytes);
+        buffer.extend_from_slice(&(s.len() as u32).to_le_bytes());
+        buffer.extend_from_slice(s.as_bytes());
         Ok(())
     }
 
@@ -898,14 +898,14 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
         // Encode custom limits
         if limits.custom_limits.len() > MAX_CUSTOM_LIMITS_PER_TYPE {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
-        buffer.extend_from_slice(&(limits.custom_limits.len() as u32).to_le_bytes);
+        buffer.extend_from_slice(&(limits.custom_limits.len() as u32).to_le_bytes());
         // TODO: Fix iteration over BoundedMap
         // for (name, value) in limits.custom_limits.iter() {
         //     self.encode_string(buffer, name.as_str())?;
-        //     buffer.extend_from_slice(&value.to_le_bytes);
+        //     buffer.extend_from_slice(&value.to_le_bytes());
         // }
 
         Ok(())
@@ -913,13 +913,13 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
     fn decode_optional_u64(data: &[u8], offset: usize) -> Result<(Option<u64>, usize), Error> {
         if offset >= data.len() {
-            return Err(Error::parse_error("Invalid parameter ";
+            return Err(Error::parse_error("Invalid parameter "));
         }
 
         if data[offset] == 1 {
             // present
             if offset + 9 > data.len() {
-                return Err(Error::parse_error("Data truncated reading u64 value ";
+                return Err(Error::parse_error("Data truncated reading u64 value "));
             }
             let value = u64::from_le_bytes([
                 data[offset + 1],
@@ -930,7 +930,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                 data[offset + 6],
                 data[offset + 7],
                 data[offset + 8],
-            ];
+            ]);
             Ok((Some(value), offset + 9))
         } else {
             // not present
@@ -940,20 +940,20 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
     fn decode_optional_u32(data: &[u8], offset: usize) -> Result<(Option<u32>, usize), Error> {
         if offset >= data.len() {
-            return Err(Error::parse_error("Data truncated reading optional u32 ";
+            return Err(Error::parse_error("Data truncated reading optional u32 "));
         }
 
         if data[offset] == 1 {
             // present
             if offset + 5 > data.len() {
-                return Err(Error::parse_error("Data truncated reading u32 value ";
+                return Err(Error::parse_error("Data truncated reading u32 value "));
             }
             let value = u32::from_le_bytes([
                 data[offset + 1],
                 data[offset + 2],
                 data[offset + 3],
                 data[offset + 4],
-            ];
+            ]);
             Ok((Some(value), offset + 5))
         } else {
             // not present
@@ -963,7 +963,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
 
     fn decode_string(data: &[u8], offset: usize) -> Result<(String, usize), Error> {
         if offset + 4 > data.len() {
-            return Err(Error::parse_error("Data truncated reading string length ";
+            return Err(Error::parse_error("Data truncated reading string length "));
         }
 
         let length = u32::from_le_bytes([
@@ -974,12 +974,12 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         ]) as usize;
 
         if length > MAX_RESOURCE_NAME_LEN {
-            return Err(Error::parse_error("String exceeds ASIL length bounds";
+            return Err(Error::parse_error("String exceeds ASIL length bounds"));
         }
 
         let start = offset + 4;
         if start + length > data.len() {
-            return Err(Error::parse_error("Data truncated reading string data ";
+            return Err(Error::parse_error("Data truncated reading string data "));
         }
 
         let string_data = &data[start..start + length];
@@ -1001,7 +1001,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         if offset + 4 > data.len() {
             return Err(Error::parse_error(
                 "Data truncated reading custom limits count ",
-            ;
+            ));
         }
 
         let custom_count = u32::from_le_bytes([
@@ -1013,11 +1013,11 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         let mut offset = offset + 4;
 
         if custom_count > MAX_CUSTOM_LIMITS_PER_TYPE {
-            return Err(Error::runtime_execution_error("Buffer overflow";
+            return Err(Error::runtime_execution_error("Buffer overflow"));
         }
 
         // TODO: Update for bounded types
-        let provider = P::default());
+        let provider = P::default();
         let mut custom_limits = BoundedMap::new(provider.clone()).map_err(|_| {
             Error::new(
                 ErrorCategory::Memory,
@@ -1032,7 +1032,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             if offset + 8 > data.len() {
                 return Err(Error::parse_error(
                     "Data truncated reading custom limit value",
-                ;
+                ));
             }
 
             let value = u64::from_le_bytes([
@@ -1044,7 +1044,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
                 data[offset + 5],
                 data[offset + 6],
                 data[offset + 7],
-            ];
+            ]);
             offset += 8;
 
             let name = BoundedString::from_str(&name_str, provider.clone()).map_err(|_| {
@@ -1073,27 +1073,27 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         // Check for reasonable limits to prevent overflow/underflow issues
         if let Some(fuel) = self.max_fuel_per_step {
             if fuel == 0 {
-                return Err(Error::parse_error("Invalid handles";
+                return Err(Error::parse_error("Invalid handles"));
             }
         }
 
         if let Some(memory) = self.max_memory_usage {
             if memory == 0 {
-                return Err(Error::parse_error("max_memory_usage cannot be zero ";
+                return Err(Error::parse_error("max_memory_usage cannot be zero "));
             }
             // Check for reasonable memory limit (max 4GB for general use)
             if memory > 4 * 1024 * 1024 * 1024 {
-                return Err(Error::parse_error("max_memory_usage too large (max 4GB)";
+                return Err(Error::parse_error("max_memory_usage too large (max 4GB)"));
             }
         }
 
         if let Some(depth) = self.max_call_depth {
             if depth == 0 {
-                return Err(Error::parse_error("max_call_depth cannot be zero ";
+                return Err(Error::parse_error("max_call_depth cannot be zero "));
             }
             // Check for reasonable call depth (max 10000)
             if depth > 10000 {
-                return Err(Error::parse_error("max_call_depth too large (max 10000)";
+                return Err(Error::parse_error("max_call_depth too large (max 10000)"));
             }
         }
 
@@ -1101,13 +1101,13 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
             if instructions == 0 {
                 return Err(Error::parse_error(
                     "max_instructions_per_step cannot be zero ",
-                ;
+                ));
             }
         }
 
         if let Some(slice_ms) = self.max_execution_slice_ms {
             if slice_ms == 0 {
-                return Err(Error::parse_error("max_execution_slice_ms cannot be zero ";
+                return Err(Error::parse_error("max_execution_slice_ms cannot be zero "));
             }
         }
 
@@ -1135,19 +1135,19 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
 
     /// Set maximum handles for this resource type
     pub fn with_max_handles(mut self, max_handles: u32) -> Self {
-        self.max_handles = Some(max_handles;
+        self.max_handles = Some(max_handles);
         self
     }
 
     /// Set maximum memory for this resource type
     pub fn with_max_memory(mut self, max_memory: u64) -> Self {
-        self.max_memory = Some(max_memory;
+        self.max_memory = Some(max_memory);
         self
     }
 
     /// Set maximum operations per second for this resource type
     pub fn with_max_operations_per_second(mut self, max_ops: u32) -> Self {
-        self.max_operations_per_second = Some(max_ops;
+        self.max_operations_per_second = Some(max_ops);
         self
     }
 
@@ -1159,10 +1159,10 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
                 ErrorCategory::Parse,
                 codes::CAPACITY_EXCEEDED,
                 "Capacity exceeded",
-            ;
+            ));
         }
 
-        let provider = P::default());
+        let provider = P::default();
         let bounded_name = BoundedString::from_str(name, provider).map_err(|_| {
             Error::parse_error("Failed to create bounded string for custom limit name")
         })?;
@@ -1177,13 +1177,13 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
     fn validate(&self, _resource_type: &str) -> Result<(), Error> {
         if let Some(handles) = self.max_handles {
             if handles == 0 {
-                return Err(Error::parse_error("Invalid handles";
+                return Err(Error::parse_error("Invalid handles"));
             }
         }
 
         if let Some(memory) = self.max_memory {
             if memory == 0 {
-                return Err(Error::parse_error("max_memory cannot be zero ";
+                return Err(Error::parse_error("max_memory cannot be zero "));
             }
         }
 
@@ -1191,7 +1191,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Resou
             if ops == 0 {
                 return Err(Error::parse_error(
                     "max_operations_per_second cannot be zero ",
-                ;
+                ));
             }
         }
 
@@ -1217,11 +1217,11 @@ mod tests {
             10,        // max_instructions_per_step
             100,       // max_execution_slice_ms
         )
-        .expect(".expect("ASIL config creation should succeed"));")
+        .expect("ASIL config creation should succeed");
 
-        assert!(limits.is_complete_for_asil_d();
+        assert!(limits.is_complete_for_asil_d());
         assert!(limits.validate_asil_d_compliance().is_ok());
-        assert_eq!(limits.qualified_asil_level(), Some("ASIL-D ";
+        assert_eq!(limits.qualified_asil_level(), Some("ASIL-D "));
         Ok(())
     }
 
@@ -1233,7 +1233,7 @@ mod tests {
         )?;
         let mut limits =
             ResourceLimitsSection::asil_d_config(provider.clone(), 1000, 64 * 1024, 32, 10, 100)
-                .expect(".expect("ASIL config creation should succeed"));")
+                .expect("ASIL config creation should succeed");
 
         // Test resource type bounds
         for i in 0..MAX_RESOURCE_TYPES {
@@ -1244,7 +1244,7 @@ mod tests {
                     ResourceTypeLimit::new(provider.clone())
                         .expect("Resource type limit creation should succeed "),
                 )
-                .expect(".expect("Should fit within bounds "));")
+                .expect("Should fit within bounds");
         }
 
         // This should fail - exceeds capacity
@@ -1252,12 +1252,13 @@ mod tests {
             "too_many",
             ResourceTypeLimit::new(provider.clone())
                 .expect("Resource type limit creation should succeed "),
-        ;
-        assert!(result.is_err();
+        );
+        assert!(result.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_asil_d_size_limits() {
+    fn test_asil_d_size_limits() -> wrt_foundation::WrtResult<()> {
         let provider = wrt_foundation::safe_managed_alloc!(
             4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1270,9 +1271,10 @@ mod tests {
             10,
             100,
         )
-        .expect(".expect("ASIL config creation should succeed"));")
+        .expect("ASIL config creation should succeed");
 
-        assert!(limits.validate_asil_d_compliance().is_err();
+        assert!(limits.validate_asil_d_compliance().is_err());
+        Ok(())
     }
 
     #[test]
@@ -1282,19 +1284,19 @@ mod tests {
             wrt_foundation::budget_aware_provider::CrateId::Decoder
         )?;
         let hash = [0u8; 32];
-        let asil_d_str = ["ASIL", "-", "D"].concat);
+        let asil_d_str = ["ASIL", "-", "D"].concat();
         let limits = ResourceLimitsSection::new(provider.clone())?.with_qualification(
             hash,
             &asil_d_str,
             provider,
         )?;
 
-        assert!(limits.is_qualified();
-        let expected = ["ASIL", "-", "D"].concat);
+        assert!(limits.is_qualified());
+        let expected = ["ASIL", "-", "D"].concat();
         assert_eq!(
             limits.qualified_asil_level().as_deref(),
             Some(expected.as_str())
-        ;
+        );
         Ok(())
     }
 
@@ -1309,7 +1311,7 @@ mod tests {
 
         // Note: encode/decode will need to be updated for bounded types
         // For now, just test the creation and validation
-        assert!(original.is_complete_for_asil_d();
+        assert!(original.is_complete_for_asil_d());
         assert!(original.validate_asil_d_compliance().is_ok());
         Ok(())
     }
@@ -1330,8 +1332,8 @@ mod tests {
             Some(100),
         )?;
 
-        assert!(!asil_b_limits.is_complete_for_asil_d())); // Not complete for ASIL-D
-        assert!(asil_b_limits.validate().is_ok())); // But still valid for lower levels
+        assert!(!asil_b_limits.is_complete_for_asil_d()); // Not complete for ASIL-D
+        assert!(asil_b_limits.validate().is_ok()); // But still valid for lower levels
         Ok(())
     }
 }
