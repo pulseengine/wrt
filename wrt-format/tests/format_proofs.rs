@@ -23,7 +23,7 @@ fn test_custom_sections() {
         data: vec![1, 2, 3, 4],
     };
 
-    module.add_custom_section(section1;
+    module.add_custom_section(section1);
 
     // Verify section was added
     assert_eq!(module.custom_sections.len(), 1);

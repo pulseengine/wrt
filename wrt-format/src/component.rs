@@ -4,7 +4,6 @@
 //! Component Model binary format.
 
 // Use crate-level type aliases for collection types
-#[cfg(all(not(feature = "std")))]
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -1435,7 +1434,6 @@ impl Validatable for Value {
                             "Function call has too many arguments ({})",
                             args.len()
                         ));
-                        ;
                     }
                 },
                 ValueExpression::Const(_) => {

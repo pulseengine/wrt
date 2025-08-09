@@ -74,7 +74,7 @@ mod validation {
             budget < 150 * 1024,
             "Binary processing budget exceeds 150KB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -88,7 +88,7 @@ mod validation {
             budget < 150 * 1024,
             "WIT parsing budget exceeds 150KB: {}KB",
             budget / 1024
-        ;
+        );
     }
 
     #[test]
@@ -103,7 +103,7 @@ mod validation {
             budget < 5 * 1024 * 1024,
             "Module structures budget exceeds 5MB: {}MB",
             budget / (1024 * 1024)
-        ;
+        );
     }
 
     #[test]
@@ -117,7 +117,7 @@ mod validation {
             parsing_budget <= TOTAL_BUDGET,
             "Parsing memory exceeds 512KB: {}KB",
             parsing_budget / 1024
-        ;
+        );
     }
 }
 

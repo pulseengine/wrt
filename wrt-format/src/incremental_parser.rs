@@ -192,7 +192,7 @@ impl IncrementalParser {
 
         // Mark affected nodes as dirty
         if let Some(mut tree) = self.parse_tree.take() {
-            Self::mark_dirty_nodes_static(&mut tree, &change.change_type, &mut self.stats;
+            Self::mark_dirty_nodes_static(&mut tree, &change.change_type, &mut self.stats);
             self.parse_tree = Some(tree);
         }
 
@@ -244,8 +244,8 @@ impl IncrementalParser {
         // Build parse tree
         let tree = self.build_parse_tree(&doc)?;
 
-        self.cached_ast = Some(doc;
-        self.parse_tree = Some(tree;
+        self.cached_ast = Some(doc);
+        self.parse_tree = Some(tree);
 
         Ok(())
     }
@@ -277,7 +277,7 @@ impl IncrementalParser {
         // Would need to implement string insertion for BoundedString
         // For now, just mark as needing full reparse
 
-        self.total_length += text.as_str().map(|s| s.len() as u32).unwrap_or(0;
+        self.total_length += text.as_str().map(|s| s.len() as u32).unwrap_or(0);
 
         Ok(())
     }
@@ -290,7 +290,7 @@ impl IncrementalParser {
         // Delete text from the appropriate line(s)
         // This is simplified - real implementation would handle multi-line deletes
 
-        self.total_length = self.total_length.saturating_sub(length;
+        self.total_length = self.total_length.saturating_sub(length);
 
         Ok(())
     }
@@ -312,10 +312,10 @@ impl IncrementalParser {
         let mut current_offset = 0u32;
 
         for (idx, line) in self.source.iter().enumerate() {
-            let line_len = line.as_str().map(|s| s.len() as u32 + 1).unwrap_or(1;
+            let line_len = line.as_str().map(|s| s.len() as u32 + 1).unwrap_or(1);
 
             if current_offset + line_len > offset {
-                return Ok((idx, offset - current_offset;
+                return Ok((idx, offset - current_offset));
             }
 
             current_offset += line_len;
@@ -346,7 +346,7 @@ impl IncrementalParser {
 
         // Recursively mark children
         for child in &mut node.children {
-            Self::mark_dirty_nodes_static(child, change, stats;
+            Self::mark_dirty_nodes_static(child, change, stats);
         }
     }
 
@@ -361,7 +361,7 @@ impl IncrementalParser {
                 span:     pkg.span,
                 children: Vec::new(),
                 dirty:    false,
-            };
+            });
         }
 
         // Add use items
@@ -372,7 +372,7 @@ impl IncrementalParser {
                 span:     use_item.span,
                 children: Vec::new(),
                 dirty:    false,
-            };
+            });
         }
 
         // Add top-level items
@@ -389,7 +389,7 @@ impl IncrementalParser {
                 span,
                 children: Vec::new(), // Would recursively build children
                 dirty: false,
-            };
+            });
         }
 
         Ok(ParseNode {
@@ -477,7 +477,7 @@ impl IncrementalParserCache {
         let mut stats = self.global_stats.clone();
 
         for parser in self.parsers.values() {
-            let parser_stats = parser.stats);
+            let parser_stats = parser.stats();
             stats.total_parses += parser_stats.total_parses;
             stats.incremental_parses += parser_stats.incremental_parses;
             stats.full_reparses += parser_stats.full_reparses;
@@ -504,7 +504,7 @@ mod tests {
     #[test]
     fn test_incremental_parser_creation() {
         let parser = IncrementalParser::new();
-        assert!(parser.get_ast().is_none();
+        assert!(parser.get_ast().is_none());
         assert_eq!(parser.stats().total_parses, 0);
     }
 
@@ -527,8 +527,8 @@ mod tests {
 
         match insert {
             ChangeType::Insert { offset, length } => {
-                assert_eq!(offset, 10;
-                assert_eq!(length, 5;
+                assert_eq!(offset, 10);
+                assert_eq!(length, 5);
             },
             _ => panic!("Wrong change type"),
         }
@@ -541,11 +541,11 @@ mod tests {
         let span2 = SourceSpan::new(15, 25, 0);
         let span3 = SourceSpan::new(25, 30, 0);
 
-        assert!(span1.overlaps(&span2);
-        assert!(!span1.overlaps(&span3);
+        assert!(span1.overlaps(&span2));
+        assert!(!span1.overlaps(&span3));
 
-        assert!(span1.contains_offset(15);
-        assert!(!span1.contains_offset(25);
+        assert!(span1.contains_offset(15));
+        assert!(!span1.contains_offset(25));
     }
 
     #[cfg(feature = "std")]
@@ -553,13 +553,13 @@ mod tests {
     fn test_parser_cache() {
         let mut cache = IncrementalParserCache::new();
 
-        let parser1 = cache.get_parser(0;
+        let parser1 = cache.get_parser(0);
         parser1.stats.total_parses = 5;
 
-        let parser2 = cache.get_parser(1;
+        let parser2 = cache.get_parser(1);
         parser2.stats.total_parses = 3;
 
-        let stats = cache.global_stats);
-        assert_eq!(stats.total_parses, 8;
+        let stats = cache.global_stats();
+        assert_eq!(stats.total_parses, 8);
     }
 }

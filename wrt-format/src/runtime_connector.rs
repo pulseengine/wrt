@@ -28,10 +28,10 @@ impl FormatRuntimeConnector {
     /// Complete flow: parse format -> extract runtime data -> prepare for runtime
     pub fn prepare_module_for_runtime(module: &Module) -> Result<RuntimePreparationResult> {
         // Phase 1: Extract runtime data using format bridge
-        let module_runtime_data = ModuleBridge::extract_module_runtime_data(module;
+        let module_runtime_data = ModuleBridge::extract_module_runtime_data(module);
         
         // Phase 2: Create initialization plan
-        let initialization_plan = ModuleBridge::create_initialization_plan(module;
+        let initialization_plan = ModuleBridge::create_initialization_plan(module);
         
         // Store requires_initialization before moving data
         let requires_initialization = module_runtime_data.requires_initialization;
@@ -67,7 +67,7 @@ impl FormatRuntimeConnector {
                 } else { 
                     InitializationPriority::Low 
                 },
-            };
+            });
         }
         
         // Convert element extractions
@@ -86,7 +86,7 @@ impl FormatRuntimeConnector {
                 } else { 
                     InitializationPriority::Low 
                 },
-            };
+            });
         }
         
         Ok(RuntimeCompatibleData {
@@ -110,7 +110,7 @@ impl FormatRuntimeConnector {
                     estimated_time_us: 10, // 10 microseconds for offset evaluation
                     memory_requirement: 0,
                     asil_safe: true,
-                };
+                });
             }
             
             steps.push(RuntimeInitializationStep {
@@ -119,7 +119,7 @@ impl FormatRuntimeConnector {
                 estimated_time_us: 50, // 50 microseconds for data initialization
                 memory_requirement: hint.data_bytes_ref.length,
                 asil_safe: true,
-            };
+            });
         }
         
         // Add element initialization steps
@@ -131,7 +131,7 @@ impl FormatRuntimeConnector {
                     estimated_time_us: 10,
                     memory_requirement: 0,
                     asil_safe: true,
-                };
+                });
             }
             
             steps.push(RuntimeInitializationStep {
@@ -140,7 +140,7 @@ impl FormatRuntimeConnector {
                 estimated_time_us: 30, // 30 microseconds per element
                 memory_requirement: hint.element_count * 4, // 4 bytes per element reference
                 asil_safe: true,
-            };
+            });
         }
         
         // Add start function call
@@ -151,7 +151,7 @@ impl FormatRuntimeConnector {
                 estimated_time_us: 100, // 100 microseconds for function call
                 memory_requirement: 0,
                 asil_safe: true, // Depends on start function implementation
-            };
+            });
         }
         
         Ok(RuntimeInitializationGuide {
@@ -167,7 +167,7 @@ impl FormatRuntimeConnector {
     fn estimate_memory_usage(module: &Module) -> MemoryUsageEstimate {
         let data_memory: usize = module.data.iter()
             .map(|d| d.init.len())
-            .sum);
+            .sum();
             
         let element_memory: usize = module.elements.iter()
             .map(|e| match &e.init {
@@ -176,7 +176,7 @@ impl FormatRuntimeConnector {
                     exprs.iter().map(|expr| expr.len()).sum::<usize>()
                 },
             })
-            .sum);
+            .sum();
             
         let overhead = (data_memory + element_memory) / 10; // 10% overhead estimate
         

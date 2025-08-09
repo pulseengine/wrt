@@ -85,6 +85,7 @@ use std::{
     vec::Vec,
 };
 
+pub use wrt_error::Result;
 // External crates
 pub use wrt_error::{
     Error,
@@ -96,10 +97,7 @@ use wrt_foundation::bounded::{
     BoundedString,
     BoundedVec,
 };
-pub use wrt_foundation::{
-    resource::ResourceRepresentation,
-    Result,
-};
+pub use wrt_foundation::resource::ResourceRepresentation;
 // Re-export core types from wrt-foundation (note: these now have generic parameters)
 // BlockType, FuncType, RefType, ValueType now require MemoryProvider parameters
 // These will be re-exported as type aliases with default providers
@@ -244,7 +242,7 @@ pub mod incremental_parser;
 /// Interface demonstration (clean separation)
 pub mod interface_demo;
 /// Basic LSP (Language Server Protocol) infrastructure
-#[cfg(all(any(feature = "std"), feature = "lsp"))]
+#[cfg(all(feature = "std", feature = "lsp"))]
 pub mod lsp_server;
 /// Safety-critical memory limits
 #[cfg(feature = "safety-critical")]
@@ -495,7 +493,7 @@ pub fn uses_experimental_features(binary: &[u8]) -> bool {
 #[cfg(feature = "kani")]
 pub mod verification {
     /// Verify LEB128 encoding and decoding
-    #[cfg(all(kani, any(feature = "std")))]
+    #[cfg(all(kani, feature = "std"))]
     #[kani::proof]
     fn verify_leb128_roundtrip() {
         let value: u32 = kani::any();

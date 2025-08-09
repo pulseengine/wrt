@@ -190,7 +190,7 @@ impl wrt_foundation::traits::ToBytes for CustomSection {
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         // Write name length and name
         stream.write_all(&(self.name.len() as u32).to_le_bytes())?;
         stream.write_all(self.name.as_bytes())?;
@@ -207,7 +207,7 @@ impl wrt_foundation::traits::FromBytes for CustomSection {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         // Read name length
         let name_len = reader.read_u32_le()?;
         let mut name_bytes = alloc::vec![0u8; name_len as usize];
@@ -424,9 +424,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     extern crate alloc;
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     use alloc::{string::ToString, vec};
     #[cfg(feature = "std")]
     use std::string::ToString;

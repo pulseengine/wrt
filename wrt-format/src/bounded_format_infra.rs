@@ -3,11 +3,14 @@
 //! This module provides bounded alternatives for format collections
 //! to ensure static memory allocation throughout the format structures.
 
+use wrt_error::Result;
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     no_std_hashmap::BoundedHashMap,
     safe_memory::NoStdProvider,
-    WrtResult,
 };
 
 /// Budget-aware memory provider for format (32KB)
@@ -87,7 +90,7 @@ pub type BoundedInterfaceMap<V> =
 pub type BoundedWorldMap<V> = BoundedHashMap<BoundedModuleName, V, MAX_WORLD_ITEMS, FormatProvider>;
 
 /// Create a new bounded params vector
-pub fn new_params_vec<T>() -> WrtResult<BoundedParamsVec<T>>
+pub fn new_params_vec<T>() -> Result<BoundedParamsVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -102,7 +105,7 @@ where
 }
 
 /// Create a new bounded results vector
-pub fn new_results_vec<T>() -> WrtResult<BoundedResultsVec<T>>
+pub fn new_results_vec<T>() -> Result<BoundedResultsVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -117,7 +120,7 @@ where
 }
 
 /// Create a new bounded fields vector
-pub fn new_fields_vec<T>() -> WrtResult<BoundedFieldsVec<T>>
+pub fn new_fields_vec<T>() -> Result<BoundedFieldsVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -132,7 +135,7 @@ where
 }
 
 /// Create a new bounded cases vector
-pub fn new_cases_vec<T>() -> WrtResult<BoundedCasesVec<T>>
+pub fn new_cases_vec<T>() -> Result<BoundedCasesVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -147,31 +150,31 @@ where
 }
 
 /// Create a new bounded module name
-pub fn new_module_name() -> WrtResult<BoundedModuleName> {
+pub fn new_module_name() -> Result<BoundedModuleName> {
     let provider = FormatProvider::default();
     Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded module name from str
-pub fn bounded_module_from_str(s: &str) -> WrtResult<BoundedModuleName> {
+pub fn bounded_module_from_str(s: &str) -> Result<BoundedModuleName> {
     let provider = FormatProvider::default();
     Ok(BoundedString::from_str(s, provider)?)
 }
 
 /// Create a new bounded field name
-pub fn new_field_name() -> WrtResult<BoundedFieldName> {
+pub fn new_field_name() -> Result<BoundedFieldName> {
     let provider = FormatProvider::default();
     Ok(BoundedString::from_str_truncate("", provider)?)
 }
 
 /// Create a bounded field name from str
-pub fn bounded_field_from_str(s: &str) -> WrtResult<BoundedFieldName> {
+pub fn bounded_field_from_str(s: &str) -> Result<BoundedFieldName> {
     let provider = FormatProvider::default();
     Ok(BoundedString::from_str(s, provider)?)
 }
 
 /// Create a new bounded interface map
-pub fn new_interface_map<V>() -> WrtResult<BoundedInterfaceMap<V>>
+pub fn new_interface_map<V>() -> Result<BoundedInterfaceMap<V>>
 where
     V: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -186,7 +189,7 @@ where
 }
 
 /// Create a new bounded world map
-pub fn new_world_map<V>() -> WrtResult<BoundedWorldMap<V>>
+pub fn new_world_map<V>() -> Result<BoundedWorldMap<V>>
 where
     V: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes

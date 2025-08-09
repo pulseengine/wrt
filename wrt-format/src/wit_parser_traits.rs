@@ -4,9 +4,9 @@ use super::wit_parser_types::*;
 use wrt_foundation::{
     traits::{Checksummable, FromBytes, ToBytes, ReadStream, WriteStream},
     verification::Checksum,
-    Result as WrtResult,
     MemoryProvider, BoundedVec,
 };
+use wrt_error::Result;
 use wrt_error::{Error, ErrorCategory};
 use core::default::Default;
 
@@ -428,7 +428,7 @@ impl ToBytes for WitImport {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.item.to_bytes_with_provider(writer, provider)
     }
@@ -443,7 +443,7 @@ impl ToBytes for WitExport {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.item.to_bytes_with_provider(writer, provider)
     }
@@ -463,7 +463,7 @@ impl ToBytes for WitItem {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         match self {
             WitItem::Function(f) => {
                 writer.write_u8(0)?;
@@ -497,7 +497,7 @@ impl ToBytes for WitFunction {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.params.to_bytes_with_provider(writer, provider)?;
         self.results.to_bytes_with_provider(writer, provider)?;
@@ -514,7 +514,7 @@ impl ToBytes for WitParam {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.ty.to_bytes_with_provider(writer, provider)
     }
@@ -532,7 +532,7 @@ impl ToBytes for WitResult {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         match &self.name {
             Some(name) => {
                 writer.write_u8(1)?;
@@ -553,7 +553,7 @@ impl ToBytes for WitInstance {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.interface_name.to_bytes_with_provider(writer, provider)?;
         self.args.to_bytes_with_provider(writer, provider)
     }
@@ -568,7 +568,7 @@ impl ToBytes for WitInstanceArg {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.value.to_bytes_with_provider(writer, provider)
     }
@@ -586,7 +586,7 @@ impl ToBytes for WitValue {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         match self {
             WitValue::Type(t) => {
                 writer.write_u8(0)?;
@@ -609,7 +609,7 @@ impl ToBytes for WitTypeDef {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.ty.to_bytes_with_provider(writer, provider)?;
         writer.write_u8(if self.is_resource { 1 } else { 0 })
@@ -641,7 +641,7 @@ impl ToBytes for WitType {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         match self {
             WitType::Bool => writer.write_u8(0),
             WitType::U8 => writer.write_u8(1),
@@ -735,7 +735,7 @@ impl ToBytes for WitRecord {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.fields.to_bytes_with_provider(writer, provider)
     }
 }
@@ -749,7 +749,7 @@ impl ToBytes for WitRecordField {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.ty.to_bytes_with_provider(writer, provider)
     }
@@ -764,7 +764,7 @@ impl ToBytes for WitVariant {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.cases.to_bytes_with_provider(writer, provider)
     }
 }
@@ -781,7 +781,7 @@ impl ToBytes for WitVariantCase {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         match &self.ty {
             Some(t) => {
@@ -802,7 +802,7 @@ impl ToBytes for WitEnum {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.cases.to_bytes_with_provider(writer, provider)
     }
 }
@@ -816,7 +816,7 @@ impl ToBytes for WitFlags {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.flags.to_bytes_with_provider(writer, provider)
     }
 }
@@ -832,7 +832,7 @@ impl ToBytes for WitInterface {
         &self,
         writer: &mut WriteStream<'a>,
         provider: &P,
-    ) -> WrtResult<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         self.functions.to_bytes_with_provider(writer, provider)?;
         self.types.to_bytes_with_provider(writer, provider)
@@ -845,7 +845,7 @@ impl FromBytes for WitImport {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedString::from_bytes_with_provider(reader, provider)?;
         let item = WitItem::from_bytes_with_provider(reader, provider)?;
         Ok(Self { name, item })
@@ -856,7 +856,7 @@ impl FromBytes for WitExport {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedString::from_bytes_with_provider(reader, provider)?;
         let item = WitItem::from_bytes_with_provider(reader, provider)?;
         Ok(Self { name, item })
@@ -867,7 +867,7 @@ impl FromBytes for WitItem {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let tag = reader.read_u8()?;
         match tag {
             0 => Ok(WitItem::Function(WitFunction::from_bytes_with_provider(reader, provider)?)),
@@ -883,7 +883,7 @@ impl FromBytes for WitFunction {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedString::from_bytes_with_provider(reader, provider)?;
         let params = BoundedVec::from_bytes_with_provider(reader, provider)?;
         let results = BoundedVec::from_bytes_with_provider(reader, provider)?;
@@ -896,7 +896,7 @@ impl FromBytes for WitParam {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedStringSmall::from_bytes_with_provider(reader, provider)?;
         let ty = WitType::from_bytes_with_provider(reader, provider)?;
         Ok(Self { name, ty })
@@ -907,7 +907,7 @@ impl FromBytes for WitResult {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let has_name = reader.read_u8()? != 0;
         let name = if has_name {
             Some(WitBoundedStringSmall::from_bytes_with_provider(reader, provider)?)
@@ -923,7 +923,7 @@ impl FromBytes for WitInstance {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let interface_name = WitBoundedString::from_bytes_with_provider(reader, provider)?;
         let args = BoundedVec::from_bytes_with_provider(reader, provider)?;
         Ok(Self { interface_name, args })
@@ -934,7 +934,7 @@ impl FromBytes for WitInstanceArg {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedStringSmall::from_bytes_with_provider(reader, provider)?;
         let value = WitValue::from_bytes_with_provider(reader, provider)?;
         Ok(Self { name, value })
@@ -945,7 +945,7 @@ impl FromBytes for WitValue {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let tag = reader.read_u8()?;
         match tag {
             0 => Ok(WitValue::Type(WitType::from_bytes_with_provider(reader, provider)?)),
@@ -959,7 +959,7 @@ impl FromBytes for WitTypeDef {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedString::from_bytes_with_provider(reader, provider)?;
         let ty = WitType::from_bytes_with_provider(reader, provider)?;
         let is_resource = reader.read_u8()? != 0;
@@ -971,7 +971,7 @@ impl FromBytes for WitType {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let tag = reader.read_u8()?;
         match tag {
             0 => Ok(WitType::Bool),
@@ -1023,7 +1023,7 @@ impl FromBytes for WitRecord {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let fields = BoundedVec::from_bytes_with_provider(reader, provider)?;
         Ok(Self { fields })
     }
@@ -1033,7 +1033,7 @@ impl FromBytes for WitRecordField {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedStringSmall::from_bytes_with_provider(reader, provider)?;
         let ty = WitType::from_bytes_with_provider(reader, provider)?;
         Ok(Self { name, ty })
@@ -1044,7 +1044,7 @@ impl FromBytes for WitVariant {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let cases = BoundedVec::from_bytes_with_provider(reader, provider)?;
         Ok(Self { cases })
     }
@@ -1054,7 +1054,7 @@ impl FromBytes for WitVariantCase {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedStringSmall::from_bytes_with_provider(reader, provider)?;
         let has_ty = reader.read_u8()? != 0;
         let ty = if has_ty {
@@ -1070,7 +1070,7 @@ impl FromBytes for WitEnum {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let cases = BoundedVec::from_bytes_with_provider(reader, provider)?;
         Ok(Self { cases })
     }
@@ -1080,7 +1080,7 @@ impl FromBytes for WitFlags {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let flags = BoundedVec::from_bytes_with_provider(reader, provider)?;
         Ok(Self { flags })
     }
@@ -1090,7 +1090,7 @@ impl FromBytes for WitInterface {
     fn from_bytes_with_provider<'a, P: MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &P,
-    ) -> WrtResult<Self> {
+    ) -> Result<Self> {
         let name = WitBoundedString::from_bytes_with_provider(reader, provider)?;
         let functions = BoundedVec::from_bytes_with_provider(reader, provider)?;
         let types = BoundedVec::from_bytes_with_provider(reader, provider)?;

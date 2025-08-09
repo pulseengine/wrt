@@ -252,9 +252,9 @@ pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     extern crate alloc;
-    #[cfg(all(not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     use alloc::vec;
     #[cfg(feature = "std")]
     use std::vec;

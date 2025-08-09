@@ -11,7 +11,7 @@ use std::{
     fmt,
     vec::Vec,
 };
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use std::{
     boxed::Box,
     vec::Vec,

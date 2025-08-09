@@ -81,7 +81,7 @@ impl WitParser {
             let mut i = 0;
 
             while i < lines.len() {
-                let line = lines[i].trim);
+                let line = lines[i].trim();
                 
                 if line.is_empty() || line.starts_with("//") {
                     i += 1;
@@ -126,7 +126,7 @@ impl WitParser {
             let mut i = 0;
 
             while i < lines.len() {
-                let line = lines[i].trim);
+                let line = lines[i].trim();
                 
                 if line.is_empty() || line.starts_with("//") {
                     i += 1;
@@ -160,7 +160,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
-                ;
+                ));
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -177,7 +177,7 @@ impl WitParser {
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
                         BoundedString::from_str("Unsupported import type", self.provider.clone()).unwrap()
-                    ;
+                    ));
                 }
             };
 
@@ -193,7 +193,7 @@ impl WitParser {
             
             // Split whitespace manually for no_std
             let mut start = 0;
-            let bytes = line.as_bytes);
+            let bytes = line.as_bytes();
             
             for (i, &byte) in bytes.iter().enumerate() {
                 if byte.is_ascii_whitespace() {
@@ -202,7 +202,7 @@ impl WitParser {
                             if parts.push(part).is_err() {
                                 return Err(WitParseError::InvalidSyntax(
                                     BoundedString::from_str("Too many import parts", self.provider.clone()).unwrap()
-                                ;
+                                ));
                             }
                         }
                     }
@@ -220,7 +220,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
-                ;
+                ));
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -237,7 +237,7 @@ impl WitParser {
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
                         BoundedString::from_str("Unsupported import type", self.provider.clone()).unwrap()
-                    ;
+                    ));
                 }
             };
 
@@ -252,7 +252,7 @@ impl WitParser {
             if parts.len() < 3 {
                 return Err(WitParseError::InvalidSyntax(
                     BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
-                ;
+                ));
             }
 
             let name = BoundedString::from_str(parts[1], self.provider.clone())
@@ -269,7 +269,7 @@ impl WitParser {
                 _ => {
                     return Err(WitParseError::InvalidSyntax(
                         BoundedString::from_str("Unsupported export type", self.provider.clone()).unwrap()
-                    ;
+                    ));
                 }
             };
 

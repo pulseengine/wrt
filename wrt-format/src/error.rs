@@ -34,7 +34,7 @@ pub fn parse_error(message: &'static str) -> Error {
 /// Note: This leaks the string memory, so use sparingly
 #[cfg(feature = "std")]
 pub fn parse_error_dynamic(message: String) -> Error {
-    let leaked: &'static str = Box::leak(message.into_boxed_str);
+    let leaked: &'static str = Box::leak(message.into_boxed_str());
     Error::parse_error(leaked)
 }
 
@@ -52,7 +52,7 @@ pub fn validation_error(message: &'static str) -> Error {
 /// Note: This leaks the string memory, so use sparingly
 #[cfg(feature = "std")]
 pub fn validation_error_dynamic(message: String) -> Error {
-    let leaked: &'static str = Box::leak(message.into_boxed_str);
+    let leaked: &'static str = Box::leak(message.into_boxed_str());
     Error::validation_error(leaked)
 }
 

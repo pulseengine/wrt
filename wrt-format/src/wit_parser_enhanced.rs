@@ -1515,10 +1515,10 @@ interface environment {
         assert!(result.is_ok());
         
         let doc = result.unwrap();
-        assert!(doc.package.is_some();
+        assert!(doc.package.is_some());
         let pkg = doc.package.unwrap();
-        assert_eq!(pkg.namespace.name.as_str().unwrap(), "wasi";
-        assert_eq!(pkg.name.name.as_str().unwrap(), "cli";
+        assert_eq!(pkg.namespace.name.as_str().unwrap(), "wasi");
+        assert_eq!(pkg.name.name.as_str().unwrap(), "cli");
     }
     
     #[test]

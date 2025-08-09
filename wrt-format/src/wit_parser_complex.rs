@@ -570,10 +570,10 @@ mod tests {
     fn test_parse_basic_types() {
         let mut parser = WitParser::new(DefaultWitProvider::default());
         
-        assert_eq!(parser.parse_type("bool").unwrap(), WitType::Bool;
-        assert_eq!(parser.parse_type("u32").unwrap(), WitType::U32;
-        assert_eq!(parser.parse_type("string").unwrap(), WitType::String;
-        assert_eq!(parser.parse_type("f64").unwrap(), WitType::F64;
+        assert_eq!(parser.parse_type("bool").unwrap(), WitType::Bool);
+        assert_eq!(parser.parse_type("u32").unwrap(), WitType::U32);
+        assert_eq!(parser.parse_type("string").unwrap(), WitType::String);
+        assert_eq!(parser.parse_type("f64").unwrap(), WitType::F64);
     }
 
     #[cfg(feature = "std")]
@@ -623,11 +623,11 @@ mod tests {
             }
         "#;
 
-        let world = parser.parse_world(source;
+        let world = parser.parse_world(source);
         assert!(world.is_ok());
         
         let world = world.unwrap();
-        assert_eq!(world.name.as_str(), "test-world";
+        assert_eq!(world.name.as_str(), "test-world");
         assert_eq!(world.imports.len(), 1);
         assert_eq!(world.exports.len(), 1);
     }
@@ -637,11 +637,11 @@ mod tests {
     fn test_convert_to_valtype() {
         let parser = WitParser::new(DefaultWitProvider::default());
         
-        assert_eq!(parser.convert_to_valtype(&WitType::Bool).unwrap(), crate::types::ValueType::I32;
-        assert_eq!(parser.convert_to_valtype(&WitType::U32).unwrap(), crate::types::ValueType::I32;
-        assert_eq!(parser.convert_to_valtype(&WitType::String).unwrap(), crate::types::ValueType::I32;
+        assert_eq!(parser.convert_to_valtype(&WitType::Bool).unwrap(), crate::types::ValueType::I32);
+        assert_eq!(parser.convert_to_valtype(&WitType::U32).unwrap(), crate::types::ValueType::I32);
+        assert_eq!(parser.convert_to_valtype(&WitType::String).unwrap(), crate::types::ValueType::I32);
         
-        let list_wit = WitType::List(Box::new(WitType::U32;
+        let list_wit = WitType::List(Box::new(WitType::U32));
         let list_val = parser.convert_to_valtype(&list_wit).unwrap();
         assert_eq!(list_val, crate::types::ValueType::I32); // Lists are represented as pointers
     }

@@ -104,7 +104,7 @@ pub use crate::{WasmString, WasmVec};
 
 /// Create a SafeSlice from a byte slice
 #[cfg(feature = "safety")]
-pub fn safe_slice(data: &[u8]) -> wrt_foundation::Result<wrt_foundation::safe_memory::SafeSlice<'_>> {
+pub fn safe_slice(data: &[u8]) -> wrt_error::Result<wrt_foundation::safe_memory::SafeSlice<'_>> {
     wrt_foundation::safe_memory::SafeSlice::new(data)
 }
 
@@ -113,7 +113,7 @@ pub fn safe_slice(data: &[u8]) -> wrt_foundation::Result<wrt_foundation::safe_me
 pub fn safe_slice_with_verification(
     data: &[u8],
     level: wrt_foundation::verification::VerificationLevel,
-) -> wrt_foundation::Result<wrt_foundation::safe_memory::SafeSlice<'_>> {
+) -> wrt_error::Result<wrt_foundation::safe_memory::SafeSlice<'_>> {
     wrt_foundation::safe_memory::SafeSlice::with_verification_level(data, level)
 }
 
@@ -138,12 +138,12 @@ pub fn memory_provider_with_capacity(capacity: usize) -> wrt_foundation::safe_me
 
 // Factory function for creating providers using capability system
 #[cfg(not(feature = "std"))]
-pub fn create_format_provider<const N: usize>() -> wrt_foundation::WrtResult<wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::NoStdProvider<N>>> {
+pub fn create_format_provider<const N: usize>() -> wrt_error::Result<wrt_foundation::capabilities::CapabilityAwareProvider<wrt_foundation::NoStdProvider<N>>> {
     use wrt_foundation::{
         capability_context, safe_capability_alloc,
         CrateId
     };
-    let context: wrt_foundation::WrtResult<_> = capability_context!(dynamic(CrateId::Format, N;
+    let context: wrt_error::Result<_> = capability_context!(dynamic(CrateId::Format, N));
     let context = context?;
     safe_capability_alloc!(context, CrateId::Format, N)
 }

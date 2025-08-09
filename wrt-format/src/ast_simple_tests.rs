@@ -17,11 +17,11 @@ mod tests {
         let span2 = SourceSpan::new(10, 20, 0);
 
         assert_eq!(span1.start, 0);
-        assert_eq!(span1.end, 10;
+        assert_eq!(span1.end, 10);
         assert_eq!(span1.file_id, 0);
 
-        assert_eq!(span2.start, 10;
-        assert_eq!(span2.end, 20;
+        assert_eq!(span2.start, 10);
+        assert_eq!(span2.end, 20);
         assert_eq!(span2.file_id, 0);
     }
 
@@ -30,15 +30,15 @@ mod tests {
         let span1 = SourceSpan::new(0, 10, 0);
         let span2 = SourceSpan::new(10, 20, 0);
 
-        let merged = span1.merge(&span2;
+        let merged = span1.merge(&span2);
         assert_eq!(merged.start, 0);
-        assert_eq!(merged.end, 20;
+        assert_eq!(merged.end, 20);
         assert_eq!(merged.file_id, 0);
     }
 
     #[test]
     fn test_source_span_empty() {
-        let empty = SourceSpan::empty);
+        let empty = SourceSpan::empty();
         assert_eq!(empty.start, 0);
         assert_eq!(empty.end, 0);
         assert_eq!(empty.file_id, 0);
@@ -63,9 +63,9 @@ mod tests {
             span,
         };
 
-        assert_eq!(string_type.kind, PrimitiveKind::String;
-        assert_eq!(u32_type.kind, PrimitiveKind::U32;
-        assert_eq!(bool_type.kind, PrimitiveKind::Bool;
+        assert_eq!(string_type.kind, PrimitiveKind::String);
+        assert_eq!(u32_type.kind, PrimitiveKind::U32);
+        assert_eq!(bool_type.kind, PrimitiveKind::Bool);
     }
 
     #[test]
@@ -77,12 +77,12 @@ mod tests {
             span,
         };
 
-        let type_expr = TypeExpr::Primitive(string_type;
+        let type_expr = TypeExpr::Primitive(string_type);
 
         // Verify we can pattern match on the type expression
         match type_expr {
             TypeExpr::Primitive(prim) => {
-                assert_eq!(prim.kind, PrimitiveKind::String;
+                assert_eq!(prim.kind, PrimitiveKind::String);
             },
             _ => panic!("Expected primitive type expression"),
         }
@@ -105,10 +105,10 @@ mod tests {
         }
 
         // Test Single result
-        let single_result = FunctionResults::Single(TypeExpr::Primitive(u32_type;
+        let single_result = FunctionResults::Single(TypeExpr::Primitive(u32_type));
         match single_result {
             FunctionResults::Single(TypeExpr::Primitive(prim)) => {
-                assert_eq!(prim.kind, PrimitiveKind::U32;
+                assert_eq!(prim.kind, PrimitiveKind::U32);
             },
             _ => panic!("Expected single primitive result"),
         }
@@ -129,8 +129,8 @@ mod tests {
         };
 
         assert_eq!(document.span.start, 0);
-        assert_eq!(document.span.end, 100;
-        assert!(document.package.is_none();
+        assert_eq!(document.span.end, 100);
+        assert!(document.package.is_none());
 
         #[cfg(feature = "std")]
         {
@@ -162,7 +162,7 @@ mod tests {
         for &kind in &kinds {
             let span = SourceSpan::new(0, 5, 0);
             let prim_type = PrimitiveType { kind, span };
-            assert_eq!(prim_type.kind, kind;
+            assert_eq!(prim_type.kind, kind);
         }
     }
 
@@ -181,7 +181,7 @@ mod tests {
 
         assert!(!function.is_async);
         assert_eq!(function.span.start, 0);
-        assert_eq!(function.span.end, 50;
+        assert_eq!(function.span.end, 50);
 
         #[cfg(feature = "std")]
         assert!(function.params.is_empty());
@@ -204,7 +204,7 @@ mod tests {
         assert!(top_level_items.is_empty());
 
         // Test that default implementations work
-        let function_results = FunctionResults::default());
+        let function_results = FunctionResults::default();
         match function_results {
             FunctionResults::None => {}, // Expected default
             _ => panic!("Expected None as default for FunctionResults"),

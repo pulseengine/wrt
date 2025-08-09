@@ -1195,7 +1195,7 @@ pub mod with_alloc {
         result.extend_from_slice(&write_leb128_u32(length));
 
         // Write the string bytes
-        result.extend_from_slice(value.as_bytes);
+        result.extend_from_slice(value.as_bytes());
 
         result
     }

@@ -33,8 +33,8 @@ impl SimpleBoundedString {
         }
         
         let mut result = Self::new();
-        let bytes = s.as_bytes);
-        result.data[..bytes.len()].copy_from_slice(bytes;
+        let bytes = s.as_bytes();
+        result.data[..bytes.len()].copy_from_slice(bytes);
         result.len = bytes.len();
         Some(result)
     }
@@ -158,9 +158,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
     /// Parse WIT text input (simplified)
     pub fn parse(&mut self, input: &str) -> Result<()> {
         // Store input in fixed buffer
-        let input_bytes = input.as_bytes);
-        let copy_len = core::cmp::min(input_bytes.len(), self.input_buffer.len();
-        self.input_buffer[..copy_len].copy_from_slice(&input_bytes[..copy_len];
+        let input_bytes = input.as_bytes();
+        let copy_len = core::cmp::min(input_bytes.len(), self.input_buffer.len());
+        self.input_buffer[..copy_len].copy_from_slice(&input_bytes[..copy_len]);
         self.input_len = copy_len;
         
         // Reset parser state
@@ -226,7 +226,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
                                 
                                 self.add_world(name)?;
                                 // Skip to end of line or next keyword
-                                self.skip_to_next_keyword(&mut position;
+                                self.skip_to_next_keyword(&mut position);
                             }
                         }
                         "interface" => {
@@ -242,7 +242,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
                                 
                                 self.add_interface(name)?;
                                 // Skip to end of line or next keyword
-                                self.skip_to_next_keyword(&mut position;
+                                self.skip_to_next_keyword(&mut position);
                             }
                         }
                         _ => {
@@ -321,7 +321,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
         }
         
         #[cfg(all(test, feature = "std"))]
-        eprintln!("[DEBUG] read_word: read from {} to {} (length {})", start, *position, *position - start));
+        eprintln!("[DEBUG] read_word: read from {} to {} (length {})", start, *position, *position - start);
         
         if *position > start {
             // Convert bytes to bounded string (ASCII safe)
@@ -339,7 +339,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
                     }
                     None => {
                         #[cfg(all(test, feature = "std"))]
-                        eprintln!("[DEBUG] read_word: failed to create SimpleBoundedString (too long?)"));
+                        eprintln!("[DEBUG] read_word: failed to create SimpleBoundedString (too long?)");
                         None
                     }
                 }
@@ -370,7 +370,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
             export_count: 0,
         };
         
-        self.worlds[self.world_count] = Some(world;
+        self.worlds[self.world_count] = Some(world);
         self.world_count += 1;
         
         Ok(())
@@ -390,7 +390,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
             function_count: 0,
         };
         
-        self.interfaces[self.interface_count] = Some(interface;
+        self.interfaces[self.interface_count] = Some(interface);
         self.interface_count += 1;
         
         Ok(())
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn test_bounded_wit_parser_creation() {
         let provider = wrt_foundation::safe_managed_alloc!(8192, wrt_foundation::budget_aware_provider::CrateId::Format).unwrap();
-        let parser = BoundedWitParser::new(provider;
+        let parser = BoundedWitParser::new(provider);
         assert!(parser.is_ok());
 
         let parser = parser.unwrap();
@@ -473,15 +473,17 @@ mod tests {
             }
         "#;
 
-        let result = parse_wit_bounded(wit_text;
+        let result = parse_wit_bounded(wit_text);
         assert!(result.is_ok());
+
+
 
         let parser = result.unwrap();
         assert_eq!(parser.world_count(), 1);
 
-        let mut worlds = parser.worlds);
+        let mut worlds = parser.worlds();
         let world = worlds.next().unwrap();
-        assert_eq!(world.name.as_str().unwrap(), "test-world";
+        assert_eq!(world.name.as_str().unwrap(), "test-world");
     }
 
     #[test]
@@ -492,15 +494,15 @@ mod tests {
             }
         "#;
 
-        let result = parse_wit_bounded(wit_text;
+        let result = parse_wit_bounded(wit_text);
         assert!(result.is_ok());
 
         let parser = result.unwrap();
         assert_eq!(parser.interface_count(), 1);
 
-        let mut interfaces = parser.interfaces);
+        let mut interfaces = parser.interfaces();
         let interface = interfaces.next().unwrap();
-        assert_eq!(interface.name.as_str().unwrap(), "test-interface";
+        assert_eq!(interface.name.as_str().unwrap(), "test-interface");
     }
 
     #[test]
@@ -512,12 +514,12 @@ mod tests {
             interface interface2 {}
         "#;
 
-        let result = parse_wit_bounded(wit_text;
+        let result = parse_wit_bounded(wit_text);
         assert!(result.is_ok());
 
         let parser = result.unwrap();
-        assert_eq!(parser.world_count(), 2;
-        assert_eq!(parser.interface_count(), 2;
+        assert_eq!(parser.world_count(), 2);
+        assert_eq!(parser.interface_count(), 2);
     }
 
     #[test]
@@ -529,7 +531,7 @@ mod tests {
         // Create input with many worlds (should hit limit)
         let large_input = "world world0 {} world world1 {} world world2 {} world world3 {} world world4 {} world world5 {}";
         
-        let result = parser.parse(large_input;
+        let result = parser.parse(large_input);
         assert!(result.is_ok());
         
         // Should have parsed up to the limit
@@ -539,7 +541,7 @@ mod tests {
     #[test]
     fn test_error_handling() {
         let invalid_wit = "invalid wit syntax {{{";
-        let result = parse_wit_bounded(invalid_wit;
+        let result = parse_wit_bounded(invalid_wit);
         
         // Should handle gracefully (may parse partially or succeed with no results)
         assert!(result.is_ok());
@@ -550,7 +552,7 @@ mod tests {
 
     #[test]
     fn test_empty_input() {
-        let result = parse_wit_bounded("";
+        let result = parse_wit_bounded("");
         assert!(result.is_ok());
 
         let parser = result.unwrap();
@@ -562,15 +564,15 @@ mod tests {
     fn test_whitespace_handling() {
         let wit_text = "   world   test-world   {}   ";
 
-        let result = parse_wit_bounded(wit_text;
+        let result = parse_wit_bounded(wit_text);
         assert!(result.is_ok());
 
         let parser = result.unwrap();
         assert_eq!(parser.world_count(), 1);
 
-        let mut worlds = parser.worlds);
+        let mut worlds = parser.worlds();
         let world = worlds.next().unwrap();
-        assert_eq!(world.name.as_str().unwrap(), "test-world";
+        assert_eq!(world.name.as_str().unwrap(), "test-world");
     }
     
     #[test]
@@ -578,15 +580,15 @@ mod tests {
         // Very simple test case
         let wit_text = "world foo {}";
         
-        let result = parse_wit_bounded(wit_text;
+        let result = parse_wit_bounded(wit_text);
         assert!(result.is_ok());
         
         let parser = result.unwrap();
         assert_eq!(parser.world_count(), 1);
         
-        let mut worlds = parser.worlds);
+        let mut worlds = parser.worlds();
         let world = worlds.next().unwrap();
-        assert_eq!(world.name.as_str().unwrap(), "foo";
+        assert_eq!(world.name.as_str().unwrap(), "foo");
     }
     
     #[test]
@@ -594,14 +596,14 @@ mod tests {
         // Very simple test case
         let wit_text = "interface bar {}";
         
-        let result = parse_wit_bounded(wit_text;
+        let result = parse_wit_bounded(wit_text);
         assert!(result.is_ok());
         
         let parser = result.unwrap();
         assert_eq!(parser.interface_count(), 1);
         
-        let mut interfaces = parser.interfaces);
+        let mut interfaces = parser.interfaces();
         let interface = interfaces.next().unwrap();
-        assert_eq!(interface.name.as_str().unwrap(), "bar";
+        assert_eq!(interface.name.as_str().unwrap(), "bar");
     }
 }
