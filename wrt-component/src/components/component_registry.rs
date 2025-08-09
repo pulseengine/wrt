@@ -8,7 +8,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use wrt_error::Result;
-use crate::{components::component::Component};
+
+use crate::components::component::Component;
 
 /// Registry for WebAssembly components
 #[derive(Debug, Default)]
@@ -20,12 +21,14 @@ pub struct ComponentRegistry {
 impl ComponentRegistry {
     /// Create a new empty registry
     pub fn new() -> Self {
-        Self { components: HashMap::new() }
+        Self {
+            components: HashMap::new(),
+        }
     }
 
     /// Register a component by name
     pub fn register(&mut self, name: &str, component: Arc<Component>) -> Result<()> {
-        self.components.insert(name.to_string(), component;
+        self.components.insert(name.to_string(), component);
         Ok(())
     }
 

@@ -4,30 +4,54 @@
 //! including import resolution, export extraction, and instance isolation.
 
 #[cfg(not(feature = "std"))]
-use core::{fmt, mem};
+use core::{
+    fmt,
+    mem,
+};
+#[cfg(all(feature = "std", not(feature = "safety-critical")))]
+use std::{
+    boxed::Box,
+    collections::BTreeMap,
+    string::String,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{fmt, mem};
+use std::{
+    fmt,
+    mem,
+};
 
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtHashMap, WrtVec, CrateId};
-#[cfg(all(feature = "std", not(feature = "safety-critical")))]
-use std::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
-
+use wrt_foundation::allocator::{
+    CrateId,
+    WrtHashMap,
+    WrtVec,
+};
 use wrt_foundation::{
-    bounded::BoundedVec, bounded::BoundedString, prelude::*,
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     budget_aware_provider::CrateId,
+    prelude::*,
     safe_managed_alloc,
 };
-use crate::prelude::WrtComponentType;
 
 use crate::{
     canonical_abi::canonical::CanonicalABI,
-    components::component::{Component, ComponentInstance},
+    components::component::{
+        Component,
+        ComponentInstance,
+    },
     execution_engine::ComponentExecutionEngine,
     export::Export,
     import::Import,
+    prelude::WrtComponentType,
     resources::resource_lifecycle::ResourceLifecycleManager,
-    types::{ValType, Value},
+    types::{
+        ValType,
+        Value,
+    },
     WrtResult,
 };
 
@@ -59,11 +83,11 @@ pub enum ImportValue {
 #[derive(Debug, Clone)]
 pub struct FunctionImport {
     /// Function signature
-    pub signature: WrtComponentType,
+    pub signature:      WrtComponentType,
     /// Function implementation
     #[cfg(feature = "std")]
     pub implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub implementation: fn(&[Value]) -> WrtResult<Value>,
 }
 
@@ -72,11 +96,15 @@ pub struct FunctionImport {
 pub struct InstanceImport {
     /// Instance exports
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub exports: WrtHashMap<String, ExportValue, {CrateId::Component as u8}, 256>,
+    pub exports: WrtHashMap<String, ExportValue, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub exports: BTreeMap<String, ExportValue>,
     #[cfg(not(feature = "std"))]
-    pub exports: BoundedVec<(BoundedString<64, InstantiationProvider>, ExportValue), MAX_EXPORTS, InstantiationProvider>,
+    pub exports: BoundedVec<
+        (BoundedString<64, InstantiationProvider>, ExportValue),
+        MAX_EXPORTS,
+        InstantiationProvider,
+    >,
 }
 
 /// Export value from an instance
@@ -98,18 +126,22 @@ pub struct FunctionExport {
     /// Function signature
     pub signature: WrtComponentType,
     /// Function index in the instance
-    pub index: u32,
+    pub index:     u32,
 }
 
 /// Import values provided during instantiation
 pub struct ImportValues {
     /// Map of import names to values
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    imports: WrtHashMap<String, ImportValue, {CrateId::Component as u8}, 256>,
+    imports: WrtHashMap<String, ImportValue, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     imports: BTreeMap<String, ImportValue>,
     #[cfg(not(feature = "std"))]
-    imports: BoundedVec<(BoundedString<64, InstantiationProvider>, ImportValue), MAX_IMPORTS, InstantiationProvider>,
+    imports: BoundedVec<
+        (BoundedString<64, InstantiationProvider>, ImportValue),
+        MAX_IMPORTS,
+        InstantiationProvider,
+    >,
 }
 
 impl ImportValues {
@@ -131,22 +163,26 @@ impl ImportValues {
     /// Add an import value
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
-        self.imports.insert(name, value).map_err(|_| {
-            wrt_error::Error::resource_exhausted("Too many imports (limit: 256)")
-        })?;
+        self.imports
+            .insert(name, value)
+            .map_err(|_| wrt_error::Error::resource_exhausted("Too many imports (limit: 256)"))?;
         Ok(())
     }
-    
+
     /// Add an import value
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub fn add(&mut self, name: String, value: ImportValue) -> WrtResult<()> {
-        self.imports.insert(name, value;
+        self.imports.insert(name, value);
         Ok(())
     }
 
     /// Add an import value (no_std version)
-    #[cfg(not(any(feature = "std", )))]
-    pub fn add(&mut self, name: BoundedString<64, InstantiationProvider>, value: ImportValue) -> WrtResult<()> {
+    #[cfg(not(any(feature = "std",)))]
+    pub fn add(
+        &mut self,
+        name: BoundedString<64, InstantiationProvider>,
+        value: ImportValue,
+    ) -> WrtResult<()> {
         self.imports
             .push((name, value))
             .map_err(|_| wrt_error::Error::resource_exhausted("Too many imports"))
@@ -157,7 +193,7 @@ impl ImportValues {
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
         self.imports.get(name)
     }
-    
+
     /// Get an import value by name
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
@@ -165,7 +201,7 @@ impl ImportValues {
     }
 
     /// Get an import value by name (no_std version)
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
         self.imports.iter().find(|(n, _)| n.as_str() == name).map(|(_, v)| v)
     }
@@ -183,7 +219,7 @@ impl Default for ImportValues {
                 #[cfg(not(feature = "std"))]
                 imports: {
                     // Use fallback provider only in default construction
-                    let provider = InstantiationProvider::default());
+                    let provider = InstantiationProvider::default();
                     BoundedVec::new(provider).unwrap()
                 },
             }
@@ -194,20 +230,20 @@ impl Default for ImportValues {
 /// Component instantiation context
 pub struct InstantiationContext {
     /// Canonical ABI processor
-    pub canonical_abi: CanonicalAbi,
+    pub canonical_abi:    CanonicalAbi,
     /// Resource lifecycle manager
     pub resource_manager: ResourceLifecycleManager,
     /// Execution engine
     pub execution_engine: ComponentExecutionEngine,
     /// Instance counter for unique IDs
-    next_instance_id: u32,
+    next_instance_id:     u32,
 }
 
 impl InstantiationContext {
     /// Create a new instantiation context
     pub fn new() -> Self {
         Self {
-            canonical_abi: CanonicalAbi::new(),
+            canonical_abi:    CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             execution_engine: ComponentExecutionEngine::new(),
             next_instance_id: 0,
@@ -237,7 +273,7 @@ impl Component {
         context: &mut InstantiationContext,
     ) -> WrtResult<ComponentInstance> {
         // Generate unique instance ID
-        let instance_id = context.next_instance_id);
+        let instance_id = context.next_instance_id();
 
         // Step 1: Validate imports match component requirements
         self.validate_imports(imports)?;
@@ -308,19 +344,23 @@ impl Component {
                     Some(value) => {
                         // Validate import type matches
                         self.validate_import_type(import, value)?;
-                    }
+                    },
                     None => {
-                        return Err(wrt_error::Error::validation_invalid_input("Missing required import";
-                    }
+                        return Err(wrt_error::Error::validation_invalid_input(
+                            "Missing required import",
+                        ));
+                    },
                 }
             }
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             // In no_std, we have limited validation
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
-                return Err(wrt_error::Error::validation_invalid_input("Missing required imports";
+                return Err(wrt_error::Error::validation_invalid_input(
+                    "Missing required imports",
+                ));
             }
         }
 
@@ -333,32 +373,42 @@ impl Component {
             (crate::import::ImportType::Function(expected), ImportValue::Function(actual)) => {
                 // Check function signature compatibility
                 if !self.is_function_compatible(expected, &actual.signature) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Function import type mismatch";
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error(
+                        "Function import type mismatch",
+                    ));
                 }
-            }
+            },
             (crate::import::ImportType::Value(expected), ImportValue::Value(actual)) => {
                 // Check value type compatibility
                 if !self.is_value_compatible(expected, actual) {
-                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Value import type mismatch";
+                    return Err(wrt_foundation::wrt_error::Error::type_mismatch_error(
+                        "Value import type mismatch",
+                    ));
                 }
-            }
+            },
             (crate::import::ImportType::Instance(_), ImportValue::Instance(_)) => {
                 // Instance validation is more complex, simplified for now
                 // TODO: Validate instance exports match expected interface
-            }
+            },
             (crate::import::ImportType::Type(_), ImportValue::Type(_)) => {
                 // Type validation
                 // TODO: Implement type equality checking
-            }
+            },
             _ => {
-                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error("Import kind mismatch";
-            }
+                return Err(wrt_foundation::wrt_error::Error::type_mismatch_error(
+                    "Import kind mismatch",
+                ));
+            },
         }
         Ok(())
     }
 
     /// Check if function types are compatible
-    fn is_function_compatible(&self, expected: &WrtComponentType, actual: &WrtComponentType) -> bool {
+    fn is_function_compatible(
+        &self,
+        expected: &WrtComponentType,
+        actual: &WrtComponentType,
+    ) -> bool {
         // Check basic type equality for now
         // In a full implementation, this would check subtyping rules
         match (expected, actual) {
@@ -380,7 +430,9 @@ impl Component {
 
     /// Create resource tables for the instance with budget enforcement
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    fn create_resource_tables(&self) -> WrtResult<WrtVec<ResourceTable, {CrateId::Component as u8}, 16>> {
+    fn create_resource_tables(
+        &self,
+    ) -> WrtResult<WrtVec<ResourceTable, { CrateId::Component as u8 }, 16>> {
         let mut tables = WrtVec::new();
 
         // Create resource tables based on component types
@@ -395,7 +447,7 @@ impl Component {
 
         Ok(tables)
     }
-    
+
     /// Create resource tables for the instance
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
@@ -412,20 +464,24 @@ impl Component {
         Ok(tables)
     }
 
-    #[cfg(not(any(feature = "std", )))]
-    fn create_resource_tables(&self) -> WrtResult<BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>> {
-        use crate::bounded_component_infra::ComponentProvider;
+    #[cfg(not(any(feature = "std",)))]
+    fn create_resource_tables(
+        &self,
+    ) -> WrtResult<BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>>
+    {
         use wrt_foundation::safe_managed_alloc;
-        
+
+        use crate::bounded_component_infra::ComponentProvider;
+
         let provider = safe_managed_alloc!(131072, CrateId::Component)?;
         let mut tables = BoundedVec::new(provider)?;
 
         // Create resource tables based on component types
         for _type_id in 0..self.types.len().min(16) {
             let table = ResourceTable::new()?;
-            tables.push(table).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many resource tables")
-            })?;
+            tables
+                .push(table)
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many resource tables"))?;
         }
 
         Ok(tables)
@@ -437,7 +493,7 @@ impl Component {
         &self,
         imports: &ImportValues,
         context: &mut InstantiationContext,
-    ) -> WrtResult<WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>> {
+    ) -> WrtResult<WrtVec<ResolvedImport, { CrateId::Component as u8 }, 256>> {
         let mut resolved = WrtVec::new();
 
         for import in &self.imports {
@@ -451,7 +507,7 @@ impl Component {
 
         Ok(resolved)
     }
-    
+
     /// Resolve imports into concrete values
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     fn resolve_imports(
@@ -471,7 +527,7 @@ impl Component {
         Ok(resolved)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     fn resolve_imports(
         &self,
         imports: &ImportValues,
@@ -511,15 +567,18 @@ impl Component {
                     // Create a host function wrapper
                     let implementation = func.implementation.clone();
                     context.execution_engine.register_host_function(Box::new(
-                        HostFunctionWrapper { signature: func.signature.clone(), implementation },
+                        HostFunctionWrapper {
+                            signature: func.signature.clone(),
+                            implementation,
+                        },
                     ))?
                 };
-                #[cfg(not(any(feature = "std", )))]
+                #[cfg(not(any(feature = "std",)))]
                 let func_index =
                     context.execution_engine.register_host_function(func.implementation)?;
 
                 Ok(ResolvedImport::Function(func_index))
-            }
+            },
             ImportValue::Value(val) => Ok(ResolvedImport::Value(val.clone())),
             ImportValue::Instance(inst) => Ok(ResolvedImport::Instance(inst.clone())),
             ImportValue::Type(ty) => Ok(ResolvedImport::Type(ty.clone())),
@@ -532,13 +591,15 @@ impl Component {
         &self,
         resolved_imports: &[ResolvedImport],
         context: &mut InstantiationContext,
-    ) -> WrtResult<WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>> {
+    ) -> WrtResult<WrtVec<ModuleInstance, { CrateId::Component as u8 }, 64>> {
         let mut instances = WrtVec::new();
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
             // Create module instance
-            let instance = ModuleInstance { module_index: module_index as u32 };
+            let instance = ModuleInstance {
+                module_index: module_index as u32,
+            };
             instances.push(instance).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many module instances (limit: 64)")
             })?;
@@ -546,7 +607,7 @@ impl Component {
 
         Ok(instances)
     }
-    
+
     /// Initialize embedded modules
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     fn initialize_modules(
@@ -559,14 +620,16 @@ impl Component {
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
             // Create module instance
-            let instance = ModuleInstance { module_index: module_index as u32 };
+            let instance = ModuleInstance {
+                module_index: module_index as u32,
+            };
             instances.push(instance);
         }
 
         Ok(instances)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     fn initialize_modules(
         &self,
         resolved_imports: &BoundedVec<ResolvedImport, MAX_IMPORTS, InstantiationProvider>,
@@ -577,10 +640,12 @@ impl Component {
 
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
-            let instance = ModuleInstance { module_index: module_index as u32 };
-            instances.push(instance).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many module instances")
-            })?;
+            let instance = ModuleInstance {
+                module_index: module_index as u32,
+            };
+            instances
+                .push(instance)
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many module instances"))?;
         }
 
         Ok(instances)
@@ -592,7 +657,7 @@ impl Component {
         &self,
         module_instances: &[ModuleInstance],
         context: &mut InstantiationContext,
-    ) -> WrtResult<WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>> {
+    ) -> WrtResult<WrtVec<ResolvedExport, { CrateId::Component as u8 }, 256>> {
         let mut exports = WrtVec::new();
 
         for export in &self.exports {
@@ -602,34 +667,34 @@ impl Component {
                     // Create function export
                     let func_export = FunctionExport {
                         signature: WrtComponentType::Unit, // TODO: Get actual signature
-                        index: *func_idx,
+                        index:     *func_idx,
                     };
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Function(func_export),
                     }
-                }
+                },
                 crate::export::ExportKind::Value(val_idx) => {
                     // Create value export
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Value(WrtComponentValue::Unit),
                     }
-                }
+                },
                 crate::export::ExportKind::Type(type_idx) => {
                     // Create type export
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Type(WrtComponentType::Unit),
                     }
-                }
+                },
                 crate::export::ExportKind::Instance(inst_idx) => {
                     // Create instance export - simplified
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Value(WrtComponentValue::Unit),
                     }
-                }
+                },
             };
             exports.push(resolved).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Too many exports (limit: 256)")
@@ -638,7 +703,7 @@ impl Component {
 
         Ok(exports)
     }
-    
+
     /// Extract exports from the instance
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     fn extract_exports(
@@ -655,34 +720,34 @@ impl Component {
                     // Create function export
                     let func_export = FunctionExport {
                         signature: WrtComponentType::Unit, // TODO: Get actual signature
-                        index: *func_idx,
+                        index:     *func_idx,
                     };
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Function(func_export),
                     }
-                }
+                },
                 crate::export::ExportKind::Value(val_idx) => {
                     // Create value export
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Value(WrtComponentValue::Unit),
                     }
-                }
+                },
                 crate::export::ExportKind::Type(type_idx) => {
                     // Create type export
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Type(WrtComponentType::Unit),
                     }
-                }
+                },
                 crate::export::ExportKind::Instance(inst_idx) => {
                     // Create instance export - simplified
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Value(WrtComponentValue::Unit),
                     }
-                }
+                },
             };
             exports.push(resolved);
         }
@@ -690,7 +755,7 @@ impl Component {
         Ok(exports)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     fn extract_exports(
         &self,
         module_instances: &BoundedVec<ModuleInstance, MAX_INSTANCES, InstantiationProvider>,
@@ -702,29 +767,31 @@ impl Component {
         for export in &self.exports {
             let resolved = match &export.kind {
                 crate::export::ExportKind::Func(func_idx) => {
-                    let func_export =
-                        FunctionExport { signature: WrtComponentType::Unit, index: *func_idx };
+                    let func_export = FunctionExport {
+                        signature: WrtComponentType::Unit,
+                        index:     *func_idx,
+                    };
                     ResolvedExport {
-                        name: export.name.clone(),
+                        name:  export.name.clone(),
                         value: ExportValue::Function(func_export),
                     }
-                }
+                },
                 crate::export::ExportKind::Value(_) => ResolvedExport {
-                    name: export.name.clone(),
+                    name:  export.name.clone(),
                     value: ExportValue::Value(WrtComponentValue::Unit),
                 },
                 crate::export::ExportKind::Type(_) => ResolvedExport {
-                    name: export.name.clone(),
+                    name:  export.name.clone(),
                     value: ExportValue::Type(WrtComponentType::Unit),
                 },
                 crate::export::ExportKind::Instance(_) => ResolvedExport {
-                    name: export.name.clone(),
+                    name:  export.name.clone(),
                     value: ExportValue::Value(WrtComponentValue::Unit),
                 },
             };
-            exports.push(resolved).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many exports")
-            })?;
+            exports
+                .push(resolved)
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many exports"))?;
         }
 
         Ok(exports)
@@ -744,9 +811,9 @@ pub enum ResolvedImport {
 #[derive(Debug, Clone)]
 pub struct ResolvedExport {
     #[cfg(feature = "std")]
-    pub name: String,
-    #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, InstantiationProvider>,
+    pub name:  String,
+    #[cfg(not(any(feature = "std",)))]
+    pub name:  BoundedString<64, InstantiationProvider>,
     pub value: ExportValue,
 }
 
@@ -767,7 +834,7 @@ pub struct ModuleInstance {
 /// Host function wrapper for the execution engine
 #[cfg(feature = "std")]
 struct HostFunctionWrapper {
-    signature: WrtComponentType,
+    signature:      WrtComponentType,
     implementation: Box<dyn Fn(&[Value]) -> WrtResult<Value>>,
 }
 
@@ -793,24 +860,24 @@ mod tests {
         #[cfg(feature = "std")]
         {
             let func = FunctionImport {
-                signature: WrtComponentType::Unit,
+                signature:      WrtComponentType::Unit,
                 implementation: Box::new(|_args| Ok(Value::U32(42))),
             };
             imports.add("test_func".to_string(), ImportValue::Function(func)).unwrap();
-            assert!(imports.get("test_func").is_some();
-            assert!(imports.get("unknown").is_none();
+            assert!(imports.get("test_func").is_some());
+            assert!(imports.get("unknown").is_none());
         }
 
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             let func = FunctionImport {
-                signature: WrtComponentType::Unit,
+                signature:      WrtComponentType::Unit,
                 implementation: |_args| Ok(Value::U32(42)),
             };
             let name = BoundedString::from_str("test_func").unwrap();
             imports.add(name, ImportValue::Function(func)).unwrap();
-            assert!(imports.get("test_func").is_some();
-            assert!(imports.get("unknown").is_none();
+            assert!(imports.get("test_func").is_some());
+            assert!(imports.get("unknown").is_none());
         }
     }
 
@@ -819,7 +886,7 @@ mod tests {
         let mut context = InstantiationContext::new();
         assert_eq!(context.next_instance_id(), 0);
         assert_eq!(context.next_instance_id(), 1);
-        assert_eq!(context.next_instance_id(), 2;
+        assert_eq!(context.next_instance_id(), 2);
     }
 
     // Tests migrated from simple_instantiation_test.rs
@@ -827,158 +894,161 @@ mod tests {
     #[test]
     fn test_value_imports() {
         let mut imports = ImportValues::new();
-        
-        let value_import = ImportValue::Value(WrtComponentValue::U32(100;
-        
+
+        let value_import = ImportValue::Value(WrtComponentValue::U32(100));
+
         #[cfg(feature = "std")]
         {
-            let result = imports.add("test_value".to_string(), value_import;
+            let result = imports.add("test_value".to_string(), value_import);
             assert!(result.is_ok());
-            
-            let retrieved = imports.get("test_value";
-            assert!(retrieved.is_some();
-            
+
+            let retrieved = imports.get("test_value");
+            assert!(retrieved.is_some());
+
             match retrieved.unwrap() {
                 ImportValue::Value(WrtComponentValue::U32(val)) => {
-                    assert_eq!(*val, 100;
-                }
+                    assert_eq!(*val, 100);
+                },
                 _ => panic!("Expected value import"),
             }
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             let name = BoundedString::from_str("test_value").unwrap();
-            let result = imports.add(name, value_import;
+            let result = imports.add(name, value_import);
             assert!(result.is_ok());
-            
-            let retrieved = imports.get("test_value";
-            assert!(retrieved.is_some();
-            
+
+            let retrieved = imports.get("test_value");
+            assert!(retrieved.is_some());
+
             match retrieved.unwrap() {
                 ImportValue::Value(WrtComponentValue::U32(val)) => {
-                    assert_eq!(*val, 100;
-                }
+                    assert_eq!(*val, 100);
+                },
                 _ => panic!("Expected value import"),
             }
         }
     }
 
-    // Note: The following tests are commented out as they depend on 
+    // Note: The following tests are commented out as they depend on
     // components that may not be fully implemented yet.
     // They should be uncommented and adjusted as the implementation progresses.
 
-    /*
-    #[test]
-    fn test_full_instantiation_context() {
-        let mut context = InstantiationContext::new();
-        
-        // Verify all subsystems are initialized
-        assert_eq!(context.canonical_abi.string_encoding(), crate::string_encoding::StringEncoding::Utf8;
-        assert_eq!(context.execution_engine.state(), &crate::execution_engine::ExecutionState::Ready;
-        
-        // Test registering a host function
-        #[cfg(not(feature = "std"))]
-        {
-            fn test_host_func(_args: &[Value]) -> WrtResult<Value> {
-                Ok(Value::Bool(true)
-            }
-            
-            let func_index = context.execution_engine.register_host_function(test_host_func;
-            assert!(func_index.is_ok());
-            assert_eq!(func_index.unwrap(), 0);
-        }
-        
-        #[cfg(feature = "std")]
-        {
-            use crate::execution_engine::HostFunction;
-            
-            struct TestHostFunc;
-            impl HostFunction for TestHostFunc {
-                fn call(&mut self, _args: &[Value]) -> WrtResult<Value> {
-                    Ok(Value::Bool(true)
-                }
-                
-                fn signature(&self) -> &WrtComponentType {
-                    &WrtComponentType::Unit
-                }
-            }
-            
-            let func_index = context.execution_engine.register_host_function(Box::new(TestHostFunc;
-            assert!(func_index.is_ok());
-            assert_eq!(func_index.unwrap(), 0);
-        }
-    }
-
-    #[test]
-    fn test_resource_management() {
-        let mut context = InstantiationContext::new();
-        
-        // Create a resource
-        let resource_data = WrtComponentValue::String("test_resource".into();
-        let handle = context.resource_manager.create_resource(1, resource_data;
-        assert!(handle.is_ok());
-        
-        let handle = handle.unwrap();
-        
-        // Borrow the resource
-        let borrowed = context.resource_manager.borrow_resource(handle;
-        assert!(borrowed.is_ok());
-        
-        match borrowed.unwrap() {
-            WrtComponentValue::String(s) => {
-                assert_eq!(s.as_str(), "test_resource";
-            }
-            _ => panic!("Expected string resource"),
-        }
-        
-        // Drop the resource
-        let drop_result = context.resource_manager.drop_resource(handle;
-        assert!(drop_result.is_ok());
-    }
-
-    #[test]
-    fn test_memory_layout_integration() {
-        let _context = InstantiationContext::new();
-        
-        // Test basic type layouts
-        use crate::types::ValType;
-        use crate::memory_layout;
-        
-        let bool_layout = memory_layout::calculate_layout(&ValType::Bool;
-        assert_eq!(bool_layout.size, 1);
-        assert_eq!(bool_layout.align, 1);
-        
-        let u32_layout = memory_layout::calculate_layout(&ValType::U32;
-        assert_eq!(u32_layout.size, 4;
-        assert_eq!(u32_layout.align, 4;
-        
-        let u64_layout = memory_layout::calculate_layout(&ValType::U64;
-        assert_eq!(u64_layout.size, 8;
-        assert_eq!(u64_layout.align, 8;
-    }
-
-    #[test]
-    fn test_string_encoding_integration() {
-        let _context = InstantiationContext::new();
-        
-        use crate::string_encoding::{StringEncoding, encode_string};
-        
-        // Test UTF-8 encoding (default)
-        let test_string = "Hello, 世界!";
-        let encoded = encode_string(test_string, StringEncoding::Utf8;
-        assert!(encoded.is_ok());
-        
-        let encoded_bytes = encoded.unwrap();
-        assert_eq!(encoded_bytes, test_string.as_bytes);
-        
-        // Test UTF-16LE encoding  
-        let encoded_utf16 = encode_string("Hello", StringEncoding::Utf16Le;
-        assert!(encoded_utf16.is_ok());
-        
-        // UTF-16LE encoding of "Hello" should be: H(0x48,0x00) e(0x65,0x00) l(0x6C,0x00) l(0x6C,0x00) o(0x6F,0x00)
-        let expected_utf16 = vec![0x48, 0x00, 0x65, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x6F, 0x00];
-        assert_eq!(encoded_utf16.unwrap(), expected_utf16;
-    }
-    */
+    // #[test]
+    // fn test_full_instantiation_context() {
+    // let mut context = InstantiationContext::new();
+    //
+    // Verify all subsystems are initialized
+    // assert_eq!(context.canonical_abi.string_encoding(),
+    // crate::string_encoding::StringEncoding::Utf8; assert_eq!(context.
+    // execution_engine.state(),
+    // &crate::execution_engine::ExecutionState::Ready;
+    //
+    // Test registering a host function
+    // #[cfg(not(feature = "std"))]
+    // {
+    // fn test_host_func(_args: &[Value]) -> WrtResult<Value> {
+    // Ok(Value::Bool(true)
+    // }
+    //
+    // let func_index =
+    // context.execution_engine.register_host_function(test_host_func;
+    // assert!(func_index.is_ok());
+    // assert_eq!(func_index.unwrap(), 0);
+    // }
+    //
+    // #[cfg(feature = "std")]
+    // {
+    // use crate::execution_engine::HostFunction;
+    //
+    // struct TestHostFunc;
+    // impl HostFunction for TestHostFunc {
+    // fn call(&mut self, _args: &[Value]) -> WrtResult<Value> {
+    // Ok(Value::Bool(true)
+    // }
+    //
+    // fn signature(&self) -> &WrtComponentType {
+    // &WrtComponentType::Unit
+    // }
+    // }
+    //
+    // let func_index =
+    // context.execution_engine.register_host_function(Box::new(TestHostFunc;
+    // assert!(func_index.is_ok());
+    // assert_eq!(func_index.unwrap(), 0);
+    // }
+    // }
+    //
+    // #[test]
+    // fn test_resource_management() {
+    // let mut context = InstantiationContext::new();
+    //
+    // Create a resource
+    // let resource_data = WrtComponentValue::String("test_resource".into();
+    // let handle = context.resource_manager.create_resource(1, resource_data;
+    // assert!(handle.is_ok());
+    //
+    // let handle = handle.unwrap();
+    //
+    // Borrow the resource
+    // let borrowed = context.resource_manager.borrow_resource(handle;
+    // assert!(borrowed.is_ok());
+    //
+    // match borrowed.unwrap() {
+    // WrtComponentValue::String(s) => {
+    // assert_eq!(s.as_str(), "test_resource";
+    // }
+    // _ => panic!("Expected string resource"),
+    // }
+    //
+    // Drop the resource
+    // let drop_result = context.resource_manager.drop_resource(handle;
+    // assert!(drop_result.is_ok());
+    // }
+    //
+    // #[test]
+    // fn test_memory_layout_integration() {
+    // let _context = InstantiationContext::new();
+    //
+    // Test basic type layouts
+    // use crate::types::ValType;
+    // use crate::memory_layout;
+    //
+    // let bool_layout = memory_layout::calculate_layout(&ValType::Bool;
+    // assert_eq!(bool_layout.size, 1);
+    // assert_eq!(bool_layout.align, 1);
+    //
+    // let u32_layout = memory_layout::calculate_layout(&ValType::U32;
+    // assert_eq!(u32_layout.size, 4;
+    // assert_eq!(u32_layout.align, 4;
+    //
+    // let u64_layout = memory_layout::calculate_layout(&ValType::U64;
+    // assert_eq!(u64_layout.size, 8;
+    // assert_eq!(u64_layout.align, 8;
+    // }
+    //
+    // #[test]
+    // fn test_string_encoding_integration() {
+    // let _context = InstantiationContext::new();
+    //
+    // use crate::string_encoding::{StringEncoding, encode_string};
+    //
+    // Test UTF-8 encoding (default)
+    // let test_string = "Hello, 世界!";
+    // let encoded = encode_string(test_string, StringEncoding::Utf8;
+    // assert!(encoded.is_ok());
+    //
+    // let encoded_bytes = encoded.unwrap();
+    // assert_eq!(encoded_bytes, test_string.as_bytes);
+    //
+    // Test UTF-16LE encoding
+    // let encoded_utf16 = encode_string("Hello", StringEncoding::Utf16Le;
+    // assert!(encoded_utf16.is_ok());
+    //
+    // UTF-16LE encoding of "Hello" should be: H(0x48,0x00) e(0x65,0x00)
+    // l(0x6C,0x00) l(0x6C,0x00) o(0x6F,0x00) let expected_utf16 =
+    // vec![0x48, 0x00, 0x65, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x6F, 0x00];
+    // assert_eq!(encoded_utf16.unwrap(), expected_utf16;
+    // }
 }

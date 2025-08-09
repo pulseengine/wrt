@@ -5,19 +5,23 @@
 use wrt_format::component::ExternType;
 use wrt_foundation::ExternType as RuntimeExternType;
 
-use crate::{components::component::ExternValue, prelude::*, type_conversion::bidirectional};
+use crate::{
+    components::component::ExternValue,
+    prelude::*,
+    type_conversion::bidirectional,
+};
 
 /// Export from a component
 #[derive(Debug, Clone)]
 pub struct Export {
     /// Export name
-    pub name: String,
+    pub name:           String,
     /// Export type
-    pub ty: ExternType,
+    pub ty:             ExternType,
     /// Export value
-    pub value: ExternValue,
+    pub value:          ExternValue,
     /// Export attributes
-    pub attributes: HashMap<String, String>,
+    pub attributes:     HashMap<String, String>,
     /// Integrity hash for the export (if available)
     pub integrity_hash: Option<String>,
 }
@@ -25,7 +29,13 @@ pub struct Export {
 impl Export {
     /// Create a new export
     pub fn new(name: String, ty: ExternType, value: ExternValue) -> Self {
-        Self { name, ty, value, attributes: HashMap::new(), integrity_hash: None }
+        Self {
+            name,
+            ty,
+            value,
+            attributes: HashMap::new(),
+            integrity_hash: None,
+        }
     }
 
     /// Create a new export with attributes
@@ -35,7 +45,13 @@ impl Export {
         value: ExternValue,
         attributes: HashMap<String, String>,
     ) -> Self {
-        Self { name, ty, value, attributes, integrity_hash: None }
+        Self {
+            name,
+            ty,
+            value,
+            attributes,
+            integrity_hash: None,
+        }
     }
 
     /// Create a new export with integrity hash
@@ -45,7 +61,13 @@ impl Export {
         value: ExternValue,
         integrity_hash: String,
     ) -> Self {
-        Self { name, ty, value, attributes: HashMap::new(), integrity_hash: Some(integrity_hash) }
+        Self {
+            name,
+            ty,
+            value,
+            attributes: HashMap::new(),
+            integrity_hash: Some(integrity_hash),
+        }
     }
 
     /// Check if the export has a specific attribute
@@ -60,7 +82,7 @@ impl Export {
 
     /// Set an attribute value
     pub fn set_attribute(&mut self, name: String, value: String) {
-        self.attributes.insert(name, value;
+        self.attributes.insert(name, value);
     }
 
     /// Convert the export type to a runtime extern type
@@ -81,34 +103,46 @@ impl Export {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use wrt_format::component::{ExternType, ValType};
+    use wrt_format::component::{
+        ExternType,
+        ValType,
+    };
 
     use super::*;
-    use crate::component::{ExternValue, FunctionValue};
+    use crate::component::{
+        ExternValue,
+        FunctionValue,
+    };
 
     #[test]
     fn test_export_creation() {
         let func_type = ExternType::Function {
-            params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],
+            params:  vec![
+                ("a".to_string(), ValType::S32),
+                ("b".to_string(), ValType::S32),
+            ],
             results: vec![ValType::S32],
         };
 
-        let func_value = FunctionValue { ty: func_type.clone(), export_name: "add".to_string() };
+        let func_value = FunctionValue {
+            ty:          func_type.clone(),
+            export_name: "add".to_string(),
+        };
 
         let export = Export {
-            name: "add".to_string(),
-            ty: func_type,
-            value: ExternValue::Function(func_value),
-            attributes: HashMap::new(),
+            name:           "add".to_string(),
+            ty:             func_type,
+            value:          ExternValue::Function(func_value),
+            attributes:     HashMap::new(),
             integrity_hash: None,
         };
 
-        assert_eq!(export.name, "add";
+        assert_eq!(export.name, "add");
         match &export.ty {
             ExternType::Function { params, results } => {
-                assert_eq!(params.len(), 2;
+                assert_eq!(params.len(), 2);
                 assert_eq!(results.len(), 1);
-            }
+            },
             _ => panic!("Expected function type"),
         }
     }

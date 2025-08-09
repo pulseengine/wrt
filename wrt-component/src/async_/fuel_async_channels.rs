@@ -3,31 +3,57 @@
 //! This module provides async channels that integrate with the fuel system
 //! for deterministic inter-task communication in safety-critical environments.
 
-use crate::{
-    async_::fuel_priority_inheritance::{FuelPriorityInheritanceProtocol, ResourceId},
-    task_manager::TaskId,
-    ComponentInstanceId,
-    prelude::*,
-};
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-    task::{Context, Poll, Waker},
+    sync::atomic::{
+        AtomicBool,
+        AtomicU64,
+        AtomicUsize,
+        Ordering,
+    },
+    task::{
+        Context,
+        Poll,
+        Waker,
+    },
     time::Duration,
 };
+#[cfg(feature = "std")]
+use std::sync::{
+    Arc,
+    Mutex,
+};
+
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedMap},
-    operations::{record_global_operation, Type as OperationType},
+    bounded_collections::{
+        BoundedMap,
+        BoundedVec,
+    },
+    operations::{
+        record_global_operation,
+        Type as OperationType,
+    },
+    safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId, safe_managed_alloc,
+    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
-
-#[cfg(feature = "std")]
-use std::sync::{Arc, Mutex};
 #[cfg(not(feature = "std"))]
-use wrt_sync::{Arc, Mutex};
+use wrt_sync::{
+    Arc,
+    Mutex,
+};
+
+use crate::{
+    async_::fuel_priority_inheritance::{
+        FuelPriorityInheritanceProtocol,
+        ResourceId,
+    },
+    prelude::*,
+    task_manager::TaskId,
+    ComponentInstanceId,
+};
 
 /// Maximum number of async channels
 const MAX_ASYNC_CHANNELS: usize = 64;
@@ -57,80 +83,80 @@ impl ChannelId {
 /// Bounded async channel with fuel tracking
 pub struct FuelAsyncChannel<T> {
     /// Unique channel identifier
-    id: ChannelId,
+    id:                 ChannelId,
     /// Channel capacity
-    capacity: usize,
+    capacity:           usize,
     /// Message buffer
-    buffer: BoundedVec<T, MAX_CHANNEL_CAPACITY>,
+    buffer:             BoundedVec<T, MAX_CHANNEL_CAPACITY>,
     /// Senders waiting to send (when buffer is full)
-    waiting_senders: BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
+    waiting_senders:    BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
     /// Receivers waiting to receive (when buffer is empty)
-    waiting_receivers: BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
+    waiting_receivers:  BoundedVec<ChannelWaiter, MAX_WAITERS_PER_CHANNEL>,
     /// Whether the channel is closed
-    closed: AtomicBool,
+    closed:             AtomicBool,
     /// Total messages sent through this channel
-    messages_sent: AtomicU64,
+    messages_sent:      AtomicU64,
     /// Total messages received through this channel
-    messages_received: AtomicU64,
+    messages_received:  AtomicU64,
     /// Total fuel consumed by this channel
-    fuel_consumed: AtomicU64,
+    fuel_consumed:      AtomicU64,
     /// Channel verification level for fuel tracking
     verification_level: VerificationLevel,
     /// Priority inheritance protocol for blocking operations
-    priority_protocol: Option<FuelPriorityInheritanceProtocol>,
+    priority_protocol:  Option<FuelPriorityInheritanceProtocol>,
 }
 
 /// Channel waiter information
 #[derive(Debug, Clone)]
 pub struct ChannelWaiter {
     /// Task waiting on the channel
-    pub task_id: TaskId,
+    pub task_id:         TaskId,
     /// Component owning the task
-    pub component_id: ComponentInstanceId,
+    pub component_id:    ComponentInstanceId,
     /// Priority of the waiting task
-    pub priority: Priority,
+    pub priority:        Priority,
     /// Waker to notify when ready
-    pub waker: Option<Waker>,
+    pub waker:           Option<Waker>,
     /// When the wait started (fuel time)
     pub wait_start_time: u64,
     /// Maximum wait time allowed
-    pub max_wait_time: Option<Duration>,
+    pub max_wait_time:   Option<Duration>,
 }
 
 /// Sender half of an async channel
 pub struct FuelAsyncSender<T> {
     /// Channel ID
-    channel_id: ChannelId,
+    channel_id:       ChannelId,
     /// Shared reference to the channel manager (ASIL-D safe)
-    channel_manager: Arc<Mutex<FuelAsyncChannelManager<T>>>,
+    channel_manager:  Arc<Mutex<FuelAsyncChannelManager<T>>>,
     /// Task ID of the sender
-    sender_task: TaskId,
+    sender_task:      TaskId,
     /// Component ID of the sender
     sender_component: ComponentInstanceId,
     /// Priority of the sender
-    sender_priority: Priority,
+    sender_priority:  Priority,
 }
 
 /// Receiver half of an async channel
 pub struct FuelAsyncReceiver<T> {
     /// Channel ID
-    channel_id: ChannelId,
+    channel_id:         ChannelId,
     /// Shared reference to the channel manager (ASIL-D safe)
-    channel_manager: Arc<Mutex<FuelAsyncChannelManager<T>>>,
+    channel_manager:    Arc<Mutex<FuelAsyncChannelManager<T>>>,
     /// Task ID of the receiver
-    receiver_task: TaskId,
+    receiver_task:      TaskId,
     /// Component ID of the receiver
     receiver_component: ComponentInstanceId,
     /// Priority of the receiver
-    receiver_priority: Priority,
+    receiver_priority:  Priority,
 }
 
 /// Future for sending a message
 pub struct SendFuture<T> {
     /// Message to send
-    message: Option<T>,
+    message:    Option<T>,
     /// Sender information
-    sender: FuelAsyncSender<T>,
+    sender:     FuelAsyncSender<T>,
     /// Whether the send is registered with the channel
     registered: bool,
 }
@@ -138,7 +164,7 @@ pub struct SendFuture<T> {
 /// Future for receiving a message
 pub struct ReceiveFuture<T> {
     /// Receiver information
-    receiver: FuelAsyncReceiver<T>,
+    receiver:   FuelAsyncReceiver<T>,
     /// Whether the receive is registered with the channel
     registered: bool,
 }
@@ -146,11 +172,11 @@ pub struct ReceiveFuture<T> {
 /// Channel manager for organizing multiple async channels
 pub struct FuelAsyncChannelManager<T> {
     /// Active channels indexed by ID
-    channels: BoundedMap<ChannelId, FuelAsyncChannel<T>, MAX_ASYNC_CHANNELS>,
+    channels:           BoundedMap<ChannelId, FuelAsyncChannel<T>, MAX_ASYNC_CHANNELS>,
     /// Global channel statistics
-    global_stats: ChannelManagerStats,
+    global_stats:       ChannelManagerStats,
     /// Next channel ID counter
-    next_channel_id: AtomicU64,
+    next_channel_id:    AtomicU64,
     /// Global verification level
     verification_level: VerificationLevel,
 }
@@ -159,17 +185,17 @@ pub struct FuelAsyncChannelManager<T> {
 #[derive(Debug, Clone)]
 pub struct ChannelManagerStats {
     /// Total channels created
-    pub total_channels_created: AtomicUsize,
+    pub total_channels_created:  AtomicUsize,
     /// Currently active channels
-    pub active_channels: AtomicUsize,
+    pub active_channels:         AtomicUsize,
     /// Total messages sent across all channels
-    pub total_messages_sent: AtomicU64,
+    pub total_messages_sent:     AtomicU64,
     /// Total messages received across all channels
     pub total_messages_received: AtomicU64,
     /// Total fuel consumed by all channels
-    pub total_fuel_consumed: AtomicU64,
+    pub total_fuel_consumed:     AtomicU64,
     /// Total blocked senders across all channels
-    pub total_blocked_senders: AtomicUsize,
+    pub total_blocked_senders:   AtomicUsize,
     /// Total blocked receivers across all channels
     pub total_blocked_receivers: AtomicUsize,
 }
@@ -183,11 +209,13 @@ impl<T> FuelAsyncChannel<T> {
         enable_priority_inheritance: bool,
     ) -> Result<Self, Error> {
         if capacity > MAX_CHANNEL_CAPACITY {
-            return Err(Error::runtime_execution_error("Channel capacity exceeds maximum allowed"));
+            return Err(Error::runtime_execution_error(
+                "Channel capacity exceeds maximum allowed",
+            ));
         }
 
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        
+
         let priority_protocol = if enable_priority_inheritance {
             Some(FuelPriorityInheritanceProtocol::new(verification_level)?)
         } else {
@@ -231,7 +259,7 @@ impl<T> FuelAsyncChannel<T> {
                 waker.wake();
                 self.consume_fuel(CHANNEL_WAKER_FUEL);
             }
-            
+
             // Message is immediately consumed by waiting receiver
             self.messages_sent.fetch_add(1, Ordering::AcqRel);
             self.messages_received.fetch_add(1, Ordering::AcqRel);
@@ -262,7 +290,7 @@ impl<T> FuelAsyncChannel<T> {
         // Try to get message from buffer
         if let Some(message) = self.buffer.pop() {
             self.messages_received.fetch_add(1, Ordering::AcqRel);
-            
+
             // Wake up waiting sender if any
             if let Some(waiter) = self.waiting_senders.pop() {
                 if let Some(waker) = waiter.waker {
@@ -270,7 +298,7 @@ impl<T> FuelAsyncChannel<T> {
                     self.consume_fuel(CHANNEL_WAKER_FUEL);
                 }
             }
-            
+
             return Ok(message);
         }
 
@@ -300,9 +328,9 @@ impl<T> FuelAsyncChannel<T> {
             max_wait_time,
         };
 
-        self.waiting_senders.push(waiter).map_err(|_| {
-            Error::resource_limit_exceeded("Too many waiting senders")
-        })?;
+        self.waiting_senders
+            .push(waiter)
+            .map_err(|_| Error::resource_limit_exceeded("Too many waiting senders"))?;
 
         // Register priority inheritance if enabled
         if let Some(priority_protocol) = &mut self.priority_protocol {
@@ -337,9 +365,9 @@ impl<T> FuelAsyncChannel<T> {
             max_wait_time,
         };
 
-        self.waiting_receivers.push(waiter).map_err(|_| {
-            Error::resource_limit_exceeded("Too many waiting receivers")
-        })?;
+        self.waiting_receivers
+            .push(waiter)
+            .map_err(|_| Error::resource_limit_exceeded("Too many waiting receivers"))?;
 
         // Register priority inheritance if enabled
         if let Some(priority_protocol) = &mut self.priority_protocol {
@@ -360,9 +388,9 @@ impl<T> FuelAsyncChannel<T> {
     pub fn close(&mut self) {
         record_global_operation(OperationType::CollectionMutate, self.verification_level);
         self.consume_fuel(CHANNEL_CLOSE_FUEL);
-        
+
         self.closed.store(true, Ordering::Release);
-        
+
         // Wake up all waiting senders and receivers
         while let Some(waiter) = self.waiting_senders.pop() {
             if let Some(waker) = waiter.waker {
@@ -370,7 +398,7 @@ impl<T> FuelAsyncChannel<T> {
                 self.consume_fuel(CHANNEL_WAKER_FUEL);
             }
         }
-        
+
         while let Some(waiter) = self.waiting_receivers.pop() {
             if let Some(waker) = waiter.waker {
                 waker.wake();
@@ -382,15 +410,15 @@ impl<T> FuelAsyncChannel<T> {
     /// Get channel statistics
     pub fn get_stats(&self) -> ChannelStats {
         ChannelStats {
-            id: self.id,
-            capacity: self.capacity,
-            current_size: self.buffer.len(),
-            messages_sent: self.messages_sent.load(Ordering::Acquire),
+            id:                self.id,
+            capacity:          self.capacity,
+            current_size:      self.buffer.len(),
+            messages_sent:     self.messages_sent.load(Ordering::Acquire),
             messages_received: self.messages_received.load(Ordering::Acquire),
-            fuel_consumed: self.fuel_consumed.load(Ordering::Acquire),
-            waiting_senders: self.waiting_senders.len(),
+            fuel_consumed:     self.fuel_consumed.load(Ordering::Acquire),
+            waiting_senders:   self.waiting_senders.len(),
             waiting_receivers: self.waiting_receivers.len(),
-            closed: self.closed.load(Ordering::Acquire),
+            closed:            self.closed.load(Ordering::Acquire),
         }
     }
 
@@ -409,15 +437,15 @@ impl<T> FuelAsyncChannel<T> {
 /// Channel statistics
 #[derive(Debug, Clone)]
 pub struct ChannelStats {
-    pub id: ChannelId,
-    pub capacity: usize,
-    pub current_size: usize,
-    pub messages_sent: u64,
+    pub id:                ChannelId,
+    pub capacity:          usize,
+    pub current_size:      usize,
+    pub messages_sent:     u64,
     pub messages_received: u64,
-    pub fuel_consumed: u64,
-    pub waiting_senders: usize,
+    pub fuel_consumed:     u64,
+    pub waiting_senders:   usize,
     pub waiting_receivers: usize,
-    pub closed: bool,
+    pub closed:            bool,
 }
 
 /// Channel operation errors
@@ -444,12 +472,12 @@ impl<T> FuelAsyncChannelManager<T> {
         Ok(Self {
             channels: BoundedMap::new(provider.clone())?,
             global_stats: ChannelManagerStats {
-                total_channels_created: AtomicUsize::new(0),
-                active_channels: AtomicUsize::new(0),
-                total_messages_sent: AtomicU64::new(0),
+                total_channels_created:  AtomicUsize::new(0),
+                active_channels:         AtomicUsize::new(0),
+                total_messages_sent:     AtomicU64::new(0),
                 total_messages_received: AtomicU64::new(0),
-                total_fuel_consumed: AtomicU64::new(0),
-                total_blocked_senders: AtomicUsize::new(0),
+                total_fuel_consumed:     AtomicU64::new(0),
+                total_blocked_senders:   AtomicUsize::new(0),
                 total_blocked_receivers: AtomicUsize::new(0),
             },
             next_channel_id: AtomicU64::new(1),
@@ -470,7 +498,7 @@ impl<T> FuelAsyncChannelManager<T> {
         receiver_priority: Priority,
     ) -> Result<(FuelAsyncSender<T>, FuelAsyncReceiver<T>), Error> {
         let channel_id = ChannelId::new(self.next_channel_id.fetch_add(1, Ordering::AcqRel));
-        
+
         let channel = FuelAsyncChannel::new(
             channel_id,
             capacity,
@@ -478,9 +506,9 @@ impl<T> FuelAsyncChannelManager<T> {
             enable_priority_inheritance,
         )?;
 
-        self.channels.insert(channel_id, channel).map_err(|_| {
-            Error::resource_limit_exceeded("Too many active channels")
-        })?;
+        self.channels
+            .insert(channel_id, channel)
+            .map_err(|_| Error::resource_limit_exceeded("Too many active channels"))?;
 
         self.global_stats.total_channels_created.fetch_add(1, Ordering::AcqRel);
         self.global_stats.active_channels.fetch_add(1, Ordering::AcqRel);
@@ -593,7 +621,7 @@ impl<T> Future for SendFuture<T> {
                     }
                     self.message = Some(msg);
                     Poll::Pending
-                }
+                },
                 Err(other_error) => Poll::Ready(Err(other_error)),
             }
         } else {
@@ -636,7 +664,7 @@ impl<T> Future for ReceiveFuture<T> {
                     }
                 }
                 Poll::Pending
-            }
+            },
             Err(other_error) => Poll::Ready(Err(other_error)),
         }
     }
@@ -646,13 +674,13 @@ impl<T> FuelAsyncSender<T> {
     /// Send a message asynchronously
     pub fn send(&self, message: T) -> SendFuture<T> {
         SendFuture {
-            message: Some(message),
-            sender: FuelAsyncSender {
-                channel_id: self.channel_id,
-                channel_manager: self.channel_manager,
-                sender_task: self.sender_task,
+            message:    Some(message),
+            sender:     FuelAsyncSender {
+                channel_id:       self.channel_id,
+                channel_manager:  self.channel_manager,
+                sender_task:      self.sender_task,
                 sender_component: self.sender_component,
-                sender_priority: self.sender_priority,
+                sender_priority:  self.sender_priority,
             },
             registered: false,
         }
@@ -666,7 +694,12 @@ impl<T> FuelAsyncSender<T> {
             Err(_) => return Err(ChannelError::Closed(message)),
         };
         if let Some(channel) = manager.channels.get_mut(&self.channel_id) {
-            channel.try_send(message, self.sender_task, self.sender_component, self.sender_priority)
+            channel.try_send(
+                message,
+                self.sender_task,
+                self.sender_component,
+                self.sender_priority,
+            )
         } else {
             Err(ChannelError::Closed(message))
         }
@@ -677,12 +710,12 @@ impl<T> FuelAsyncReceiver<T> {
     /// Receive a message asynchronously
     pub fn receive(&self) -> ReceiveFuture<T> {
         ReceiveFuture {
-            receiver: FuelAsyncReceiver {
-                channel_id: self.channel_id,
-                channel_manager: self.channel_manager,
-                receiver_task: self.receiver_task,
+            receiver:   FuelAsyncReceiver {
+                channel_id:         self.channel_id,
+                channel_manager:    self.channel_manager,
+                receiver_task:      self.receiver_task,
                 receiver_component: self.receiver_component,
-                receiver_priority: self.receiver_priority,
+                receiver_priority:  self.receiver_priority,
             },
             registered: false,
         }
@@ -696,7 +729,11 @@ impl<T> FuelAsyncReceiver<T> {
             Err(_) => return Err(ChannelError::Closed(())),
         };
         if let Some(channel) = manager.channels.get_mut(&self.channel_id) {
-            channel.try_receive(self.receiver_task, self.receiver_component, self.receiver_priority)
+            channel.try_receive(
+                self.receiver_task,
+                self.receiver_component,
+                self.receiver_priority,
+            )
         } else {
             Err(ChannelError::Closed(()))
         }
@@ -710,16 +747,20 @@ mod tests {
     #[test]
     fn test_channel_creation() {
         let mut manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard).unwrap();
-        
+
         let result = manager.create_channel(
-            10, // capacity
+            10,    // capacity
             false, // no priority inheritance
-            TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
-            TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
+            TaskId::new(1),
+            ComponentInstanceId::new(1),
+            Priority::Normal,
+            TaskId::new(2),
+            ComponentInstanceId::new(1),
+            Priority::Normal,
         );
-        
+
         assert!(result.is_ok());
-        
+
         let stats = manager.get_global_stats();
         assert_eq!(stats.total_channels_created.load(Ordering::Acquire), 1);
         assert_eq!(stats.active_channels.load(Ordering::Acquire), 1);
@@ -728,18 +769,24 @@ mod tests {
     #[test]
     fn test_try_send_receive() {
         let mut manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard).unwrap();
-        
-        let (sender, receiver) = manager.create_channel(
-            5, // capacity
-            false, // no priority inheritance
-            TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
-            TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap();
-        
+
+        let (sender, receiver) = manager
+            .create_channel(
+                5,     // capacity
+                false, // no priority inheritance
+                TaskId::new(1),
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                TaskId::new(2),
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+            )
+            .unwrap();
+
         // Send a message
         let send_result = sender.try_send(42);
         assert!(send_result.is_ok());
-        
+
         // Receive the message
         let receive_result = receiver.try_receive();
         assert!(receive_result.is_ok());
@@ -749,18 +796,24 @@ mod tests {
     #[test]
     fn test_channel_capacity() {
         let mut manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard).unwrap();
-        
-        let (sender, _receiver) = manager.create_channel(
-            2, // small capacity
-            false,
-            TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
-            TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap();
-        
+
+        let (sender, _receiver) = manager
+            .create_channel(
+                2, // small capacity
+                false,
+                TaskId::new(1),
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                TaskId::new(2),
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+            )
+            .unwrap();
+
         // Fill the channel
         assert!(sender.try_send(1).is_ok());
         assert!(sender.try_send(2).is_ok());
-        
+
         // Third send should fail with WouldBlock
         let result = sender.try_send(3);
         assert!(matches!(result, Err(ChannelError::WouldBlock(_))));
@@ -769,21 +822,27 @@ mod tests {
     #[test]
     fn test_channel_close() {
         let mut manager = FuelAsyncChannelManager::<u32>::new(VerificationLevel::Standard).unwrap();
-        
-        let (sender, receiver) = manager.create_channel(
-            5,
-            false,
-            TaskId::new(1), ComponentInstanceId::new(1), Priority::Normal,
-            TaskId::new(2), ComponentInstanceId::new(1), Priority::Normal,
-        ).unwrap();
-        
+
+        let (sender, receiver) = manager
+            .create_channel(
+                5,
+                false,
+                TaskId::new(1),
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                TaskId::new(2),
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+            )
+            .unwrap();
+
         // Close the channel
         manager.close_channel(sender.channel_id).unwrap();
-        
+
         // Operations should now fail with Closed
         let send_result = sender.try_send(42);
         assert!(matches!(send_result, Err(ChannelError::Closed(_))));
-        
+
         let receive_result = receiver.try_receive();
         assert!(matches!(receive_result, Err(ChannelError::Closed(_))));
     }

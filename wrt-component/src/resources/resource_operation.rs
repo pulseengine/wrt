@@ -9,7 +9,11 @@ pub fn to_format_resource_operation(
     type_idx: u32,
 ) -> wrt_format::component::FormatResourceOperation {
     use wrt_format::component::FormatResourceOperation as FormatOp;
-    use wrt_foundation::resource::{ResourceDrop, ResourceNew, ResourceRep};
+    use wrt_foundation::resource::{
+        ResourceDrop,
+        ResourceNew,
+        ResourceRep,
+    };
 
     match op {
         ResourceOperation::Read => FormatOp::Rep(ResourceRep { type_idx }),
@@ -87,32 +91,36 @@ mod safe_memory {
 #[cfg(test)]
 mod tests {
     use wrt_format::component::FormatResourceOperation as FormatOp;
-    use wrt_foundation::resource::{ResourceDrop, ResourceNew, ResourceRep};
+    use wrt_foundation::resource::{
+        ResourceDrop,
+        ResourceNew,
+        ResourceRep,
+    };
 
     use super::*;
 
     #[test]
     fn test_operation_permissions() {
-        assert!(ResourceOperation::Read.requires_read();
-        assert!(!ResourceOperation::Read.requires_write();
+        assert!(ResourceOperation::Read.requires_read());
+        assert!(!ResourceOperation::Read.requires_write());
 
-        assert!(ResourceOperation::Write.requires_write();
-        assert!(!ResourceOperation::Write.requires_read();
+        assert!(ResourceOperation::Write.requires_write());
+        assert!(!ResourceOperation::Write.requires_read());
 
-        assert!(ResourceOperation::Execute.requires_read();
-        assert!(!ResourceOperation::Execute.requires_write();
+        assert!(ResourceOperation::Execute.requires_read());
+        assert!(!ResourceOperation::Execute.requires_write());
 
-        assert!(ResourceOperation::Create.requires_write();
-        assert!(!ResourceOperation::Create.requires_read();
+        assert!(ResourceOperation::Create.requires_write());
+        assert!(!ResourceOperation::Create.requires_read());
 
-        assert!(ResourceOperation::Delete.requires_write();
-        assert!(!ResourceOperation::Delete.requires_read();
+        assert!(ResourceOperation::Delete.requires_write());
+        assert!(!ResourceOperation::Delete.requires_read());
 
-        assert!(ResourceOperation::Reference.requires_write();
-        assert!(!ResourceOperation::Reference.requires_read();
+        assert!(ResourceOperation::Reference.requires_write());
+        assert!(!ResourceOperation::Reference.requires_read());
 
-        assert!(ResourceOperation::Dereference.requires_read();
-        assert!(!ResourceOperation::Dereference.requires_write();
+        assert!(ResourceOperation::Dereference.requires_read());
+        assert!(!ResourceOperation::Dereference.requires_write());
     }
 
     #[test]
@@ -120,34 +128,34 @@ mod tests {
         // Test conversion to format types
         let type_idx = 42;
 
-        let read_op = to_format_resource_operation(ResourceOperation::Read, type_idx;
+        let read_op = to_format_resource_operation(ResourceOperation::Read, type_idx);
         if let FormatOp::Rep(rep) = read_op {
-            assert_eq!(rep.type_idx, type_idx;
+            assert_eq!(rep.type_idx, type_idx);
         } else {
-            panic!("Unexpected operation type";
+            panic!("Unexpected operation type");
         }
 
-        let create_op = to_format_resource_operation(ResourceOperation::Create, type_idx;
+        let create_op = to_format_resource_operation(ResourceOperation::Create, type_idx);
         if let FormatOp::New(new) = create_op {
-            assert_eq!(new.type_idx, type_idx;
+            assert_eq!(new.type_idx, type_idx);
         } else {
-            panic!("Unexpected operation type";
+            panic!("Unexpected operation type");
         }
 
         // Test conversion from format types
         assert_eq!(
             from_format_resource_operation(&FormatOp::Rep(ResourceRep { type_idx })),
             ResourceOperation::Read
-        ;
+        );
 
         assert_eq!(
             from_format_resource_operation(&FormatOp::New(ResourceNew { type_idx })),
             ResourceOperation::Create
-        ;
+        );
 
         assert_eq!(
             from_format_resource_operation(&FormatOp::Drop(ResourceDrop { type_idx })),
             ResourceOperation::Delete
-        ;
+        );
     }
 }

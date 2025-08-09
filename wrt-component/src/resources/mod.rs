@@ -7,7 +7,6 @@
 #[cfg(feature = "std")]
 use std::sync::Weak;
 
-
 // Submodules
 pub mod bounded_buffer_pool;
 #[cfg(feature = "std")]
@@ -32,9 +31,9 @@ pub mod resource_strategy;
 pub mod resource_strategy_no_std;
 #[cfg(feature = "std")]
 pub mod resource_table;
-pub mod resource_table_no_std;
 #[cfg(feature = "std")]
 pub mod resource_table_budget_integration;
+pub mod resource_table_no_std;
 #[cfg(feature = "std")]
 pub mod size_class_buffer_pool;
 
@@ -43,10 +42,26 @@ mod tests;
 
 // Re-export for no_std feature
 #[cfg(not(feature = "std"))]
-pub use bounded_buffer_pool::{BoundedBufferPool, BoundedBufferStats as BufferPoolStats};
+pub use bounded_buffer_pool::{
+    BoundedBufferPool,
+    BoundedBufferStats as BufferPoolStats,
+};
 // Re-export for std feature
 #[cfg(feature = "std")]
 pub use buffer_pool::BufferPool;
+// Export dynamic quota management
+pub use dynamic_quota_manager::{
+    DynamicQuotaManager,
+    QuotaNode,
+    QuotaNodeType,
+    QuotaPolicy,
+    QuotaRequest,
+    QuotaResponse,
+    QuotaStatus,
+    QuotaStrategy,
+    QuotaWatcher,
+    ResourceType as QuotaResourceType,
+};
 #[cfg(feature = "std")]
 pub use memory_access::MemoryAccessMode;
 // Common re-exports for both std and no_std
@@ -57,42 +72,63 @@ pub use resource_arena::ResourceArena;
 #[cfg(not(feature = "std"))]
 pub use resource_arena_no_std::ResourceArena;
 // Export Builder types
-pub use resource_builder::{ResourceBuilder, ResourceManagerBuilder, ResourceTableBuilder};
+pub use resource_builder::{
+    ResourceBuilder,
+    ResourceManagerBuilder,
+    ResourceTableBuilder,
+};
 // Export ResourceInterceptor
 pub use resource_interceptor::ResourceInterceptor;
 // Export ResourceId and ResourceManager based on feature flags
 #[cfg(feature = "std")]
-pub use resource_manager::{ResourceId, ResourceManager};
+pub use resource_manager::{
+    ResourceId,
+    ResourceManager,
+};
 #[cfg(not(feature = "std"))]
-pub use resource_manager_no_std::{ResourceId, ResourceManager};
+pub use resource_manager_no_std::{
+    ResourceId,
+    ResourceManager,
+};
 // Export resource_operation based on feature flags
 #[cfg(feature = "std")]
 // pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
-// pub use resource_operation_no_std::{from_format_resource_operation, to_format_resource_operation};
-// Export ResourceStrategy
+// pub use resource_operation_no_std::{from_format_resource_operation,
+// to_format_resource_operation}; Export ResourceStrategy
 pub use resource_strategy::ResourceStrategy;
-pub use resource_strategy_no_std::{ResourceStrategyNoStd, MAX_BUFFER_SIZE};
+pub use resource_strategy_no_std::{
+    ResourceStrategyNoStd,
+    MAX_BUFFER_SIZE,
+};
 // Export ResourceTable components based on feature flags
 #[cfg(feature = "std")]
 pub use resource_table::{
-    BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
+    BufferPoolTrait,
+    MemoryStrategy,
+    Resource,
+    ResourceTable,
+    VerificationLevel,
 };
 #[cfg(feature = "std")]
 pub use resource_table_budget_integration::{
-    BudgetAwareResourceTablePool, ResourceTableUsageStats, create_budget_aware_resource_table,
+    create_budget_aware_resource_table,
     verify_budget_integration,
+    BudgetAwareResourceTablePool,
+    ResourceTableUsageStats,
 };
 #[cfg(not(feature = "std"))]
 pub use resource_table_no_std::{
-    BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
+    BufferPoolTrait,
+    MemoryStrategy,
+    Resource,
+    ResourceTable,
+    VerificationLevel,
 };
 // Export size class buffer pool for std environment
 #[cfg(feature = "std")]
-pub use size_class_buffer_pool::{BufferPoolStats, SizeClassBufferPool};
-// Export dynamic quota management
-pub use dynamic_quota_manager::{
-    DynamicQuotaManager, QuotaNode, QuotaRequest, QuotaResponse, QuotaWatcher,
-    QuotaNodeType, ResourceType as QuotaResourceType, QuotaPolicy, QuotaStrategy, QuotaStatus,
+pub use size_class_buffer_pool::{
+    BufferPoolStats,
+    SizeClassBufferPool,
 };
 
 /// Timestamp implementation for no_std

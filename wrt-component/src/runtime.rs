@@ -4,15 +4,19 @@
 //! needed for the component model implementation.
 
 // Import from wrt-foundation instead of wrt-runtime
-use wrt_foundation::component::{GlobalType, MemoryType, TableType};
-use crate::prelude::*;
+use wrt_foundation::component::{
+    GlobalType,
+    MemoryType,
+    TableType,
+};
 
+use crate::prelude::*;
 
 /// WebAssembly function type
 #[derive(Debug, Clone, PartialEq)]
 pub struct FuncType {
     /// Parameter types
-    pub params: Vec<ValueType>,
+    pub params:  Vec<ValueType>,
     /// Result types
     pub results: Vec<ValueType>,
 }
@@ -23,7 +27,7 @@ pub struct Memory {
     /// Memory type
     pub ty: MemoryType,
     /// Memory data
-    data: Vec<u8>,
+    data:   Vec<u8>,
 }
 
 impl Memory {
@@ -48,7 +52,7 @@ impl Memory {
 #[derive(Debug)]
 pub struct Table {
     /// Table type
-    pub ty: TableType,
+    pub ty:   TableType,
     /// Table elements
     elements: Vec<Option<usize>>,
 }
@@ -77,7 +81,7 @@ pub struct Global {
     /// Global type
     pub ty: GlobalType,
     /// Global value (simplified as u64)
-    value: u64,
+    value:  u64,
 }
 
 impl Global {
@@ -94,7 +98,9 @@ impl Global {
     /// Sets the global value
     pub fn set(&mut self, value: u64) -> Result<()> {
         if !self.ty.mutable {
-            return Err(Error::runtime_execution_error("Cannot set value on immutable global";
+            return Err(Error::runtime_execution_error(
+                "Cannot set value on immutable global",
+            ));
         }
 
         self.value = value;

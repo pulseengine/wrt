@@ -10,46 +10,77 @@
 
 //! Waitable Set Canonical Operations
 //!
-//! This module provides implementation of the `waitable-set.*` built-in functions
-//! required by the WebAssembly Component Model for managing sets of waitable objects.
-
+//! This module provides implementation of the `waitable-set.*` built-in
+//! functions required by the WebAssembly Component Model for managing sets of
+//! waitable objects.
 
 extern crate alloc;
 
-use std::{boxed::Box, collections::BTreeMap, collections::BTreeSet, vec::Vec};
 #[cfg(feature = "std")]
-use std::{boxed::Box, collections::HashMap, collections::HashSet, vec::Vec};
-
-use wrt_error::{Error, ErrorCategory, Result};
-use wrt_foundation::{
-    atomic_memory::AtomicRefCell,
-    bounded::{BoundedMap, BoundedSet, BoundedVec},
-    component_value::ComponentValue,
-    safe_memory::NoStdProvider,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
+use std::{
+    boxed::Box,
+    collections::HashMap,
+    collections::HashSet,
+    vec::Vec,
+};
+use std::{
+    boxed::Box,
+    collections::{
+        BTreeMap,
+        BTreeSet,
+    },
+    vec::Vec,
 };
 
-use crate::async_::async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, WaitableSet};
-use crate::task_builtins::{TaskId as TaskBuiltinId, TaskStatus};
+use wrt_error::{
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_foundation::{
+    atomic_memory::AtomicRefCell,
+    bounded::{
+        BoundedMap,
+        BoundedSet,
+        BoundedVec,
+    },
+    budget_aware_provider::CrateId,
+    component_value::ComponentValue,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider,
+};
+
+use crate::{
+    async_::async_types::{
+        Future,
+        FutureHandle,
+        Stream,
+        StreamHandle,
+        Waitable,
+        WaitableSet,
+    },
+    task_builtins::{
+        TaskId as TaskBuiltinId,
+        TaskStatus,
+    },
+};
 
 // Constants for no_std environments
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(any(feature = "std",)))]
 const MAX_WAITABLE_SETS: usize = 32;
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(any(feature = "std",)))]
 const MAX_WAITABLES_PER_SET: usize = 64;
-#[cfg(not(any(feature = "std", )))]
+#[cfg(not(any(feature = "std",)))]
 const MAX_WAIT_RESULTS: usize = 64;
 
 /// Waitable set identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WaitableSetId(pub u64;
+pub struct WaitableSetId(pub u64);
 
 impl WaitableSetId {
     pub fn new() -> Self {
-        static COUNTER: core::sync::atomic::AtomicU64 = 
-            core::sync::atomic::AtomicU64::new(1;
-        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst)
+        static COUNTER: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(1);
+        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst))
     }
 
     pub fn as_u64(&self) -> u64 {
@@ -78,7 +109,7 @@ pub enum WaitResult {
 
 impl WaitResult {
     pub fn is_ready(&self) -> bool {
-        matches!(self, Self::Ready(_)
+        matches!(self, Self::Ready(_))
     }
 
     pub fn is_timeout(&self) -> bool {
@@ -90,7 +121,7 @@ impl WaitResult {
     }
 
     pub fn is_error(&self) -> bool {
-        matches!(self, Self::Error(_)
+        matches!(self, Self::Error(_))
     }
 
     pub fn as_ready(&self) -> Option<&WaitableEntry> {
@@ -111,9 +142,9 @@ impl WaitResult {
 /// Entry in a waitable set
 #[derive(Debug, Clone, PartialEq)]
 pub struct WaitableEntry {
-    pub id: WaitableId,
+    pub id:       WaitableId,
     pub waitable: Waitable,
-    pub ready: bool,
+    pub ready:    bool,
 }
 
 impl WaitableEntry {
@@ -136,21 +167,25 @@ impl WaitableEntry {
     pub fn check_ready(&mut self) -> bool {
         self.ready = match &self.waitable {
             Waitable::Future(future) => {
-                matches!(future.state, crate::async_::async_types::FutureState::Ready | 
-                                     crate::async_::async_types::FutureState::Error)
-            }
+                matches!(
+                    future.state,
+                    crate::async_::async_types::FutureState::Ready
+                        | crate::async_::async_types::FutureState::Error
+                )
+            },
             Waitable::Stream(stream) => {
                 match stream.state {
-                    crate::async_::async_types::StreamState::Open => true, // Data available to read
+                    crate::async_::async_types::StreamState::Open => true, // Data available to
+                    // read
                     crate::async_::async_types::StreamState::Closed => true, // EOF condition
                     _ => false,
                 }
-            }
+            },
             Waitable::WaitableSet(_) => {
                 // Nested waitable sets are ready if any of their contents are ready
                 // This would require recursive checking in a full implementation
                 false
-            }
+            },
         };
         self.ready
     }
@@ -158,13 +193,12 @@ impl WaitableEntry {
 
 /// Waitable identifier within a set
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct WaitableId(pub u64;
+pub struct WaitableId(pub u64);
 
 impl WaitableId {
     pub fn new() -> Self {
-        static COUNTER: core::sync::atomic::AtomicU64 = 
-            core::sync::atomic::AtomicU64::new(1;
-        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst)
+        static COUNTER: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(1);
+        Self(COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst))
     }
 
     pub fn as_u64(&self) -> u64 {
@@ -181,45 +215,53 @@ impl Default for WaitableId {
 /// A set of waitable objects that can be waited on collectively
 #[derive(Debug, Clone)]
 pub struct WaitableSetImpl {
-    pub id: WaitableSetId,
+    pub id:        WaitableSetId,
     #[cfg(feature = "std")]
     pub waitables: BTreeMap<WaitableId, WaitableEntry>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub waitables: BoundedMap<WaitableId, WaitableEntry, MAX_WAITABLES_PER_SET>,
-    pub closed: bool,
+    pub closed:    bool,
 }
 
 impl WaitableSetImpl {
-    pub fn new() -> Self {
-        Self {
-            id: WaitableSetId::new(),
-            #[cfg(feature = "std")]
-            waitables: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", )))]
-            waitables: BoundedMap::new(provider.clone())?,
-            closed: false,
+    pub fn new() -> Result<Self> {
+        #[cfg(feature = "std")]
+        {
+            Ok(Self {
+                id:        WaitableSetId::new(),
+                waitables: BTreeMap::new(),
+                closed:    false,
+            })
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            Ok(Self {
+                id:        WaitableSetId::new(),
+                waitables: BoundedMap::new(provider)?,
+                closed:    false,
+            })
         }
     }
 
     pub fn add_waitable(&mut self, waitable: Waitable) -> Result<WaitableId> {
         if self.closed {
-            return Err(Error::runtime_execution_error("Error occurred"
-            ;
+            return Err(Error::runtime_execution_error("Error occurred"));
         }
 
         let id = WaitableId::new();
-        let entry = WaitableEntry::new(id, waitable;
+        let entry = WaitableEntry::new(id, waitable);
 
         #[cfg(feature = "std")]
         {
-            self.waitables.insert(id, entry;
+            self.waitables.insert(id, entry);
             Ok(id)
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.waitables.insert(id, entry)
-                .map_err(|_| Error::runtime_execution_error("Error occurred"
-                ))?;
+            self.waitables
+                .insert(id, entry)
+                .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
             Ok(id)
         }
     }
@@ -254,21 +296,23 @@ impl WaitableSetImpl {
         let mut ready = Vec::new();
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
-                ready.push(entry.clone();
+                ready.push(entry.clone());
             }
         }
         ready
     }
 
-    #[cfg(not(any(feature = "std", )))]
-    pub fn check_ready(&mut self) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>> {
+    #[cfg(not(any(feature = "std",)))]
+    pub fn check_ready(
+        &mut self,
+    ) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        let mut ready = BoundedVec::new(provider).map_err(|_| {
-            Error::runtime_execution_error("Error occurred")
-        })?;
+        let mut ready = BoundedVec::new(provider)
+            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
-                ready.push(entry.clone()
+                ready
+                    .push(entry.clone())
                     .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
             }
         }
@@ -279,7 +323,7 @@ impl WaitableSetImpl {
     pub fn get_first_ready(&mut self) -> Option<WaitableEntry> {
         for (_, entry) in self.waitables.iter_mut() {
             if entry.check_ready() {
-                return Some(entry.clone();
+                return Some(entry.clone());
             }
         }
         None
@@ -288,7 +332,7 @@ impl WaitableSetImpl {
     /// Wait for any waitable to become ready (non-blocking check)
     pub fn poll(&mut self) -> Option<WaitResult> {
         if let Some(ready_entry) = self.get_first_ready() {
-            Some(WaitResult::Ready(ready_entry)
+            Some(WaitResult::Ready(ready_entry))
         } else {
             None
         }
@@ -297,30 +341,36 @@ impl WaitableSetImpl {
 
 impl Default for WaitableSetImpl {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| panic!("Failed to create WaitableSetImpl"))
     }
 }
 
 /// Global registry for waitable sets
-static WAITABLE_SET_REGISTRY: AtomicRefCell<Option<WaitableSetRegistry>> = 
-    AtomicRefCell::new(None;
+static WAITABLE_SET_REGISTRY: AtomicRefCell<Option<WaitableSetRegistry>> = AtomicRefCell::new(None);
 
 /// Registry that manages all waitable sets
 #[derive(Debug)]
 pub struct WaitableSetRegistry {
     #[cfg(feature = "std")]
     sets: HashMap<WaitableSetId, WaitableSetImpl>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     sets: BoundedMap<WaitableSetId, WaitableSetImpl, MAX_WAITABLE_SETS>,
 }
 
 impl WaitableSetRegistry {
-    pub fn new() -> Self {
-        Self {
-            #[cfg(feature = "std")]
-            sets: HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
-            sets: BoundedMap::new(provider.clone())?,
+    pub fn new() -> Result<Self> {
+        #[cfg(feature = "std")]
+        {
+            Ok(Self {
+                sets: HashMap::new(),
+            })
+        }
+        #[cfg(not(any(feature = "std",)))]
+        {
+            let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+            Ok(Self {
+                sets: BoundedMap::new(provider)?,
+            })
         }
     }
 
@@ -328,14 +378,14 @@ impl WaitableSetRegistry {
         let id = set.id;
         #[cfg(feature = "std")]
         {
-            self.sets.insert(id, set;
+            self.sets.insert(id, set);
             Ok(id)
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.sets.insert(id, set)
-                .map_err(|_| Error::runtime_execution_error("Error occurred"
-                ))?;
+            self.sets
+                .insert(id, set)
+                .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
             Ok(id)
         }
     }
@@ -359,7 +409,7 @@ impl WaitableSetRegistry {
 
 impl Default for WaitableSetRegistry {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| panic!("Failed to create WaitableSetRegistry"))
     }
 }
 
@@ -369,13 +419,15 @@ pub struct WaitableSetBuiltins;
 impl WaitableSetBuiltins {
     /// Initialize the global waitable set registry
     pub fn initialize() -> Result<()> {
-        let mut registry_ref = WAITABLE_SET_REGISTRY.try_borrow_mut()
-            .map_err(|_| Error::new(
+        let mut registry_ref = WAITABLE_SET_REGISTRY.try_borrow_mut().map_err(|_| {
+            Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message needed"))?;
-        *registry_ref = Some(WaitableSetRegistry::new();
-        Ok(()
+                "Error message needed",
+            )
+        })?;
+        *registry_ref = Some(WaitableSetRegistry::new()?);
+        Ok(())
     }
 
     /// Get the global registry
@@ -383,15 +435,17 @@ impl WaitableSetBuiltins {
     where
         F: FnOnce(&WaitableSetRegistry) -> R,
     {
-        let registry_ref = WAITABLE_SET_REGISTRY.try_borrow()
-            .map_err(|_| Error::runtime_execution_error("Error occurred"
-            ))?;
-        let registry = registry_ref.as_ref()
-            .ok_or_else(|| Error::new(
+        let registry_ref = WAITABLE_SET_REGISTRY
+            .try_borrow()
+            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
+        let registry = registry_ref.as_ref().ok_or_else(|| {
+            Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message needed"))?;
-        Ok(f(registry)
+                "Error message needed",
+            )
+        })?;
+        Ok(f(registry))
     }
 
     /// Get the global registry mutably
@@ -399,24 +453,24 @@ impl WaitableSetBuiltins {
     where
         F: FnOnce(&mut WaitableSetRegistry) -> Result<R>,
     {
-        let mut registry_ref = WAITABLE_SET_REGISTRY.try_borrow_mut()
-            .map_err(|_| Error::runtime_execution_error("Error occurred"
-            ))?;
-        let registry = registry_ref.as_mut()
-            .ok_or_else(|| Error::new(
+        let mut registry_ref = WAITABLE_SET_REGISTRY
+            .try_borrow_mut()
+            .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
+        let registry = registry_ref.as_mut().ok_or_else(|| {
+            Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Error message needed"))?;
+                "Error message needed",
+            )
+        })?;
         f(registry)
     }
 
     /// `waitable-set.new` canonical built-in
     /// Creates a new waitable set
     pub fn waitable_set_new() -> Result<WaitableSetId> {
-        let set = WaitableSetImpl::new();
-        Self::with_registry_mut(|registry| {
-            registry.register_set(set)
-        })?
+        let set = WaitableSetImpl::new()?;
+        Self::with_registry_mut(|registry| registry.register_set(set))?
     }
 
     /// `waitable-set.add` canonical built-in
@@ -426,10 +480,9 @@ impl WaitableSetBuiltins {
             if let Some(set) = registry.get_set_mut(set_id) {
                 set.add_waitable(waitable)
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 
     /// `waitable-set.remove` canonical built-in
@@ -437,14 +490,15 @@ impl WaitableSetBuiltins {
     pub fn waitable_set_remove(set_id: WaitableSetId, waitable_id: WaitableId) -> Result<bool> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
-                Ok(set.remove_waitable(waitable_id).is_some()
+                Ok(set.remove_waitable(waitable_id).is_some())
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::RESOURCE_INVALID_HANDLE,
-                    "Error message needed")
+                    "Error message needed",
+                ))
             }
-        })?
+        })
     }
 
     /// `waitable-set.wait` canonical built-in
@@ -452,12 +506,11 @@ impl WaitableSetBuiltins {
     pub fn waitable_set_wait(set_id: WaitableSetId) -> Result<WaitResult> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
-                Ok(set.poll().unwrap_or(WaitResult::Timeout)
+                Ok(set.poll().unwrap_or(WaitResult::Timeout))
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 
     /// Check if a waitable set contains a specific waitable
@@ -486,13 +539,14 @@ impl WaitableSetBuiltins {
     pub fn waitable_set_close(set_id: WaitableSetId) -> Result<()> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
-                set.close);
-                Ok(()
+                set.close();
+                Ok(())
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
                     wrt_error::codes::RESOURCE_INVALID_HANDLE,
-                    "Error message needed")
+                    "Error message needed",
+                ))
             }
         })?
     }
@@ -500,9 +554,9 @@ impl WaitableSetBuiltins {
     /// Remove a waitable set from the registry
     pub fn waitable_set_drop(set_id: WaitableSetId) -> Result<()> {
         Self::with_registry_mut(|registry| {
-            registry.remove_set(set_id;
-            Ok(()
-        })?
+            registry.remove_set(set_id);
+            Ok(())
+        })
     }
 
     /// Get all ready waitables from a set
@@ -510,24 +564,27 @@ impl WaitableSetBuiltins {
     pub fn waitable_set_poll_all(set_id: WaitableSetId) -> Result<Vec<WaitableEntry>> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
-                Ok(set.check_ready()
+                Ok(set.check_ready())
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 
-    #[cfg(not(any(feature = ")))]
-    pub fn waitable_set_poll_all(set_id: WaitableSetId) -> core::result::Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>, NoStdProvider<65536>> {
+    #[cfg(not(any(feature = "std")))]
+    pub fn waitable_set_poll_all(
+        set_id: WaitableSetId,
+    ) -> core::result::Result<
+        BoundedVec<WaitableEntry, MAX_WAIT_RESULTS, NoStdProvider<65536>>,
+        NoStdProvider<65536>,
+    > {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
                 set.check_ready()
             } else {
-                Err(Error::runtime_execution_error("Error occurred"
-            })?;
+                Err(Error::runtime_execution_error("Error occurred"))
             }
-        })?
+        })
     }
 }
 
@@ -545,7 +602,7 @@ pub mod waitable_set_helpers {
         Ok(set_id)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub fn create_waitable_set_with(waitables: &[Waitable]) -> Result<WaitableSetId> {
         let set_id = WaitableSetBuiltins::waitable_set_new()?;
         for waitable in waitables {
@@ -557,20 +614,19 @@ pub mod waitable_set_helpers {
     /// Wait for any of multiple futures to complete
     #[cfg(feature = "std")]
     pub fn wait_for_any_future(futures: Vec<Future>) -> Result<WaitResult> {
-        let waitables: Vec<Waitable> = futures.into_iter()
-            .map(Waitable::Future)
-            .collect();
+        let waitables: Vec<Waitable> = futures.into_iter().map(Waitable::Future).collect();
         let set_id = create_waitable_set_with(waitables)?;
         WaitableSetBuiltins::waitable_set_wait(set_id)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub fn wait_for_any_future(futures: &[Future]) -> Result<WaitResult> {
-        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new();
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let mut waitables = BoundedVec::new(provider)?;
         for future in futures {
-            waitables.push(Waitable::Future(future.clone())
-                .map_err(|_| Error::runtime_execution_error("Error occurred"
-                ))?;
+            waitables
+                .push(Waitable::Future(future.clone()))
+                .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         }
         let set_id = create_waitable_set_with(waitables.as_slice())?;
         WaitableSetBuiltins::waitable_set_wait(set_id)
@@ -579,20 +635,19 @@ pub mod waitable_set_helpers {
     /// Wait for any of multiple streams to have data available
     #[cfg(feature = "std")]
     pub fn wait_for_any_stream(streams: Vec<Stream>) -> Result<WaitResult> {
-        let waitables: Vec<Waitable> = streams.into_iter()
-            .map(Waitable::Stream)
-            .collect();
+        let waitables: Vec<Waitable> = streams.into_iter().map(Waitable::Stream).collect();
         let set_id = create_waitable_set_with(waitables)?;
         WaitableSetBuiltins::waitable_set_wait(set_id)
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub fn wait_for_any_stream(streams: &[Stream]) -> Result<WaitResult> {
-        let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new();
+        let provider = safe_managed_alloc!(65536, CrateId::Component)?;
+        let mut waitables = BoundedVec::new(provider)?;
         for stream in streams {
-            waitables.push(Waitable::Stream(stream.clone())
-                .map_err(|_| Error::runtime_execution_error("Error occurred"
-                ))?;
+            waitables
+                .push(Waitable::Stream(stream.clone()))
+                .map_err(|_| Error::runtime_execution_error("Error occurred"))?;
         }
         let set_id = create_waitable_set_with(waitables.as_slice())?;
         WaitableSetBuiltins::waitable_set_wait(set_id)
@@ -618,13 +673,16 @@ pub mod waitable_set_helpers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::async_::async_types::{FutureState, StreamState};
+    use crate::async_::async_types::{
+        FutureState,
+        StreamState,
+    };
 
     #[test]
     fn test_waitable_set_id_generation() {
         let id1 = WaitableSetId::new();
         let id2 = WaitableSetId::new();
-        assert_ne!(id1, id2;
+        assert_ne!(id1, id2);
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
     }
@@ -633,7 +691,7 @@ mod tests {
     fn test_waitable_id_generation() {
         let id1 = WaitableId::new();
         let id2 = WaitableId::new();
-        assert_ne!(id1, id2;
+        assert_ne!(id1, id2);
         assert!(id1.as_u64() > 0);
         assert!(id2.as_u64() > 0);
     }
@@ -644,20 +702,20 @@ mod tests {
             WaitableId::new(),
             Waitable::Future(Future {
                 handle: FutureHandle::new(),
-                state: FutureState::Pending,
-            })
-        ;
+                state:  FutureState::Pending,
+            }),
+        );
 
-        let ready_result = WaitResult::Ready(entry.clone();
-        assert!(ready_result.is_ready();
-        assert!(!ready_result.is_timeout();
-        assert!(!ready_result.is_cancelled();
-        assert!(!ready_result.is_error();
-        assert!(ready_result.as_ready().is_some();
+        let ready_result = WaitResult::Ready(entry.clone());
+        assert!(ready_result.is_ready());
+        assert!(!ready_result.is_timeout());
+        assert!(!ready_result.is_cancelled());
+        assert!(!ready_result.is_error());
+        assert!(ready_result.as_ready().is_some());
 
         let timeout_result = WaitResult::Timeout;
-        assert!(!timeout_result.is_ready();
-        assert!(timeout_result.is_timeout();
+        assert!(!timeout_result.is_ready());
+        assert!(timeout_result.is_timeout());
     }
 
     #[test]
@@ -667,122 +725,122 @@ mod tests {
             WaitableId::new(),
             Waitable::Future(Future {
                 handle: FutureHandle::new(),
-                state: FutureState::Pending,
-            })
-        ;
-        assert!(!future_entry.check_ready();
+                state:  FutureState::Pending,
+            }),
+        );
+        assert!(!future_entry.check_ready());
 
         future_entry.waitable = Waitable::Future(Future {
             handle: FutureHandle::new(),
-            state: FutureState::Resolved(ComponentValue::Bool(true)),
-        };
-        assert!(future_entry.check_ready();
+            state:  FutureState::Resolved(ComponentValue::Bool(true)),
+        });
+        assert!(future_entry.check_ready());
 
         // Test stream waitable
         let mut stream_entry = WaitableEntry::new(
             WaitableId::new(),
             Waitable::Stream(Stream {
                 handle: StreamHandle::new(),
-                state: StreamState::Pending,
-            })
-        ;
-        assert!(!stream_entry.check_ready();
+                state:  StreamState::Pending,
+            }),
+        );
+        assert!(!stream_entry.check_ready());
 
         stream_entry.waitable = Waitable::Stream(Stream {
             handle: StreamHandle::new(),
-            state: StreamState::Open,
-        };
-        assert!(stream_entry.check_ready();
+            state:  StreamState::Open,
+        });
+        assert!(stream_entry.check_ready());
     }
 
     #[test]
     fn test_waitable_set_operations() {
-        let mut set = WaitableSetImpl::new();
+        let mut set = WaitableSetImpl::new().unwrap();
         assert!(set.is_empty());
-        assert!(!set.is_closed();
+        assert!(!set.is_closed());
 
         // Add a waitable
         let future = Future {
             handle: FutureHandle::new(),
-            state: FutureState::Pending,
+            state:  FutureState::Pending,
         };
         let waitable_id = set.add_waitable(Waitable::Future(future)).unwrap();
 
         assert!(!set.is_empty());
         assert_eq!(set.waitable_count(), 1);
-        assert!(set.contains_waitable(waitable_id);
+        assert!(set.contains_waitable(waitable_id));
 
         // Remove the waitable
-        let removed = set.remove_waitable(waitable_id;
-        assert!(removed.is_some();
+        let removed = set.remove_waitable(waitable_id);
+        assert!(removed.is_some());
         assert!(set.is_empty());
-        assert!(!set.contains_waitable(waitable_id);
+        assert!(!set.contains_waitable(waitable_id));
 
         // Close the set
-        set.close);
-        assert!(set.is_closed();
+        set.close();
+        assert!(set.is_closed());
 
         // Try to add to closed set
         let future2 = Future {
             handle: FutureHandle::new(),
-            state: FutureState::Pending,
+            state:  FutureState::Pending,
         };
-        let result = set.add_waitable(Waitable::Future(future2;
-        assert!(result.is_err();
+        let result = set.add_waitable(Waitable::Future(future2));
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_waitable_set_ready_checking() {
-        let mut set = WaitableSetImpl::new();
+        let mut set = WaitableSetImpl::new().unwrap();
 
         // Add pending future
         let pending_future = Future {
             handle: FutureHandle::new(),
-            state: FutureState::Pending,
+            state:  FutureState::Pending,
         };
         set.add_waitable(Waitable::Future(pending_future)).unwrap();
 
         // Add resolved future
         let resolved_future = Future {
             handle: FutureHandle::new(),
-            state: FutureState::Resolved(ComponentValue::I32(42)),
+            state:  FutureState::Resolved(ComponentValue::I32(42)),
         };
         set.add_waitable(Waitable::Future(resolved_future)).unwrap();
 
         // Check for ready waitables
         #[cfg(feature = "std")]
         {
-            let ready = set.check_ready);
+            let ready = set.check_ready();
             assert_eq!(ready.len(), 1);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             let ready = set.check_ready().unwrap();
             assert_eq!(ready.len(), 1);
         }
 
         // Poll for first ready
-        let first_ready = set.get_first_ready);
-        assert!(first_ready.is_some();
-        assert!(first_ready.unwrap().is_ready();
+        let first_ready = set.get_first_ready();
+        assert!(first_ready.is_some());
+        assert!(first_ready.unwrap().is_ready());
     }
 
     #[test]
     fn test_waitable_set_registry() {
-        let mut registry = WaitableSetRegistry::new();
+        let mut registry = WaitableSetRegistry::new().unwrap();
         assert_eq!(registry.set_count(), 0);
 
-        let set = WaitableSetImpl::new();
+        let set = WaitableSetImpl::new().unwrap();
         let set_id = set.id;
         registry.register_set(set).unwrap();
         assert_eq!(registry.set_count(), 1);
 
-        let retrieved_set = registry.get_set(set_id;
-        assert!(retrieved_set.is_some();
-        assert_eq!(retrieved_set.unwrap().id, set_id;
+        let retrieved_set = registry.get_set(set_id);
+        assert!(retrieved_set.is_some());
+        assert_eq!(retrieved_set.unwrap().id, set_id);
 
-        let removed_set = registry.remove_set(set_id;
-        assert!(removed_set.is_some();
+        let removed_set = registry.remove_set(set_id);
+        assert!(removed_set.is_some());
         assert_eq!(registry.set_count(), 0);
     }
 
@@ -797,20 +855,21 @@ mod tests {
         // Add a waitable
         let future = Future {
             handle: FutureHandle::new(),
-            state: FutureState::Pending,
+            state:  FutureState::Pending,
         };
-        let waitable_id = WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
+        let waitable_id =
+            WaitableSetBuiltins::waitable_set_add(set_id, Waitable::Future(future)).unwrap();
 
         // Check operations
-        assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap();
+        assert!(WaitableSetBuiltins::waitable_set_contains(set_id, waitable_id).unwrap());
         assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 1);
 
         // Wait operation (should timeout since nothing is ready)
         let wait_result = WaitableSetBuiltins::waitable_set_wait(set_id).unwrap();
-        assert!(wait_result.is_timeout();
+        assert!(wait_result.is_timeout());
 
         // Remove waitable
-        assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap();
+        assert!(WaitableSetBuiltins::waitable_set_remove(set_id, waitable_id).unwrap());
         assert_eq!(WaitableSetBuiltins::waitable_set_count(set_id).unwrap(), 0);
 
         // Close set
@@ -826,11 +885,11 @@ mod tests {
 
         // Test waitable creation helpers
         let future_handle = FutureHandle::new();
-        let waitable = waitable_set_helpers::waitable_from_future_handle(future_handle;
-        assert!(matches!(waitable, Waitable::Future(_);
+        let waitable = waitable_set_helpers::waitable_from_future_handle(future_handle);
+        assert!(matches!(waitable, Waitable::Future(_)));
 
         let stream_handle = StreamHandle::new();
-        let waitable = waitable_set_helpers::waitable_from_stream_handle(stream_handle;
-        assert!(matches!(waitable, Waitable::Stream(_);
+        let waitable = waitable_set_helpers::waitable_from_stream_handle(stream_handle);
+        assert!(matches!(waitable, Waitable::Stream(_)));
     }
 }

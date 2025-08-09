@@ -1,34 +1,72 @@
 //! Task Manager bridge for async Component Model integration
 //!
 //! This module provides the bridge between the Component Model's TaskManager
-//! and the fuel-based async executor, enabling seamless async task lifecycle management.
+//! and the fuel-based async executor, enabling seamless async task lifecycle
+//! management.
 
-use crate::{
-    async_::{
-        fuel_async_executor::{FuelAsyncExecutor, AsyncTaskState, AsyncTaskStatus},
-        component_async_bridge::{ComponentAsyncBridge, PollResult},
-        fuel_dynamic_manager::FuelAllocationPolicy,
-        fuel_preemption_support::PreemptionPolicy,
-    },
-    task_manager::{TaskManager, TaskId, TaskType, TaskState, Task, TaskContext, CallFrame},
-    threading::thread_spawn_fuel::FuelTrackedThreadManager,
-    async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, WaitableSet},
-    ComponentInstanceId,
-    prelude::*,
-};
 use core::{
     future::Future as CoreFuture,
     pin::Pin,
-    sync::atomic::{AtomicU64, AtomicU32, Ordering},
-    task::{Context, Poll},
+    sync::atomic::{
+        AtomicU32,
+        AtomicU64,
+        Ordering,
+    },
+    task::{
+        Context,
+        Poll,
+    },
 };
+
 use wrt_foundation::{
-    bounded_collections::{BoundedMap, BoundedVec},
+    bounded_collections::{
+        BoundedMap,
+        BoundedVec,
+    },
     component_value::ComponentValue,
-    Arc, Weak, sync::Mutex,
-    CrateId, safe_managed_alloc,
+    safe_managed_alloc,
+    sync::Mutex,
+    Arc,
+    CrateId,
+    Weak,
 };
 use wrt_platform::advanced_sync::Priority;
+
+use crate::{
+    async_::{
+        component_async_bridge::{
+            ComponentAsyncBridge,
+            PollResult,
+        },
+        fuel_async_executor::{
+            AsyncTaskState,
+            AsyncTaskStatus,
+            FuelAsyncExecutor,
+        },
+        fuel_dynamic_manager::FuelAllocationPolicy,
+        fuel_preemption_support::PreemptionPolicy,
+    },
+    async_types::{
+        Future,
+        FutureHandle,
+        Stream,
+        StreamHandle,
+        Waitable,
+        WaitableSet,
+    },
+    prelude::*,
+    task_manager::{
+        CallFrame,
+        Task,
+        TaskContext,
+        TaskId,
+        TaskManager,
+        TaskState,
+        TaskType,
+    },
+    threading::thread_spawn_fuel::FuelTrackedThreadManager,
+    ComponentInstanceId,
+};
 
 /// Maximum async contexts per component
 const MAX_ASYNC_CONTEXTS: usize = 256;
@@ -39,23 +77,23 @@ pub struct ComponentAsyncTask {
     /// Component Model task ID
     pub component_task_id: TaskId,
     /// Executor task ID
-    pub executor_task_id: crate::threading::task_manager::TaskId,
+    pub executor_task_id:  crate::threading::task_manager::TaskId,
     /// Component instance
-    pub component_id: ComponentInstanceId,
+    pub component_id:      ComponentInstanceId,
     /// Task type
-    pub task_type: ComponentAsyncTaskType,
+    pub task_type:         ComponentAsyncTaskType,
     /// Future handle (if applicable)
-    pub future_handle: Option<FutureHandle>,
+    pub future_handle:     Option<FutureHandle>,
     /// Stream handle (if applicable)  
-    pub stream_handle: Option<StreamHandle>,
+    pub stream_handle:     Option<StreamHandle>,
     /// Waitables being monitored
-    pub waitables: Option<WaitableSet>,
+    pub waitables:         Option<WaitableSet>,
     /// Task priority
-    pub priority: Priority,
+    pub priority:          Priority,
     /// Creation timestamp
-    pub created_at: u64,
+    pub created_at:        u64,
     /// Last activity timestamp
-    pub last_activity: AtomicU64,
+    pub last_activity:     AtomicU64,
 }
 
 /// Type of async task in Component Model
@@ -76,33 +114,33 @@ pub enum ComponentAsyncTaskType {
 /// Task Manager Async Bridge
 pub struct TaskManagerAsyncBridge {
     /// Component Model task manager
-    task_manager: Arc<Mutex<TaskManager>>,
+    task_manager:   Arc<Mutex<TaskManager>>,
     /// Async executor bridge
-    async_bridge: ComponentAsyncBridge,
+    async_bridge:   ComponentAsyncBridge,
     /// Active async tasks
-    async_tasks: BoundedMap<TaskId, ComponentAsyncTask, MAX_ASYNC_CONTEXTS>,
+    async_tasks:    BoundedMap<TaskId, ComponentAsyncTask, MAX_ASYNC_CONTEXTS>,
     /// Task mapping (component task -> executor task)
-    task_mapping: BoundedMap<TaskId, crate::threading::task_manager::TaskId, MAX_ASYNC_CONTEXTS>,
+    task_mapping:   BoundedMap<TaskId, crate::threading::task_manager::TaskId, MAX_ASYNC_CONTEXTS>,
     /// Component async contexts
     async_contexts: BoundedMap<ComponentInstanceId, ComponentAsyncContext, 128>,
     /// Bridge statistics
-    bridge_stats: BridgeStatistics,
+    bridge_stats:   BridgeStatistics,
     /// Bridge configuration
-    config: BridgeConfiguration,
+    config:         BridgeConfiguration,
 }
 
 /// Per-component async context
 #[derive(Debug)]
 struct ComponentAsyncContext {
-    component_id: ComponentInstanceId,
+    component_id:    ComponentInstanceId,
     /// Active async tasks for this component
-    active_tasks: BoundedVec<TaskId, 64>,
+    active_tasks:    BoundedVec<TaskId, 64>,
     /// Future handles owned by component
-    futures: BoundedMap<FutureHandle, TaskId, 64>,
+    futures:         BoundedMap<FutureHandle, TaskId, 64>,
     /// Stream handles owned by component
-    streams: BoundedMap<StreamHandle, TaskId, 64>,
+    streams:         BoundedMap<StreamHandle, TaskId, 64>,
     /// Component async state
-    async_state: ComponentAsyncState,
+    async_state:     ComponentAsyncState,
     /// Resource limits
     resource_limits: ComponentResourceLimits,
 }
@@ -126,53 +164,53 @@ pub enum ComponentAsyncState {
 #[derive(Debug, Clone)]
 struct ComponentResourceLimits {
     max_concurrent_tasks: usize,
-    max_futures: usize,
-    max_streams: usize,
-    fuel_budget: u64,
-    memory_limit: usize,
+    max_futures:          usize,
+    max_streams:          usize,
+    fuel_budget:          u64,
+    memory_limit:         usize,
 }
 
 /// Bridge statistics
 #[derive(Debug, Default)]
 struct BridgeStatistics {
     total_async_tasks: AtomicU64,
-    completed_tasks: AtomicU64,
-    failed_tasks: AtomicU64,
-    cancelled_tasks: AtomicU64,
-    futures_created: AtomicU64,
-    streams_created: AtomicU64,
-    preemptions: AtomicU64,
-    fuel_exhaustions: AtomicU64,
+    completed_tasks:   AtomicU64,
+    failed_tasks:      AtomicU64,
+    cancelled_tasks:   AtomicU64,
+    futures_created:   AtomicU64,
+    streams_created:   AtomicU64,
+    preemptions:       AtomicU64,
+    fuel_exhaustions:  AtomicU64,
 }
 
 /// Bridge configuration
 #[derive(Debug, Clone)]
 pub struct BridgeConfiguration {
     /// Enable async task preemption
-    pub enable_preemption: bool,
+    pub enable_preemption:   bool,
     /// Enable dynamic fuel management  
     pub enable_dynamic_fuel: bool,
     /// Default fuel allocation policy
-    pub fuel_policy: FuelAllocationPolicy,
+    pub fuel_policy:         FuelAllocationPolicy,
     /// Default preemption policy
-    pub preemption_policy: PreemptionPolicy,
+    pub preemption_policy:   PreemptionPolicy,
     /// Default component resource limits
-    pub default_limits: ComponentResourceLimits,
+    pub default_limits:      ComponentResourceLimits,
 }
 
 impl Default for BridgeConfiguration {
     fn default() -> Self {
         Self {
-            enable_preemption: true,
+            enable_preemption:   true,
             enable_dynamic_fuel: true,
-            fuel_policy: FuelAllocationPolicy::Adaptive,
-            preemption_policy: PreemptionPolicy::PriorityBased,
-            default_limits: ComponentResourceLimits {
+            fuel_policy:         FuelAllocationPolicy::Adaptive,
+            preemption_policy:   PreemptionPolicy::PriorityBased,
+            default_limits:      ComponentResourceLimits {
                 max_concurrent_tasks: 32,
-                max_futures: 64,
-                max_streams: 16,
-                fuel_budget: 50_000,
-                memory_limit: 1024 * 1024, // 1MB
+                max_futures:          64,
+                max_streams:          16,
+                fuel_budget:          50_000,
+                memory_limit:         1024 * 1024, // 1MB
             },
         }
     }
@@ -186,7 +224,7 @@ impl TaskManagerAsyncBridge {
         config: BridgeConfiguration,
     ) -> Result<Self, Error> {
         let async_bridge = ComponentAsyncBridge::new(task_manager.clone(), thread_manager)?;
-        
+
         Ok(Self {
             task_manager,
             async_bridge,
@@ -205,7 +243,7 @@ impl TaskManagerAsyncBridge {
         limits: Option<ComponentResourceLimits>,
     ) -> Result<(), Error> {
         let limits = limits.unwrap_or_else(|| self.config.default_limits.clone());
-        
+
         // Register with async bridge
         self.async_bridge.register_component(
             component_id,
@@ -225,9 +263,9 @@ impl TaskManagerAsyncBridge {
             resource_limits: limits,
         };
 
-        self.async_contexts.insert(component_id, context).map_err(|_| {
-            Error::resource_limit_exceeded("Too many component async contexts")
-        })?;
+        self.async_contexts
+            .insert(component_id, context)
+            .map_err(|_| Error::resource_limit_exceeded("Too many component async contexts"))?;
 
         Ok(())
     }
@@ -250,12 +288,16 @@ impl TaskManagerAsyncBridge {
         })?;
 
         if context.async_state != ComponentAsyncState::Active {
-            return Err(Error::validation_invalid_state("Component async operations not active"));
+            return Err(Error::validation_invalid_state(
+                "Component async operations not active",
+            ));
         }
 
         // Check resource limits
         if context.active_tasks.len() >= context.resource_limits.max_concurrent_tasks {
-            return Err(Error::resource_limit_exceeded("Component async task limit exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Component async task limit exceeded",
+            ));
         }
 
         // Create Component Model task
@@ -276,7 +318,10 @@ impl TaskManagerAsyncBridge {
         let executor_task_id = self.async_bridge.spawn_component_async(
             component_id,
             executor_future,
-            Some(context.resource_limits.fuel_budget / context.resource_limits.max_concurrent_tasks as u64),
+            Some(
+                context.resource_limits.fuel_budget
+                    / context.resource_limits.max_concurrent_tasks as u64,
+            ),
         )?;
 
         // Create async task record
@@ -294,18 +339,19 @@ impl TaskManagerAsyncBridge {
         };
 
         // Store task mappings
-        self.async_tasks.insert(component_task_id, async_task).map_err(|_| {
-            Error::resource_limit_exceeded("Too many async tasks")
-        })?;
+        self.async_tasks
+            .insert(component_task_id, async_task)
+            .map_err(|_| Error::resource_limit_exceeded("Too many async tasks"))?;
 
-        self.task_mapping.insert(component_task_id, executor_task_id).map_err(|_| {
-            Error::resource_limit_exceeded("Task mapping table full")
-        })?;
+        self.task_mapping
+            .insert(component_task_id, executor_task_id)
+            .map_err(|_| Error::resource_limit_exceeded("Task mapping table full"))?;
 
         // Update component context
-        context.active_tasks.push(component_task_id).map_err(|_| {
-            Error::resource_limit_exceeded("Component task list full")
-        })?;
+        context
+            .active_tasks
+            .push(component_task_id)
+            .map_err(|_| Error::resource_limit_exceeded("Component task list full"))?;
 
         // Update statistics
         self.bridge_stats.total_async_tasks.fetch_add(1, Ordering::Relaxed);
@@ -319,17 +365,20 @@ impl TaskManagerAsyncBridge {
         component_id: ComponentInstanceId,
         future: Box<dyn Future + Send>,
     ) -> Result<FutureHandle, Error> {
-        let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not initialized")
-        })?;
+        let context = self
+            .async_contexts
+            .get_mut(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not initialized"))?;
 
         if context.futures.len() >= context.resource_limits.max_futures {
-            return Err(Error::resource_limit_exceeded("Component future limit exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Component future limit exceeded",
+            ));
         }
 
         // Generate unique handle
         let handle = FutureHandle::new(self.generate_handle_id());
-        
+
         // Spawn task to handle future
         let task_id = self.spawn_async_task(
             component_id,
@@ -343,9 +392,10 @@ impl TaskManagerAsyncBridge {
         )?;
 
         // Store handle mapping
-        context.futures.insert(handle, task_id).map_err(|_| {
-            Error::resource_limit_exceeded("Future handle table full")
-        })?;
+        context
+            .futures
+            .insert(handle, task_id)
+            .map_err(|_| Error::resource_limit_exceeded("Future handle table full"))?;
 
         self.bridge_stats.futures_created.fetch_add(1, Ordering::Relaxed);
 
@@ -358,16 +408,19 @@ impl TaskManagerAsyncBridge {
         component_id: ComponentInstanceId,
         stream: Box<dyn Stream + Send>,
     ) -> Result<StreamHandle, Error> {
-        let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not initialized")
-        })?;
+        let context = self
+            .async_contexts
+            .get_mut(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not initialized"))?;
 
         if context.streams.len() >= context.resource_limits.max_streams {
-            return Err(Error::resource_limit_exceeded("Component stream limit exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Component stream limit exceeded",
+            ));
         }
 
         let handle = StreamHandle::new(self.generate_handle_id());
-        
+
         // Spawn task to handle stream
         let task_id = self.spawn_async_task(
             component_id,
@@ -380,9 +433,10 @@ impl TaskManagerAsyncBridge {
             Priority::Normal,
         )?;
 
-        context.streams.insert(handle, task_id).map_err(|_| {
-            Error::resource_limit_exceeded("Stream handle table full")
-        })?;
+        context
+            .streams
+            .insert(handle, task_id)
+            .map_err(|_| Error::resource_limit_exceeded("Stream handle table full"))?;
 
         self.bridge_stats.streams_created.fetch_add(1, Ordering::Relaxed);
 
@@ -393,9 +447,8 @@ impl TaskManagerAsyncBridge {
     pub fn task_wait(&mut self, waitables: WaitableSet) -> Result<u32, Error> {
         let current_task = {
             let tm = self.task_manager.lock()?;
-            tm.current_task_id().ok_or_else(|| {
-                Error::validation_invalid_state("No current task")
-            })?
+            tm.current_task_id()
+                .ok_or_else(|| Error::validation_invalid_state("No current task"))?
         };
 
         // Check if any waitables are immediately ready
@@ -424,9 +477,8 @@ impl TaskManagerAsyncBridge {
     pub fn task_yield(&mut self) -> Result<(), Error> {
         let current_task = {
             let tm = self.task_manager.lock()?;
-            tm.current_task_id().ok_or_else(|| {
-                Error::validation_invalid_state("No current task")
-            })?
+            tm.current_task_id()
+                .ok_or_else(|| Error::validation_invalid_state("No current task"))?
         };
 
         // Update task activity
@@ -460,17 +512,25 @@ impl TaskManagerAsyncBridge {
         }
 
         // Update statistics
-        self.bridge_stats.completed_tasks.fetch_add(result.tasks_completed as u64, Ordering::Relaxed);
-        self.bridge_stats.failed_tasks.fetch_add(result.tasks_failed as u64, Ordering::Relaxed);
+        self.bridge_stats
+            .completed_tasks
+            .fetch_add(result.tasks_completed as u64, Ordering::Relaxed);
+        self.bridge_stats
+            .failed_tasks
+            .fetch_add(result.tasks_failed as u64, Ordering::Relaxed);
 
         Ok(result)
     }
 
     /// Suspend component async operations
-    pub fn suspend_component_async(&mut self, component_id: ComponentInstanceId) -> Result<(), Error> {
-        let context = self.async_contexts.get_mut(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not found")
-        })?;
+    pub fn suspend_component_async(
+        &mut self,
+        component_id: ComponentInstanceId,
+    ) -> Result<(), Error> {
+        let context = self
+            .async_contexts
+            .get_mut(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not found"))?;
 
         context.async_state = ComponentAsyncState::Suspending;
 
@@ -491,11 +551,11 @@ impl TaskManagerAsyncBridge {
     pub fn get_bridge_statistics(&self) -> BridgeStats {
         BridgeStats {
             total_async_tasks: self.bridge_stats.total_async_tasks.load(Ordering::Relaxed),
-            completed_tasks: self.bridge_stats.completed_tasks.load(Ordering::Relaxed),
-            failed_tasks: self.bridge_stats.failed_tasks.load(Ordering::Relaxed),
-            cancelled_tasks: self.bridge_stats.cancelled_tasks.load(Ordering::Relaxed),
-            futures_created: self.bridge_stats.futures_created.load(Ordering::Relaxed),
-            streams_created: self.bridge_stats.streams_created.load(Ordering::Relaxed),
+            completed_tasks:   self.bridge_stats.completed_tasks.load(Ordering::Relaxed),
+            failed_tasks:      self.bridge_stats.failed_tasks.load(Ordering::Relaxed),
+            cancelled_tasks:   self.bridge_stats.cancelled_tasks.load(Ordering::Relaxed),
+            futures_created:   self.bridge_stats.futures_created.load(Ordering::Relaxed),
+            streams_created:   self.bridge_stats.streams_created.load(Ordering::Relaxed),
             active_components: self.async_contexts.len() as u64,
         }
     }
@@ -531,11 +591,11 @@ impl TaskManagerAsyncBridge {
 #[derive(Debug, Clone)]
 pub struct BridgeStats {
     pub total_async_tasks: u64,
-    pub completed_tasks: u64,
-    pub failed_tasks: u64,
-    pub cancelled_tasks: u64,
-    pub futures_created: u64,
-    pub streams_created: u64,
+    pub completed_tasks:   u64,
+    pub failed_tasks:      u64,
+    pub cancelled_tasks:   u64,
+    pub futures_created:   u64,
+    pub streams_created:   u64,
     pub active_components: u64,
 }
 
@@ -548,7 +608,7 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
         let config = BridgeConfiguration::default();
-        
+
         let bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
         assert_eq!(bridge.async_contexts.len(), 0);
     }
@@ -558,12 +618,12 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
         let config = BridgeConfiguration::default();
-        
+
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
-        
+
         let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
-        
+
         assert!(bridge.async_contexts.contains_key(&component_id));
     }
 
@@ -572,20 +632,22 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
         let config = BridgeConfiguration::default();
-        
+
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
-        
+
         let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
-        
-        let task_id = bridge.spawn_async_task(
-            component_id,
-            Some(0),
-            async { Ok(vec![]) },
-            ComponentAsyncTaskType::AsyncFunction,
-            Priority::Normal,
-        ).unwrap();
-        
+
+        let task_id = bridge
+            .spawn_async_task(
+                component_id,
+                Some(0),
+                async { Ok(vec![]) },
+                ComponentAsyncTaskType::AsyncFunction,
+                Priority::Normal,
+            )
+            .unwrap();
+
         assert!(bridge.async_tasks.contains_key(&task_id));
         assert!(bridge.task_mapping.contains_key(&task_id));
     }
@@ -595,16 +657,16 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
         let config = BridgeConfiguration::default();
-        
+
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
-        
+
         let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
-        
+
         // Would need proper Future implementation for real test
         // let future = Box::new(/* future implementation */;
         // let handle = bridge.create_future_handle(component_id, future).unwrap();
-        
+
         let stats = bridge.get_bridge_statistics();
         assert_eq!(stats.active_components, 1);
     }
@@ -614,14 +676,14 @@ mod tests {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
         let config = BridgeConfiguration::default();
-        
+
         let mut bridge = TaskManagerAsyncBridge::new(task_manager, thread_manager, config).unwrap();
-        
+
         let component_id = ComponentInstanceId::new(1);
         bridge.initialize_component_async(component_id, None).unwrap();
-        
+
         bridge.suspend_component_async(component_id).unwrap();
-        
+
         let context = bridge.async_contexts.get(&component_id).unwrap();
         assert_eq!(context.async_state, ComponentAsyncState::Suspended);
     }

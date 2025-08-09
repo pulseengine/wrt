@@ -3,24 +3,44 @@
 //! This module provides scheduling algorithms that use fuel consumption
 //! for deterministic timing guarantees across different ASIL levels.
 
-use crate::{
-    async_::fuel_async_executor::{AsyncTaskState, AsyncTaskStatus, FuelAsyncExecutor},
-    threading::task_manager::{TaskId, TaskState},
-    ComponentInstanceId,
-    prelude::*,
-};
 use core::{
     cmp::Ordering as CmpOrdering,
-    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
+    sync::atomic::{
+        AtomicU64,
+        AtomicUsize,
+        Ordering,
+    },
     time::Duration,
 };
+
 use wrt_foundation::{
-    bounded_collections::{BoundedMap, BoundedVec},
-    operations::{record_global_operation, Type as OperationType},
+    bounded_collections::{
+        BoundedMap,
+        BoundedVec,
+    },
+    operations::{
+        record_global_operation,
+        Type as OperationType,
+    },
+    safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId, safe_managed_alloc,
+    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
+
+use crate::{
+    async_::fuel_async_executor::{
+        AsyncTaskState,
+        AsyncTaskStatus,
+        FuelAsyncExecutor,
+    },
+    prelude::*,
+    threading::task_manager::{
+        TaskId,
+        TaskState,
+    },
+    ComponentInstanceId,
+};
 
 /// Maximum number of scheduling events to track
 const MAX_SCHEDULING_EVENTS: usize = 256;
@@ -46,42 +66,45 @@ pub enum SchedulingPolicy {
 /// Task scheduling entry with fuel tracking
 #[derive(Debug, Clone)]
 pub struct ScheduledTask {
-    pub task_id: TaskId,
-    pub component_id: ComponentInstanceId,
-    pub priority: Priority,
-    pub fuel_quota: u64,
-    pub fuel_consumed: u64,
-    pub deadline: Option<Duration>,
+    pub task_id:        TaskId,
+    pub component_id:   ComponentInstanceId,
+    pub priority:       Priority,
+    pub fuel_quota:     u64,
+    pub fuel_consumed:  u64,
+    pub deadline:       Option<Duration>,
     pub last_scheduled: AtomicU64,
     pub schedule_count: AtomicUsize,
-    pub state: AsyncTaskState,
+    pub state:          AsyncTaskState,
 }
 
 /// Fuel-based async scheduler
 pub struct FuelAsyncScheduler {
     /// Current scheduling policy
-    policy: SchedulingPolicy,
+    policy:               SchedulingPolicy,
     /// Scheduled tasks indexed by task ID
-    scheduled_tasks: BoundedMap<TaskId, ScheduledTask, 128>,
+    scheduled_tasks:      BoundedMap<TaskId, ScheduledTask, 128>,
     /// Priority queue for priority-based scheduling
-    priority_queue: BoundedVec<TaskId, 128>,
+    priority_queue:       BoundedVec<TaskId, 128>,
     /// Round-robin queue
-    round_robin_queue: BoundedVec<TaskId, 128>,
+    round_robin_queue:    BoundedVec<TaskId, 128>,
     /// Current round-robin position
     round_robin_position: AtomicUsize,
     /// Global scheduling time (in fuel units)
     global_schedule_time: AtomicU64,
     /// Verification level for scheduling operations
-    verification_level: VerificationLevel,
+    verification_level:   VerificationLevel,
     /// Fuel quantum for round-robin scheduling
-    fuel_quantum: u64,
+    fuel_quantum:         u64,
 }
 
 impl FuelAsyncScheduler {
     /// Create a new fuel-based async scheduler
-    pub fn new(policy: SchedulingPolicy, verification_level: VerificationLevel) -> Result<Self, Error> {
+    pub fn new(
+        policy: SchedulingPolicy,
+        verification_level: VerificationLevel,
+    ) -> Result<Self, Error> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        
+
         Ok(Self {
             policy,
             scheduled_tasks: BoundedMap::new(provider.clone())?,
@@ -131,26 +154,26 @@ impl FuelAsyncScheduler {
             state: AsyncTaskState::Ready,
         };
 
-        self.scheduled_tasks.insert(task_id, scheduled_task).map_err(|_| {
-            Error::resource_limit_exceeded("Too many scheduled tasks")
-        })?;
+        self.scheduled_tasks
+            .insert(task_id, scheduled_task)
+            .map_err(|_| Error::resource_limit_exceeded("Too many scheduled tasks"))?;
 
         // Add to appropriate scheduling queue
         match self.policy {
             SchedulingPolicy::Cooperative => {
                 // Tasks are polled in order of readiness
-            }
+            },
             SchedulingPolicy::PriorityBased => {
                 self.insert_priority_queue(task_id)?;
-            }
+            },
             SchedulingPolicy::DeadlineBased => {
                 self.insert_deadline_queue(task_id)?;
-            }
+            },
             SchedulingPolicy::RoundRobin => {
-                self.round_robin_queue.push(task_id).map_err(|_| {
-                    Error::resource_limit_exceeded("Round-robin queue is full")
-                })?;
-            }
+                self.round_robin_queue
+                    .push(task_id)
+                    .map_err(|_| Error::resource_limit_exceeded("Round-robin queue is full"))?;
+            },
         }
 
         Ok(())
@@ -161,7 +184,7 @@ impl FuelAsyncScheduler {
         record_global_operation(OperationType::CollectionRemove, self.verification_level);
 
         self.scheduled_tasks.remove(&task_id);
-        
+
         // Remove from all queues
         self.priority_queue.retain(|&id| id != task_id);
         self.round_robin_queue.retain(|&id| id != task_id);
@@ -173,7 +196,8 @@ impl FuelAsyncScheduler {
     pub fn next_task(&mut self) -> Option<TaskId> {
         record_global_operation(OperationType::FunctionCall, self.verification_level);
 
-        let current_time = self.global_schedule_time.fetch_add(SCHEDULE_TASK_FUEL, Ordering::AcqRel);
+        let current_time =
+            self.global_schedule_time.fetch_add(SCHEDULE_TASK_FUEL, Ordering::AcqRel);
 
         match self.policy {
             SchedulingPolicy::Cooperative => self.next_cooperative_task(),
@@ -204,11 +228,11 @@ impl FuelAsyncScheduler {
                 match self.policy {
                     SchedulingPolicy::PriorityBased => {
                         self.reprioritize_task(task_id)?;
-                    }
+                    },
                     SchedulingPolicy::DeadlineBased => {
                         self.reorder_deadline_queue(task_id)?;
-                    }
-                    _ => {}
+                    },
+                    _ => {},
                 }
             }
 
@@ -225,7 +249,8 @@ impl FuelAsyncScheduler {
         for (task_id, task) in self.scheduled_tasks.iter() {
             if let Some(deadline) = task.deadline {
                 let deadline_fuel = deadline.as_millis() as u64; // 1ms = 1 fuel
-                let elapsed = current_time.saturating_sub(task.last_scheduled.load(Ordering::Acquire));
+                let elapsed =
+                    current_time.saturating_sub(task.last_scheduled.load(Ordering::Acquire));
 
                 if elapsed > deadline_fuel {
                     violations.push(*task_id);
@@ -251,7 +276,7 @@ impl FuelAsyncScheduler {
             match task.state {
                 AsyncTaskState::Ready => ready_tasks += 1,
                 AsyncTaskState::Waiting => waiting_tasks += 1,
-                _ => {}
+                _ => {},
             }
         }
 
@@ -342,7 +367,9 @@ impl FuelAsyncScheduler {
     }
 
     fn insert_priority_queue(&mut self, task_id: TaskId) -> Result<(), Error> {
-        let task_priority = self.scheduled_tasks.get(&task_id)
+        let task_priority = self
+            .scheduled_tasks
+            .get(&task_id)
             .map(|t| t.priority)
             .unwrap_or(Priority::Normal);
 
@@ -357,16 +384,16 @@ impl FuelAsyncScheduler {
             }
         }
 
-        self.priority_queue.insert(insert_pos, task_id).map_err(|_| {
-            Error::resource_limit_exceeded("Priority queue is full")
-        })
+        self.priority_queue
+            .insert(insert_pos, task_id)
+            .map_err(|_| Error::resource_limit_exceeded("Priority queue is full"))
     }
 
     fn insert_deadline_queue(&mut self, task_id: TaskId) -> Result<(), Error> {
         // For deadline scheduling, we use the priority queue but order by deadline
-        self.priority_queue.push(task_id).map_err(|_| {
-            Error::resource_limit_exceeded("Deadline queue is full")
-        })?;
+        self.priority_queue
+            .push(task_id)
+            .map_err(|_| Error::resource_limit_exceeded("Deadline queue is full"))?;
 
         // Sort by deadline (earliest first)
         self.sort_deadline_queue();
@@ -389,10 +416,13 @@ impl FuelAsyncScheduler {
     }
 
     fn should_swap_deadline_tasks(&self, i: usize, j: usize) -> bool {
-        if let (Some(&task_a), Some(&task_b)) = (self.priority_queue.get(i), self.priority_queue.get(j)) {
-            if let (Some(task_a_info), Some(task_b_info)) = 
-                (self.scheduled_tasks.get(&task_a), self.scheduled_tasks.get(&task_b)) 
-            {
+        if let (Some(&task_a), Some(&task_b)) =
+            (self.priority_queue.get(i), self.priority_queue.get(j))
+        {
+            if let (Some(task_a_info), Some(task_b_info)) = (
+                self.scheduled_tasks.get(&task_a),
+                self.scheduled_tasks.get(&task_b),
+            ) {
                 match (task_a_info.deadline, task_b_info.deadline) {
                     (Some(deadline_a), Some(deadline_b)) => deadline_a > deadline_b,
                     (None, Some(_)) => true, // Tasks without deadlines go to the end
@@ -428,14 +458,14 @@ impl FuelAsyncScheduler {
 /// Scheduling statistics
 #[derive(Debug, Clone)]
 pub struct SchedulingStatistics {
-    pub policy: SchedulingPolicy,
-    pub total_tasks: usize,
-    pub ready_tasks: usize,
-    pub waiting_tasks: usize,
-    pub total_fuel_consumed: u64,
+    pub policy:               SchedulingPolicy,
+    pub total_tasks:          usize,
+    pub ready_tasks:          usize,
+    pub waiting_tasks:        usize,
+    pub total_fuel_consumed:  u64,
     pub total_schedule_count: usize,
     pub global_schedule_time: u64,
-    pub fuel_quantum: u64,
+    pub fuel_quantum:         u64,
 }
 
 impl SchedulingStatistics {
@@ -462,10 +492,9 @@ mod tests {
 
     #[test]
     fn test_scheduler_creation() {
-        let scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::Cooperative,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Standard)
+                .unwrap();
 
         let stats = scheduler.get_statistics();
         assert_eq!(stats.policy, SchedulingPolicy::Cooperative);
@@ -474,19 +503,20 @@ mod tests {
 
     #[test]
     fn test_task_addition() {
-        let mut scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::Cooperative,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let mut scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::Cooperative, VerificationLevel::Standard)
+                .unwrap();
 
         let task_id = TaskId::new(1);
-        scheduler.add_task(
-            task_id,
-            ComponentInstanceId::new(1),
-            Priority::Normal,
-            1000,
-            None,
-        ).unwrap();
+        scheduler
+            .add_task(
+                task_id,
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                1000,
+                None,
+            )
+            .unwrap();
 
         let stats = scheduler.get_statistics();
         assert_eq!(stats.total_tasks, 1);
@@ -495,18 +525,33 @@ mod tests {
 
     #[test]
     fn test_priority_scheduling() {
-        let mut scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::PriorityBased,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let mut scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::PriorityBased, VerificationLevel::Standard)
+                .unwrap();
 
         let task1 = TaskId::new(1);
         let task2 = TaskId::new(2);
 
         // Add low priority task first
-        scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Low, 1000, None).unwrap();
+        scheduler
+            .add_task(
+                task1,
+                ComponentInstanceId::new(1),
+                Priority::Low,
+                1000,
+                None,
+            )
+            .unwrap();
         // Add high priority task second
-        scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::High, 1000, None).unwrap();
+        scheduler
+            .add_task(
+                task2,
+                ComponentInstanceId::new(1),
+                Priority::High,
+                1000,
+                None,
+            )
+            .unwrap();
 
         // High priority task should be scheduled first
         let next = scheduler.next_task();
@@ -515,16 +560,31 @@ mod tests {
 
     #[test]
     fn test_round_robin_scheduling() {
-        let mut scheduler = FuelAsyncScheduler::new(
-            SchedulingPolicy::RoundRobin,
-            VerificationLevel::Standard,
-        ).unwrap();
+        let mut scheduler =
+            FuelAsyncScheduler::new(SchedulingPolicy::RoundRobin, VerificationLevel::Standard)
+                .unwrap();
 
         let task1 = TaskId::new(1);
         let task2 = TaskId::new(2);
 
-        scheduler.add_task(task1, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
-        scheduler.add_task(task2, ComponentInstanceId::new(1), Priority::Normal, 1000, None).unwrap();
+        scheduler
+            .add_task(
+                task1,
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                1000,
+                None,
+            )
+            .unwrap();
+        scheduler
+            .add_task(
+                task2,
+                ComponentInstanceId::new(1),
+                Priority::Normal,
+                1000,
+                None,
+            )
+            .unwrap();
 
         // Should alternate between tasks
         assert_eq!(scheduler.next_task(), Some(task1));

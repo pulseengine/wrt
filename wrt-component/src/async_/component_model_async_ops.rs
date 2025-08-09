@@ -3,28 +3,52 @@
 //! This module implements the async operations defined in the WebAssembly
 //! Component Model, including task.wait, task.yield, and task.poll.
 
-use crate::{
-    async_::{
-        fuel_async_executor::{
-            FuelAsyncExecutor, FuelAsyncTask, AsyncTaskState, 
-            ExecutionContext, ComponentAsyncOperation, ExecutionStepResult,
-        },
-        async_types::{Waitable, WaitableSet, FutureHandle, StreamHandle},
-    },
-    task_manager::{TaskId, TaskManager},
-    types::ComponentInstance,
-    ComponentInstanceId,
-    prelude::*,
-};
 use core::{
-    sync::atomic::{AtomicU32, AtomicU64, AtomicBool, Ordering},
+    sync::atomic::{
+        AtomicBool,
+        AtomicU32,
+        AtomicU64,
+        Ordering,
+    },
     time::Duration,
 };
+
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedMap},
+    bounded_collections::{
+        BoundedMap,
+        BoundedVec,
+    },
+    safe_managed_alloc,
     sync::Mutex,
-    Arc, Weak,
-    CrateId, safe_managed_alloc,
+    Arc,
+    CrateId,
+    Weak,
+};
+
+use crate::{
+    async_::{
+        async_types::{
+            FutureHandle,
+            StreamHandle,
+            Waitable,
+            WaitableSet,
+        },
+        fuel_async_executor::{
+            AsyncTaskState,
+            ComponentAsyncOperation,
+            ExecutionContext,
+            ExecutionStepResult,
+            FuelAsyncExecutor,
+            FuelAsyncTask,
+        },
+    },
+    prelude::*,
+    task_manager::{
+        TaskId,
+        TaskManager,
+    },
+    types::ComponentInstance,
+    ComponentInstanceId,
 };
 
 /// Maximum number of waitables per task.wait call
@@ -38,30 +62,30 @@ const TASK_POLL_FUEL: u64 = 30;
 /// Component Model async operations handler
 pub struct ComponentModelAsyncOps {
     /// Reference to the fuel async executor
-    executor: Arc<Mutex<FuelAsyncExecutor>>,
+    executor:          Arc<Mutex<FuelAsyncExecutor>>,
     /// Reference to the task manager
-    task_manager: Arc<Mutex<TaskManager>>,
+    task_manager:      Arc<Mutex<TaskManager>>,
     /// Active wait operations
-    active_waits: BoundedMap<TaskId, WaitOperation, 128>,
+    active_waits:      BoundedMap<TaskId, WaitOperation, 128>,
     /// Waitable registry
     waitable_registry: WaitableRegistry,
     /// Operation statistics
-    stats: AsyncOpStats,
+    stats:             AsyncOpStats,
 }
 
 /// Active wait operation
 #[derive(Debug)]
 struct WaitOperation {
     /// Task that is waiting
-    task_id: TaskId,
+    task_id:     TaskId,
     /// Set of waitables
-    waitables: WaitableSet,
+    waitables:   WaitableSet,
     /// Which waitable became ready (if any)
     ready_index: Option<u32>,
     /// Timestamp when wait started
-    start_time: u64,
+    start_time:  u64,
     /// Timeout duration (0 = no timeout)
-    timeout_ms: u64,
+    timeout_ms:  u64,
 }
 
 /// Registry for managing waitables
@@ -92,10 +116,10 @@ enum WaitableState {
 /// Async operation statistics
 #[derive(Debug, Default)]
 struct AsyncOpStats {
-    total_waits: AtomicU64,
-    total_yields: AtomicU64,
-    total_polls: AtomicU64,
-    wait_timeouts: AtomicU64,
+    total_waits:    AtomicU64,
+    total_yields:   AtomicU64,
+    total_polls:    AtomicU64,
+    wait_timeouts:  AtomicU64,
     wait_successes: AtomicU64,
 }
 
@@ -106,7 +130,7 @@ impl ComponentModelAsyncOps {
         task_manager: Arc<Mutex<TaskManager>>,
     ) -> Result<Self, Error> {
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
-        
+
         Ok(Self {
             executor,
             task_manager,
@@ -131,8 +155,11 @@ impl ComponentModelAsyncOps {
         }
 
         if waitables.waitables.len() > MAX_WAITABLES {
-            return Err(Error::runtime_execution_error(
-                &format!("Too many waitables: {} exceeds limit {}", waitables.waitables.len(), MAX_WAITABLES)));
+            return Err(Error::runtime_execution_error(&format!(
+                "Too many waitables: {} exceeds limit {}",
+                waitables.waitables.len(),
+                MAX_WAITABLES
+            )));
         }
 
         // Consume fuel for the operation
@@ -146,17 +173,17 @@ impl ComponentModelAsyncOps {
 
         // Create wait operation
         let wait_op = WaitOperation {
-            task_id: current_task,
-            waitables: waitables.clone(),
+            task_id:     current_task,
+            waitables:   waitables.clone(),
             ready_index: None,
-            start_time: self.get_current_time(),
-            timeout_ms: timeout_ms.unwrap_or(0),
+            start_time:  self.get_current_time(),
+            timeout_ms:  timeout_ms.unwrap_or(0),
         };
 
         // Register wait operation
-        self.active_waits.insert(current_task, wait_op).map_err(|_| {
-            Error::resource_limit_exceeded("Too many active wait operations")
-        })?;
+        self.active_waits
+            .insert(current_task, wait_op)
+            .map_err(|_| Error::resource_limit_exceeded("Too many active wait operations"))?;
 
         // Mark task as waiting
         self.mark_task_waiting(current_task)?;
@@ -173,21 +200,21 @@ impl ComponentModelAsyncOps {
 
         // Get execution context
         let mut executor = self.executor.lock()?;
-        
+
         // Force task to yield by marking it as waiting temporarily
         if let Some(task) = executor.tasks.get_mut(&current_task) {
             match task.state {
                 AsyncTaskState::Ready => {
                     // Create yield point in execution context
                     task.execution_context.create_yield_point(
-                        0, // Would be real instruction pointer
+                        0,      // Would be real instruction pointer
                         vec![], // Would capture stack
                         vec![], // Would capture locals
                     )?;
-                    
+
                     // Mark as waiting (will be immediately re-queued)
                     task.state = AsyncTaskState::Waiting;
-                    
+
                     // Immediately wake the task to re-queue it
                     drop(executor); // Release lock before waking
                     self.wake_task(current_task)?;
@@ -195,7 +222,7 @@ impl ComponentModelAsyncOps {
                 _ => {
                     // Task not in ready state, can't yield
                     return Err(Error::invalid_state_error("Task not in ready state"));
-                }
+                },
             }
         } else {
             return Err(Error::validation_invalid_input("Task not found"));
@@ -227,10 +254,10 @@ impl ComponentModelAsyncOps {
     pub fn process_wait_operations(&mut self) -> Result<usize, Error> {
         let mut woken_count = 0;
         let current_time = self.get_current_time();
-        
+
         // Check all active wait operations
         let mut completed_waits = Vec::new();
-        
+
         for (task_id, wait_op) in self.active_waits.iter_mut() {
             // Check for timeout
             if wait_op.timeout_ms > 0 {
@@ -242,7 +269,7 @@ impl ComponentModelAsyncOps {
                     continue;
                 }
             }
-            
+
             // Check if any waitable is ready
             if let Some(ready_index) = self.check_waitables_ready(&wait_op.waitables)? {
                 wait_op.ready_index = Some(ready_index);
@@ -250,11 +277,11 @@ impl ComponentModelAsyncOps {
                 completed_waits.push((*task_id, Some(ready_index)));
             }
         }
-        
+
         // Wake completed tasks
         for (task_id, ready_index) in completed_waits {
             self.active_waits.remove(&task_id);
-            
+
             // Store the result for the task
             if let Some(index) = ready_index {
                 self.set_task_wait_result(task_id, index)?;
@@ -262,12 +289,12 @@ impl ComponentModelAsyncOps {
                 // Timeout - set special result
                 self.set_task_timeout_result(task_id)?;
             }
-            
+
             // Wake the task
             self.wake_task(task_id)?;
             woken_count += 1;
         }
-        
+
         Ok(woken_count)
     }
 
@@ -445,15 +472,13 @@ pub enum TaskPollResult {
 pub enum ComponentModelAsyncOp {
     /// task.wait operation
     TaskWait {
-        waitables: WaitableSet,
+        waitables:  WaitableSet,
         timeout_ms: Option<u64>,
     },
     /// task.yield operation
     TaskYield,
     /// task.poll operation
-    TaskPoll {
-        waitables: WaitableSet,
-    },
+    TaskPoll { waitables: WaitableSet },
 }
 
 impl ComponentModelAsyncOp {
@@ -480,7 +505,7 @@ mod tests {
     #[test]
     fn test_component_model_async_op_fuel_cost() {
         let wait_op = ComponentModelAsyncOp::TaskWait {
-            waitables: WaitableSet::new(),
+            waitables:  WaitableSet::new(),
             timeout_ms: Some(1000),
         };
         assert_eq!(wait_op.fuel_cost(), TASK_WAIT_FUEL);
@@ -495,9 +520,9 @@ mod tests {
     fn test_waitable_registry() {
         let mut registry = WaitableRegistry::new().unwrap();
         let future_handle = FutureHandle(42);
-        
+
         assert!(!registry.is_future_ready(future_handle).unwrap());
-        
+
         registry.mark_future_ready(future_handle).unwrap();
         assert!(registry.is_future_ready(future_handle).unwrap());
     }

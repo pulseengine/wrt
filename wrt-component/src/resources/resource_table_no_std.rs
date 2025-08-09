@@ -1,22 +1,33 @@
 //! Resource table implementation for no_std environments
 
+// Implement required traits for BoundedVec compatibility
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ReadStream,
+        ToBytes,
+        WriteStream,
+    },
 };
 
-use super::{Instant, ResourceId};
-
-// Implement required traits for BoundedVec compatibility
-use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+use super::{
+    Instant,
+    ResourceId,
+};
 
 // Macro to implement basic traits for complex types
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum;
+                0u32.update_checksum(checksum);
             }
         }
 
@@ -48,23 +59,23 @@ const MAX_RESOURCES: usize = 1024;
 #[derive(Debug, Clone)]
 pub struct Resource {
     /// Resource type index
-    pub type_idx: u32,
+    pub type_idx:      u32,
     /// Resource data pointer (simplified for no_std)
-    pub data_ptr: usize,
+    pub data_ptr:      usize,
     /// Debug name for the resource (optional)
-    pub name: Option<BoundedString<64>>,
+    pub name:          Option<BoundedString<64>>,
     /// Creation timestamp
-    pub created_at: Instant,
+    pub created_at:    Instant,
     /// Last access timestamp
     pub last_accessed: Instant,
     /// Access count
-    pub access_count: u64,
+    pub access_count:  u64,
 }
 
 impl Resource {
     /// Create a new resource
     pub fn new(type_idx: u32, data_ptr: usize) -> Self {
-        let now = Instant::now);
+        let now = Instant::now();
         Self {
             type_idx,
             data_ptr,
@@ -77,14 +88,14 @@ impl Resource {
 
     /// Create a new resource with a debug name
     pub fn new_with_name(type_idx: u32, data_ptr: usize, name: &str) -> Self {
-        let mut resource = Self::new(type_idx, data_ptr;
+        let mut resource = Self::new(type_idx, data_ptr);
         resource.name = BoundedString::from_str(name).ok();
         resource
     }
 
     /// Record access to this resource
     pub fn record_access(&mut self) {
-        self.last_accessed = Instant::now);
+        self.last_accessed = Instant::now();
         self.access_count += 1;
     }
 }
@@ -125,10 +136,10 @@ impl Default for VerificationLevel {
 pub trait BufferPoolTrait {
     /// Allocate a buffer
     fn allocate(&mut self, size: usize) -> Option<usize>;
-    
+
     /// Deallocate a buffer
-    fn deallocate(&mut self, ptr: usize, size: usize;
-    
+    fn deallocate(&mut self, ptr: usize, size: usize);
+
     /// Get available memory
     fn available_memory(&self) -> usize;
 }
@@ -137,11 +148,14 @@ pub trait BufferPoolTrait {
 #[derive(Debug)]
 pub struct ResourceTable {
     /// Storage for resources
-    resources: BoundedVec<Option<Resource, 256, crate::bounded_component_infra::ComponentProvider>, MAX_RESOURCES>,
+    resources: BoundedVec<
+        Option<Resource, 256, crate::bounded_component_infra::ComponentProvider>,
+        MAX_RESOURCES,
+    >,
     /// Next available resource ID
-    next_id: u32,
+    next_id:            u32,
     /// Memory strategy
-    memory_strategy: MemoryStrategy,
+    memory_strategy:    MemoryStrategy,
     /// Verification level
     verification_level: VerificationLevel,
 }
@@ -150,18 +164,21 @@ impl ResourceTable {
     /// Create a new resource table
     pub fn new() -> wrt_foundation::WrtResult<Self> {
         Ok(Self {
-            resources: {
+            resources:          {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
             },
-            next_id: 1,
-            memory_strategy: MemoryStrategy::default(),
+            next_id:            1,
+            memory_strategy:    MemoryStrategy::default(),
             verification_level: VerificationLevel::default(),
         })
     }
 
     /// Create a new resource table with configuration
-    pub fn with_config(memory_strategy: MemoryStrategy, verification_level: VerificationLevel) -> wrt_foundation::WrtResult<Self> {
+    pub fn with_config(
+        memory_strategy: MemoryStrategy,
+        verification_level: VerificationLevel,
+    ) -> wrt_foundation::WrtResult<Self> {
         Ok(Self {
             resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
@@ -175,21 +192,21 @@ impl ResourceTable {
 
     /// Insert a resource and return its ID
     pub fn insert(&mut self, resource: Resource) -> wrt_foundation::WrtResult<ResourceId> {
-        let id = ResourceId(self.next_id;
+        let id = ResourceId(self.next_id);
         self.next_id += 1;
 
         // Find an empty slot or add to the end
         for (i, slot) in self.resources.iter_mut().enumerate() {
             if slot.is_none() {
-                *slot = Some(resource;
-                return Ok(ResourceId(i as u32 + 1;
+                *slot = Some(resource);
+                return Ok(ResourceId(i as u32 + 1));
             }
         }
 
         // No empty slot found, try to add new one
-        self.resources.push(Some(resource)).map_err(|_| {
-            wrt_foundation::wrt_error::Error::resource_exhausted("Error occurred")
-        })?;
+        self.resources
+            .push(Some(resource))
+            .map_err(|_| wrt_foundation::wrt_error::Error::resource_exhausted("Error occurred"))?;
 
         Ok(id)
     }
@@ -245,7 +262,7 @@ impl Default for ResourceTable {
 }
 
 // Apply traits to the main types
-impl_basic_traits!(Resource, Resource::new(0, 0);
-impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap();
+impl_basic_traits!(Resource, Resource::new(0, 0));
+impl_basic_traits!(ResourceTable, ResourceTable::new().unwrap());
 impl_basic_traits!(MemoryStrategy, MemoryStrategy::default());
 impl_basic_traits!(VerificationLevel, VerificationLevel::default());

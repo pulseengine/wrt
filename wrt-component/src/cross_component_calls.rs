@@ -4,25 +4,40 @@
 //! component instances, handling type adaptation and resource management.
 
 #[cfg(not(feature = "std"))]
-use core::{fmt, mem};
+use core::{
+    fmt,
+    mem,
+};
 #[cfg(feature = "std")]
-use std::{fmt, mem};
-
+use std::{
+    boxed::Box,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{boxed::Box, vec::Vec};
+use std::{
+    fmt,
+    mem,
+};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component::WrtComponentType, component_value::ComponentValue, prelude::*,
-    safe_memory::NoStdProvider,
+    bounded::BoundedVec,
     budget_aware_provider::CrateId,
+    component::WrtComponentType,
+    component_value::ComponentValue,
+    prelude::*,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
 };
 
 use crate::{
     canonical::CanonicalAbi,
     execution_engine::ComponentExecutionEngine,
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ComponentInstance, ValType, Value},
+    types::{
+        ComponentInstance,
+        ValType,
+        Value,
+    },
     WrtResult,
 };
 
@@ -40,37 +55,37 @@ pub struct CallSiteKey {
     /// Target component instance ID  
     pub target_instance: u32,
     /// Function name or index
-    pub function_name: String,
+    pub function_name:   String,
     /// Function signature hash for type checking
-    pub signature_hash: u64,
+    pub signature_hash:  u64,
 }
 
 /// Cached call target with pre-resolved information
 #[derive(Debug, Clone)]
 pub struct CachedCallTarget {
     /// Target function index in the component
-    pub function_index: u32,
+    pub function_index:        u32,
     /// Pre-validated function signature
-    pub signature: FunctionSignature,
+    pub signature:             FunctionSignature,
     /// ABI adaptation information
-    pub abi_adapter: Option<AbiAdapter>,
+    pub abi_adapter:           Option<AbiAdapter>,
     /// Resource transfer requirements
     pub resource_requirements: ResourceRequirements,
     /// Last validation timestamp
-    pub last_validated: u64,
+    pub last_validated:        u64,
     /// Hit count for cache optimization
-    pub hit_count: u32,
+    pub hit_count:             u32,
 }
 
 /// Call statistics for performance optimization
 #[derive(Debug, Clone, Default)]
 pub struct CallStats {
     /// Total number of calls to this site
-    pub call_count: u32,
+    pub call_count:      u32,
     /// Average call duration in nanoseconds
     pub avg_duration_ns: u64,
     /// Last call timestamp
-    pub last_call_time: u64,
+    pub last_call_time:  u64,
     /// Whether this call site is eligible for inlining
     pub inline_eligible: bool,
 }
@@ -79,22 +94,22 @@ pub struct CallStats {
 #[derive(Debug, Clone)]
 pub struct PendingTransfer {
     /// Resource handle to transfer
-    pub resource_handle: u32,
+    pub resource_handle:  u32,
     /// Source component
     pub source_component: u32,
     /// Target component
     pub target_component: u32,
     /// Transfer type (move, copy, borrow)
-    pub transfer_type: ResourceTransferType,
+    pub transfer_type:    ResourceTransferType,
 }
 
 /// Function signature for type checking and caching
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionSignature {
     /// Parameter types
-    pub params: Vec<ValType>,
+    pub params:   Vec<ValType>,
     /// Return types
-    pub results: Vec<ValType>,
+    pub results:  Vec<ValType>,
     /// Whether function is async
     pub is_async: bool,
 }
@@ -103,7 +118,7 @@ pub struct FunctionSignature {
 #[derive(Debug, Clone)]
 pub struct AbiAdapter {
     /// Input type adaptations
-    pub input_adaptations: Vec<TypeAdaptation>,
+    pub input_adaptations:  Vec<TypeAdaptation>,
     /// Output type adaptations
     pub output_adaptations: Vec<TypeAdaptation>,
 }
@@ -112,9 +127,9 @@ pub struct AbiAdapter {
 #[derive(Debug, Clone)]
 pub struct TypeAdaptation {
     /// Source type
-    pub source_type: ValType,
+    pub source_type:   ValType,
     /// Target type
-    pub target_type: ValType,
+    pub target_type:   ValType,
     /// Conversion function
     pub conversion_fn: String, // Function name for conversion
 }
@@ -123,9 +138,9 @@ pub struct TypeAdaptation {
 #[derive(Debug, Clone, Default)]
 pub struct ResourceRequirements {
     /// Required memory in bytes
-    pub memory_required: usize,
+    pub memory_required:  usize,
     /// Maximum number of handles
-    pub max_handles: u32,
+    pub max_handles:      u32,
     /// Whether exclusive access is needed
     pub exclusive_access: bool,
 }
@@ -146,31 +161,31 @@ pub struct CrossComponentCallManager {
     /// Call targets registry
     #[cfg(feature = "std")]
     targets: Vec<CallTarget>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     targets: BoundedVec<CallTarget, MAX_CALL_TARGETS, NoStdProvider<65536>>,
 
     /// Call stack for tracking cross-component calls
     #[cfg(feature = "std")]
     call_stack: Vec<CrossCallFrame>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     call_stack: BoundedVec<CrossCallFrame, MAX_CROSS_CALL_DEPTH, NoStdProvider<65536>>,
 
     /// Call site cache for frequently called functions
     #[cfg(feature = "std")]
     call_cache: std::collections::HashMap<CallSiteKey, CachedCallTarget>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     call_cache: BoundedVec<(CallSiteKey, CachedCallTarget), 128, NoStdProvider<65536>>,
 
     /// Call frequency tracking for optimization
     #[cfg(feature = "std")]
     call_frequency: std::collections::HashMap<CallSiteKey, CallStats>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     call_frequency: BoundedVec<(CallSiteKey, CallStats), 128, NoStdProvider<65536>>,
 
     /// Batch resource transfer buffer for optimization
     #[cfg(feature = "std")]
     pending_transfers: Vec<PendingTransfer>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pending_transfers: BoundedVec<PendingTransfer, 64, NoStdProvider<65536>>,
 
     /// Canonical ABI processor
@@ -189,11 +204,11 @@ pub struct CallTarget {
     /// Target component instance ID
     pub target_instance: u32,
     /// Target function index within the component
-    pub function_index: u32,
+    pub function_index:  u32,
     /// Function signature
-    pub signature: WrtComponentType,
+    pub signature:       WrtComponentType,
     /// Call permissions
-    pub permissions: CallPermissions,
+    pub permissions:     CallPermissions,
     /// Resource transfer policy
     pub resource_policy: ResourceTransferPolicy,
 }
@@ -202,13 +217,13 @@ pub struct CallTarget {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CallPermissions {
     /// Whether the call is allowed
-    pub allowed: bool,
+    pub allowed:                 bool,
     /// Whether resources can be transferred
     pub allow_resource_transfer: bool,
     /// Whether memory access is allowed
-    pub allow_memory_access: bool,
+    pub allow_memory_access:     bool,
     /// Maximum call frequency (calls per second, 0 for unlimited)
-    pub max_frequency: u32,
+    pub max_frequency:           u32,
 }
 
 /// Resource transfer policy
@@ -228,17 +243,17 @@ pub enum ResourceTransferPolicy {
 #[derive(Debug, Clone)]
 pub struct CrossCallFrame {
     /// Caller instance ID
-    pub caller_instance: u32,
+    pub caller_instance:       u32,
     /// Target instance ID
-    pub target_instance: u32,
+    pub target_instance:       u32,
     /// Function being called
-    pub function_index: u32,
+    pub function_index:        u32,
     /// Call start time (simplified - would use proper time type)
-    pub start_time: u64,
+    pub start_time:            u64,
     /// Resources transferred in this call
     #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub transferred_resources: BoundedVec<TransferredResource, 32, NoStdProvider<65536>>,
 }
 
@@ -246,9 +261,9 @@ pub struct CrossCallFrame {
 #[derive(Debug, Clone)]
 pub struct TransferredResource {
     /// Resource handle
-    pub handle: u32,
+    pub handle:         u32,
     /// Transfer type
-    pub transfer_type: ResourceTransferPolicy,
+    pub transfer_type:  ResourceTransferPolicy,
     /// Original owner (for restoration on error)
     pub original_owner: u32,
 }
@@ -257,27 +272,27 @@ pub struct TransferredResource {
 #[derive(Debug, Clone)]
 pub struct CrossCallResult {
     /// Function call result
-    pub result: WrtResult<Value>,
+    pub result:                WrtResult<Value>,
     /// Resources that were transferred
     #[cfg(feature = "std")]
     pub transferred_resources: Vec<TransferredResource>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub transferred_resources: BoundedVec<TransferredResource, 32, NoStdProvider<65536>>,
     /// Call statistics
-    pub stats: CallStatistics,
+    pub stats:                 CallStatistics,
 }
 
 /// Call statistics
 #[derive(Debug, Clone)]
 pub struct CallStatistics {
     /// Call duration in nanoseconds
-    pub duration_ns: u64,
+    pub duration_ns:           u64,
     /// Number of arguments
-    pub arg_count: u32,
+    pub arg_count:             u32,
     /// Number of resources transferred
     pub resources_transferred: u32,
     /// Memory bytes accessed
-    pub memory_accessed: u64,
+    pub memory_accessed:       u64,
 }
 
 impl CrossComponentCallManager {
@@ -286,35 +301,35 @@ impl CrossComponentCallManager {
         Ok(Self {
             #[cfg(feature = "std")]
             targets: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             targets: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
             call_stack: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             call_stack: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
             call_cache: std::collections::HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             call_cache: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
             call_frequency: std::collections::HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             call_frequency: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).unwrap()
             },
             #[cfg(feature = "std")]
             pending_transfers: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             pending_transfers: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).unwrap()
@@ -338,11 +353,11 @@ impl CrossComponentCallManager {
         {
             self.targets.push(target);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.targets.push(target).map_err(|_| 
-                wrt_error::Error::resource_exhausted("Too many call targets")
-            )?;
+            self.targets
+                .push(target)
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many call targets"))?;
         }
 
         Ok(target_id)
@@ -358,7 +373,9 @@ impl CrossComponentCallManager {
     ) -> WrtResult<CrossCallResult> {
         // Check call depth
         if self.call_stack.len() >= self.max_call_depth {
-            return Err(wrt_error::Error::resource_exhausted("Maximum call depth exceeded";
+            return Err(wrt_error::Error::resource_exhausted(
+                "Maximum call depth exceeded",
+            ));
         }
 
         // Get target
@@ -370,12 +387,13 @@ impl CrossComponentCallManager {
 
         // Check permissions
         if !target.permissions.allowed {
-            return Err(wrt_error::Error::runtime_error("Cross-component call not allowed")
-            ;
+            return Err(wrt_error::Error::runtime_error(
+                "Cross-component call not allowed",
+            ));
         }
 
         // Create call frame
-        let start_time = self.get_current_time);
+        let start_time = self.get_current_time();
         let call_frame = CrossCallFrame {
             caller_instance,
             target_instance: target.target_instance,
@@ -383,7 +401,7 @@ impl CrossComponentCallManager {
             start_time,
             #[cfg(feature = "std")]
             transferred_resources: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             transferred_resources: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).unwrap()
@@ -395,11 +413,11 @@ impl CrossComponentCallManager {
         {
             self.call_stack.push(call_frame);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.call_stack.push(call_frame).map_err(|_| 
-                wrt_error::Error::resource_exhausted("Call stack overflow")
-            )?;
+            self.call_stack
+                .push(call_frame)
+                .map_err(|_| wrt_error::Error::resource_exhausted("Call stack overflow"))?;
         }
 
         // Prepare arguments with resource transfer
@@ -412,11 +430,14 @@ impl CrossComponentCallManager {
         }
 
         // Make the actual call
-        let call_result =
-            engine.call_function(target.target_instance, target.function_index, &prepared_args;
+        let call_result = engine.call_function(
+            target.target_instance,
+            target.function_index,
+            &prepared_args,
+        );
 
         // Calculate statistics
-        let end_time = self.get_current_time);
+        let end_time = self.get_current_time();
         let duration_ns = end_time - start_time;
         let stats = CallStatistics {
             duration_ns,
@@ -426,22 +447,26 @@ impl CrossComponentCallManager {
         };
 
         // Update call statistics for optimization
-        let signature_hash = self.calculate_signature_hash(&target.signature;
+        let signature_hash = self.calculate_signature_hash(&target.signature);
         self.update_call_stats(
             caller_instance,
             target.target_instance,
             &format!("func_{}", target.function_index), // Function name approximation
             signature_hash,
             duration_ns,
-        ;
+        );
 
         // Handle call result
         let result = match call_result {
             Ok(value) => {
                 // Call succeeded - finalize resource transfers
                 self.finalize_resource_transfers(&transferred_resources)?;
-                CrossCallResult { result: Ok(value), transferred_resources, stats }
-            }
+                CrossCallResult {
+                    result: Ok(value),
+                    transferred_resources,
+                    stats,
+                }
+            },
             Err(error) => {
                 // Call failed - restore resources
                 self.restore_resources(&transferred_resources)?;
@@ -449,24 +474,24 @@ impl CrossComponentCallManager {
                     result: Err(error),
                     #[cfg(feature = "std")]
                     transferred_resources: Vec::new(),
-                    #[cfg(not(any(feature = "std", )))]
+                    #[cfg(not(any(feature = "std",)))]
                     transferred_resources: {
                         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                         BoundedVec::new(provider).unwrap()
                     },
                     stats,
                 }
-            }
+            },
         };
 
         // Pop call frame
         #[cfg(feature = "std")]
         {
-            self.call_stack.pop);
+            self.call_stack.pop();
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            let _ = self.call_stack.pop);
+            let _ = self.call_stack.pop();
         }
 
         Ok(result)
@@ -481,12 +506,12 @@ impl CrossComponentCallManager {
     ) -> WrtResult<(Vec<Value>, Vec<TransferredResource>)> {
         #[cfg(feature = "std")]
         let mut prepared_args = Vec::new();
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let mut prepared_args = Vec::new();
 
         #[cfg(feature = "std")]
         let mut transferred_resources = Vec::new();
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let mut transferred_resources = Vec::new();
 
         for arg in args {
@@ -502,16 +527,17 @@ impl CrossComponentCallManager {
                             transfer_type,
                         )?;
                         transferred_resources.push(transferred);
-                        prepared_args.push(arg.clone();
+                        prepared_args.push(arg.clone());
                     } else {
-                        return Err(wrt_error::Error::runtime_error("Resource transfer not allowed")
-                        ;
+                        return Err(wrt_error::Error::runtime_error(
+                            "Resource transfer not allowed",
+                        ));
                     }
-                }
+                },
                 _ => {
                     // Regular value arguments
-                    prepared_args.push(arg.clone();
-                }
+                    prepared_args.push(arg.clone());
+                },
             }
         }
 
@@ -527,19 +553,29 @@ impl CrossComponentCallManager {
         transfer_type: ResourceTransferPolicy,
     ) -> WrtResult<TransferredResource> {
         match transfer_type {
-            ResourceTransferPolicy::None => Err(wrt_error::Error::runtime_error("Resource transfer not allowed")),
+            ResourceTransferPolicy::None => Err(wrt_error::Error::runtime_error(
+                "Resource transfer not allowed",
+            )),
             ResourceTransferPolicy::Transfer => {
                 // Transfer ownership
                 self.resource_manager.transfer_ownership(
                     wrt_foundation::resource::ResourceHandle(handle),
                     to_instance,
                 )?;
-                Ok(TransferredResource { handle, transfer_type, original_owner: from_instance })
-            }
+                Ok(TransferredResource {
+                    handle,
+                    transfer_type,
+                    original_owner: from_instance,
+                })
+            },
             ResourceTransferPolicy::Borrow => {
                 // Borrow resource (no ownership change)
-                Ok(TransferredResource { handle, transfer_type, original_owner: from_instance })
-            }
+                Ok(TransferredResource {
+                    handle,
+                    transfer_type,
+                    original_owner: from_instance,
+                })
+            },
             ResourceTransferPolicy::Copy => {
                 // Copy resource (if possible)
                 // This would create a new resource with copied data
@@ -549,7 +585,7 @@ impl CrossComponentCallManager {
                     transfer_type: ResourceTransferPolicy::Borrow,
                     original_owner: from_instance,
                 })
-            }
+            },
         }
     }
 
@@ -559,16 +595,16 @@ impl CrossComponentCallManager {
             match transfer.transfer_type {
                 ResourceTransferPolicy::Transfer => {
                     // Transfer is already finalized
-                }
+                },
                 ResourceTransferPolicy::Borrow => {
                     // Nothing to finalize for borrow
-                }
+                },
                 ResourceTransferPolicy::Copy => {
                     // Finalize copy (would commit the copied resource)
-                }
+                },
                 ResourceTransferPolicy::None => {
                     // Should not happen
-                }
+                },
             }
         }
         Ok(())
@@ -584,16 +620,16 @@ impl CrossComponentCallManager {
                         wrt_foundation::resource::ResourceHandle(transfer.handle),
                         transfer.original_owner,
                     )?;
-                }
+                },
                 ResourceTransferPolicy::Borrow => {
                     // Nothing to restore for borrow
-                }
+                },
                 ResourceTransferPolicy::Copy => {
                     // Remove copied resource (would clean up the copy)
-                }
+                },
                 ResourceTransferPolicy::None => {
                     // Should not happen
-                }
+                },
             }
         }
         Ok(())
@@ -627,15 +663,15 @@ impl CrossComponentCallManager {
                 if let Some(mut_cached) = self.call_cache.get_mut(&key) {
                     mut_cached.hit_count += 1;
                 }
-                return Some(cached;
+                return Some(cached);
             }
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             for (cached_key, cached_target) in &mut self.call_cache {
                 if cached_key == &key {
                     cached_target.hit_count += 1;
-                    return Some(cached_target;
+                    return Some(cached_target);
                 }
             }
         }
@@ -661,39 +697,41 @@ impl CrossComponentCallManager {
 
         #[cfg(feature = "std")]
         {
-            let stats = self.call_frequency.entry(key).or_insert_with(CallStats::default;
+            let stats = self.call_frequency.entry(key).or_insert_with(CallStats::default);
             stats.call_count += 1;
-            
+
             // Update running average
             let total_time = stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
             stats.avg_duration_ns = total_time / stats.call_count as u64;
-            stats.last_call_time = self.get_current_time);
-            
+            stats.last_call_time = self.get_current_time();
+
             // Determine if eligible for inlining (fast, frequent calls)
-            stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000; // < 1μs
+            stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000;
+            // < 1μs
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             // Find existing stats or add new ones
             let mut found = false;
             for (stats_key, stats) in &mut self.call_frequency {
                 if stats_key == &key {
                     stats.call_count += 1;
-                    let total_time = stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
+                    let total_time =
+                        stats.avg_duration_ns * (stats.call_count - 1) as u64 + duration_ns;
                     stats.avg_duration_ns = total_time / stats.call_count as u64;
-                    stats.last_call_time = self.get_current_time);
+                    stats.last_call_time = self.get_current_time();
                     stats.inline_eligible = stats.call_count > 10 && stats.avg_duration_ns < 1000;
                     found = true;
                     break;
                 }
             }
-            
+
             if !found {
-                let mut new_stats = CallStats::default());
+                let mut new_stats = CallStats::default();
                 new_stats.call_count = 1;
                 new_stats.avg_duration_ns = duration_ns;
-                new_stats.last_call_time = self.get_current_time);
-                let _ = self.call_frequency.push((key, new_stats);
+                new_stats.last_call_time = self.get_current_time();
+                let _ = self.call_frequency.push((key, new_stats));
             }
         }
     }
@@ -717,13 +755,13 @@ impl CrossComponentCallManager {
         {
             self.pending_transfers.push(transfer);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.pending_transfers.push(transfer).map_err(|_| 
-                wrt_error::Error::resource_exhausted("Too many pending transfers")
-            )?;
+            self.pending_transfers
+                .push(transfer)
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many pending transfers"))?;
         }
-        
+
         Ok(())
     }
 
@@ -736,10 +774,14 @@ impl CrossComponentCallManager {
             }
 
             // Group transfers by target component for batch processing
-            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> = std::collections::HashMap::new();
-            
+            let mut transfers_by_target: std::collections::HashMap<u32, Vec<PendingTransfer>> =
+                std::collections::HashMap::new();
+
             for transfer in self.pending_transfers.drain(..) {
-                transfers_by_target.entry(transfer.target_component).or_insert_with(Vec::new).push(transfer);
+                transfers_by_target
+                    .entry(transfer.target_component)
+                    .or_insert_with(Vec::new)
+                    .push(transfer);
             }
 
             // Process each batch
@@ -752,18 +794,18 @@ impl CrossComponentCallManager {
                                 wrt_foundation::resource::ResourceHandle(transfer.resource_handle),
                                 target_component,
                             )?;
-                        }
+                        },
                         ResourceTransferType::Copy => {
                             // Would implement resource copying here
-                        }
+                        },
                         ResourceTransferType::Borrow => {
                             // Borrowing doesn't require immediate action
-                        }
+                        },
                     }
                 }
             }
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             // Process transfers sequentially in no_std
             while let Some(transfer) = self.pending_transfers.pop() {
@@ -773,17 +815,17 @@ impl CrossComponentCallManager {
                             wrt_foundation::resource::ResourceHandle(transfer.resource_handle),
                             transfer.target_component,
                         )?;
-                    }
+                    },
                     ResourceTransferType::Copy => {
                         // Would implement resource copying here
-                    }
+                    },
                     ResourceTransferType::Borrow => {
                         // Borrowing doesn't require immediate action
-                    }
+                    },
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -807,38 +849,41 @@ impl CrossComponentCallManager {
 
         #[cfg(feature = "std")]
         {
-            self.call_cache.insert(key, cached_target;
+            self.call_cache.insert(key, cached_target);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.call_cache.push((key, cached_target)).map_err(|_| 
-                wrt_error::Error::resource_exhausted("Call cache full")
-            )?;
+            self.call_cache
+                .push((key, cached_target))
+                .map_err(|_| wrt_error::Error::resource_exhausted("Call cache full"))?;
         }
-        
+
         Ok(())
     }
 
     /// Calculate a hash of the function signature for caching
     fn calculate_signature_hash(&self, signature: &WrtComponentType) -> u64 {
         // Simple hash implementation - in real implementation would use a proper hasher
-        use core::hash::{Hash, Hasher};
-        
-        struct SimpleHasher(u64;
-        
+        use core::hash::{
+            Hash,
+            Hasher,
+        };
+
+        struct SimpleHasher(u64);
+
         impl Hasher for SimpleHasher {
             fn finish(&self) -> u64 {
                 self.0
             }
-            
+
             fn write(&mut self, bytes: &[u8]) {
                 for &byte in bytes {
-                    self.0 = self.0.wrapping_mul(31).wrapping_add(byte as u64;
+                    self.0 = self.0.wrapping_mul(31).wrapping_add(byte as u64);
                 }
             }
         }
-        
-        let mut hasher = SimpleHasher(0;
+
+        let mut hasher = SimpleHasher(0);
         // For now, just hash a simple representation of the type
         match signature {
             WrtComponentType::Unit => 0u8.hash(&mut hasher),
@@ -897,17 +942,23 @@ impl CallTarget {
         permissions: CallPermissions,
         resource_policy: ResourceTransferPolicy,
     ) -> Self {
-        Self { target_instance, function_index, signature, permissions, resource_policy }
+        Self {
+            target_instance,
+            function_index,
+            signature,
+            permissions,
+            resource_policy,
+        }
     }
 }
 
 impl Default for CallPermissions {
     fn default() -> Self {
         Self {
-            allowed: true,
+            allowed:                 true,
             allow_resource_transfer: false,
-            allow_memory_access: false,
-            max_frequency: 0, // Unlimited
+            allow_memory_access:     false,
+            max_frequency:           0, // Unlimited
         }
     }
 }
@@ -953,7 +1004,7 @@ mod tests {
             WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::None,
-        ;
+        );
 
         let target_id = manager.register_target(target).unwrap();
         assert_eq!(target_id, 0);
@@ -962,7 +1013,7 @@ mod tests {
 
     #[test]
     fn test_call_permissions() {
-        let perms = CallPermissions::default());
+        let perms = CallPermissions::default();
         assert!(perms.allowed);
         assert!(!perms.allow_resource_transfer);
         assert!(!perms.allow_memory_access);
@@ -971,10 +1022,10 @@ mod tests {
 
     #[test]
     fn test_resource_transfer_policy_display() {
-        assert_eq!(ResourceTransferPolicy::None.to_string(), "none";
-        assert_eq!(ResourceTransferPolicy::Transfer.to_string(), "transfer";
-        assert_eq!(ResourceTransferPolicy::Borrow.to_string(), "borrow";
-        assert_eq!(ResourceTransferPolicy::Copy.to_string(), "copy";
+        assert_eq!(ResourceTransferPolicy::None.to_string(), "none");
+        assert_eq!(ResourceTransferPolicy::Transfer.to_string(), "transfer");
+        assert_eq!(ResourceTransferPolicy::Borrow.to_string(), "borrow");
+        assert_eq!(ResourceTransferPolicy::Copy.to_string(), "copy");
     }
 
     #[test]
@@ -985,11 +1036,11 @@ mod tests {
             WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::Borrow,
-        ;
+        );
 
         assert_eq!(target.target_instance, 1);
         assert_eq!(target.function_index, 0);
-        assert_eq!(target.resource_policy, ResourceTransferPolicy::Borrow;
+        assert_eq!(target.resource_policy, ResourceTransferPolicy::Borrow);
     }
 
     #[test]
@@ -997,7 +1048,7 @@ mod tests {
         let mut manager = CrossComponentCallManager::new().unwrap();
 
         // No targets registered - should not be allowed
-        assert!(!manager.is_call_allowed(0, 1);
+        assert!(!manager.is_call_allowed(0, 1));
 
         // Register a target
         let target = CallTarget::new(
@@ -1006,11 +1057,11 @@ mod tests {
             WrtComponentType::Unit,
             CallPermissions::default(),
             ResourceTransferPolicy::None,
-        ;
+        );
         manager.register_target(target).unwrap();
 
         // Now should be allowed
-        assert!(manager.is_call_allowed(0, 1);
+        assert!(manager.is_call_allowed(0, 1));
     }
 
     #[test]
@@ -1018,8 +1069,8 @@ mod tests {
         let mut manager = CrossComponentCallManager::new().unwrap();
 
         // Test call stats update
-        manager.update_call_stats(0, 1, "test_func", 12345, 500;
-        manager.update_call_stats(0, 1, "test_func", 12345, 600;
+        manager.update_call_stats(0, 1, "test_func", 12345, 500);
+        manager.update_call_stats(0, 1, "test_func", 12345, 600);
 
         // Should have recorded 2 calls with average duration
         #[cfg(feature = "std")]
@@ -1027,11 +1078,11 @@ mod tests {
             let key = CallSiteKey {
                 source_instance: 0,
                 target_instance: 1,
-                function_name: "test_func".to_string(),
-                signature_hash: 12345,
+                function_name:   "test_func".to_string(),
+                signature_hash:  12345,
             };
             let stats = manager.call_frequency.get(&key).unwrap();
-            assert_eq!(stats.call_count, 2;
+            assert_eq!(stats.call_count, 2);
             assert_eq!(stats.avg_duration_ns, 550); // (500 + 600) / 2
         }
     }
@@ -1046,11 +1097,11 @@ mod tests {
 
         #[cfg(feature = "std")]
         {
-            assert_eq!(manager.pending_transfers.len(), 2;
+            assert_eq!(manager.pending_transfers.len(), 2);
         }
 
         // Flush them
-        let result = manager.flush_pending_transfers);
+        let result = manager.flush_pending_transfers();
         assert!(result.is_ok());
 
         #[cfg(feature = "std")]
@@ -1064,11 +1115,11 @@ mod tests {
         let manager = CrossComponentCallManager::new().unwrap();
 
         // Test that different types have different hashes
-        let hash1 = manager.calculate_signature_hash(&WrtComponentType::U32;
-        let hash2 = manager.calculate_signature_hash(&WrtComponentType::String;
-        let hash3 = manager.calculate_signature_hash(&WrtComponentType::U32;
+        let hash1 = manager.calculate_signature_hash(&WrtComponentType::U32);
+        let hash2 = manager.calculate_signature_hash(&WrtComponentType::String);
+        let hash3 = manager.calculate_signature_hash(&WrtComponentType::U32);
 
-        assert_ne!(hash1, hash2;
+        assert_ne!(hash1, hash2);
         assert_eq!(hash1, hash3); // Same type should have same hash
     }
 }

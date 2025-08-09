@@ -6,16 +6,23 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
-#[cfg(not(feature = "std"))]
-use wrt_sync::RwLock;
 #[cfg(feature = "std")]
-use std::sync::{Arc, RwLock};
+use std::sync::{
+    Arc,
+    RwLock,
+};
 
 use wrt_foundation::prelude::*;
-// use wrt_runtime::{Instance, Memory};
+#[cfg(not(feature = "std"))]
+use wrt_sync::RwLock;
 
+// use wrt_runtime::{Instance, Memory};
 use crate::{
-    canonical_abi::canonical_realloc::{ReallocManager, StringEncoding, ComponentInstanceId},
+    canonical_abi::canonical_realloc::{
+        ComponentInstanceId,
+        ReallocManager,
+        StringEncoding,
+    },
     memory_layout::MemoryLayout,
 };
 
@@ -26,19 +33,19 @@ pub type ComponentError = Error;
 #[derive(Debug, Clone)]
 pub struct CanonicalOptions {
     /// Memory index for canonical operations
-    pub memory: u32,
+    pub memory:          u32,
     /// Binary std/no_std choice
-    pub realloc: Option<u32>,
+    pub realloc:         Option<u32>,
     /// Post-return function index (optional)
-    pub post_return: Option<u32>,
+    pub post_return:     Option<u32>,
     /// String encoding
     pub string_encoding: StringEncoding,
     /// Instance ID for this set of options
-    pub instance_id: ComponentInstanceId,
+    pub instance_id:     ComponentInstanceId,
     /// Binary std/no_std choice
     pub realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
     /// Memory.grow function index (MVP spec addition)
-    pub memory_grow: Option<u32>,
+    pub memory_grow:     Option<u32>,
 }
 
 /// Canonical lift context with full memory management
@@ -46,11 +53,11 @@ pub struct CanonicalLiftContext<'a> {
     /// Runtime instance
     pub instance: &'a Instance,
     /// Memory for lifting
-    pub memory: &'a Memory,
+    pub memory:   &'a Memory,
     /// Canonical options
-    pub options: &'a CanonicalOptions,
+    pub options:  &'a CanonicalOptions,
     /// Binary std/no_std choice
-    allocations: Vec<TempAllocation>,
+    allocations:  Vec<TempAllocation>,
 }
 
 /// Canonical lower context with full memory management
@@ -58,17 +65,17 @@ pub struct CanonicalLowerContext<'a> {
     /// Runtime instance
     pub instance: &'a mut Instance,
     /// Memory for lowering
-    pub memory: &'a mut Memory,
+    pub memory:   &'a mut Memory,
     /// Canonical options
-    pub options: &'a CanonicalOptions,
+    pub options:  &'a CanonicalOptions,
     /// Allocations made during lower
-    allocations: Vec<TempAllocation>,
+    allocations:  Vec<TempAllocation>,
 }
 
 #[derive(Debug)]
 struct TempAllocation {
-    ptr: i32,
-    size: i32,
+    ptr:   i32,
+    size:  i32,
     align: i32,
 }
 
@@ -88,12 +95,12 @@ impl CanonicalOptions {
 
     /// Binary std/no_std choice
     pub fn with_realloc(mut self, func_index: u32, manager: Arc<RwLock<ReallocManager>>) -> Self {
-        self.realloc = Some(func_index;
-        self.realloc_manager = Some(manager;
+        self.realloc = Some(func_index);
+        self.realloc_manager = Some(manager);
 
         // Register with the manager
         if let Ok(mut mgr) = manager.write() {
-            let _ = mgr.register_realloc(self.instance_id, func_index;
+            let _ = mgr.register_realloc(self.instance_id, func_index);
         }
 
         self
@@ -101,7 +108,7 @@ impl CanonicalOptions {
 
     /// Set post-return function
     pub fn with_post_return(mut self, func_index: u32) -> Self {
-        self.post_return = Some(func_index;
+        self.post_return = Some(func_index);
         self
     }
 
@@ -113,7 +120,7 @@ impl CanonicalOptions {
 
     /// Set memory.grow function (MVP spec addition)
     pub fn with_memory_grow(mut self, func_index: u32) -> Self {
-        self.memory_grow = Some(func_index;
+        self.memory_grow = Some(func_index);
         self
     }
 
@@ -136,13 +143,22 @@ impl CanonicalOptions {
 impl<'a> CanonicalLiftContext<'a> {
     /// Create a new lift context
     pub fn new(instance: &'a Instance, memory: &'a Memory, options: &'a CanonicalOptions) -> Self {
-        Self { instance, memory, options, allocations: Vec::new() }
+        Self {
+            instance,
+            memory,
+            options,
+            allocations: Vec::new(),
+        }
     }
 
     /// Binary std/no_std choice
-    pub fn allocate(&mut self, size: usize, align: usize) -> core::result::Result<i32, ComponentError> {
+    pub fn allocate(
+        &mut self,
+        size: usize,
+        align: usize,
+    ) -> core::result::Result<i32, ComponentError> {
         if size == 0 {
-            return Ok(0;
+            return Ok(0);
         }
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
@@ -152,19 +168,27 @@ impl<'a> CanonicalLiftContext<'a> {
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Binary std/no_std choice
-            return Err(ComponentError::ResourceNotFound(0;
+            return Err(ComponentError::ResourceNotFound(0));
         };
 
         // Binary std/no_std choice
-        self.allocations.push(TempAllocation { ptr, size: size as i32, align: align as i32 });
+        self.allocations.push(TempAllocation {
+            ptr,
+            size: size as i32,
+            align: align as i32,
+        });
 
         Ok(ptr)
     }
 
     /// Read bytes from memory
-    pub fn read_bytes(&self, ptr: i32, len: usize) -> core::result::Result<Vec<u8>, ComponentError> {
+    pub fn read_bytes(
+        &self,
+        ptr: i32,
+        len: usize,
+    ) -> core::result::Result<Vec<u8>, ComponentError> {
         if ptr < 0 {
-            return Err(ComponentError::TypeMismatch;
+            return Err(ComponentError::TypeMismatch);
         }
 
         let offset = ptr as usize;
@@ -174,27 +198,31 @@ impl<'a> CanonicalLiftContext<'a> {
     }
 
     /// Read a string from memory with the configured encoding
-    pub fn read_string(&self, ptr: i32, len: usize) -> core::result::Result<String, ComponentError> {
+    pub fn read_string(
+        &self,
+        ptr: i32,
+        len: usize,
+    ) -> core::result::Result<String, ComponentError> {
         let bytes = self.read_bytes(ptr, len)?;
 
         match self.options.string_encoding {
             StringEncoding::Utf8 => {
                 String::from_utf8(bytes).map_err(|_| ComponentError::TypeMismatch)
-            }
+            },
             StringEncoding::Utf16Le => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
                     .collect();
                 String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
-            }
+            },
             StringEncoding::Utf16Be => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
                     .collect();
                 String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
-            }
+            },
             StringEncoding::Latin1 => Ok(bytes.into_iter().map(|b| b as char).collect()),
         }
     }
@@ -227,13 +255,22 @@ impl<'a> CanonicalLowerContext<'a> {
         memory: &'a mut Memory,
         options: &'a CanonicalOptions,
     ) -> Self {
-        Self { instance, memory, options, allocations: Vec::new() }
+        Self {
+            instance,
+            memory,
+            options,
+            allocations: Vec::new(),
+        }
     }
 
     /// Binary std/no_std choice
-    pub fn allocate(&mut self, size: usize, align: usize) -> core::result::Result<i32, ComponentError> {
+    pub fn allocate(
+        &mut self,
+        size: usize,
+        align: usize,
+    ) -> core::result::Result<i32, ComponentError> {
         if size == 0 {
-            return Ok(0;
+            return Ok(0);
         }
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
@@ -243,19 +280,27 @@ impl<'a> CanonicalLowerContext<'a> {
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Binary std/no_std choice
-            return Err(ComponentError::ResourceNotFound(0;
+            return Err(ComponentError::ResourceNotFound(0));
         };
 
         // Binary std/no_std choice
-        self.allocations.push(TempAllocation { ptr, size: size as i32, align: align as i32 });
+        self.allocations.push(TempAllocation {
+            ptr,
+            size: size as i32,
+            align: align as i32,
+        });
 
         Ok(ptr)
     }
 
     /// Write bytes to memory
-    pub fn write_bytes(&mut self, ptr: i32, data: &[u8]) -> core::result::Result<(), ComponentError> {
+    pub fn write_bytes(
+        &mut self,
+        ptr: i32,
+        data: &[u8],
+    ) -> core::result::Result<(), ComponentError> {
         if ptr < 0 {
-            return Err(ComponentError::TypeMismatch;
+            return Err(ComponentError::TypeMismatch);
         }
 
         let offset = ptr as usize;
@@ -280,7 +325,7 @@ impl<'a> CanonicalLowerContext<'a> {
                         }
                     })
                     .collect()
-            }
+            },
         };
 
         let len = encoded.len();
@@ -304,13 +349,13 @@ impl<'a> CanonicalLowerContext<'a> {
 
 /// Builder for canonical options
 pub struct CanonicalOptionsBuilder {
-    memory: u32,
-    realloc: Option<u32>,
-    post_return: Option<u32>,
+    memory:          u32,
+    realloc:         Option<u32>,
+    post_return:     Option<u32>,
     string_encoding: StringEncoding,
-    instance_id: ComponentInstanceId,
+    instance_id:     ComponentInstanceId,
     realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
-    memory_grow: Option<u32>,
+    memory_grow:     Option<u32>,
 }
 
 impl CanonicalOptionsBuilder {
@@ -327,13 +372,13 @@ impl CanonicalOptionsBuilder {
     }
 
     pub fn with_realloc(mut self, func_index: u32, manager: Arc<RwLock<ReallocManager>>) -> Self {
-        self.realloc = Some(func_index;
-        self.realloc_manager = Some(manager;
+        self.realloc = Some(func_index);
+        self.realloc_manager = Some(manager);
         self
     }
 
     pub fn with_post_return(mut self, func_index: u32) -> Self {
-        self.post_return = Some(func_index;
+        self.post_return = Some(func_index);
         self
     }
 
@@ -343,23 +388,23 @@ impl CanonicalOptionsBuilder {
     }
 
     pub fn with_memory_grow(mut self, func_index: u32) -> Self {
-        self.memory_grow = Some(func_index;
+        self.memory_grow = Some(func_index);
         self
     }
 
     pub fn build(self) -> CanonicalOptions {
-        let mut options = CanonicalOptions::new(self.memory, self.instance_id;
+        let mut options = CanonicalOptions::new(self.memory, self.instance_id);
 
         if let (Some(func_index), Some(manager)) = (self.realloc, self.realloc_manager) {
-            options = options.with_realloc(func_index, manager;
+            options = options.with_realloc(func_index, manager);
         }
 
         if let Some(func_index) = self.post_return {
-            options = options.with_post_return(func_index;
+            options = options.with_post_return(func_index);
         }
 
         if let Some(func_index) = self.memory_grow {
-            options = options.with_memory_grow(func_index;
+            options = options.with_memory_grow(func_index);
         }
 
         options.with_string_encoding(self.string_encoding)
@@ -373,50 +418,50 @@ mod tests {
 
     #[test]
     fn test_canonical_options_creation() {
-        let instance_id = ComponentInstanceId(1;
-        let options = CanonicalOptions::new(0, instance_id;
+        let instance_id = ComponentInstanceId(1);
+        let options = CanonicalOptions::new(0, instance_id);
 
         assert_eq!(options.memory, 0);
-        assert_eq!(options.instance_id, instance_id;
-        assert!(!options.has_realloc();
-        assert!(!options.has_post_return();
+        assert_eq!(options.instance_id, instance_id);
+        assert!(!options.has_realloc());
+        assert!(!options.has_post_return());
     }
 
     #[test]
     fn test_canonical_options_with_realloc() {
-        let instance_id = ComponentInstanceId(1;
-        let manager = Arc::new(RwLock::new(ReallocManager::default();
+        let instance_id = ComponentInstanceId(1);
+        let manager = Arc::new(RwLock::new(ReallocManager::default()));
 
-        let options = CanonicalOptions::new(0, instance_id).with_realloc(42, manager;
+        let options = CanonicalOptions::new(0, instance_id).with_realloc(42, manager);
 
-        assert!(options.has_realloc();
-        assert_eq!(options.realloc, Some(42;
+        assert!(options.has_realloc());
+        assert_eq!(options.realloc, Some(42));
     }
 
     #[test]
     fn test_canonical_options_builder() {
-        let instance_id = ComponentInstanceId(1;
-        let manager = Arc::new(RwLock::new(ReallocManager::default();
+        let instance_id = ComponentInstanceId(1);
+        let manager = Arc::new(RwLock::new(ReallocManager::default()));
 
         let options = CanonicalOptionsBuilder::new(0, instance_id)
             .with_realloc(42, manager)
             .with_post_return(43)
             .with_string_encoding(StringEncoding::Utf16Le)
-            .build);
+            .build();
 
         assert_eq!(options.memory, 0);
-        assert_eq!(options.realloc, Some(42;
-        assert_eq!(options.post_return, Some(43;
-        assert_eq!(options.string_encoding, StringEncoding::Utf16Le;
-        assert!(options.has_realloc();
-        assert!(options.has_post_return();
+        assert_eq!(options.realloc, Some(42));
+        assert_eq!(options.post_return, Some(43));
+        assert_eq!(options.string_encoding, StringEncoding::Utf16Le);
+        assert!(options.has_realloc());
+        assert!(options.has_post_return());
     }
 
     #[test]
     fn test_string_encodings() {
         // Test UTF-8
-        let utf8_bytes = "Hello".as_bytes);
-        assert_eq!(utf8_bytes.len(), 5;
+        let utf8_bytes = "Hello".as_bytes();
+        assert_eq!(utf8_bytes.len(), 5);
 
         // Test UTF-16 LE
         let utf16_le: Vec<u8> = "Hello".encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
@@ -424,6 +469,6 @@ mod tests {
 
         // Test Latin-1
         let latin1: Vec<u8> = "Hello".chars().map(|c| c as u8).collect();
-        assert_eq!(latin1.len(), 5;
+        assert_eq!(latin1.len(), 5);
     }
 }

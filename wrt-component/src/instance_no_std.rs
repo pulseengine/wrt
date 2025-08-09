@@ -10,13 +10,20 @@
 //! environment.
 
 use wrt_format::component::ComponentTypeDefinition;
-use wrt_foundation::bounded::{BoundedString, BoundedVec, MAX_WASM_NAME_LENGTH};
 use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+        MAX_WASM_NAME_LENGTH,
+    },
     budget_aware_provider::CrateId,
     safe_managed_alloc,
 };
 
-use crate::{export::Export, prelude::*};
+use crate::{
+    export::Export,
+    prelude::*,
+};
 
 /// Maximum number of exports per instance
 pub const MAX_INSTANCE_EXPORTS: usize = 64;
@@ -25,9 +32,9 @@ pub const MAX_INSTANCE_EXPORTS: usize = 64;
 #[derive(Debug)]
 pub struct InstanceValue {
     /// The name of the instance
-    pub name: BoundedString<MAX_WASM_NAME_LENGTH>,
+    pub name:    BoundedString<MAX_WASM_NAME_LENGTH>,
     /// Instance type
-    pub ty: ComponentTypeDefinition,
+    pub ty:      ComponentTypeDefinition,
     /// Instance exports
     pub exports: BoundedVec<Export, MAX_INSTANCE_EXPORTS>,
 }
@@ -35,19 +42,22 @@ pub struct InstanceValue {
 impl InstanceValue {
     /// Creates a new instance value
     pub fn new(name: &str, ty: ComponentTypeDefinition, exports: &[Export]) -> Result<Self> {
-        let bounded_name = BoundedString::from_str(name).map_err(|_| {
-            Error::parameter_validation_error("Instance name too long")
-        })?;
+        let bounded_name = BoundedString::from_str(name)
+            .map_err(|_| Error::parameter_validation_error("Instance name too long"))?;
 
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let mut bounded_exports = BoundedVec::new(provider)?;
         for export in exports {
-            bounded_exports.push(export.clone()).map_err(|_| {
-                Error::capacity_exceeded("Maximum number of exports exceeded")
-            })?;
+            bounded_exports
+                .push(export.clone())
+                .map_err(|_| Error::capacity_exceeded("Maximum number of exports exceeded"))?;
         }
 
-        Ok(Self { name: bounded_name, ty, exports: bounded_exports })
+        Ok(Self {
+            name: bounded_name,
+            ty,
+            exports: bounded_exports,
+        })
     }
 
     /// Gets an export by name
@@ -69,9 +79,9 @@ impl InstanceValue {
 /// Builder for InstanceValue
 pub struct InstanceValueBuilder {
     /// The name of the instance
-    name: Option<String>,
+    name:    Option<String>,
     /// Instance type
-    ty: Option<ComponentTypeDefinition>,
+    ty:      Option<ComponentTypeDefinition>,
     /// Instance exports
     exports: Vec<Export>,
 }
@@ -79,7 +89,11 @@ pub struct InstanceValueBuilder {
 impl InstanceValueBuilder {
     /// Creates a new instance value builder
     pub fn new() -> Self {
-        Self { name: None, ty: None, exports: Vec::new() }
+        Self {
+            name:    None,
+            ty:      None,
+            exports: Vec::new(),
+        }
     }
 
     /// Sets the instance name
@@ -90,7 +104,7 @@ impl InstanceValueBuilder {
 
     /// Sets the instance type
     pub fn with_type(mut self, ty: ComponentTypeDefinition) -> Self {
-        self.ty = Some(ty;
+        self.ty = Some(ty);
         self
     }
 
@@ -108,13 +122,13 @@ impl InstanceValueBuilder {
 
     /// Builds the instance value
     pub fn build(self) -> Result<InstanceValue> {
-        let name = self.name.ok_or_else(|| {
-            Error::parameter_validation_error("Instance name is required")
-        })?;
+        let name = self
+            .name
+            .ok_or_else(|| Error::parameter_validation_error("Instance name is required"))?;
 
-        let ty = self.ty.ok_or_else(|| {
-            Error::parameter_validation_error("Instance type is required")
-        })?;
+        let ty = self
+            .ty
+            .ok_or_else(|| Error::parameter_validation_error("Instance type is required"))?;
 
         InstanceValue::new(&name, ty, &self.exports)
     }
@@ -135,14 +149,16 @@ impl InstanceCollection {
     /// Creates a new empty instance collection
     pub fn new() -> Result<Self> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        Ok(Self { instances: BoundedVec::new(provider)? })
+        Ok(Self {
+            instances: BoundedVec::new(provider)?,
+        })
     }
 
     /// Adds an instance to the collection
     pub fn add_instance(&mut self, instance: InstanceValue) -> Result<()> {
-        self.instances.push(instance).map_err(|_| {
-            Error::capacity_exceeded("Maximum number of instances exceeded")
-        })
+        self.instances
+            .push(instance)
+            .map_err(|_| Error::capacity_exceeded("Maximum number of instances exceeded"))
     }
 
     /// Gets an instance by name
@@ -179,8 +195,14 @@ impl Default for InstanceCollection {
 
 #[cfg(test)]
 mod tests {
-    use wrt::types::{FuncType, ValueType};
-    use wrt_format::component::{ExternType, ValType};
+    use wrt::types::{
+        FuncType,
+        ValueType,
+    };
+    use wrt_format::component::{
+        ExternType,
+        ValType,
+    };
 
     use super::*;
     use crate::export::Export;
@@ -188,20 +210,23 @@ mod tests {
     #[test]
     fn test_instance_value_builder() {
         let func_type = FuncType {
-            params: vec![ValueType::I32, ValueType::I32],
+            params:  vec![ValueType::I32, ValueType::I32],
             results: vec![ValueType::I32],
         };
 
         // Since most of the types require ownership, we'll mock them for testing
         // In a real implementation, we would need to use the actual types
         let component_func_type = ExternType::Function {
-            params: vec![("a".to_string(), ValType::S32), ("b".to_string(), ValType::S32)],
+            params:  vec![
+                ("a".to_string(), ValType::S32),
+                ("b".to_string(), ValType::S32),
+            ],
             results: vec![ValType::S32],
         };
 
         let export = Export {
-            name: "add".to_string(),
-            ty: component_func_type.clone(),
+            name:  "add".to_string(),
+            ty:    component_func_type.clone(),
             // Mocking this as we can't create an actual ExternValue in tests
             value: None,
         };
@@ -219,10 +244,10 @@ mod tests {
             .unwrap();
 
         // Check the instance
-        assert_eq!(instance.name.as_str(), "math";
+        assert_eq!(instance.name.as_str(), "math");
         assert_eq!(instance.exports.len(), 1);
-        assert_eq!(instance.get_export("add").unwrap().name, "add";
-        assert!(instance.get_export("non_existent").is_none();
+        assert_eq!(instance.get_export("add").unwrap().name, "add");
+        assert!(instance.get_export("non_existent").is_none());
     }
 
     #[test]
@@ -250,14 +275,14 @@ mod tests {
         collection.add_instance(instance2).unwrap();
 
         // Check the collection
-        assert_eq!(collection.len(), 2;
+        assert_eq!(collection.len(), 2);
         assert!(!collection.is_empty());
-        assert!(collection.get_instance("instance1").is_some();
-        assert!(collection.get_instance("instance2").is_some();
-        assert!(collection.get_instance("non_existent").is_none();
+        assert!(collection.get_instance("instance1").is_some());
+        assert!(collection.get_instance("instance2").is_some());
+        assert!(collection.get_instance("non_existent").is_none());
 
         // Test iteration
         let names: Vec<&str> = collection.iter().map(|i| i.name.as_str()).collect();
-        assert_eq!(names, vec!["instance1", "instance2"];
+        assert_eq!(names, vec!["instance1", "instance2"]);
     }
 }

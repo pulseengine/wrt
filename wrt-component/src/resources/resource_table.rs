@@ -1,28 +1,44 @@
-use std::format;
-use std::sync::Weak;
-
-use crate::bounded_component_infra::ComponentProvider;
-use wrt_format::component::ResourceOperation as FormatResourceOperation;
-use wrt_foundation::{
-    bounded::BoundedVec, bounded_collections::BoundedMap, budget_aware_provider::CrateId,
-    resource::ResourceOperation, safe_managed_alloc, WrtResult,
-};
-use wrt_intercept::{builtins::InterceptContext as InterceptionContext, InterceptionResult};
-
 // Safety-critical imports for WRT allocator
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as HashMap;
 #[cfg(all(feature = "std", not(feature = "safety-critical")))]
 use std::collections::HashMap;
+use std::{
+    format,
+    sync::Weak,
+};
+
+use wrt_format::component::ResourceOperation as FormatResourceOperation;
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtHashMap, WrtVec};
+use wrt_foundation::allocator::{
+    WrtHashMap,
+    WrtVec,
+};
+use wrt_foundation::{
+    bounded::BoundedVec,
+    bounded_collections::BoundedMap,
+    budget_aware_provider::CrateId,
+    resource::ResourceOperation,
+    safe_managed_alloc,
+    WrtResult,
+};
+use wrt_intercept::{
+    builtins::InterceptContext as InterceptionContext,
+    InterceptionResult,
+};
 
 use super::{
     buffer_pool::BufferPool,
-    resource_operation::{from_format_resource_operation, to_format_resource_operation},
+    resource_operation::{
+        from_format_resource_operation,
+        to_format_resource_operation,
+    },
     size_class_buffer_pool::SizeClassBufferPool,
 };
-use crate::prelude::*;
+use crate::{
+    bounded_component_infra::ComponentProvider,
+    prelude::*,
+};
 
 /// Maximum number of resources that can be stored in a resource table
 const MAX_RESOURCES: usize = 1024;
@@ -30,23 +46,23 @@ const MAX_RESOURCES: usize = 1024;
 /// Resource instance representation
 pub struct Resource {
     /// Resource type index
-    pub type_idx: u32,
+    pub type_idx:      u32,
     /// Resource data (implementation-specific)
-    pub data: Arc<dyn Any + Send + Sync>,
+    pub data:          Arc<dyn Any + Send + Sync>,
     /// Debug name for the resource (optional)
-    pub name: Option<String>,
+    pub name:          Option<String>,
     /// Creation timestamp
-    pub created_at: Instant,
+    pub created_at:    Instant,
     /// Last access timestamp
     pub last_accessed: Instant,
     /// Access count
-    pub access_count: u64,
+    pub access_count:  u64,
 }
 
 impl Resource {
     /// Create a new resource
     pub fn new(type_idx: u32, data: Arc<dyn Any + Send + Sync>) -> Self {
-        let now = Instant::now);
+        let now = Instant::now();
         Self {
             type_idx,
             data,
@@ -59,14 +75,14 @@ impl Resource {
 
     /// Create a new resource with a debug name
     pub fn new_with_name(type_idx: u32, data: Arc<dyn Any + Send + Sync>, name: &str) -> Self {
-        let mut resource = Self::new(type_idx, data;
+        let mut resource = Self::new(type_idx, data);
         resource.name = Some(name.to_string());
         resource
     }
 
     /// Record access to this resource
     pub fn record_access(&mut self) {
-        self.last_accessed = Instant::now);
+        self.last_accessed = Instant::now();
         self.access_count += 1;
     }
 }
@@ -165,16 +181,16 @@ impl MemoryStrategy {
 #[derive(Clone)]
 struct ResourceEntry {
     /// The resource instance
-    resource: Arc<Mutex<Resource>>,
+    resource:           Arc<Mutex<Resource>>,
     /// Weak references to borrowed resources (budget-aware)
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    borrows: WrtVec<Weak<Mutex<Resource>>, { CrateId::Component as u8 }, 32>,
+    borrows:            WrtVec<Weak<Mutex<Resource>>, { CrateId::Component as u8 }, 32>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    borrows: Vec<Weak<Mutex<Resource>>>,
+    borrows:            Vec<Weak<Mutex<Resource>>>,
     #[cfg(not(feature = "std"))]
-    borrows: BoundedVec<Weak<Mutex<Resource>>, 32, ComponentProvider>,
+    borrows:            BoundedVec<Weak<Mutex<Resource>>, 32, ComponentProvider>,
     /// Memory strategy for this resource
-    memory_strategy: MemoryStrategy,
+    memory_strategy:    MemoryStrategy,
     /// Verification level
     verification_level: VerificationLevel,
 }
@@ -238,10 +254,10 @@ pub trait BufferPoolTrait: Send + Sync {
     fn allocate(&mut self, size: usize) -> Vec<u8>;
 
     /// Return a buffer to the pool
-    fn return_buffer(&mut self, buffer: Vec<u8>;
+    fn return_buffer(&mut self, buffer: Vec<u8>);
 
     /// Reset the buffer pool
-    fn reset(&mut self;
+    fn reset(&mut self);
 }
 
 impl BufferPoolTrait for BufferPool {
@@ -284,31 +300,31 @@ impl BufferPoolTrait for SizeClassBufferPool {
 pub struct ResourceTable {
     /// Map of resource handles to resource entries (budget-aware)
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    resources: WrtHashMap<u32, ResourceEntry, { CrateId::Component as u8 }, 1024>,
+    resources:                  WrtHashMap<u32, ResourceEntry, { CrateId::Component as u8 }, 1024>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    resources: HashMap<u32, ResourceEntry>,
+    resources:                  HashMap<u32, ResourceEntry>,
     #[cfg(not(feature = "std"))]
-    resources: BoundedMap<u32, ResourceEntry, 1024, ComponentProvider>,
+    resources:                  BoundedMap<u32, ResourceEntry, 1024, ComponentProvider>,
     /// Next available resource handle
-    next_handle: u32,
+    next_handle:                u32,
     /// Maximum allowed resources
-    max_resources: usize,
+    max_resources:              usize,
     /// Default memory strategy
-    default_memory_strategy: MemoryStrategy,
+    default_memory_strategy:    MemoryStrategy,
     /// Default verification level
     default_verification_level: VerificationLevel,
     /// Buffer pool for bounded copy operations
-    buffer_pool: Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+    buffer_pool:                Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
     /// Interceptors for resource operations (budget-aware)
     #[cfg(all(feature = "std", feature = "safety-critical"))]
     interceptors: WrtVec<Arc<dyn ResourceInterceptor>, { CrateId::Component as u8 }, 16>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    interceptors: Vec<Arc<dyn ResourceInterceptor>>,
+    interceptors:               Vec<Arc<dyn ResourceInterceptor>>,
     #[cfg(not(feature = "std"))]
-    interceptors: BoundedVec<Arc<dyn ResourceInterceptor>, 16, ComponentProvider>,
+    interceptors:               BoundedVec<Arc<dyn ResourceInterceptor>, 16, ComponentProvider>,
     /// Memory budget guard for this resource table
     #[cfg(not(feature = "std"))]
-    _memory_guard: ComponentProvider,
+    _memory_guard:              ComponentProvider,
 }
 
 impl fmt::Debug for ResourceTable {
@@ -336,7 +352,7 @@ impl ResourceTable {
     /// # ASIL-D Safety
     ///
     /// - Uses bounded collections with compile-time size limits
-    /// - Integrates with budget enforcement system  
+    /// - Integrates with budget enforcement system
     /// - Prevents runtime allocation failures
     pub fn new() -> WrtResult<Self> {
         #[cfg(not(feature = "std"))]
@@ -368,8 +384,8 @@ impl ResourceTable {
 
     /// Create a budget-aware ResourceTable factory function
     ///
-    /// This is a convenience function that integrates with the memory budget system
-    /// and should be used by component instantiation code.
+    /// This is a convenience function that integrates with the memory budget
+    /// system and should be used by component instantiation code.
     ///
     /// # ASIL-D Safety
     ///
@@ -481,11 +497,11 @@ impl ResourceTable {
         if self.resources.len() >= self.max_resources {
             return Err(Error::resource_exhausted(
                 "Maximum number of resources reached",
-            ;
+            ));
         }
 
         // Create the resource
-        let resource = Resource::new(type_idx, data;
+        let resource = Resource::new(type_idx, data);
 
         // Notify interceptors about resource creation
         for interceptor in &self.interceptors {
@@ -516,7 +532,7 @@ impl ResourceTable {
         }
         #[cfg(not(feature = "safety-critical"))]
         {
-            self.resources.insert(handle, entry;
+            self.resources.insert(handle, entry);
         }
 
         Ok(handle)
@@ -525,12 +541,12 @@ impl ResourceTable {
     /// Create a borrowed reference to a resource
     pub fn borrow_resource(&mut self, handle: u32) -> Result<u32> {
         // Check if the resource exists
-        let resource_opt = self.resources.get(&handle).map(|entry| entry.resource.clone();
+        let resource_opt = self.resources.get(&handle).map(|entry| entry.resource.clone());
 
         let resource = match resource_opt {
             Some(r) => r,
             None => {
-                return Err(Error::resource_error("Resource not found";
+                return Err(Error::resource_error("Resource not found"));
             },
         };
 
@@ -544,7 +560,7 @@ impl ResourceTable {
         self.next_handle += 1;
 
         // Store the weak reference in the original resource
-        let weak_ref = Arc::downgrade(&resource;
+        let weak_ref = Arc::downgrade(&resource);
         if let Some(entry) = self.resources.get_mut(&handle) {
             #[cfg(feature = "safety-critical")]
             {
@@ -587,7 +603,7 @@ impl ResourceTable {
                     memory_strategy: self.default_memory_strategy,
                     verification_level: self.default_verification_level,
                 },
-            ;
+            );
         }
 
         Ok(borrow_handle)
@@ -597,7 +613,7 @@ impl ResourceTable {
     pub fn drop_resource(&mut self, handle: u32) -> Result<()> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(Error::resource_error("Resource not found";
+            return Err(Error::resource_error("Resource not found"));
         }
 
         // Notify interceptors about resource dropping
@@ -606,7 +622,7 @@ impl ResourceTable {
         }
 
         // Remove the resource
-        self.resources.remove(&handle;
+        self.resources.remove(&handle);
 
         Ok(())
     }
@@ -621,7 +637,7 @@ impl ResourceTable {
 
         // Record access
         if let Ok(mut resource) = entry.resource.lock() {
-            resource.record_access);
+            resource.record_access();
         }
 
         // Notify interceptors about resource access
@@ -640,11 +656,11 @@ impl ResourceTable {
     ) -> Result<ComponentValue> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(Error::resource_error("Resource not found";
+            return Err(Error::resource_error("Resource not found"));
         }
 
         // Get the operation kind for interception using our utility function
-        let local_op = from_format_resource_operation(&operation;
+        let local_op = from_format_resource_operation(&operation);
 
         // Check interceptors first
         for interceptor in &self.interceptors {
@@ -655,7 +671,7 @@ impl ResourceTable {
             if let Some(result) = interceptor.intercept_resource_operation(handle, &operation)? {
                 // If the interceptor provides a result, use it
                 // Use the conversion utilities from type_conversion module
-                return Ok(ComponentValue::U32(handle;
+                return Ok(ComponentValue::U32(handle));
             }
         }
 
@@ -735,7 +751,7 @@ impl ResourceTable {
             .collect();
 
         for handle in &handles_to_remove {
-            self.resources.remove(handle;
+            self.resources.remove(handle);
         }
 
         handles_to_remove.len()
@@ -761,7 +777,7 @@ impl ResourceTable {
         for interceptor in &self.interceptors {
             if let Some(strategy_val) = interceptor.get_memory_strategy(handle) {
                 if let Some(strategy) = MemoryStrategy::from_u8(strategy_val) {
-                    return Some(strategy;
+                    return Some(strategy);
                 }
             }
         }
@@ -795,22 +811,22 @@ mod tests {
 
     impl ResourceInterceptor for TestInterceptor {
         fn on_resource_create(&self, type_idx: u32, _resource: &Resource) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("create_{}", type_idx);
+            self.operations.lock().unwrap().push(format!("create_{}", type_idx));
             Ok(())
         }
 
         fn on_resource_drop(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("drop_{}", handle);
-            Ok(())
+            self.operations.lock().unwrap().push(format!("intercept_{}", handle));
+            Ok(Some(expected_data))
         }
 
         fn on_resource_borrow(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("borrow_{}", handle);
+            self.operations.lock().unwrap().push(format!("borrow_{}", handle));
             Ok(())
         }
 
         fn on_resource_access(&self, handle: u32) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("access_{}", handle);
+            self.operations.lock().unwrap().push(format!("access_{}", handle));
             Ok(())
         }
 
@@ -819,7 +835,7 @@ mod tests {
             handle: u32,
             operation: &FormatResourceOperation,
         ) -> Result<()> {
-            self.operations.lock().unwrap().push(format!("operation_{}", handle);
+            self.operations.lock().unwrap().push(format!("operation_{}", handle));
             Ok(())
         }
 
@@ -836,7 +852,7 @@ mod tests {
             handle: u32,
             operation: &FormatResourceOperation,
         ) -> Result<Option<Vec<u8>>> {
-            self.operations.lock().unwrap().push(format!("intercept_{}", handle);
+            self.operations.lock().unwrap().push(format!("intercept_{}", handle));
 
             // For testing, we intercept only for handle 42
             if handle == 42 {
@@ -850,7 +866,7 @@ mod tests {
     #[test]
     fn test_resource_creation() {
         let mut table = ResourceTable::new().unwrap();
-        let data = Arc::new(TestData { value: 42 };
+        let data = Arc::new(TestData { value: 42 });
 
         let handle = table.create_resource(1, data).unwrap();
         assert_eq!(handle, 1);
@@ -861,19 +877,19 @@ mod tests {
         assert_eq!(resource.type_idx, 1);
 
         let data = resource.data.downcast_ref::<TestData>().unwrap();
-        assert_eq!(data.value, 42;
+        assert_eq!(data.value, 42);
     }
 
     #[test]
     fn test_resource_borrowing() {
         let mut table = ResourceTable::new().unwrap();
-        let data = Arc::new(TestData { value: 42 };
+        let data = Arc::new(TestData { value: 42 });
 
         let handle = table.create_resource(1, data).unwrap();
         let borrow_handle = table.borrow_resource(handle).unwrap();
 
-        assert_ne!(handle, borrow_handle;
-        assert_eq!(table.resource_count(), 2;
+        assert_ne!(handle, borrow_handle);
+        assert_eq!(table.resource_count(), 2);
 
         let resource1 = table.get_resource(handle).unwrap();
         let resource2 = table.get_resource(borrow_handle).unwrap();
@@ -881,14 +897,14 @@ mod tests {
         let data1 = resource1.lock().unwrap().data.downcast_ref::<TestData>().unwrap();
         let data2 = resource2.lock().unwrap().data.downcast_ref::<TestData>().unwrap();
 
-        assert_eq!(data1.value, 42;
-        assert_eq!(data2.value, 42;
+        assert_eq!(data1.value, 42);
+        assert_eq!(data2.value, 42);
     }
 
     #[test]
     fn test_resource_dropping() {
         let mut table = ResourceTable::new().unwrap();
-        let data = Arc::new(TestData { value: 42 };
+        let data = Arc::new(TestData { value: 42 });
 
         let handle = table.create_resource(1, data).unwrap();
         assert_eq!(table.resource_count(), 1);
@@ -896,13 +912,13 @@ mod tests {
         table.drop_resource(handle).unwrap();
         assert_eq!(table.resource_count(), 0);
 
-        assert!(table.get_resource(handle).is_err();
+        assert!(table.get_resource(handle).is_err());
     }
 
     #[test]
     fn test_memory_strategy() {
         let mut table = ResourceTable::new().unwrap();
-        let data = Arc::new(TestData { value: 42 };
+        let data = Arc::new(TestData { value: 42 });
 
         let handle = table.create_resource(1, data).unwrap();
 
@@ -910,40 +926,40 @@ mod tests {
         table.set_memory_strategy(handle, MemoryStrategy::ZeroCopy).unwrap();
 
         // Invalid handle should fail
-        assert!(table.set_memory_strategy(999, MemoryStrategy::ZeroCopy).is_err();
+        assert!(table.set_memory_strategy(999, MemoryStrategy::ZeroCopy).is_err());
     }
 
     #[test]
     fn test_resource_count_limit() {
         let mut table =
-            ResourceTable::new_with_config(2, MemoryStrategy::BoundedCopy, VerificationLevel::None;
+            ResourceTable::new_with_config(2, MemoryStrategy::BoundedCopy, VerificationLevel::None);
 
-        let data1 = Arc::new(TestData { value: 1 };
-        let data2 = Arc::new(TestData { value: 2 };
-        let data3 = Arc::new(TestData { value: 3 };
+        let data1 = Arc::new(TestData { value: 1 });
+        let data2 = Arc::new(TestData { value: 2 });
+        let data3 = Arc::new(TestData { value: 3 });
 
         let handle1 = table.create_resource(1, data1).unwrap();
         let handle2 = table.create_resource(1, data2).unwrap();
 
         // Third resource should fail due to limit
-        assert!(table.create_resource(1, data3).is_err();
+        assert!(table.create_resource(1, data3).is_err());
 
         // After dropping one, we should be able to create another
         table.drop_resource(handle1).unwrap();
         let handle3 = table.create_resource(1, data3).unwrap();
 
-        assert_eq!(table.resource_count(), 2;
-        assert_ne!(handle1, handle3;
+        assert_eq!(table.resource_count(), 2);
+        assert_ne!(handle1, handle3);
     }
 
     #[test]
     fn test_resource_interceptor() {
         let mut table = ResourceTable::new().unwrap();
-        let interceptor = Arc::new(TestInterceptor::new();
+        let interceptor = Arc::new(TestInterceptor::new());
 
         table.add_interceptor(interceptor.clone()).unwrap();
 
-        let data = Arc::new(TestData { value: 42 };
+        let data = Arc::new(TestData { value: 42 });
         let handle = table.create_resource(1, data).unwrap();
 
         // Access the resource
@@ -953,25 +969,25 @@ mod tests {
         table.apply_operation(handle, FormatResourceOperation::Rep).unwrap();
 
         // Check interceptor operations
-        let operations = interceptor.get_operations);
-        assert!(operations.contains(&"create_1".to_string());
-        assert!(operations.contains(&format!("access_{}", handle));
-        assert!(operations.contains(&format!("operation_{}", handle));
+        let operations = interceptor.get_operations();
+        assert!(operations.contains(&"create_1".to_string()));
+        assert!(operations.contains(&format!("access_{}", handle)));
+        assert!(operations.contains(&format!("operation_{}", handle)));
     }
 
     #[test]
     fn test_resource_interception() {
-        let interceptor = Arc::new(TestInterceptor::new();
+        let interceptor = Arc::new(TestInterceptor::new());
 
         let mut table = ResourceTable::new().unwrap();
         table.add_interceptor(interceptor.clone()).unwrap();
 
         // Create a resource
-        let data = Arc::new(TestData { value: 42 };
+        let data = Arc::new(TestData { value: 42 });
         let handle = table.create_resource(1, data).unwrap();
 
         // Create a special resource with handle 42 (manually assign)
-        let data = Arc::new(TestData { value: 99 };
+        let data = Arc::new(TestData { value: 99 });
         table.resources.insert(
             42,
             ResourceEntry {
@@ -983,27 +999,27 @@ mod tests {
                 memory_strategy: MemoryStrategy::BoundedCopy,
                 verification_level: VerificationLevel::Critical,
             },
-        ;
+        );
 
         // Test regular operation
         let result = table.apply_operation(handle, FormatResourceOperation::Rep).unwrap();
-        assert!(matches!(result, ComponentValue::U32(_));
+        assert!(matches!(result, ComponentValue::U32(_)));
 
         // Test intercepted operation
         let result = table.apply_operation(42, FormatResourceOperation::Rep).unwrap();
-        assert!(matches!(result, ComponentValue::U32(_));
+        assert!(matches!(result, ComponentValue::U32(_)));
 
         // Check that operations were recorded
-        let ops = interceptor.get_operations);
-        assert!(ops.contains(&"create_1".to_string());
-        assert!(ops.contains(&format!("operation_{}", handle));
-        assert!(ops.contains(&"operation_42".to_string());
-        assert!(ops.contains(&"intercept_42".to_string());
+        let ops = interceptor.get_operations();
+        assert!(ops.contains(&"create_1".to_string()));
+        assert!(ops.contains(&format!("operation_{}", handle)));
+        assert!(ops.contains(&"operation_42".to_string()));
+        assert!(ops.contains(&"intercept_42".to_string()));
     }
 
     #[test]
     fn test_memory_strategy_selection() {
-        let interceptor = Arc::new(TestInterceptor::new();
+        let interceptor = Arc::new(TestInterceptor::new());
 
         let mut table = ResourceTable::new().unwrap();
         table.add_interceptor(interceptor.clone()).unwrap();
@@ -1026,7 +1042,7 @@ mod tests {
                 memory_strategy: MemoryStrategy::ZeroCopy,
                 verification_level: VerificationLevel::Critical,
             },
-        ;
+        );
 
         table.resources.insert(
             odd_handle,
@@ -1042,14 +1058,14 @@ mod tests {
                 memory_strategy: MemoryStrategy::ZeroCopy,
                 verification_level: VerificationLevel::Critical,
             },
-        ;
+        );
 
         // Test strategy selection from interceptor
-        let even_strategy = table.get_strategy_from_interceptors(even_handle;
-        assert_eq!(even_strategy, Some(MemoryStrategy::BoundedCopy;
+        let even_strategy = table.get_strategy_from_interceptors(even_handle);
+        assert_eq!(even_strategy, Some(MemoryStrategy::BoundedCopy));
 
         // Test default strategy when interceptor returns None
-        let odd_strategy = table.get_strategy_from_interceptors(odd_handle;
-        assert_eq!(odd_strategy, None;
+        let odd_strategy = table.get_strategy_from_interceptors(odd_handle);
+        assert_eq!(odd_strategy, None);
     }
 }

@@ -1,13 +1,16 @@
 //! Component Instantiation and Linking System
 //!
-//! This module provides comprehensive component instantiation and linking functionality
-//! for the WebAssembly Component Model. It enables creating component instances from
-//! component binaries, resolving imports/exports, and composing components together.
+//! This module provides comprehensive component instantiation and linking
+//! functionality for the WebAssembly Component Model. It enables creating
+//! component instances from component binaries, resolving imports/exports, and
+//! composing components together.
 //!
 //! # Features
 //!
-//! - **Component Instance Creation**: Create executable instances from component binaries
-//! - **Import/Export Resolution**: Automatic resolution of component dependencies
+//! - **Component Instance Creation**: Create executable instances from
+//!   component binaries
+//! - **Import/Export Resolution**: Automatic resolution of component
+//!   dependencies
 //! - **Component Linking**: Link multiple components together with type safety
 //! - **Cross-Environment Support**: Works in std, no_std+alloc, and pure no_std
 //! - **Memory Safety**: Comprehensive validation and bounds checking
@@ -23,7 +26,10 @@
 //! # Example
 //!
 //! ```no_run
-//! use wrt_component::component_instantiation::{ComponentLinker, InstanceConfig};
+//! use wrt_component::component_instantiation::{
+//!     ComponentLinker,
+//!     InstanceConfig,
+//! };
 //!
 //! // Create a linker for component composition
 //! let mut linker = ComponentLinker::new();
@@ -35,13 +41,24 @@
 //! let instance = linker.instantiate("calculator", &calc_component_binary)?;
 //! ```
 
-
 // Cross-environment imports
 #[cfg(feature = "std")]
-use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
+use std::{
+    boxed::Box,
+    collections::HashMap,
+    format,
+    string::String,
+    vec::Vec,
+};
 
 #[cfg(not(feature = "std"))]
-use wrt_foundation::{bounded::{BoundedString, BoundedVec}, safe_memory::NoStdProvider};
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    safe_memory::NoStdProvider,
+};
 
 #[cfg(not(feature = "std"))]
 type InstantiationString = BoundedString<256, NoStdProvider<65536>>;
@@ -53,15 +70,35 @@ type InstantiationVec<T> = BoundedVec<T, 64, NoStdProvider<65536>>;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{vec, format, boxed::Box};
-
-use crate::canonical_abi::{CanonicalABI, CanonicalMemory, ComponentType, ComponentValue};
-use crate::resource_management::{
-    ResourceData, ResourceHandle, ResourceManager as ComponentResourceManager, ResourceTypeId,
+use alloc::{
+    boxed::Box,
+    format,
+    vec,
 };
+
 // use crate::component_communication::{CallRouter, CallContext as CommCallContext};
 // use crate::call_context::CallContextManager;
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+
+use crate::{
+    canonical_abi::{
+        CanonicalABI,
+        CanonicalMemory,
+        ComponentType,
+        ComponentValue,
+    },
+    resource_management::{
+        ResourceData,
+        ResourceHandle,
+        ResourceManager as ComponentResourceManager,
+        ResourceTypeId,
+    },
+};
 
 /// Maximum number of component instances
 const MAX_COMPONENT_INSTANCES: usize = 1024;
@@ -103,11 +140,11 @@ pub struct InstanceConfig {
     /// Maximum memory size in bytes
     pub max_memory_size: u32,
     /// Maximum table size
-    pub max_table_size: u32,
+    pub max_table_size:  u32,
     /// Enable debug mode
-    pub debug_mode: bool,
+    pub debug_mode:      bool,
     /// Binary std/no_std choice
-    pub memory_config: MemoryConfig,
+    pub memory_config:   MemoryConfig,
 }
 
 /// Memory configuration for component instances
@@ -116,18 +153,18 @@ pub struct MemoryConfig {
     /// Initial memory size in pages (64KB each)
     pub initial_pages: u32,
     /// Maximum memory size in pages
-    pub max_pages: Option<u32>,
+    pub max_pages:     Option<u32>,
     /// Enable memory protection
-    pub protected: bool,
+    pub protected:     bool,
 }
 
 /// Component function signature
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionSignature {
     /// Function name
-    pub name: String,
+    pub name:    String,
     /// Parameter types
-    pub params: BoundedVec<ComponentType, 16, NoStdProvider<65536>>,
+    pub params:  BoundedVec<ComponentType, 16, NoStdProvider<65536>>,
     /// Return types
     pub returns: BoundedVec<ComponentType, 16, NoStdProvider<65536>>,
 }
@@ -136,7 +173,7 @@ pub struct FunctionSignature {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentExport {
     /// Export name
-    pub name: String,
+    pub name:        String,
     /// Export type
     pub export_type: ExportType,
 }
@@ -145,9 +182,9 @@ pub struct ComponentExport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentImport {
     /// Import name
-    pub name: String,
+    pub name:        String,
     /// Module name (for namespace)
-    pub module: String,
+    pub module:      String,
     /// Import type
     pub import_type: ImportType,
 }
@@ -160,9 +197,15 @@ pub enum ExportType {
     /// Memory export
     Memory(MemoryConfig),
     /// Table export
-    Table { element_type: ComponentType, size: u32 },
+    Table {
+        element_type: ComponentType,
+        size:         u32,
+    },
     /// Global export
-    Global { value_type: ComponentType, mutable: bool },
+    Global {
+        value_type: ComponentType,
+        mutable:    bool,
+    },
     /// Component type export
     Type(ComponentType),
 }
@@ -175,9 +218,16 @@ pub enum ImportType {
     /// Memory import
     Memory(MemoryConfig),
     /// Table import
-    Table { element_type: ComponentType, min_size: u32, max_size: Option<u32> },
+    Table {
+        element_type: ComponentType,
+        min_size:     u32,
+        max_size:     Option<u32>,
+    },
     /// Global import
-    Global { value_type: ComponentType, mutable: bool },
+    Global {
+        value_type: ComponentType,
+        mutable:    bool,
+    },
     /// Component type import
     Type(ComponentType),
 }
@@ -189,13 +239,13 @@ pub use crate::types::ComponentInstance;
 #[derive(Debug)]
 pub struct ComponentInstanceImpl {
     /// Instance memory
-    pub memory: Option<ComponentMemory>,
+    pub memory:       Option<ComponentMemory>,
     /// Canonical ABI for value conversion
-    abi: CanonicalABI,
+    abi:              CanonicalABI,
     /// Function table
-    functions: BoundedVec<ComponentFunction, 128, NoStdProvider<65536>>,
+    functions:        BoundedVec<ComponentFunction, 128, NoStdProvider<65536>>,
     /// Instance metadata
-    metadata: InstanceMetadata,
+    metadata:         InstanceMetadata,
     /// Resource manager for this instance
     resource_manager: Option<ComponentResourceManager>,
 }
@@ -204,9 +254,9 @@ pub struct ComponentInstanceImpl {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedImport {
     /// Original import definition
-    pub import: ComponentImport,
+    pub import:          ComponentImport,
     /// Provider instance ID
-    pub provider_id: InstanceId,
+    pub provider_id:     InstanceId,
     /// Provider export name
     pub provider_export: String,
 }
@@ -215,9 +265,9 @@ pub struct ResolvedImport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentFunction {
     /// Function handle
-    pub handle: FunctionHandle,
+    pub handle:         FunctionHandle,
     /// Function signature
-    pub signature: FunctionSignature,
+    pub signature:      FunctionSignature,
     /// Implementation type
     pub implementation: FunctionImplementation,
 }
@@ -228,7 +278,7 @@ pub enum FunctionImplementation {
     /// Native WebAssembly function
     Native {
         /// Function index in the component
-        func_index: u32,
+        func_index:   u32,
         /// Module containing the function
         module_index: u32,
     },
@@ -250,35 +300,35 @@ pub enum FunctionImplementation {
 #[derive(Debug, Clone)]
 pub struct ComponentMemory {
     /// Memory handle
-    pub handle: MemoryHandle,
+    pub handle:       MemoryHandle,
     /// Memory configuration
-    pub config: MemoryConfig,
+    pub config:       MemoryConfig,
     /// Current memory size in bytes
     pub current_size: u32,
     /// Memory data (simplified for this implementation)
-    pub data: BoundedVec<u8, 65536, NoStdProvider<65536>>,
+    pub data:         BoundedVec<u8, 65536, NoStdProvider<65536>>,
 }
 
 /// Instance metadata for debugging and introspection
 #[derive(Debug, Clone)]
 pub struct InstanceMetadata {
     /// Creation timestamp
-    pub created_at: u64,
+    pub created_at:         u64,
     /// Total function calls
-    pub function_calls: u64,
+    pub function_calls:     u64,
     /// Binary std/no_std choice
     pub memory_allocations: u64,
     /// Current memory usage
-    pub memory_usage: u32,
+    pub memory_usage:       u32,
 }
 
 impl Default for InstanceConfig {
     fn default() -> Self {
         Self {
             max_memory_size: 64 * 1024 * 1024, // 64MB
-            max_table_size: 1024,
-            debug_mode: false,
-            memory_config: MemoryConfig::default(),
+            max_table_size:  1024,
+            debug_mode:      false,
+            memory_config:   MemoryConfig::default(),
         }
     }
 }
@@ -286,9 +336,9 @@ impl Default for InstanceConfig {
 impl Default for MemoryConfig {
     fn default() -> Self {
         Self {
-            initial_pages: 1,      // 64KB
-            max_pages: Some(1024), // 64MB
-            protected: true,
+            initial_pages: 1,          // 64KB
+            max_pages:     Some(1024), // 64MB
+            protected:     true,
         }
     }
 }
@@ -296,10 +346,10 @@ impl Default for MemoryConfig {
 impl Default for InstanceMetadata {
     fn default() -> Self {
         Self {
-            created_at: 0, // Would use actual timestamp in full implementation
-            function_calls: 0,
+            created_at:         0, // Would use actual timestamp in full implementation
+            function_calls:     0,
             memory_allocations: 0,
-            memory_usage: 0,
+            memory_usage:       0,
         }
     }
 }
@@ -315,15 +365,15 @@ impl ComponentInstance {
     ) -> Result<Self> {
         // Validate inputs
         if name.is_empty() {
-            return Err(Error::validation_error("Instance name cannot be empty";
+            return Err(Error::validation_error("Instance name cannot be empty"));
         }
 
         if exports.len() > MAX_EXPORTS_PER_COMPONENT {
-            return Err(Error::validation_error("Too many exports for component";
+            return Err(Error::validation_error("Too many exports for component"));
         }
 
         if imports.len() > MAX_IMPORTS_PER_COMPONENT {
-            return Err(Error::validation_error("Too many imports for component";
+            return Err(Error::validation_error("Too many imports for component"));
         }
 
         // Initialize memory if needed
@@ -362,8 +412,10 @@ impl ComponentInstance {
 
                 self.state = InstanceState::Ready;
                 Ok(())
-            }
-            _ => Err(Error::runtime_execution_error("Instance not in initializing state")),
+            },
+            _ => Err(Error::runtime_execution_error(
+                "Instance not in initializing state",
+            )),
         }
     }
 
@@ -378,7 +430,8 @@ impl ComponentInstance {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_STATE,
-                "Instance not in ready state";
+                "Instance not in ready state",
+            ));
         }
 
         // Find the function
@@ -392,15 +445,21 @@ impl ComponentInstance {
 
         // Execute the function based on its implementation
         match &function.implementation {
-            FunctionImplementation::Native { func_index, module_index } => {
-                self.call_native_function(*func_index, *module_index, args)
-            }
+            FunctionImplementation::Native {
+                func_index,
+                module_index,
+            } => self.call_native_function(*func_index, *module_index, args),
             FunctionImplementation::Host { callback } => self.call_host_function(callback, args),
-            FunctionImplementation::Component { target_instance, target_function } => {
+            FunctionImplementation::Component {
+                target_instance,
+                target_function,
+            } => {
                 // This would need to go through the linker to call another component
                 // For now, return a placeholder
-                Err(Error::runtime_not_implemented("Component-to-component calls not yet implemented"))
-            }
+                Err(Error::runtime_not_implemented(
+                    "Component-to-component calls not yet implemented",
+                ))
+            },
         }
     }
 
@@ -412,7 +471,7 @@ impl ComponentInstance {
     /// Add a resolved import
     pub fn add_resolved_import(&mut self, resolved: ResolvedImport) -> Result<()> {
         if self.imports.len() >= MAX_IMPORTS_PER_COMPONENT {
-            return Err(Error::validation_error("Too many resolved imports";
+            return Err(Error::validation_error("Too many resolved imports"));
         }
 
         self.imports.push(resolved);
@@ -433,13 +492,13 @@ impl ComponentInstance {
     pub fn terminate(&mut self) {
         self.state = InstanceState::Terminated;
         // Cleanup resources
-        self.functions.clear);
+        self.functions.clear();
         if let Some(memory) = &mut self.memory {
-            memory.clear);
+            memory.clear();
         }
         // Clean up resource manager
         if let Some(resource_manager) = &mut self.resource_manager {
-            let _ = resource_manager.remove_instance_table(self.id;
+            let _ = resource_manager.remove_instance_table(self.id);
         }
     }
 
@@ -466,7 +525,9 @@ impl ComponentInstance {
             }
             resource_manager.create_resource(self.id, resource_type, data)
         } else {
-            Err(Error::runtime_not_implemented("Resource management not available for this instance"))
+            Err(Error::runtime_not_implemented(
+                "Resource management not available for this instance",
+            ))
         }
     }
 
@@ -476,10 +537,14 @@ impl ComponentInstance {
             if let Some(table) = resource_manager.get_instance_table_mut(self.id) {
                 table.drop_resource(handle)
             } else {
-                Err(Error::runtime_execution_error("No resource table for instance"))
+                Err(Error::runtime_execution_error(
+                    "No resource table for instance",
+                ))
             }
         } else {
-            Err(Error::runtime_not_implemented("Resource management not available for this instance"))
+            Err(Error::runtime_not_implemented(
+                "Resource management not available for this instance",
+            ))
         }
     }
 
@@ -491,15 +556,19 @@ impl ComponentInstance {
             match &export.export_type {
                 ExportType::Function(sig) => {
                     if sig.name.is_empty() {
-                        return Err(Error::validation_error("Function signature name cannot be empty";
+                        return Err(Error::validation_error(
+                            "Function signature name cannot be empty",
+                        ));
                     }
-                }
+                },
                 ExportType::Memory(config) => {
                     if config.initial_pages == 0 {
-                        return Err(Error::validation_error("Memory must have at least 1 initial page";
+                        return Err(Error::validation_error(
+                            "Memory must have at least 1 initial page",
+                        ));
                     }
-                }
-                _ => {} // Other export types are valid by construction
+                },
+                _ => {}, // Other export types are valid by construction
             }
         }
         Ok(())
@@ -512,10 +581,10 @@ impl ComponentInstance {
         for export in &self.exports {
             if let ExportType::Function(signature) = &export.export_type {
                 let function = ComponentFunction {
-                    handle: function_handle,
-                    signature: signature.clone(),
+                    handle:         function_handle,
+                    signature:      signature.clone(),
                     implementation: FunctionImplementation::Native {
-                        func_index: function_handle,
+                        func_index:   function_handle,
                         module_index: 0,
                     },
                 };
@@ -528,9 +597,10 @@ impl ComponentInstance {
     }
 
     fn find_function(&self, name: &str) -> Result<&ComponentFunction> {
-        self.functions.iter().find(|f| f.signature.name == name).ok_or_else(|| {
-            Error::runtime_function_not_found("Function not found")
-        })
+        self.functions
+            .iter()
+            .find(|f| f.signature.name == name)
+            .ok_or_else(|| Error::runtime_function_not_found("Function not found"))
     }
 
     fn validate_function_args(
@@ -539,7 +609,9 @@ impl ComponentInstance {
         args: &[ComponentValue],
     ) -> Result<()> {
         if args.len() != signature.params.len() {
-            return Err(Error::runtime_type_mismatch("Function argument count mismatch";
+            return Err(Error::runtime_type_mismatch(
+                "Function argument count mismatch",
+            ));
         }
 
         // Type checking would go here in a full implementation
@@ -573,7 +645,9 @@ impl ComponentMemory {
 
         if let Some(max_pages) = config.max_pages {
             if config.initial_pages > max_pages {
-                return Err(Error::validation_error("Initial pages cannot exceed maximum pages";
+                return Err(Error::validation_error(
+                    "Initial pages cannot exceed maximum pages",
+                ));
             }
         }
 
@@ -592,7 +666,9 @@ impl ComponentMemory {
 
         if let Some(max_pages) = self.config.max_pages {
             if new_pages > max_pages {
-                return Err(Error::runtime_out_of_bounds("Memory growth would exceed maximum pages";
+                return Err(Error::runtime_out_of_bounds(
+                    "Memory growth would exceed maximum pages",
+                ));
             }
         }
 
@@ -610,7 +686,7 @@ impl ComponentMemory {
 
     /// Clear memory (for cleanup)
     pub fn clear(&mut self) {
-        self.data.clear);
+        self.data.clear();
         self.current_size = 0;
     }
 }
@@ -621,7 +697,7 @@ impl CanonicalMemory for ComponentMemory {
         let end = start + len as usize;
 
         if end > self.data.len() {
-            return Err(Error::memory_out_of_bounds("Memory read out of bounds";
+            return Err(Error::memory_out_of_bounds("Memory read out of bounds"));
         }
 
         Ok(self.data[start..end].to_vec())
@@ -632,10 +708,10 @@ impl CanonicalMemory for ComponentMemory {
         let end = start + data.len();
 
         if end > self.data.len() {
-            return Err(Error::memory_out_of_bounds("Memory write out of bounds";
+            return Err(Error::memory_out_of_bounds("Memory write out of bounds"));
         }
 
-        self.data[start..end].copy_from_slice(data;
+        self.data[start..end].copy_from_slice(data);
         Ok(())
     }
 
@@ -667,10 +743,10 @@ impl core::fmt::Display for InstantiationError {
             InstantiationError::TypeMismatch(msg) => write!(f, "Type mismatch: {}", msg),
             InstantiationError::ResourceExhaustion(msg) => {
                 write!(f, "Resource exhaustion: {}", msg)
-            }
+            },
             InstantiationError::InitializationFailed(msg) => {
                 write!(f, "Initialization failed: {}", msg)
-            }
+            },
         }
     }
 }
@@ -684,7 +760,11 @@ pub fn create_function_signature(
     params: Vec<ComponentType>,
     returns: Vec<ComponentType>,
 ) -> FunctionSignature {
-    FunctionSignature { name, params, returns }
+    FunctionSignature {
+        name,
+        params,
+        returns,
+    }
 }
 
 /// Create a component export
@@ -698,7 +778,11 @@ pub fn create_component_import(
     module: String,
     import_type: ImportType,
 ) -> ComponentImport {
-    ComponentImport { name, module, import_type }
+    ComponentImport {
+        name,
+        module,
+        import_type,
+    }
 }
 
 #[cfg(test)]
@@ -707,7 +791,7 @@ mod tests {
 
     #[test]
     fn test_instance_creation() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let exports = vec![create_component_export(
             "add".to_string(),
             ExportType::Function(create_function_signature(
@@ -719,18 +803,18 @@ mod tests {
         let imports = vec![];
 
         let instance =
-            ComponentInstance::new(1, "test_component".to_string(), config, exports, imports;
+            ComponentInstance::new(1, "test_component".to_string(), config, exports, imports);
 
         assert!(instance.is_ok());
         let instance = instance.unwrap();
         assert_eq!(instance.id, 1);
-        assert_eq!(instance.name, "test_component";
-        assert_eq!(instance.state, InstanceState::Initializing;
+        assert_eq!(instance.name, "test_component");
+        assert_eq!(instance.state, InstanceState::Initializing);
     }
 
     #[test]
     fn test_instance_initialization() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let exports = vec![create_component_export(
             "add".to_string(),
             ExportType::Function(create_function_signature(
@@ -745,40 +829,48 @@ mod tests {
                 .unwrap();
 
         assert!(instance.initialize().is_ok());
-        assert_eq!(instance.state, InstanceState::Ready;
+        assert_eq!(instance.state, InstanceState::Ready);
     }
 
     #[test]
     fn test_memory_creation() {
-        let config = MemoryConfig { initial_pages: 2, max_pages: Some(10), protected: true };
+        let config = MemoryConfig {
+            initial_pages: 2,
+            max_pages:     Some(10),
+            protected:     true,
+        };
 
-        let memory = ComponentMemory::new(0, config;
+        let memory = ComponentMemory::new(0, config);
         assert!(memory.is_ok());
 
         let memory = memory.unwrap();
-        assert_eq!(memory.size_pages(), 2;
-        assert_eq!(memory.current_size, 2 * 65536;
+        assert_eq!(memory.size_pages(), 2);
+        assert_eq!(memory.current_size, 2 * 65536);
     }
 
     #[test]
     fn test_memory_growth() {
-        let config = MemoryConfig { initial_pages: 1, max_pages: Some(5), protected: true };
+        let config = MemoryConfig {
+            initial_pages: 1,
+            max_pages:     Some(5),
+            protected:     true,
+        };
 
         let mut memory = ComponentMemory::new(0, config).unwrap();
         let old_pages = memory.grow(2).unwrap();
 
         assert_eq!(old_pages, 1);
-        assert_eq!(memory.size_pages(), 3;
+        assert_eq!(memory.size_pages(), 3);
     }
 
     #[test]
     fn test_memory_bounds_checking() {
-        let config = MemoryConfig::default());
+        let config = MemoryConfig::default();
         let memory = ComponentMemory::new(0, config).unwrap();
 
         // Try to read beyond bounds
         let result = memory.read_bytes(65536, 1);
-        assert!(result.is_err();
+        assert!(result.is_err());
     }
 
     #[test]
@@ -787,10 +879,10 @@ mod tests {
             "test_func".to_string(),
             vec![ComponentType::S32, ComponentType::String],
             vec![ComponentType::Bool],
-        ;
+        );
 
-        assert_eq!(sig.name, "test_func";
-        assert_eq!(sig.params.len(), 2;
+        assert_eq!(sig.name, "test_func");
+        assert_eq!(sig.params.len(), 2);
         assert_eq!(sig.returns.len(), 1);
     }
 
@@ -803,15 +895,15 @@ mod tests {
                 vec![],
                 vec![ComponentType::S32],
             )),
-        ;
+        );
 
-        assert_eq!(export.name, "my_func";
+        assert_eq!(export.name, "my_func");
         match export.export_type {
             ExportType::Function(sig) => {
-                assert_eq!(sig.name, "my_func";
+                assert_eq!(sig.name, "my_func");
                 assert_eq!(sig.params.len(), 0);
                 assert_eq!(sig.returns.len(), 1);
-            }
+            },
             _ => panic!("Expected function export"),
         }
     }
@@ -826,30 +918,36 @@ mod tests {
                 vec![ComponentType::String],
                 vec![ComponentType::S32],
             )),
-        ;
+        );
 
-        assert_eq!(import.name, "external_func";
-        assert_eq!(import.module, "external_module";
+        assert_eq!(import.name, "external_func");
+        assert_eq!(import.module, "external_module");
         match import.import_type {
             ImportType::Function(sig) => {
-                assert_eq!(sig.name, "external_func";
+                assert_eq!(sig.name, "external_func");
                 assert_eq!(sig.params.len(), 1);
                 assert_eq!(sig.returns.len(), 1);
-            }
+            },
             _ => panic!("Expected function import"),
         }
     }
 }
 
 // Implement required traits for BoundedVec compatibility
-use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+use wrt_foundation::traits::{
+    Checksummable,
+    FromBytes,
+    ReadStream,
+    ToBytes,
+    WriteStream,
+};
 
 // Macro to implement basic traits for complex types
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum;
+                0u32.update_checksum(checksum);
             }
         }
 
@@ -878,8 +976,8 @@ macro_rules! impl_basic_traits {
 impl Default for ComponentFunction {
     fn default() -> Self {
         Self {
-            handle: 0,
-            signature: FunctionSignature::default(),
+            handle:         0,
+            signature:      FunctionSignature::default(),
             implementation: FunctionImplementation::default(),
         }
     }
@@ -888,8 +986,8 @@ impl Default for ComponentFunction {
 impl Default for FunctionSignature {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            params: Vec::new(),
+            name:    String::new(),
+            params:  Vec::new(),
             returns: Vec::new(),
         }
     }
@@ -898,7 +996,7 @@ impl Default for FunctionSignature {
 impl Default for FunctionImplementation {
     fn default() -> Self {
         Self::Native {
-            func_index: 0,
+            func_index:   0,
             module_index: 0,
         }
     }
@@ -908,7 +1006,7 @@ impl Default for FunctionImplementation {
 impl Default for ComponentExport {
     fn default() -> Self {
         Self {
-            name: String::new(),
+            name:        String::new(),
             export_type: ExportType::default(),
         }
     }
@@ -917,8 +1015,8 @@ impl Default for ComponentExport {
 impl Default for ComponentImport {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            module: String::new(),
+            name:        String::new(),
+            module:      String::new(),
             import_type: ImportType::default(),
         }
     }
@@ -939,8 +1037,8 @@ impl Default for ImportType {
 impl Default for ResolvedImport {
     fn default() -> Self {
         Self {
-            import: ComponentImport::default(),
-            provider_id: 0,
+            import:          ComponentImport::default(),
+            provider_id:     0,
             provider_export: String::new(),
         }
     }
@@ -955,16 +1053,19 @@ impl_basic_traits!(ResolvedImport, ResolvedImport::default());
 // Tests moved from component_instantiation_tests.rs
 #[cfg(test)]
 mod tests {
-    use crate::canonical_abi::ComponentType;
-    use super::*;
-    use crate::component_linker::*;
     use wrt_error::ErrorCategory;
+
+    use super::*;
+    use crate::{
+        canonical_abi::ComponentType,
+        component_linker::*,
+    };
 
     // ====== COMPONENT INSTANCE TESTS ======
 
     #[test]
     fn test_instance_creation_with_exports() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let exports = vec![
             create_component_export(
                 "add".to_string(),
@@ -978,26 +1079,26 @@ mod tests {
                 "memory".to_string(),
                 ExportType::Memory(MemoryConfig {
                     initial_pages: 2,
-                    max_pages: Some(10),
-                    protected: true,
+                    max_pages:     Some(10),
+                    protected:     true,
                 }),
             ),
         ];
 
         let instance =
-            ComponentInstance::new(1, "math_component".to_string(), config, exports, vec![];
+            ComponentInstance::new(1, "math_component".to_string(), config, exports, vec![]);
 
         assert!(instance.is_ok());
         let instance = instance.unwrap();
         assert_eq!(instance.id, 1);
-        assert_eq!(instance.name, "math_component";
-        assert_eq!(instance.state, InstanceState::Initializing;
-        assert_eq!(instance.exports.len(), 2;
+        assert_eq!(instance.name, "math_component");
+        assert_eq!(instance.state, InstanceState::Initializing);
+        assert_eq!(instance.exports.len(), 2);
     }
 
     #[test]
     fn test_instance_creation_with_imports() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let imports = vec![
             create_component_import(
                 "log".to_string(),
@@ -1019,18 +1120,18 @@ mod tests {
             ),
         ];
 
-        let instance = ComponentInstance::new(2, "calculator".to_string(), config, vec![], imports;
+        let instance = ComponentInstance::new(2, "calculator".to_string(), config, vec![], imports);
 
         assert!(instance.is_ok());
         let instance = instance.unwrap();
-        assert_eq!(instance.id, 2;
-        assert_eq!(instance.name, "calculator";
+        assert_eq!(instance.id, 2);
+        assert_eq!(instance.name, "calculator");
         assert_eq!(instance.imports.len(), 0); // Imports start unresolved
     }
 
     #[test]
     fn test_instance_initialization() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1044,16 +1145,16 @@ mod tests {
             ComponentInstance::new(3, "test_component".to_string(), config, exports, vec![])
                 .unwrap();
 
-        assert_eq!(instance.state, InstanceState::Initializing;
+        assert_eq!(instance.state, InstanceState::Initializing);
 
-        let result = instance.initialize);
+        let result = instance.initialize();
         assert!(result.is_ok());
-        assert_eq!(instance.state, InstanceState::Ready;
+        assert_eq!(instance.state, InstanceState::Ready);
     }
 
     #[test]
     fn test_instance_function_call() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1070,7 +1171,7 @@ mod tests {
         instance.initialize().unwrap();
 
         let args = vec![ComponentValue::S32(42)];
-        let result = instance.call_function("test_func", &args;
+        let result = instance.call_function("test_func", &args);
 
         assert!(result.is_ok());
         let return_values = result.unwrap();
@@ -1079,7 +1180,7 @@ mod tests {
 
     #[test]
     fn test_instance_function_call_invalid_state() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let exports = vec![create_component_export(
             "test_func".to_string(),
             ExportType::Function(create_function_signature(
@@ -1094,28 +1195,29 @@ mod tests {
                 .unwrap();
 
         // Don't initialize - should fail
-        let result = instance.call_function("test_func", &[];
-        assert!(result.is_err();
-        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime;
+        let result = instance.call_function("test_func", &[]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime);
     }
 
     #[test]
     fn test_instance_function_call_not_found() {
-        let config = InstanceConfig::default());
+        let config = InstanceConfig::default();
         let mut instance =
             ComponentInstance::new(6, "test_component".to_string(), config, vec![], vec![])
                 .unwrap();
 
         instance.initialize().unwrap();
 
-        let result = instance.call_function("nonexistent", &[];
-        assert!(result.is_err();
-        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime;
+        let result = instance.call_function("nonexistent", &[]);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().category(), ErrorCategory::Runtime);
     }
 
     // Note: Due to the large size of the original test file (740 lines),
-    // the remaining tests from component_instantiation_tests.rs have been partially migrated.
-    // The original file contained comprehensive tests covering:
+    // the remaining tests from component_instantiation_tests.rs have been
+    // partially migrated. The original file contained comprehensive tests
+    // covering:
     // - Advanced component linking and composition scenarios
     // - Complex import/export resolution patterns
     // - Resource management and lifecycle edge cases
@@ -1123,6 +1225,6 @@ mod tests {
     // - Performance benchmarks and stress tests
     // - Error recovery and fault tolerance scenarios
     // - Memory management and security validation
-    // 
+    //
     // These tests should be systematically migrated in subsequent iterations.
 }

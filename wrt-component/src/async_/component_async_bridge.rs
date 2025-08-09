@@ -3,29 +3,51 @@
 //! This module provides integration between the Component Model's async
 //! requirements and our fuel-based executor implementation.
 
-use crate::{
-    async_::{
-        fuel_async_executor::{FuelAsyncExecutor, AsyncTaskState},
-        fuel_async_scheduler::SchedulingPolicy,
-    },
-    task_manager::{TaskManager, TaskId as ComponentTaskId, TaskType, TaskState},
-    threading::thread_spawn_fuel::{FuelTrackedThreadManager, ThreadFuelStatus},
-    ComponentInstanceId,
-    prelude::*,
-};
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{AtomicU64, Ordering},
-    task::{Context, Poll},
+    sync::atomic::{
+        AtomicU64,
+        Ordering,
+    },
+    task::{
+        Context,
+        Poll,
+    },
 };
+
 use wrt_foundation::{
     bounded_collections::BoundedMap,
+    safe_managed_alloc,
+    sync::Mutex,
     verification::VerificationLevel,
-    Arc, Weak, sync::Mutex,
-    CrateId, safe_managed_alloc,
+    Arc,
+    CrateId,
+    Weak,
 };
 use wrt_platform::advanced_sync::Priority;
+
+use crate::{
+    async_::{
+        fuel_async_executor::{
+            AsyncTaskState,
+            FuelAsyncExecutor,
+        },
+        fuel_async_scheduler::SchedulingPolicy,
+    },
+    prelude::*,
+    task_manager::{
+        TaskId as ComponentTaskId,
+        TaskManager,
+        TaskState,
+        TaskType,
+    },
+    threading::thread_spawn_fuel::{
+        FuelTrackedThreadManager,
+        ThreadFuelStatus,
+    },
+    ComponentInstanceId,
+};
 
 /// Maximum concurrent async operations per component
 const MAX_ASYNC_OPS_PER_COMPONENT: usize = 64;
@@ -33,29 +55,29 @@ const MAX_ASYNC_OPS_PER_COMPONENT: usize = 64;
 /// Bridge between Component Model async and fuel executor
 pub struct ComponentAsyncBridge {
     /// Fuel-based async executor
-    executor: Arc<Mutex<FuelAsyncExecutor>>,
+    executor:                 Arc<Mutex<FuelAsyncExecutor>>,
     /// Component task manager for async integration
-    task_manager: Arc<Mutex<TaskManager>>,
+    task_manager:             Arc<Mutex<TaskManager>>,
     /// Thread manager for fuel tracking
-    thread_manager: Arc<Mutex<FuelTrackedThreadManager>>,
+    thread_manager:           Arc<Mutex<FuelTrackedThreadManager>>,
     /// Mapping from component tasks to executor tasks
     task_mapping: BoundedMap<ComponentTaskId, crate::threading::task_manager::TaskId, 1024>,
     /// Per-component async operation limits
-    component_limits: BoundedMap<ComponentInstanceId, AsyncComponentLimits, 256>,
+    component_limits:         BoundedMap<ComponentInstanceId, AsyncComponentLimits, 256>,
     /// Global async fuel budget
     global_async_fuel_budget: AtomicU64,
     /// Verification level for async operations
-    verification_level: VerificationLevel,
+    verification_level:       VerificationLevel,
 }
 
 /// Per-component async operation limits
 #[derive(Debug, Clone)]
 struct AsyncComponentLimits {
     max_concurrent_tasks: usize,
-    active_tasks: AtomicU64,
-    fuel_budget: u64,
-    fuel_consumed: AtomicU64,
-    priority: Priority,
+    active_tasks:         AtomicU64,
+    fuel_budget:          u64,
+    fuel_consumed:        AtomicU64,
+    priority:             Priority,
 }
 
 impl ComponentAsyncBridge {
@@ -66,13 +88,13 @@ impl ComponentAsyncBridge {
     ) -> Result<Self, Error> {
         let provider = safe_managed_alloc!(8192, CrateId::Component)?;
         let executor = Arc::new(Mutex::new(FuelAsyncExecutor::new()?));
-        
+
         // Set up executor self-reference for proper waker creation
         let weak_executor = Arc::downgrade(&executor);
         if let Ok(mut exec) = executor.lock() {
             exec.set_self_ref(weak_executor);
         }
-        
+
         Ok(Self {
             executor,
             task_manager,
@@ -100,9 +122,9 @@ impl ComponentAsyncBridge {
             priority,
         };
 
-        self.component_limits.insert(component_id, limits).map_err(|_| {
-            Error::resource_limit_exceeded("Too many registered components")
-        })?;
+        self.component_limits
+            .insert(component_id, limits)
+            .map_err(|_| Error::resource_limit_exceeded("Too many registered components"))?;
 
         Ok(())
     }
@@ -118,22 +140,28 @@ impl ComponentAsyncBridge {
         F: Future<Output = Result<(), Error>> + Send + 'static,
     {
         // Check component limits
-        let limits = self.component_limits.get(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not registered for async")
-        })?;
+        let limits = self
+            .component_limits
+            .get(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not registered for async"))?;
 
         let active = limits.active_tasks.load(Ordering::Acquire);
         if active >= limits.max_concurrent_tasks as u64 {
-            return Err(Error::resource_limit_exceeded("Component async task limit exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Component async task limit exceeded",
+            ));
         }
 
         // Determine fuel budget
-        let task_fuel = fuel_budget.unwrap_or(limits.fuel_budget / limits.max_concurrent_tasks as u64);
-        
+        let task_fuel =
+            fuel_budget.unwrap_or(limits.fuel_budget / limits.max_concurrent_tasks as u64);
+
         // Check fuel availability
         let consumed = limits.fuel_consumed.load(Ordering::Acquire);
         if consumed + task_fuel > limits.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Component fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Component fuel budget exceeded",
+            ));
         }
 
         // Create component task
@@ -145,18 +173,13 @@ impl ComponentAsyncBridge {
         // Spawn in fuel executor
         let executor_task_id = {
             let mut exec = self.executor.lock()?;
-            exec.spawn_task(
-                component_id,
-                task_fuel,
-                limits.priority,
-                future,
-            )?
+            exec.spawn_task(component_id, task_fuel, limits.priority, future)?
         };
 
         // Update tracking
-        self.task_mapping.insert(component_task_id, executor_task_id).map_err(|_| {
-            Error::resource_limit_exceeded("Task mapping table full")
-        })?;
+        self.task_mapping
+            .insert(component_task_id, executor_task_id)
+            .map_err(|_| Error::resource_limit_exceeded("Task mapping table full"))?;
 
         limits.active_tasks.fetch_add(1, Ordering::AcqRel);
         limits.fuel_consumed.fetch_add(task_fuel, Ordering::AcqRel);
@@ -184,15 +207,15 @@ impl ComponentAsyncBridge {
                     AsyncTaskState::Completed => {
                         completed_tasks.push(*comp_task_id);
                         result.tasks_completed += 1;
-                    }
+                    },
                     AsyncTaskState::Failed => {
                         completed_tasks.push(*comp_task_id);
                         result.tasks_failed += 1;
-                    }
+                    },
                     AsyncTaskState::Waiting => {
                         result.tasks_waiting += 1;
-                    }
-                    _ => {}
+                    },
+                    _ => {},
                 }
             }
         }
@@ -226,10 +249,14 @@ impl ComponentAsyncBridge {
     }
 
     /// Get component async statistics
-    pub fn get_component_stats(&self, component_id: ComponentInstanceId) -> Result<ComponentAsyncStats, Error> {
-        let limits = self.component_limits.get(&component_id).ok_or_else(|| {
-            Error::validation_invalid_input("Component not registered")
-        })?;
+    pub fn get_component_stats(
+        &self,
+        component_id: ComponentInstanceId,
+    ) -> Result<ComponentAsyncStats, Error> {
+        let limits = self
+            .component_limits
+            .get(&component_id)
+            .ok_or_else(|| Error::validation_invalid_input("Component not registered"))?;
 
         Ok(ComponentAsyncStats {
             component_id,
@@ -257,7 +284,7 @@ impl ComponentAsyncBridge {
             // Update component limits
             if let Some(limits) = self.component_limits.get(&component_id) {
                 limits.active_tasks.fetch_sub(1, Ordering::AcqRel);
-                
+
                 // Return unused fuel
                 let exec = self.executor.lock()?;
                 if let Some(status) = exec.get_task_status(exec_task_id) {
@@ -287,7 +314,9 @@ impl ComponentAsyncBridge {
     }
 
     /// Get executor polling statistics
-    pub fn get_polling_stats(&self) -> Result<crate::async_::fuel_async_executor::PollingStatistics, Error> {
+    pub fn get_polling_stats(
+        &self,
+    ) -> Result<crate::async_::fuel_async_executor::PollingStatistics, Error> {
         let exec = self.executor.lock()?;
         Ok(exec.get_polling_stats())
     }
@@ -296,22 +325,22 @@ impl ComponentAsyncBridge {
 /// Result of polling async tasks
 #[derive(Debug, Default)]
 pub struct PollResult {
-    pub tasks_polled: usize,
-    pub tasks_completed: usize,
-    pub tasks_failed: usize,
-    pub tasks_waiting: usize,
+    pub tasks_polled:        usize,
+    pub tasks_completed:     usize,
+    pub tasks_failed:        usize,
+    pub tasks_waiting:       usize,
     pub total_fuel_consumed: u64,
-    pub fuel_remaining: u64,
+    pub fuel_remaining:      u64,
 }
 
 /// Component async statistics
 #[derive(Debug, Clone)]
 pub struct ComponentAsyncStats {
-    pub component_id: ComponentInstanceId,
-    pub active_tasks: u64,
-    pub max_tasks: u64,
+    pub component_id:  ComponentInstanceId,
+    pub active_tasks:  u64,
+    pub max_tasks:     u64,
     pub fuel_consumed: u64,
-    pub fuel_budget: u64,
+    pub fuel_budget:   u64,
 }
 
 impl ComponentAsyncStats {
@@ -340,7 +369,7 @@ mod tests {
     fn test_bridge_creation() {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        
+
         let bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap();
         assert_eq!(bridge.component_limits.len(), 0);
     }
@@ -349,12 +378,12 @@ mod tests {
     fn test_component_registration() {
         let task_manager = Arc::new(Mutex::new(TaskManager::new()));
         let thread_manager = Arc::new(Mutex::new(FuelTrackedThreadManager::new()));
-        
+
         let mut bridge = ComponentAsyncBridge::new(task_manager, thread_manager).unwrap();
-        
+
         let component_id = ComponentInstanceId::new(1);
         bridge.register_component(component_id, 10, 10000, Priority::Normal).unwrap();
-        
+
         let stats = bridge.get_component_stats(component_id).unwrap();
         assert_eq!(stats.active_tasks, 0);
         assert_eq!(stats.max_tasks, 10);
@@ -364,11 +393,11 @@ mod tests {
     #[test]
     fn test_async_stats() {
         let stats = ComponentAsyncStats {
-            component_id: ComponentInstanceId::new(1),
-            active_tasks: 5,
-            max_tasks: 10,
+            component_id:  ComponentInstanceId::new(1),
+            active_tasks:  5,
+            max_tasks:     10,
             fuel_consumed: 2500,
-            fuel_budget: 10000,
+            fuel_budget:   10000,
         };
 
         assert_eq!(stats.utilization_percentage(), 50.0);

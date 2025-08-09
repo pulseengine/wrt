@@ -3,27 +3,38 @@
 //! This module defines the trait and implementations for executing async tasks
 //! with different ASIL (Automotive Safety Integrity Level) execution modes.
 
-use crate::{
-    async_::{
-        fuel_async_executor::{
-            AsyncTaskState, ExecutionContext, ASILExecutionMode, 
-            ExecutionStepResult, ComponentAsyncOperation, YieldPoint,
-        },
-        fuel_aware_waker::WakerData,
-    },
-    task_manager::TaskId,
-    types::ComponentInstance,
-    ComponentInstanceId,
-    prelude::*,
-};
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll, Waker},
+    task::{
+        Context,
+        Poll,
+        Waker,
+    },
 };
+
 use wrt_foundation::{
-    Arc, sync::Mutex,
+    sync::Mutex,
     verification::VerificationLevel,
+    Arc,
+};
+
+use crate::{
+    async_::{
+        fuel_async_executor::{
+            ASILExecutionMode,
+            AsyncTaskState,
+            ComponentAsyncOperation,
+            ExecutionContext,
+            ExecutionStepResult,
+            YieldPoint,
+        },
+        fuel_aware_waker::WakerData,
+    },
+    prelude::*,
+    task_manager::TaskId,
+    types::ComponentInstance,
+    ComponentInstanceId,
 };
 
 /// Trait for executing async tasks with ASIL compliance
@@ -56,11 +67,11 @@ pub trait AsyncTaskExecutor: Send + Sync {
 /// ASIL-D Task Executor - Highest safety criticality
 pub struct ASILDTaskExecutor {
     /// Deterministic execution counter
-    execution_counter: u64,
+    execution_counter:   u64,
     /// Maximum stack depth for ASIL-D
-    max_stack_depth: u32,
+    max_stack_depth:     u32,
     /// Bounded execution time in fuel units
-    max_execution_time: u64,
+    max_execution_time:  u64,
     /// Formal verification enabled
     formal_verification: bool,
 }
@@ -68,9 +79,9 @@ pub struct ASILDTaskExecutor {
 impl ASILDTaskExecutor {
     pub fn new() -> Self {
         Self {
-            execution_counter: 0,
-            max_stack_depth: 16, // Very limited for determinism
-            max_execution_time: 1000, // 1ms worth of fuel
+            execution_counter:   0,
+            max_stack_depth:     16,   // Very limited for determinism
+            max_execution_time:  1000, // 1ms worth of fuel
             formal_verification: true,
         }
     }
@@ -90,7 +101,8 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
         self.execution_counter += 1;
 
         // Check fuel budget strictly
-        let fuel_consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+        let fuel_consumed =
+            context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
         if fuel_consumed >= self.max_execution_time {
             return Err(Error::runtime_execution_error("Error occurred"));
         }
@@ -117,7 +129,9 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                 },
                 ExecutionStepResult::Waiting => {
                     // ASIL-D tasks should not wait - must be deterministic
-                    Err(Error::validation_invalid_state("ASIL-D tasks cannot enter waiting state"))
+                    Err(Error::validation_invalid_state(
+                        "ASIL-D tasks cannot enter waiting state",
+                    ))
                 },
             }
         } else {
@@ -132,7 +146,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
         asil_mode: ASILExecutionMode,
     ) -> Result<(), Error> {
         match asil_mode {
-            ASILExecutionMode::D { 
+            ASILExecutionMode::D {
                 deterministic_execution,
                 bounded_execution_time,
                 formal_verification,
@@ -146,12 +160,15 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                         "Bounded execution time required for ASIL-D"));
+                        "Bounded execution time required for ASIL-D",
+                    ));
                 }
 
                 if context.stack_depth > self.max_stack_depth {
-                    return Err(Error::runtime_execution_error(
-                            &format!("Stack depth {} exceeds max {}", context.stack_depth, self.max_stack_depth)));
+                    return Err(Error::runtime_execution_error(&format!(
+                        "Stack depth {} exceeds max {}",
+                        context.stack_depth, self.max_stack_depth
+                    )));
                 }
 
                 Ok(())
@@ -176,7 +193,7 @@ impl AsyncTaskExecutor for ASILDTaskExecutor {
 /// ASIL-C Task Executor - High safety criticality with isolation
 pub struct ASILCTaskExecutor {
     /// Spatial isolation enforced
-    spatial_isolation: bool,
+    spatial_isolation:  bool,
     /// Temporal isolation enforced
     temporal_isolation: bool,
     /// Resource isolation enforced
@@ -188,7 +205,7 @@ pub struct ASILCTaskExecutor {
 impl ASILCTaskExecutor {
     pub fn new() -> Self {
         Self {
-            spatial_isolation: true,
+            spatial_isolation:  true,
             temporal_isolation: true,
             resource_isolation: true,
             max_slice_duration: 5000, // 5ms
@@ -212,12 +229,14 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
             context.validate_memory_isolation()?;
 
             // Execute with temporal bounds
-            let start_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
-            
+            let start_fuel =
+                context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+
             match context.execute_isolated_step()? {
                 ExecutionStepResult::Completed(result) => {
                     // Verify temporal isolation
-                    let end_fuel = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+                    let end_fuel =
+                        context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
                     if end_fuel - start_fuel > self.max_slice_duration {
                         return Err(Error::runtime_execution_error("Error occurred"));
                     }
@@ -244,7 +263,7 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
         asil_mode: ASILExecutionMode,
     ) -> Result<(), Error> {
         match asil_mode {
-            ASILExecutionMode::C { 
+            ASILExecutionMode::C {
                 spatial_isolation,
                 temporal_isolation,
                 resource_isolation,
@@ -253,7 +272,8 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        "Task execution failed"));
+                        "Task execution failed",
+                    ));
                 }
 
                 if temporal_isolation && !self.temporal_isolation {
@@ -264,12 +284,15 @@ impl AsyncTaskExecutor for ASILCTaskExecutor {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                         "Resource isolation required for ASIL-C"));
+                        "Resource isolation required for ASIL-C",
+                    ));
                 }
 
                 Ok(())
             },
-            _ => Err(Error::validation_invalid_input("ASILCTaskExecutor only handles ASIL-C mode")),
+            _ => Err(Error::validation_invalid_input(
+                "ASILCTaskExecutor only handles ASIL-C mode",
+            )),
         }
     }
 
@@ -294,7 +317,7 @@ pub struct ASILBTaskExecutor {
     /// Maximum execution slice in ms
     max_execution_slice_ms: u64,
     /// Resource quota
-    resource_quota: u64,
+    resource_quota:         u64,
 }
 
 impl ASILBTaskExecutor {
@@ -302,7 +325,7 @@ impl ASILBTaskExecutor {
         Self {
             strict_resource_limits: true,
             max_execution_slice_ms: 10,
-            resource_quota: 10000, // 10ms worth of fuel
+            resource_quota:         10000, // 10ms worth of fuel
         }
     }
 }
@@ -320,7 +343,8 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
         // Execute with resource bounds
         if let Some(component_instance) = &context.component_instance {
             // Check resource quota
-            let consumed = context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
+            let consumed =
+                context.context_fuel_consumed.load(core::sync::atomic::Ordering::Acquire);
             if consumed >= self.resource_quota {
                 // Must yield to respect quota
                 return Ok(ExecutionStepResult::Yielded);
@@ -342,24 +366,32 @@ impl AsyncTaskExecutor for ASILBTaskExecutor {
         asil_mode: ASILExecutionMode,
     ) -> Result<(), Error> {
         match asil_mode {
-            ASILExecutionMode::B { 
+            ASILExecutionMode::B {
                 strict_resource_limits,
                 max_execution_slice_ms,
             } => {
                 if strict_resource_limits && !self.strict_resource_limits {
-                    return Err(Error::runtime_execution_error("Resource limits required for strict mode"));
+                    return Err(Error::runtime_execution_error(
+                        "Resource limits required for strict mode",
+                    ));
                 }
 
                 if max_execution_slice_ms < self.max_execution_slice_ms {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::INVALID_CONFIG,
-                        format!("Execution slice {} exceeds max {}", max_execution_slice_ms, self.max_execution_slice_ms)));
+                        format!(
+                            "Execution slice {} exceeds max {}",
+                            max_execution_slice_ms, self.max_execution_slice_ms
+                        ),
+                    ));
                 }
 
                 Ok(())
             },
-            _ => Err(Error::validation_invalid_input("ASILBTaskExecutor only handles ASIL-B mode")),
+            _ => Err(Error::validation_invalid_input(
+                "ASILBTaskExecutor only handles ASIL-B mode",
+            )),
         }
     }
 
@@ -383,7 +415,7 @@ pub struct ASILATaskExecutor {
     /// Maximum consecutive errors
     max_error_count: u32,
     /// Current error count
-    error_count: u32,
+    error_count:     u32,
 }
 
 impl ASILATaskExecutor {
@@ -391,7 +423,7 @@ impl ASILATaskExecutor {
         Self {
             error_detection: true,
             max_error_count: 3,
-            error_count: 0,
+            error_count:     0,
         }
     }
 }
@@ -416,10 +448,12 @@ impl AsyncTaskExecutor for ASILATaskExecutor {
                 },
                 Err(e) => {
                     self.error_count += 1;
-                    
+
                     if self.error_count >= self.max_error_count {
                         // Too many errors - fail task
-                        Err(Error::runtime_execution_error("ASIL-A task exceeded error limit"))
+                        Err(Error::runtime_execution_error(
+                            "ASIL-A task exceeded error limit",
+                        ))
                     } else {
                         // Try to recover by yielding
                         Ok(ExecutionStepResult::Yielded)
@@ -517,22 +551,22 @@ impl ASILExecutorFactory {
 #[derive(Debug, Clone)]
 pub struct ASILExecutorConfig {
     /// Maximum stack depth (ASIL-D)
-    pub max_stack_depth: Option<u32>,
+    pub max_stack_depth:    Option<u32>,
     /// Maximum slice duration (ASIL-C)
     pub max_slice_duration: Option<u64>,
     /// Resource quota (ASIL-B)
-    pub resource_quota: Option<u64>,
+    pub resource_quota:     Option<u64>,
     /// Maximum error count (ASIL-A)
-    pub max_error_count: Option<u32>,
+    pub max_error_count:    Option<u32>,
 }
 
 impl Default for ASILExecutorConfig {
     fn default() -> Self {
         Self {
-            max_stack_depth: None,
+            max_stack_depth:    None,
             max_slice_duration: None,
-            resource_quota: None,
-            max_error_count: None,
+            resource_quota:     None,
+            max_error_count:    None,
         }
     }
 }
@@ -544,12 +578,15 @@ mod tests {
     #[test]
     fn test_asil_d_executor() {
         let mut executor = ASILDTaskExecutor::new();
-        assert_eq!(executor.max_fuel_per_step(ASILExecutionMode::D {
-            deterministic_execution: true,
-            bounded_execution_time: true,
-            formal_verification: true,
-            max_fuel_per_slice: 1000,
-        }), 100);
+        assert_eq!(
+            executor.max_fuel_per_step(ASILExecutionMode::D {
+                deterministic_execution: true,
+                bounded_execution_time:  true,
+                formal_verification:     true,
+                max_fuel_per_slice:      1000,
+            }),
+            100
+        );
         assert!(!executor.can_preempt(&ExecutionContext::new()));
     }
 
@@ -557,11 +594,11 @@ mod tests {
     fn test_asil_executor_factory() {
         let asil_d = ASILExecutionMode::D {
             deterministic_execution: true,
-            bounded_execution_time: true,
-            formal_verification: true,
-            max_fuel_per_slice: 1000,
+            bounded_execution_time:  true,
+            formal_verification:     true,
+            max_fuel_per_slice:      1000,
         };
-        
+
         let executor = ASILExecutorFactory::create_executor(asil_d);
         assert_eq!(executor.get_priority(asil_d), 0);
     }
@@ -572,14 +609,14 @@ mod tests {
             max_stack_depth: Some(32),
             ..Default::default()
         };
-        
+
         let asil_d = ASILExecutionMode::D {
             deterministic_execution: true,
-            bounded_execution_time: true,
-            formal_verification: true,
-            max_fuel_per_slice: 1000,
+            bounded_execution_time:  true,
+            formal_verification:     true,
+            max_fuel_per_slice:      1000,
         };
-        
+
         let executor = ASILExecutorFactory::create_executor_with_config(asil_d, config);
         assert_eq!(executor.get_priority(asil_d), 0);
     }

@@ -5,26 +5,38 @@
 //! provide hierarchical isolation with different containment levels.
 
 #[cfg(not(feature = "std"))]
-use core::{fmt, mem};
+use core::{
+    fmt,
+    mem,
+};
 #[cfg(feature = "std")]
-use std::{fmt, mem};
-
+use std::{
+    boxed::Box,
+    collections::HashMap,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{boxed::Box, vec::Vec, collections::HashMap};
+use std::{
+    fmt,
+    mem,
+};
 
 use wrt_foundation::{
-    bounded::BoundedVec, 
-    component::WrtComponentType, 
-    component_value::ComponentValue, 
+    bounded::BoundedVec,
+    budget_aware_provider::CrateId,
+    component::WrtComponentType,
+    component_value::ComponentValue,
     prelude::*,
     resource::ResourceHandle,
-    budget_aware_provider::CrateId,
     safe_managed_alloc,
 };
 
 use crate::{
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ComponentInstance, Value},
+    types::{
+        ComponentInstance,
+        Value,
+    },
     WrtResult,
 };
 
@@ -99,23 +111,23 @@ pub enum ZoneHealth {
 #[derive(Debug, Clone)]
 pub struct BlastZoneConfig {
     /// Unique zone identifier
-    pub zone_id: u32,
+    pub zone_id:             u32,
     /// Zone name for debugging
-    pub zone_name: String,
+    pub zone_name:           String,
     /// Isolation level for this zone
-    pub isolation_level: IsolationLevel,
+    pub isolation_level:     IsolationLevel,
     /// Containment policy for failures
-    pub containment_policy: ContainmentPolicy,
+    pub containment_policy:  ContainmentPolicy,
     /// Recovery strategy
-    pub recovery_strategy: RecoveryStrategy,
+    pub recovery_strategy:   RecoveryStrategy,
     /// Maximum number of components allowed in this zone
-    pub max_components: usize,
+    pub max_components:      usize,
     /// Memory budget for this zone (bytes)
-    pub memory_budget: usize,
+    pub memory_budget:       usize,
     /// Maximum number of resources
-    pub max_resources: u32,
+    pub max_resources:       u32,
     /// Failure threshold before triggering containment
-    pub failure_threshold: u32,
+    pub failure_threshold:   u32,
     /// Recovery timeout in milliseconds
     pub recovery_timeout_ms: u64,
 }
@@ -124,24 +136,24 @@ pub struct BlastZoneConfig {
 #[derive(Debug)]
 pub struct BlastZone {
     /// Zone configuration
-    config: BlastZoneConfig,
+    config:            BlastZoneConfig,
     /// Current health status
-    health: ZoneHealth,
+    health:            ZoneHealth,
     /// Components assigned to this zone
     #[cfg(feature = "std")]
-    components: Vec<u32>,
-    #[cfg(not(any(feature = "std", )))]
-    components: BoundedVec<u32, MAX_COMPONENTS_PER_ZONE, NoStdProvider<4096>>,
+    components:        Vec<u32>,
+    #[cfg(not(any(feature = "std",)))]
+    components:        BoundedVec<u32, MAX_COMPONENTS_PER_ZONE, NoStdProvider<4096>>,
     /// Current failure count
-    failure_count: u32,
+    failure_count:     u32,
     /// Last failure timestamp
     last_failure_time: u64,
     /// Memory usage tracking
-    memory_used: usize,
+    memory_used:       usize,
     /// Resource usage tracking
-    resources_used: u32,
+    resources_used:    u32,
     /// Zone-specific resource manager
-    resource_manager: Option<ResourceLifecycleManager>,
+    resource_manager:  Option<ResourceLifecycleManager>,
     /// Recovery attempt count
     recovery_attempts: u32,
 }
@@ -150,20 +162,20 @@ pub struct BlastZone {
 #[derive(Debug, Clone)]
 pub struct IsolationPolicy {
     /// Policy identifier
-    pub policy_id: u32,
+    pub policy_id:              u32,
     /// Source zone pattern (None = any zone)
-    pub source_zone: Option<u32>,
+    pub source_zone:            Option<u32>,
     /// Target zone pattern (None = any zone)
-    pub target_zone: Option<u32>,
+    pub target_zone:            Option<u32>,
     /// Whether interaction is allowed
-    pub allowed: bool,
+    pub allowed:                bool,
     /// Required capabilities for interaction
     #[cfg(feature = "std")]
-    pub required_capabilities: Vec<String>,
-    #[cfg(not(any(feature = "std", )))]
-    pub required_capabilities: BoundedVec<String, 8, NoStdProvider<4096>>,
+    pub required_capabilities:  Vec<String>,
+    #[cfg(not(any(feature = "std",)))]
+    pub required_capabilities:  BoundedVec<String, 8, NoStdProvider<4096>>,
     /// Maximum data transfer size
-    pub max_transfer_size: usize,
+    pub max_transfer_size:      usize,
     /// Whether resource sharing is allowed
     pub allow_resource_sharing: bool,
 }
@@ -172,17 +184,17 @@ pub struct IsolationPolicy {
 #[derive(Debug, Clone)]
 pub struct ZoneFailure {
     /// Zone that failed
-    pub zone_id: u32,
+    pub zone_id:      u32,
     /// Component that triggered the failure
     pub component_id: u32,
     /// Failure timestamp
-    pub timestamp: u64,
+    pub timestamp:    u64,
     /// Failure reason
-    pub reason: String,
+    pub reason:       String,
     /// Stack trace or additional context
-    pub context: String,
+    pub context:      String,
     /// Whether the failure was contained
-    pub contained: bool,
+    pub contained:    bool,
 }
 
 /// Blast zone isolation manager
@@ -190,31 +202,31 @@ pub struct BlastZoneManager {
     /// All blast zones
     #[cfg(feature = "std")]
     zones: HashMap<u32, BlastZone>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     zones: BoundedVec<(u32, BlastZone), MAX_BLAST_ZONES, NoStdProvider<65536>>,
-    
+
     /// Isolation policies
     #[cfg(feature = "std")]
     policies: Vec<IsolationPolicy>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     policies: BoundedVec<IsolationPolicy, MAX_ISOLATION_POLICIES, NoStdProvider<65536>>,
-    
+
     /// Component to zone mapping
     #[cfg(feature = "std")]
     component_zones: HashMap<u32, u32>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     component_zones: BoundedVec<(u32, u32), 256, NoStdProvider<65536>>,
-    
+
     /// Recent failures for analysis
     #[cfg(feature = "std")]
     failure_history: Vec<ZoneFailure>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     failure_history: BoundedVec<ZoneFailure, 64, NoStdProvider<65536>>,
-    
+
     /// Global failure threshold
     global_failure_threshold: u32,
     /// Current global failure count
-    global_failure_count: u32,
+    global_failure_count:     u32,
 }
 
 impl BlastZoneConfig {
@@ -273,7 +285,7 @@ impl BlastZone {
             health: ZoneHealth::Healthy,
             #[cfg(feature = "std")]
             components: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             components: {
                 let provider = safe_managed_alloc!(4096, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
@@ -292,14 +304,16 @@ impl BlastZone {
     /// Add a component to this blast zone
     pub fn add_component(&mut self, component_id: u32) -> WrtResult<()> {
         if self.components.len() >= self.config.max_components {
-            return Err(wrt_error::Error::resource_exhausted("Blast zone at capacity"));
+            return Err(wrt_error::Error::resource_exhausted(
+                "Blast zone at capacity",
+            ));
         }
 
         #[cfg(feature = "std")]
         {
             self.components.push(component_id);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             self.components.push(component_id).map_err(|_| {
                 wrt_error::Error::resource_exhausted("Failed to add component to zone")
@@ -318,7 +332,7 @@ impl BlastZone {
                 return true;
             }
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             for (i, &id) in self.components.iter().enumerate() {
                 if id == component_id {
@@ -359,13 +373,13 @@ impl BlastZone {
             RecoveryStrategy::None => {
                 self.health = ZoneHealth::Failed;
                 Ok(false)
-            }
+            },
             RecoveryStrategy::RestartComponent => {
                 // Would restart individual components
                 self.health = ZoneHealth::Healthy;
                 self.failure_count = 0;
                 Ok(true)
-            }
+            },
             RecoveryStrategy::RestartZone => {
                 // Would restart entire zone
                 self.health = ZoneHealth::Healthy;
@@ -373,22 +387,26 @@ impl BlastZone {
                 self.memory_used = 0;
                 self.resources_used = 0;
                 Ok(true)
-            }
+            },
             RecoveryStrategy::MigrateToBackup => {
                 // Would migrate to backup zone
                 self.health = ZoneHealth::Healthy;
                 Ok(true)
-            }
+            },
             RecoveryStrategy::GracefulDegradation => {
                 // Operate with reduced functionality
                 self.health = ZoneHealth::Degraded;
                 Ok(true)
-            }
+            },
         }
     }
 
     /// Update resource usage
-    pub fn update_resource_usage(&mut self, memory_delta: isize, resource_delta: i32) -> WrtResult<()> {
+    pub fn update_resource_usage(
+        &mut self,
+        memory_delta: isize,
+        resource_delta: i32,
+    ) -> WrtResult<()> {
         // Update memory usage
         if memory_delta < 0 {
             let decrease = (-memory_delta) as usize;
@@ -396,7 +414,9 @@ impl BlastZone {
         } else {
             let increase = memory_delta as usize;
             if self.memory_used + increase > self.config.memory_budget {
-                return Err(wrt_error::Error::resource_exhausted("Memory budget exceeded"));
+                return Err(wrt_error::Error::resource_exhausted(
+                    "Memory budget exceeded",
+                ));
             }
             self.memory_used += increase;
         }
@@ -408,7 +428,9 @@ impl BlastZone {
         } else {
             let increase = resource_delta as u32;
             if self.resources_used + increase > self.config.max_resources {
-                return Err(wrt_error::Error::resource_exhausted("Resource limit exceeded"));
+                return Err(wrt_error::Error::resource_exhausted(
+                    "Resource limit exceeded",
+                ));
             }
             self.resources_used += increase;
         }
@@ -456,7 +478,7 @@ impl BlastZoneManager {
         Ok(Self {
             #[cfg(feature = "std")]
             zones: HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             zones: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
@@ -465,7 +487,7 @@ impl BlastZoneManager {
             },
             #[cfg(feature = "std")]
             policies: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             policies: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
@@ -474,7 +496,7 @@ impl BlastZoneManager {
             },
             #[cfg(feature = "std")]
             component_zones: HashMap::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             component_zones: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
@@ -483,7 +505,7 @@ impl BlastZoneManager {
             },
             #[cfg(feature = "std")]
             failure_history: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             failure_history: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider).map_err(|_| {
@@ -504,11 +526,11 @@ impl BlastZoneManager {
         {
             self.zones.insert(zone_id, zone);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.zones.push((zone_id, zone)).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many blast zones")
-            })?;
+            self.zones
+                .push((zone_id, zone))
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many blast zones"))?;
         }
 
         Ok(zone_id)
@@ -519,13 +541,14 @@ impl BlastZoneManager {
         // Find and update the zone
         #[cfg(feature = "std")]
         {
-            let zone = self.zones.get_mut(&zone_id).ok_or_else(|| {
-                wrt_foundation::wrt_error::Error::invalid_value("Zone not found")
-            })?;
+            let zone = self
+                .zones
+                .get_mut(&zone_id)
+                .ok_or_else(|| wrt_foundation::wrt_error::Error::invalid_value("Zone not found"))?;
             zone.add_component(component_id)?;
             self.component_zones.insert(component_id, zone_id);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             let mut zone_found = false;
             for (zid, zone) in &mut self.zones {
@@ -536,11 +559,13 @@ impl BlastZoneManager {
                 }
             }
             if !zone_found {
-                return Err(wrt_foundation::wrt_error::Error::invalid_value("Zone not found"));
+                return Err(wrt_foundation::wrt_error::Error::invalid_value(
+                    "Zone not found",
+                ));
             }
-            self.component_zones.push((component_id, zone_id)).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many component mappings")
-            })?;
+            self.component_zones
+                .push((component_id, zone_id))
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many component mappings"))?;
         }
 
         Ok(())
@@ -574,7 +599,7 @@ impl BlastZoneManager {
         {
             self.failure_history.push(failure);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             let _ = self.failure_history.push(failure);
         }
@@ -591,7 +616,7 @@ impl BlastZoneManager {
                     ContainmentPolicy::TerminateComponent
                 }
             }
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             {
                 let mut policy = ContainmentPolicy::TerminateComponent;
                 for (zid, zone) in &mut self.zones {
@@ -625,7 +650,7 @@ impl BlastZoneManager {
                 }
             }
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             for policy in &self.policies {
                 if self.policy_matches(&policy, source_zone, target_zone) {
@@ -644,7 +669,7 @@ impl BlastZoneManager {
         {
             self.component_zones.get(&component_id).copied()
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             for (cid, zone_id) in &self.component_zones {
                 if *cid == component_id {
@@ -661,11 +686,11 @@ impl BlastZoneManager {
         {
             self.policies.push(policy);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.policies.push(policy).map_err(|_| {
-                wrt_error::Error::resource_exhausted("Too many policies")
-            })?;
+            self.policies
+                .push(policy)
+                .map_err(|_| wrt_error::Error::resource_exhausted("Too many policies"))?;
         }
         Ok(())
     }
@@ -676,7 +701,7 @@ impl BlastZoneManager {
         {
             self.zones.get(&zone_id).map(|z| z.health())
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             for (zid, zone) in &self.zones {
                 if *zid == zone_id {
@@ -691,19 +716,22 @@ impl BlastZoneManager {
     pub fn recover_zone(&mut self, zone_id: u32) -> WrtResult<bool> {
         #[cfg(feature = "std")]
         {
-            let zone = self.zones.get_mut(&zone_id).ok_or_else(|| {
-                wrt_foundation::wrt_error::Error::invalid_value("Zone not found")
-            })?;
+            let zone = self
+                .zones
+                .get_mut(&zone_id)
+                .ok_or_else(|| wrt_foundation::wrt_error::Error::invalid_value("Zone not found"))?;
             zone.attempt_recovery()
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             for (zid, zone) in &mut self.zones {
                 if *zid == zone_id {
                     return zone.attempt_recovery();
                 }
             }
-            Err(wrt_foundation::wrt_error::Error::invalid_value("Zone not found"))
+            Err(wrt_foundation::wrt_error::Error::invalid_value(
+                "Zone not found",
+            ))
         }
     }
 
@@ -711,11 +739,12 @@ impl BlastZoneManager {
     fn get_zone_isolation_level(&self, zone_id: u32) -> IsolationLevel {
         #[cfg(feature = "std")]
         {
-            self.zones.get(&zone_id)
+            self.zones
+                .get(&zone_id)
                 .map(|z| z.config.isolation_level)
                 .unwrap_or(IsolationLevel::None)
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             for (zid, zone) in &self.zones {
                 if *zid == zone_id {
@@ -795,8 +824,7 @@ mod tests {
 
     #[test]
     fn test_failure_handling() {
-        let config = BlastZoneConfig::new(1, "test-zone")
-            .with_failure_threshold(2);
+        let config = BlastZoneConfig::new(1, "test-zone").with_failure_threshold(2);
         let mut zone = BlastZone::new(config).unwrap();
 
         // First failure - should not trigger containment
@@ -812,8 +840,7 @@ mod tests {
 
     #[test]
     fn test_resource_usage() {
-        let config = BlastZoneConfig::new(1, "test-zone")
-            .with_memory_budget(1000);
+        let config = BlastZoneConfig::new(1, "test-zone").with_memory_budget(1000);
         let mut zone = BlastZone::new(config).unwrap();
 
         // Add memory usage within budget
@@ -857,10 +884,10 @@ mod tests {
         let mut manager = BlastZoneManager::new().unwrap();
 
         // Create zones with different isolation levels
-        let config1 = BlastZoneConfig::new(1, "secure-zone")
-            .with_isolation_level(IsolationLevel::Full);
-        let config2 = BlastZoneConfig::new(2, "normal-zone")
-            .with_isolation_level(IsolationLevel::Resource);
+        let config1 =
+            BlastZoneConfig::new(1, "secure-zone").with_isolation_level(IsolationLevel::Full);
+        let config2 =
+            BlastZoneConfig::new(2, "normal-zone").with_isolation_level(IsolationLevel::Resource);
 
         manager.create_zone(config1).unwrap();
         manager.create_zone(config2).unwrap();
@@ -873,9 +900,10 @@ mod tests {
             allowed: false,
             #[cfg(feature = "std")]
             required_capabilities: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             required_capabilities: {
-                let provider = safe_managed_alloc!(4096, CrateId::Component).unwrap_or_else(|_| panic!("Failed to allocate test memory"));
+                let provider = safe_managed_alloc!(4096, CrateId::Component)
+                    .unwrap_or_else(|_| panic!("Failed to allocate test memory"));
                 BoundedVec::new(provider).unwrap()
             },
             max_transfer_size: 0,
@@ -886,7 +914,8 @@ mod tests {
 
         // Check interactions
         assert!(!manager.is_interaction_allowed(2, 1)); // Should be denied by policy
-        assert!(manager.is_interaction_allowed(1, 2));  // Should be allowed (higher to lower)
+        assert!(manager.is_interaction_allowed(1, 2)); // Should be allowed
+                                                       // (higher to lower)
     }
 
     #[test]

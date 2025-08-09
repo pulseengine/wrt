@@ -3,20 +3,31 @@
 //! This module provides error context tracking and propagation across
 //! async boundaries, enabling detailed error reporting with fuel costs.
 
+use core::fmt::{
+    self,
+    Display,
+};
+
+use wrt_foundation::{
+    bounded_collections::{
+        BoundedString,
+        BoundedVec,
+    },
+    operations::{
+        record_global_operation,
+        Type as OperationType,
+    },
+    safe_managed_alloc,
+    verification::VerificationLevel,
+    CrateId,
+};
+
 use crate::{
-    async_::{
-        fuel_async_executor::{FuelAsyncTask, AsyncTaskState},
+    async_::fuel_async_executor::{
+        AsyncTaskState,
+        FuelAsyncTask,
     },
     prelude::*,
-};
-use core::{
-    fmt::{self, Display},
-};
-use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedString},
-    operations::{record_global_operation, Type as OperationType},
-    verification::VerificationLevel,
-    safe_managed_alloc, CrateId,
 };
 
 /// Maximum error context chain depth
@@ -34,13 +45,13 @@ const ERROR_CONTEXT_FUEL: u64 = 2;
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
     /// Component that generated the error
-    pub component_id: u64,
+    pub component_id:  u64,
     /// Task that was executing when error occurred
-    pub task_id: Option<u64>,
+    pub task_id:       Option<u64>,
     /// Location in the code (file:line)
-    pub location: BoundedString<128>,
+    pub location:      BoundedString<128>,
     /// Additional context information
-    pub context: BoundedString<MAX_ERROR_MESSAGE_LENGTH>,
+    pub context:       BoundedString<MAX_ERROR_MESSAGE_LENGTH>,
     /// Fuel consumed up to this error
     pub fuel_consumed: u64,
 }
@@ -55,13 +66,13 @@ impl ErrorContext {
         fuel_consumed: u64,
     ) -> Result<Self> {
         let provider = safe_managed_alloc!(1024, CrateId::Component)?;
-        
+
         let mut bounded_location = BoundedString::new(provider.clone())?;
         bounded_location.push_str(location)?;
-        
+
         let mut bounded_context = BoundedString::new(provider)?;
         bounded_context.push_str(context)?;
-        
+
         Ok(Self {
             component_id,
             task_id,
@@ -76,13 +87,13 @@ impl ErrorContext {
 #[derive(Debug)]
 pub struct ContextualError {
     /// The original error
-    pub error: Error,
+    pub error:               Error,
     /// Chain of error contexts
-    pub context_chain: BoundedVec<ErrorContext, MAX_ERROR_CONTEXT_DEPTH>,
+    pub context_chain:       BoundedVec<ErrorContext, MAX_ERROR_CONTEXT_DEPTH>,
     /// Total fuel consumed across all contexts
     pub total_fuel_consumed: u64,
     /// Verification level for fuel tracking
-    pub verification_level: VerificationLevel,
+    pub verification_level:  VerificationLevel,
 }
 
 impl ContextualError {
@@ -90,10 +101,10 @@ impl ContextualError {
     pub fn new(error: Error, verification_level: VerificationLevel) -> Result<Self> {
         let provider = safe_managed_alloc!(2048, CrateId::Component)?;
         let context_chain = BoundedVec::new(provider)?;
-        
+
         // Record error creation
         record_global_operation(OperationType::Other)?;
-        
+
         Ok(Self {
             error,
             context_chain,
@@ -101,65 +112,63 @@ impl ContextualError {
             verification_level,
         })
     }
-    
+
     /// Add context to the error
     pub fn with_context(mut self, context: ErrorContext) -> Result<Self> {
         // Consume fuel for adding context
-        let fuel_cost = OperationType::fuel_cost_for_operation(
-            OperationType::Other,
-            self.verification_level,
-        )?;
-        
-        self.total_fuel_consumed = self.total_fuel_consumed
+        let fuel_cost =
+            OperationType::fuel_cost_for_operation(OperationType::Other, self.verification_level)?;
+
+        self.total_fuel_consumed = self
+            .total_fuel_consumed
             .saturating_add(ERROR_CONTEXT_FUEL)
             .saturating_add(fuel_cost);
-        
+
         // Add to context chain
         self.context_chain.push(context)?;
-        
+
         Ok(self)
     }
-    
+
     /// Chain another error
     pub fn chain(mut self, other: ContextualError) -> Result<Self> {
         // Consume fuel for chaining
-        let fuel_cost = OperationType::fuel_cost_for_operation(
-            OperationType::Other,
-            self.verification_level,
-        )?;
-        
-        self.total_fuel_consumed = self.total_fuel_consumed
+        let fuel_cost =
+            OperationType::fuel_cost_for_operation(OperationType::Other, self.verification_level)?;
+
+        self.total_fuel_consumed = self
+            .total_fuel_consumed
             .saturating_add(ERROR_CHAIN_FUEL)
             .saturating_add(fuel_cost)
             .saturating_add(other.total_fuel_consumed);
-        
+
         // Merge context chains
         for context in other.context_chain.iter() {
             if self.context_chain.len() < MAX_ERROR_CONTEXT_DEPTH {
                 self.context_chain.push(context.clone())?;
             }
         }
-        
+
         Ok(self)
     }
-    
+
     /// Get the root cause error
     pub fn root_cause(&self) -> &Error {
         &self.error
     }
-    
+
     /// Get the most recent context
     pub fn latest_context(&self) -> Option<&ErrorContext> {
         self.context_chain.last()
     }
-    
+
     /// Format the error with full context chain
     pub fn format_with_context(&self) -> Result<String> {
         let mut output = String::new();
-        
+
         // Start with the main error
         output.push_str(&format!("Error: {}\n", self.error.message()));
-        
+
         // Add context chain
         if !self.context_chain.is_empty() {
             output.push_str("\nError Context Chain:\n");
@@ -168,27 +177,18 @@ impl ContextualError {
                     "  [{}] Component {}, Task {:?}\n",
                     i, context.component_id, context.task_id
                 ));
-                output.push_str(&format!(
-                    "      Location: {}\n",
-                    context.location.as_str()
-                ));
-                output.push_str(&format!(
-                    "      Context: {}\n",
-                    context.context.as_str()
-                ));
-                output.push_str(&format!(
-                    "      Fuel consumed: {}\n",
-                    context.fuel_consumed
-                ));
+                output.push_str(&format!("      Location: {}\n", context.location.as_str()));
+                output.push_str(&format!("      Context: {}\n", context.context.as_str()));
+                output.push_str(&format!("      Fuel consumed: {}\n", context.fuel_consumed));
             }
         }
-        
+
         // Add total fuel consumed
         output.push_str(&format!(
             "\nTotal fuel consumed: {}\n",
             self.total_fuel_consumed
         ));
-        
+
         Ok(output)
     }
 }
@@ -196,7 +196,7 @@ impl ContextualError {
 impl Display for ContextualError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.error.message())?;
-        
+
         if let Some(context) = self.latest_context() {
             write!(
                 f,
@@ -205,7 +205,7 @@ impl Display for ContextualError {
                 context.context.as_str()
             )?;
         }
-        
+
         Ok(())
     }
 }
@@ -219,9 +219,9 @@ impl From<ContextualError> for Error {
 /// Error propagation helper for async operations
 pub struct ErrorPropagator {
     /// Current component ID
-    component_id: u64,
+    component_id:       u64,
     /// Current task ID
-    task_id: Option<u64>,
+    task_id:            Option<u64>,
     /// Verification level
     verification_level: VerificationLevel,
 }
@@ -239,7 +239,7 @@ impl ErrorPropagator {
             verification_level,
         }
     }
-    
+
     /// Wrap an error with context
     pub fn wrap_error(
         &self,
@@ -249,7 +249,7 @@ impl ErrorPropagator {
         fuel_consumed: u64,
     ) -> Result<ContextualError> {
         let mut contextual = ContextualError::new(error, self.verification_level)?;
-        
+
         let error_context = ErrorContext::new(
             self.component_id,
             self.task_id,
@@ -257,10 +257,10 @@ impl ErrorPropagator {
             context,
             fuel_consumed,
         )?;
-        
+
         contextual.with_context(error_context)
     }
-    
+
     /// Propagate an error through a component boundary
     pub fn propagate(
         &self,
@@ -275,7 +275,7 @@ impl ErrorPropagator {
             "Error propagated through component boundary",
             fuel_consumed,
         )?;
-        
+
         error.with_context(context)
     }
 }
@@ -284,7 +284,7 @@ impl ErrorPropagator {
 pub trait ErrorContextExt<T> {
     /// Add context to an error
     fn context(self, context: &str) -> Result<T>;
-    
+
     /// Add context with location
     fn with_context<F>(self, f: F) -> Result<T>
     where
@@ -293,22 +293,14 @@ pub trait ErrorContextExt<T> {
 
 impl<T> ErrorContextExt<T> for Result<T> {
     fn context(self, context: &str) -> Result<T> {
-        self.map_err(|e| {
-            Error::runtime_execution_error(&format!("{}: {}", context, e.message()))
-        })
+        self.map_err(|e| Error::runtime_execution_error(&format!("{}: {}", context, e.message())))
     }
-    
+
     fn with_context<F>(self, f: F) -> Result<T>
     where
         F: FnOnce() -> String,
     {
-        self.map_err(|e| {
-            Error::new(
-                e.category(),
-                e.code(),
-                &format!("{}: {}", f(), e.message()),
-            )
-        })
+        self.map_err(|e| Error::new(e.category(), e.code(), &format!("{}: {}", f(), e.message())))
     }
 }
 
@@ -347,7 +339,7 @@ impl AsyncErrorKind {
             Self::ResourceLimit => codes::RESOURCE_LIMIT_EXCEEDED,
         }
     }
-    
+
     /// Get description
     pub fn description(self) -> &'static str {
         match self {
@@ -370,14 +362,10 @@ pub fn async_error(
     task_id: Option<u64>,
     additional_context: &str,
 ) -> Result<ContextualError> {
-    let error = Error::new(
-        ErrorCategory::Async,
-        kind.to_code(),
-        kind.description(),
-    );
-    
+    let error = Error::new(ErrorCategory::Async, kind.to_code(), kind.description());
+
     let mut contextual = ContextualError::new(error, VerificationLevel::Basic)?;
-    
+
     let context = ErrorContext::new(
         component_id,
         task_id,
@@ -385,70 +373,53 @@ pub fn async_error(
         additional_context,
         0,
     )?;
-    
+
     contextual.with_context(context)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_error_context_creation() {
-        let context = ErrorContext::new(
-            1,
-            Some(42),
-            "test.rs:10",
-            "Test error context",
-            100,
-        );
+        let context = ErrorContext::new(1, Some(42), "test.rs:10", "Test error context", 100);
         assert!(context.is_ok());
-        
+
         let context = context.unwrap();
         assert_eq!(context.component_id, 1);
         assert_eq!(context.task_id, Some(42));
         assert_eq!(context.fuel_consumed, 100);
     }
-    
+
     #[test]
     fn test_contextual_error() {
-        let error = Error::async_error("Test error");        
+        let error = Error::async_error("Test error");
         let contextual = ContextualError::new(error, VerificationLevel::Basic);
         assert!(contextual.is_ok());
-        
+
         let mut contextual = contextual.unwrap();
         assert_eq!(contextual.total_fuel_consumed, ERROR_CREATE_FUEL);
-        
+
         // Add context
-        let context = ErrorContext::new(
-            1,
-            None,
-            "test.rs:20",
-            "Additional context",
-            50,
-        ).unwrap();
-        
+        let context = ErrorContext::new(1, None, "test.rs:20", "Additional context", 50).unwrap();
+
         contextual = contextual.with_context(context).unwrap();
         assert_eq!(contextual.context_chain.len(), 1);
     }
-    
+
     #[test]
     fn test_error_propagator() {
         let propagator = ErrorPropagator::new(1, Some(42), VerificationLevel::Basic);
-        
-        let error = Error::component_runtime_error("Component error");        
-        let wrapped = propagator.wrap_error(
-            error,
-            "test.rs:30",
-            "Error during processing",
-            75,
-        );
-        
+
+        let error = Error::component_runtime_error("Component error");
+        let wrapped = propagator.wrap_error(error, "test.rs:30", "Error during processing", 75);
+
         assert!(wrapped.is_ok());
         let wrapped = wrapped.unwrap();
         assert_eq!(wrapped.context_chain.len(), 1);
     }
-    
+
     #[test]
     fn test_async_error_kinds() {
         assert_eq!(

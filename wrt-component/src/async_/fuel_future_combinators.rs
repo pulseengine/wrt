@@ -3,21 +3,32 @@
 //! This module provides fuel-aware combinators for composing futures,
 //! enabling complex async workflows with deterministic fuel consumption.
 
-use crate::{
-    async_::{
-        fuel_async_executor::{FuelAsyncTask, AsyncTaskState},
-        fuel_aware_waker::create_fuel_aware_waker,
-    },
-    prelude::*,
-};
 use core::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
+
 use wrt_foundation::{
-    operations::{record_global_operation, Type as OperationType},
+    operations::{
+        record_global_operation,
+        Type as OperationType,
+    },
     verification::VerificationLevel,
+};
+
+use crate::{
+    async_::{
+        fuel_async_executor::{
+            AsyncTaskState,
+            FuelAsyncTask,
+        },
+        fuel_aware_waker::create_fuel_aware_waker,
+    },
+    prelude::*,
 };
 
 /// Fuel costs for future operations
@@ -30,10 +41,10 @@ const FUTURE_TIMEOUT_FUEL: u64 = 15;
 
 /// A future that selects the first of two futures to complete
 pub struct FuelSelect<F1, F2> {
-    future1: Option<F1>,
-    future2: Option<F2>,
-    fuel_consumed: u64,
-    fuel_budget: u64,
+    future1:            Option<F1>,
+    future2:            Option<F2>,
+    fuel_consumed:      u64,
+    fuel_budget:        u64,
     verification_level: VerificationLevel,
 }
 
@@ -79,8 +90,8 @@ where
                     self.future1 = None;
                     self.future2 = None;
                     return Poll::Ready(Ok(output));
-                }
-                Poll::Pending => {}
+                },
+                Poll::Pending => {},
             }
         }
 
@@ -91,8 +102,8 @@ where
                     self.future1 = None;
                     self.future2 = None;
                     return Poll::Ready(Ok(output));
-                }
-                Poll::Pending => {}
+                },
+                Poll::Pending => {},
             }
         }
 
@@ -106,13 +117,15 @@ impl<F1, F2> FuelSelect<F1, F2> {
             OperationType::FutureOperation,
             self.verification_level,
         )?;
-        
+
         let total_cost = base_cost.saturating_add(adjusted_cost);
-        
+
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Future combinator fuel budget exceeded",
+            ));
         }
-        
+
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
         record_global_operation(OperationType::FutureOperation)?;
         Ok(())
@@ -121,9 +134,9 @@ impl<F1, F2> FuelSelect<F1, F2> {
 
 /// A future that chains two futures sequentially
 pub struct FuelChain<F1, F2, T> {
-    state: ChainState<F1, F2, T>,
-    fuel_consumed: u64,
-    fuel_budget: u64,
+    state:              ChainState<F1, F2, T>,
+    fuel_consumed:      u64,
+    fuel_budget:        u64,
     verification_level: VerificationLevel,
 }
 
@@ -170,28 +183,24 @@ where
 
         loop {
             match &mut self.state {
-                ChainState::First(future1, map_fn) => {
-                    match Pin::new(future1).poll(cx) {
-                        Poll::Ready(output) => {
-                            let map_fn = *map_fn;
-                            let future2 = map_fn(output);
-                            self.state = ChainState::Second(future2);
-                        }
-                        Poll::Pending => return Poll::Pending,
-                    }
-                }
-                ChainState::Second(future2) => {
-                    match Pin::new(future2).poll(cx) {
-                        Poll::Ready(output) => {
-                            self.state = ChainState::Done;
-                            return Poll::Ready(Ok(output));
-                        }
-                        Poll::Pending => return Poll::Pending,
-                    }
-                }
+                ChainState::First(future1, map_fn) => match Pin::new(future1).poll(cx) {
+                    Poll::Ready(output) => {
+                        let map_fn = *map_fn;
+                        let future2 = map_fn(output);
+                        self.state = ChainState::Second(future2);
+                    },
+                    Poll::Pending => return Poll::Pending,
+                },
+                ChainState::Second(future2) => match Pin::new(future2).poll(cx) {
+                    Poll::Ready(output) => {
+                        self.state = ChainState::Done;
+                        return Poll::Ready(Ok(output));
+                    },
+                    Poll::Pending => return Poll::Pending,
+                },
                 ChainState::Done => {
                     panic!("FuelChain polled after completion");
-                }
+                },
             }
         }
     }
@@ -203,13 +212,15 @@ impl<F1, F2, T> FuelChain<F1, F2, T> {
             OperationType::FutureOperation,
             self.verification_level,
         )?;
-        
+
         let total_cost = base_cost.saturating_add(adjusted_cost);
-        
+
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Future combinator fuel budget exceeded",
+            ));
         }
-        
+
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
         record_global_operation(OperationType::FutureOperation)?;
         Ok(())
@@ -218,12 +229,12 @@ impl<F1, F2, T> FuelChain<F1, F2, T> {
 
 /// A future that joins two futures and waits for both
 pub struct FuelJoin<F1, F2> {
-    future1: Option<F1>,
-    future2: Option<F2>,
-    result1: Option<F1::Output>,
-    result2: Option<F2::Output>,
-    fuel_consumed: u64,
-    fuel_budget: u64,
+    future1:            Option<F1>,
+    future2:            Option<F2>,
+    result1:            Option<F1::Output>,
+    result2:            Option<F2::Output>,
+    fuel_consumed:      u64,
+    fuel_budget:        u64,
     verification_level: VerificationLevel,
 }
 
@@ -271,8 +282,8 @@ where
                     Poll::Ready(output) => {
                         self.result1 = Some(output);
                         self.future1 = None;
-                    }
-                    Poll::Pending => {}
+                    },
+                    Poll::Pending => {},
                 }
             }
         }
@@ -284,8 +295,8 @@ where
                     Poll::Ready(output) => {
                         self.result2 = Some(output);
                         self.future2 = None;
-                    }
-                    Poll::Pending => {}
+                    },
+                    Poll::Pending => {},
                 }
             }
         }
@@ -305,13 +316,15 @@ impl<F1, F2> FuelJoin<F1, F2> {
             OperationType::FutureOperation,
             self.verification_level,
         )?;
-        
+
         let total_cost = base_cost.saturating_add(adjusted_cost);
-        
+
         if self.fuel_consumed.saturating_add(total_cost) > self.fuel_budget {
-            return Err(Error::resource_limit_exceeded("Future combinator fuel budget exceeded"));
+            return Err(Error::resource_limit_exceeded(
+                "Future combinator fuel budget exceeded",
+            ));
         }
-        
+
         self.fuel_consumed = self.fuel_consumed.saturating_add(total_cost);
         record_global_operation(OperationType::FutureOperation)?;
         Ok(())
@@ -332,7 +345,7 @@ pub trait FuelFutureExt: Future + Sized {
     {
         FuelSelect::new(self, other, fuel_budget, verification_level)
     }
-    
+
     /// Chain this future with another
     fn fuel_chain<F, T>(
         self,
@@ -345,7 +358,7 @@ pub trait FuelFutureExt: Future + Sized {
     {
         FuelChain::new(self, map_fn, fuel_budget, verification_level)
     }
-    
+
     /// Join this future with another
     fn fuel_join<F>(
         self,
@@ -365,12 +378,12 @@ impl<T: Future> FuelFutureExt for T {}
 /// Component Model future wrapper for async operations
 pub struct ComponentFuture<T> {
     /// Inner future
-    inner: Pin<Box<dyn Future<Output = T> + Send + 'static>>,
+    inner:              Pin<Box<dyn Future<Output = T> + Send + 'static>>,
     /// Component instance ID
-    component_id: u64,
+    component_id:       u64,
     /// Fuel tracking
-    fuel_consumed: u64,
-    fuel_budget: u64,
+    fuel_consumed:      u64,
+    fuel_budget:        u64,
     /// Verification level
     verification_level: VerificationLevel,
 }
@@ -395,60 +408,58 @@ impl<T> ComponentFuture<T> {
 
 impl<T> Future for ComponentFuture<T> {
     type Output = Result<T, Error>;
-    
+
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Check fuel budget
         if self.fuel_consumed >= self.fuel_budget {
-            return Poll::Ready(Err(Error::resource_limit_exceeded("Component future fuel exhausted")));
+            return Poll::Ready(Err(Error::resource_limit_exceeded(
+                "Component future fuel exhausted",
+            )));
         }
-        
+
         // Poll inner future
         match self.inner.as_mut().poll(cx) {
             Poll::Ready(output) => Poll::Ready(Ok(output)),
             Poll::Pending => {
                 self.fuel_consumed = self.fuel_consumed.saturating_add(1);
                 Poll::Pending
-            }
+            },
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use core::future::ready;
-    
+
+    use super::*;
+
     #[test]
     fn test_fuel_select() {
         // Test select combinator
         let future1 = ready(42);
         let future2 = ready(43);
         let select = FuelSelect::new(future1, future2, 100, VerificationLevel::Basic);
-        
+
         // Would need executor to test fully
     }
-    
+
     #[test]
     fn test_fuel_chain() {
         // Test chain combinator
         let future1 = ready(42);
-        let chain = FuelChain::new(
-            future1,
-            |x| ready(x * 2),
-            100,
-            VerificationLevel::Basic,
-        );
-        
+        let chain = FuelChain::new(future1, |x| ready(x * 2), 100, VerificationLevel::Basic);
+
         // Would need executor to test fully
     }
-    
+
     #[test]
     fn test_fuel_join() {
         // Test join combinator
         let future1 = ready(42);
         let future2 = ready("hello");
         let join = FuelJoin::new(future1, future2, 100, VerificationLevel::Basic);
-        
+
         // Would need executor to test fully
     }
 }

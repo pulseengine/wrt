@@ -19,8 +19,9 @@ pub use post_return::*;
 // Tests moved from canonical_abi_tests.rs
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_error::ErrorCategory;
+
+    use super::*;
 
     /// Create a test memory with some sample data
     fn create_test_memory() -> SimpleMemory {
@@ -187,7 +188,10 @@ mod tests {
         // Test Unicode string
         abi.lower_string(&mut memory, "Hello, 世界! 🌍", 40).unwrap();
         let lifted = abi.lift_string(&memory, 40).unwrap();
-        assert_eq!(lifted, ComponentValue::String("Hello, 世界! 🌍".to_string()));
+        assert_eq!(
+            lifted,
+            ComponentValue::String("Hello, 世界! 🌍".to_string())
+        );
     }
 
     #[test]
@@ -233,7 +237,8 @@ mod tests {
         // Test Some (simplified test due to implementation limitations)
         let some_value = Some(Box::new(ComponentValue::S32(42)));
         abi.lower_option(&mut memory, &some_value, 10).unwrap();
-        // Note: Full round-trip test would require more complete lowering implementation
+        // Note: Full round-trip test would require more complete lowering
+        // implementation
     }
 
     #[test]
@@ -246,7 +251,11 @@ mod tests {
         abi.lower_list(&mut memory, &empty_list, 0).unwrap();
 
         // Test list with elements (simplified)
-        let list = vec![ComponentValue::S32(1), ComponentValue::S32(2), ComponentValue::S32(3)];
+        let list = vec![
+            ComponentValue::S32(1),
+            ComponentValue::S32(2),
+            ComponentValue::S32(3),
+        ];
         abi.lower_list(&mut memory, &list, 20).unwrap();
     }
 
@@ -286,8 +295,10 @@ mod tests {
         let abi = CanonicalABI::new();
         let mut memory = SimpleMemory::new(1024);
 
-        let cases =
-            vec![("none".to_string(), None), ("some".to_string(), Some(ComponentType::S32))];
+        let cases = vec![
+            ("none".to_string(), None),
+            ("some".to_string(), Some(ComponentType::S32)),
+        ];
 
         // Test variant without payload
         memory.write_u32_le(0, 0).unwrap(); // none
@@ -392,7 +403,10 @@ mod tests {
 
         // Composite types
         assert_eq!(abi.size_of(&ComponentType::String).unwrap(), 8); // ptr + len
-        assert_eq!(abi.size_of(&ComponentType::List(Box::new(ComponentType::S32))).unwrap(), 8);
+        assert_eq!(
+            abi.size_of(&ComponentType::List(Box::new(ComponentType::S32))).unwrap(),
+            8
+        );
 
         // Option type
         let option_s32 = ComponentType::Option(Box::new(ComponentType::S32));
@@ -442,7 +456,10 @@ mod tests {
 
         // Composite types
         assert_eq!(abi.align_of(&ComponentType::String).unwrap(), 4); // pointer alignment
-        assert_eq!(abi.align_of(&ComponentType::List(Box::new(ComponentType::S64))).unwrap(), 4);
+        assert_eq!(
+            abi.align_of(&ComponentType::List(Box::new(ComponentType::S64))).unwrap(),
+            4
+        );
 
         // Record with mixed alignment
         let record = ComponentType::Record(vec![
@@ -523,7 +540,7 @@ mod tests {
         assert_eq!(value, ComponentValue::S32(42));
     }
 
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     #[test]
     fn test_no_std_environment() {
         let abi = CanonicalABI::new();
@@ -614,7 +631,9 @@ mod tests {
         assert_eq!(abi.alignment, 1);
 
         // Test custom configuration
-        let abi = CanonicalABI::new().with_string_encoding(StringEncoding::Utf16).with_alignment(8);
+        let abi = CanonicalABI::new()
+            .with_string_encoding(StringEncoding::Utf16)
+            .with_alignment(8);
         assert_eq!(abi.string_encoding, StringEncoding::Utf16);
         assert_eq!(abi.alignment, 8);
     }

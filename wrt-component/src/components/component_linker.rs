@@ -1,26 +1,45 @@
 //! Component Linker and Import/Export Resolution System
 
-
 // Cross-environment imports
-#[cfg(feature = "std")]
-use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
-
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::{
+    boxed::Box,
+    collections::HashMap,
+    format,
+    string::String,
+    vec::Vec,
+};
+
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    bounded::BoundedString as String, bounded::BoundedVec as Vec, 
-    safe_memory::NoStdProvider,
+    bounded::BoundedString as String,
+    bounded::BoundedVec as Vec,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
 };
 
 use crate::components::component_instantiation::{
-    create_component_export, create_component_import, ComponentExport, ComponentImport,
-    ComponentInstance, ExportType, FunctionSignature, ImportType, InstanceConfig, InstanceId,
+    create_component_export,
+    create_component_import,
+    ComponentExport,
+    ComponentImport,
+    ComponentInstance,
+    ExportType,
+    FunctionSignature,
+    ImportType,
+    InstanceConfig,
+    InstanceId,
     ResolvedImport,
 };
-use wrt_error::{codes, Error, ErrorCategory, Result};
 
 /// Maximum number of components in linker
 const MAX_LINKED_COMPONENTS: usize = 256;
@@ -32,30 +51,30 @@ pub type ComponentId = String;
 #[derive(Debug)]
 pub struct ComponentLinker {
     /// Registered components
-    components: HashMap<ComponentId, ComponentDefinition>,
+    components:       HashMap<ComponentId, ComponentDefinition>,
     /// Active component instances
-    instances: HashMap<InstanceId, ComponentInstance>,
+    instances:        HashMap<InstanceId, ComponentInstance>,
     /// Dependency graph
-    link_graph: LinkGraph,
+    link_graph:       LinkGraph,
     /// Next available instance ID
     next_instance_id: InstanceId,
     /// Linker configuration
-    config: LinkerConfig,
+    config:           LinkerConfig,
     /// Resolution statistics
-    stats: LinkingStats,
+    stats:            LinkingStats,
 }
 
 /// Component definition in the linker
 #[derive(Debug, Clone)]
 pub struct ComponentDefinition {
     /// Component ID
-    pub id: ComponentId,
+    pub id:       ComponentId,
     /// Component binary (simplified as bytes)
-    pub binary: BoundedVec<u8, 1048576, NoStdProvider<65536>>, // 1MB max binary size
+    pub binary:   BoundedVec<u8, 1048576, NoStdProvider<65536>>, // 1MB max binary size
     /// Parsed exports
-    pub exports: BoundedVec<ComponentExport, 64, NoStdProvider<65536>>,
+    pub exports:  BoundedVec<ComponentExport, 64, NoStdProvider<65536>>,
     /// Parsed imports
-    pub imports: BoundedVec<ComponentImport, 64, NoStdProvider<65536>>,
+    pub imports:  BoundedVec<ComponentImport, 64, NoStdProvider<65536>>,
     /// Component metadata
     pub metadata: ComponentMetadata,
 }
@@ -64,13 +83,13 @@ pub struct ComponentDefinition {
 #[derive(Debug, Clone)]
 pub struct ComponentMetadata {
     /// Component name
-    pub name: String,
+    pub name:        String,
     /// Component version
-    pub version: String,
+    pub version:     String,
     /// Component description
     pub description: String,
     /// Component author
-    pub author: String,
+    pub author:      String,
     /// Compilation timestamp
     pub compiled_at: u64,
 }
@@ -90,20 +109,20 @@ pub struct GraphNode {
     /// Component ID
     pub component_id: ComponentId,
     /// Node index in graph
-    pub index: usize,
+    pub index:        usize,
     /// Dependencies (outgoing edges)
     pub dependencies: Vec<usize>,
     /// Dependents (incoming edges)
-    pub dependents: Vec<usize>,
+    pub dependents:   Vec<usize>,
 }
 
 /// Graph edge representing a dependency relationship
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GraphEdge {
     /// Source node index
-    pub from: usize,
+    pub from:   usize,
     /// Target node index
-    pub to: usize,
+    pub to:     usize,
     /// Import that creates this dependency
     pub import: ComponentImport,
     /// Export that satisfies this dependency
@@ -116,13 +135,13 @@ pub struct GraphEdge {
 #[derive(Debug, Clone)]
 pub struct LinkerConfig {
     /// Enable strict type checking
-    pub strict_typing: bool,
+    pub strict_typing:            bool,
     /// Allow hot swapping of components
-    pub allow_hot_swap: bool,
+    pub allow_hot_swap:           bool,
     /// Maximum memory per instance
-    pub max_instance_memory: u32,
+    pub max_instance_memory:      u32,
     /// Enable dependency validation
-    pub validate_dependencies: bool,
+    pub validate_dependencies:    bool,
     /// Circular dependency handling
     pub circular_dependency_mode: CircularDependencyMode,
 }
@@ -144,22 +163,22 @@ pub struct LinkingStats {
     /// Total components registered
     pub components_registered: u32,
     /// Total instances created
-    pub instances_created: u32,
+    pub instances_created:     u32,
     /// Total links resolved
-    pub links_resolved: u32,
+    pub links_resolved:        u32,
     /// Resolution failures
-    pub resolution_failures: u32,
+    pub resolution_failures:   u32,
     /// Last resolution time (microseconds)
-    pub last_resolution_time: u64,
+    pub last_resolution_time:  u64,
 }
 
 impl Default for LinkerConfig {
     fn default() -> Self {
         Self {
-            strict_typing: true,
-            allow_hot_swap: false,
-            max_instance_memory: 64 * 1024 * 1024, // 64MB
-            validate_dependencies: true,
+            strict_typing:            true,
+            allow_hot_swap:           false,
+            max_instance_memory:      64 * 1024 * 1024, // 64MB
+            validate_dependencies:    true,
             circular_dependency_mode: CircularDependencyMode::Reject,
         }
     }
@@ -168,10 +187,10 @@ impl Default for LinkerConfig {
 impl Default for ComponentMetadata {
     fn default() -> Self {
         Self {
-            name: String::new(),
-            version: "1.0.0".to_string(),
+            name:        String::new(),
+            version:     "1.0.0".to_string(),
             description: String::new(),
-            author: String::new(),
+            author:      String::new(),
             compiled_at: 0,
         }
     }
@@ -198,7 +217,9 @@ impl ComponentLinker {
     /// Add a component to the linker
     pub fn add_component(&mut self, id: ComponentId, binary: &[u8]) -> Result<()> {
         if self.components.len() >= MAX_LINKED_COMPONENTS {
-            return Err(Error::resource_exhausted("Maximum number of components reached";
+            return Err(Error::resource_exhausted(
+                "Maximum number of components reached",
+            ));
         }
 
         // Parse component binary (simplified)
@@ -213,7 +234,7 @@ impl ComponentLinker {
         };
 
         // Add to components map
-        self.components.insert(id.clone(), definition;
+        self.components.insert(id.clone(), definition);
 
         // Update dependency graph
         self.link_graph.add_component(id)?;
@@ -228,7 +249,7 @@ impl ComponentLinker {
     pub fn remove_component(&mut self, id: &ComponentId) -> Result<()> {
         // Check if component exists
         if !self.components.contains_key(id) {
-            return Err(Error::component_not_found("Component not found";
+            return Err(Error::component_not_found("Component not found"));
         }
 
         // Check if any instances are using this component
@@ -240,12 +261,13 @@ impl ComponentLinker {
             .collect();
 
         if !dependent_instances.is_empty() {
-            return Err(Error::runtime_execution_error("Component has active instances and cannot be removed")
-            ;
+            return Err(Error::runtime_execution_error(
+                "Component has active instances and cannot be removed",
+            ));
         }
 
         // Remove from components and graph
-        self.components.remove(id;
+        self.components.remove(id);
         self.link_graph.remove_component(id)?;
 
         Ok(())
@@ -258,9 +280,10 @@ impl ComponentLinker {
         config: Option<InstanceConfig>,
     ) -> Result<InstanceId> {
         // Find component definition
-        let component = self.components.get(component_id).ok_or_else(|| {
-            Error::component_not_found("Component not found")
-        })?;
+        let component = self
+            .components
+            .get(component_id)
+            .ok_or_else(|| Error::component_not_found("Component not found"))?;
 
         // Resolve dependencies
         let resolved_imports = self.resolve_imports(component_id, &component.imports)?;
@@ -269,7 +292,7 @@ impl ComponentLinker {
         let instance_id = self.next_instance_id;
         self.next_instance_id += 1;
 
-        let instance_config = config.unwrap_or_else(InstanceConfig::default;
+        let instance_config = config.unwrap_or_else(InstanceConfig::default);
 
         let mut instance = ComponentInstance::new(
             instance_id,
@@ -288,7 +311,7 @@ impl ComponentLinker {
         instance.initialize()?;
 
         // Add to instances map
-        self.instances.insert(instance_id, instance;
+        self.instances.insert(instance_id, instance);
 
         // Update statistics
         self.stats.instances_created += 1;
@@ -332,11 +355,14 @@ impl ComponentLinker {
     fn parse_component_binary(
         &self,
         binary: &[u8],
-    ) -> core::result::Result<(Vec<ComponentExport>, Vec<ComponentImport>, ComponentMetadata)> {
+    ) -> core::result::Result<(
+        Vec<ComponentExport>,
+        Vec<ComponentImport>,
+        ComponentMetadata,
+    )> {
         // Simplified component parsing
         if binary.is_empty() {
-            return Err(Error::runtime_execution_error("Empty component binary")
-            ;
+            return Err(Error::runtime_execution_error("Empty component binary"));
         }
 
         // Create some example exports and imports based on binary content
@@ -349,24 +375,34 @@ impl ComponentLinker {
                 vec![crate::canonical_abi::ComponentType::S32],
             )),
         )];
-        
+
         #[cfg(not(feature = "std"))]
         let exports = {
             let mut exports = Vec::new();
             let mut params = Vec::new();
             let mut results = Vec::new();
-            results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
-            
+            results.push(crate::canonical_abi::ComponentType::S32).map_err(|_| {
+                Error::platform_memory_allocation_failed("Memory allocation failed")
+            })?;
+
             let signature = crate::component_instantiation::create_function_signature(
-                String::new_from_str("main").map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?,
+                String::new_from_str("main").map_err(|_| {
+                    Error::platform_memory_allocation_failed("Memory allocation failed")
+                })?,
                 params,
                 results,
-            ;
-            
-            exports.push(create_component_export(
-                String::new_from_str("main").map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?,
-                ExportType::Function(signature),
-            )).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
+            );
+
+            exports
+                .push(create_component_export(
+                    String::new_from_str("main").map_err(|_| {
+                        Error::platform_memory_allocation_failed("Memory allocation failed")
+                    })?,
+                    ExportType::Function(signature),
+                ))
+                .map_err(|_| {
+                    Error::platform_memory_allocation_failed("Memory allocation failed")
+                })?;
             exports
         };
 
@@ -381,7 +417,7 @@ impl ComponentLinker {
             )),
         )];
 
-        let metadata = ComponentMetadata::default());
+        let metadata = ComponentMetadata::default();
 
         Ok((exports, imports, metadata))
     }
@@ -412,10 +448,10 @@ impl ComponentLinker {
             for export in &component.exports {
                 if self.is_compatible_import_export(import, export)? {
                     return Ok(ResolvedImport {
-                        import: import.clone(),
-                        provider_id: 1, // Simplified - would map component ID to instance ID
+                        import:          import.clone(),
+                        provider_id:     1, // Simplified - would map component ID to instance ID
                         provider_export: export.name.clone(),
-                    };
+                    });
                 }
             }
         }
@@ -430,17 +466,17 @@ impl ComponentLinker {
     ) -> Result<bool> {
         // Check name compatibility
         if import.name != export.name {
-            return Ok(false;
+            return Ok(false);
         }
 
         // Check type compatibility
         match (&import.import_type, &export.export_type) {
             (ImportType::Function(import_sig), ExportType::Function(export_sig)) => {
                 Ok(self.is_compatible_function_signature(import_sig, export_sig))
-            }
+            },
             (ImportType::Memory(import_mem), ExportType::Memory(export_mem)) => {
                 Ok(self.is_compatible_memory_config(import_mem, export_mem))
-            }
+            },
             _ => Ok(false), // Other type combinations
         }
     }
@@ -467,15 +503,19 @@ impl ComponentLinker {
 impl LinkGraph {
     /// Create a new empty link graph
     pub fn new() -> Self {
-        Self { nodes: Vec::new(), edges: Vec::new() }
+        Self {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        }
     }
 
     /// Add a component to the graph
     pub fn add_component(&mut self, component_id: ComponentId) -> Result<()> {
         // Check if component already exists
         if self.find_node_index(&component_id).is_some() {
-            return Err(Error::runtime_execution_error("Component already exists in graph")
-            ;
+            return Err(Error::runtime_execution_error(
+                "Component already exists in graph",
+            ));
         }
 
         let node = GraphNode {
@@ -495,14 +535,15 @@ impl LinkGraph {
             Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::RESOURCE_NOT_FOUND,
-                "Component not found in graph")
+                "Component not found in graph",
+            )
         })?;
 
         // Remove all edges involving this node
-        self.edges.retain(|edge| edge.from != node_index && edge.to != node_index;
+        self.edges.retain(|edge| edge.from != node_index && edge.to != node_index);
 
         // Remove the node
-        self.nodes.remove(node_index;
+        self.nodes.remove(node_index);
 
         // Update indices in remaining nodes and edges
         for node in &mut self.nodes[node_index..] {
@@ -528,14 +569,14 @@ impl LinkGraph {
             let mut visited = vec![false; self.nodes.len()];
             let mut temp_visited = vec![false; self.nodes.len()];
             let mut result = Vec::new();
-            
+
             for i in 0..self.nodes.len() {
                 if !visited[i] {
                     self.topological_sort_visit(i, &mut visited, &mut temp_visited, &mut result)?;
                 }
             }
-            
-            result.reverse);
+
+            result.reverse();
             Ok(result)
         }
         #[cfg(not(feature = "std"))]
@@ -550,20 +591,24 @@ impl LinkGraph {
                 Error::platform_memory_allocation_failed("Failed to create temp_visited vector")
             })?;
             let mut result = Vec::new();
-            
+
             // Initialize with false values
             for _ in 0..self.nodes.len() {
-                visited.push(false).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
-                temp_visited.push(false).map_err(|_| Error::platform_memory_allocation_failed("Memory allocation failed"))?;
+                visited.push(false).map_err(|_| {
+                    Error::platform_memory_allocation_failed("Memory allocation failed")
+                })?;
+                temp_visited.push(false).map_err(|_| {
+                    Error::platform_memory_allocation_failed("Memory allocation failed")
+                })?;
             }
-            
+
             for i in 0..self.nodes.len() {
                 if !visited[i] {
                     self.topological_sort_visit(i, &mut visited, &mut temp_visited, &mut result)?;
                 }
             }
-            
-            result.reverse);
+
+            result.reverse();
             Ok(result)
         }
     }
@@ -576,7 +621,7 @@ impl LinkGraph {
         result: &mut Vec<ComponentId>,
     ) -> Result<()> {
         if temp_visited[node_index] {
-            return Err(Error::validation_error("Circular dependency detected";
+            return Err(Error::validation_error("Circular dependency detected"));
         }
 
         if visited[node_index] {
@@ -592,13 +637,16 @@ impl LinkGraph {
 
         temp_visited[node_index] = false;
         visited[node_index] = true;
-        result.push(self.nodes[node_index].component_id.clone();
+        result.push(self.nodes[node_index].component_id.clone());
 
         Ok(())
     }
 
     fn find_node_index(&self, component_id: &ComponentId) -> Option<usize> {
-        self.nodes.iter().find(|node| &node.component_id == component_id).map(|node| node.index)
+        self.nodes
+            .iter()
+            .find(|node| &node.component_id == component_id)
+            .map(|node| node.index)
     }
 }
 
@@ -625,7 +673,7 @@ mod tests {
         let mut linker = ComponentLinker::new();
         let binary = vec![0x00, 0x61, 0x73, 0x6d]; // "wasm" magic
 
-        let result = linker.add_component("test_component".to_string(), &binary;
+        let result = linker.add_component("test_component".to_string(), &binary);
         assert!(result.is_ok());
         assert_eq!(linker.components.len(), 1);
         assert_eq!(linker.stats.components_registered, 1);
@@ -651,12 +699,12 @@ mod tests {
         // Add components
         graph.add_component("comp1".to_string()).unwrap();
         graph.add_component("comp2".to_string()).unwrap();
-        assert_eq!(graph.nodes.len(), 2;
+        assert_eq!(graph.nodes.len(), 2);
 
         // Remove component
         graph.remove_component(&"comp1".to_string()).unwrap();
         assert_eq!(graph.nodes.len(), 1);
-        assert_eq!(graph.nodes[0].component_id, "comp2";
+        assert_eq!(graph.nodes[0].component_id, "comp2");
     }
 
     #[test]
@@ -672,17 +720,20 @@ mod tests {
         graph.add_component("comp1".to_string()).unwrap();
 
         let result = graph.topological_sort().unwrap();
-        assert_eq!(result, vec!["comp1".to_string()];
+        assert_eq!(result, vec!["comp1".to_string()]);
     }
 
     #[test]
     fn test_linker_config_default() {
-        let config = LinkerConfig::default());
+        let config = LinkerConfig::default();
         assert!(config.strict_typing);
         assert!(!config.allow_hot_swap);
-        assert_eq!(config.max_instance_memory, 64 * 1024 * 1024;
+        assert_eq!(config.max_instance_memory, 64 * 1024 * 1024);
         assert!(config.validate_dependencies);
-        assert_eq!(config.circular_dependency_mode, CircularDependencyMode::Reject;
+        assert_eq!(
+            config.circular_dependency_mode,
+            CircularDependencyMode::Reject
+        );
     }
 
     #[test]
@@ -692,21 +743,27 @@ mod tests {
 
         linker.add_component("test".to_string(), &binary).unwrap();
 
-        let stats = linker.get_stats);
+        let stats = linker.get_stats();
         assert_eq!(stats.components_registered, 1);
         assert_eq!(stats.instances_created, 0);
     }
 }
 
-// Implement required traits for BoundedVec compatibility  
-use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+// Implement required traits for BoundedVec compatibility
+use wrt_foundation::traits::{
+    Checksummable,
+    FromBytes,
+    ReadStream,
+    ToBytes,
+    WriteStream,
+};
 
 // Macro to implement basic traits
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum;
+                0u32.update_checksum(checksum);
             }
         }
 
@@ -735,22 +792,22 @@ macro_rules! impl_basic_traits {
 impl Default for GraphEdge {
     fn default() -> Self {
         Self {
-            from: 0,
-            to: 0,
+            from:   0,
+            to:     0,
             import: ComponentImport {
-                name: String::new(),
-                module: String::new(),
+                name:        String::new(),
+                module:      String::new(),
                 import_type: ImportType::Function(FunctionSignature {
-                    name: String::new(),
-                    params: Vec::new(),
+                    name:    String::new(),
+                    params:  Vec::new(),
                     returns: Vec::new(),
                 }),
             },
             export: ComponentExport {
-                name: String::new(),
+                name:        String::new(),
                 export_type: ExportType::Function(FunctionSignature {
-                    name: String::new(),
-                    params: Vec::new(),
+                    name:    String::new(),
+                    params:  Vec::new(),
                     returns: Vec::new(),
                 }),
             },
@@ -763,9 +820,9 @@ impl Default for GraphNode {
     fn default() -> Self {
         Self {
             component_id: String::new(),
-            index: 0,
+            index:        0,
             dependencies: Vec::new(),
-            dependents: Vec::new(),
+            dependents:   Vec::new(),
         }
     }
 }

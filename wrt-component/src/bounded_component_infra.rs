@@ -3,17 +3,19 @@
 //! This module provides bounded alternatives for component collections
 //! to ensure static memory allocation throughout the component model.
 
-
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     bounded_collections::BoundedMap,
-    managed_alloc,
-    safe_memory::NoStdProvider,
-    budget_provider::BudgetProvider,
     budget_aware_provider::CrateId,
+    budget_provider::BudgetProvider,
     capabilities::MemoryFactory,
-    WrtResult,
+    managed_alloc,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    WrtResult,
 };
 
 /// Budget-aware memory provider for component model (128KB)
@@ -114,37 +116,21 @@ pub type BoundedExportName = BoundedString<MAX_EXPORT_NAME_LEN, ComponentProvide
 
 /// Bounded map for exports
 #[cfg(not(feature = "std"))]
-pub type BoundedExportMap<V> = BoundedMap<
-    BoundedExportName,
-    V,
-    MAX_COMPONENT_EXPORTS,
-    ComponentProvider
->;
+pub type BoundedExportMap<V> =
+    BoundedMap<BoundedExportName, V, MAX_COMPONENT_EXPORTS, ComponentProvider>;
 
 #[cfg(feature = "std")]
-pub type BoundedExportMap<V> = BoundedMap<
-    BoundedExportName,
-    V,
-    MAX_COMPONENT_EXPORTS,
-    ComponentProvider
->;
+pub type BoundedExportMap<V> =
+    BoundedMap<BoundedExportName, V, MAX_COMPONENT_EXPORTS, ComponentProvider>;
 
 /// Bounded map for imports
 #[cfg(not(feature = "std"))]
-pub type BoundedImportMap<V> = BoundedMap<
-    BoundedExportName,
-    V,
-    MAX_COMPONENT_IMPORTS,
-    ComponentProvider
->;
+pub type BoundedImportMap<V> =
+    BoundedMap<BoundedExportName, V, MAX_COMPONENT_IMPORTS, ComponentProvider>;
 
 #[cfg(feature = "std")]
-pub type BoundedImportMap<V> = BoundedMap<
-    BoundedExportName,
-    V,
-    MAX_COMPONENT_IMPORTS,
-    ComponentProvider
->;
+pub type BoundedImportMap<V> =
+    BoundedMap<BoundedExportName, V, MAX_COMPONENT_IMPORTS, ComponentProvider>;
 
 /// Bounded map for type definitions
 #[cfg(not(feature = "std"))]
@@ -152,7 +138,7 @@ pub type BoundedTypeMap<V> = BoundedMap<
     u32, // Type index
     V,
     MAX_TYPE_DEFINITIONS,
-    ComponentProvider
+    ComponentProvider,
 >;
 
 #[cfg(feature = "std")]
@@ -160,7 +146,7 @@ pub type BoundedTypeMap<V> = BoundedMap<
     u32, // Type index
     V,
     MAX_TYPE_DEFINITIONS,
-    ComponentProvider
+    ComponentProvider,
 >;
 
 /// Bounded map for resource types
@@ -169,7 +155,7 @@ pub type BoundedResourceTypeMap<V> = BoundedMap<
     u32, // Resource type ID
     V,
     MAX_RESOURCE_TYPES,
-    ComponentProvider
+    ComponentProvider,
 >;
 
 #[cfg(feature = "std")]
@@ -177,7 +163,7 @@ pub type BoundedResourceTypeMap<V> = BoundedMap<
     u32, // Resource type ID
     V,
     MAX_RESOURCE_TYPES,
-    ComponentProvider
+    ComponentProvider,
 >;
 
 /// Bounded vector for post-return callbacks

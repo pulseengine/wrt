@@ -3,10 +3,16 @@
 //! This module provides the Import type for component imports.
 
 use wrt_format::component::ExternType;
-use wrt_foundation::{component::WrtComponentType, ExternType as RuntimeExternType};
+use wrt_foundation::{
+    component::WrtComponentType,
+    ExternType as RuntimeExternType,
+};
 
 use crate::{
-    components::component::ExternValue, /* namespace::Namespace, */ prelude::*, type_conversion::bidirectional,
+    components::component::ExternValue,
+    // namespace::Namespace,
+    prelude::*,
+    type_conversion::bidirectional,
 };
 
 /// Type of import in the component model
@@ -26,23 +32,29 @@ pub enum ImportType {
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Import namespace
-    pub namespace: Namespace,
+    pub namespace:   Namespace,
     /// Import name
-    pub name: String,
+    pub name:        String,
     /// Import type
     pub import_type: ImportType,
     /// Legacy extern type for compatibility
-    pub ty: ExternType,
+    pub ty:          ExternType,
     /// Import value (runtime representation)
-    pub value: ExternValue,
+    pub value:       ExternValue,
 }
 
 impl Import {
     /// Creates a new import
     pub fn new(namespace: Namespace, name: String, ty: ExternType, value: ExternValue) -> Self {
         // Default import type based on ExternType - this is a simplified mapping
-        let import_type = ImportType::Function(WrtComponentType::Unit;
-        Self { namespace, name, import_type, ty, value }
+        let import_type = ImportType::Function(WrtComponentType::Unit);
+        Self {
+            namespace,
+            name,
+            import_type,
+            ty,
+            value,
+        }
     }
 
     /// Creates a new import with explicit import type
@@ -53,12 +65,18 @@ impl Import {
         ty: ExternType,
         value: ExternValue,
     ) -> Self {
-        Self { namespace, name, import_type, ty, value }
+        Self {
+            namespace,
+            name,
+            import_type,
+            ty,
+            value,
+        }
     }
 
     /// Creates an import identifier by combining namespace and name
     pub fn identifier(&self) -> String {
-        let ns_str = self.namespace.to_string());
+        let ns_str = self.namespace.to_string();
         if ns_str.is_empty() {
             self.name.clone()
         } else {
@@ -92,13 +110,15 @@ pub struct ImportCollection {
 impl ImportCollection {
     /// Creates a new, empty import collection
     pub fn new() -> Self {
-        Self { imports: HashMap::new() }
+        Self {
+            imports: HashMap::new(),
+        }
     }
 
     /// Adds an import to the collection
     pub fn add(&mut self, import: Import) {
-        let id = import.identifier);
-        self.imports.insert(id, import;
+        let id = import.identifier();
+        self.imports.insert(id, import);
     }
 
     /// Gets an import by its identifier
@@ -124,52 +144,58 @@ impl ImportCollection {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use wrt_format::component::{ExternType, ValType};
+    use wrt_format::component::{
+        ExternType,
+        ValType,
+    };
     use wrt_runtime::func::FuncType;
 
     use super::*;
-    use crate::component::{ExternValue, FunctionValue};
+    use crate::component::{
+        ExternValue,
+        FunctionValue,
+    };
 
     #[test]
     fn test_import_identifier() {
-        let namespace = Namespace::from_string("wasi.http";
+        let namespace = Namespace::from_string("wasi.http");
         let import = Import::new(
             namespace,
             "fetch".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
+                params:  vec![("arg".to_string(), ValType::U32)],
                 results: vec![ValType::U32],
             },
             ExternValue::Function(FunctionValue {
-                ty: FuncType {
-                    params: vec![wrt_foundation::types::ValueType::I32],
+                ty:          FuncType {
+                    params:  vec![wrt_foundation::types::ValueType::I32],
                     results: vec![wrt_foundation::types::ValueType::I32],
                 },
                 export_name: "fetch".to_string(),
             }),
-        ;
+        );
 
-        assert_eq!(import.identifier(), "wasi.http.fetch";
+        assert_eq!(import.identifier(), "wasi.http.fetch");
 
         // Test without namespace
-        let empty_ns = Namespace::from_string("";
+        let empty_ns = Namespace::from_string("");
         let import2 = Import::new(
             empty_ns,
             "print".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
+                params:  vec![("arg".to_string(), ValType::U32)],
                 results: vec![],
             },
             ExternValue::Function(FunctionValue {
-                ty: FuncType {
-                    params: vec![wrt_foundation::types::ValueType::I32],
+                ty:          FuncType {
+                    params:  vec![wrt_foundation::types::ValueType::I32],
                     results: vec![],
                 },
                 export_name: "print".to_string(),
             }),
-        ;
+        );
 
-        assert_eq!(import2.identifier(), "print";
+        assert_eq!(import2.identifier(), "print");
     }
 
     #[test]
@@ -181,48 +207,48 @@ mod tests {
             Namespace::from_string("wasi.http"),
             "fetch".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
+                params:  vec![("arg".to_string(), ValType::U32)],
                 results: vec![ValType::U32],
             },
             ExternValue::Function(FunctionValue {
-                ty: FuncType {
-                    params: vec![wrt_foundation::types::ValueType::I32],
+                ty:          FuncType {
+                    params:  vec![wrt_foundation::types::ValueType::I32],
                     results: vec![wrt_foundation::types::ValueType::I32],
                 },
                 export_name: "fetch".to_string(),
             }),
-        ;
+        );
 
         let import2 = Import::new(
             Namespace::from_string("wasi.io"),
             "read".to_string(),
             ExternType::Function {
-                params: vec![("arg".to_string(), ValType::U32)],
+                params:  vec![("arg".to_string(), ValType::U32)],
                 results: vec![ValType::U32],
             },
             ExternValue::Function(FunctionValue {
-                ty: FuncType {
-                    params: vec![wrt_foundation::types::ValueType::I32],
+                ty:          FuncType {
+                    params:  vec![wrt_foundation::types::ValueType::I32],
                     results: vec![wrt_foundation::types::ValueType::I32],
                 },
                 export_name: "read".to_string(),
             }),
-        ;
+        );
 
-        collection.add(import1;
-        collection.add(import2;
+        collection.add(import1);
+        collection.add(import2);
 
-        assert_eq!(collection.len(), 2;
+        assert_eq!(collection.len(), 2);
         assert!(!collection.is_empty());
 
-        let fetched = collection.get("wasi.http.fetch";
-        assert!(fetched.is_some();
-        assert_eq!(fetched.unwrap().name, "fetch";
+        let fetched = collection.get("wasi.http.fetch");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().name, "fetch");
 
-        let not_found = collection.get("unknown";
-        assert!(not_found.is_none();
+        let not_found = collection.get("unknown");
+        assert!(not_found.is_none());
 
         let imports: Vec<&Import> = collection.iter().collect();
-        assert_eq!(imports.len(), 2;
+        assert_eq!(imports.len(), 2);
     }
 }

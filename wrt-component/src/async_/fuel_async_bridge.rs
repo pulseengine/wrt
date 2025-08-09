@@ -3,30 +3,56 @@
 //! This module provides a bridge between async Component Model functions
 //! and the existing fuel/time-bounded execution system.
 
-use crate::{
-    async_::{
-        fuel_async_executor::{FuelAsyncExecutor, AsyncTaskState, AsyncTaskStatus},
-        fuel_async_scheduler::{FuelAsyncScheduler, SchedulingPolicy},
-    },
-    execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome, run_with_time_bounds},
-    task_manager::TaskId,
-    ComponentInstanceId,
-    prelude::*,
-};
 use core::{
     future::Future,
     pin::Pin,
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
-    task::{Context, Poll, Waker},
+    sync::atomic::{
+        AtomicBool,
+        AtomicU64,
+        Ordering,
+    },
+    task::{
+        Context,
+        Poll,
+        Waker,
+    },
     time::Duration,
 };
+
 use wrt_foundation::{
     bounded_collections::BoundedMap,
-    operations::{record_global_operation, Type as OperationType},
+    operations::{
+        record_global_operation,
+        Type as OperationType,
+    },
+    safe_managed_alloc,
     verification::VerificationLevel,
-    CrateId, safe_managed_alloc,
+    CrateId,
 };
 use wrt_platform::advanced_sync::Priority;
+
+use crate::{
+    async_::{
+        fuel_async_executor::{
+            AsyncTaskState,
+            AsyncTaskStatus,
+            FuelAsyncExecutor,
+        },
+        fuel_async_scheduler::{
+            FuelAsyncScheduler,
+            SchedulingPolicy,
+        },
+    },
+    execution::{
+        run_with_time_bounds,
+        TimeBoundedConfig,
+        TimeBoundedContext,
+        TimeBoundedOutcome,
+    },
+    prelude::*,
+    task_manager::TaskId,
+    ComponentInstanceId,
+};
 
 /// Maximum number of concurrent async bridges
 const MAX_ASYNC_BRIDGES: usize = 64;
@@ -39,13 +65,13 @@ const ASYNC_BRIDGE_CLEANUP_FUEL: u64 = 15;
 /// Bridge between async functions and time-bounded execution
 pub struct FuelAsyncBridge {
     /// Async executor for managing tasks
-    executor: FuelAsyncExecutor,
+    executor:           FuelAsyncExecutor,
     /// Scheduler for task ordering
-    scheduler: FuelAsyncScheduler,
+    scheduler:          FuelAsyncScheduler,
     /// Active bridges indexed by task ID
-    active_bridges: BoundedMap<TaskId, AsyncBridgeContext, MAX_ASYNC_BRIDGES>,
+    active_bridges:     BoundedMap<TaskId, AsyncBridgeContext, MAX_ASYNC_BRIDGES>,
     /// Global bridge configuration
-    default_config: AsyncBridgeConfig,
+    default_config:     AsyncBridgeConfig,
     /// Verification level for bridge operations
     verification_level: VerificationLevel,
 }
@@ -54,28 +80,28 @@ pub struct FuelAsyncBridge {
 #[derive(Debug, Clone)]
 pub struct AsyncBridgeConfig {
     /// Default fuel budget for async tasks
-    pub default_fuel_budget: u64,
+    pub default_fuel_budget:   u64,
     /// Default time limit for async operations
     pub default_time_limit_ms: Option<u64>,
     /// Default priority for async tasks
-    pub default_priority: Priority,
+    pub default_priority:      Priority,
     /// Scheduling policy for async tasks
-    pub scheduling_policy: SchedulingPolicy,
+    pub scheduling_policy:     SchedulingPolicy,
     /// Whether to allow fuel extension
-    pub allow_fuel_extension: bool,
+    pub allow_fuel_extension:  bool,
     /// Fuel check interval
-    pub fuel_check_interval: u64,
+    pub fuel_check_interval:   u64,
 }
 
 impl Default for AsyncBridgeConfig {
     fn default() -> Self {
         Self {
-            default_fuel_budget: 10000,
+            default_fuel_budget:   10000,
             default_time_limit_ms: Some(5000), // 5 seconds
-            default_priority: Priority::Normal,
-            scheduling_policy: SchedulingPolicy::Cooperative,
-            allow_fuel_extension: false,
-            fuel_check_interval: 1000,
+            default_priority:      Priority::Normal,
+            scheduling_policy:     SchedulingPolicy::Cooperative,
+            allow_fuel_extension:  false,
+            fuel_check_interval:   1000,
         }
     }
 }
@@ -83,12 +109,12 @@ impl Default for AsyncBridgeConfig {
 /// Context for an individual async bridge
 #[derive(Debug)]
 pub struct AsyncBridgeContext {
-    pub task_id: TaskId,
-    pub component_id: ComponentInstanceId,
+    pub task_id:              TaskId,
+    pub component_id:         ComponentInstanceId,
     pub time_bounded_context: TimeBoundedContext,
-    pub fuel_consumed: AtomicU64,
-    pub bridge_state: AsyncBridgeState,
-    pub result_ready: AtomicBool,
+    pub fuel_consumed:        AtomicU64,
+    pub bridge_state:         AsyncBridgeState,
+    pub result_ready:         AtomicBool,
 }
 
 /// State of an async bridge
@@ -110,7 +136,10 @@ pub enum AsyncBridgeState {
 
 impl FuelAsyncBridge {
     /// Create a new async function bridge
-    pub fn new(config: AsyncBridgeConfig, verification_level: VerificationLevel) -> Result<Self, Error> {
+    pub fn new(
+        config: AsyncBridgeConfig,
+        verification_level: VerificationLevel,
+    ) -> Result<Self, Error> {
         let executor = FuelAsyncExecutor::new()?;
         let scheduler = FuelAsyncScheduler::new(config.scheduling_policy, verification_level)?;
         let provider = safe_managed_alloc!(4096, CrateId::Component)?;
@@ -141,16 +170,16 @@ impl FuelAsyncBridge {
 
         // Create time-bounded configuration
         let time_config = TimeBoundedConfig {
-            time_limit_ms: bridge_config.default_time_limit_ms,
+            time_limit_ms:   bridge_config.default_time_limit_ms,
             allow_extension: bridge_config.allow_fuel_extension,
-            fuel_limit: Some(bridge_config.default_fuel_budget),
+            fuel_limit:      Some(bridge_config.default_fuel_budget),
         };
 
         // Execute with time bounds
         let (result, outcome) = run_with_time_bounds(time_config, |time_context| {
             // Create async task
             let task_future = self.create_bridged_future(component_id, future, time_context)?;
-            
+
             // Spawn task in executor
             let task_id = self.executor.spawn_task(
                 component_id,
@@ -173,18 +202,18 @@ impl FuelAsyncBridge {
                 task_id,
                 component_id,
                 time_bounded_context: TimeBoundedContext::new(TimeBoundedConfig {
-                    time_limit_ms: bridge_config.default_time_limit_ms,
+                    time_limit_ms:   bridge_config.default_time_limit_ms,
                     allow_extension: bridge_config.allow_fuel_extension,
-                    fuel_limit: Some(bridge_config.default_fuel_budget),
+                    fuel_limit:      Some(bridge_config.default_fuel_budget),
                 }),
                 fuel_consumed: AtomicU64::new(ASYNC_BRIDGE_SETUP_FUEL),
                 bridge_state: AsyncBridgeState::Initializing,
                 result_ready: AtomicBool::new(false),
             };
 
-            self.active_bridges.insert(task_id, bridge_context).map_err(|_| {
-                Error::resource_limit_exceeded("Too many active async bridges")
-            })?;
+            self.active_bridges
+                .insert(task_id, bridge_context)
+                .map_err(|_| Error::resource_limit_exceeded("Too many active async bridges"))?;
 
             // Run the async execution loop
             self.run_async_execution_loop(task_id, time_context)
@@ -192,12 +221,17 @@ impl FuelAsyncBridge {
 
         match outcome {
             TimeBoundedOutcome::Completed => result,
-            TimeBoundedOutcome::TimedOut => Err(Error::runtime_execution_error("Execution timed out")),
+            TimeBoundedOutcome::TimedOut => {
+                Err(Error::runtime_execution_error("Execution timed out"))
+            },
             TimeBoundedOutcome::Terminated => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::EXECUTION_LIMIT_EXCEEDED,
-                "Operation failed")),
-            TimeBoundedOutcome::Error(e) => Err(Error::runtime_execution_error("Async function execution error")),
+                "Operation failed",
+            )),
+            TimeBoundedOutcome::Error(e) => Err(Error::runtime_execution_error(
+                "Async function execution error",
+            )),
         }
     }
 
@@ -221,13 +255,15 @@ impl FuelAsyncBridge {
                 component_id,
                 bridge_config.default_fuel_budget,
                 bridge_config.default_priority,
-                self.create_bridged_future(component_id, future, &mut TimeBoundedContext::new(
-                    TimeBoundedConfig {
-                        time_limit_ms: bridge_config.default_time_limit_ms,
+                self.create_bridged_future(
+                    component_id,
+                    future,
+                    &mut TimeBoundedContext::new(TimeBoundedConfig {
+                        time_limit_ms:   bridge_config.default_time_limit_ms,
                         allow_extension: bridge_config.allow_fuel_extension,
-                        fuel_limit: Some(bridge_config.default_fuel_budget),
-                    }
-                ))?,
+                        fuel_limit:      Some(bridge_config.default_fuel_budget),
+                    }),
+                )?,
             )?;
 
             self.scheduler.add_task(
@@ -244,27 +280,27 @@ impl FuelAsyncBridge {
         // Execute all tasks concurrently
         let mut results = Vec::new();
         for task_id in task_ids {
-            // This is a simplified version - real implementation would use proper concurrent execution
+            // This is a simplified version - real implementation would use proper
+            // concurrent execution
             match self.executor.get_task_status(task_id) {
-                Some(status) => {
-                    match status.state {
-                        AsyncTaskState::Completed => {
-                            results.push(Ok(self.get_task_result(task_id)?));
-                        }
-                        AsyncTaskState::Failed => {
-                            results.push(Err(Error::runtime_execution_error("Async task failed")));
-                        }
-                        _ => {
-                            results.push(Err(Error::runtime_execution_error("Task execution error")));
-                        }
-                    }
-                }
+                Some(status) => match status.state {
+                    AsyncTaskState::Completed => {
+                        results.push(Ok(self.get_task_result(task_id)?));
+                    },
+                    AsyncTaskState::Failed => {
+                        results.push(Err(Error::runtime_execution_error("Async task failed")));
+                    },
+                    _ => {
+                        results.push(Err(Error::runtime_execution_error("Task execution error")));
+                    },
+                },
                 None => {
                     results.push(Err(Error::new(
                         ErrorCategory::Runtime,
                         codes::TASK_NOT_FOUND,
-                        "Operation failed")));
-                }
+                        "Operation failed",
+                    )));
+                },
             }
         }
 
@@ -284,7 +320,7 @@ impl FuelAsyncBridge {
                 AsyncBridgeState::Executing | AsyncBridgeState::Waiting => active_bridges += 1,
                 AsyncBridgeState::Completed => completed_bridges += 1,
                 AsyncBridgeState::Failed => failed_bridges += 1,
-                _ => {}
+                _ => {},
             }
         }
 
@@ -306,7 +342,10 @@ impl FuelAsyncBridge {
     pub fn shutdown(&mut self) -> Result<(), Error> {
         // Cancel all active bridges
         for (task_id, context) in self.active_bridges.iter_mut() {
-            if matches!(context.bridge_state, AsyncBridgeState::Executing | AsyncBridgeState::Waiting) {
+            if matches!(
+                context.bridge_state,
+                AsyncBridgeState::Executing | AsyncBridgeState::Waiting
+            ) {
                 context.bridge_state = AsyncBridgeState::Cancelled;
             }
         }
@@ -341,13 +380,16 @@ impl FuelAsyncBridge {
             // Execute the original future
             match future.await {
                 Ok(_) => {
-                    record_global_operation(OperationType::FunctionCall, VerificationLevel::Standard);
+                    record_global_operation(
+                        OperationType::FunctionCall,
+                        VerificationLevel::Standard,
+                    );
                     Ok(())
-                }
+                },
                 Err(e) => {
                     record_global_operation(OperationType::Other, VerificationLevel::Standard);
                     Err(e)
-                }
+                },
             }
         };
 
@@ -383,18 +425,20 @@ impl FuelAsyncBridge {
                     AsyncTaskState::Completed => {
                         self.cleanup_bridge(task_id)?;
                         return Ok(T::default()); // Simplified return
-                    }
+                    },
                     AsyncTaskState::Failed => {
                         self.cleanup_bridge(task_id)?;
-                        return Err(Error::runtime_execution_error("Async task failed during execution"));
-                    }
+                        return Err(Error::runtime_execution_error(
+                            "Async task failed during execution",
+                        ));
+                    },
                     AsyncTaskState::FuelExhausted => {
                         self.cleanup_bridge(task_id)?;
                         return Err(Error::runtime_execution_error("Fuel exhausted"));
-                    }
+                    },
                     _ => {
                         // Continue execution
-                    }
+                    },
                 }
             }
 
@@ -404,7 +448,8 @@ impl FuelAsyncBridge {
                 return Err(Error::new(
                     ErrorCategory::Runtime,
                     codes::EXECUTION_LIMIT_EXCEEDED,
-                    "Operation failed"));
+                    "Operation failed",
+                ));
             }
 
             // If no tasks were polled, yield briefly
@@ -442,11 +487,11 @@ impl FuelAsyncBridge {
 /// Statistics for async bridges
 #[derive(Debug, Clone)]
 pub struct AsyncBridgeStatistics {
-    pub total_bridges: usize,
-    pub active_bridges: usize,
-    pub completed_bridges: usize,
-    pub failed_bridges: usize,
-    pub total_fuel_consumed: u64,
+    pub total_bridges:        usize,
+    pub active_bridges:       usize,
+    pub completed_bridges:    usize,
+    pub failed_bridges:       usize,
+    pub total_fuel_consumed:  u64,
     pub executor_fuel_status: super::fuel_async_executor::GlobalAsyncFuelStatus,
     pub scheduler_statistics: super::fuel_async_scheduler::SchedulingStatistics,
 }
@@ -475,10 +520,9 @@ mod tests {
 
     #[test]
     fn test_bridge_creation() {
-        let bridge = FuelAsyncBridge::new(
-            AsyncBridgeConfig::default(),
-            VerificationLevel::Standard,
-        ).unwrap();
+        let bridge =
+            FuelAsyncBridge::new(AsyncBridgeConfig::default(), VerificationLevel::Standard)
+                .unwrap();
 
         let stats = bridge.get_bridge_statistics();
         assert_eq!(stats.total_bridges, 0);
@@ -488,12 +532,12 @@ mod tests {
     #[test]
     fn test_bridge_configuration() {
         let config = AsyncBridgeConfig {
-            default_fuel_budget: 5000,
+            default_fuel_budget:   5000,
             default_time_limit_ms: Some(1000),
-            default_priority: Priority::High,
-            scheduling_policy: SchedulingPolicy::PriorityBased,
-            allow_fuel_extension: true,
-            fuel_check_interval: 500,
+            default_priority:      Priority::High,
+            scheduling_policy:     SchedulingPolicy::PriorityBased,
+            allow_fuel_extension:  true,
+            fuel_check_interval:   500,
         };
 
         assert_eq!(config.default_fuel_budget, 5000);
@@ -507,10 +551,9 @@ mod tests {
 
     #[test]
     fn test_simple_async_execution() {
-        let mut bridge = FuelAsyncBridge::new(
-            AsyncBridgeConfig::default(),
-            VerificationLevel::Standard,
-        ).unwrap();
+        let mut bridge =
+            FuelAsyncBridge::new(AsyncBridgeConfig::default(), VerificationLevel::Standard)
+                .unwrap();
 
         // This would work with an actual async runtime
         // let result: Result<u32, _> = bridge.execute_async_function(
@@ -518,7 +561,7 @@ mod tests {
         //     simple_async_function(),
         //     None,
         // );
-        
+
         // For now, just test that the bridge was created successfully
         let stats = bridge.get_bridge_statistics();
         assert_eq!(stats.total_bridges, 0);

@@ -5,27 +5,49 @@
 //! in the Component Model MVP specification.
 
 #[cfg(not(feature = "std"))]
-use core::{fmt, mem};
+use core::{
+    fmt,
+    mem,
+};
 #[cfg(feature = "std")]
-use std::{fmt, mem};
-
+use std::{
+    boxed::Box,
+    collections::BTreeMap,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{boxed::Box, collections::BTreeMap, vec::Vec};
+use std::{
+    fmt,
+    mem,
+};
 
 use wrt_foundation::{
-    bounded::BoundedVec, component_value::ComponentValue, prelude::*, resource::ResourceHandle,
-    safe_memory::NoStdProvider,
+    bounded::BoundedVec,
     budget_aware_provider::CrateId,
+    component_value::ComponentValue,
+    prelude::*,
+    resource::ResourceHandle,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
 };
 
 use crate::{
     async_::async_types::{
-        AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, Stream,
-        StreamHandle, Waitable, WaitableSet,
+        AsyncReadResult,
+        ErrorContext,
+        ErrorContextHandle,
+        Future,
+        FutureHandle,
+        Stream,
+        StreamHandle,
+        Waitable,
+        WaitableSet,
     },
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ValType, Value},
+    types::{
+        ValType,
+        Value,
+    },
     WrtResult,
 };
 
@@ -73,34 +95,34 @@ pub struct TaskManager {
 #[derive(Debug, Clone)]
 pub struct Task {
     /// Task ID
-    pub id: TaskId,
+    pub id:               TaskId,
     /// Task state
-    pub state: TaskState,
+    pub state:            TaskState,
     /// Task type
-    pub task_type: TaskType,
+    pub task_type:        TaskType,
     /// Parent task (if this is a subtask)
-    pub parent: Option<TaskId>,
+    pub parent:           Option<TaskId>,
     /// Subtasks spawned by this task
     #[cfg(feature = "std")]
-    pub subtasks: Vec<TaskId>,
+    pub subtasks:         Vec<TaskId>,
     #[cfg(not(feature = "std"))]
-    pub subtasks: BoundedVec<TaskId, MAX_SUBTASKS, NoStdProvider<65536>>,
+    pub subtasks:         BoundedVec<TaskId, MAX_SUBTASKS, NoStdProvider<65536>>,
     /// Borrowed resource handles
     #[cfg(feature = "std")]
     pub borrowed_handles: Vec<ResourceHandle>,
     #[cfg(not(feature = "std"))]
     pub borrowed_handles: BoundedVec<ResourceHandle, 64, NoStdProvider<65536>>,
     /// Task-local storage
-    pub context: TaskContext,
+    pub context:          TaskContext,
     /// Waiting on waitables
-    pub waiting_on: Option<WaitableSet>,
+    pub waiting_on:       Option<WaitableSet>,
     /// Return values (when completed)
     #[cfg(feature = "std")]
-    pub return_values: Option<Vec<Value>>,
+    pub return_values:    Option<Vec<Value>>,
     #[cfg(not(feature = "std"))]
-    pub return_values: Option<BoundedVec<Value, 16, NoStdProvider<65536>>>,
+    pub return_values:    Option<BoundedVec<Value, 16, NoStdProvider<65536>>>,
     /// Error context (if failed)
-    pub error_context: Option<ErrorContextHandle>,
+    pub error_context:    Option<ErrorContextHandle>,
 }
 
 /// Task state enumeration
@@ -141,37 +163,41 @@ pub struct TaskContext {
     /// Component instance that owns this task
     pub component_instance: u32,
     /// Function being executed
-    pub function_index: Option<u32>,
+    pub function_index:     Option<u32>,
     /// Call stack for this task
     #[cfg(feature = "std")]
-    pub call_stack: Vec<CallFrame>,
+    pub call_stack:         Vec<CallFrame>,
     #[cfg(not(feature = "std"))]
-    pub call_stack: BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH, NoStdProvider<65536>>,
+    pub call_stack:         BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH, NoStdProvider<65536>>,
     /// Task-local storage
     #[cfg(feature = "std")]
-    pub storage: BTreeMap<String, ComponentValue>,
+    pub storage:            BTreeMap<String, ComponentValue>,
     #[cfg(not(feature = "std"))]
-    pub storage: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ComponentValue), 32, NoStdProvider<65536>>,
+    pub storage: BoundedVec<
+        (BoundedString<64, NoStdProvider<65536>>, ComponentValue),
+        32,
+        NoStdProvider<65536>,
+    >,
     /// Task creation time (simplified)
-    pub created_at: u64,
+    pub created_at:         u64,
     /// Task deadline (if any)
-    pub deadline: Option<u64>,
+    pub deadline:           Option<u64>,
 }
 
 /// Call frame for task call stack
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     /// Function being called
-    pub function_index: u32,
+    pub function_index:     u32,
     /// Component instance
     pub component_instance: u32,
     /// Local variables
     #[cfg(feature = "std")]
-    pub locals: Vec<Value>,
+    pub locals:             Vec<Value>,
     #[cfg(not(feature = "std"))]
-    pub locals: BoundedVec<Value, 32, NoStdProvider<65536>>,
+    pub locals:             BoundedVec<Value, 32, NoStdProvider<65536>>,
     /// Return address
-    pub return_address: Option<u32>,
+    pub return_address:     Option<u32>,
 }
 
 /// Task execution result
@@ -198,18 +224,16 @@ impl TaskManager {
             #[cfg(not(feature = "std"))]
             tasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"))
-                })?
+                BoundedVec::new(provider)
+                    .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             #[cfg(feature = "std")]
             ready_queue: Vec::new(),
             #[cfg(not(feature = "std"))]
             ready_queue: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"))
-                })?
+                BoundedVec::new(provider)
+                    .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             current_task: None,
             next_task_id: 0,
@@ -232,7 +256,7 @@ impl TaskManager {
     ) -> WrtResult<TaskId> {
         // Check task limit
         if self.tasks.len() >= self.max_concurrent_tasks {
-            return Err(wrt_error::Error::runtime_execution_error("Error occurred");
+            return Err(Error::runtime_execution_error("Error occurred"));
         }
 
         let task_id = TaskId(self.next_task_id);
@@ -248,18 +272,16 @@ impl TaskManager {
             #[cfg(not(feature = "std"))]
             subtasks: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"))
-                })?
+                BoundedVec::new(provider)
+                    .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             #[cfg(feature = "std")]
             borrowed_handles: Vec::new(),
             #[cfg(not(feature = "std"))]
             borrowed_handles: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                BoundedVec::new(provider).map_err(|_| {
-                    wrt_error::Error::runtime_execution_error("Error occurred"))
-                })?
+                BoundedVec::new(provider)
+                    .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
             },
             context: TaskContext {
                 component_instance,
@@ -269,18 +291,16 @@ impl TaskManager {
                 #[cfg(not(feature = "std"))]
                 call_stack: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"))
-                    })?
+                    BoundedVec::new(provider)
+                        .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
                 },
                 #[cfg(feature = "std")]
                 storage: BTreeMap::new(),
                 #[cfg(not(feature = "std"))]
                 storage: {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"))
-                    })?
+                    BoundedVec::new(provider)
+                        .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
                 },
                 created_at: self.get_current_time(),
                 deadline: None,
@@ -307,13 +327,13 @@ impl TaskManager {
         // Insert task
         #[cfg(feature = "std")]
         {
-            self.tasks.insert(task_id, task;
+            self.tasks.insert(task_id, task);
         }
         #[cfg(not(feature = "std"))]
         {
-            self.tasks.push((task_id, task)).map_err(|_| {
-                wrt_error::Error::runtime_execution_error("Error occurred"))
-            })?;
+            self.tasks
+                .push((task_id, task))
+                .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
         }
 
         // Mark as ready
@@ -358,9 +378,9 @@ impl TaskManager {
                 }
                 #[cfg(not(feature = "std"))]
                 {
-                    self.ready_queue.push(task_id).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"))
-                    })?;
+                    self.ready_queue
+                        .push(task_id)
+                        .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?
                 }
             }
         }
@@ -374,7 +394,7 @@ impl TaskManager {
             if self.ready_queue.is_empty() {
                 None
             } else {
-                Some(self.ready_queue.remove(0)
+                Some(self.ready_queue.remove(0))
             }
         }
         #[cfg(not(feature = "std"))]
@@ -387,7 +407,7 @@ impl TaskManager {
                 for i in 1..self.ready_queue.len() {
                     self.ready_queue[i - 1] = self.ready_queue[i];
                 }
-                let _ = self.ready_queue.pop);
+                let _ = self.ready_queue.pop();
                 Some(task_id)
             }
         }
@@ -398,15 +418,17 @@ impl TaskManager {
         if let Some(task) = self.get_task_mut(task_id) {
             if task.state == TaskState::Ready {
                 task.state = TaskState::Running;
-                self.current_task = Some(task_id;
+                self.current_task = Some(task_id);
                 Ok(())
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Error occurred")))
+                Err(wrt_error::Error::runtime_execution_error("Error occurred"))
             }
         } else {
-            Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
+            Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
                 wrt_error::errors::codes::INVALID_INPUT,
-                "Error message needed"))
+                "Error message needed",
+            ))
         }
     }
 
@@ -417,20 +439,19 @@ impl TaskManager {
                 task.state = TaskState::Completed;
                 #[cfg(feature = "std")]
                 {
-                    task.return_values = Some(values;
+                    task.return_values = Some(values);
                 }
                 #[cfg(not(feature = "std"))]
                 {
                     let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-                    let mut bounded_values = BoundedVec::new(provider).map_err(|_| {
-                        wrt_error::Error::runtime_execution_error("Error occurred"))
-                    })?;
+                    let mut bounded_values = BoundedVec::new(provider)
+                        .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?;
                     for value in values {
                         bounded_values.push(value).map_err(|_| {
-                            wrt_error::Error::runtime_execution_error("Error occurred"))
-                        })?;
+                            wrt_error::Error::runtime_execution_error("Error occurred")
+                        })?
                     }
-                    task.return_values = Some(bounded_values;
+                    task.return_values = Some(bounded_values);
                 }
 
                 // Clean up borrowed resources
@@ -439,12 +460,14 @@ impl TaskManager {
                 self.current_task = task.parent;
                 Ok(())
             } else {
-                Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
+                Err(wrt_error::Error::new(
+                    wrt_error::ErrorCategory::Validation,
                     wrt_error::errors::codes::INVALID_INPUT,
-                    "Error message needed"))
+                    "Error message needed",
+                ))
             }
         } else {
-            Err(wrt_error::Error::runtime_execution_error("Error occurred")))
+            Err(wrt_error::Error::runtime_execution_error("Error occurred"))
         }
     }
 
@@ -453,26 +476,26 @@ impl TaskManager {
         if let Some(task_id) = self.current_task {
             // Check if any waitables are immediately ready
             if let Some(ready_index) = waitables.first_ready() {
-                return Ok(ready_index;
+                return Ok(ready_index);
             }
 
             // Put task in waiting state
             if let Some(task) = self.get_task_mut(task_id) {
                 task.state = TaskState::Waiting;
-                task.waiting_on = Some(waitables;
+                task.waiting_on = Some(waitables);
                 self.current_task = task.parent;
 
                 // Return special value indicating we're waiting
-                Ok(u32::MAX) // Convention: MAX means ")
+                Ok(u32::MAX) // Convention: MAX means "waiting"
             }
         } else {
-            Err(wrt_error::Error::runtime_execution_error("Error occurred")))
+            Err(wrt_error::Error::runtime_execution_error("Error occurred"))
         }
     }
 
     /// Poll waitables without blocking
     pub fn task_poll(&self, waitables: &WaitableSet) -> WrtResult<Option<u32>> {
-        Ok(waitables.first_ready()
+        Ok(waitables.first_ready())
     }
 
     /// Yield current task voluntarily
@@ -494,12 +517,14 @@ impl TaskManager {
                 self.current_task = task.parent;
                 Ok(())
             } else {
-                Err(wrt_error::Error::runtime_execution_error("Error occurred")))
+                Err(wrt_error::Error::runtime_execution_error("Error occurred"))
             }
         } else {
-            Err(wrt_error::Error::new(wrt_error::ErrorCategory::Validation,
+            Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
                 wrt_error::errors::codes::INVALID_INPUT,
-                "Error message needed"))
+                "Error message needed",
+            ))
         }
     }
 
@@ -524,7 +549,7 @@ impl TaskManager {
                 }
             }
         }
-        Ok(()
+        Ok(())
     }
 
     /// Handle backpressure for a task
@@ -568,7 +593,7 @@ impl TaskManager {
             self.make_ready(task_id)?;
         }
 
-        Ok(()
+        Ok(())
     }
 
     /// Clean up resources owned by a task
@@ -577,10 +602,10 @@ impl TaskManager {
             // Drop borrowed resources
             for handle in &task.borrowed_handles {
                 // In a real implementation, would properly release borrows
-                let _ = self.resource_manager.drop_resource(*handle;
+                let _ = self.resource_manager.drop_resource(*handle);
             }
         }
-        Ok(()
+        Ok(())
     }
 
     /// Get current time (simplified)
@@ -646,8 +671,8 @@ mod tests {
         let manager = TaskManager::new().unwrap();
         assert_eq!(manager.task_count(), 0);
         assert_eq!(manager.ready_task_count(), 0);
-        assert!(!manager.has_ready_tasks();
-        assert_eq!(manager.current_task_id(), None;
+        assert!(!manager.has_ready_tasks());
+        assert_eq!(manager.current_task_id(), None);
     }
 
     #[test]
@@ -659,7 +684,7 @@ mod tests {
         assert_eq!(task_id, TaskId(0));
         assert_eq!(manager.task_count(), 1);
         assert_eq!(manager.ready_task_count(), 1);
-        assert!(manager.has_ready_tasks();
+        assert!(manager.has_ready_tasks());
     }
 
     #[test]
@@ -671,15 +696,15 @@ mod tests {
 
         // Get next ready task
         let next_task = manager.next_ready_task().unwrap();
-        assert_eq!(next_task, task_id;
+        assert_eq!(next_task, task_id);
         assert_eq!(manager.ready_task_count(), 0);
 
         // Switch to task
         manager.switch_to_task(task_id).unwrap();
-        assert_eq!(manager.current_task_id(), Some(task_id;
+        assert_eq!(manager.current_task_id(), Some(task_id));
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Running;
+        assert_eq!(task.state, TaskState::Running);
     }
 
     #[test]
@@ -695,8 +720,8 @@ mod tests {
         manager.task_return(return_values).unwrap();
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Completed;
-        assert!(task.return_values.is_some();
+        assert_eq!(task.state, TaskState::Completed);
+        assert!(task.return_values.is_some());
     }
 
     #[test]
@@ -709,7 +734,7 @@ mod tests {
         manager.task_yield().unwrap();
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Ready;
+        assert_eq!(task.state, TaskState::Ready);
         assert_eq!(manager.ready_task_count(), 1);
     }
 
@@ -722,7 +747,7 @@ mod tests {
         manager.task_cancel(task_id).unwrap();
 
         let task = manager.get_task(task_id).unwrap();
-        assert_eq!(task.state, TaskState::Cancelled;
+        assert_eq!(task.state, TaskState::Cancelled);
     }
 
     #[test]
@@ -738,23 +763,26 @@ mod tests {
         let child_id = manager.spawn_task(TaskType::AsyncOperation, 1, Some(1)).unwrap();
 
         let parent = manager.get_task(parent_id).unwrap();
-        assert!(parent.subtasks.contains(&child_id);
+        assert!(parent.subtasks.contains(&child_id));
 
         let child = manager.get_task(child_id).unwrap();
-        assert_eq!(child.parent, Some(parent_id;
+        assert_eq!(child.parent, Some(parent_id));
     }
 
     #[test]
     fn test_task_state_display() {
-        assert_eq!(TaskState::Starting.to_string(), "starting";
-        assert_eq!(TaskState::Running.to_string(), "running";
-        assert_eq!(TaskState::Completed.to_string(), "completed";
+        assert_eq!(TaskState::Starting.to_string(), "starting");
+        assert_eq!(TaskState::Running.to_string(), "running");
+        assert_eq!(TaskState::Completed.to_string(), "completed");
     }
 
     #[test]
     fn test_task_type_display() {
-        assert_eq!(TaskType::ComponentFunction.to_string(), "component-function";
-        assert_eq!(TaskType::AsyncOperation.to_string(), "async-operation";
-        assert_eq!(TaskType::Background.to_string(), "background";
+        assert_eq!(
+            TaskType::ComponentFunction.to_string(),
+            "component-function"
+        );
+        assert_eq!(TaskType::AsyncOperation.to_string(), "async-operation");
+        assert_eq!(TaskType::Background.to_string(), "background");
     }
 }

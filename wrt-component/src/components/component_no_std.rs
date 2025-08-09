@@ -9,42 +9,64 @@
 //! Model in a no_std environment.
 
 // use wrt_decoder::component::decode::Component as DecodedComponent;
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_format::component::ExternType;
 use wrt_foundation::{
-    bounded::{BoundedString, BoundedVec, MAX_COMPONENT_TYPES, MAX_WASM_NAME_LENGTH},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+        MAX_COMPONENT_TYPES,
+        MAX_WASM_NAME_LENGTH,
+    },
+    budget_aware_provider::CrateId,
     builtin::BuiltinType,
     component_value::ComponentValue,
     resource::ResourceOperation as FormatResourceOperation,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider,
     types::ValueType,
     values::Value,
     verification::VerificationLevel,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-    safe_memory::NoStdProvider,
     MemoryProvider,
 };
-use wrt_runtime::types::{MemoryType, TableType};
+use wrt_runtime::types::{
+    MemoryType,
+    TableType,
+};
 
 use crate::{
     export::Export,
     import::Import,
     instance_no_std::InstanceValue,
-    resources::{ResourceStrategyNoStd, ResourceTable},
+    resources::{
+        ResourceStrategyNoStd,
+        ResourceTable,
+    },
 };
 
 // Type alias for component provider
 type ComponentProvider = NoStdProvider<65536>;
 
 // Implement required traits for BoundedVec compatibility
-use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream};
+use wrt_foundation::traits::{
+    Checksummable,
+    FromBytes,
+    ReadStream,
+    ToBytes,
+    WriteStream,
+};
 
 // Macro to implement basic traits for complex types
 macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum;
+                0u32.update_checksum(checksum);
             }
         }
 
@@ -104,7 +126,7 @@ pub enum ExternValue {
 #[derive(Debug, Clone)]
 pub struct FunctionValue {
     /// Function type
-    pub ty: FuncType,
+    pub ty:          FuncType,
     /// Export name that this function refers to
     pub export_name: BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
 }
@@ -113,7 +135,7 @@ pub struct FunctionValue {
 #[derive(Debug, Clone)]
 pub struct TableValue {
     /// Table type
-    pub ty: TableType,
+    pub ty:    TableType,
     /// Table instance - in no_std this is a bounded buffer
     pub table: BoundedVec<u32, MAX_TABLE_SIZE, NoStdProvider<65536>>,
 }
@@ -122,13 +144,13 @@ pub struct TableValue {
 #[derive(Debug, Clone)]
 pub struct MemoryValue {
     /// Memory type
-    pub ty: MemoryType,
+    pub ty:           MemoryType,
     /// Memory instance
-    pub memory: BoundedVec<u8, MAX_MEMORY_SIZE, NoStdProvider<65536>>,
+    pub memory:       BoundedVec<u8, MAX_MEMORY_SIZE, NoStdProvider<65536>>,
     /// Memory access count
     pub access_count: u64,
     /// Debug name
-    pub debug_name: Option<BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>>,
+    pub debug_name:   Option<BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>>,
 }
 
 impl MemoryValue {
@@ -136,7 +158,12 @@ impl MemoryValue {
     pub fn new(ty: MemoryType) -> Result<Self> {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let memory = BoundedVec::new(provider)?;
-        Ok(Self { ty, memory, access_count: 0, debug_name: None })
+        Ok(Self {
+            ty,
+            memory,
+            access_count: 0,
+            debug_name: None,
+        })
     }
 
     /// Creates a new memory value with a debug name
@@ -144,10 +171,19 @@ impl MemoryValue {
         let provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let memory = BoundedVec::new(provider)?;
         let debug_name = Some(BoundedString::from_str(name).map_err(|_| {
-            Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Memory name too long")
-        })?;
+            Error::new(
+                ErrorCategory::Parameter,
+                codes::VALIDATION_ERROR,
+                "Memory name too long",
+            )
+        })?);
 
-        Ok(Self { ty, memory, access_count: 0, debug_name })
+        Ok(Self {
+            ty,
+            memory,
+            access_count: 0,
+            debug_name,
+        })
     }
 
     /// Reads from memory
@@ -161,11 +197,11 @@ impl MemoryValue {
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
                 "Memory read out of bounds",
-            ;
+            ));
         }
 
         // Create a vec to hold the result
-        let mut result = Vec::with_capacity(size_usize;
+        let mut result = Vec::with_capacity(size_usize);
         for i in 0..size_usize {
             if let Some(&byte) = self.memory.get(offset_usize + i) {
                 result.push(byte);
@@ -174,7 +210,7 @@ impl MemoryValue {
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_ERROR,
                     "Memory read failed",
-                ;
+                ));
             }
         }
 
@@ -191,7 +227,7 @@ impl MemoryValue {
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
                 "Memory write out of bounds",
-            ;
+            ));
         }
 
         // Resize memory if needed
@@ -218,7 +254,7 @@ impl MemoryValue {
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_ERROR,
                     "Memory write failed",
-                ;
+                ));
             }
         }
 
@@ -231,7 +267,7 @@ impl MemoryValue {
     /// Grows the memory by the given number of pages
     pub fn grow(&mut self, pages: u32) -> Result<u32> {
         let page_size = 64 * 1024; // 64KB pages per WebAssembly spec
-        let prev_pages = self.size);
+        let prev_pages = self.size();
         let additional_bytes = (pages as usize) * page_size;
 
         // Check if growing would exceed max memory size
@@ -240,7 +276,7 @@ impl MemoryValue {
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
                 "Memory cannot be grown past maximum size",
-            ;
+            ));
         }
 
         // Add zero bytes to grow memory
@@ -287,7 +323,7 @@ impl MemoryValue {
     /// Sets a debug name for this memory
     pub fn set_debug_name(&mut self, name: &str) {
         if let Ok(bounded_name) = BoundedString::from_str(name) {
-            self.debug_name = Some(bounded_name;
+            self.debug_name = Some(bounded_name);
         }
     }
 
@@ -300,7 +336,7 @@ impl MemoryValue {
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_ERROR,
                 "Memory size exceeds maximum",
-            ))
+            ));
         }
         Ok(())
     }
@@ -310,7 +346,7 @@ impl MemoryValue {
 #[derive(Debug, Clone)]
 pub struct GlobalValue {
     /// Global type
-    pub ty: GlobalType,
+    pub ty:    GlobalType,
     /// Global value
     pub value: Value,
 }
@@ -332,16 +368,29 @@ pub const MAX_BINARY_SIZE: usize = 1024 * 1024; // 1 MB
 pub struct WrtComponentType {
     /// Component imports
     pub imports: BoundedVec<
-        (BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType),
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>,
+            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>,
+            ExternType,
+        ),
         MAX_COMPONENT_IMPORTS,
         NoStdProvider<65536>,
     >,
     /// Component exports
-    pub exports:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>, ExternType), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    pub exports: BoundedVec<
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, NoStdProvider<65536>>,
+            ExternType,
+        ),
+        MAX_COMPONENT_EXPORTS,
+        NoStdProvider<65536>,
+    >,
     /// Component instances
-    pub instances:
-        BoundedVec<wrt_format::component::ComponentTypeDefinition, MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
+    pub instances: BoundedVec<
+        wrt_format::component::ComponentTypeDefinition,
+        MAX_COMPONENT_INSTANCES,
+        NoStdProvider<65536>,
+    >,
     /// Verification level for this component type
     pub verification_level: VerificationLevel,
 }
@@ -352,11 +401,11 @@ impl WrtComponentType {
         let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        
+
         Ok(Self {
-            imports: BoundedVec::new(imports_provider)?,
-            exports: BoundedVec::new(exports_provider)?,
-            instances: BoundedVec::new(instances_provider)?,
+            imports:            BoundedVec::new(imports_provider)?,
+            exports:            BoundedVec::new(exports_provider)?,
+            instances:          BoundedVec::new(instances_provider)?,
             verification_level: VerificationLevel::Standard,
         })
     }
@@ -388,7 +437,11 @@ impl WrtComponentType {
         })?;
 
         let bounded_name = BoundedString::from_str(name).map_err(|_| {
-            Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Import name too long")
+            Error::new(
+                ErrorCategory::Parameter,
+                codes::VALIDATION_ERROR,
+                "Import name too long",
+            )
         })?;
 
         // Add to imports list
@@ -407,7 +460,11 @@ impl WrtComponentType {
     pub fn add_export(&mut self, name: &str, ty: ExternType) -> Result<()> {
         // Create bounded string
         let bounded_name = BoundedString::from_str(name).map_err(|_| {
-            Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Export name too long")
+            Error::new(
+                ErrorCategory::Parameter,
+                codes::VALIDATION_ERROR,
+                "Export name too long",
+            )
         })?;
 
         // Add to exports list
@@ -441,20 +498,19 @@ impl WrtComponentType {
 
 impl Default for WrtComponentType {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            panic!("Failed to allocate memory for WrtComponentType::default")
-        })
+        Self::new()
+            .unwrap_or_else(|_| panic!("Failed to allocate memory for WrtComponentType::default"))
     }
 }
 
 /// Builder for WrtComponentType
 pub struct WrtComponentTypeBuilder {
     /// Component imports
-    imports: Vec<(String, String, ExternType)>,
+    imports:            Vec<(String, String, ExternType)>,
     /// Component exports
-    exports: Vec<(String, ExternType)>,
+    exports:            Vec<(String, ExternType)>,
     /// Component instances
-    instances: Vec<wrt_format::component::ComponentTypeDefinition>,
+    instances:          Vec<wrt_format::component::ComponentTypeDefinition>,
     /// Verification level for this component type
     verification_level: VerificationLevel,
 }
@@ -463,16 +519,16 @@ impl WrtComponentTypeBuilder {
     /// Creates a new component type builder
     pub fn new() -> Self {
         Self {
-            imports: Vec::new(),
-            exports: Vec::new(),
-            instances: Vec::new(),
+            imports:            Vec::new(),
+            exports:            Vec::new(),
+            instances:          Vec::new(),
             verification_level: VerificationLevel::Standard,
         }
     }
 
     /// Add an import to the component type
     pub fn with_import(mut self, namespace: &str, name: &str, ty: ExternType) -> Self {
-        self.imports.push((namespace.to_string(), name.to_string(), ty;
+        self.imports.push((namespace.to_string(), name.to_string(), ty));
         self
     }
 
@@ -484,7 +540,7 @@ impl WrtComponentTypeBuilder {
 
     /// Add an export to the component type
     pub fn with_export(mut self, name: &str, ty: ExternType) -> Self {
-        self.exports.push((name.to_string(), ty;
+        self.exports.push((name.to_string(), ty));
         self
     }
 
@@ -552,22 +608,30 @@ impl Default for WrtComponentTypeBuilder {
 #[derive(Debug, Clone)]
 pub struct BuiltinRequirements {
     /// List of required builtins
-    pub required: BoundedVec<BuiltinType, MAX_COMPONENT_TYPES, ComponentProvider>,
+    pub required:  BoundedVec<BuiltinType, MAX_COMPONENT_TYPES, ComponentProvider>,
     /// Map of required builtin instances
-    pub instances:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, BuiltinType), MAX_COMPONENT_INSTANCES, ComponentProvider>,
+    pub instances: BoundedVec<
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
+            BuiltinType,
+        ),
+        MAX_COMPONENT_INSTANCES,
+        ComponentProvider,
+    >,
 }
 
 impl Default for BuiltinRequirements {
     fn default() -> Self {
         let required_provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect(".expect("Failed to allocate memory for BuiltinRequirements::required"));")
+            .expect("Failed to allocate memory for BuiltinRequirements::required");
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect(".expect("Failed to allocate memory for BuiltinRequirements::instances"));")
-        
+            .expect("Failed to allocate memory for BuiltinRequirements::instances");
+
         Self {
-            required: BoundedVec::new(required_provider).expect("Failed to create BoundedVec for BuiltinRequirements::required"),
-            instances: BoundedVec::new(instances_provider).expect("Failed to create BoundedVec for BuiltinRequirements::instances"),
+            required:  BoundedVec::new(required_provider)
+                .expect("Failed to create BoundedVec for BuiltinRequirements::required"),
+            instances: BoundedVec::new(instances_provider)
+                .expect("Failed to create BoundedVec for BuiltinRequirements::instances"),
         }
     }
 }
@@ -576,14 +640,41 @@ impl Default for BuiltinRequirements {
 #[derive(Debug)]
 pub struct RuntimeInstance {
     /// Functions exported by this runtime
-    functions:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, ExternValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    functions: BoundedVec<
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
+            ExternValue,
+        ),
+        MAX_COMPONENT_EXPORTS,
+        NoStdProvider<65536>,
+    >,
     /// Memory exported by this runtime
-    memories: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, MemoryValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    memories: BoundedVec<
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
+            MemoryValue,
+        ),
+        MAX_COMPONENT_EXPORTS,
+        NoStdProvider<65536>,
+    >,
     /// Tables exported by this runtime
-    tables: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, TableValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    tables: BoundedVec<
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
+            TableValue,
+        ),
+        MAX_COMPONENT_EXPORTS,
+        NoStdProvider<65536>,
+    >,
     /// Globals exported by this runtime
-    globals: BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, GlobalValue), MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    globals: BoundedVec<
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
+            GlobalValue,
+        ),
+        MAX_COMPONENT_EXPORTS,
+        NoStdProvider<65536>,
+    >,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
@@ -595,12 +686,12 @@ impl RuntimeInstance {
         let memories_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let tables_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let globals_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        
+
         Ok(Self {
-            functions: BoundedVec::new(functions_provider)?,
-            memories: BoundedVec::new(memories_provider)?,
-            tables: BoundedVec::new(tables_provider)?,
-            globals: BoundedVec::new(globals_provider)?,
+            functions:          BoundedVec::new(functions_provider)?,
+            memories:           BoundedVec::new(memories_provider)?,
+            tables:             BoundedVec::new(tables_provider)?,
+            globals:            BoundedVec::new(globals_provider)?,
             verification_level: VerificationLevel::Standard,
         })
     }
@@ -637,7 +728,11 @@ impl RuntimeInstance {
     /// Register an exported memory
     pub fn register_memory(&mut self, name: &str, memory: MemoryValue) -> Result<()> {
         let bounded_name = BoundedString::from_str(name).map_err(|_| {
-            Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Memory name too long")
+            Error::new(
+                ErrorCategory::Parameter,
+                codes::VALIDATION_ERROR,
+                "Memory name too long",
+            )
         })?;
 
         self.memories.push((bounded_name, memory)).map_err(|_| {
@@ -669,9 +764,8 @@ impl RuntimeInstance {
 
 impl Default for RuntimeInstance {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            panic!("Failed to allocate memory for RuntimeInstance::default")
-        })
+        Self::new()
+            .unwrap_or_else(|_| panic!("Failed to allocate memory for RuntimeInstance::default"))
     }
 }
 
@@ -679,26 +773,33 @@ impl Default for RuntimeInstance {
 #[derive(Debug, Clone)]
 pub struct Component {
     /// Component type
-    pub component_type: WrtComponentType,
+    pub component_type:        WrtComponentType,
     /// Component exports
-    pub exports: BoundedVec<Export, MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
+    pub exports:               BoundedVec<Export, MAX_COMPONENT_EXPORTS, NoStdProvider<65536>>,
     /// Component imports
-    pub imports: BoundedVec<Import, MAX_COMPONENT_IMPORTS, NoStdProvider<65536>>,
+    pub imports:               BoundedVec<Import, MAX_COMPONENT_IMPORTS, NoStdProvider<65536>>,
     /// Component instances
     pub instances: BoundedVec<InstanceValue, MAX_COMPONENT_INSTANCES, NoStdProvider<65536>>,
     /// Linked components with their namespaces (names and component IDs)
-    pub linked_components:
-        BoundedVec<(BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>, usize), MAX_LINKED_COMPONENTS, NoStdProvider<65536>>,
+    pub linked_components: BoundedVec<
+        (
+            BoundedString<MAX_WASM_NAME_LENGTH, ComponentProvider>,
+            usize,
+        ),
+        MAX_LINKED_COMPONENTS,
+        NoStdProvider<65536>,
+    >,
     /// Runtime instance
-    pub runtime: Option<RuntimeInstance>,
+    pub runtime:               Option<RuntimeInstance>,
     /// Resource table for managing component resources
-    pub resource_table: ResourceTable,
+    pub resource_table:        ResourceTable,
     /// Built-in requirements
     pub built_in_requirements: Option<BuiltinRequirements>,
     /// Original binary
-    pub original_binary: Option<BoundedVec<u8, MAX_BINARY_SIZE, NoStdProvider<65536>>, NoStdProvider<65536>>,
+    pub original_binary:
+        Option<BoundedVec<u8, MAX_BINARY_SIZE, NoStdProvider<65536>>, NoStdProvider<65536>>,
     /// Verification level for all operations
-    pub verification_level: VerificationLevel,
+    pub verification_level:    VerificationLevel,
 }
 
 impl Component {
@@ -708,18 +809,18 @@ impl Component {
         let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        
+
         Ok(Self {
-            component_type: WrtComponentType::new()?,
-            exports: BoundedVec::new(exports_provider)?,
-            imports: BoundedVec::new(imports_provider)?,
-            instances: BoundedVec::new(instances_provider)?,
-            linked_components: BoundedVec::new(linked_components_provider)?,
-            runtime: None,
-            resource_table: ResourceTable::new(),
+            component_type:        WrtComponentType::new()?,
+            exports:               BoundedVec::new(exports_provider)?,
+            imports:               BoundedVec::new(imports_provider)?,
+            instances:             BoundedVec::new(instances_provider)?,
+            linked_components:     BoundedVec::new(linked_components_provider)?,
+            runtime:               None,
+            resource_table:        ResourceTable::new(),
             built_in_requirements: None,
-            original_binary: None,
-            verification_level: VerificationLevel::Standard,
+            original_binary:       None,
+            verification_level:    VerificationLevel::Standard,
         })
     }
 
@@ -729,7 +830,7 @@ impl Component {
         let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        
+
         Ok(Self {
             component_type: WrtComponentType::new()?,
             exports: BoundedVec::new(exports_provider)?,
@@ -761,7 +862,7 @@ impl Component {
         let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        
+
         Ok(Self {
             component_type,
             exports: BoundedVec::new(exports_provider)?,
@@ -818,7 +919,11 @@ impl Component {
     /// Link a component with a namespace
     pub fn link_component(&mut self, name: &str, component_id: usize) -> Result<()> {
         let bounded_name = BoundedString::from_str(name).map_err(|_| {
-            Error::new(ErrorCategory::Parameter, codes::VALIDATION_ERROR, "Component name too long")
+            Error::new(
+                ErrorCategory::Parameter,
+                codes::VALIDATION_ERROR,
+                "Component name too long",
+            )
         })?;
 
         self.linked_components.push((bounded_name, component_id)).map_err(|_| {
@@ -834,7 +939,7 @@ impl Component {
 
     /// Set the runtime instance
     pub fn set_runtime(&mut self, runtime: RuntimeInstance) {
-        self.runtime = Some(runtime;
+        self.runtime = Some(runtime);
     }
 
     /// Set the verification level
@@ -849,7 +954,9 @@ impl Component {
 
     /// Get an import by namespace and name
     pub fn get_import(&self, namespace: &str, name: &str) -> Option<&Import> {
-        self.imports.iter().find(|import| import.namespace == namespace && import.name == name)
+        self.imports
+            .iter()
+            .find(|import| import.namespace == namespace && import.name == name)
     }
 
     /// Get an instance by name
@@ -865,56 +972,54 @@ impl Component {
 
 impl Default for Component {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            panic!("Failed to allocate memory for Component::default")
-        })
+        Self::new().unwrap_or_else(|_| panic!("Failed to allocate memory for Component::default"))
     }
 }
 
 /// Builder for Component in no_std environment
 pub struct ComponentBuilder {
     /// Component type
-    component_type: Option<WrtComponentType>,
+    component_type:        Option<WrtComponentType>,
     /// Component exports
-    exports: Vec<Export>,
+    exports:               Vec<Export>,
     /// Component imports
-    imports: Vec<Import>,
+    imports:               Vec<Import>,
     /// Component instances
-    instances: Vec<InstanceValue>,
+    instances:             Vec<InstanceValue>,
     /// Linked components with their namespaces (identifier by index)
-    linked_components: Vec<(String, usize)>,
+    linked_components:     Vec<(String, usize)>,
     /// Runtime instance
-    runtime: Option<RuntimeInstance>,
+    runtime:               Option<RuntimeInstance>,
     /// Resource table for managing component resources
-    resource_table: Option<ResourceTable>,
+    resource_table:        Option<ResourceTable>,
     /// Built-in requirements
     built_in_requirements: Option<BuiltinRequirements>,
     /// Original binary
-    original_binary: Option<Vec<u8>>,
+    original_binary:       Option<Vec<u8>>,
     /// Verification level for all operations
-    verification_level: VerificationLevel,
+    verification_level:    VerificationLevel,
 }
 
 impl ComponentBuilder {
     /// Creates a new component builder
     pub fn new() -> Self {
         Self {
-            component_type: None,
-            exports: Vec::new(),
-            imports: Vec::new(),
-            instances: Vec::new(),
-            linked_components: Vec::new(),
-            runtime: None,
-            resource_table: None,
+            component_type:        None,
+            exports:               Vec::new(),
+            imports:               Vec::new(),
+            instances:             Vec::new(),
+            linked_components:     Vec::new(),
+            runtime:               None,
+            resource_table:        None,
             built_in_requirements: None,
-            original_binary: None,
-            verification_level: VerificationLevel::Standard,
+            original_binary:       None,
+            verification_level:    VerificationLevel::Standard,
         }
     }
 
     /// Set the component type
     pub fn with_component_type(mut self, component_type: WrtComponentType) -> Self {
-        self.component_type = Some(component_type;
+        self.component_type = Some(component_type);
         self
     }
 
@@ -956,31 +1061,31 @@ impl ComponentBuilder {
 
     /// Link a component with a namespace
     pub fn with_linked_component(mut self, name: &str, component_id: usize) -> Self {
-        self.linked_components.push((name.to_string(), component_id;
+        self.linked_components.push((name.to_string(), component_id));
         self
     }
 
     /// Set the runtime instance
     pub fn with_runtime(mut self, runtime: RuntimeInstance) -> Self {
-        self.runtime = Some(runtime;
+        self.runtime = Some(runtime);
         self
     }
 
     /// Set the resource table
     pub fn with_resource_table(mut self, resource_table: ResourceTable) -> Self {
-        self.resource_table = Some(resource_table;
+        self.resource_table = Some(resource_table);
         self
     }
 
     /// Set the built-in requirements
     pub fn with_built_in_requirements(mut self, requirements: BuiltinRequirements) -> Self {
-        self.built_in_requirements = Some(requirements;
+        self.built_in_requirements = Some(requirements);
         self
     }
 
     /// Set the original binary
     pub fn with_original_binary(mut self, binary: Vec<u8>) -> Self {
-        self.original_binary = Some(binary;
+        self.original_binary = Some(binary);
         self
     }
 
@@ -992,14 +1097,14 @@ impl ComponentBuilder {
 
     /// Build the component
     pub fn build(self) -> Result<Component> {
-        let component_type = self.component_type.unwrap_or_default);
-        let resource_table = self.resource_table.unwrap_or_else(ResourceTable::new;
+        let component_type = self.component_type.unwrap_or_default();
+        let resource_table = self.resource_table.unwrap_or_else(ResourceTable::new);
 
         let exports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let imports_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let instances_provider = safe_managed_alloc!(65536, CrateId::Component)?;
         let linked_components_provider = safe_managed_alloc!(65536, CrateId::Component)?;
-        
+
         let mut component = Component {
             component_type,
             exports: BoundedVec::new(exports_provider)?,
@@ -1046,7 +1151,7 @@ impl ComponentBuilder {
                     )
                 })?;
             }
-            component.original_binary = Some(bounded_binary;
+            component.original_binary = Some(bounded_binary);
         }
 
         Ok(component)
@@ -1071,30 +1176,45 @@ mod tests {
             .with_import(
                 "ns",
                 "name",
-                ExternType::Function { params: Vec::new(), results: Vec::new() },
+                ExternType::Function {
+                    params:  Vec::new(),
+                    results: Vec::new(),
+                },
             )
-            .with_export("export", ExternType::Function { params: Vec::new(), results: Vec::new() })
+            .with_export(
+                "export",
+                ExternType::Function {
+                    params:  Vec::new(),
+                    results: Vec::new(),
+                },
+            )
             .with_verification_level(VerificationLevel::Full)
             .build()
             .unwrap();
 
         assert_eq!(component_type.imports.len(), 1);
         assert_eq!(component_type.exports.len(), 1);
-        assert_eq!(component_type.verification_level(), VerificationLevel::Full;
+        assert_eq!(component_type.verification_level(), VerificationLevel::Full);
     }
 
     #[test]
     fn test_component_builder() {
         let export = Export {
-            name: "export".to_string(),
-            ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
+            name:  "export".to_string(),
+            ty:    ExternType::Function {
+                params:  Vec::new(),
+                results: Vec::new(),
+            },
             value: None,
         };
 
         let import = Import {
             namespace: "ns".to_string(),
-            name: "name".to_string(),
-            ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
+            name:      "name".to_string(),
+            ty:        ExternType::Function {
+                params:  Vec::new(),
+                results: Vec::new(),
+            },
         };
 
         let component = ComponentBuilder::new()
@@ -1106,7 +1226,7 @@ mod tests {
 
         assert_eq!(component.exports.len(), 1);
         assert_eq!(component.imports.len(), 1);
-        assert_eq!(component.verification_level, VerificationLevel::Full;
+        assert_eq!(component.verification_level, VerificationLevel::Full);
     }
 
     #[test]
@@ -1115,8 +1235,11 @@ mod tests {
 
         // Add an export
         let export = Export {
-            name: "export".to_string(),
-            ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
+            name:  "export".to_string(),
+            ty:    ExternType::Function {
+                params:  Vec::new(),
+                results: Vec::new(),
+            },
             value: None,
         };
         component.add_export(export).unwrap();
@@ -1124,34 +1247,41 @@ mod tests {
         // Add an import
         let import = Import {
             namespace: "ns".to_string(),
-            name: "name".to_string(),
-            ty: ExternType::Function { params: Vec::new(), results: Vec::new() },
+            name:      "name".to_string(),
+            ty:        ExternType::Function {
+                params:  Vec::new(),
+                results: Vec::new(),
+            },
         };
         component.add_import(import).unwrap();
 
         // Test getters
-        let found_export = component.get_export("export";
-        assert!(found_export.is_some();
-        assert_eq!(found_export.unwrap().name, "export";
+        let found_export = component.get_export("export");
+        assert!(found_export.is_some());
+        assert_eq!(found_export.unwrap().name, "export");
 
-        let found_import = component.get_import("ns", "name";
-        assert!(found_import.is_some();
-        assert_eq!(found_import.unwrap().name, "name";
+        let found_import = component.get_import("ns", "name");
+        assert!(found_import.is_some());
+        assert_eq!(found_import.unwrap().name, "name");
     }
 
     #[test]
     fn test_memory_value_operations() {
         // Create a memory type
-        let memory_type = MemoryType { minimum: 1, maximum: Some(2), shared: false };
+        let memory_type = MemoryType {
+            minimum: 1,
+            maximum: Some(2),
+            shared:  false,
+        };
 
         // Create a memory value
         let mut memory_value = MemoryValue::new(memory_type).unwrap();
 
         // Set a debug name
-        memory_value.set_debug_name("test_memory";
+        memory_value.set_debug_name("test_memory");
 
         // Check the debug name
-        assert_eq!(memory_value.debug_name().unwrap(), "test_memory";
+        assert_eq!(memory_value.debug_name().unwrap(), "test_memory");
 
         // Write some data
         let data = b"Hello, world!";
@@ -1161,14 +1291,14 @@ mod tests {
         let read_data = memory_value.read(0, data.len() as u32).unwrap();
 
         // Verify the data
-        assert_eq!(read_data, data;
+        assert_eq!(read_data, data);
 
         // Grow the memory
         let old_size = memory_value.grow(1).unwrap();
         assert_eq!(old_size, 1);
 
         // Check the new size
-        assert_eq!(memory_value.size(), 2;
+        assert_eq!(memory_value.size(), 2);
     }
 }
 
@@ -1177,7 +1307,7 @@ macro_rules! impl_basic_traits {
     ($type:ty, $default_val:expr) => {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-                0u32.update_checksum(checksum;
+                0u32.update_checksum(checksum);
             }
         }
 
@@ -1203,7 +1333,8 @@ macro_rules! impl_basic_traits {
 }
 
 // Direct trait implementations for external types
-// Note: These implementations assume the external types have appropriate characteristics
+// Note: These implementations assume the external types have appropriate
+// characteristics
 
 // Default implementations for complex types
 // Note: ComponentTypeDefinition is an external type from wrt_format::component
@@ -1218,21 +1349,19 @@ impl Default for ExternValue {
 impl Default for FunctionValue {
     fn default() -> Self {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect(".expect("Failed to allocate memory for FunctionValue::default"));")
+            .expect("Failed to allocate memory for FunctionValue::default");
         Self {
-            ty: FuncType::default(),
+            ty:          FuncType::default(),
             export_name: BoundedString::new_with_provider(provider)
                 .expect("Failed to create BoundedString for FunctionValue::default"),
         }
     }
 }
 
-
 impl Default for MemoryValue {
     fn default() -> Self {
-        Self::new(MemoryType::default()).unwrap_or_else(|_| {
-            panic!("Failed to allocate memory for MemoryValue::default")
-        })
+        Self::new(MemoryType::default())
+            .unwrap_or_else(|_| panic!("Failed to allocate memory for MemoryValue::default"))
     }
 }
 
@@ -1257,10 +1386,11 @@ impl Default for Limits {
 impl Default for TableValue {
     fn default() -> Self {
         let provider = safe_managed_alloc!(65536, CrateId::Component)
-            .expect(".expect("Failed to allocate memory for TableValue::default"));")
+            .expect("Failed to allocate memory for TableValue::default");
         Self {
-            ty: TableType::default(),
-            table: BoundedVec::new(provider).expect("Failed to create BoundedVec for TableValue::default"),
+            ty:    TableType::default(),
+            table: BoundedVec::new(provider)
+                .expect("Failed to create BoundedVec for TableValue::default"),
         }
     }
 }
@@ -1269,7 +1399,7 @@ impl Default for TableType {
     fn default() -> Self {
         Self {
             element_type: ValType::FuncRef,
-            limits: Limits::default(),
+            limits:       Limits::default(),
         }
     }
 }
@@ -1278,8 +1408,8 @@ impl Default for GlobalValue {
     fn default() -> Self {
         Self {
             global_type: GlobalType::default(),
-            value: Value::S32(0),
-            debug_name: None,
+            value:       Value::S32(0),
+            debug_name:  None,
         }
     }
 }
@@ -1293,7 +1423,6 @@ impl Default for GlobalType {
     }
 }
 
-
 impl Default for ValType {
     fn default() -> Self {
         Self::I32
@@ -1301,23 +1430,24 @@ impl Default for ValType {
 }
 
 // Apply macro to all types that need traits
-// Note: These types don't need basic traits for now, commenting out to fix compilation
-// impl_basic_traits!(ComponentTypeDefinition, ComponentTypeDefinition::default());
-// impl_basic_traits!(ExternValue, ExternValue::default());
-// impl_basic_traits!(MemoryValue, MemoryValue::default());
-// impl_basic_traits!(TableValue, TableValue::default());
-// impl_basic_traits!(GlobalValue, GlobalValue::default());
+// Note: These types don't need basic traits for now, commenting out to fix
+// compilation impl_basic_traits!(ComponentTypeDefinition,
+// ComponentTypeDefinition::default()); impl_basic_traits!(ExternValue,
+// ExternValue::default()); impl_basic_traits!(MemoryValue,
+// MemoryValue::default()); impl_basic_traits!(TableValue,
+// TableValue::default()); impl_basic_traits!(GlobalValue,
+// GlobalValue::default());
 
 // Try to implement traits for external types directly
 // This works only if the external types have the required traits
-use wrt_format::component::ComponentTypeDefinition as ExtComponentTypeDefinition;
 use wrt_decoder::component::ExternType as ExtExternType;
+use wrt_format::component::ComponentTypeDefinition as ExtComponentTypeDefinition;
 
 // Try to implement traits for external format ComponentTypeDefinition
 impl Checksummable for ExtComponentTypeDefinition {
     fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
         // Simple checksum based on type content
-        0u32.update_checksum(checksum;
+        0u32.update_checksum(checksum);
     }
 }
 
@@ -1344,7 +1474,7 @@ impl FromBytes for ExtComponentTypeDefinition {
 // Try to implement traits for external decoder ExternType
 impl Checksummable for ExtExternType {
     fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
-        0u32.update_checksum(checksum;
+        0u32.update_checksum(checksum);
     }
 }
 

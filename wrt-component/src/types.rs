@@ -2,20 +2,39 @@
 //!
 //! This module provides component model type definitions.
 
-use crate::prelude::*;
-
 #[cfg(all(feature = "std", feature = "safety-critical"))]
-use wrt_foundation::allocator::{WrtVec, CrateId};
-
-use wrt_foundation::{bounded::{BoundedVec, BoundedString}, prelude::*, traits::{Checksummable, ToBytes, FromBytes}};
-
-use crate::{
-    components::component::Component,
-    instantiation::{ModuleInstance, ResolvedExport, ResolvedImport, ResourceTable},
+use wrt_foundation::allocator::{
+    CrateId,
+    WrtVec,
+};
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    prelude::*,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
 };
 
 #[cfg(feature = "component-model-async")]
-use crate::async_::async_types::{StreamHandle, FutureHandle};
+use crate::async_::async_types::{
+    FutureHandle,
+    StreamHandle,
+};
+use crate::{
+    components::component::Component,
+    instantiation::{
+        ModuleInstance,
+        ResolvedExport,
+        ResolvedImport,
+        ResourceTable,
+    },
+    prelude::*,
+};
 
 // Fallback types when async features are not enabled
 #[cfg(not(feature = "component-model-async"))]
@@ -32,7 +51,7 @@ pub struct FutureHandle(pub u32);
 pub struct TaskId(pub u32);
 
 /// Canonical ComponentInstance definition for ASIL-D type safety
-/// 
+///
 /// This is the single source of truth for ComponentInstance across the codebase
 /// to ensure type consistency and prevent safety violations.
 ///
@@ -41,37 +60,39 @@ pub struct TaskId(pub u32);
 #[derive(Debug, Clone)]
 pub struct ComponentInstance {
     /// Unique instance ID
-    pub id: u32,
+    pub id:               u32,
     /// Reference to the component definition
-    pub component: Component,
+    pub component:        Component,
     /// Resolved imports for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub imports: WrtVec<ResolvedImport, {CrateId::Component as u8}, 256>,
+    pub imports:          WrtVec<ResolvedImport, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub imports: Vec<ResolvedImport>,
-    #[cfg(not(any(feature = "std", )))]
+    pub imports:          Vec<ResolvedImport>,
+    #[cfg(not(any(feature = "std",)))]
     pub imports: BoundedVec<ResolvedImport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resolved exports from this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub exports: WrtVec<ResolvedExport, {CrateId::Component as u8}, 256>,
+    pub exports:          WrtVec<ResolvedExport, { CrateId::Component as u8 }, 256>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub exports: Vec<ResolvedExport>,
-    #[cfg(not(any(feature = "std", )))]
+    pub exports:          Vec<ResolvedExport>,
+    #[cfg(not(any(feature = "std",)))]
     pub exports: BoundedVec<ResolvedExport, 256, crate::bounded_component_infra::ComponentProvider>,
     /// Resource tables for this instance
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub resource_tables: WrtVec<ResourceTable, {CrateId::Component as u8}, 16>,
+    pub resource_tables:  WrtVec<ResourceTable, { CrateId::Component as u8 }, 16>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
-    pub resource_tables: Vec<ResourceTable>,
-    #[cfg(not(any(feature = "std", )))]
-    pub resource_tables: BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>,
+    pub resource_tables:  Vec<ResourceTable>,
+    #[cfg(not(any(feature = "std",)))]
+    pub resource_tables:
+        BoundedVec<ResourceTable, 16, crate::bounded_component_infra::ComponentProvider>,
     /// Module instances embedded in this component
     #[cfg(all(feature = "std", feature = "safety-critical"))]
-    pub module_instances: WrtVec<ModuleInstance, {CrateId::Component as u8}, 64>,
+    pub module_instances: WrtVec<ModuleInstance, { CrateId::Component as u8 }, 64>,
     #[cfg(all(feature = "std", not(feature = "safety-critical")))]
     pub module_instances: Vec<ModuleInstance>,
-    #[cfg(not(any(feature = "std", )))]
-    pub module_instances: BoundedVec<ModuleInstance, 64, crate::bounded_component_infra::ComponentProvider>,
+    #[cfg(not(any(feature = "std",)))]
+    pub module_instances:
+        BoundedVec<ModuleInstance, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
 /// State of a component instance
@@ -155,7 +176,7 @@ pub enum ValType {
 pub struct Record {
     #[cfg(feature = "std")]
     pub fields: Vec<Field>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub fields: BoundedVec<Field, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
@@ -164,9 +185,9 @@ pub struct Record {
 pub struct Field {
     #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub name: BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
-    pub ty: ValType,
+    pub ty:   ValType,
 }
 
 /// Tuple type definition
@@ -174,7 +195,7 @@ pub struct Field {
 pub struct Tuple {
     #[cfg(feature = "std")]
     pub types: Vec<ValType>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub types: BoundedVec<ValType, 32, crate::bounded_component_infra::ComponentProvider>,
 }
 
@@ -183,7 +204,7 @@ pub struct Tuple {
 pub struct Variant {
     #[cfg(feature = "std")]
     pub cases: Vec<Case>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub cases: BoundedVec<Case, 64, crate::bounded_component_infra::ComponentProvider>,
 }
 
@@ -191,10 +212,10 @@ pub struct Variant {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Case {
     #[cfg(feature = "std")]
-    pub name: String,
-    #[cfg(not(any(feature = "std", )))]
-    pub name: BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
-    pub ty: Option<ValType>,
+    pub name:    String,
+    #[cfg(not(any(feature = "std",)))]
+    pub name:    BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+    pub ty:      Option<ValType>,
     pub refines: Option<u32>,
 }
 
@@ -203,14 +224,18 @@ pub struct Case {
 pub struct Enum {
     #[cfg(feature = "std")]
     pub cases: Vec<String>,
-    #[cfg(not(any(feature = "std", )))]
-    pub cases: BoundedVec<BoundedString<64, crate::bounded_component_infra::ComponentProvider>, 64, crate::bounded_component_infra::ComponentProvider>,
+    #[cfg(not(any(feature = "std",)))]
+    pub cases: BoundedVec<
+        BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+        64,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
 }
 
 /// Result type definition (renamed to avoid conflict with std::result::Result)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Result_ {
-    pub ok: Option<Box<ValType>>,
+    pub ok:  Option<Box<ValType>>,
     pub err: Option<Box<ValType>>,
 }
 
@@ -219,8 +244,12 @@ pub struct Result_ {
 pub struct Flags {
     #[cfg(feature = "std")]
     pub labels: Vec<String>,
-    #[cfg(not(any(feature = "std", )))]
-    pub labels: BoundedVec<BoundedString<64, crate::bounded_component_infra::ComponentProvider>, 64, crate::bounded_component_infra::ComponentProvider>,
+    #[cfg(not(any(feature = "std",)))]
+    pub labels: BoundedVec<
+        BoundedString<64, crate::bounded_component_infra::ComponentProvider>,
+        64,
+        crate::bounded_component_infra::ComponentProvider,
+    >,
 }
 
 /// Component model value
@@ -255,20 +284,23 @@ pub enum Value {
     /// List value
     #[cfg(feature = "std")]
     List(Vec<Value>),
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     List(BoundedVec<Value, 256, crate::bounded_component_infra::ComponentProvider>),
     /// Record value
     #[cfg(feature = "std")]
     Record(Vec<Value>),
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     Record(BoundedVec<Value, 64, crate::bounded_component_infra::ComponentProvider>),
     /// Tuple value
     #[cfg(feature = "std")]
     Tuple(Vec<Value>),
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     Tuple(BoundedVec<Value, 32, crate::bounded_component_infra::ComponentProvider>),
     /// Variant value
-    Variant { discriminant: u32, value: Option<Box<Value>> },
+    Variant {
+        discriminant: u32,
+        value:        Option<Box<Value>>,
+    },
     /// Enum value
     Enum(u32),
     /// Option value
@@ -296,13 +328,14 @@ impl Default for Value {
 impl wrt_foundation::traits::ToBytes for Value {
     fn serialized_size(&self) -> usize {
         match self {
-            Value::Bool(_) => 2, // discriminant + bool
-            Value::S8(_) | Value::U8(_) => 2, // discriminant + byte
-            Value::S16(_) | Value::U16(_) => 3, // discriminant + 2 bytes
+            Value::Bool(_) => 2,                                // discriminant + bool
+            Value::S8(_) | Value::U8(_) => 2,                   // discriminant + byte
+            Value::S16(_) | Value::U16(_) => 3,                 // discriminant + 2 bytes
             Value::S32(_) | Value::U32(_) | Value::F32(_) => 5, // discriminant + 4 bytes
             Value::S64(_) | Value::U64(_) | Value::F64(_) => 9, // discriminant + 8 bytes
-            Value::Char(_) => 5, // discriminant + 4 bytes
-            _ => 1, // just discriminant for complex types
+            Value::Char(_) => 5,                                // discriminant + 4 bytes
+            _ => 1,                                             /* just discriminant for complex
+                                                                  * types */
         }
     }
 
@@ -312,60 +345,60 @@ impl wrt_foundation::traits::ToBytes for Value {
         _provider: &PStream,
     ) -> wrt_foundation::Result<()> {
         use wrt_foundation::traits::WriteStream;
-        
+
         match self {
             Value::Bool(b) => {
                 writer.write_u8(0)?; // discriminant
                 writer.write_u8(if *b { 1 } else { 0 })?;
-            }
+            },
             Value::S8(v) => {
                 writer.write_u8(1)?;
                 writer.write_i8(*v)?;
-            }
+            },
             Value::U8(v) => {
                 writer.write_u8(2)?;
                 writer.write_u8(*v)?;
-            }
+            },
             Value::S16(v) => {
                 writer.write_u8(3)?;
                 writer.write_i16_le(*v)?;
-            }
+            },
             Value::U16(v) => {
                 writer.write_u8(4)?;
                 writer.write_u16_le(*v)?;
-            }
+            },
             Value::S32(v) => {
                 writer.write_u8(5)?;
                 writer.write_i32_le(*v)?;
-            }
+            },
             Value::U32(v) => {
                 writer.write_u8(6)?;
                 writer.write_u32_le(*v)?;
-            }
+            },
             Value::S64(v) => {
                 writer.write_u8(7)?;
                 writer.write_i64_le(*v)?;
-            }
+            },
             Value::U64(v) => {
                 writer.write_u8(8)?;
                 writer.write_u64_le(*v)?;
-            }
+            },
             Value::F32(v) => {
                 writer.write_u8(9)?;
                 writer.write_f32_le(*v)?;
-            }
+            },
             Value::F64(v) => {
                 writer.write_u8(10)?;
                 writer.write_f64_le(*v)?;
-            }
+            },
             Value::Char(c) => {
                 writer.write_u8(11)?;
                 writer.write_u32_le(*c as u32)?;
-            }
+            },
             // For complex types, just store the discriminant
             _ => {
                 writer.write_u8(255)?; // generic complex type discriminant
-            }
+            },
         }
         Ok(())
     }
@@ -377,54 +410,54 @@ impl wrt_foundation::traits::FromBytes for Value {
         _provider: &PStream,
     ) -> wrt_foundation::Result<Self> {
         use wrt_foundation::traits::ReadStream;
-        
+
         let discriminant = reader.read_u8()?;
-        
+
         match discriminant {
             0 => {
                 let val = reader.read_u8()?;
                 Ok(Value::Bool(val != 0))
-            }
+            },
             1 => {
                 let val = reader.read_i8()?;
                 Ok(Value::S8(val))
-            }
+            },
             2 => {
                 let val = reader.read_u8()?;
                 Ok(Value::U8(val))
-            }
+            },
             3 => {
                 let val = reader.read_i16_le()?;
                 Ok(Value::S16(val))
-            }
+            },
             4 => {
                 let val = reader.read_u16_le()?;
                 Ok(Value::U16(val))
-            }
+            },
             5 => {
                 let val = reader.read_i32_le()?;
                 Ok(Value::S32(val))
-            }
+            },
             6 => {
                 let val = reader.read_u32_le()?;
                 Ok(Value::U32(val))
-            }
+            },
             7 => {
                 let val = reader.read_i64_le()?;
                 Ok(Value::S64(val))
-            }
+            },
             8 => {
                 let val = reader.read_u64_le()?;
                 Ok(Value::U64(val))
-            }
+            },
             9 => {
                 let val = reader.read_f32_le()?;
                 Ok(Value::F32(val))
-            }
+            },
             10 => {
                 let val = reader.read_f64_le()?;
                 Ok(Value::F64(val))
-            }
+            },
             11 => {
                 let char_code = reader.read_u32_le()?;
                 if let Some(c) = char::from_u32(char_code) {
@@ -432,7 +465,7 @@ impl wrt_foundation::traits::FromBytes for Value {
                 } else {
                     Ok(Value::Char('\0'))
                 }
-            }
+            },
             _ => Ok(Value::Bool(false)), // default for complex/unknown types
         }
     }
@@ -457,8 +490,8 @@ impl wrt_foundation::traits::Checksummable for Value {
             Value::String(_) => 12u8,
             _ => 255u8,
         };
-        checksum.update(discriminant;
-        
+        checksum.update(discriminant);
+
         // For simplicity, just update with basic data
         match self {
             Value::Bool(b) => checksum.update(if *b { 1u8 } else { 0u8 }),
@@ -474,22 +507,22 @@ impl wrt_foundation::traits::Checksummable for Value {
             Value::F64(v) => checksum.update_slice(&v.to_bits().to_le_bytes()),
             Value::Char(c) => checksum.update_slice(&(*c as u32).to_le_bytes()),
             Value::String(s) => checksum.update_slice(s.as_bytes()),
-            _ => {} // Skip complex types for now
+            _ => {}, // Skip complex types for now
         }
     }
 }
 
 /// Component instance identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ComponentInstanceId(pub u32;
+pub struct ComponentInstanceId(pub u32);
 
 /// Type identifier for generative types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TypeId(pub u32;
+pub struct TypeId(pub u32);
 
 /// Resource identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ResourceId(pub u32;
+pub struct ResourceId(pub u32);
 
 /// Component error types
 #[derive(Debug, Clone, PartialEq)]
@@ -523,13 +556,21 @@ impl fmt::Display for ComponentError {
             ComponentError::TooManyTypeBounds => write!(f, "Too many type bounds"),
             ComponentError::ResourceHandleAlreadyExists => {
                 write!(f, "Resource handle already exists")
-            }
+            },
             ComponentError::InvalidTypeReference(type_id, target_type) => {
-                write!(f, "Invalid type reference from {:?} to {:?}", type_id, target_type)
-            }
+                write!(
+                    f,
+                    "Invalid type reference from {:?} to {:?}",
+                    type_id, target_type
+                )
+            },
             ComponentError::InvalidSubtypeRelation(sub_type, super_type) => {
-                write!(f, "Invalid subtype relation: {:?} <: {:?}", sub_type, super_type)
-            }
+                write!(
+                    f,
+                    "Invalid subtype relation: {:?} <: {:?}",
+                    sub_type, super_type
+                )
+            },
             ComponentError::InstantiationFailed => write!(f, "Component instantiation failed"),
             ComponentError::ResourceNotFound(handle) => write!(f, "Resource not found: {}", handle),
             ComponentError::TypeMismatch => write!(f, "Type mismatch"),
@@ -545,7 +586,10 @@ impl std::error::Error for ComponentError {}
 // Conversion to wrt_error::Error for unified error handling
 impl From<ComponentError> for wrt_error::Error {
     fn from(err: ComponentError) -> Self {
-        use wrt_error::{ErrorCategory, codes};
+        use wrt_error::{
+            codes,
+            ErrorCategory,
+        };
         match err {
             ComponentError::TooManyGenerativeTypes => Self::new(
                 ErrorCategory::ComponentRuntime,
@@ -602,7 +646,10 @@ impl From<ComponentError> for wrt_error::Error {
 }
 
 // Implement required traits for BoundedVec compatibility
-use wrt_foundation::traits::{WriteStream, ReadStream};
+use wrt_foundation::traits::{
+    ReadStream,
+    WriteStream,
+};
 
 // Macro to implement basic traits for complex types
 macro_rules! impl_basic_traits {
@@ -610,7 +657,7 @@ macro_rules! impl_basic_traits {
         impl Checksummable for $type {
             fn update_checksum(&self, checksum: &mut wrt_foundation::traits::Checksum) {
                 // Simple stub implementation
-                0u32.update_checksum(checksum;
+                0u32.update_checksum(checksum);
             }
         }
 
@@ -646,9 +693,12 @@ impl Default for Record {
     fn default() -> Self {
         Self {
             #[cfg(feature = "std")]
-            fields: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
-            fields: BoundedVec::new(crate::bounded_component_infra::ComponentProvider::default()).unwrap(),
+            fields:                                    Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            fields:                                    BoundedVec::new(
+                crate::bounded_component_infra::ComponentProvider::default(),
+            )
+            .unwrap(),
         }
     }
 }
@@ -658,7 +708,7 @@ impl Default for Field {
         Self {
             #[cfg(feature = "std")]
             name: String::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             name: BoundedString::new(crate::bounded_component_infra::ComponentProvider::default()),
             ty: ValType::default(),
         }
@@ -669,9 +719,12 @@ impl Default for Tuple {
     fn default() -> Self {
         Self {
             #[cfg(feature = "std")]
-            types: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
-            types: BoundedVec::new(crate::bounded_component_infra::ComponentProvider::default()).unwrap(),
+            types:                                    Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            types:                                    BoundedVec::new(
+                crate::bounded_component_infra::ComponentProvider::default(),
+            )
+            .unwrap(),
         }
     }
 }
@@ -680,9 +733,12 @@ impl Default for Variant {
     fn default() -> Self {
         Self {
             #[cfg(feature = "std")]
-            cases: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
-            cases: BoundedVec::new(crate::bounded_component_infra::ComponentProvider::default()).unwrap(),
+            cases:                                    Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            cases:                                    BoundedVec::new(
+                crate::bounded_component_infra::ComponentProvider::default(),
+            )
+            .unwrap(),
         }
     }
 }
@@ -692,7 +748,7 @@ impl Default for Case {
         Self {
             #[cfg(feature = "std")]
             name: String::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             name: BoundedString::new(crate::bounded_component_infra::ComponentProvider::default()),
             ty: None,
             refines: None,
@@ -707,4 +763,3 @@ impl_basic_traits!(Field, Field::default());
 impl_basic_traits!(Tuple, Tuple::default());
 impl_basic_traits!(Variant, Variant::default());
 impl_basic_traits!(Case, Case::default());
-

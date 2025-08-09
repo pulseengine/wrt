@@ -1,37 +1,53 @@
 //! Async types for WebAssembly Component Model
 //!
-//! This module implements the async types (stream, future, error-context) required
-//! by the Component Model MVP specification for concurrent operations.
+//! This module implements the async types (stream, future, error-context)
+//! required by the Component Model MVP specification for concurrent operations.
 
 #[cfg(not(feature = "std"))]
-use core::{fmt, mem};
+use core::{
+    fmt,
+    mem,
+};
 #[cfg(feature = "std")]
-use std::{fmt, mem};
-
+use std::{
+    boxed::Box,
+    string::String,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec::Vec};
-
-#[cfg(feature = "std")]
-use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
-
-#[cfg(not(feature = "std"))]
-use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString}, 
-    NoStdProvider,
-    safe_memory::NoStdProvider as _,
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
+use std::{
+    fmt,
+    mem,
 };
 
+use wrt_error::Result as WrtResult;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::ComponentValue;
+#[cfg(feature = "std")]
+use wrt_foundation::{
+    bounded::BoundedVec,
+    component_value::ComponentValue,
+    prelude::*,
+};
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider as _,
+    NoStdProvider,
+};
 
 #[cfg(not(feature = "std"))]
 // For no_std, use a simpler ComponentValue representation
 use crate::types::Value as ComponentValue;
-
-use crate::types::{ValType, Value};
-use wrt_error::Result as WrtResult;
+use crate::types::{
+    ValType,
+    Value,
+};
 
 /// Maximum number of pending values in a stream for no_std environments
 const MAX_STREAM_BUFFER: usize = 1024;
@@ -55,16 +71,16 @@ pub struct ErrorContextHandle(pub u32);
 #[derive(Debug, Clone)]
 pub struct Stream<T> {
     /// Stream handle
-    pub handle: StreamHandle,
+    pub handle:          StreamHandle,
     /// Element type
-    pub element_type: ValType,
+    pub element_type:    ValType,
     /// Stream state
-    pub state: StreamState,
+    pub state:           StreamState,
     /// Buffered values
     #[cfg(feature = "std")]
-    pub buffer: Vec<T>,
-    #[cfg(not(any(feature = "std", )))]
-    pub buffer: BoundedVec<T, MAX_STREAM_BUFFER, NoStdProvider<65536>>,
+    pub buffer:          Vec<T>,
+    #[cfg(not(any(feature = "std",)))]
+    pub buffer:          BoundedVec<T, MAX_STREAM_BUFFER, NoStdProvider<65536>>,
     /// Readable end closed
     pub readable_closed: bool,
     /// Writable end closed  
@@ -75,13 +91,13 @@ pub struct Stream<T> {
 #[derive(Debug, Clone)]
 pub struct Future<T> {
     /// Future handle
-    pub handle: FutureHandle,
+    pub handle:          FutureHandle,
     /// Value type
-    pub value_type: ValType,
+    pub value_type:      ValType,
     /// Future state
-    pub state: FutureState,
+    pub state:           FutureState,
     /// Stored value (once available)
-    pub value: Option<T>,
+    pub value:           Option<T>,
     /// Readable end closed
     pub readable_closed: bool,
     /// Writable end closed
@@ -92,19 +108,19 @@ pub struct Future<T> {
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
     /// Error context handle
-    pub handle: ErrorContextHandle,
+    pub handle:      ErrorContextHandle,
     /// Error message
     #[cfg(feature = "std")]
-    pub message: String,
-    #[cfg(not(any(feature = "std", )))]
-    pub message: BoundedString<1024, NoStdProvider<65536>>,
+    pub message:     String,
+    #[cfg(not(any(feature = "std",)))]
+    pub message:     BoundedString<1024, NoStdProvider<65536>>,
     /// Stack trace if available
     #[cfg(feature = "std")]
     pub stack_trace: Option<Vec<StackFrame>>,
-    #[cfg(not(any(feature = "std", )))]
+    #[cfg(not(any(feature = "std",)))]
     pub stack_trace: Option<BoundedVec<StackFrame, 32, NoStdProvider<65536>>>,
     /// Additional debug information
-    pub debug_info: DebugInfo,
+    pub debug_info:  DebugInfo,
 }
 
 /// Stream state
@@ -138,13 +154,13 @@ pub enum FutureState {
 pub struct StackFrame {
     /// Function name
     #[cfg(feature = "std")]
-    pub function: String,
-    #[cfg(not(any(feature = "std", )))]
-    pub function: BoundedString<128, NoStdProvider<65536>>,
+    pub function:           String,
+    #[cfg(not(any(feature = "std",)))]
+    pub function:           BoundedString<128, NoStdProvider<65536>>,
     /// Component instance
     pub component_instance: Option<u32>,
     /// Instruction offset
-    pub offset: Option<u32>,
+    pub offset:             Option<u32>,
 }
 
 /// Debug information for error contexts
@@ -153,12 +169,16 @@ pub struct DebugInfo {
     /// Component that created the error
     pub source_component: Option<u32>,
     /// Error code if available
-    pub error_code: Option<u32>,
+    pub error_code:       Option<u32>,
     /// Additional properties
     #[cfg(feature = "std")]
-    pub properties: Vec<(String, ComponentValue)>,
-    #[cfg(not(any(feature = "std", )))]
-    pub properties: BoundedVec<(BoundedString<64, NoStdProvider<65536>>, ComponentValue), 16, NoStdProvider<65536>>,
+    pub properties:       Vec<(String, ComponentValue)>,
+    #[cfg(not(any(feature = "std",)))]
+    pub properties: BoundedVec<
+        (BoundedString<64, NoStdProvider<65536>>, ComponentValue),
+        16,
+        NoStdProvider<65536>,
+    >,
 }
 
 /// Async read result
@@ -192,9 +212,9 @@ pub enum Waitable {
 pub struct WaitableSet {
     /// Waitables in the set
     #[cfg(feature = "std")]
-    pub waitables: Vec<Waitable>,
-    #[cfg(not(any(feature = "std", )))]
-    pub waitables: BoundedVec<Waitable, MAX_WAITABLES, NoStdProvider<65536>>,
+    pub waitables:  Vec<Waitable>,
+    #[cfg(not(any(feature = "std",)))]
+    pub waitables:  BoundedVec<Waitable, MAX_WAITABLES, NoStdProvider<65536>>,
     /// Ready mask (bit per waitable)
     pub ready_mask: u64,
 }
@@ -208,7 +228,7 @@ impl<T> Stream<T> {
             state: StreamState::Open,
             #[cfg(feature = "std")]
             buffer: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             buffer: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
@@ -271,7 +291,9 @@ impl<T> Future<T> {
     /// Set the future value
     pub fn set_value(&mut self, value: T) -> WrtResult<()> {
         if self.state != FutureState::Pending {
-            return Err(wrt_error::Error::runtime_execution_error("Future already completed"));
+            return Err(wrt_error::Error::runtime_execution_error(
+                "Future already completed",
+            ));
         }
         self.value = Some(value);
         self.state = FutureState::Ready;
@@ -290,13 +312,26 @@ impl ErrorContext {
     /// Create a new error context
     #[cfg(feature = "std")]
     pub fn new(handle: ErrorContextHandle, message: String) -> Self {
-        Self { handle, message, stack_trace: None, debug_info: DebugInfo::new().unwrap_or_default() }
+        Self {
+            handle,
+            message,
+            stack_trace: None,
+            debug_info: DebugInfo::new().unwrap_or_default(),
+        }
     }
 
     /// Create a new error context (no_std)
-    #[cfg(not(any(feature = "std", )))]
-    pub fn new(handle: ErrorContextHandle, message: BoundedString<1024, NoStdProvider<65536>>) -> WrtResult<Self> {
-        Ok(Self { handle, message, stack_trace: None, debug_info: DebugInfo::new()? })
+    #[cfg(not(any(feature = "std",)))]
+    pub fn new(
+        handle: ErrorContextHandle,
+        message: BoundedString<1024, NoStdProvider<65536>>,
+    ) -> WrtResult<Self> {
+        Ok(Self {
+            handle,
+            message,
+            stack_trace: None,
+            debug_info: DebugInfo::new()?,
+        })
     }
 
     /// Get debug string representation
@@ -312,7 +347,7 @@ impl ErrorContext {
             }
             BoundedString::from_str(&result).unwrap_or_default()
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
             // In no_std, just return the message
             self.message.clone()
@@ -328,7 +363,7 @@ impl DebugInfo {
             error_code: None,
             #[cfg(feature = "std")]
             properties: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             properties: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
@@ -343,11 +378,15 @@ impl DebugInfo {
     }
 
     /// Add a property (no_std)
-    #[cfg(not(any(feature = "std", )))]
-    pub fn add_property(&mut self, key: BoundedString<64, NoStdProvider<65536>>, value: ComponentValue) -> WrtResult<()> {
-        self.properties.push((key, value)).map_err(|_| {
-            wrt_error::Error::runtime_execution_error("Failed to add property")
-        })
+    #[cfg(not(any(feature = "std",)))]
+    pub fn add_property(
+        &mut self,
+        key: BoundedString<64, NoStdProvider<65536>>,
+        value: ComponentValue,
+    ) -> WrtResult<()> {
+        self.properties
+            .push((key, value))
+            .map_err(|_| wrt_error::Error::runtime_execution_error("Failed to add property"))
     }
 }
 
@@ -357,7 +396,7 @@ impl WaitableSet {
         Ok(Self {
             #[cfg(feature = "std")]
             waitables: Vec::new(),
-            #[cfg(not(any(feature = "std", )))]
+            #[cfg(not(any(feature = "std",)))]
             waitables: {
                 let provider = safe_managed_alloc!(65536, CrateId::Component)?;
                 BoundedVec::new(provider)?
@@ -370,18 +409,20 @@ impl WaitableSet {
     pub fn add(&mut self, waitable: Waitable) -> WrtResult<u32> {
         let index = self.waitables.len();
         if index >= 64 {
-            return Err(wrt_error::Error::runtime_execution_error("Too many waitables"));
+            return Err(wrt_error::Error::runtime_execution_error(
+                "Too many waitables",
+            ));
         }
 
         #[cfg(feature = "std")]
         {
             self.waitables.push(waitable);
         }
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         {
-            self.waitables.push(waitable).map_err(|_| {
-                wrt_error::Error::runtime_execution_error("Error occurred")
-            })?;
+            self.waitables
+                .push(waitable)
+                .map_err(|_| wrt_error::Error::runtime_execution_error("Error occurred"))?;
         }
 
         Ok(index as u32)
@@ -430,29 +471,25 @@ impl Default for FutureState {
 
 impl Default for DebugInfo {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            Self {
-                source_component: None,
-                error_code: None,
-                #[cfg(feature = "std")]
-                properties: Vec::new(),
-                #[cfg(not(any(feature = "std", )))]
-                properties: BoundedVec::new_with_default_provider().unwrap(),
-            }
+        Self::new().unwrap_or_else(|_| Self {
+            source_component: None,
+            error_code: None,
+            #[cfg(feature = "std")]
+            properties: Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            properties: BoundedVec::new_with_default_provider().unwrap(),
         })
     }
 }
 
 impl Default for WaitableSet {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            Self {
-                #[cfg(feature = "std")]
-                waitables: Vec::new(),
-                #[cfg(not(any(feature = "std", )))]
-                waitables: BoundedVec::new_with_default_provider().unwrap(),
-                ready_mask: 0,
-            }
+        Self::new().unwrap_or_else(|_| Self {
+            #[cfg(feature = "std")]
+            waitables: Vec::new(),
+            #[cfg(not(any(feature = "std",)))]
+            waitables: BoundedVec::new_with_default_provider().unwrap(),
+            ready_mask: 0,
         })
     }
 }
@@ -518,7 +555,9 @@ mod tests {
         assert!(future.is_writable());
         assert!(!future.is_readable());
 
-        future.set_value(Value::String(BoundedString::from_str("hello").unwrap())).unwrap();
+        future
+            .set_value(Value::String(BoundedString::from_str("hello").unwrap()))
+            .unwrap();
         assert!(future.is_readable());
         assert!(!future.is_writable());
         assert_eq!(future.state, FutureState::Ready);
@@ -537,11 +576,12 @@ mod tests {
     fn test_error_context() {
         #[cfg(feature = "std")]
         let error = ErrorContext::new(ErrorContextHandle(1), "Test error".to_string());
-        #[cfg(not(any(feature = "std", )))]
+        #[cfg(not(any(feature = "std",)))]
         let error = ErrorContext::new(
             ErrorContextHandle(1),
             BoundedString::from_str("Test error").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let debug_str = error.debug_string();
         assert!(debug_str.as_str().contains("Test error"));
@@ -571,6 +611,9 @@ mod tests {
     fn test_state_display() {
         assert_eq!(StreamState::Open.to_string(), "open");
         assert_eq!(FutureState::Pending.to_string(), "pending");
-        assert_eq!(Waitable::StreamReadable(StreamHandle(42)).to_string(), "stream-readable(42)");
+        assert_eq!(
+            Waitable::StreamReadable(StreamHandle(42)).to_string(),
+            "stream-readable(42)"
+        );
     }
 }
