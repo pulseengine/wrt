@@ -106,7 +106,7 @@ pub struct DebugInfoParser<'a> {
 impl<'a> DebugInfoParser<'a> {
     /// Create a new debug info parser
     pub fn new(debug_info: &'a [u8], debug_abbrev: &'a [u8], debug_str: Option<&'a [u8]>) -> Self {
-        let string_table = debug_str.map(|data| StringTable::new(data);
+        let string_table = debug_str.map(|data| StringTable::new(data));
 
         Self {
             debug_info,
@@ -122,7 +122,7 @@ impl<'a> DebugInfoParser<'a> {
 
     /// Parse the debug information
     pub fn parse(&mut self) -> Result<()> {
-        let mut cursor = DwarfCursor::new(self.debug_info;
+        let mut cursor = DwarfCursor::new(self.debug_info);
 
         while !cursor.is_at_end() {
             // Parse compilation unit header
@@ -143,12 +143,12 @@ impl<'a> DebugInfoParser<'a> {
     fn parse_cu_header(&self, cursor: &mut DwarfCursor) -> Result<CompilationUnitHeader> {
         let unit_length = cursor.read_u32()?;
         if unit_length == 0xffffffff {
-            return Err(Error::parse_error("64-bit DWARF not supported";
+            return Err(Error::parse_error("64-bit DWARF not supported"));
         }
 
         let version = cursor.read_u16()?;
         if version < 2 || version > 5 {
-            return Err(Error::parse_error("Unsupported DWARF version";
+            return Err(Error::parse_error("Unsupported DWARF version"));
         }
 
         let abbrev_offset = cursor.read_u32()?;
@@ -239,13 +239,13 @@ impl<'a> DebugInfoParser<'a> {
                         AttributeForm::Strp => {
                             let str_offset = cursor.read_u32()?;
                             if let Some(ref string_table) = self.string_table {
-                                func.name = string_table.get_string(str_offset;
+                                func.name = string_table.get_string(str_offset);
                             }
                         },
                         AttributeForm::String => {
                             // Inline string - read directly from debug_info
                             if let Ok(debug_str) = crate::strings::read_inline_string(cursor) {
-                                func.name = Some(debug_str;
+                                func.name = Some(debug_str);
                             }
                         },
                         _ => {
@@ -314,7 +314,7 @@ impl<'a> DebugInfoParser<'a> {
             }
 
             if params.count() > 0 {
-                func.parameters = Some(params;
+                func.parameters = Some(params);
             }
         }
 
@@ -394,11 +394,11 @@ impl<'a> DebugInfoParser<'a> {
             },
             AttributeForm::Indirect => {
                 let actual_form = cursor.read_uleb128()? as u16;
-                let form = AttributeForm::from_u16(actual_form;
+                let form = AttributeForm::from_u16(actual_form);
                 self.skip_attribute_value(cursor, &form, header)?;
             },
             AttributeForm::Unknown(_) => {
-                return Err(Error::parse_error("Unknown attribute form";
+                return Err(Error::parse_error("Unknown attribute form"));
             },
         }
         Ok(())
@@ -476,12 +476,12 @@ impl<'a> DebugInfoParser<'a> {
                     AttributeForm::Strp => {
                         let str_offset = cursor.read_u32()?;
                         if let Some(ref string_table) = self.string_table {
-                            param.name = string_table.get_string(str_offset;
+                            param.name = string_table.get_string(str_offset);
                         }
                     },
                     AttributeForm::String => {
                         if let Ok(debug_str) = crate::strings::read_inline_string(cursor) {
-                            param.name = Some(debug_str;
+                            param.name = Some(debug_str);
                         }
                     },
                     _ => {

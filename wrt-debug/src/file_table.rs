@@ -1,3 +1,4 @@
+use wrt_error::Result;
 use wrt_foundation::{
     bounded::{
         BoundedVec,
@@ -7,7 +8,6 @@ use wrt_foundation::{
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     BoundedCapacity,
-    Result,
 };
 
 /// File table support for resolving file indices to paths
@@ -52,10 +52,10 @@ impl<'a> Eq for FileEntry<'a> {}
 
 impl<'a> wrt_foundation::traits::Checksummable for FileEntry<'a> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.path.update_checksum(checksum;
-        checksum.update_slice(&self.dir_index.to_le_bytes);
-        checksum.update_slice(&self.mod_time.to_le_bytes);
-        checksum.update_slice(&self.size.to_le_bytes);
+        self.path.update_checksum(checksum);
+        checksum.update_slice(&self.dir_index.to_le_bytes());
+        checksum.update_slice(&self.mod_time.to_le_bytes());
+        checksum.update_slice(&self.size.to_le_bytes());
     }
 }
 
@@ -235,7 +235,7 @@ mod tests {
     fn test_file_table() {
         // Create mock string data
         let string_data = b"\0src\0lib\0main.rs\0utils.rs\0tests\0";
-        let string_table = StringTable::new(string_data;
+        let string_table = StringTable::new(string_data);
 
         let mut file_table = FileTable::new();
 
@@ -244,9 +244,9 @@ mod tests {
         let lib_dir = string_table.get_string(5).unwrap();
         let tests_dir = string_table.get_string(25).unwrap();
 
-        assert_eq!(file_table.add_directory(src_dir), Ok(1;
-        assert_eq!(file_table.add_directory(lib_dir), Ok(2;
-        assert_eq!(file_table.add_directory(tests_dir), Ok(3;
+        assert_eq!(file_table.add_directory(src_dir), Ok(1));
+        assert_eq!(file_table.add_directory(lib_dir), Ok(2));
+        assert_eq!(file_table.add_directory(tests_dir), Ok(3));
 
         // Add files
         let main_rs = FileEntry {
@@ -263,27 +263,27 @@ mod tests {
             size:      0,
         };
 
-        assert_eq!(file_table.add_file(main_rs), Ok(1;
-        assert_eq!(file_table.add_file(utils_rs), Ok(2;
+        assert_eq!(file_table.add_file(main_rs), Ok(1));
+        assert_eq!(file_table.add_file(utils_rs), Ok(2));
 
         // Test retrieval
-        assert_eq!(file_table.file_count(), 2;
-        assert_eq!(file_table.directory_count(), 3;
+        assert_eq!(file_table.file_count(), 2);
+        assert_eq!(file_table.directory_count(), 3);
 
         // Test full path resolution
         let path1 = file_table.get_full_path(1).unwrap();
-        assert_eq!(path1.filename(), "main.rs";
-        assert_eq!(path1.directory.unwrap().as_str(), "src";
+        assert_eq!(path1.filename(), "main.rs");
+        assert_eq!(path1.directory.unwrap().as_str(), "src");
 
         let path2 = file_table.get_full_path(2).unwrap();
-        assert_eq!(path2.filename(), "utils.rs";
-        assert_eq!(path2.directory.unwrap().as_str(), "src";
+        assert_eq!(path2.filename(), "utils.rs");
+        assert_eq!(path2.directory.unwrap().as_str(), "src");
     }
 
     #[test]
     fn test_file_path_display() {
         let string_data = b"\0src\0main.rs\0";
-        let string_table = StringTable::new(string_data;
+        let string_table = StringTable::new(string_data);
 
         let path = FilePath {
             directory: Some(string_table.get_string(1).unwrap()),
@@ -292,11 +292,11 @@ mod tests {
 
         let mut output = String::new();
         path.display(|s| {
-            output.push_str(s;
+            output.push_str(s);
             Ok(())
         })
         .unwrap();
 
-        assert_eq!(output, "src/main.rs";
+        assert_eq!(output, "src/main.rs");
     }
 }

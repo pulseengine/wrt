@@ -43,7 +43,7 @@ impl<'a> StackTrace<'a> {
         if self.frame_count >= MAX_STACK_FRAMES {
             return Err();
         }
-        self.frames[self.frame_count] = Some(frame;
+        self.frames[self.frame_count] = Some(frame);
         self.frame_count += 1;
         Ok(())
     }
@@ -135,10 +135,10 @@ impl<'a> StackTraceBuilder<'a> {
         let mut trace = StackTrace::new();
 
         // Get function info
-        let function = self.debug_info.find_function_info(pc;
+        let function = self.debug_info.find_function_info(pc);
 
         // Get line info (using immutable reference)
-        let line_info = self.debug_info.find_line_info(pc).ok().flatten);
+        let line_info = self.debug_info.find_line_info(pc).ok().flatten();
 
         // Add current frame
         let frame = StackFrame {
@@ -247,19 +247,19 @@ mod tests {
         let file_table = crate::FileTable::new();
         trace
             .display(&file_table, |s| {
-                output.push_str(s;
+                output.push_str(s);
                 Ok(())
             })
             .unwrap();
 
-        assert!(output.contains("#0 0x00001000");
+        assert!(output.contains("#0 0x00001000"));
     }
 
     #[test]
     fn test_hex_formatting() {
         let mut buf = [0u8; 8];
-        assert_eq!(format_hex_u32(0x1234ABCD, &mut buf), "1234abcd";
-        assert_eq!(format_hex_u32(0, &mut buf), "00000000";
-        assert_eq!(format_hex_u32(0xFF, &mut buf), "000000ff";
+        assert_eq!(format_hex_u32(0x1234ABCD, &mut buf), "1234abcd");
+        assert_eq!(format_hex_u32(0, &mut buf), "00000000");
+        assert_eq!(format_hex_u32(0xFF, &mut buf), "000000ff");
     }
 }

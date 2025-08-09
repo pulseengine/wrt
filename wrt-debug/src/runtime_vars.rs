@@ -110,8 +110,8 @@ impl<'a> VariableInspector<'a> {
                 let size = size_for_type(&var.var_type) as usize;
                 memory.read_bytes(*addr, size).map(|data| {
                     let mut bytes = [0u8; 8];
-                    let copy_size = size.min(8;
-                    bytes[0..copy_size].copy_from_slice(&data[0..copy_size];
+                    let copy_size = size.min(8);
+                    bytes[0..copy_size].copy_from_slice(&data[0..copy_size]);
                     VariableValue {
                         bytes,
                         size: size as u8,
@@ -127,8 +127,8 @@ impl<'a> VariableInspector<'a> {
                     let size = size_for_type(&var.var_type) as usize;
                     memory.read_bytes(addr, size).map(|data| {
                         let mut bytes = [0u8; 8];
-                        let copy_size = size.min(8;
-                        bytes[0..copy_size].copy_from_slice(&data[0..copy_size];
+                        let copy_size = size.min(8);
+                        bytes[0..copy_size].copy_from_slice(&data[0..copy_size]);
                         VariableValue {
                             bytes,
                             size: size as u8,
@@ -155,10 +155,10 @@ impl<'a> VariableInspector<'a> {
         memory: &dyn DebugMemory,
     ) -> BoundedVec<LiveVariable<'a>, MAX_DWARF_FILE_TABLE, crate::bounded_debug_infra::DebugProvider>
     {
-        let mut live_vars = crate::bounded_debug_infra::create_debug_vec);
+        let mut live_vars = crate::bounded_debug_infra::create_debug_vec();
 
         for var_def in self.find_variables_at_pc(pc) {
-            let value = self.read_variable(var_def, state, memory;
+            let value = self.read_variable(var_def, state, memory);
 
             let live_var = LiveVariable {
                 name: var_def.name.clone(),
@@ -233,7 +233,7 @@ impl<'a> ValueDisplay<'a> {
                 if let Some(val) = self.value.as_f64() {
                     // Simplified float display
                     writer("<f64:")?;
-                    let bits = val.to_bits);
+                    let bits = val.to_bits();
                     let mut buf = [0u8; 16];
                     writer(format_hex_u64(bits, &mut buf))?;
                     writer(">")?;
@@ -309,7 +309,7 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
     core::str::from_utf8(&buf[i..]).unwrap_or("?")
 }
 
-fn format_hex_u8(n: u8, buf: &mut [u8); 2]) -> &str {
+fn format_hex_u8(n: u8, buf: &mut [u8; 2]) -> &str {
     let high = (n >> 4) & 0xF;
     let low = n & 0xF;
 
@@ -354,27 +354,27 @@ mod tests {
         let mut output = String::new();
         ValueDisplay { value: &value }
             .display(|s| {
-                output.push_str(s;
+                output.push_str(s);
                 Ok(())
             })
             .unwrap();
 
-        assert_eq!(output, "42";
+        assert_eq!(output, "42");
 
         // Test boolean formatting
         value.var_type = BasicType::Bool;
         value.size = 1;
         value.bytes[0] = 1;
 
-        output.clear);
+        output.clear();
         ValueDisplay { value: &value }
             .display(|s| {
-                output.push_str(s;
+                output.push_str(s);
                 Ok(())
             })
             .unwrap();
 
-        assert_eq!(output, "true";
+        assert_eq!(output, "true");
     }
 
     #[test]

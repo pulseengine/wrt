@@ -89,7 +89,7 @@ impl<'a> DwarfCursor<'a> {
         if self.pos + 2 > self.data.len() {
             return Err(Error::parse_error("Unexpected end of DWARF data"));
         }
-        let value = u16::from_le_bytes([self.data[self.pos], self.data[self.pos + 1]];
+        let value = u16::from_le_bytes([self.data[self.pos], self.data[self.pos + 1]]);
         self.pos += 2;
         Ok(value)
     }
@@ -104,7 +104,7 @@ impl<'a> DwarfCursor<'a> {
             self.data[self.pos + 1],
             self.data[self.pos + 2],
             self.data[self.pos + 3],
-        ];
+        ]);
         self.pos += 4;
         Ok(value)
     }
@@ -123,7 +123,7 @@ impl<'a> DwarfCursor<'a> {
             self.data[self.pos + 5],
             self.data[self.pos + 6],
             self.data[self.pos + 7],
-        ];
+        ]);
         self.pos += 8;
         Ok(value)
     }
@@ -131,7 +131,7 @@ impl<'a> DwarfCursor<'a> {
     /// Skip a number of bytes
     pub fn skip(&mut self, count: usize) -> Result<()> {
         if self.pos + count > self.data.len() {
-            return Err(Error::parse_error("Skip beyond DWARF data bounds";
+            return Err(Error::parse_error("Skip beyond DWARF data bounds"));
         }
         self.pos += count;
         Ok(())
@@ -140,7 +140,7 @@ impl<'a> DwarfCursor<'a> {
     /// Read a slice of bytes
     pub fn read_bytes(&mut self, count: usize) -> Result<&'a [u8]> {
         if self.pos + count > self.data.len() {
-            return Err(Error::parse_error("Read beyond DWARF data bounds";
+            return Err(Error::parse_error("Read beyond DWARF data bounds"));
         }
         let slice = &self.data[self.pos..self.pos + count];
         self.pos += count;
@@ -150,7 +150,7 @@ impl<'a> DwarfCursor<'a> {
     /// Peek at the next byte without advancing
     pub fn peek_u8(&self) -> Result<u8> {
         if self.pos >= self.data.len() {
-            return Err(Error::parse_error("Peek beyond DWARF data bounds";
+            return Err(Error::parse_error("Peek beyond DWARF data bounds"));
         }
         Ok(self.data[self.pos])
     }

@@ -142,16 +142,16 @@ impl<'a> Eq for Parameter<'a> {}
 impl<'a> wrt_foundation::traits::Checksummable for Parameter<'a> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         if let Some(ref name) = self.name {
-            checksum.update(1;
-            name.update_checksum(checksum;
+            checksum.update(1);
+            name.update_checksum(checksum);
         } else {
-            checksum.update(0;
+            checksum.update(0);
         }
         checksum.update(self.param_type.to_u8);
         checksum.update_slice(&self.file_index.to_le_bytes);
         checksum.update_slice(&self.line.to_le_bytes);
         checksum.update_slice(&self.position.to_le_bytes);
-        checksum.update(self.is_variadic as u8;
+        checksum.update(self.is_variadic as u8);
     }
 }
 
@@ -222,7 +222,7 @@ impl<'a> ParameterList<'a> {
                 let provider = safe_managed_alloc!({ MAX_DWARF_ABBREV_CACHE * 64 }, CrateId::Debug)
                     .unwrap_or_else(|_| {
                         NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 64 }>::default()
-                    };
+                    });
                 BoundedVec::new(provider).expect("Failed to create parameters BoundedVec")
             },
         }
@@ -339,10 +339,10 @@ impl<'a> Eq for InlinedFunction<'a> {}
 impl<'a> wrt_foundation::traits::Checksummable for InlinedFunction<'a> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         if let Some(ref name) = self.name {
-            checksum.update(1;
-            name.update_checksum(checksum;
+            checksum.update(1);
+            name.update_checksum(checksum);
         } else {
-            checksum.update(0;
+            checksum.update(0);
         }
         checksum.update_slice(&self.abstract_origin.to_le_bytes);
         checksum.update_slice(&self.low_pc.to_le_bytes);
@@ -350,7 +350,7 @@ impl<'a> wrt_foundation::traits::Checksummable for InlinedFunction<'a> {
         checksum.update_slice(&self.call_file.to_le_bytes);
         checksum.update_slice(&self.call_line.to_le_bytes);
         checksum.update_slice(&self.call_column.to_le_bytes);
-        checksum.update(self.depth;
+        checksum.update(self.depth);
     }
 }
 
@@ -459,18 +459,18 @@ mod tests {
 
     #[test]
     fn test_basic_type_parsing() {
-        assert_eq!(BasicType::from_encoding(0x02, 1), BasicType::Bool;
-        assert_eq!(BasicType::from_encoding(0x05, 4), BasicType::SignedInt(4;
-        assert_eq!(BasicType::from_encoding(0x07, 8), BasicType::UnsignedInt(8;
-        assert_eq!(BasicType::from_encoding(0x04, 4), BasicType::Float(4;
+        assert_eq!(BasicType::from_encoding(0x02, 1), BasicType::Bool);
+        assert_eq!(BasicType::from_encoding(0x05, 4), BasicType::SignedInt(4));
+        assert_eq!(BasicType::from_encoding(0x07, 8), BasicType::UnsignedInt(8));
+        assert_eq!(BasicType::from_encoding(0x04, 4), BasicType::Float(4));
     }
 
     #[test]
     fn test_type_names() {
-        assert_eq!(BasicType::SignedInt(4).type_name(), "i32";
-        assert_eq!(BasicType::UnsignedInt(8).type_name(), "u64";
-        assert_eq!(BasicType::Float(4).type_name(), "f32";
-        assert_eq!(BasicType::Bool.type_name(), "bool";
+        assert_eq!(BasicType::SignedInt(4).type_name(), "i32");
+        assert_eq!(BasicType::UnsignedInt(8).type_name(), "u64");
+        assert_eq!(BasicType::Float(4).type_name(), "f32");
+        assert_eq!(BasicType::Bool.type_name(), "bool");
     }
 
     #[test]
@@ -502,12 +502,12 @@ mod tests {
         let mut output = String::new();
         params
             .display(|s| {
-                output.push_str(s;
+                output.push_str(s);
                 Ok(())
             })
             .unwrap();
 
-        assert_eq!(output, "(i32, ptr)";
+        assert_eq!(output, "(i32, ptr)");
     }
 
     #[test]
@@ -528,11 +528,11 @@ mod tests {
         inlined.add(func).unwrap();
 
         // Test PC lookup
-        assert!(inlined.has_inlined_at(0x1050);
-        assert!(!inlined.has_inlined_at(0x2000);
+        assert!(inlined.has_inlined_at(0x1050));
+        assert!(!inlined.has_inlined_at(0x2000));
 
         let found: Vec<_> = inlined.find_at_pc(0x1050).collect();
         assert_eq!(found.len(), 1);
-        assert_eq!(found[0].call_line, 42;
+        assert_eq!(found[0].call_line, 42);
     }
 }

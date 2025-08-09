@@ -31,11 +31,9 @@ use wrt_error::{
     codes,
     Error,
     ErrorCategory,
+    Result,
 };
-use wrt_foundation::{
-    CrateId,
-    Result as WrtResult,
-};
+use wrt_foundation::budget_aware_provider::CrateId;
 
 /// Real-time monitoring configuration
 #[derive(Debug, Clone)]

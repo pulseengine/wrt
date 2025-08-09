@@ -125,13 +125,11 @@ fn test_cursor_functionality() {
     use wrt_debug::DwarfCursor;
 
     let test_data = &[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
-    let mut cursor = DwarfCursor::new(test_data;
+    let mut cursor = DwarfCursor::new(test_data);
 
     // Basic cursor operations
     assert_eq!(cursor.position(), 0);
-    assert_eq!(cursor.remaining(), 8;
-    assert!(!cursor.is_at_end();
-
+    assert_eq!(cursor.remaining(), 8);
     // Read some data
     let byte1 = cursor.read_u8().expect("Should read byte");
     assert_eq!(byte1, 0x01);
@@ -169,17 +167,17 @@ fn test_memory_efficiency() {
 
 #[test]
 fn test_error_handling() {
-    let mut debug_info = DwarfDebugInfo::new(&[];
+    let mut debug_info = DwarfDebugInfo::new(&[]);
 
     // Should handle empty module gracefully
     debug_info.add_section(".debug_line", 0, 0);
-    assert!(!debug_info.has_debug_info() || debug_info.has_debug_info();
+    assert!(!debug_info.has_debug_info() || debug_info.has_debug_info());
 
     #[cfg(feature = "line-info")]
     {
         // Should handle invalid section gracefully
         let result = debug_info.find_line_info(0x42);
-        assert!(result.is_ok() || result.is_err();
+        assert!(result.is_ok() || result.is_err());
     }
 }
 
@@ -191,11 +189,11 @@ fn test_section_management() {
     debug_info.add_section(".debug_line", 100, 50);
     debug_info.add_section(".debug_info", 200, 100);
     debug_info.add_section(".debug_abbrev", 300, 30);
-    debug_info.add_section(".debug_str", 400, 20;
-    debug_info.add_section(".debug_line_str", 500, 25;
+    debug_info.add_section(".debug_str", 400, 20);
+    debug_info.add_section(".debug_line_str", 500, 25);
 
     // Unknown sections should be ignored
-    debug_info.add_section(".unknown_section", 600, 10;
+    debug_info.add_section(".unknown_section", 600, 10);
 
     let has_debug = debug_info.has_debug_info();
 

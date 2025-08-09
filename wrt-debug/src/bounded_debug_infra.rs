@@ -13,12 +13,14 @@ use core::{
     default::Default,
 };
 
+use wrt_error::Result;
 use wrt_foundation::{
     bounded::{
         BoundedString,
         BoundedVec,
     },
     bounded_collections::BoundedMap as BoundedHashMap,
+    budget_aware_provider::CrateId,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
     traits::{
@@ -26,8 +28,6 @@ use wrt_foundation::{
         FromBytes,
         ToBytes,
     },
-    CrateId,
-    Result as WrtResult,
 };
 
 /// Maximum stack trace depth
@@ -67,14 +67,14 @@ pub const DEBUG_PROVIDER_SIZE: usize = 32768;
 pub type DebugProvider = NoStdProvider<DEBUG_PROVIDER_SIZE>;
 
 /// Create a debug-specific string type
-pub fn create_debug_string(s: &str) -> WrtResult<BoundedString<MAX_FILE_PATH_LEN, DebugProvider>> {
+pub fn create_debug_string(s: &str) -> Result<BoundedString<MAX_FILE_PATH_LEN, DebugProvider>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     BoundedString::from_str(s, guard.clone())
         .map_err(|_| wrt_error::Error::memory_error("Failed to create debug string"))
 }
 
 /// Create a debug-specific vector
-pub fn create_debug_vec<T, const N: usize>() -> WrtResult<BoundedVec<T, N, DebugProvider>>
+pub fn create_debug_vec<T, const N: usize>() -> Result<BoundedVec<T, N, DebugProvider>>
 where
     T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
