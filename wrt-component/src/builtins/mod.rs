@@ -4,32 +4,43 @@
 // Component Model built-ins, including resource handling, async operations,
 // error contexts, and threading.
 
-#[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    sync::{Arc, Mutex},
-    vec::Vec,
-};
-
 #[cfg(not(feature = "std"))]
 use alloc::{
     boxed::Box,
     sync::Arc,
     vec::Vec,
 };
+#[cfg(feature = "std")]
+use std::{
+    boxed::Box,
+    sync::{
+        Arc,
+        Mutex,
+    },
+    vec::Vec,
+};
 
+use wrt_error::{
+    Error,
+    Result,
+};
+#[cfg(feature = "std")]
+use wrt_foundation::builtin::BuiltinType;
+#[cfg(not(feature = "std"))]
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    safe_memory::NoStdProvider,
+};
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
 
-#[cfg(not(feature = "std"))]
-use wrt_foundation::{bounded::{BoundedVec, BoundedString}, safe_memory::NoStdProvider};
-
-use wrt_error::{Error, Result};
-use crate::prelude::*;
-#[cfg(feature = "std")]
-use wrt_foundation::builtin::BuiltinType;
-use crate::prelude::WrtComponentValue;
-
+use crate::prelude::{
+    WrtComponentValue,
+    *,
+};
 #[cfg(not(feature = "std"))]
 use crate::types::Value;
 
@@ -56,15 +67,16 @@ pub enum BuiltinType {
     AsyncWait,
 }
 // Commented out until wrt_intercept is properly available
-// use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
+// use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor,
+// InterceptContext};
 
 // No_std stubs for interception (simplified)
 #[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct InterceptContext {
     component_name: BoundedString<128, NoStdProvider<65536>>,
-    builtin_type: BuiltinType,
-    host_id: BoundedString<128, NoStdProvider<65536>>,
+    builtin_type:   BuiltinType,
+    host_id:        BoundedString<128, NoStdProvider<65536>>,
 }
 
 #[cfg(not(feature = "std"))]
@@ -88,12 +100,20 @@ pub enum BeforeBuiltinResult {
 
 #[cfg(not(feature = "std"))]
 pub trait BuiltinInterceptor {
-    fn before_builtin(&self, context: &InterceptContext, args: &[WrtComponentValue]) -> Result<BeforeBuiltinResult>;
+    fn before_builtin(
+        &self,
+        context: &InterceptContext,
+        args: &[WrtComponentValue],
+    ) -> Result<BeforeBuiltinResult>;
 }
 
 // Import the real types for std
 #[cfg(feature = "std")]
-use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
+use wrt_intercept::{
+    BeforeBuiltinResult,
+    BuiltinInterceptor,
+    InterceptContext,
+};
 
 use crate::resources::ResourceManager;
 
@@ -150,7 +170,10 @@ pub trait BuiltinHandler {
     fn builtin_type(&self) -> BuiltinType;
 
     /// Execute the built-in function with the given arguments (no_std version)
-    fn execute(&self, args: &[WrtComponentValue]) -> core::result::Result<BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>>;
+    fn execute(
+        &self,
+        args: &[WrtComponentValue],
+    ) -> core::result::Result<BoundedVec<WrtComponentValue, 16, NoStdProvider<65536>>>;
 
     /// Clone this handler
     fn clone_handler(&self) -> Box<dyn BuiltinHandler>;
@@ -167,19 +190,19 @@ pub type FunctionExecutor =
 /// to the appropriate implementation.
 pub struct BuiltinRegistry {
     /// Registered handlers for built-in functions
-    handlers: Vec<Box<dyn BuiltinHandler>>,
+    handlers:          Vec<Box<dyn BuiltinHandler>>,
     /// Optional interceptor for built-in calls
     // interceptor: Option<Arc<dyn BuiltinInterceptor>>,
     /// Component name for context
-    component_name: String,
+    component_name:    String,
     /// Host ID for context
-    host_id: String,
+    host_id:           String,
     /// Store for async values
     #[cfg(feature = "component-model-async")]
-    async_store: Arc<Mutex<async_ops::AsyncValueStore>>,
+    async_store:       Arc<Mutex<async_ops::AsyncValueStore>>,
     /// Store for error contexts
     #[cfg(feature = "component-model-error-context")]
-    error_store: Arc<Mutex<error::ErrorContextStore>>,
+    error_store:       Arc<Mutex<error::ErrorContextStore>>,
     /// Function executor for threading handlers
     #[cfg(feature = "component-model-threading")]
     function_executor: FunctionExecutor,
@@ -211,7 +234,9 @@ impl BuiltinRegistry {
         // Define a default function executor for threading that just returns an error
         #[cfg(feature = "component-model-threading")]
         let function_executor: FunctionExecutor = Arc::new(|function_id, _args| {
-            Err(Error::runtime_execution_error("Function executor not configured"))
+            Err(Error::runtime_execution_error(
+                "Function executor not configured",
+            ))
         });
 
         let mut registry = Self {
@@ -397,7 +422,9 @@ mod tests {
         }
 
         fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-            Box::new(TestHandler { builtin_type: self.builtin_type })
+            Box::new(TestHandler {
+                builtin_type: self.builtin_type,
+            })
         }
     }
 
@@ -413,8 +440,9 @@ mod tests {
         assert!(!registry.supports_builtin(BuiltinType::ResourceCreate));
 
         // Register a handler
-        registry
-            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate }));
+        registry.register_handler(Box::new(TestHandler {
+            builtin_type: BuiltinType::ResourceCreate,
+        }));
 
         // Now it should be supported
         assert!(registry.supports_builtin(BuiltinType::ResourceCreate));
@@ -430,8 +458,9 @@ mod tests {
         );
 
         // Register handlers
-        registry
-            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate }));
+        registry.register_handler(Box::new(TestHandler {
+            builtin_type: BuiltinType::ResourceCreate,
+        }));
 
         // Call the built-in
         let args = vec![WrtComponentValue::S32(42)];
@@ -455,8 +484,9 @@ mod tests {
         );
 
         // Register a handler
-        registry
-            .register_handler(Box::new(TestHandler { builtin_type: BuiltinType::ResourceCreate }));
+        registry.register_handler(Box::new(TestHandler {
+            builtin_type: BuiltinType::ResourceCreate,
+        }));
 
         // Clone the registry
         let cloned = registry.clone();
@@ -517,7 +547,7 @@ mod tests {
                 let get_result =
                     registry.call(BuiltinType::AsyncGet, &[WrtComponentValue::U32(*id)]).unwrap();
                 assert_eq!(get_result, vec![WrtComponentValue::U32(42)]);
-            }
+            },
             _ => panic!("Expected U32 result"),
         }
     }

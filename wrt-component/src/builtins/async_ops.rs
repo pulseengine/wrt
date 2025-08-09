@@ -6,25 +6,37 @@
 // - async.poll: Poll an async value for completion
 // - async.wait: Wait for an async value to complete
 
+#[cfg(all(feature = "component-model-async", not(feature = "std")))]
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
 #[cfg(all(feature = "component-model-async", feature = "std"))]
 use std::{
     boxed::Box,
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
     vec::Vec,
 };
 
-#[cfg(all(feature = "component-model-async", not(feature = "std")))]
-use alloc::{boxed::Box, vec::Vec};
-
-#[cfg(all(feature = "component-model-async", not(feature = "std")))]
-use wrt_foundation::{bounded::BoundedVec, safe_memory::NoStdProvider};
-
 #[cfg(feature = "component-model-async")]
-use wrt_error::{Error, Result};
-
+use wrt_error::{
+    Error,
+    Result,
+};
+#[cfg(all(feature = "component-model-async", not(feature = "std")))]
+use wrt_foundation::{
+    bounded::BoundedVec,
+    safe_memory::NoStdProvider,
+};
 #[cfg(all(feature = "component-model-async", feature = "std"))]
-use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
+use wrt_foundation::{
+    builtin::BuiltinType,
+    component_value::ComponentValue,
+};
 
 #[cfg(all(feature = "component-model-async", not(feature = "std")))]
 use crate::types::Value as ComponentValue;
@@ -57,7 +69,7 @@ pub enum AsyncStatus {
 /// Storage for async value information
 pub struct AsyncValueStore {
     /// Map of async IDs to their values
-    values: HashMap<u32, AsyncValue>,
+    values:  HashMap<u32, AsyncValue>,
     /// Next available async ID
     next_id: u32,
 }
@@ -70,7 +82,7 @@ pub struct AsyncValue {
     /// Result value (if available)
     result: Option<Vec<ComponentValue>>,
     /// Error message (if failed)
-    error: Option<String>,
+    error:  Option<String>,
 }
 
 #[cfg(feature = "component-model-async")]
@@ -78,7 +90,7 @@ impl AsyncValueStore {
     /// Create a new async value store
     pub fn new() -> Self {
         Self {
-            values: HashMap::new(),
+            values:  HashMap::new(),
             next_id: 1, // Start at 1, 0 is reserved
         }
     }
@@ -93,7 +105,14 @@ impl AsyncValueStore {
     /// Create a new async value with the given status
     pub fn create_async(&mut self, status: AsyncStatus) -> u32 {
         let id = self.generate_id();
-        self.values.insert(id, AsyncValue { status, result: None, error: None });
+        self.values.insert(
+            id,
+            AsyncValue {
+                status,
+                result: None,
+                error: None,
+            },
+        );
         id
     }
 
@@ -105,7 +124,7 @@ impl AsyncValueStore {
                 async_value.result = Some(result);
 
                 Ok(())
-            }
+            },
             None => Err(Error::component_not_found("Error occurred")),
         }
     }
@@ -118,7 +137,7 @@ impl AsyncValueStore {
                 async_value.error = Some(error);
 
                 Ok(())
-            }
+            },
             None => Err(Error::component_not_found("Error occurred")),
         }
     }
@@ -136,9 +155,7 @@ impl AsyncValueStore {
         match self.values.get(&id) {
             Some(async_value) => {
                 if async_value.status == AsyncStatus::Ready {
-                    async_value.result.clone().ok_or_else(|| {
-                        Error::async_error("Error occurred")
-                    })
+                    async_value.result.clone().ok_or_else(|| Error::async_error("Error occurred"))
                 } else if async_value.status == AsyncStatus::Failed {
                     Err(Error::async_error(
                         &async_value
@@ -149,7 +166,7 @@ impl AsyncValueStore {
                 } else {
                     Err(Error::async_error("Error occurred"))
                 }
-            }
+            },
             None => Err(Error::component_not_found("Error occurred")),
         }
     }
@@ -207,7 +224,9 @@ impl BuiltinHandler for AsyncNewHandler {
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { async_store: self.async_store.clone() })
+        Box::new(Self {
+            async_store: self.async_store.clone(),
+        })
     }
 }
 
@@ -243,7 +262,7 @@ impl BuiltinHandler for AsyncGetHandler {
             ComponentValue::U32(id) => *id,
             _ => {
                 return Err(Error::runtime_execution_error("Error occurred"));
-            }
+            },
         };
 
         // Get the result of the async computation
@@ -252,7 +271,9 @@ impl BuiltinHandler for AsyncGetHandler {
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { async_store: self.async_store.clone() })
+        Box::new(Self {
+            async_store: self.async_store.clone(),
+        })
     }
 }
 
@@ -288,7 +309,7 @@ impl BuiltinHandler for AsyncPollHandler {
             ComponentValue::U32(id) => *id,
             _ => {
                 return Err(Error::runtime_execution_error("Error occurred"));
-            }
+            },
         };
 
         // Check the status of the async computation
@@ -304,7 +325,9 @@ impl BuiltinHandler for AsyncPollHandler {
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { async_store: self.async_store.clone() })
+        Box::new(Self {
+            async_store: self.async_store.clone(),
+        })
     }
 }
 
@@ -343,7 +366,7 @@ impl BuiltinHandler for AsyncWaitHandler {
             ComponentValue::U32(id) => *id,
             _ => {
                 return Err(Error::runtime_execution_error("Error occurred"));
-            }
+            },
         };
 
         // Use Component Model polling instead of Rust futures
@@ -353,10 +376,10 @@ impl BuiltinHandler for AsyncWaitHandler {
             match store.get_status(async_id) {
                 Ok(AsyncStatus::Ready) => {
                     return store.get_result(async_id);
-                }
+                },
                 Ok(AsyncStatus::Failed) => {
                     return store.get_result(async_id); // Will return the error
-                }
+                },
                 Ok(AsyncStatus::Pending) => {
                     // Drop the lock and yield/sleep briefly
                     drop(store);
@@ -366,14 +389,16 @@ impl BuiltinHandler for AsyncWaitHandler {
 
                     // Continue polling
                     continue;
-                }
+                },
                 Err(e) => return Err(e),
             }
         }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { async_store: self.async_store.clone() })
+        Box::new(Self {
+            async_store: self.async_store.clone(),
+        })
     }
 }
 
@@ -444,7 +469,7 @@ mod tests {
                 // Verify the async value was created
                 let async_store = store.lock().unwrap();
                 assert!(async_store.has_async(*id));
-            }
+            },
             _ => panic!("Expected U32 result"),
         }
 
@@ -477,7 +502,7 @@ mod tests {
         match &result[0] {
             ComponentValue::U32(value) => {
                 assert_eq!(*value, 42);
-            }
+            },
             _ => panic!("Expected U32 result"),
         }
     }
@@ -543,7 +568,7 @@ mod tests {
         match &result[0] {
             ComponentValue::U32(value) => {
                 assert_eq!(*value, 42);
-            }
+            },
             _ => panic!("Expected U32 result"),
         }
     }

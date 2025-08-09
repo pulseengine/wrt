@@ -9,29 +9,42 @@
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
     vec::Vec,
 };
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::{
-    BoundedVec as Vec, 
-    safe_memory::NoStdProvider,
     budget_aware_provider::CrateId,
     safe_managed_alloc,
+    safe_memory::NoStdProvider,
+    BoundedVec as Vec,
 };
 
 // Enable vec! macro for no_std
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, sync::Arc, vec};
+use alloc::{
+    boxed::Box,
+    sync::Arc,
+    vec,
+};
+
+use wrt_error::{
+    Error,
+    Result,
+};
+#[cfg(feature = "std")]
+use wrt_foundation::{
+    builtin::BuiltinType,
+    component_value::ComponentValue,
+};
 #[cfg(not(feature = "std"))]
 use wrt_sync::Mutex;
-
-use wrt_error::{Error, Result};
-#[cfg(feature = "std")]
-use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 #[cfg(not(feature = "std"))]
 use crate::types::Value as ComponentValue;
@@ -47,7 +60,10 @@ pub enum BuiltinType {
 
 use crate::{
     builtins::BuiltinHandler,
-    resources::{ResourceId, ResourceManager},
+    resources::{
+        ResourceId,
+        ResourceManager,
+    },
 };
 
 /// Handler for the resource.create built-in function
@@ -70,7 +86,9 @@ impl BuiltinHandler for ResourceCreateHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("resource.create requires exactly one argument"));
+            return Err(Error::runtime_execution_error(
+                "resource.create requires exactly one argument",
+            ));
         }
 
         // Extract the resource representation from args
@@ -83,7 +101,7 @@ impl BuiltinHandler for ResourceCreateHandler {
                     wrt_error::codes::TYPE_MISMATCH,
                     "Expected U32 or U64 for resource representation",
                 ));
-            }
+            },
         };
 
         // Create a new resource based on the representation
@@ -98,18 +116,19 @@ impl BuiltinHandler for ResourceCreateHandler {
         #[cfg(not(feature = "std"))]
         {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut result = BoundedVec::new(provider).map_err(|_| {
-                Error::runtime_execution_error("Failed to create result vector")
-            })?;
-            result.push(ComponentValue::U32(id.0)).map_err(|_| {
-                Error::runtime_execution_error("Failed to add result value")
-            })?;
+            let mut result = BoundedVec::new(provider)
+                .map_err(|_| Error::runtime_execution_error("Failed to create result vector"))?;
+            result
+                .push(ComponentValue::U32(id.0))
+                .map_err(|_| Error::runtime_execution_error("Failed to add result value"))?;
             Ok(result)
         }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { resource_manager: self.resource_manager.clone() })
+        Box::new(Self {
+            resource_manager: self.resource_manager.clone(),
+        })
     }
 }
 
@@ -144,8 +163,10 @@ impl BuiltinHandler for ResourceDropHandler {
         let id = match &args[0] {
             ComponentValue::U32(value) => ResourceId(*value),
             _ => {
-                return Err(Error::runtime_execution_error("Expected U32 for resource ID"));
-            }
+                return Err(Error::runtime_execution_error(
+                    "Expected U32 for resource ID",
+                ));
+            },
         };
 
         // Drop the resource
@@ -165,7 +186,9 @@ impl BuiltinHandler for ResourceDropHandler {
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { resource_manager: self.resource_manager.clone() })
+        Box::new(Self {
+            resource_manager: self.resource_manager.clone(),
+        })
     }
 }
 
@@ -189,7 +212,9 @@ impl BuiltinHandler for ResourceRepHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::runtime_execution_error("resource.rep requires exactly one argument"));
+            return Err(Error::runtime_execution_error(
+                "resource.rep requires exactly one argument",
+            ));
         }
 
         // Extract the resource ID from args
@@ -201,7 +226,7 @@ impl BuiltinHandler for ResourceRepHandler {
                     wrt_error::codes::TYPE_MISMATCH,
                     "Expected U32 or U64 for resource representation",
                 ));
-            }
+            },
         };
 
         // Get the resource representation
@@ -219,7 +244,9 @@ impl BuiltinHandler for ResourceRepHandler {
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { resource_manager: self.resource_manager.clone() })
+        Box::new(Self {
+            resource_manager: self.resource_manager.clone(),
+        })
     }
 }
 
@@ -255,8 +282,10 @@ impl BuiltinHandler for ResourceGetHandler {
             ComponentValue::U32(value) => *value,
             ComponentValue::U64(value) => *value as u32,
             _ => {
-                return Err(Error::runtime_execution_error("Expected U32 for resource ID"));
-            }
+                return Err(Error::runtime_execution_error(
+                    "Expected U32 for resource ID",
+                ));
+            },
         };
 
         // Find or create resource with this representation
@@ -280,18 +309,19 @@ impl BuiltinHandler for ResourceGetHandler {
         #[cfg(not(feature = "std"))]
         {
             let provider = safe_managed_alloc!(65536, CrateId::Component)?;
-            let mut result = BoundedVec::new(provider).map_err(|_| {
-                Error::runtime_execution_error("Failed to create result vector")
-            })?;
-            result.push(ComponentValue::U32(id.0)).map_err(|_| {
-                Error::runtime_execution_error("Failed to add result value")
-            })?;
+            let mut result = BoundedVec::new(provider)
+                .map_err(|_| Error::runtime_execution_error("Failed to create result vector"))?;
+            result
+                .push(ComponentValue::U32(id.0))
+                .map_err(|_| Error::runtime_execution_error("Failed to add result value"))?;
             Ok(result)
         }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {
-        Box::new(Self { resource_manager: self.resource_manager.clone() })
+        Box::new(Self {
+            resource_manager: self.resource_manager.clone(),
+        })
     }
 }
 
@@ -327,7 +357,7 @@ mod tests {
                 // Verify the resource was created
                 let manager = resource_manager.lock().unwrap();
                 assert!(manager.has_resource(ResourceId(*id)));
-            }
+            },
             _ => panic!("Expected U32 result"),
         }
 
@@ -380,7 +410,7 @@ mod tests {
         match &result[0] {
             ComponentValue::U32(rep) => {
                 assert_eq!(*rep, 42);
-            }
+            },
             _ => panic!("Expected U32 result"),
         }
     }
