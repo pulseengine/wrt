@@ -6,15 +6,28 @@
 //! This module implements futex-like primitives using QNX's pulse-based
 //! synchronization mechanisms, suitable for real-time, safety-critical systems.
 
-
 use core::{
-    fmt::{self, Debug},
-    sync::atomic::{AtomicU32, Ordering},
+    fmt::{
+        self,
+        Debug,
+    },
+    sync::atomic::{
+        AtomicU32,
+        Ordering,
+    },
 };
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
-use crate::sync::{FutexLike, TimeoutResult};
+use crate::sync::{
+    FutexLike,
+    TimeoutResult,
+};
 
 /// FFI declarations for QNX system calls needed for synchronization
 #[allow(non_camel_case_types)]
@@ -34,30 +47,30 @@ mod ffi {
     #[derive(Debug, Clone, Copy)]
     pub struct qnx_iov_t {
         pub iov_base: *mut c_void,
-        pub iov_len: usize,
+        pub iov_len:  usize,
     }
 
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
     pub struct qnx_msg_info_t {
-        pub pid: qnx_pid_t,
-        pub tid: qnx_tid_t,
-        pub chid: qnx_chid_t,
-        pub coid: qnx_coid_t,
-        pub msglen: u16,
+        pub pid:       qnx_pid_t,
+        pub tid:       qnx_tid_t,
+        pub chid:      qnx_chid_t,
+        pub coid:      qnx_coid_t,
+        pub msglen:    u16,
         pub srcmsglen: u16,
         pub dstmsglen: u16,
-        pub priority: i8,
-        pub flags: u8,
-        pub reserved: [u8; 4],
+        pub priority:  i8,
+        pub flags:     u8,
+        pub reserved:  [u8; 4],
     }
 
     #[repr(u32)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum qnx_pulse_code_t {
         ThreadCtl = 0x7,
-        Code1 = 0x01,
-        Code2 = 0x02,
+        Code1     = 0x01,
+        Code2     = 0x02,
     }
 
     extern "C" {
@@ -123,11 +136,11 @@ mod ffi {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QnxSyncPriority {
     /// Low priority
-    Low = 10,
+    Low    = 10,
     /// Normal priority
     Normal = 21,
     /// High priority
-    High = 30,
+    High   = 30,
 }
 
 impl Default for QnxSyncPriority {
@@ -140,9 +153,9 @@ impl Default for QnxSyncPriority {
 #[derive(Debug, Clone)]
 pub struct QnxFutexConfig {
     /// Priority for synchronization operations
-    pub priority: QnxSyncPriority,
+    pub priority:      QnxSyncPriority,
     /// Pulse code to use for wake operations
-    pub pulse_code: ffi::qnx_pulse_code_t,
+    pub pulse_code:    ffi::qnx_pulse_code_t,
     /// Channel flags for initialization
     pub channel_flags: u32,
 }
@@ -150,8 +163,8 @@ pub struct QnxFutexConfig {
 impl Default for QnxFutexConfig {
     fn default() -> Self {
         Self {
-            priority: QnxSyncPriority::default(),
-            pulse_code: ffi::qnx_pulse_code_t::Code1,
+            priority:      QnxSyncPriority::default(),
+            pulse_code:    ffi::qnx_pulse_code_t::Code1,
             channel_flags: 0, // No special flags
         }
     }
@@ -198,30 +211,30 @@ impl QnxFutexBuilder {
 #[derive(Debug, Clone, Copy)]
 struct QnxPulse {
     /// Type of message (must be _PULSE_TYPE)
-    type_: i16,
+    type_:   i16,
     /// Subtypes for kernel
     subtype: u16,
     /// Pulse code
-    code: i8,
+    code:    i8,
     /// Reserved for future
-    zero1: u8,
+    zero1:   u8,
     /// Reserved for future
-    zero2: i16,
+    zero2:   i16,
     /// Value from sender
-    value: i32,
+    value:   i32,
     /// Scoid of sender
-    scoid: i32,
+    scoid:   i32,
 }
 
 /// Pulse-based futex implementation for QNX
 #[derive(Debug)]
 pub struct QnxFutex {
     /// Atomic state for futex operations
-    state: AtomicU32,
+    state:  AtomicU32,
     /// Channel ID for receiving pulses
-    chid: i32,
+    chid:   i32,
     /// Connection ID for self-connection
-    coid: i32,
+    coid:   i32,
     /// Configuration settings
     config: QnxFutexConfig,
 }
@@ -232,7 +245,9 @@ impl QnxFutex {
         // Create a channel for synchronization
         let chid = unsafe { ffi::ChannelCreate(config.channel_flags as i32) };
         if chid == -1 {
-            return Err(Error::runtime_execution_error("Failed to create QNX channel";
+            return Err(Error::runtime_execution_error(
+                "Failed to create QNX channel",
+            ));
         }
 
         // Create a connection to self (for sending pulses)
@@ -240,17 +255,22 @@ impl QnxFutex {
         if coid == -1 {
             // Clean up the channel first
             unsafe {
-                ffi::ChannelDestroy(chid;
+                ffi::ChannelDestroy(chid);
             }
 
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
                 "Failed to create QNX connection",
-            ;
+            ));
         }
 
-        Ok(Self { state: AtomicU32::new(0), chid, coid, config })
+        Ok(Self {
+            state: AtomicU32::new(0),
+            chid,
+            coid,
+            config,
+        })
     }
 
     /// Send a pulse to wake waiters
@@ -265,7 +285,7 @@ impl QnxFutex {
         };
 
         if result == -1 {
-            return Err(Error::runtime_execution_error("Failed to send QNX pulse";
+            return Err(Error::runtime_execution_error("Failed to send QNX pulse"));
         }
 
         Ok(())
@@ -277,8 +297,15 @@ impl QnxFutex {
         // A full implementation would set up a timer for the timeout
 
         // Prepare a pulse receive buffer
-        let mut pulse =
-            QnxPulse { type_: 0, subtype: 0, code: 0, zero1: 0, zero2: 0, value: 0, scoid: 0 };
+        let mut pulse = QnxPulse {
+            type_:   0,
+            subtype: 0,
+            code:    0,
+            zero1:   0,
+            zero2:   0,
+            value:   0,
+            scoid:   0,
+        };
 
         // Wait for pulse
         let result = unsafe {
@@ -294,19 +321,21 @@ impl QnxFutex {
             // In a real implementation, we would check errno for ETIMEDOUT
             // For now, we'll just assume it's a timeout if timeout_ms is Some
             if timeout_ms.is_some() {
-                return Ok(TimeoutResult::TimedOut;
+                return Ok(TimeoutResult::TimedOut);
             }
 
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
                 "Failed to receive QNX pulse",
-            ;
+            ));
         }
 
         // Check if it's the pulse we're expecting
         if pulse.code as u32 != self.config.pulse_code as u32 {
-            return Err(Error::runtime_execution_error("Unexpected pulse code received";
+            return Err(Error::runtime_execution_error(
+                "Unexpected pulse code received",
+            ));
         }
 
         Ok(TimeoutResult::Success)
@@ -318,9 +347,9 @@ impl Drop for QnxFutex {
         // Clean up resources
         unsafe {
             // Detach connection
-            let _ = ffi::ConnectDetach(self.coid;
+            let _ = ffi::ConnectDetach(self.coid);
             // Destroy channel
-            let _ = ffi::ChannelDestroy(self.chid;
+            let _ = ffi::ChannelDestroy(self.chid);
         }
     }
 }
@@ -330,7 +359,7 @@ impl FutexLike for QnxFutex {
         // Check current value against expected
         if self.state.load(Ordering::Acquire) != expected {
             // Value has changed, no need to wait
-            return Ok(TimeoutResult::ValueChanged;
+            return Ok(TimeoutResult::ValueChanged);
         }
 
         // Wait for a pulse
@@ -354,7 +383,7 @@ impl FutexLike for QnxFutex {
     }
 
     fn set(&self, value: u32) {
-        self.state.store(value, Ordering::Release;
+        self.state.store(value, Ordering::Release);
     }
 
     fn compare_exchange(&self, current: u32, new: u32) -> core::result::Result<u32, u32> {
@@ -384,18 +413,18 @@ mod tests {
         assert_eq!(futex.get(), 0);
 
         // Set new value
-        futex.set(42;
-        assert_eq!(futex.get(), 42;
+        futex.set(42);
+        assert_eq!(futex.get(), 42);
 
         // Test compare_exchange
-        let result = futex.compare_exchange(42, 100;
-        assert_eq!(result, Ok(42;
-        assert_eq!(futex.get(), 100;
+        let result = futex.compare_exchange(42, 100);
+        assert_eq!(result, Ok(42));
+        assert_eq!(futex.get(), 100);
 
         // Test failed compare_exchange
-        let result = futex.compare_exchange(42, 200;
-        assert_eq!(result, Err(100;
-        assert_eq!(futex.get(), 100;
+        let result = futex.compare_exchange(42, 200);
+        assert_eq!(result, Err(100));
+        assert_eq!(futex.get(), 100);
     }
 
     #[test]
@@ -405,13 +434,13 @@ mod tests {
         let futex = QnxFutexBuilder::new().build().unwrap();
 
         // Set initial state
-        futex.set(0;
+        futex.set(0);
 
         // Test wake operations
-        let result = futex.wake_one);
+        let result = futex.wake_one();
         assert!(result.is_ok());
 
-        let result = futex.wake_all);
+        let result = futex.wake_all();
         assert!(result.is_ok());
     }
 

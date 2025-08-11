@@ -1,4 +1,3 @@
-
 // WRT - wrt-platform
 // Module: Platform Memory Management Abstraction
 // SW-REQ-ID: REQ_PLATFORM_001, REQ_MEMORY_001
@@ -9,7 +8,10 @@
 
 //! Provides implementations for platform-specific memory management.
 
-use core::{fmt::Debug, ptr::NonNull};
+use core::{
+    fmt::Debug,
+    ptr::NonNull,
+};
 
 use wrt_error::Result;
 
@@ -167,7 +169,7 @@ pub trait MemoryProvider: Send + Sync {
 #[derive(Debug)]
 pub struct NoStdProvider {
     /// The underlying buffer for storing data
-    buffer: &'static mut [u8],
+    buffer:             &'static mut [u8],
     /// The current verification level
     verification_level: VerificationLevel,
 }
@@ -182,7 +184,10 @@ impl NoStdProvider {
 
         let actual_size = core::cmp::min(size, 4096);
 
-        Self { buffer: unsafe { &mut DUMMY_BUFFER[0..actual_size] }, verification_level }
+        Self {
+            buffer: unsafe { &mut DUMMY_BUFFER[0..actual_size] },
+            verification_level,
+        }
     }
 
     /// Creates a new `NoStdProvider` with the specified verification level and
@@ -193,23 +198,27 @@ impl NoStdProvider {
 }
 
 /// Builder for `NoStdProvider` to provide a fluent configuration API.
-/// 
+///
 /// # Deprecated
-/// Use `WrtProviderFactory::create_provider()` for budget-aware allocation instead.
+/// Use `WrtProviderFactory::create_provider()` for budget-aware allocation
+/// instead.
 #[deprecated(
     since = "0.3.0",
     note = "Use WrtProviderFactory::create_provider() from wrt-foundation for new code"
 )]
 #[derive(Debug)]
 pub struct NoStdProviderBuilder {
-    size: usize,
+    size:               usize,
     verification_level: VerificationLevel,
 }
 
 #[allow(deprecated)]
 impl Default for NoStdProviderBuilder {
     fn default() -> Self {
-        Self { size: 4096, verification_level: VerificationLevel::Standard }
+        Self {
+            size:               4096,
+            verification_level: VerificationLevel::Standard,
+        }
     }
 }
 
@@ -240,7 +249,7 @@ impl NoStdProviderBuilder {
         // Note: This is a temporary workaround for the deprecated NoStdProvider
         // This entire module should be migrated to use wrt-foundation's memory system
         NoStdProvider {
-            buffer: unsafe {
+            buffer:             unsafe {
                 static mut DUMMY_BUFFER: [u8; 4096] = [0; 4096];
                 let actual_size = core::cmp::min(self.size, 4096);
                 &mut DUMMY_BUFFER[0..actual_size]
@@ -265,7 +274,9 @@ impl MemoryProvider for NoStdProvider {
 
     fn write_data(&mut self, offset: usize, data: &[u8]) -> wrt_error::Result<usize> {
         if offset >= self.buffer.len() {
-            return Err(wrt_error::Error::runtime_execution_error("Write offset out of bounds"));
+            return Err(wrt_error::Error::runtime_execution_error(
+                "Write offset out of bounds",
+            ));
         }
 
         let available = self.buffer.len() - offset;
@@ -278,9 +289,11 @@ impl MemoryProvider for NoStdProvider {
 
     fn read_data(&self, offset: usize, buffer: &mut [u8]) -> wrt_error::Result<usize> {
         if offset >= self.buffer.len() {
-            return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
+            return Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Memory,
                 1,
-                "Read offset out of bounds"));
+                "Read offset out of bounds",
+            ));
         }
 
         let available = self.buffer.len() - offset;
@@ -297,7 +310,11 @@ impl MemoryProvider for NoStdProvider {
 #[cfg(test)]
 #[allow(clippy::panic, clippy::unwrap_used)] // Allow panic/unwrap in tests
 mod tests {
-    use wrt_error::{codes, Error, ErrorCategory};
+    use wrt_error::{
+        codes,
+        Error,
+        ErrorCategory,
+    };
 
     use super::*;
 
@@ -305,15 +322,19 @@ mod tests {
     #[cfg(not(feature = "std"))]
     #[derive(Debug)]
     struct MockAllocator {
-        allocated_ptr: Option<NonNull<u8>>,
+        allocated_ptr:  Option<NonNull<u8>>,
         allocated_size: usize,
-        max_pages: Option<u32>,
+        max_pages:      Option<u32>,
     }
 
     #[cfg(not(feature = "std"))]
     impl Default for MockAllocator {
         fn default() -> Self {
-            Self { allocated_ptr: None, allocated_size: 0, max_pages: None }
+            Self {
+                allocated_ptr:  None,
+                allocated_size: 0,
+                max_pages:      None,
+            }
         }
     }
 
@@ -332,7 +353,9 @@ mod tests {
             max_pages: Option<u32>,
         ) -> Result<(NonNull<u8>, usize)> {
             if self.allocated_ptr.is_some() {
-                return Err(wrt_error::Error::runtime_execution_error("Memory already allocated"));
+                return Err(wrt_error::Error::runtime_execution_error(
+                    "Memory already allocated",
+                ));
             }
             let size = initial_pages as usize * WASM_PAGE_SIZE;
 
@@ -353,23 +376,29 @@ mod tests {
 
         fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<()> {
             if self.allocated_ptr.is_none() {
-                return Err(wrt_error::Error::new(wrt_error::ErrorCategory::System,
+                return Err(wrt_error::Error::new(
+                    wrt_error::ErrorCategory::System,
                     1,
-                    "Memory not allocated"));
+                    "Memory not allocated",
+                ));
             }
             let new_total_pages = current_pages + additional_pages;
             if let Some(max) = self.max_pages {
                 if new_total_pages > max {
-                    return Err(wrt_error::Error::runtime_execution_error("Memory growth would exceed maximum pages"));
+                    return Err(wrt_error::Error::runtime_execution_error(
+                        "Memory growth would exceed maximum pages",
+                    ));
                 }
             }
             let new_size = new_total_pages as usize * WASM_PAGE_SIZE;
 
             // Binary std/no_std choice
             if new_size > 5 * WASM_PAGE_SIZE {
-                return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
+                return Err(wrt_error::Error::new(
+                    wrt_error::ErrorCategory::Memory,
                     1,
-                    "Allocation exceeds limit"));
+                    "Allocation exceeds limit",
+                ));
             }
 
             // Binary std/no_std choice
@@ -383,7 +412,9 @@ mod tests {
                 || self.allocated_ptr.unwrap() != ptr
                 || self.allocated_size != size
             {
-                return Err(wrt_error::Error::runtime_execution_error("Deallocation mismatch"));
+                return Err(wrt_error::Error::runtime_execution_error(
+                    "Deallocation mismatch",
+                ));
             }
             self.allocated_ptr = None;
             self.allocated_size = 0;

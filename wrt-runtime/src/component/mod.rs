@@ -7,7 +7,10 @@ pub mod instantiate;
 pub mod instantiation_types;
 
 pub use instantiate::{
-    ComponentInstantiator, InstantiationContext, InstantiationResult,
-    CoreModuleInstantiator, LinkingError,
+    ComponentInstantiator,
+    CoreModuleInstantiator,
+    InstantiationContext,
+    InstantiationResult,
+    LinkingError,
 };
 pub use instantiation_types::*;

@@ -1,4 +1,3 @@
-
 // WRT - wrt-platform
 // Module: Formal Verification Support
 // SW-REQ-ID: REQ_PLATFORM_VERIFICATION_001
@@ -158,7 +157,10 @@ pub mod memory_verification {
         // For now, we verify the mathematical properties
         let total_size = num_pages * WASM_PAGE_SIZE;
         kani::assert(total_size >= WASM_PAGE_SIZE, "Size calculation correct");
-        kani::assert(total_size / WASM_PAGE_SIZE == num_pages, "Size division correct");
+        kani::assert(
+            total_size / WASM_PAGE_SIZE == num_pages,
+            "Size division correct",
+        );
     }
 }
 
@@ -483,7 +485,10 @@ pub mod cbmc_integration {
 
         // Verify no buffer overflow
         let end_ptr = ptr as usize + size;
-        cbmc_assert(end_ptr >= ptr as usize, "No integer overflow in pointer arithmetic");
+        cbmc_assert(
+            end_ptr >= ptr as usize,
+            "No integer overflow in pointer arithmetic",
+        );
 
         cbmc_cover(true, "Memory operation verification complete");
     }
@@ -509,7 +514,10 @@ pub mod verification_harnesses {
     #[kani::proof]
     #[kani::unwind(5)]
     fn verify_concurrent_safety() {
-        use core::sync::atomic::{AtomicU32, Ordering};
+        use core::sync::atomic::{
+            AtomicU32,
+            Ordering,
+        };
 
         let shared_data = AtomicU32::new(0);
 
@@ -547,7 +555,10 @@ pub mod verification_harnesses {
         }
 
         // Verify bounds check works correctly
-        kani::assert(access_valid == (index < buffer_size), "Bounds check logic is correct");
+        kani::assert(
+            access_valid == (index < buffer_size),
+            "Bounds check logic is correct",
+        );
     }
 }
 

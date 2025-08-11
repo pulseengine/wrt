@@ -18,6 +18,9 @@ pub mod tail_call;
 mod engine_tests;
 
 pub use engine::{
-    StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessStack,
+    StacklessCallbackRegistry,
+    StacklessEngine,
+    StacklessExecutionState,
+    StacklessStack,
 };
 pub use frame::StacklessFrame;

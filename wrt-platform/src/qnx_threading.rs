@@ -4,31 +4,62 @@
 //! features for deterministic, real-time thread execution with resource
 //! isolation and priority inheritance.
 
-
 use core::{
-    fmt::{self, Debug},
-    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+    fmt::{
+        self,
+        Debug,
+    },
+    sync::atomic::{
+        AtomicBool,
+        AtomicU64,
+        AtomicUsize,
+        Ordering,
+    },
     time::Duration,
 };
-
 use std::{
     boxed::Box,
     collections::BTreeMap,
-    string::{String, ToString},
+    string::{
+        String,
+        ToString,
+    },
     sync::Arc,
     vec::Vec,
 };
 
-use wrt_sync::{WrtMutex, WrtRwLock};
-
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_sync::{
+    WrtMutex,
+    WrtRwLock,
+};
 
 use crate::{
-    qnx_partition::{QnxMemoryPartition, QnxMemoryPartitionBuilder, QnxPartitionFlags},
-    qnx_sync::{QnxFutex, QnxFutexBuilder, QnxSyncPriority},
+    qnx_partition::{
+        QnxMemoryPartition,
+        QnxMemoryPartitionBuilder,
+        QnxPartitionFlags,
+    },
+    qnx_sync::{
+        QnxFutex,
+        QnxFutexBuilder,
+        QnxSyncPriority,
+    },
     threading::{
-        CpuSet, PlatformThreadHandle, PlatformThreadPool, ThreadHandle, ThreadPoolConfig,
-        ThreadPoolStats, ThreadPriority, ThreadStats, WasmTask,
+        CpuSet,
+        PlatformThreadHandle,
+        PlatformThreadPool,
+        ThreadHandle,
+        ThreadPoolConfig,
+        ThreadPoolStats,
+        ThreadPriority,
+        ThreadStats,
+        WasmTask,
     },
 };
 
@@ -37,13 +68,13 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SchedPolicy {
     /// First-in-first-out (real-time)
-    Fifo = 1,
+    Fifo       = 1,
     /// Round-robin (real-time)
     RoundRobin = 2,
     /// Other (normal)
-    Other = 4,
+    Other      = 4,
     /// Sporadic (real-time with budget)
-    Sporadic = 3,
+    Sporadic   = 3,
 }
 
 /// Thread attributes for QNX
@@ -51,13 +82,13 @@ pub enum SchedPolicy {
 #[derive(Debug, Clone)]
 struct ThreadAttributes {
     /// Scheduling policy
-    policy: SchedPolicy,
+    policy:        SchedPolicy,
     /// Priority (1-255)
-    priority: u8,
+    priority:      u8,
     /// CPU runmask
-    runmask: u64,
+    runmask:       u64,
     /// Stack size
-    stack_size: usize,
+    stack_size:    usize,
     /// Inherit scheduling from parent
     inherit_sched: bool,
 }
@@ -72,9 +103,9 @@ mod ffi {
 
     #[repr(C)]
     pub struct sched_param {
-        pub sched_priority: i32,
+        pub sched_priority:    i32,
         pub sched_curpriority: i32,
-        pub reserved: [i32; 6],
+        pub reserved:          [i32; 6],
     }
 
     extern "C" {
@@ -119,7 +150,7 @@ mod ffi {
 
     #[repr(C)]
     pub struct timespec {
-        pub tv_sec: i64,
+        pub tv_sec:  i64,
         pub tv_nsec: i64,
     }
 
@@ -134,15 +165,15 @@ mod ffi {
 /// QNX thread handle
 struct QnxThreadHandle {
     /// Thread ID
-    tid: ffi::pthread_t,
+    tid:     ffi::pthread_t,
     /// Task being executed
-    task: Arc<WrtMutex<Option<WasmTask>>>,
+    task:    Arc<WrtMutex<Option<WasmTask>>>,
     /// `Result` storage
-    result: Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
+    result:  Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
     /// Running flag
     running: Arc<AtomicBool>,
     /// Thread statistics
-    stats: Arc<WrtMutex<ThreadStats>>,
+    stats:   Arc<WrtMutex<ThreadStats>>,
 }
 
 impl PlatformThreadHandle for QnxThreadHandle {
@@ -160,10 +191,7 @@ impl PlatformThreadHandle for QnxThreadHandle {
         match &*result {
             Some(Ok(data)) => Ok(data.clone()),
             Some(Err(e)) => Err(e.clone()),
-            None => Err(Error::new("Thread join error"))
-                ErrorCategory::Platform,
-                1,
-                ")),
+            None => Err(Error::new(ErrorCategory::Platform, 1, "Thread join error")),
         }
     }
 
@@ -179,13 +207,13 @@ impl PlatformThreadHandle for QnxThreadHandle {
 /// Thread context passed to pthread
 struct ThreadContext {
     /// Task to execute
-    task: WasmTask,
+    task:     WasmTask,
     /// `Result` storage
-    result: Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
+    result:   Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
     /// Running flag
-    running: Arc<AtomicBool>,
+    running:  Arc<AtomicBool>,
     /// Stats
-    stats: Arc<WrtMutex<ThreadStats>>,
+    stats:    Arc<WrtMutex<ThreadStats>>,
     /// Executor function
     executor: Arc<dyn Fn(WasmTask) -> Result<Vec<u8>> + Send + Sync>,
 }
@@ -193,19 +221,19 @@ struct ThreadContext {
 /// QNX thread pool implementation
 pub struct QnxThreadPool {
     /// Configuration
-    config: ThreadPoolConfig,
+    config:         ThreadPoolConfig,
     /// Memory partition for thread isolation
-    partition: Option<QnxMemoryPartition>,
+    partition:      Option<QnxMemoryPartition>,
     /// Active threads
     active_threads: Arc<WrtRwLock<BTreeMap<u64, Box<dyn PlatformThreadHandle>>>>,
     /// Thread statistics
-    stats: Arc<WrtMutex<ThreadPoolStats>>,
+    stats:          Arc<WrtMutex<ThreadPoolStats>>,
     /// Next thread ID
     next_thread_id: AtomicU64,
     /// Shutdown flag
-    shutdown: AtomicBool,
+    shutdown:       AtomicBool,
     /// Task executor
-    executor: Arc<dyn Fn(WasmTask) -> Result<Vec<u8>> + Send + Sync>,
+    executor:       Arc<dyn Fn(WasmTask) -> Result<Vec<u8>> + Send + Sync>,
 }
 
 impl QnxThreadPool {
@@ -216,16 +244,16 @@ impl QnxThreadPool {
             let total_memory = config
                 .memory_limit_per_thread
                 .unwrap_or(64 * 1024 * 1024)
-                .saturating_mul(config.max_threads;
+                .saturating_mul(config.max_threads);
 
             Some(
                 QnxMemoryPartitionBuilder::new()
                     .with_name("wasm_thread_pool")
                     .with_flags(QnxPartitionFlags::MemoryIsolation)
                     .with_memory_size(
-                        total_memory / 2,  // Min
-                        total_memory,      // Max
-                        total_memory / 4,  // Reserved
+                        total_memory / 2, // Min
+                        total_memory,     // Max
+                        total_memory / 4, // Reserved
                     )
                     .build()?,
             )
@@ -237,7 +265,7 @@ impl QnxThreadPool {
         let executor = Arc::new(|_task: WasmTask| -> Result<Vec<u8>> {
             // Placeholder executor
             Ok(vec![])
-        };
+        });
 
         Ok(Self {
             config,
@@ -255,7 +283,7 @@ impl QnxThreadPool {
     where
         F: Fn(WasmTask) -> Result<Vec<u8>> + Send + Sync + 'static,
     {
-        self.executor = Arc::new(executor;
+        self.executor = Arc::new(executor);
     }
 
     /// Map ThreadPriority to QNX priority value
@@ -276,10 +304,12 @@ impl QnxThreadPool {
     /// Create thread attributes
     fn create_thread_attrs(&self, task: &WasmTask) -> Result<ffi::pthread_attr_t> {
         let mut attr: ffi::pthread_attr_t = [0; 128];
-        
+
         // Initialize attributes
         if unsafe { ffi::pthread_attr_init(&mut attr) } != 0 {
-            return Err(Error::runtime_execution_error("QNX thread priority setting failed"));
+            return Err(Error::runtime_execution_error(
+                "QNX thread priority setting failed",
+            ));
         }
 
         // Set scheduling policy (FIFO for determinism)
@@ -288,15 +318,16 @@ impl QnxThreadPool {
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Failed to set thread scheduling policy"));
+                "Failed to set thread scheduling policy",
+            ));
         }
 
         // Set priority
-        let priority = self.map_priority(task.priority;
+        let priority = self.map_priority(task.priority);
         let sched_param = ffi::sched_param {
-            sched_priority: priority as i32,
+            sched_priority:    priority as i32,
             sched_curpriority: priority as i32,
-            reserved: [0; 6],
+            reserved:          [0; 6],
         };
 
         if unsafe { ffi::pthread_attr_setschedparam(&mut attr, &sched_param) } != 0 {
@@ -305,24 +336,24 @@ impl QnxThreadPool {
         }
 
         // Set stack size
-        let stack_size = task
-            .stack_size
-            .unwrap_or(self.config.stack_size)
-            .max(64 * 1024); // Minimum 64KB
+        let stack_size = task.stack_size.unwrap_or(self.config.stack_size).max(64 * 1024); // Minimum 64KB
 
         if unsafe { ffi::pthread_attr_setstacksize(&mut attr, stack_size) } != 0 {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
             return Err(Error::new(
                 ErrorCategory::Platform,
                 1,
-                "Failed to set thread stack size"));
+                "Failed to set thread stack size",
+            ));
         }
 
         // Don't inherit scheduling from parent
         if unsafe { ffi::pthread_attr_setinheritsched(&mut attr, ffi::PTHREAD_EXPLICIT_SCHED) } != 0
         {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
-            return Err(Error::runtime_execution_error("QNX thread state query failed"));
+            return Err(Error::runtime_execution_error(
+                "QNX thread state query failed",
+            ));
         }
 
         Ok(attr)
@@ -341,16 +372,16 @@ extern "C" fn thread_entry(arg: *mut core::ffi::c_void) -> *mut core::ffi::c_voi
     }
 
     // Mark as running
-    context.running.store(true, Ordering::Release;
+    context.running.store(true, Ordering::Release);
 
     // Execute the task
-    let result = (context.executor)(context.task;
+    let result = (context.executor)(context.task);
 
     // Store result
-    *context.result.lock() = Some(result;
+    *context.result.lock() = Some(result);
 
     // Mark as not running
-    context.running.store(false, Ordering::Release;
+    context.running.store(false, Ordering::Release);
 
     core::ptr::null_mut()
 }
@@ -364,7 +395,9 @@ impl PlatformThreadPool for QnxThreadPool {
     fn spawn_wasm_thread(&self, task: WasmTask) -> Result<ThreadHandle> {
         // Check if shutting down
         if self.shutdown.load(Ordering::Acquire) {
-            return Err(Error::runtime_execution_error("Thread pool is shutting down"));
+            return Err(Error::runtime_execution_error(
+                "Thread pool is shutting down",
+            ));
         }
 
         // Check thread limit
@@ -374,16 +407,16 @@ impl PlatformThreadPool for QnxThreadPool {
                 ErrorCategory::Resource,
                 1,
                 "Thread pool has reached maximum thread limit",
-            ;
+            ));
         }
 
         // Get thread ID
-        let thread_id = self.next_thread_id.fetch_add(1, Ordering::AcqRel;
+        let thread_id = self.next_thread_id.fetch_add(1, Ordering::AcqRel);
 
         // Create thread context
-        let result = Arc::new(WrtMutex::new(None;
-        let running = Arc::new(AtomicBool::new(false;
-        let stats = Arc::new(WrtMutex::new(ThreadStats::default();
+        let result = Arc::new(WrtMutex::new(None));
+        let running = Arc::new(AtomicBool::new(false));
+        let stats = Arc::new(WrtMutex::new(ThreadStats::default()));
 
         let context = Box::new(ThreadContext {
             task,
@@ -391,14 +424,14 @@ impl PlatformThreadPool for QnxThreadPool {
             running: running.clone(),
             stats: stats.clone(),
             executor: self.executor.clone(),
-        };
+        });
 
         // Create thread attributes
         let mut attr = self.create_thread_attrs(&context.task)?;
 
         // Create thread
         let mut tid: ffi::pthread_t = 0;
-        let context_ptr = Box::into_raw(context;
+        let context_ptr = Box::into_raw(context);
 
         // Activate partition if available
         if let Some(ref partition) = self.partition {
@@ -421,15 +454,17 @@ impl PlatformThreadPool for QnxThreadPool {
 
         // Clean up attributes
         unsafe {
-            ffi::pthread_attr_destroy(&mut attr;
+            ffi::pthread_attr_destroy(&mut attr);
         }
 
         if create_result != 0 {
             // Clean up context on failure
             unsafe {
-                let _ = Box::from_raw(context_ptr;
+                let _ = Box::from_raw(context_ptr);
             }
-            return Err(Error::runtime_execution_error("Failed to create QNX thread"));
+            return Err(Error::runtime_execution_error(
+                "Failed to create QNX thread",
+            ));
         }
 
         // Create handle
@@ -439,17 +474,17 @@ impl PlatformThreadPool for QnxThreadPool {
             result,
             running,
             stats,
-        };
+        });
 
         // Update statistics
         {
-            let mut stats = self.stats.lock);
+            let mut stats = self.stats.lock();
             stats.active_threads += 1;
             stats.total_spawned += 1;
         }
 
         Ok(ThreadHandle {
-            id: thread_id,
+            id:              thread_id,
             platform_handle: handle,
         })
     }
@@ -460,10 +495,10 @@ impl PlatformThreadPool for QnxThreadPool {
 
     fn shutdown(&mut self, timeout: Duration) -> Result<()> {
         // Set shutdown flag
-        self.shutdown.store(true, Ordering::Release;
+        self.shutdown.store(true, Ordering::Release);
 
         // Cancel all threads
-        let threads = self.active_threads.read);
+        let threads = self.active_threads.read();
         for (_id, handle) in threads.iter() {
             if handle.is_running() {
                 // QNX doesn't have a safe way to force-terminate threads
@@ -472,9 +507,9 @@ impl PlatformThreadPool for QnxThreadPool {
         }
 
         // Wait for threads to complete (simplified)
-        let start = std::time::Instant::now);
+        let start = std::time::Instant::now();
         while self.active_threads.read().len() > 0 && start.elapsed() < timeout {
-            std::thread::sleep(Duration::from_millis(10;
+            std::thread::sleep(Duration::from_millis(10));
         }
 
         Ok(())
@@ -485,7 +520,6 @@ impl PlatformThreadPool for QnxThreadPool {
 mod tests {
     use super::*;
 
-    #[test]
     #[test]
     #[ignore]
     fn test_qnx_thread_pool_with_scheduler() {
@@ -499,32 +533,30 @@ mod tests {
 
         // Set a test executor
         pool.set_executor(|task| {
-            // Executor implementation
-        });
             // Simple echo executor
             Ok(task.args)
-        };
+        });
 
         // Spawn a thread
         let task = WasmTask {
-            id: 1,
-            function_id: 100,
-            args: vec![1, 2, 3, 4],
-            priority: ThreadPriority::Normal,
-            stack_size: None,
+            id:           1,
+            function_id:  100,
+            args:         vec![1, 2, 3, 4],
+            priority:     ThreadPriority::Normal,
+            stack_size:   None,
             memory_limit: None,
             cpu_affinity: None,
-            deadline: None,
+            deadline:     None,
         };
 
         let handle = pool.spawn_wasm_thread(task).unwrap();
-        
+
         // Join and verify result
         let result = handle.join().unwrap();
-        assert_eq!(result, vec![1, 2, 3, 4];
+        assert_eq!(result, vec![1, 2, 3, 4]);
 
         // Check stats
-        let stats = pool.get_stats);
+        let stats = pool.get_stats();
         assert_eq!(stats.total_spawned, 1);
     }
 
@@ -534,22 +566,22 @@ mod tests {
         let config = ThreadPoolConfig::default();
         let mut pool = QnxThreadPool::new(config).unwrap();
 
-        pool.set_executor(|_| Ok(vec![];
+        pool.set_executor(|_| Ok(vec![]));
 
         // Create CPU set for CPUs 0 and 1
         let mut cpu_set = CpuSet::new();
-        cpu_set.add(0;
+        cpu_set.add(0);
         cpu_set.add(1);
 
         let task = WasmTask {
-            id: 2,
-            function_id: 200,
-            args: vec![],
-            priority: ThreadPriority::High,
-            stack_size: Some(4 * 1024 * 1024), // 4MB stack
+            id:           2,
+            function_id:  200,
+            args:         vec![],
+            priority:     ThreadPriority::High,
+            stack_size:   Some(4 * 1024 * 1024), // 4MB stack
             memory_limit: None,
             cpu_affinity: Some(cpu_set),
-            deadline: None,
+            deadline:     None,
         };
 
         let handle = pool.spawn_wasm_thread(task).unwrap();

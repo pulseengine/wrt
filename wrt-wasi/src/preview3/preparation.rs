@@ -4,10 +4,16 @@
 //! features. Preview3 is expected to include async/await support, threading
 //! primitives, and streaming I/O enhancements.
 
+use core::{
+    future::Future,
+    pin::Pin,
+    task::{
+        Context,
+        Poll,
+    },
+};
+
 use crate::prelude::*;
-use core::future::Future;
-use core::pin::Pin;
-use core::task::{Context, Poll};
 
 /// WASI Preview3 async stream trait
 ///
@@ -15,10 +21,10 @@ use core::task::{Context, Poll};
 pub trait WasiAsyncStream {
     /// Read bytes asynchronously from the stream
     fn async_read(&mut self, buf: &mut [u8]) -> WasiAsyncRead<'_>;
-    
+
     /// Write bytes asynchronously to the stream
     fn async_write(&mut self, buf: &[u8]) -> WasiAsyncWrite<'_>;
-    
+
     /// Flush the stream asynchronously
     fn async_flush(&mut self) -> WasiAsyncFlush<'_>;
 }
@@ -31,7 +37,7 @@ pub struct WasiAsyncRead<'a> {
 
 impl<'a> Future for WasiAsyncRead<'a> {
     type Output = Result<usize>;
-    
+
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Placeholder implementation
         // In Preview3, this would integrate with the async runtime
@@ -47,7 +53,7 @@ pub struct WasiAsyncWrite<'a> {
 
 impl<'a> Future for WasiAsyncWrite<'a> {
     type Output = Result<usize>;
-    
+
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Placeholder implementation
         Poll::Ready(Ok(0))
@@ -61,7 +67,7 @@ pub struct WasiAsyncFlush<'a> {
 
 impl<'a> Future for WasiAsyncFlush<'a> {
     type Output = Result<()>;
-    
+
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Placeholder implementation
         Poll::Ready(Ok(()))
@@ -76,10 +82,10 @@ pub trait WasiThreadSpawn {
     fn spawn<F>(&self, func: F) -> Result<WasiThreadHandle>
     where
         F: FnOnce() + Send + 'static;
-    
+
     /// Get the current thread handle
     fn current(&self) -> WasiThreadHandle;
-    
+
     /// Join a thread, waiting for it to complete
     fn join(&self, handle: WasiThreadHandle) -> Result<()>;
 }
@@ -94,13 +100,13 @@ pub struct WasiThreadHandle(pub u32);
 pub trait WasiSharedMemory {
     /// Create a new shared memory region
     fn create(&self, size: usize) -> Result<WasiSharedMemoryHandle>;
-    
+
     /// Map a shared memory region into the address space
     fn map(&self, handle: WasiSharedMemoryHandle) -> Result<*mut u8>;
-    
+
     /// Unmap a shared memory region
     fn unmap(&self, handle: WasiSharedMemoryHandle) -> Result<()>;
-    
+
     /// Get the size of a shared memory region
     fn size(&self, handle: WasiSharedMemoryHandle) -> Result<usize>;
 }
@@ -117,13 +123,13 @@ pub trait WasiStreamingCodec {
     type Input;
     /// Output type for the codec
     type Output;
-    
+
     /// Transform input data to output data
     fn transform(&mut self, input: Self::Input) -> Result<Self::Output>;
-    
+
     /// Flush any buffered data
     fn flush(&mut self) -> Result<Option<Self::Output>>;
-    
+
     /// Reset the codec state
     fn reset(&mut self);
 }
@@ -134,11 +140,11 @@ pub trait WasiStreamingCodec {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiPreview3Limits {
     /// Maximum number of threads
-    pub max_threads: u32,
+    pub max_threads:       u32,
     /// Maximum shared memory size
     pub max_shared_memory: usize,
     /// Maximum async I/O operations
-    pub max_async_io_ops: u32,
+    pub max_async_io_ops:  u32,
     /// Maximum stream buffer size
     pub max_stream_buffer: usize,
 }
@@ -146,9 +152,9 @@ pub struct WasiPreview3Limits {
 impl Default for WasiPreview3Limits {
     fn default() -> Self {
         Self {
-            max_threads: 16,
+            max_threads:       16,
             max_shared_memory: 16 * 1024 * 1024, // 16MB
-            max_async_io_ops: 256,
+            max_async_io_ops:  256,
             max_stream_buffer: 1024 * 1024, // 1MB
         }
     }
@@ -160,25 +166,25 @@ impl Default for WasiPreview3Limits {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WasiPreview3Capabilities {
     /// Allow thread spawning
-    pub threading_enabled: bool,
+    pub threading_enabled:     bool,
     /// Allow shared memory
     pub shared_memory_enabled: bool,
     /// Allow async I/O
-    pub async_io_enabled: bool,
+    pub async_io_enabled:      bool,
     /// Allow streaming codecs
-    pub streaming_enabled: bool,
+    pub streaming_enabled:     bool,
     /// Resource limits
-    pub limits: WasiPreview3Limits,
+    pub limits:                WasiPreview3Limits,
 }
 
 impl Default for WasiPreview3Capabilities {
     fn default() -> Self {
         Self {
-            threading_enabled: false,
+            threading_enabled:     false,
             shared_memory_enabled: false,
-            async_io_enabled: true,
-            streaming_enabled: true,
-            limits: WasiPreview3Limits::default(),
+            async_io_enabled:      true,
+            streaming_enabled:     true,
+            limits:                WasiPreview3Limits::default(),
         }
     }
 }
@@ -188,16 +194,20 @@ impl Default for WasiPreview3Capabilities {
 /// Placeholder for component model enhancements in Preview3
 pub mod component_extensions {
     use super::*;
-    
+
     /// Async component instance trait
     pub trait AsyncComponentInstance {
         /// Call an async export function
-        fn call_async(&self, name: &str, args: Vec<crate::Value>) -> Pin<Box<dyn Future<Output = Result<Vec<crate::Value>>>>>;
-        
+        fn call_async(
+            &self,
+            name: &str,
+            args: Vec<crate::Value>,
+        ) -> Pin<Box<dyn Future<Output = Result<Vec<crate::Value>>>>>;
+
         /// Get an async resource handle
         fn get_async_resource(&self, name: &str) -> Result<WasiAsyncResourceHandle>;
     }
-    
+
     /// WASI async resource handle
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct WasiAsyncResourceHandle(pub u32);
@@ -208,24 +218,24 @@ pub mod component_extensions {
 /// Placeholder for streaming I/O patterns in Preview3
 pub mod streaming_patterns {
     use super::*;
-    
+
     /// Stream processor for data transformation
     pub struct StreamProcessor<C: WasiStreamingCodec> {
-        codec: C,
+        codec:       C,
         buffer_size: usize,
     }
-    
+
     impl<C: WasiStreamingCodec> StreamProcessor<C> {
         /// Create a new stream processor
         pub fn new(codec: C, buffer_size: usize) -> Self {
             Self { codec, buffer_size }
         }
-        
+
         /// Process a chunk of data
         pub fn process_chunk(&mut self, input: C::Input) -> Result<C::Output> {
             self.codec.transform(input)
         }
-        
+
         /// Finish processing and flush buffers
         pub fn finish(&mut self) -> Result<Option<C::Output>> {
             self.codec.flush()
@@ -238,7 +248,7 @@ pub mod streaming_patterns {
 /// Enhanced error types for Preview3 features
 pub mod error_extensions {
     use super::*;
-    
+
     /// Preview3-specific error codes
     pub mod codes {
         /// Thread spawn failed
@@ -250,19 +260,19 @@ pub mod error_extensions {
         /// Stream codec error
         pub const STREAM_CODEC_ERROR: u32 = 0x3004;
     }
-    
+
     /// Preview3-specific error kinds
     pub mod kinds {
         // Remove ErrorKind usage - not defined in wrt_error
-        
+
         /// Threading error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct ThreadingError(pub &'static str);
-        
+
         /// Async I/O error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct AsyncIoError(pub &'static str);
-        
+
         /// Streaming error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct StreamingError(pub &'static str);
@@ -272,7 +282,7 @@ pub mod error_extensions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_preview3_limits() {
         let limits = WasiPreview3Limits::default();
@@ -281,7 +291,7 @@ mod tests {
         assert_eq!(limits.max_async_io_ops, 256);
         assert_eq!(limits.max_stream_buffer, 1024 * 1024);
     }
-    
+
     #[test]
     fn test_preview3_capabilities() {
         let caps = WasiPreview3Capabilities::default();
@@ -290,22 +300,22 @@ mod tests {
         assert!(caps.async_io_enabled);
         assert!(caps.streaming_enabled);
     }
-    
+
     #[test]
     fn test_thread_handle() {
         let handle1 = WasiThreadHandle(1);
         let handle2 = WasiThreadHandle(2);
         let handle3 = WasiThreadHandle(1);
-        
+
         assert_ne!(handle1, handle2);
         assert_eq!(handle1, handle3);
     }
-    
+
     #[test]
     fn test_shared_memory_handle() {
         let handle1 = WasiSharedMemoryHandle(1);
         let handle2 = WasiSharedMemoryHandle(2);
-        
+
         assert_ne!(handle1, handle2);
     }
 }

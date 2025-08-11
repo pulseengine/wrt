@@ -18,9 +18,17 @@
 
 use core::ptr::NonNull;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 
-use crate::memory::{PageAllocator, WASM_PAGE_SIZE};
+use crate::memory::{
+    PageAllocator,
+    WASM_PAGE_SIZE,
+};
 
 /// Zephyr kernel timeout values
 const K_NO_WAIT: i32 = 0;
@@ -40,15 +48,15 @@ const EINVAL: i32 = -22;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZephyrMemoryFlags {
     /// Read access
-    Read = 0x01,
+    Read      = 0x01,
     /// Write access  
-    Write = 0x02,
+    Write     = 0x02,
     /// Execute access
-    Execute = 0x04,
+    Execute   = 0x04,
     /// Cacheable memory
     Cacheable = 0x08,
     /// Device memory (uncacheable)
-    Device = 0x10,
+    Device    = 0x10,
 }
 
 /// Zephyr heap handle (opaque pointer to k_heap structure)
@@ -68,8 +76,8 @@ struct ZephyrMemDomain {
 #[derive(Debug)]
 struct ZephyrMemPartition {
     start: usize,
-    size: usize,
-    attr: u32,
+    size:  usize,
+    attr:  u32,
 }
 
 // FFI declarations for Zephyr kernel APIs
@@ -83,7 +91,7 @@ extern "C" {
     ) -> *mut u8;
 
     /// Binary std/no_std choice
-    fn k_heap_free(heap: *mut ZephyrHeap, mem: *mut u8;
+    fn k_heap_free(heap: *mut ZephyrHeap, mem: *mut u8);
 
     /// Initialize a memory domain
     fn k_mem_domain_init(
@@ -117,20 +125,20 @@ pub struct ZephyrAllocatorConfig {
     /// Whether to use memory domains for isolation
     pub use_memory_domains: bool,
     /// Memory protection attributes
-    pub memory_attributes: ZephyrMemoryFlags,
+    pub memory_attributes:  ZephyrMemoryFlags,
     /// Whether to use guard regions
-    pub use_guard_regions: bool,
+    pub use_guard_regions:  bool,
     /// Custom heap to use (None = system heap)
-    pub custom_heap: bool,
+    pub custom_heap:        bool,
 }
 
 impl Default for ZephyrAllocatorConfig {
     fn default() -> Self {
         Self {
             use_memory_domains: true,
-            memory_attributes: ZephyrMemoryFlags::Read,
-            use_guard_regions: true,
-            custom_heap: false,
+            memory_attributes:  ZephyrMemoryFlags::Read,
+            use_guard_regions:  true,
+            custom_heap:        false,
         }
     }
 }
@@ -138,14 +146,14 @@ impl Default for ZephyrAllocatorConfig {
 /// A `PageAllocator` implementation for Zephyr RTOS.
 #[derive(Debug)]
 pub struct ZephyrAllocator {
-    config: ZephyrAllocatorConfig,
-    heap: *mut ZephyrHeap,
-    memory_domain: Option<NonNull<ZephyrMemDomain>>,
-    base_ptr: Option<NonNull<u8>>,
-    total_reserved_bytes: usize,
+    config:                  ZephyrAllocatorConfig,
+    heap:                    *mut ZephyrHeap,
+    memory_domain:           Option<NonNull<ZephyrMemDomain>>,
+    base_ptr:                Option<NonNull<u8>>,
+    total_reserved_bytes:    usize,
     current_committed_bytes: usize,
-    max_capacity_bytes: usize,
-    current_partition: Option<ZephyrMemPartition>,
+    max_capacity_bytes:      usize,
+    current_partition:       Option<ZephyrMemPartition>,
 }
 
 // Safety: ZephyrAllocator only contains pointers to Zephyr kernel objects which
@@ -154,11 +162,13 @@ unsafe impl Send for ZephyrAllocator {}
 unsafe impl Sync for ZephyrAllocator {}
 
 impl ZephyrAllocator {
-    const DEFAULT_MAX_PAGES: u32 = 65536; // 4GiB limit
+    const DEFAULT_MAX_PAGES: u32 = 65536;
+
+    // 4GiB limit
 
     /// Creates a new `ZephyrAllocator` with the given configuration.
     pub fn new(config: ZephyrAllocatorConfig, maximum_pages: Option<u32>) -> Self {
-        let max_pages_val = maximum_pages.unwrap_or(Self::DEFAULT_MAX_PAGES;
+        let max_pages_val = maximum_pages.unwrap_or(Self::DEFAULT_MAX_PAGES);
         let max_capacity_bytes = max_pages_val as usize * WASM_PAGE_SIZE;
 
         // Get the appropriate heap
@@ -183,9 +193,10 @@ impl ZephyrAllocator {
     }
 
     fn pages_to_bytes(pages: u32) -> Result<usize> {
-        pages.checked_mul(WASM_PAGE_SIZE as u32).map(|b| b as usize).ok_or_else(|| {
-            Error::memory_error("Page count results in byte overflow")
-        })
+        pages
+            .checked_mul(WASM_PAGE_SIZE as u32)
+            .map(|b| b as usize)
+            .ok_or_else(|| Error::memory_error("Page count results in byte overflow"))
     }
 
     /// Set up memory domain isolation if enabled
@@ -200,9 +211,9 @@ impl ZephyrAllocator {
         // context.
 
         // Note: In real usage, domain would be a static or stack variable:
-        // static K_MEM_DOMAIN_DEFINE(my_domain;
+        // static K_MEM_DOMAIN_DEFINE(my_domain);
         // For now, we'll use a null pointer to indicate this limitation
-        let domain: *mut ZephyrMemDomain = core::ptr::null_mut);
+        let domain: *mut ZephyrMemDomain = core::ptr::null_mut();
 
         if domain.is_null() {
             // Memory domains not available - log this for debugging in real
@@ -217,13 +228,15 @@ impl ZephyrAllocator {
             };
 
             // Initialize memory domain
-            let result = k_mem_domain_init(domain, 1, &partition as *const _ as *mut _;
+            let result = k_mem_domain_init(domain, 1, &partition as *const _ as *mut _);
             if result != 0 {
-                return Err(Error::runtime_execution_error("Zephyr memory pool allocation failed";
+                return Err(Error::runtime_execution_error(
+                    "Zephyr memory pool allocation failed",
+                ));
             }
 
-            self.memory_domain = NonNull::new(domain;
-            self.current_partition = Some(partition;
+            self.memory_domain = NonNull::new(domain);
+            self.current_partition = Some(partition);
         }
 
         Ok(())
@@ -234,7 +247,7 @@ impl ZephyrAllocator {
         if let Some(domain) = self.memory_domain.take() {
             if let Some(partition) = self.current_partition.take() {
                 // Remove partition from domain
-                k_mem_domain_remove_partition(domain.as_ptr(), &partition as *const _ as *mut _;
+                k_mem_domain_remove_partition(domain.as_ptr(), &partition as *const _ as *mut _);
             }
 
             // In real Zephyr implementation, static domains don't need explicit
@@ -259,13 +272,16 @@ impl ZephyrAllocator {
 /// Builder for `ZephyrAllocator` to provide a fluent configuration API.
 #[derive(Debug)]
 pub struct ZephyrAllocatorBuilder {
-    config: ZephyrAllocatorConfig,
+    config:        ZephyrAllocatorConfig,
     maximum_pages: Option<u32>,
 }
 
 impl Default for ZephyrAllocatorBuilder {
     fn default() -> Self {
-        Self { config: ZephyrAllocatorConfig::default(), maximum_pages: None }
+        Self {
+            config:        ZephyrAllocatorConfig::default(),
+            maximum_pages: None,
+        }
     }
 }
 
@@ -277,7 +293,7 @@ impl ZephyrAllocatorBuilder {
 
     /// Binary std/no_std choice
     pub fn with_maximum_pages(mut self, pages: u32) -> Self {
-        self.maximum_pages = Some(pages;
+        self.maximum_pages = Some(pages);
         self
     }
 
@@ -319,18 +335,19 @@ impl PageAllocator for ZephyrAllocator {
     ) -> Result<(NonNull<u8>, usize)> {
         if self.base_ptr.is_some() {
             return Err(Error::new(
-                ErrorCategory::System, 1,
-                
-                ";
+                ErrorCategory::System,
+                1,
+                "Memory domain setup failed",
+            ));
         }
 
         if initial_pages == 0 {
-            return Err(Error::memory_error("Initial pages cannot be zero";
+            return Err(Error::memory_error("Initial pages cannot be zero"));
         }
 
         let initial_bytes = Self::pages_to_bytes(initial_pages)?;
-        let max_pages_hint = maximum_pages.unwrap_or(initial_pages).max(initial_pages;
-        let mut reserve_bytes = Self::pages_to_bytes(max_pages_hint)?.max(initial_bytes;
+        let max_pages_hint = maximum_pages.unwrap_or(initial_pages).max(initial_pages);
+        let mut reserve_bytes = Self::pages_to_bytes(max_pages_hint)?.max(initial_bytes);
 
         // Add space for guard regions if enabled
         if self.config.use_guard_regions {
@@ -340,7 +357,9 @@ impl PageAllocator for ZephyrAllocator {
         }
 
         if reserve_bytes > self.max_capacity_bytes {
-            return Err(Error::memory_error("Requested reservation size exceeds allocator's maximum capacity";
+            return Err(Error::memory_error(
+                "Requested reservation size exceeds allocator's maximum capacity",
+            ));
         }
 
         // Allocate aligned memory from Zephyr heap
@@ -355,22 +374,22 @@ impl PageAllocator for ZephyrAllocator {
         };
 
         if ptr.is_null() {
-            return Err(Error::runtime_execution_error("Zephyr memory alignment requirement not met";
+            return Err(Error::runtime_execution_error(
+                "Zephyr memory alignment requirement not met",
+            ));
         }
 
         // Convert raw pointer to NonNull
         let base_ptr = NonNull::new(ptr).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::System, 1,
-                "Failed to create NonNull pointer")
+            Error::new(ErrorCategory::System, 1, "Failed to create NonNull pointer")
         })?;
 
         // Set up memory domain isolation if enabled
         unsafe {
             if let Err(e) = self.setup_memory_domain(ptr, reserve_bytes) {
                 // Binary std/no_std choice
-                k_heap_free(self.heap, ptr;
-                return Err(e;
+                k_heap_free(self.heap, ptr);
+                return Err(e);
             }
         }
 
@@ -378,13 +397,13 @@ impl PageAllocator for ZephyrAllocator {
         unsafe {
             if let Err(e) = self.setup_guard_regions(ptr, reserve_bytes) {
                 // Binary std/no_std choice
-                let _ = self.cleanup_memory_domain);
-                k_heap_free(self.heap, ptr;
-                return Err(e;
+                let _ = self.cleanup_memory_domain();
+                k_heap_free(self.heap, ptr);
+                return Err(e);
             }
         }
 
-        self.base_ptr = Some(base_ptr;
+        self.base_ptr = Some(base_ptr);
         self.total_reserved_bytes = reserve_bytes;
         self.current_committed_bytes = initial_bytes;
 
@@ -393,7 +412,9 @@ impl PageAllocator for ZephyrAllocator {
 
     fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<()> {
         let Some(_base_ptr) = self.base_ptr else {
-            return Err(Error::runtime_execution_error("Zephyr memory pool exhausted";
+            return Err(Error::runtime_execution_error(
+                "Zephyr memory pool exhausted",
+            ));
         };
 
         if additional_pages == 0 {
@@ -402,7 +423,9 @@ impl PageAllocator for ZephyrAllocator {
 
         let current_bytes_from_arg = Self::pages_to_bytes(current_pages)?;
         if current_bytes_from_arg != self.current_committed_bytes {
-            return Err(Error::memory_error(";
+            return Err(Error::memory_error(
+                "Current page count does not match internal state",
+            ));
         }
 
         let new_total_pages = current_pages
@@ -419,7 +442,9 @@ impl PageAllocator for ZephyrAllocator {
         };
 
         if new_committed_bytes > available_space {
-            return Err(Error::memory_error("Grow request exceeds total reserved memory space";
+            return Err(Error::memory_error(
+                "Grow request exceeds total reserved memory space",
+            ));
         }
 
         // Since we already reserved the memory, just update our accounting
@@ -430,24 +455,26 @@ impl PageAllocator for ZephyrAllocator {
     unsafe fn deallocate(&mut self, ptr: NonNull<u8>, _size: usize) -> Result<()> {
         // Validate that ptr matches our base_ptr
         let Some(base_ptr) = self.base_ptr.take() else {
-            return Err(Error::memory_error("No memory allocated to deallocate";
+            return Err(Error::memory_error("No memory allocated to deallocate"));
         };
 
         if ptr.as_ptr() != base_ptr.as_ptr() {
             self.base_ptr = Some(base_ptr); // Restore base_ptr
-            return Err(Error::memory_error("Attempted to deallocate with mismatched pointer";
+            return Err(Error::memory_error(
+                "Attempted to deallocate with mismatched pointer",
+            ));
         }
 
         // Clean up memory domain first
         if let Err(e) = self.cleanup_memory_domain() {
             // Binary std/no_std choice
-            self.base_ptr = Some(base_ptr;
-            return Err(e;
+            self.base_ptr = Some(base_ptr);
+            return Err(e);
         }
 
         // Free the memory using Zephyr's heap API
         // Binary std/no_std choice
-        k_heap_free(self.heap, ptr.as_ptr);
+        k_heap_free(self.heap, ptr.as_ptr());
 
         // Reset internal state
         self.total_reserved_bytes = 0;
@@ -461,8 +488,8 @@ impl Drop for ZephyrAllocator {
         // Binary std/no_std choice
         if let Some(base_ptr) = self.base_ptr.take() {
             unsafe {
-                let _ = self.cleanup_memory_domain);
-                k_heap_free(self.heap, base_ptr.as_ptr);
+                let _ = self.cleanup_memory_domain();
+                k_heap_free(self.heap, base_ptr.as_ptr());
             }
         }
     }

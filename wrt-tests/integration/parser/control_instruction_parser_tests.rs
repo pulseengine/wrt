@@ -9,7 +9,10 @@ use std::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_decoder::instructions::{encode_instruction, parse_instruction};
+use wrt_decoder::instructions::{
+    encode_instruction,
+    parse_instruction,
+};
 use wrt_error::Result;
 
 // ===========================================
@@ -24,10 +27,13 @@ mod control_instruction_tests {
         let block_bytes = vec![0x02, 0x40, 0x0B]; // block (empty) end
         let (block_instr, block_bytes_read) = parse_instruction(&block_bytes)?;
 
-        assert_eq!(block_bytes_read, block_bytes.len(), "Should read all bytes";
+        assert_eq!(block_bytes_read, block_bytes.len(), "Should read all bytes");
 
         let encoded_block = encode_instruction(&block_instr)?;
-        assert_eq!(encoded_block, block_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_block, block_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -41,10 +47,13 @@ mod control_instruction_tests {
         ];
         let (loop_instr, loop_bytes_read) = parse_instruction(&loop_bytes)?;
 
-        assert_eq!(loop_bytes_read, loop_bytes.len(), "Should read all bytes";
+        assert_eq!(loop_bytes_read, loop_bytes.len(), "Should read all bytes");
 
         let encoded_loop = encode_instruction(&loop_instr)?;
-        assert_eq!(encoded_loop, loop_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_loop, loop_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -60,10 +69,10 @@ mod control_instruction_tests {
         ];
         let (if_instr, if_bytes_read) = parse_instruction(&if_bytes)?;
 
-        assert_eq!(if_bytes_read, if_bytes.len(), "Should read all bytes";
+        assert_eq!(if_bytes_read, if_bytes.len(), "Should read all bytes");
 
         let encoded_if = encode_instruction(&if_instr)?;
-        assert_eq!(encoded_if, if_bytes, "Encoded bytes should match original";
+        assert_eq!(encoded_if, if_bytes, "Encoded bytes should match original");
 
         Ok(())
     }
@@ -79,10 +88,17 @@ mod control_instruction_tests {
         ];
         let (br_table_instr, br_table_bytes_read) = parse_instruction(&br_table_bytes)?;
 
-        assert_eq!(br_table_bytes_read, br_table_bytes.len(), "Should read all bytes";
+        assert_eq!(
+            br_table_bytes_read,
+            br_table_bytes.len(),
+            "Should read all bytes"
+        );
 
         let encoded_br_table = encode_instruction(&br_table_instr)?;
-        assert_eq!(encoded_br_table, br_table_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_br_table, br_table_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -97,10 +113,17 @@ mod control_instruction_tests {
         ];
         let (nested_instr, nested_bytes_read) = parse_instruction(&nested_bytes)?;
 
-        assert_eq!(nested_bytes_read, nested_bytes.len(), "Should read all bytes";
+        assert_eq!(
+            nested_bytes_read,
+            nested_bytes.len(),
+            "Should read all bytes"
+        );
 
         let encoded_nested = encode_instruction(&nested_instr)?;
-        assert_eq!(encoded_nested, nested_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_nested, nested_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -110,10 +133,10 @@ mod control_instruction_tests {
         let br_bytes = vec![0x0C, 0x00]; // br 0
         let (br_instr, br_bytes_read) = parse_instruction(&br_bytes)?;
 
-        assert_eq!(br_bytes_read, br_bytes.len(), "Should read all bytes";
+        assert_eq!(br_bytes_read, br_bytes.len(), "Should read all bytes");
 
         let encoded_br = encode_instruction(&br_instr)?;
-        assert_eq!(encoded_br, br_bytes, "Encoded bytes should match original";
+        assert_eq!(encoded_br, br_bytes, "Encoded bytes should match original");
 
         Ok(())
     }
@@ -123,10 +146,13 @@ mod control_instruction_tests {
         let br_if_bytes = vec![0x0D, 0x01]; // br_if 1
         let (br_if_instr, br_if_bytes_read) = parse_instruction(&br_if_bytes)?;
 
-        assert_eq!(br_if_bytes_read, br_if_bytes.len(), "Should read all bytes";
+        assert_eq!(br_if_bytes_read, br_if_bytes.len(), "Should read all bytes");
 
         let encoded_br_if = encode_instruction(&br_if_instr)?;
-        assert_eq!(encoded_br_if, br_if_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_br_if, br_if_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -136,10 +162,17 @@ mod control_instruction_tests {
         let return_bytes = vec![0x0F]; // return
         let (return_instr, return_bytes_read) = parse_instruction(&return_bytes)?;
 
-        assert_eq!(return_bytes_read, return_bytes.len(), "Should read all bytes";
+        assert_eq!(
+            return_bytes_read,
+            return_bytes.len(),
+            "Should read all bytes"
+        );
 
         let encoded_return = encode_instruction(&return_instr)?;
-        assert_eq!(encoded_return, return_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_return, return_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -149,10 +182,13 @@ mod control_instruction_tests {
         let call_bytes = vec![0x10, 0x05]; // call 5
         let (call_instr, call_bytes_read) = parse_instruction(&call_bytes)?;
 
-        assert_eq!(call_bytes_read, call_bytes.len(), "Should read all bytes";
+        assert_eq!(call_bytes_read, call_bytes.len(), "Should read all bytes");
 
         let encoded_call = encode_instruction(&call_instr)?;
-        assert_eq!(encoded_call, call_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_call, call_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -160,12 +196,20 @@ mod control_instruction_tests {
     #[test]
     fn test_parse_encode_call_indirect() -> Result<()> {
         let call_indirect_bytes = vec![0x11, 0x02, 0x00]; // call_indirect type_index=2, table_index=0
-        let (call_indirect_instr, call_indirect_bytes_read) = parse_instruction(&call_indirect_bytes)?;
+        let (call_indirect_instr, call_indirect_bytes_read) =
+            parse_instruction(&call_indirect_bytes)?;
 
-        assert_eq!(call_indirect_bytes_read, call_indirect_bytes.len(), "Should read all bytes";
+        assert_eq!(
+            call_indirect_bytes_read,
+            call_indirect_bytes.len(),
+            "Should read all bytes"
+        );
 
         let encoded_call_indirect = encode_instruction(&call_indirect_instr)?;
-        assert_eq!(encoded_call_indirect, call_indirect_bytes, "Encoded bytes should match original";
+        assert_eq!(
+            encoded_call_indirect, call_indirect_bytes,
+            "Encoded bytes should match original"
+        );
 
         Ok(())
     }
@@ -191,7 +235,7 @@ mod control_flow_validation_tests {
 
         for block_bytes in valid_block_types {
             let (_, bytes_read) = parse_instruction(&block_bytes)?;
-            assert_eq!(bytes_read, block_bytes.len();
+            assert_eq!(bytes_read, block_bytes.len());
         }
 
         Ok(())
@@ -214,7 +258,7 @@ mod control_flow_validation_tests {
         ];
 
         let (_, bytes_read) = parse_instruction(&nested_control)?;
-        assert_eq!(bytes_read, nested_control.len();
+        assert_eq!(bytes_read, nested_control.len());
 
         Ok(())
     }
@@ -232,7 +276,7 @@ mod control_flow_validation_tests {
 
         for branch_bytes in branch_instructions {
             let (_, bytes_read) = parse_instruction(&branch_bytes)?;
-            assert_eq!(bytes_read, branch_bytes.len();
+            assert_eq!(bytes_read, branch_bytes.len());
         }
 
         Ok(())
@@ -242,14 +286,14 @@ mod control_flow_validation_tests {
     fn test_br_table_validation() -> Result<()> {
         // Test br_table with various configurations
         let br_table_configs = vec![
-            vec![0x0E, 0x00, 0x00], // br_table with no labels, default 0
-            vec![0x0E, 0x01, 0x00, 0x01], // br_table with 1 label, default 1
+            vec![0x0E, 0x00, 0x00],                   // br_table with no labels, default 0
+            vec![0x0E, 0x01, 0x00, 0x01],             // br_table with 1 label, default 1
             vec![0x0E, 0x03, 0x00, 0x01, 0x02, 0x03], // br_table with 3 labels
         ];
 
         for br_table_bytes in br_table_configs {
             let (_, bytes_read) = parse_instruction(&br_table_bytes)?;
-            assert_eq!(bytes_read, br_table_bytes.len();
+            assert_eq!(bytes_read, br_table_bytes.len());
         }
 
         Ok(())
@@ -273,10 +317,10 @@ mod control_instruction_edge_cases {
 
         for block_bytes in empty_blocks {
             let (instr, bytes_read) = parse_instruction(&block_bytes)?;
-            assert_eq!(bytes_read, block_bytes.len();
+            assert_eq!(bytes_read, block_bytes.len());
 
             let encoded = encode_instruction(&instr)?;
-            assert_eq!(encoded, block_bytes;
+            assert_eq!(encoded, block_bytes);
         }
 
         Ok(())
@@ -296,10 +340,10 @@ mod control_instruction_edge_cases {
 
         for if_bytes in if_else_patterns {
             let (instr, bytes_read) = parse_instruction(&if_bytes)?;
-            assert_eq!(bytes_read, if_bytes.len();
+            assert_eq!(bytes_read, if_bytes.len());
 
             let encoded = encode_instruction(&instr)?;
-            assert_eq!(encoded, if_bytes;
+            assert_eq!(encoded, if_bytes);
         }
 
         Ok(())
@@ -309,17 +353,17 @@ mod control_instruction_edge_cases {
     fn test_function_call_variations() -> Result<()> {
         // Test various function call patterns
         let call_patterns = vec![
-            vec![0x10, 0x00], // call 0
-            vec![0x10, 0x7F], // call 127 (single byte)
+            vec![0x10, 0x00],       // call 0
+            vec![0x10, 0x7F],       // call 127 (single byte)
             vec![0x10, 0x80, 0x01], // call 128 (multi-byte LEB128)
         ];
 
         for call_bytes in call_patterns {
             let (instr, bytes_read) = parse_instruction(&call_bytes)?;
-            assert_eq!(bytes_read, call_bytes.len();
+            assert_eq!(bytes_read, call_bytes.len());
 
             let encoded = encode_instruction(&instr)?;
-            assert_eq!(encoded, call_bytes;
+            assert_eq!(encoded, call_bytes);
         }
 
         Ok(())
@@ -334,10 +378,10 @@ mod control_instruction_edge_cases {
 
         for instr_bytes in simple_instructions {
             let (instr, bytes_read) = parse_instruction(&instr_bytes)?;
-            assert_eq!(bytes_read, instr_bytes.len();
+            assert_eq!(bytes_read, instr_bytes.len());
 
             let encoded = encode_instruction(&instr)?;
-            assert_eq!(encoded, instr_bytes;
+            assert_eq!(encoded, instr_bytes);
         }
 
         Ok(())
@@ -348,7 +392,7 @@ mod control_instruction_edge_cases {
         // Test br_table with many labels
         let mut br_table_bytes = vec![0x0E]; // br_table opcode
         br_table_bytes.push(0x0A); // 10 labels
-        
+
         // Add 10 labels (0-9)
         for i in 0..10 {
             br_table_bytes.push(i);
@@ -356,10 +400,10 @@ mod control_instruction_edge_cases {
         br_table_bytes.push(0x0A); // default label
 
         let (instr, bytes_read) = parse_instruction(&br_table_bytes)?;
-        assert_eq!(bytes_read, br_table_bytes.len();
+        assert_eq!(bytes_read, br_table_bytes.len());
 
         let encoded = encode_instruction(&instr)?;
-        assert_eq!(encoded, br_table_bytes;
+        assert_eq!(encoded, br_table_bytes);
 
         Ok(())
     }

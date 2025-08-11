@@ -8,6 +8,12 @@
 //! as defined in the WebAssembly Component Model.
 
 // Use the prelude for consistent imports
+// Type aliases for no_std compatibility - fixed later
+#[cfg(not(feature = "std"))]
+use crate::bounded_host_infra::{
+    HostProvider,
+    HOST_MEMORY_SIZE,
+};
 #[cfg(feature = "std")]
 use crate::prelude::Arc;
 use crate::prelude::{
@@ -27,14 +33,6 @@ use crate::prelude::{
     BuiltinInterceptor,
     ComponentValue,
     InterceptContext,
-};
-
-// Type aliases for no_std compatibility - fixed later
-
-#[cfg(not(feature = "std"))]
-use crate::bounded_host_infra::{
-    HostProvider,
-    HOST_MEMORY_SIZE,
 };
 
 /// Helper function to create host provider using existing infrastructure

@@ -106,7 +106,7 @@ pub mod std_runtime {
         
         /// Execute a WebAssembly module (placeholder implementation)
         pub fn execute_module(&self, module_path: &str, function: &str) -> Result<String, String> {
-            let start = Instant::now);
+            let start = Instant::now();
             
             // Load module (placeholder)
             let module_bytes = match fs::read(module_path) {

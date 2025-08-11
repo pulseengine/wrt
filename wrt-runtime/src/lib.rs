@@ -63,8 +63,6 @@ pub mod unified_types;
 pub mod capability_integration;
 pub mod component_unified;
 pub mod memory_adapter;
-#[cfg(test)]
-mod memory_adapter_test;
 pub mod memory_config_adapter;
 pub mod memory_helpers;
 /// WebAssembly module representation and management
@@ -76,8 +74,8 @@ pub mod stackless;
 pub mod table;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod thread_manager;
-pub mod types;
 pub mod type_conversion;
+pub mod types;
 
 // Platform-aware runtime and unified memory management
 pub mod platform_runtime;
@@ -105,29 +103,42 @@ pub mod instruction_parser;
 mod instruction_parser_tests;
 
 // Temporary stub modules for parallel development
-mod foundation_stubs;
 mod component_stubs;
+mod foundation_stubs;
 
 // Runtime state and resource management
-pub mod state;
-pub mod resources;
 pub mod component;
+pub mod resources;
+pub mod state;
 
 // Import platform abstractions from wrt-foundation
-pub use wrt_foundation::platform_abstraction;
-
 // Re-export commonly used types
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub use atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
-pub use core_types::{CallFrame, ComponentExecutionState, ExecutionContext};
+pub use atomic_execution::{
+    AtomicExecutionStats,
+    AtomicMemoryContext,
+};
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use atomic_memory_model::{
-    AtomicMemoryModel, MemoryOrderingPolicy, ConsistencyValidationResult,
-    MemoryModelPerformanceMetrics, DataRaceReport, OrderingViolationReport,
+    AtomicMemoryModel,
+    ConsistencyValidationResult,
+    DataRaceReport,
+    MemoryModelPerformanceMetrics,
+    MemoryOrderingPolicy,
+    OrderingViolationReport,
 };
 pub use cfi_engine::{
-    CfiEngineStatistics, CfiExecutionEngine, CfiExecutionResult, CfiViolationPolicy,
-    CfiViolationType, ExecutionResult,
+    CfiEngineStatistics,
+    CfiExecutionEngine,
+    CfiExecutionResult,
+    CfiViolationPolicy,
+    CfiViolationType,
+    ExecutionResult,
+};
+pub use core_types::{
+    CallFrame,
+    ComponentExecutionState,
+    ExecutionContext,
 };
 pub use execution::ExecutionStats;
 // Note: ExecutionContext is defined in core_types, not execution
@@ -136,12 +147,16 @@ pub use execution::ExecutionStats;
 //     ThreadExecutionStats, ThreadManagerStats, ThreadId,
 // };
 pub use func::Function as RuntimeFunction;
-pub use prelude::FuncType;
 pub use global::Global;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use memory::Memory;
-pub use memory_adapter::{MemoryAdapter, SafeMemoryAdapter, StdMemoryProvider};
+pub use memory_adapter::{
+    MemoryAdapter,
+    SafeMemoryAdapter,
+    StdMemoryProvider,
+};
 pub use memory_helpers::ArcMemoryExt;
+pub use prelude::FuncType;
 // pub use module::{
 //     Data, Element, Export, ExportItem, ExportKind, Function, Import, Module, OtherExport,
 // };
@@ -151,16 +166,19 @@ pub use memory_helpers::ArcMemoryExt;
 //     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
 // }; // Temporarily disabled due to compilation issues
 pub use table::Table;
+pub use wrt_foundation::platform_abstraction;
 
 // Re-export platform-aware runtime types - temporarily disabled
-// pub use platform_runtime::{PlatformAwareRuntime, PlatformMemoryAdapter, RuntimeMetrics};
+// pub use platform_runtime::{PlatformAwareRuntime, PlatformMemoryAdapter,
+// RuntimeMetrics};
 
 /// The WebAssembly memory page size (64KiB)
 pub const PAGE_SIZE: usize = 65536;
 
 /// Component Model implementations of runtime interfaces - temporarily disabled
 // pub mod component_impl;
-/// Component Model trait definitions for runtime interfaces - temporarily disabled
+/// Component Model trait definitions for runtime interfaces - temporarily
+/// disabled
 // pub mod component_traits;
 
 // Internal modules

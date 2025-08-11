@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 
 //! Component type stubs for runtime integration
-//! 
+//!
 //! These types provide the interface between the runtime
 //! and the Component Model implementation.
 
@@ -22,7 +22,7 @@ impl ComponentInstance {
     pub fn new(id: ComponentId) -> Self {
         Self { id }
     }
-    
+
     pub fn id(&self) -> ComponentId {
         self.id
     }
@@ -30,7 +30,7 @@ impl ComponentInstance {
 
 /// Component identifier stub
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ComponentId(pub u32;
+pub struct ComponentId(pub u32);
 
 impl ComponentId {
     pub fn new(id: u32) -> Self {
@@ -54,16 +54,16 @@ impl ComponentType {
 #[derive(Debug, Clone)]
 pub struct ComponentRequirements {
     pub component_count: usize,
-    pub resource_count: usize,
-    pub memory_usage: usize,
+    pub resource_count:  usize,
+    pub memory_usage:    usize,
 }
 
 impl Default for ComponentRequirements {
     fn default() -> Self {
         Self {
             component_count: 1,
-            resource_count: 0,
-            memory_usage: 4096, // 4KB default
+            resource_count:  0,
+            memory_usage:    4096, // 4KB default
         }
     }
 }
@@ -71,16 +71,16 @@ impl Default for ComponentRequirements {
 /// Component memory budget stub
 #[derive(Debug, Clone)]
 pub struct ComponentMemoryBudget {
-    pub total_memory: usize,
+    pub total_memory:       usize,
     pub component_overhead: usize,
-    pub available_memory: usize,
+    pub available_memory:   usize,
 }
 
 impl ComponentMemoryBudget {
     pub fn calculate(limits: &wrt_foundation::PlatformLimits) -> Result<Self, wrt_error::Error> {
         let component_overhead = limits.max_memory / 100; // 1% overhead
-        let available_memory = limits.max_memory.saturating_sub(component_overhead;
-        
+        let available_memory = limits.max_memory.saturating_sub(component_overhead);
+
         Ok(Self {
             total_memory: limits.max_memory,
             component_overhead,

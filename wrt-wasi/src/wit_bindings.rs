@@ -8,19 +8,19 @@ use crate::prelude::*;
 /// WASI filesystem types from WIT
 pub mod filesystem_types {
     use super::*;
-    
+
     /// File descriptor type
     pub type Descriptor = u32;
-    
+
     /// Directory entry type
     #[derive(Debug, Clone, PartialEq)]
     pub struct DirectoryEntry {
         /// Entry name
-        pub name: String,
+        pub name:  String,
         /// Entry type
         pub type_: DescriptorType,
     }
-    
+
     /// Descriptor types
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum DescriptorType {
@@ -41,7 +41,7 @@ pub mod filesystem_types {
         /// Unknown type
         Unknown,
     }
-    
+
     /// File metadata
     #[derive(Debug, Clone, PartialEq)]
     pub struct DescriptorStat {
@@ -56,12 +56,12 @@ pub mod filesystem_types {
         /// Status change timestamp
         pub status_change_timestamp: Timestamp,
     }
-    
+
     /// Timestamp type
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Timestamp {
         /// Seconds since Unix epoch
-        pub seconds: u64,
+        pub seconds:     u64,
         /// Nanoseconds
         pub nanoseconds: u32,
     }
@@ -76,18 +76,18 @@ pub mod cli_types {
 /// WASI clocks types from WIT
 pub mod clocks_types {
     use super::*;
-    
+
     /// Instant in time
     pub type Instant = u64;
-    
+
     /// Duration
     pub type Duration = u64;
-    
+
     /// Wall clock datetime
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Datetime {
         /// Seconds since Unix epoch
-        pub seconds: u64,
+        pub seconds:     u64,
         /// Nanoseconds
         pub nanoseconds: u32,
     }
@@ -96,7 +96,7 @@ pub mod clocks_types {
 /// WASI I/O types from WIT
 pub mod io_types {
     use super::*;
-    
+
     /// Stream error
     #[derive(Debug, Clone, PartialEq)]
     pub enum StreamError {
@@ -105,7 +105,7 @@ pub mod io_types {
         /// Stream closed
         Closed,
     }
-    
+
     /// Pollable handle
     pub type Pollable = u32;
 }
@@ -119,10 +119,10 @@ pub mod random_types {
 #[cfg(feature = "preview3-prep")]
 pub mod sockets_types {
     use super::*;
-    
+
     /// Network handle
     pub type Network = u32;
-    
+
     /// IP address family
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum IpAddressFamily {
@@ -131,7 +131,7 @@ pub mod sockets_types {
         /// IPv6
         Ipv6,
     }
-    
+
     /// IP socket address
     #[derive(Debug, Clone, PartialEq)]
     pub enum IpSocketAddress {
@@ -140,32 +140,32 @@ pub mod sockets_types {
         /// IPv6 address
         Ipv6(Ipv6SocketAddress),
     }
-    
+
     /// IPv4 socket address
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Ipv4SocketAddress {
         /// Port number
-        pub port: u16,
+        pub port:    u16,
         /// IPv4 address bytes
         pub address: [u8; 4],
     }
-    
+
     /// IPv6 socket address
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Ipv6SocketAddress {
         /// Port number
-        pub port: u16,
+        pub port:      u16,
         /// Flow info
         pub flow_info: u32,
         /// IPv6 address bytes
-        pub address: [u8; 16],
+        pub address:   [u8; 16],
         /// Scope ID
-        pub scope_id: u32,
+        pub scope_id:  u32,
     }
-    
+
     /// TCP socket handle
     pub type TcpSocket = u32;
-    
+
     /// UDP socket handle
     pub type UdpSocket = u32;
 }
@@ -174,21 +174,22 @@ pub mod sockets_types {
 pub mod conversions {
     use super::*;
     use crate::Value;
-    
+
     /// Convert filesystem descriptor to Value
     pub fn descriptor_to_value(desc: filesystem_types::Descriptor) -> Value {
         Value::U32(desc)
     }
-    
+
     /// Convert Value to filesystem descriptor
     pub fn value_to_descriptor(value: &Value) -> Result<filesystem_types::Descriptor> {
         match value {
             Value::U32(desc) => Ok(*desc),
-            _ => Err(Error::runtime_execution_error("Cannot convert value to size type"
+            _ => Err(Error::runtime_execution_error(
+                "Cannot convert value to size type",
             )),
         }
     }
-    
+
     /// Convert timestamp to Value
     pub fn timestamp_to_value(ts: filesystem_types::Timestamp) -> Value {
         Value::Record(vec![
@@ -196,37 +197,41 @@ pub mod conversions {
             ("nanoseconds".to_string(), Value::U32(ts.nanoseconds)),
         ])
     }
-    
+
     /// Convert Value to timestamp
     pub fn value_to_timestamp(value: &Value) -> Result<filesystem_types::Timestamp> {
         match value {
             Value::Record(fields) => {
                 let mut seconds = 0u64;
                 let mut nanoseconds = 0u32;
-                
+
                 for (key, val) in fields {
                     match key.as_str() {
                         "seconds" => {
                             if let Value::U64(s) = val {
                                 seconds = *s;
                             }
-                        }
+                        },
                         "nanoseconds" => {
                             if let Value::U32(ns) = val {
                                 nanoseconds = *ns;
                             }
-                        }
-                        _ => {}
+                        },
+                        _ => {},
                     }
                 }
-                
-                Ok(filesystem_types::Timestamp { seconds, nanoseconds })
-            }
-            _ => Err(Error::runtime_execution_error("Cannot convert value to size type"
+
+                Ok(filesystem_types::Timestamp {
+                    seconds,
+                    nanoseconds,
+                })
+            },
+            _ => Err(Error::runtime_execution_error(
+                "Cannot convert value to size type",
             )),
         }
     }
-    
+
     /// Convert descriptor type to Value
     pub fn descriptor_type_to_value(dt: filesystem_types::DescriptorType) -> Value {
         Value::U8(match dt {
@@ -240,7 +245,7 @@ pub mod conversions {
             filesystem_types::DescriptorType::Unknown => 7,
         })
     }
-    
+
     /// Convert Value to descriptor type
     pub fn value_to_descriptor_type(value: &Value) -> Result<filesystem_types::DescriptorType> {
         match value {
@@ -255,7 +260,8 @@ pub mod conversions {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 codes::WASI_INVALID_FD,
-                "Expected record type for timestamp")),
+                "Expected record type for timestamp",
+            )),
         }
     }
 }
@@ -264,7 +270,7 @@ pub mod conversions {
 mod tests {
     use super::*;
     use crate::Value;
-    
+
     #[test]
     fn test_descriptor_conversions() -> Result<()> {
         let desc: filesystem_types::Descriptor = 42;
@@ -276,14 +282,14 @@ mod tests {
 
         Ok(())
     }
-    
+
     #[test]
     fn test_timestamp_conversions() -> Result<()> {
         let ts = filesystem_types::Timestamp {
-            seconds: 1234567890,
+            seconds:     1234567890,
             nanoseconds: 123456789,
         };
-        
+
         let value = conversions::timestamp_to_value(ts);
         if let Value::Record(fields) = &value {
             assert_eq!(fields.len(), 2);
@@ -295,7 +301,7 @@ mod tests {
 
         Ok(())
     }
-    
+
     #[test]
     fn test_descriptor_type_conversions() -> Result<()> {
         let dt = filesystem_types::DescriptorType::RegularFile;
@@ -322,7 +328,7 @@ mod tests {
             let back = conversions::value_to_descriptor_type(&value)?;
             assert_eq!(back, *dt);
         }
-        
+
         Ok(())
     }
 }

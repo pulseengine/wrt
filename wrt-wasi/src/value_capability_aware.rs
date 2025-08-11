@@ -5,15 +5,26 @@
 
 extern crate alloc;
 
+use wrt_error::{
+    codes,
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_foundation::{
-    safe_memory::NoStdProvider,
-    bounded::{BoundedVec, BoundedString},
-    capabilities::{MemoryCapabilityContext, MemoryOperation},
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
     budget_aware_provider::CrateId,
+    capabilities::{
+        MemoryCapabilityContext,
+        MemoryOperation,
+    },
     memory_init::get_global_capability_context,
     prelude::*,
+    safe_memory::NoStdProvider,
 };
-use wrt_error::{codes, Error, ErrorCategory, Result};
 
 /// Maximum string length for WASI values
 const MAX_WASI_STRING_LEN: usize = 4096;
@@ -85,17 +96,21 @@ impl WasiValueBox {
     pub fn new(value: CapabilityAwareValue) -> Result<Self> {
         // Verify we have allocation capability
         let context = get_global_capability_context()?;
-        let operation = MemoryOperation::Allocate { size: core::mem::size_of::<CapabilityAwareValue>() };
+        let operation = MemoryOperation::Allocate {
+            size: core::mem::size_of::<CapabilityAwareValue>(),
+        };
         context.verify_operation(CrateId::Wasi, &operation)?;
-        
-        Ok(Self { inner: alloc::boxed::Box::new(value) })
+
+        Ok(Self {
+            inner: alloc::boxed::Box::new(value),
+        })
     }
-    
+
     /// Get the inner value
     pub fn into_inner(self) -> CapabilityAwareValue {
         *self.inner
     }
-    
+
     /// Get a reference to the inner value
     pub fn as_inner(&self) -> &CapabilityAwareValue {
         &*self.inner
@@ -116,32 +131,38 @@ impl CapabilityAwareValue {
         let bounded_string = WasiBoundedString::from_str(s, provider)?;
         Ok(CapabilityAwareValue::String(bounded_string))
     }
-    
+
     /// Create a capability-aware list value
     pub fn list_from_vec(values: alloc::vec::Vec<CapabilityAwareValue>) -> Result<Self> {
         let provider = create_wasi_value_provider()?;
         let mut bounded_vec = WasiBoundedVec::new(provider)?;
-        
+
         for value in values {
             bounded_vec.push(value)?;
         }
-        
-        Ok(CapabilityAwareValue::List(alloc::boxed::Box::new(bounded_vec)))
+
+        Ok(CapabilityAwareValue::List(alloc::boxed::Box::new(
+            bounded_vec,
+        )))
     }
-    
+
     /// Create a capability-aware record value
-    pub fn record_from_pairs(pairs: alloc::vec::Vec<(alloc::string::String, CapabilityAwareValue)>) -> Result<Self> {
+    pub fn record_from_pairs(
+        pairs: alloc::vec::Vec<(alloc::string::String, CapabilityAwareValue)>,
+    ) -> Result<Self> {
         let provider = create_wasi_value_provider()?;
         let mut bounded_vec = WasiBoundedVec::new(provider.clone())?;
-        
+
         for (key, value) in pairs {
             let bounded_key = WasiBoundedString::from_str(&key, provider.clone())?;
             bounded_vec.push((bounded_key, value))?;
         }
-        
-        Ok(CapabilityAwareValue::Record(alloc::boxed::Box::new(bounded_vec)))
+
+        Ok(CapabilityAwareValue::Record(alloc::boxed::Box::new(
+            bounded_vec,
+        )))
     }
-    
+
     /// Create a capability-aware optional value
     pub fn option_from_value(value: Option<CapabilityAwareValue>) -> Result<Self> {
         let boxed_value = match value {
@@ -150,10 +171,10 @@ impl CapabilityAwareValue {
         };
         Ok(CapabilityAwareValue::Option(boxed_value))
     }
-    
+
     /// Create a capability-aware result value
     pub fn result_from_values(
-        result: core::result::Result<CapabilityAwareValue, CapabilityAwareValue>
+        result: core::result::Result<CapabilityAwareValue, CapabilityAwareValue>,
     ) -> Result<Self> {
         let boxed_result = match result {
             Ok(v) => Ok(WasiValueBox::new(v)?),
@@ -161,17 +182,19 @@ impl CapabilityAwareValue {
         };
         Ok(CapabilityAwareValue::Result(boxed_result))
     }
-    
+
     /// Create a capability-aware tuple value
     pub fn tuple_from_vec(values: alloc::vec::Vec<CapabilityAwareValue>) -> Result<Self> {
         let provider = create_wasi_value_provider()?;
         let mut bounded_vec = WasiBoundedVec::new(provider)?;
-        
+
         for value in values {
             bounded_vec.push(value)?;
         }
-        
-        Ok(CapabilityAwareValue::Tuple(alloc::boxed::Box::new(bounded_vec)))
+
+        Ok(CapabilityAwareValue::Tuple(alloc::boxed::Box::new(
+            bounded_vec,
+        )))
     }
 }
 
@@ -205,10 +228,10 @@ impl CapabilityAwareValue {
             _ => {
                 let provider = create_wasi_value_provider()?;
                 Ok(WasiBoundedString::from_str("", provider)?)
-            }
+            },
         }
     }
-    
+
     /// Extract a string as &str, returning empty string if not possible
     pub fn as_str(&self) -> &str {
         match self {
@@ -226,7 +249,7 @@ impl CapabilityAwareValue {
             _ => false,
         }
     }
-    
+
     /// Get the list values if this is a list
     pub fn as_list(&self) -> Option<&WasiBoundedVec<CapabilityAwareValue>> {
         match self {
@@ -234,7 +257,7 @@ impl CapabilityAwareValue {
             _ => None,
         }
     }
-    
+
     /// Get the record pairs if this is a record
     pub fn as_record(&self) -> Option<&WasiBoundedVec<(WasiBoundedString, CapabilityAwareValue)>> {
         match self {
@@ -249,7 +272,7 @@ fn create_wasi_value_provider() -> Result<NoStdProvider<8192>> {
     let context = get_global_capability_context()?;
     let operation = MemoryOperation::Allocate { size: 8192 };
     context.verify_operation(CrateId::Wasi, &operation)?;
-    
+
     use wrt_foundation::capabilities::MemoryFactory;
     MemoryFactory::create_with_context::<8192>(&context, CrateId::Wasi)
 }
@@ -257,7 +280,7 @@ fn create_wasi_value_provider() -> Result<NoStdProvider<8192>> {
 /// Conversion from legacy Value to CapabilityAwareValue
 impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
     type Error = Error;
-    
+
     fn try_from(legacy_value: crate::value_compat::Value) -> Result<Self> {
         match legacy_value {
             crate::value_compat::Value::Bool(b) => Ok(CapabilityAwareValue::Bool(b)),
@@ -273,9 +296,11 @@ impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
             crate::value_compat::Value::F64(v) => Ok(CapabilityAwareValue::F64(v)),
             crate::value_compat::Value::String(s) => {
                 #[cfg(feature = "std")]
-                { CapabilityAwareValue::string_from_str(&s) }
+                {
+                    CapabilityAwareValue::string_from_str(&s)
+                }
                 #[cfg(not(feature = "std"))]
-                { 
+                {
                     match s.as_str() {
                         Ok(str_ref) => CapabilityAwareValue::string_from_str(str_ref),
                         Err(_) => CapabilityAwareValue::string_from_str(""),
@@ -299,7 +324,7 @@ impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
                         Ok(str_ref) => alloc::string::String::from(str_ref),
                         Err(_) => alloc::string::String::from(""),
                     };
-                    
+
                     converted_pairs.push((key_str, value.try_into()?));
                 }
                 CapabilityAwareValue::record_from_pairs(converted_pairs)
@@ -355,14 +380,15 @@ impl TryFrom<crate::value_compat::Value> for CapabilityAwareValue {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_foundation::memory_init::MemoryInitializer;
+
+    use super::*;
 
     #[test]
     fn test_capability_aware_value_creation() {
         // Initialize memory system for testing
         let _ = MemoryInitializer::initialize();
-        
+
         // Test string creation
         let string_value = CapabilityAwareValue::string_from_str("test").unwrap();
         if let CapabilityAwareValue::String(_) = string_value {
@@ -371,22 +397,24 @@ mod tests {
             panic!("Expected string value");
         }
     }
-    
+
     #[test]
     fn test_value_extraction() {
         let u32_value = CapabilityAwareValue::U32(42);
         assert_eq!(u32_value.as_u32(), 42);
         assert_eq!(u32_value.as_u64(), 42);
-        assert!(!u32_value.as_bool()); // 42 != 0, so this should be true, but current impl returns false for non-bool
+        assert!(!u32_value.as_bool()); // 42 != 0, so this should be true, but
+                                       // current impl returns false for
+                                       // non-bool
     }
-    
-    #[test] 
+
+    #[test]
     fn test_boxed_value() {
         let _ = MemoryInitializer::initialize();
-        
+
         let value = CapabilityAwareValue::U32(100);
         let boxed = WasiValueBox::new(value).unwrap();
-        
+
         assert_eq!(boxed.as_inner().as_u32(), 100);
     }
 }
@@ -429,7 +457,7 @@ impl wrt_foundation::traits::ToBytes for CapabilityAwareValue {
         // Return a reasonable default size
         core::mem::size_of::<u64>()
     }
-    
+
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
@@ -437,24 +465,72 @@ impl wrt_foundation::traits::ToBytes for CapabilityAwareValue {
     ) -> wrt_error::Result<()> {
         // Simplified serialization - just write discriminant for now
         match self {
-            CapabilityAwareValue::Bool(b) => { writer.write_u8(0)?; writer.write_u8(*b as u8)?; },
-            CapabilityAwareValue::U8(v) => { writer.write_u8(1)?; writer.write_u8(*v)?; },
-            CapabilityAwareValue::U16(v) => { writer.write_u8(2)?; writer.write_u16_le(*v)?; },
-            CapabilityAwareValue::U32(v) => { writer.write_u8(3)?; writer.write_u32_le(*v)?; },
-            CapabilityAwareValue::U64(v) => { writer.write_u8(4)?; writer.write_u64_le(*v)?; },
-            CapabilityAwareValue::S8(v) => { writer.write_u8(5)?; writer.write_i8(*v)?; },
-            CapabilityAwareValue::S16(v) => { writer.write_u8(6)?; writer.write_i16_le(*v)?; },
-            CapabilityAwareValue::S32(v) => { writer.write_u8(7)?; writer.write_i32_le(*v)?; },
-            CapabilityAwareValue::S64(v) => { writer.write_u8(8)?; writer.write_i64_le(*v)?; },
-            CapabilityAwareValue::F32(v) => { writer.write_u8(9)?; writer.write_f32_le(*v)?; },
-            CapabilityAwareValue::F64(v) => { writer.write_u8(10)?; writer.write_f64_le(*v)?; },
-            CapabilityAwareValue::Char(c) => { writer.write_u8(11)?; writer.write_u32_le(*c as u32)?; },
-            CapabilityAwareValue::String(_) => { writer.write_u8(12)?; },
-            CapabilityAwareValue::List(_) => { writer.write_u8(13)?; },
-            CapabilityAwareValue::Record(_) => { writer.write_u8(14)?; },
-            CapabilityAwareValue::Option(_) => { writer.write_u8(15)?; },
-            CapabilityAwareValue::Result(_) => { writer.write_u8(16)?; },
-            CapabilityAwareValue::Tuple(_) => { writer.write_u8(17)?; },
+            CapabilityAwareValue::Bool(b) => {
+                writer.write_u8(0)?;
+                writer.write_u8(*b as u8)?;
+            },
+            CapabilityAwareValue::U8(v) => {
+                writer.write_u8(1)?;
+                writer.write_u8(*v)?;
+            },
+            CapabilityAwareValue::U16(v) => {
+                writer.write_u8(2)?;
+                writer.write_u16_le(*v)?;
+            },
+            CapabilityAwareValue::U32(v) => {
+                writer.write_u8(3)?;
+                writer.write_u32_le(*v)?;
+            },
+            CapabilityAwareValue::U64(v) => {
+                writer.write_u8(4)?;
+                writer.write_u64_le(*v)?;
+            },
+            CapabilityAwareValue::S8(v) => {
+                writer.write_u8(5)?;
+                writer.write_i8(*v)?;
+            },
+            CapabilityAwareValue::S16(v) => {
+                writer.write_u8(6)?;
+                writer.write_i16_le(*v)?;
+            },
+            CapabilityAwareValue::S32(v) => {
+                writer.write_u8(7)?;
+                writer.write_i32_le(*v)?;
+            },
+            CapabilityAwareValue::S64(v) => {
+                writer.write_u8(8)?;
+                writer.write_i64_le(*v)?;
+            },
+            CapabilityAwareValue::F32(v) => {
+                writer.write_u8(9)?;
+                writer.write_f32_le(*v)?;
+            },
+            CapabilityAwareValue::F64(v) => {
+                writer.write_u8(10)?;
+                writer.write_f64_le(*v)?;
+            },
+            CapabilityAwareValue::Char(c) => {
+                writer.write_u8(11)?;
+                writer.write_u32_le(*c as u32)?;
+            },
+            CapabilityAwareValue::String(_) => {
+                writer.write_u8(12)?;
+            },
+            CapabilityAwareValue::List(_) => {
+                writer.write_u8(13)?;
+            },
+            CapabilityAwareValue::Record(_) => {
+                writer.write_u8(14)?;
+            },
+            CapabilityAwareValue::Option(_) => {
+                writer.write_u8(15)?;
+            },
+            CapabilityAwareValue::Result(_) => {
+                writer.write_u8(16)?;
+            },
+            CapabilityAwareValue::Tuple(_) => {
+                writer.write_u8(17)?;
+            },
         }
         Ok(())
     }
@@ -478,7 +554,9 @@ impl wrt_foundation::traits::FromBytes for CapabilityAwareValue {
             8 => Ok(CapabilityAwareValue::S64(reader.read_i64_le()?)),
             9 => Ok(CapabilityAwareValue::F32(reader.read_f32_le()?)),
             10 => Ok(CapabilityAwareValue::F64(reader.read_f64_le()?)),
-            11 => Ok(CapabilityAwareValue::Char(char::from_u32(reader.read_u32_le()?).unwrap_or('\0'))),
+            11 => Ok(CapabilityAwareValue::Char(
+                char::from_u32(reader.read_u32_le()?).unwrap_or('\0'),
+            )),
             _ => Ok(CapabilityAwareValue::U32(0)), // Default for complex types
         }
     }
@@ -494,7 +572,7 @@ impl wrt_foundation::traits::ToBytes for WasiValueBox {
     fn serialized_size(&self) -> usize {
         self.inner.serialized_size()
     }
-    
+
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
@@ -510,6 +588,8 @@ impl wrt_foundation::traits::FromBytes for WasiValueBox {
         provider: &P,
     ) -> wrt_error::Result<Self> {
         let inner = CapabilityAwareValue::from_bytes_with_provider(reader, provider)?;
-        Ok(WasiValueBox { inner: alloc::boxed::Box::new(inner) })
+        Ok(WasiValueBox {
+            inner: alloc::boxed::Box::new(inner),
+        })
     }
 }

@@ -1,24 +1,33 @@
-//! Engine builder API for creating capability-aware engines with resource limits
+//! Engine builder API for creating capability-aware engines with resource
+//! limits
 //!
-//! This module provides a fluent builder interface for creating WebAssembly engines
-//! with proper ASIL-level configuration and resource limits.
+//! This module provides a fluent builder interface for creating WebAssembly
+//! engines with proper ASIL-level configuration and resource limits.
 
-use crate::engine::{CapabilityAwareEngine, EnginePreset};
 use wrt_foundation::{
     capabilities::MemoryCapabilityContext,
+    execution::{
+        extract_resource_limits_from_binary,
+        ASILExecutionConfig,
+        ASILExecutionMode,
+    },
     Result,
 };
-use wrt_foundation::execution::{ASILExecutionConfig, ASILExecutionMode, extract_resource_limits_from_binary};
+
+use crate::engine::{
+    CapabilityAwareEngine,
+    EnginePreset,
+};
 
 /// Builder for creating capability-aware WebAssembly engines
 #[derive(Debug)]
 pub struct EngineBuilder {
     /// Target ASIL level for the engine
-    asil_level: Option<ASILExecutionMode>,
+    asil_level:      Option<ASILExecutionMode>,
     /// Engine preset (overrides ASIL level if set)
-    preset: Option<EnginePreset>,
+    preset:          Option<EnginePreset>,
     /// Custom capability context (overrides both ASIL level and preset)
-    custom_context: Option<MemoryCapabilityContext>,
+    custom_context:  Option<MemoryCapabilityContext>,
     /// Resource limits configuration from binary
     resource_config: Option<ASILExecutionConfig>,
 }
@@ -27,34 +36,34 @@ impl EngineBuilder {
     /// Create a new engine builder
     pub fn new() -> Self {
         Self {
-            asil_level: None,
-            preset: None,
-            custom_context: None,
+            asil_level:      None,
+            preset:          None,
+            custom_context:  None,
             resource_config: None,
         }
     }
 
     /// Set the target ASIL level for the engine
     pub fn with_asil_level(mut self, level: ASILExecutionMode) -> Self {
-        self.asil_level = Some(level;
+        self.asil_level = Some(level);
         self
     }
 
     /// Set the engine preset (overrides ASIL level)
     pub fn with_preset(mut self, preset: EnginePreset) -> Self {
-        self.preset = Some(preset;
+        self.preset = Some(preset);
         self
     }
 
     /// Set a custom capability context (overrides all other settings)
     pub fn with_custom_context(mut self, context: MemoryCapabilityContext) -> Self {
-        self.custom_context = Some(context;
+        self.custom_context = Some(context);
         self
     }
 
     /// Set resource limits configuration from a WebAssembly binary
     pub fn with_resource_config(mut self, config: ASILExecutionConfig) -> Self {
-        self.resource_config = Some(config;
+        self.resource_config = Some(config);
         self
     }
 
@@ -97,9 +106,7 @@ impl EngineBuilder {
             ASILExecutionMode::QM,
         ] {
             if let Ok(Some(config)) = extract_resource_limits_from_binary(binary, *asil_mode) {
-                return Ok(Self::new()
-                    .with_asil_level(config.mode)
-                    .with_resource_config(config;
+                return Ok(Self::new().with_asil_level(config.mode).with_resource_config(config));
             }
         }
 
@@ -110,14 +117,14 @@ impl EngineBuilder {
     /// Build the engine with the configured settings
     pub fn build(self) -> Result<CapabilityAwareEngine> {
         // Priority order: custom_context > preset > asil_level > default QM
-        
+
         if let Some(context) = self.custom_context {
-            let preset = self.preset.unwrap_or(EnginePreset::QM;
-            return CapabilityAwareEngine::with_context_and_preset(context, preset;
+            let preset = self.preset.unwrap_or(EnginePreset::QM);
+            return CapabilityAwareEngine::with_context_and_preset(context, preset);
         }
 
         if let Some(preset) = self.preset {
-            return CapabilityAwareEngine::with_preset(preset;
+            return CapabilityAwareEngine::with_preset(preset);
         }
 
         if let Some(asil_level) = self.asil_level {
@@ -128,7 +135,7 @@ impl EngineBuilder {
                 ASILExecutionMode::ASIL_C => EnginePreset::AsilC,
                 ASILExecutionMode::ASIL_D => EnginePreset::AsilD,
             };
-            return CapabilityAwareEngine::with_preset(preset;
+            return CapabilityAwareEngine::with_preset(preset);
         }
 
         // Default to QM
@@ -150,31 +157,29 @@ mod tests {
     fn test_builder_qm() {
         let engine = EngineBuilder::qm().build().unwrap();
         // Test that engine was created successfully
-        assert!(engine.capability_context().has_capability(
-            wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ;
+        assert!(engine
+            .capability_context()
+            .has_capability(wrt_foundation::budget_aware_provider::CrateId::Runtime));
     }
 
     #[test]
     fn test_builder_asil_d() {
         let engine = EngineBuilder::asil_d().build().unwrap();
         // Test that engine was created successfully
-        assert!(engine.capability_context().has_capability(
-            wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ;
+        assert!(engine
+            .capability_context()
+            .has_capability(wrt_foundation::budget_aware_provider::CrateId::Runtime));
     }
 
     #[test]
     fn test_builder_with_asil_level() {
-        let engine = EngineBuilder::new()
-            .with_asil_level(ASILExecutionMode::ASIL_B)
-            .build()
-            .unwrap();
-        
+        let engine =
+            EngineBuilder::new().with_asil_level(ASILExecutionMode::ASIL_B).build().unwrap();
+
         // Test that engine was created successfully
-        assert!(engine.capability_context().has_capability(
-            wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ;
+        assert!(engine
+            .capability_context()
+            .has_capability(wrt_foundation::budget_aware_provider::CrateId::Runtime));
     }
 
     #[test]
@@ -187,26 +192,26 @@ mod tests {
 
         let builder = EngineBuilder::from_binary(minimal_wasm).unwrap();
         let engine = builder.build().unwrap();
-        
+
         // Should fall back to QM mode
-        assert!(engine.capability_context().has_capability(
-            wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ;
+        assert!(engine
+            .capability_context()
+            .has_capability(wrt_foundation::budget_aware_provider::CrateId::Runtime));
     }
 
     #[test]
     fn test_builder_priority_order() {
         // Custom context should take priority over preset
         let custom_context = super::super::presets::qm().unwrap();
-        
+
         let engine = EngineBuilder::new()
             .with_preset(EnginePreset::AsilD) // This should be overridden
             .with_custom_context(custom_context)
             .build()
             .unwrap();
-        
-        assert!(engine.capability_context().has_capability(
-            wrt_foundation::budget_aware_provider::CrateId::Runtime
-        ;
+
+        assert!(engine
+            .capability_context()
+            .has_capability(wrt_foundation::budget_aware_provider::CrateId::Runtime));
     }
 }

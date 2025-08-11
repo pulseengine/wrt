@@ -3,34 +3,52 @@
 //! This module provides a lightweight software watchdog that can monitor
 //! WASM module execution and detect hangs or excessive runtime.
 //!
-//! This module requires the `std` feature since it uses std::thread and std::time.
+//! This module requires the `std` feature since it uses std::thread and
+//! std::time.
 
 #[cfg(any(feature = "alloc", feature = "std"))]
 extern crate alloc;
 
+#[cfg(not(feature = "std"))]
+use alloc::{
+    collections::BTreeMap,
+    string::String,
+    sync::Arc,
+};
+#[cfg(feature = "std")]
+use alloc::{
+    collections::BTreeMap,
+    string::String,
+    sync::Arc,
+};
 use core::{
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+    sync::atomic::{
+        AtomicBool,
+        AtomicU64,
+        Ordering,
+    },
     time::Duration,
 };
 
-#[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap, string::String, sync::Arc};
-#[cfg(feature = "std")]
-use alloc::{collections::BTreeMap, string::String, sync::Arc};
-
-use wrt_sync::{WrtMutex, WrtRwLock};
-
-use wrt_error::{Error, ErrorCategory, Result};
+use wrt_error::{
+    Error,
+    ErrorCategory,
+    Result,
+};
+use wrt_sync::{
+    WrtMutex,
+    WrtRwLock,
+};
 
 /// Watchdog configuration
 #[derive(Debug, Clone)]
 pub struct WatchdogConfig {
     /// Default timeout for watched operations
-    pub default_timeout: Duration,
+    pub default_timeout:   Duration,
     /// Check interval for the watchdog thread
-    pub check_interval: Duration,
+    pub check_interval:    Duration,
     /// Whether to automatically kill timed-out tasks
-    pub auto_kill: bool,
+    pub auto_kill:         bool,
     /// Maximum number of concurrent watched tasks
     pub max_watched_tasks: usize,
 }
@@ -38,9 +56,9 @@ pub struct WatchdogConfig {
 impl Default for WatchdogConfig {
     fn default() -> Self {
         Self {
-            default_timeout: Duration::from_secs(60),
-            check_interval: Duration::from_millis(100),
-            auto_kill: false,
+            default_timeout:   Duration::from_secs(60),
+            check_interval:    Duration::from_millis(100),
+            auto_kill:         false,
             max_watched_tasks: 1000,
         }
     }
@@ -71,28 +89,28 @@ pub struct WatchedTaskId(pub u64);
 /// Information about a watched task
 #[derive(Debug)]
 struct WatchedTask {
-    id: WatchedTaskId,
-    name: String,
-    _start_time: u64, // Timestamp in milliseconds
-    timeout: Duration,
+    id:             WatchedTaskId,
+    name:           String,
+    _start_time:    u64, // Timestamp in milliseconds
+    timeout:        Duration,
     last_heartbeat: WrtMutex<u64>, // Timestamp in milliseconds
-    action: WatchdogAction,
-    active: AtomicBool,
+    action:         WatchdogAction,
+    active:         AtomicBool,
 }
 
 /// Software watchdog for monitoring WASM execution
 pub struct SoftwareWatchdog {
     /// Configuration
-    config: WatchdogConfig,
+    config:          WatchdogConfig,
     /// Watched tasks
-    tasks: Arc<WrtRwLock<BTreeMap<WatchedTaskId, Arc<WatchedTask>>>>,
+    tasks:           Arc<WrtRwLock<BTreeMap<WatchedTaskId, Arc<WatchedTask>>>>,
     /// Next task ID
-    next_task_id: AtomicU64,
+    next_task_id:    AtomicU64,
     /// Watchdog thread handle
     #[cfg(feature = "std")]
     watchdog_thread: WrtMutex<Option<std::thread::JoinHandle<()>>>,
     /// Running flag
-    running: Arc<AtomicBool>,
+    running:         Arc<AtomicBool>,
 }
 
 impl SoftwareWatchdog {
@@ -222,7 +240,7 @@ impl SoftwareWatchdog {
         self.tasks.write().insert(task_id, task.clone());
 
         Ok(WatchdogHandle {
-            task: Some(task),
+            task:     Some(task),
             watchdog: self,
         })
     }
@@ -260,7 +278,7 @@ impl SoftwareWatchdog {
 
 /// RAII handle for watched tasks
 pub struct WatchdogHandle<'a> {
-    task: Option<Arc<WatchedTask>>,
+    task:     Option<Arc<WatchedTask>>,
     watchdog: &'a SoftwareWatchdog,
 }
 
@@ -330,15 +348,16 @@ impl WatchdogIntegration for SoftwareWatchdog {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::atomic::AtomicUsize;
+
+    use super::*;
 
     #[test]
     fn test_watchdog_basic() {
         let config = WatchdogConfig {
-            default_timeout: Duration::from_millis(100),
-            check_interval: Duration::from_millis(10),
-            auto_kill: false,
+            default_timeout:   Duration::from_millis(100),
+            check_interval:    Duration::from_millis(10),
+            auto_kill:         false,
             max_watched_tasks: 10,
         };
 
@@ -363,9 +382,9 @@ mod tests {
     #[test]
     fn test_watchdog_timeout() {
         let config = WatchdogConfig {
-            default_timeout: Duration::from_millis(50),
-            check_interval: Duration::from_millis(10),
-            auto_kill: true,
+            default_timeout:   Duration::from_millis(50),
+            check_interval:    Duration::from_millis(10),
+            auto_kill:         true,
             max_watched_tasks: 10,
         };
 

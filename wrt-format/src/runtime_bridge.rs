@@ -7,16 +7,21 @@
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use crate::prelude::*;
-use crate::pure_format_types::*;
-use wrt_foundation::traits::BoundedCapacity;
-use wrt_foundation::safe_managed_alloc;
-use wrt_foundation::budget_aware_provider::CrateId;
-
-#[cfg(feature = "std")]
-use std::vec::Vec;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+use wrt_foundation::{
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+    traits::BoundedCapacity,
+};
+
+use crate::{
+    prelude::*,
+    pure_format_types::*,
+};
 
 // Simplified type aliases - use Vec when available
 #[cfg(feature = "std")]
@@ -32,34 +37,56 @@ type ElementInitVec = Vec<(usize, ElementInitializationHint)>;
 
 // For no_std, use bounded vectors
 #[cfg(not(feature = "std"))]
-type OffsetExprBytes = wrt_foundation::bounded::BoundedVec<u8, 1024, wrt_foundation::NoStdProvider<8192>>;
+type OffsetExprBytes =
+    wrt_foundation::bounded::BoundedVec<u8, 1024, wrt_foundation::NoStdProvider<8192>>;
 #[cfg(not(feature = "std"))]
-type DataExtractionVec = wrt_foundation::bounded::BoundedVec<RuntimeDataExtraction, 512, wrt_foundation::NoStdProvider<8192>>;
+type DataExtractionVec = wrt_foundation::bounded::BoundedVec<
+    RuntimeDataExtraction,
+    512,
+    wrt_foundation::NoStdProvider<8192>,
+>;
 #[cfg(not(feature = "std"))]
-type ElementExtractionVec = wrt_foundation::bounded::BoundedVec<RuntimeElementExtraction, 512, wrt_foundation::NoStdProvider<8192>>;
+type ElementExtractionVec = wrt_foundation::bounded::BoundedVec<
+    RuntimeElementExtraction,
+    512,
+    wrt_foundation::NoStdProvider<8192>,
+>;
 #[cfg(not(feature = "std"))]
-type DataInitVec = wrt_foundation::bounded::BoundedVec<(usize, DataInitializationHint), 512, wrt_foundation::NoStdProvider<8192>>;
+type DataInitVec = wrt_foundation::bounded::BoundedVec<
+    (usize, DataInitializationHint),
+    512,
+    wrt_foundation::NoStdProvider<8192>,
+>;
 #[cfg(not(feature = "std"))]
-type ElementInitVec = wrt_foundation::bounded::BoundedVec<(usize, ElementInitializationHint), 512, wrt_foundation::NoStdProvider<8192>>;
+type ElementInitVec = wrt_foundation::bounded::BoundedVec<
+    (usize, ElementInitializationHint),
+    512,
+    wrt_foundation::NoStdProvider<8192>,
+>;
 
-// Helper functions to reduce deprecation warnings by centralizing pattern matching
+// Helper functions to reduce deprecation warnings by centralizing pattern
+// matching
 /// Check if a data segment is active (helper to reduce deprecation warnings)
 fn is_data_active(data: &crate::pure_format_types::PureDataSegment) -> bool {
     data.is_active()
 }
 
-/// Check if an element segment is active (helper to reduce deprecation warnings)  
+/// Check if an element segment is active (helper to reduce deprecation
+/// warnings)
 fn is_element_active(element: &crate::pure_format_types::PureElementSegment) -> bool {
     element.is_active()
 }
 
-/// Extract table index from element segment (helper to reduce deprecation warnings)
+/// Extract table index from element segment (helper to reduce deprecation
+/// warnings)
 fn get_element_table_index(element: &crate::pure_format_types::PureElementSegment) -> Option<u32> {
     element.table_index()
 }
 
 /// Get element segment type (helper to reduce deprecation warnings)
-fn get_element_segment_type(element: &crate::pure_format_types::PureElementSegment) -> ElementSegmentType {
+fn get_element_segment_type(
+    element: &crate::pure_format_types::PureElementSegment,
+) -> ElementSegmentType {
     match element.mode {
         crate::pure_format_types::PureElementMode::Active { .. } => ElementSegmentType::Active,
         crate::pure_format_types::PureElementMode::Passive => ElementSegmentType::Passive,
@@ -99,7 +126,7 @@ impl DataSegmentBridge {
             }
             bounded_vec
         };
-        
+
         RuntimeDataExtraction {
             is_active: segment.is_active(),
             memory_index: segment.memory_index(),
@@ -108,20 +135,20 @@ impl DataSegmentBridge {
             requires_initialization: segment.is_active(),
         }
     }
-    
+
     /// Create runtime initialization hint for data segment
     pub fn create_initialization_hint(segment: &PureDataSegment) -> DataInitializationHint {
         DataInitializationHint {
-            segment_type: if segment.is_active() {
+            segment_type:             if segment.is_active() {
                 DataSegmentType::Active
             } else {
                 DataSegmentType::Passive
             },
-            memory_target: segment.memory_index(),
+            memory_target:            segment.memory_index(),
             offset_evaluation_needed: segment.is_active() && !segment.offset_expr_bytes.is_empty(),
-            data_bytes_ref: DataBytesReference {
-                start_offset: 0,
-                length: segment.data_bytes.len(),
+            data_bytes_ref:           DataBytesReference {
+                start_offset:  0,
+                length:        segment.data_bytes.len(),
                 requires_copy: true,
             },
         }
@@ -146,7 +173,7 @@ impl ElementSegmentBridge {
             }
             bounded_vec
         };
-        
+
         RuntimeElementExtraction {
             is_active: segment.is_active(),
             table_index: segment.table_index(),
@@ -159,18 +186,18 @@ impl ElementSegmentBridge {
             requires_initialization: segment.is_active(),
         }
     }
-    
+
     /// Create runtime initialization hint for element segment
     pub fn create_initialization_hint(segment: &PureElementSegment) -> ElementInitializationHint {
         ElementInitializationHint {
-            segment_type: match segment.mode {
+            segment_type:             match segment.mode {
                 PureElementMode::Active { .. } => ElementSegmentType::Active,
                 PureElementMode::Passive => ElementSegmentType::Passive,
                 PureElementMode::Declared => ElementSegmentType::Declared,
             },
-            table_target: segment.table_index(),
+            table_target:             segment.table_index(),
             offset_evaluation_needed: segment.is_active() && !segment.offset_expr_bytes.is_empty(),
-            element_count: match &segment.init_data {
+            element_count:            match &segment.init_data {
                 PureElementInit::FunctionIndices(indices) => indices.len(),
                 PureElementInit::ExpressionBytes(exprs) => exprs.len(),
             },
@@ -182,32 +209,30 @@ impl ElementSegmentBridge {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RuntimeDataExtraction {
     /// Whether this is an active segment requiring initialization
-    pub is_active: bool,
+    pub is_active:               bool,
     /// Memory index for active segments
-    pub memory_index: Option<u32>,
+    pub memory_index:            Option<u32>,
     /// Raw offset expression bytes (for runtime evaluation)
-    pub offset_expr_bytes: OffsetExprBytes,
+    pub offset_expr_bytes:       OffsetExprBytes,
     /// Size of data in bytes
-    pub data_size: usize,
+    pub data_size:               usize,
     /// Whether runtime initialization is required
     pub requires_initialization: bool,
 }
-
-
 
 /// Runtime element extraction result
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RuntimeElementExtraction {
     /// Whether this is an active segment requiring initialization
-    pub is_active: bool,
+    pub is_active:               bool,
     /// Table index for active segments
-    pub table_index: Option<u32>,
+    pub table_index:             Option<u32>,
     /// Element type
-    pub element_type: crate::types::RefType,
+    pub element_type:            crate::types::RefType,
     /// Raw offset expression bytes (for runtime evaluation)
-    pub offset_expr_bytes: OffsetExprBytes,
+    pub offset_expr_bytes:       OffsetExprBytes,
     /// Type of initialization data
-    pub init_data_type: ElementInitType,
+    pub init_data_type:          ElementInitType,
     /// Whether runtime initialization is required
     pub requires_initialization: bool,
 }
@@ -248,26 +273,26 @@ pub enum ElementInitType {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DataInitializationHint {
     /// Type of data segment
-    pub segment_type: DataSegmentType,
+    pub segment_type:             DataSegmentType,
     /// Target memory index
-    pub memory_target: Option<u32>,
+    pub memory_target:            Option<u32>,
     /// Whether offset expression evaluation is needed
     pub offset_evaluation_needed: bool,
     /// Reference to data bytes
-    pub data_bytes_ref: DataBytesReference,
+    pub data_bytes_ref:           DataBytesReference,
 }
 
 /// Element initialization hint for runtime
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ElementInitializationHint {
     /// Type of element segment
-    pub segment_type: ElementSegmentType,
+    pub segment_type:             ElementSegmentType,
     /// Target table index
-    pub table_target: Option<u32>,
+    pub table_target:             Option<u32>,
     /// Whether offset expression evaluation is needed
     pub offset_evaluation_needed: bool,
     /// Number of elements to initialize
-    pub element_count: usize,
+    pub element_count:            usize,
 }
 
 impl wrt_foundation::traits::Checksummable for ElementSegmentType {
@@ -312,7 +337,9 @@ impl wrt_foundation::traits::FromBytes for ElementSegmentType {
             0 => Ok(ElementSegmentType::Active),
             1 => Ok(ElementSegmentType::Passive),
             2 => Ok(ElementSegmentType::Declared),
-            _ => Err(Error::runtime_execution_error("Invalid element segment type discriminant")),
+            _ => Err(Error::runtime_execution_error(
+                "Invalid element segment type discriminant",
+            )),
         }
     }
 }
@@ -352,20 +379,20 @@ impl wrt_foundation::traits::FromBytes for ElementInitializationHint {
         provider: &P,
     ) -> wrt_error::Result<Self> {
         let segment_type = ElementSegmentType::from_bytes_with_provider(reader, provider)?;
-        
+
         let mut target_bytes = [0u8; 4];
         reader.read_exact(&mut target_bytes)?;
         let table_target_val = u32::from_le_bytes(target_bytes);
         let table_target = if table_target_val == 0 { None } else { Some(table_target_val) };
-        
+
         let mut bool_bytes = [0u8; 1];
         reader.read_exact(&mut bool_bytes)?;
         let offset_evaluation_needed = bool_bytes[0] != 0;
-        
+
         let mut count_bytes = [0u8; 8];
         reader.read_exact(&mut count_bytes)?;
         let element_count = usize::from_le_bytes(count_bytes);
-        
+
         Ok(Self {
             segment_type,
             table_target,
@@ -379,9 +406,9 @@ impl wrt_foundation::traits::FromBytes for ElementInitializationHint {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DataBytesReference {
     /// Start offset in the data
-    pub start_offset: usize,
+    pub start_offset:  usize,
     /// Length of data
-    pub length: usize,
+    pub length:        usize,
     /// Whether runtime needs to copy the data
     pub requires_copy: bool,
 }
@@ -403,9 +430,9 @@ impl ModuleBridge {
         for data_segment in module.data.iter() {
             // Convert module::Data to runtime extraction
             let extraction = RuntimeDataExtraction {
-                is_active: is_data_active(&data_segment),
-                memory_index: data_segment.memory_index(),
-                offset_expr_bytes: {
+                is_active:               is_data_active(&data_segment),
+                memory_index:            data_segment.memory_index(),
+                offset_expr_bytes:       {
                     #[cfg(feature = "std")]
                     {
                         data_segment.offset_expr_bytes.clone()
@@ -420,7 +447,7 @@ impl ModuleBridge {
                         bounded
                     }
                 },
-                data_size: data_segment.data_bytes.len(),
+                data_size:               data_segment.data_bytes.len(),
                 requires_initialization: is_data_active(&data_segment),
             };
             #[cfg(feature = "std")]
@@ -428,7 +455,7 @@ impl ModuleBridge {
             #[cfg(not(feature = "std"))]
             data_extractions.push(extraction).unwrap();
         }
-            
+
         // Convert module element segments to runtime extractions
         #[cfg(feature = "std")]
         let mut element_extractions = ElementExtractionVec::new();
@@ -439,10 +466,10 @@ impl ModuleBridge {
         };
         for element_segment in module.elements.iter() {
             let extraction = RuntimeElementExtraction {
-                is_active: is_element_active(&element_segment),
-                table_index: get_element_table_index(&element_segment),
-                element_type: element_segment.element_type.clone(),
-                offset_expr_bytes: {
+                is_active:               is_element_active(&element_segment),
+                table_index:             get_element_table_index(&element_segment),
+                element_type:            element_segment.element_type.clone(),
+                offset_expr_bytes:       {
                     #[cfg(feature = "std")]
                     {
                         element_segment.offset_expr_bytes.clone()
@@ -457,9 +484,13 @@ impl ModuleBridge {
                         bounded
                     }
                 },
-                init_data_type: match &element_segment.init_data {
-                    crate::pure_format_types::PureElementInit::FunctionIndices(_) => ElementInitType::FunctionIndices,
-                    crate::pure_format_types::PureElementInit::ExpressionBytes(_) => ElementInitType::ExpressionBytes,
+                init_data_type:          match &element_segment.init_data {
+                    crate::pure_format_types::PureElementInit::FunctionIndices(_) => {
+                        ElementInitType::FunctionIndices
+                    },
+                    crate::pure_format_types::PureElementInit::ExpressionBytes(_) => {
+                        ElementInitType::ExpressionBytes
+                    },
                 },
                 requires_initialization: is_element_active(&element_segment),
             };
@@ -468,17 +499,17 @@ impl ModuleBridge {
             #[cfg(not(feature = "std"))]
             element_extractions.push(extraction).unwrap();
         }
-            
+
         ModuleRuntimeData {
             start_function: module.start,
             data_extractions,
             element_extractions,
-            requires_initialization: module.start.is_some() || 
-                module.data.iter().any(|d| is_data_active(&d)) ||
-                module.elements.iter().any(|e| is_element_active(&e)),
+            requires_initialization: module.start.is_some()
+                || module.data.iter().any(|d| is_data_active(&d))
+                || module.elements.iter().any(|e| is_element_active(&e)),
         }
     }
-    
+
     /// Create initialization plan for a module
     pub fn create_initialization_plan(module: &crate::module::Module) -> ModuleInitializationPlan {
         // Create data initialization hints directly from module data
@@ -491,16 +522,16 @@ impl ModuleBridge {
         };
         for (index, data_segment) in module.data.iter().enumerate() {
             let hint = DataInitializationHint {
-                segment_type: if data_segment.is_active() {
+                segment_type:             if data_segment.is_active() {
                     DataSegmentType::Active
                 } else {
                     DataSegmentType::Passive
                 },
-                memory_target: data_segment.memory_index(),
+                memory_target:            data_segment.memory_index(),
                 offset_evaluation_needed: data_segment.is_active(),
-                data_bytes_ref: DataBytesReference {
-                    start_offset: 0,
-                    length: data_segment.data_bytes.len(),
+                data_bytes_ref:           DataBytesReference {
+                    start_offset:  0,
+                    length:        data_segment.data_bytes.len(),
                     requires_copy: true,
                 },
             };
@@ -509,7 +540,7 @@ impl ModuleBridge {
             #[cfg(not(feature = "std"))]
             data_hints.push((index, hint)).unwrap();
         }
-            
+
         // Create element initialization hints directly from module elements
         #[cfg(feature = "std")]
         let mut element_hints = Vec::new();
@@ -520,12 +551,16 @@ impl ModuleBridge {
         };
         for (index, element_segment) in module.elements.iter().enumerate() {
             let hint = ElementInitializationHint {
-                segment_type: get_element_segment_type(&element_segment),
-                table_target: get_element_table_index(&element_segment),
+                segment_type:             get_element_segment_type(&element_segment),
+                table_target:             get_element_table_index(&element_segment),
                 offset_evaluation_needed: is_element_active(&element_segment),
-                element_count: match &element_segment.init_data {
-                    crate::pure_format_types::PureElementInit::FunctionIndices(indices) => indices.len(),
-                    crate::pure_format_types::PureElementInit::ExpressionBytes(exprs) => exprs.len(),
+                element_count:            match &element_segment.init_data {
+                    crate::pure_format_types::PureElementInit::FunctionIndices(indices) => {
+                        indices.len()
+                    },
+                    crate::pure_format_types::PureElementInit::ExpressionBytes(exprs) => {
+                        exprs.len()
+                    },
                 },
             };
             #[cfg(feature = "std")]
@@ -533,11 +568,11 @@ impl ModuleBridge {
             #[cfg(not(feature = "std"))]
             element_hints.push((index, hint)).unwrap();
         }
-            
+
         ModuleInitializationPlan {
-            start_function: module.start,
-            data_initialization_order: data_hints,
-            element_initialization_order: element_hints,
+            start_function:                 module.start,
+            data_initialization_order:      data_hints,
+            element_initialization_order:   element_hints,
             estimated_initialization_steps: calculate_initialization_steps(module),
         }
     }
@@ -547,11 +582,11 @@ impl ModuleBridge {
 #[derive(Debug, Clone)]
 pub struct ModuleRuntimeData {
     /// Start function index
-    pub start_function: Option<u32>,
+    pub start_function:          Option<u32>,
     /// Runtime data for all data segments
-    pub data_extractions: DataExtractionVec,
+    pub data_extractions:        DataExtractionVec,
     /// Runtime data for all element segments
-    pub element_extractions: ElementExtractionVec,
+    pub element_extractions:     ElementExtractionVec,
     /// Whether any initialization is required
     pub requires_initialization: bool,
 }
@@ -560,11 +595,11 @@ pub struct ModuleRuntimeData {
 #[derive(Debug, Clone)]
 pub struct ModuleInitializationPlan {
     /// Start function to call after initialization
-    pub start_function: Option<u32>,
+    pub start_function:                 Option<u32>,
     /// Data segments with their initialization hints (index, hint)
-    pub data_initialization_order: DataInitVec,
+    pub data_initialization_order:      DataInitVec,
     /// Element segments with their initialization hints (index, hint)
-    pub element_initialization_order: ElementInitVec,
+    pub element_initialization_order:   ElementInitVec,
     /// Estimated number of initialization steps
     pub estimated_initialization_steps: usize,
 }
@@ -572,22 +607,18 @@ pub struct ModuleInitializationPlan {
 /// Calculate estimated initialization steps for planning
 fn calculate_initialization_steps(module: &crate::module::Module) -> usize {
     let mut steps = 0;
-    
+
     // Count active data segments (each requires offset evaluation + memory.init)
-    steps += module.data.iter()
-        .filter(|d| is_data_active(d))
-        .count() * 2;
-        
+    steps += module.data.iter().filter(|d| is_data_active(d)).count() * 2;
+
     // Count active element segments (each requires offset evaluation + table.init)
-    steps += module.elements.iter()
-        .filter(|e| is_element_active(e))
-        .count() * 2;
-        
+    steps += module.elements.iter().filter(|e| is_element_active(e)).count() * 2;
+
     // Add start function call if present
     if module.start.is_some() {
         steps += 1;
     }
-    
+
     steps
 }
 
@@ -631,7 +662,9 @@ impl wrt_foundation::traits::FromBytes for DataSegmentType {
         match bytes[0] {
             0 => Ok(DataSegmentType::Active),
             1 => Ok(DataSegmentType::Passive),
-            _ => Err(Error::runtime_execution_error("Invalid data segment type discriminant")),
+            _ => Err(Error::runtime_execution_error(
+                "Invalid data segment type discriminant",
+            )),
         }
     }
 }
@@ -670,15 +703,15 @@ impl wrt_foundation::traits::FromBytes for DataBytesReference {
         let mut offset_bytes = [0u8; 8];
         reader.read_exact(&mut offset_bytes)?;
         let start_offset = usize::from_le_bytes(offset_bytes);
-        
+
         let mut length_bytes = [0u8; 8];
         reader.read_exact(&mut length_bytes)?;
         let length = usize::from_le_bytes(length_bytes);
-        
+
         let mut bool_bytes = [0u8; 1];
         reader.read_exact(&mut bool_bytes)?;
         let requires_copy = bool_bytes[0] != 0;
-        
+
         Ok(Self {
             start_offset,
             length,
@@ -723,18 +756,18 @@ impl wrt_foundation::traits::FromBytes for DataInitializationHint {
         provider: &P,
     ) -> wrt_error::Result<Self> {
         let segment_type = DataSegmentType::from_bytes_with_provider(reader, provider)?;
-        
+
         let mut target_bytes = [0u8; 4];
         reader.read_exact(&mut target_bytes)?;
         let memory_target_val = u32::from_le_bytes(target_bytes);
         let memory_target = if memory_target_val == 0 { None } else { Some(memory_target_val) };
-        
+
         let mut bool_bytes = [0u8; 1];
         reader.read_exact(&mut bool_bytes)?;
         let offset_evaluation_needed = bool_bytes[0] != 0;
-        
+
         let data_bytes_ref = DataBytesReference::from_bytes_with_provider(reader, provider)?;
-        
+
         Ok(Self {
             segment_type,
             memory_target,
@@ -787,7 +820,8 @@ impl wrt_foundation::traits::FromBytes for ElementInitType {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 0x3003,
-                "Invalid element init type discriminant")),
+                "Invalid element init type discriminant",
+            )),
         }
     }
 }
@@ -830,19 +864,19 @@ impl wrt_foundation::traits::FromBytes for RuntimeDataExtraction {
         let mut bool_bytes = [0u8; 1];
         reader.read_exact(&mut bool_bytes)?;
         let is_active = bool_bytes[0] != 0;
-        
+
         let mut index_bytes = [0u8; 4];
         reader.read_exact(&mut index_bytes)?;
         let memory_index_val = u32::from_le_bytes(index_bytes);
         let memory_index = if memory_index_val == 0 { None } else { Some(memory_index_val) };
-        
+
         let mut size_bytes = [0u8; 8];
         reader.read_exact(&mut size_bytes)?;
         let data_size = usize::from_le_bytes(size_bytes);
-        
+
         reader.read_exact(&mut bool_bytes)?;
         let requires_initialization = bool_bytes[0] != 0;
-        
+
         // Create empty Vec for offset_expr_bytes
         #[cfg(feature = "std")]
         let offset_expr_bytes = std::vec::Vec::new();
@@ -851,7 +885,7 @@ impl wrt_foundation::traits::FromBytes for RuntimeDataExtraction {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             OffsetExprBytes::new(provider)?
         };
-        
+
         Ok(Self {
             is_active,
             memory_index,
@@ -900,17 +934,17 @@ impl wrt_foundation::traits::FromBytes for RuntimeElementExtraction {
         let mut bool_bytes = [0u8; 1];
         reader.read_exact(&mut bool_bytes)?;
         let is_active = bool_bytes[0] != 0;
-        
+
         let mut index_bytes = [0u8; 4];
         reader.read_exact(&mut index_bytes)?;
         let table_index_val = u32::from_le_bytes(index_bytes);
         let table_index = if table_index_val == 0 { None } else { Some(table_index_val) };
-        
+
         let init_data_type = ElementInitType::from_bytes_with_provider(reader, provider)?;
-        
+
         reader.read_exact(&mut bool_bytes)?;
         let requires_initialization = bool_bytes[0] != 0;
-        
+
         // Create defaults for complex fields
         #[cfg(feature = "std")]
         let offset_expr_bytes = std::vec::Vec::new();
@@ -919,7 +953,7 @@ impl wrt_foundation::traits::FromBytes for RuntimeElementExtraction {
             let provider = safe_managed_alloc!(8192, CrateId::Format).unwrap();
             OffsetExprBytes::new(provider)?
         };
-        
+
         Ok(Self {
             is_active,
             table_index,

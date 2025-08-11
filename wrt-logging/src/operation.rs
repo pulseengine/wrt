@@ -29,11 +29,12 @@ pub struct LogOperation {
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Log operation from a WebAssembly component
 #[derive(Debug, Clone)]
-pub struct LogOperation<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq = wrt_foundation::NoStdProvider<512>> {
+pub struct LogOperation<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq = wrt_foundation::NoStdProvider<512>>
+{
     /// Log level
-    pub level: LogLevel,
+    pub level:        LogLevel,
     /// Log message
-    pub message: wrt_foundation::BoundedString<256, P>,
+    pub message:      wrt_foundation::BoundedString<256, P>,
     /// Component ID (optional)
     pub component_id: Option<wrt_foundation::BoundedString<64, P>>,
 }

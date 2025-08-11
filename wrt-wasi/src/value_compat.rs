@@ -4,22 +4,25 @@
 //! expected by WASI components while being compatible with wrt-foundation's
 //! component value system.
 
-use wrt_foundation::{
-    safe_memory::NoStdProvider,
-    bounded::{BoundedVec, BoundedString},
-    prelude::*,
-    safe_managed_alloc, budget_aware_provider::CrateId,
-};
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 #[cfg(feature = "std")]
 use std::string::String;
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(feature = "std")]
-use std::boxed::Box;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    budget_aware_provider::CrateId,
+    prelude::*,
+    safe_managed_alloc,
+    safe_memory::NoStdProvider,
+};
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 type Box<T> = T; // Simple workaround for no_std without alloc
 #[cfg(not(feature = "std"))]
@@ -30,7 +33,7 @@ type WasiString = BoundedString<256, WasiProvider>;
 type WasiVec<T> = BoundedVec<T, 32, WasiProvider>;
 
 /// Simplified Value enum for WASI component interface
-/// 
+///
 /// This provides the variants that WASI code expects while being
 /// compatible with wrt-foundation's type system.
 #[derive(Debug, Clone, PartialEq)]
@@ -196,7 +199,7 @@ impl wrt_foundation::traits::FromBytes for Value {
                 let b2 = reader.read_u8()? as u32;
                 let b3 = reader.read_u8()? as u32;
                 Ok(Value::U32(b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)))
-            }
+            },
             _ => Ok(Value::U32(0)), // Default fallback
         }
     }
@@ -233,7 +236,7 @@ impl Value {
         }
     }
 
-    /// Extract a string from the value, returning empty string if not possible  
+    /// Extract a string from the value, returning empty string if not possible
     #[cfg(not(feature = "std"))]
     pub fn as_string(&self) -> WasiString {
         match self {
@@ -250,7 +253,7 @@ impl Value {
                     let fallback_provider = WasiProvider::default();
                     BoundedString::from_str("", fallback_provider).unwrap()
                 }
-            }
+            },
         }
     }
 

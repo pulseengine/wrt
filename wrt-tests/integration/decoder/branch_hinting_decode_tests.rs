@@ -265,7 +265,7 @@ fn test_decode_performance() -> Result<()> {
         bytecode.extend_from_slice(&[0xD5, 0x00]); // br_on_null 0
     }
     
-    let start = Instant::now);
+    let start = Instant::now();
     
     // Decode all instructions
     let mut offset = 0;

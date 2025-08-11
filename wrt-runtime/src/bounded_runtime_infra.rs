@@ -3,24 +3,32 @@
 //! This module provides bounded alternatives for runtime collections
 //! to ensure static memory allocation throughout the runtime execution.
 
-
-use wrt_foundation::{
-    bounded::{BoundedVec, BoundedString},
-    bounded_collections::BoundedMap,
-    safe_memory::NoStdProvider,
-    budget_aware_provider::CrateId,
-    capabilities::CapabilityAwareProvider,
-    capability_context, safe_capability_alloc,
-    traits::{Checksummable, ToBytes, FromBytes},
-    WrtResult,
+use wrt_error::{
+    Error,
+    ErrorCategory,
 };
-
-// Box is re-exported by wrt_foundation
-use wrt_foundation::Box;
-use wrt_error::{Error, ErrorCategory};
-
 #[cfg(any(feature = "std", feature = "alloc"))]
 use wrt_foundation::capabilities::factory::CapabilityGuardedProvider;
+// Box is re-exported by wrt_foundation
+use wrt_foundation::Box;
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    bounded_collections::BoundedMap,
+    budget_aware_provider::CrateId,
+    capabilities::CapabilityAwareProvider,
+    capability_context,
+    safe_capability_alloc,
+    safe_memory::NoStdProvider,
+    traits::{
+        Checksummable,
+        FromBytes,
+        ToBytes,
+    },
+    WrtResult,
+};
 
 // Memory size for runtime provider (4KB to avoid stack overflow)
 // Previously was 131072 (128KB) which caused stack overflow
@@ -47,63 +55,67 @@ pub type RuntimeProvider = CapabilityAwareProvider<BaseRuntimeProvider>;
 pub type DefaultRuntimeProvider = RuntimeProvider;
 
 /// Helper function to create a runtime provider using an existing context
-pub fn create_runtime_provider_with_context(_context: &wrt_foundation::capabilities::MemoryCapabilityContext) -> WrtResult<RuntimeProvider> {
-    use wrt_foundation::capabilities::{DynamicMemoryCapability, MemoryCapability};
-    use wrt_foundation::verification::VerificationLevel;
-    
+pub fn create_runtime_provider_with_context(
+    _context: &wrt_foundation::capabilities::MemoryCapabilityContext,
+) -> WrtResult<RuntimeProvider> {
+    use wrt_foundation::{
+        capabilities::{
+            DynamicMemoryCapability,
+            MemoryCapability,
+        },
+        verification::VerificationLevel,
+    };
+
     #[cfg(any(feature = "std", feature = "alloc"))]
     {
-        // Create provider directly without going through global context to avoid recursion
-        let base_provider = BaseRuntimeProvider::default());
-        
+        // Create provider directly without going through global context to avoid
+        // recursion
+        let base_provider = BaseRuntimeProvider::default();
+
         // Create a simple capability for the runtime
         let capability = DynamicMemoryCapability::new(
             RUNTIME_MEMORY_SIZE,
-            CrateId::Runtime, 
-            VerificationLevel::Standard
-        ;
-        
-        let provider = CapabilityAwareProvider::new(
-            base_provider, 
-            Box::new(capability),
-            CrateId::Runtime
-        ;
+            CrateId::Runtime,
+            VerificationLevel::Standard,
+        );
+
+        let provider =
+            CapabilityAwareProvider::new(base_provider, Box::new(capability), CrateId::Runtime);
         Ok(provider)
     }
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     {
         // In no_std environments, use the lightweight provider creation
-        let base_provider = BaseRuntimeProvider::default());
-        
+        let base_provider = BaseRuntimeProvider::default();
+
         // Create a simple capability for the runtime
         let capability = DynamicMemoryCapability::new(
             RUNTIME_MEMORY_SIZE,
-            CrateId::Runtime, 
-            VerificationLevel::Standard
-        ;
-        
-        let provider = CapabilityAwareProvider::new(
-            base_provider, 
-            Box::new(capability),
-            CrateId::Runtime
-        ;
+            CrateId::Runtime,
+            VerificationLevel::Standard,
+        );
+
+        let provider =
+            CapabilityAwareProvider::new(base_provider, Box::new(capability), CrateId::Runtime);
         Ok(provider)
     }
 }
 
 /// Helper function to create a runtime provider
-/// 
-/// This creates a new context which can cause recursion. Use create_runtime_provider_with_context instead.
+///
+/// This creates a new context which can cause recursion. Use
+/// create_runtime_provider_with_context instead.
 pub fn create_runtime_provider() -> WrtResult<RuntimeProvider> {
     // For small sizes, use the normal capability system
     #[cfg(any(feature = "std", feature = "alloc"))]
     {
-        // In std/alloc environments, safe_capability_alloc! returns CapabilityAwareProvider
+        // In std/alloc environments, safe_capability_alloc! returns
+        // CapabilityAwareProvider
         let context = capability_context!(dynamic(CrateId::Runtime, RUNTIME_MEMORY_SIZE))?;
         let provider = safe_capability_alloc!(context, CrateId::Runtime, RUNTIME_MEMORY_SIZE)?;
         Ok(provider)
     }
-    
+
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     {
         // In no_std, safe_capability_alloc! returns the base provider
@@ -140,7 +152,6 @@ pub const MAX_CALL_STACK_DEPTH: usize = 2048;
 /// Maximum number of execution contexts
 pub const MAX_EXECUTION_CONTEXTS: usize = 256;
 
-
 /// Maximum number of memory allocations to track
 pub const MAX_MEMORY_ALLOCATIONS: usize = 2048;
 
@@ -149,7 +160,6 @@ pub const MAX_WAIT_QUEUE_ENTRIES: usize = 512;
 
 /// Maximum number of atomic operations
 pub const MAX_ATOMIC_OPERATIONS: usize = 1024;
-
 
 /// Maximum module name length
 pub const MAX_MODULE_NAME_LEN: usize = 256;
@@ -220,50 +230,36 @@ pub type BoundedFunctionName = BoundedString<MAX_FUNCTION_NAME_LEN, RuntimeProvi
 /// Bounded string for import/export names
 pub type BoundedImportExportName = BoundedString<MAX_IMPORT_EXPORT_NAME_LEN, RuntimeProvider>;
 
-
-
 /// Bounded map for atomic operations
 pub type BoundedAtomicOpMap<V> = BoundedMap<
     u64, // Memory address
     V,
     MAX_ATOMIC_OPERATIONS,
-    RuntimeProvider
+    RuntimeProvider,
 >;
 
 /// Bounded map for modules
-pub type BoundedModuleMap<V> = BoundedMap<
-    BoundedModuleName,
-    V,
-    MAX_MODULES_PER_RUNTIME,
-    RuntimeProvider
->;
+pub type BoundedModuleMap<V> =
+    BoundedMap<BoundedModuleName, V, MAX_MODULES_PER_RUNTIME, RuntimeProvider>;
 
 /// Bounded map for imports
-pub type BoundedImportMap<V> = BoundedMap<
-    BoundedImportExportName,
-    V,
-    MAX_IMPORTS_PER_MODULE,
-    RuntimeProvider
->;
+pub type BoundedImportMap<V> =
+    BoundedMap<BoundedImportExportName, V, MAX_IMPORTS_PER_MODULE, RuntimeProvider>;
 
 /// Bounded map for exports
-pub type BoundedExportMap<V> = BoundedMap<
-    BoundedImportExportName,
-    V,
-    MAX_EXPORTS_PER_MODULE,
-    RuntimeProvider
->;
+pub type BoundedExportMap<V> =
+    BoundedMap<BoundedImportExportName, V, MAX_EXPORTS_PER_MODULE, RuntimeProvider>;
 
 /// Bounded map for thread management
 pub type BoundedThreadMap<V> = BoundedMap<
     u32, // Thread ID
     V,
     MAX_MANAGED_THREADS,
-    RuntimeProvider
+    RuntimeProvider,
 >;
 
 /// Create a new bounded runtime vector
-pub fn new_runtime_vec<T>() -> WrtResult<BoundedRuntimeVec<T>> 
+pub fn new_runtime_vec<T>() -> WrtResult<BoundedRuntimeVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -272,7 +268,7 @@ where
 }
 
 /// Create a new bounded module vector
-pub fn new_module_vec<T>() -> WrtResult<BoundedModuleVec<T>> 
+pub fn new_module_vec<T>() -> WrtResult<BoundedModuleVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -281,7 +277,7 @@ where
 }
 
 /// Create a new bounded function vector
-pub fn new_function_vec<T>() -> WrtResult<BoundedFunctionVec<T>> 
+pub fn new_function_vec<T>() -> WrtResult<BoundedFunctionVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -290,7 +286,7 @@ where
 }
 
 /// Create a new bounded memory vector
-pub fn new_memory_vec<T>() -> WrtResult<BoundedMemoryVec<T>> 
+pub fn new_memory_vec<T>() -> WrtResult<BoundedMemoryVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -299,7 +295,7 @@ where
 }
 
 /// Create a new bounded table vector
-pub fn new_table_vec<T>() -> WrtResult<BoundedTableVec<T>> 
+pub fn new_table_vec<T>() -> WrtResult<BoundedTableVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -308,7 +304,7 @@ where
 }
 
 /// Create a new bounded global vector
-pub fn new_global_vec<T>() -> WrtResult<BoundedGlobalVec<T>> 
+pub fn new_global_vec<T>() -> WrtResult<BoundedGlobalVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -317,7 +313,7 @@ where
 }
 
 /// Create a new bounded thread vector
-pub fn new_thread_vec<T>() -> WrtResult<BoundedThreadVec<T>> 
+pub fn new_thread_vec<T>() -> WrtResult<BoundedThreadVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -326,7 +322,7 @@ where
 }
 
 /// Create a new bounded call stack vector
-pub fn new_call_stack_vec<T>() -> WrtResult<BoundedCallStackVec<T>> 
+pub fn new_call_stack_vec<T>() -> WrtResult<BoundedCallStackVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -335,7 +331,7 @@ where
 }
 
 /// Create a new bounded execution context vector
-pub fn new_execution_context_vec<T>() -> WrtResult<BoundedExecutionContextVec<T>> 
+pub fn new_execution_context_vec<T>() -> WrtResult<BoundedExecutionContextVec<T>>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -346,31 +342,33 @@ where
 /// Create a new bounded module name
 pub fn new_module_name() -> WrtResult<BoundedModuleName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str("", provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
+    BoundedString::from_str("", provider)
+        .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a bounded module name from str
 pub fn bounded_module_name_from_str(s: &str) -> WrtResult<BoundedModuleName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str(s, provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
+    BoundedString::from_str(s, provider)
+        .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a new bounded function name
 pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str("", provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
+    BoundedString::from_str("", provider)
+        .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
 /// Create a bounded function name from str
 pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName> {
     let provider = create_runtime_provider()?;
-    BoundedString::from_str(s, provider).map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
+    BoundedString::from_str(s, provider)
+        .map_err(|e| Error::memory_serialization_error("Failed to create bounded string"))
 }
 
-
-
 /// Create a new bounded atomic operation map
-pub fn new_atomic_op_map<V>() -> WrtResult<BoundedAtomicOpMap<V>> 
+pub fn new_atomic_op_map<V>() -> WrtResult<BoundedAtomicOpMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -379,7 +377,7 @@ where
 }
 
 /// Create a new bounded module map
-pub fn new_module_map<V>() -> WrtResult<BoundedModuleMap<V>> 
+pub fn new_module_map<V>() -> WrtResult<BoundedModuleMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -388,7 +386,7 @@ where
 }
 
 /// Create a new bounded import map
-pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>> 
+pub fn new_import_map<V>() -> WrtResult<BoundedImportMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -397,7 +395,7 @@ where
 }
 
 /// Create a new bounded export map
-pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>> 
+pub fn new_export_map<V>() -> WrtResult<BoundedExportMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
@@ -406,7 +404,7 @@ where
 }
 
 /// Create a new bounded thread map
-pub fn new_thread_map<V>() -> WrtResult<BoundedThreadMap<V>> 
+pub fn new_thread_map<V>() -> WrtResult<BoundedThreadMap<V>>
 where
     V: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {

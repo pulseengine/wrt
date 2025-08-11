@@ -11,11 +11,22 @@
 //! macOS-specific `FutexLike` implementation using direct syscalls without
 //! libc.
 
-use core::{marker::PhantomData, sync::atomic::AtomicU32, time::Duration};
+use core::{
+    marker::PhantomData,
+    sync::atomic::AtomicU32,
+    time::Duration,
+};
 
-use wrt_error::{Error, ErrorCategory, Result};
+use wrt_error::{
+    Error,
+    ErrorCategory,
+    Result,
+};
 
-use crate::sync::{FutexLike, TimeoutResult};
+use crate::sync::{
+    FutexLike,
+    TimeoutResult,
+};
 
 // Darwin / macOS specific ulock operations syscall numbers
 const SYSCALL_ULOCK_WAIT: u64 = 515; // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
@@ -41,11 +52,11 @@ const ULOCK_WAIT_TIMEOUT_INFINITE: u32 = u32::MAX;
 #[derive(Debug)]
 pub struct MacOsFutex {
     /// The atomic value used for synchronization
-    value: AtomicU32,
+    value:    AtomicU32,
     /// Padding to ensure the value is on its own cache line
     _padding: [u8; 60], // 64 - sizeof(AtomicU32)
     /// Safety: We're carefully managing the lifetime of the value
-    _marker: PhantomData<*mut ()>,
+    _marker:  PhantomData<*mut ()>,
 }
 
 // Safety: MacOsFutex can be shared between threads safely because:
@@ -58,7 +69,11 @@ unsafe impl Sync for MacOsFutex {}
 impl MacOsFutex {
     /// Creates a new `MacOsFutex` with the given initial value.
     pub fn new(initial_value: u32) -> Self {
-        Self { value: AtomicU32::new(initial_value), _padding: [0; 60], _marker: PhantomData }
+        Self {
+            value:    AtomicU32::new(initial_value),
+            _padding: [0; 60],
+            _marker:  PhantomData,
+        }
     }
 
     /// Direct syscall implementation of _ulock_wait
@@ -161,7 +176,7 @@ impl FutexLike for MacOsFutex {
             Some(duration) => {
                 // Add the ULF_WAIT_TIMEOUT flag to indicate a timeout is provided
                 ULF_WAIT_TIMEOUT | (duration.as_micros() as u32)
-            }
+            },
             None => ULOCK_WAIT_TIMEOUT_INFINITE, // Infinite timeout
         };
 
@@ -182,7 +197,7 @@ impl FutexLike for MacOsFutex {
                     // Other error
                     Err(Error::system_error("Failed to wait on futex"))
                 }
-            }
+            },
             _ => Err(Error::system_error("Unexpected error waiting on futex")),
         }
     }
@@ -196,7 +211,8 @@ impl FutexLike for MacOsFutex {
         // value. addr points to self.value, which is valid for the lifetime of
         // self.
         let result = unsafe {
-            Self::ulock_wake(operation, addr, count as u64) // Wake 'count' waiters
+            Self::ulock_wake(operation, addr, count as u64) // Wake 'count'
+                                                            // waiters
         };
 
         if result >= 0 {
@@ -207,5 +223,4 @@ impl FutexLike for MacOsFutex {
             Err(Error::runtime_execution_error("Failed to wake waiters"))
         }
     }
-
 }

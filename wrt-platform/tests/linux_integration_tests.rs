@@ -6,12 +6,19 @@
 
 #[cfg(all(feature = "platform-linux", target_os = "linux"))]
 mod linux_tests {
-    use wrt_platform::{LinuxAllocator, LinuxAllocatorBuilder, LinuxFutex, LinuxFutexBuilder};
+    use wrt_platform::{
+        LinuxAllocator,
+        LinuxAllocatorBuilder,
+        LinuxFutex,
+        LinuxFutexBuilder,
+    };
 
     #[test]
     fn test_linux_allocator_creation() {
-        let allocator =
-            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build();
+        let allocator = LinuxAllocatorBuilder::new()
+            .with_maximum_pages(100)
+            .with_guard_pages(true)
+            .build();
 
         // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
@@ -43,7 +50,11 @@ mod linux_tests {
     target_os = "linux"
 ))]
 mod linux_mte_tests {
-    use wrt_platform::{LinuxArm64MteAllocator, LinuxArm64MteAllocatorBuilder, MteMode};
+    use wrt_platform::{
+        LinuxArm64MteAllocator,
+        LinuxArm64MteAllocatorBuilder,
+        MteMode,
+    };
 
     #[test]
     fn test_linux_mte_allocator_creation() {
@@ -63,8 +74,9 @@ mod linux_mte_tests {
         let sync_allocator =
             LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Synchronous).build();
 
-        let async_allocator =
-            LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Asynchronous).build();
+        let async_allocator = LinuxArm64MteAllocatorBuilder::new()
+            .with_mte_mode(MteMode::Asynchronous)
+            .build();
 
         let disabled_allocator =
             LinuxArm64MteAllocatorBuilder::new().with_mte_mode(MteMode::Disabled).build();
@@ -88,20 +100,20 @@ fn test_linux_platform_compilation() {
         use wrt_platform::*;
 
         // Basic verification that types exist
-        let _ = core::mem::size_of::<NoStdProvider<1024>>);
+        let _ = core::mem::size_of::<NoStdProvider<1024>>();
 
         // On Linux, additional types should be available
         #[cfg(target_os = "linux")]
         {
-            let _ = core::mem::size_of::<LinuxAllocatorBuilder>);
-            let _ = core::mem::size_of::<LinuxFutexBuilder>);
+            let _ = core::mem::size_of::<LinuxAllocatorBuilder>();
+            let _ = core::mem::size_of::<LinuxFutexBuilder>();
         }
 
         // On ARM64 Linux with MTE, even more types should be available
         #[cfg(all(feature = "linux-mte", target_arch = "aarch64", target_os = "linux"))]
         {
-            let _ = core::mem::size_of::<LinuxArm64MteAllocatorBuilder>);
-            let _ = core::mem::size_of::<MteMode>);
+            let _ = core::mem::size_of::<LinuxArm64MteAllocatorBuilder>();
+            let _ = core::mem::size_of::<MteMode>();
         }
     }
 }

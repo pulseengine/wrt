@@ -6,7 +6,8 @@
 //!
 //! # KANI Integration
 //!
-//! The utilities in this module are designed to work both with and without KANI:
+//! The utilities in this module are designed to work both with and without
+//! KANI:
 //! - When KANI is available, they use `kani::any()` for symbolic execution
 //! - When KANI is not available, they provide deterministic test values
 //!
@@ -24,8 +25,19 @@
 
 extern crate alloc;
 
-use wrt_foundation::safety_system::AsilLevel;
-use wrt_foundation::budget_aware_provider::CrateId;
+use wrt_foundation::{
+    budget_aware_provider::CrateId,
+    safety_system::{
+        AgricultureLevel,
+        AsilLevel,
+        DalLevel,
+        MedicalClass,
+        RailwaySil,
+        SafetyStandard,
+        SafetyStandardType,
+        SilLevel,
+    },
+};
 
 /// Maximum memory size for bounded verification
 pub const MAX_VERIFICATION_MEMORY: usize = 65536; // 64KB
@@ -47,11 +59,11 @@ pub const MAX_VERIFICATION_ITERATIONS: usize = 10;
 pub fn any_asil_level() -> AsilLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any);
+        let level: u8 = kani::any();
         kani::assume(level <= 4); // Valid ASIL levels: 0-4
         unsafe { core::mem::transmute(level) }
     }
-    
+
     #[cfg(not(kani))]
     {
         // Provide deterministic test value when not in KANI mode
@@ -72,11 +84,11 @@ pub fn any_asil_level() -> AsilLevel {
 pub fn any_memory_size(max: usize) -> usize {
     #[cfg(kani)]
     {
-        let size: usize = kani::any);
-        kani::assume(size > 0 && size <= max;
+        let size: usize = kani::any();
+        kani::assume(size > 0 && size <= max);
         size
     }
-    
+
     #[cfg(not(kani))]
     {
         // Use smaller deterministic values for traditional testing
@@ -93,11 +105,11 @@ pub fn any_memory_size(max: usize) -> usize {
 pub fn any_alignment() -> usize {
     #[cfg(kani)]
     {
-        let align_power: u8 = kani::any);
+        let align_power: u8 = kani::any();
         kani::assume(align_power <= 3); // 2^0, 2^1, 2^2, 2^3 = 1, 2, 4, 8
         1 << align_power
     }
-    
+
     #[cfg(not(kani))]
     {
         4 // Default to 4-byte alignment for traditional testing
@@ -113,7 +125,7 @@ pub fn any_alignment() -> usize {
 pub fn any_crate_id() -> CrateId {
     #[cfg(kani)]
     {
-        let crate_id: u8 = kani::any);
+        let crate_id: u8 = kani::any();
         match crate_id % 8 {
             0 => CrateId::Foundation,
             1 => CrateId::Component,
@@ -125,7 +137,7 @@ pub fn any_crate_id() -> CrateId {
             _ => CrateId::Debug,
         }
     }
-    
+
     #[cfg(not(kani))]
     {
         CrateId::Foundation // Default for traditional testing
@@ -141,7 +153,7 @@ pub fn any_crate_id() -> CrateId {
 pub fn any_safety_standard() -> SafetyStandard {
     #[cfg(kani)]
     {
-        let standard_type: u8 = kani::any);
+        let standard_type: u8 = kani::any();
         match standard_type % 6 {
             0 => SafetyStandard::Iso26262(any_asil_level()),
             1 => SafetyStandard::Do178c(any_dal_level()),
@@ -151,10 +163,11 @@ pub fn any_safety_standard() -> SafetyStandard {
             _ => SafetyStandard::Iso25119(any_agriculture_level()),
         }
     }
-    
+
     #[cfg(not(kani))]
     {
-        SafetyStandard::Iso26262(AsilLevel::AsilC) // Default for traditional testing
+        SafetyStandard::Iso26262(AsilLevel::AsilC) // Default for traditional
+                                                   // testing
     }
 }
 
@@ -167,7 +180,7 @@ pub fn any_safety_standard() -> SafetyStandard {
 pub fn any_standard_type() -> SafetyStandardType {
     #[cfg(kani)]
     {
-        let type_id: u8 = kani::any);
+        let type_id: u8 = kani::any();
         match type_id % 6 {
             0 => SafetyStandardType::Iso26262,
             1 => SafetyStandardType::Do178c,
@@ -177,7 +190,7 @@ pub fn any_standard_type() -> SafetyStandardType {
             _ => SafetyStandardType::Iso25119,
         }
     }
-    
+
     #[cfg(not(kani))]
     {
         SafetyStandardType::Iso26262 // Default for traditional testing
@@ -191,11 +204,11 @@ pub fn any_standard_type() -> SafetyStandardType {
 pub fn any_dal_level() -> DalLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any);
-        kani::assume(level <= 4;
+        let level: u8 = kani::any();
+        kani::assume(level <= 4);
         unsafe { core::mem::transmute(level) }
     }
-    
+
     #[cfg(not(kani))]
     {
         DalLevel::DalC // Default for traditional testing
@@ -207,11 +220,11 @@ pub fn any_dal_level() -> DalLevel {
 pub fn any_sil_level() -> SilLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any);
+        let level: u8 = kani::any();
         kani::assume(level >= 1 && level <= 4); // SIL 1-4
         unsafe { core::mem::transmute(level) }
     }
-    
+
     #[cfg(not(kani))]
     {
         SilLevel::Sil2 // Default for traditional testing
@@ -223,11 +236,11 @@ pub fn any_sil_level() -> SilLevel {
 pub fn any_medical_class() -> MedicalClass {
     #[cfg(kani)]
     {
-        let class: u8 = kani::any);
+        let class: u8 = kani::any();
         kani::assume(class >= 1 && class <= 3); // Class A, B, C
         unsafe { core::mem::transmute(class) }
     }
-    
+
     #[cfg(not(kani))]
     {
         MedicalClass::ClassB // Default for traditional testing
@@ -239,11 +252,11 @@ pub fn any_medical_class() -> MedicalClass {
 pub fn any_railway_sil() -> RailwaySil {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any);
+        let level: u8 = kani::any();
         kani::assume(level <= 4); // SIL 0-4
         unsafe { core::mem::transmute(level) }
     }
-    
+
     #[cfg(not(kani))]
     {
         RailwaySil::Sil2 // Default for traditional testing
@@ -255,11 +268,11 @@ pub fn any_railway_sil() -> RailwaySil {
 pub fn any_agriculture_level() -> AgricultureLevel {
     #[cfg(kani)]
     {
-        let level: u8 = kani::any);
+        let level: u8 = kani::any();
         kani::assume(level >= 1 && level <= 5); // AgPL a-e
         unsafe { core::mem::transmute(level) }
     }
-    
+
     #[cfg(not(kani))]
     {
         AgricultureLevel::AgPlc // Default for traditional testing
@@ -278,10 +291,11 @@ pub fn any_agriculture_level() -> AgricultureLevel {
 /// (i.e., cannot accept QM/no-safety levels from other standards).
 #[cfg(any(doc, kani, feature = "kani"))]
 pub fn target_requires_safety_classification(target: SafetyStandardType) -> bool {
-    matches!(target, 
+    matches!(
+        target,
         SafetyStandardType::Iec61508 |   // Industrial safety always required
         SafetyStandardType::Iec62304 |   // Medical devices inherently affect safety
-        SafetyStandardType::Iso25119     // Agricultural machinery can cause harm
+        SafetyStandardType::Iso25119 // Agricultural machinery can cause harm
     )
 }
 
@@ -313,13 +327,13 @@ pub fn next_power_of_2(value: usize) -> usize {
     if value == 0 {
         return 1;
     }
-    
+
     let mut power = 1;
     while power < value {
-        power = power.saturating_mul(2;
+        power = power.saturating_mul(2);
         if power == 0 {
             // Overflow - return maximum power of 2 for usize
-            return 1 << (core::mem::size_of::<usize>() * 8 - 1;
+            return 1 << (core::mem::size_of::<usize>() * 8 - 1);
         }
     }
     power
@@ -336,7 +350,7 @@ macro_rules! verify_invariant {
         {
             kani::assert!($condition, $message);
         }
-        
+
         #[cfg(not(kani))]
         {
             assert!($condition, $message);
@@ -353,9 +367,9 @@ macro_rules! assume_precondition {
     ($condition:expr) => {
         #[cfg(kani)]
         {
-            kani::assume($condition;
+            kani::assume($condition);
         }
-        
+
         #[cfg(not(kani))]
         {
             // In traditional testing, convert assumptions to assertions
@@ -368,44 +382,56 @@ macro_rules! assume_precondition {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_memory_size_generation() {
-        let size = any_memory_size(1024;
+        let size = any_memory_size(1024);
         assert!(size > 0);
         assert!(size <= 1024);
     }
-    
+
     #[test]
     fn test_alignment_generation() {
-        let alignment = any_alignment);
-        assert!(alignment.is_power_of_two();
+        let alignment = any_alignment();
+        assert!(alignment.is_power_of_two());
         assert!(alignment <= 8);
     }
-    
+
     #[test]
     fn test_bounds_checking() {
-        assert!(is_within_bounds(5, 1, 10);
-        assert!(!is_within_bounds(15, 1, 10);
-        assert!(!is_within_bounds(0, 1, 10);
+        assert!(is_within_bounds(5, 1, 10));
+        assert!(!is_within_bounds(15, 1, 10));
+        assert!(!is_within_bounds(0, 1, 10));
     }
-    
+
     #[test]
     fn test_next_power_of_2() {
         assert_eq!(next_power_of_2(0), 1);
         assert_eq!(next_power_of_2(1), 1);
-        assert_eq!(next_power_of_2(3), 4;
-        assert_eq!(next_power_of_2(8), 8;
-        assert_eq!(next_power_of_2(9), 16;
+        assert_eq!(next_power_of_2(3), 4);
+        assert_eq!(next_power_of_2(8), 8);
+        assert_eq!(next_power_of_2(9), 16);
     }
-    
+
     #[test]
     fn test_safety_classification_requirements() {
-        assert!(target_requires_safety_classification(SafetyStandardType::Iec61508);
-        assert!(target_requires_safety_classification(SafetyStandardType::Iec62304);
-        assert!(target_requires_safety_classification(SafetyStandardType::Iso25119);
-        assert!(!target_requires_safety_classification(SafetyStandardType::Iso26262);
-        assert!(!target_requires_safety_classification(SafetyStandardType::Do178c);
-        assert!(!target_requires_safety_classification(SafetyStandardType::En50128);
+        assert!(target_requires_safety_classification(
+            SafetyStandardType::Iec61508
+        ));
+        assert!(target_requires_safety_classification(
+            SafetyStandardType::Iec62304
+        ));
+        assert!(target_requires_safety_classification(
+            SafetyStandardType::Iso25119
+        ));
+        assert!(!target_requires_safety_classification(
+            SafetyStandardType::Iso26262
+        ));
+        assert!(!target_requires_safety_classification(
+            SafetyStandardType::Do178c
+        ));
+        assert!(!target_requires_safety_classification(
+            SafetyStandardType::En50128
+        ));
     }
 }

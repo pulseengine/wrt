@@ -9,18 +9,25 @@ use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-use std::{vec, vec::Vec};
 #[cfg(not(feature = "std"))]
-use alloc::{vec, vec::Vec};
+use alloc::{
+    vec,
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    vec,
+    vec::Vec,
+};
 
 /// Pure data segment mode (format representation only)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PureDataMode {
-    /// Active data segment reference (format-only, contains indices and expression data)
+    /// Active data segment reference (format-only, contains indices and
+    /// expression data)
     Active {
         /// Memory index reference
-        memory_index: u32,
+        memory_index:    u32,
         /// Offset expression length (for parsing validation)
         offset_expr_len: u32,
     },
@@ -37,10 +44,11 @@ impl Default for PureDataMode {
 /// Pure element segment mode (format representation only)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PureElementMode {
-    /// Active element segment reference (format-only, contains indices and expression data)
+    /// Active element segment reference (format-only, contains indices and
+    /// expression data)
     Active {
         /// Table index reference
-        table_index: u32,
+        table_index:     u32,
         /// Offset expression length (for parsing validation)
         offset_expr_len: u32,
     },
@@ -60,24 +68,24 @@ impl Default for PureElementMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PureDataSegment {
     /// Data mode (pure format representation)
-    pub mode: PureDataMode,
+    pub mode:              PureDataMode,
     /// Raw offset expression bytes (format-only, runtime interprets)
     pub offset_expr_bytes: Vec<u8>,
     /// Data bytes
-    pub data_bytes: Vec<u8>,
+    pub data_bytes:        Vec<u8>,
 }
 
 /// Pure element segment (format representation only)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PureElementSegment {
     /// Element mode (pure format representation)
-    pub mode: PureElementMode,
+    pub mode:              PureElementMode,
     /// Element type (funcref, externref, etc.)
-    pub element_type: crate::types::RefType,
+    pub element_type:      crate::types::RefType,
     /// Raw offset expression bytes (format-only, runtime interprets)
     pub offset_expr_bytes: Vec<u8>,
     /// Element initialization data (indices or expression bytes)
-    pub init_data: PureElementInit,
+    pub init_data:         PureElementInit,
 }
 
 /// Pure element initialization data (format representation only)
@@ -92,9 +100,9 @@ pub enum PureElementInit {
 impl Default for PureDataSegment {
     fn default() -> Self {
         Self {
-            mode: PureDataMode::default(),
+            mode:              PureDataMode::default(),
             offset_expr_bytes: Vec::new(),
-            data_bytes: Vec::new(),
+            data_bytes:        Vec::new(),
         }
     }
 }
@@ -102,10 +110,10 @@ impl Default for PureDataSegment {
 impl Default for PureElementSegment {
     fn default() -> Self {
         Self {
-            mode: PureElementMode::default(),
-            element_type: crate::types::RefType::Funcref,
+            mode:              PureElementMode::default(),
+            element_type:      crate::types::RefType::Funcref,
             offset_expr_bytes: Vec::new(),
-            init_data: PureElementInit::FunctionIndices(Vec::new()),
+            init_data:         PureElementInit::FunctionIndices(Vec::new()),
         }
     }
 }
@@ -120,29 +128,29 @@ impl PureDataSegment {
     /// Create new active data segment
     pub fn new_active(memory_index: u32, offset_expr: Vec<u8>, data: Vec<u8>) -> Self {
         Self {
-            mode: PureDataMode::Active {
+            mode:              PureDataMode::Active {
                 memory_index,
                 offset_expr_len: offset_expr.len() as u32,
             },
             offset_expr_bytes: offset_expr,
-            data_bytes: data,
+            data_bytes:        data,
         }
     }
-    
+
     /// Create new passive data segment
     pub fn new_passive(data: Vec<u8>) -> Self {
         Self {
-            mode: PureDataMode::Passive,
+            mode:              PureDataMode::Passive,
             offset_expr_bytes: Vec::new(),
-            data_bytes: data,
+            data_bytes:        data,
         }
     }
-    
+
     /// Check if this is an active segment
     pub fn is_active(&self) -> bool {
         matches!(self.mode, PureDataMode::Active { .. })
     }
-    
+
     /// Get memory index if active
     pub fn memory_index(&self) -> Option<u32> {
         match self.mode {
@@ -170,7 +178,7 @@ impl PureElementSegment {
             init_data,
         }
     }
-    
+
     /// Create new passive element segment
     pub fn new_passive(element_type: crate::types::RefType, init_data: PureElementInit) -> Self {
         Self {
@@ -180,7 +188,7 @@ impl PureElementSegment {
             init_data,
         }
     }
-    
+
     /// Create new declared element segment
     pub fn new_declared(element_type: crate::types::RefType, init_data: PureElementInit) -> Self {
         Self {
@@ -190,12 +198,12 @@ impl PureElementSegment {
             init_data,
         }
     }
-    
+
     /// Check if this is an active segment
     pub fn is_active(&self) -> bool {
         matches!(self.mode, PureElementMode::Active { .. })
     }
-    
+
     /// Get table index if active
     pub fn table_index(&self) -> Option<u32> {
         match self.mode {
@@ -209,7 +217,10 @@ impl PureElementSegment {
 impl wrt_foundation::traits::Checksummable for PureDataMode {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
-            PureDataMode::Active { memory_index, offset_expr_len } => {
+            PureDataMode::Active {
+                memory_index,
+                offset_expr_len,
+            } => {
                 checksum.update_slice(&[0u8]); // Discriminant
                 checksum.update_slice(&memory_index.to_le_bytes());
                 checksum.update_slice(&offset_expr_len.to_le_bytes());
@@ -235,7 +246,10 @@ impl wrt_foundation::traits::ToBytes for PureDataMode {
         _provider: &P,
     ) -> wrt_error::Result<()> {
         match self {
-            PureDataMode::Active { memory_index, offset_expr_len } => {
+            PureDataMode::Active {
+                memory_index,
+                offset_expr_len,
+            } => {
                 writer.write_all(&[0u8])?;
                 writer.write_all(&memory_index.to_le_bytes())?;
                 writer.write_all(&offset_expr_len.to_le_bytes())?;
@@ -260,15 +274,20 @@ impl wrt_foundation::traits::FromBytes for PureDataMode {
                 let mut memory_index_bytes = [0u8; 4];
                 reader.read_exact(&mut memory_index_bytes)?;
                 let memory_index = u32::from_le_bytes(memory_index_bytes);
-                
+
                 let mut offset_expr_len_bytes = [0u8; 4];
                 reader.read_exact(&mut offset_expr_len_bytes)?;
                 let offset_expr_len = u32::from_le_bytes(offset_expr_len_bytes);
-                
-                Ok(PureDataMode::Active { memory_index, offset_expr_len })
+
+                Ok(PureDataMode::Active {
+                    memory_index,
+                    offset_expr_len,
+                })
             },
             1 => Ok(PureDataMode::Passive),
-            _ => Err(wrt_error::Error::runtime_execution_error("Invalid PureDataMode discriminant")),
+            _ => Err(wrt_error::Error::runtime_execution_error(
+                "Invalid PureDataMode discriminant",
+            )),
         }
     }
 }
@@ -277,7 +296,10 @@ impl wrt_foundation::traits::FromBytes for PureDataMode {
 impl wrt_foundation::traits::Checksummable for PureElementMode {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
-            PureElementMode::Active { table_index, offset_expr_len } => {
+            PureElementMode::Active {
+                table_index,
+                offset_expr_len,
+            } => {
                 checksum.update_slice(&[0u8]); // Discriminant
                 checksum.update_slice(&table_index.to_le_bytes());
                 checksum.update_slice(&offset_expr_len.to_le_bytes());
@@ -306,7 +328,10 @@ impl wrt_foundation::traits::ToBytes for PureElementMode {
         _provider: &P,
     ) -> wrt_error::Result<()> {
         match self {
-            PureElementMode::Active { table_index, offset_expr_len } => {
+            PureElementMode::Active {
+                table_index,
+                offset_expr_len,
+            } => {
                 writer.write_all(&[0u8])?;
                 writer.write_all(&table_index.to_le_bytes())?;
                 writer.write_all(&offset_expr_len.to_le_bytes())?;
@@ -334,16 +359,21 @@ impl wrt_foundation::traits::FromBytes for PureElementMode {
                 let mut table_index_bytes = [0u8; 4];
                 reader.read_exact(&mut table_index_bytes)?;
                 let table_index = u32::from_le_bytes(table_index_bytes);
-                
+
                 let mut offset_expr_len_bytes = [0u8; 4];
                 reader.read_exact(&mut offset_expr_len_bytes)?;
                 let offset_expr_len = u32::from_le_bytes(offset_expr_len_bytes);
-                
-                Ok(PureElementMode::Active { table_index, offset_expr_len })
+
+                Ok(PureElementMode::Active {
+                    table_index,
+                    offset_expr_len,
+                })
             },
             1 => Ok(PureElementMode::Passive),
             2 => Ok(PureElementMode::Declared),
-            _ => Err(wrt_error::Error::runtime_execution_error("Invalid PureElementMode discriminant")),
+            _ => Err(wrt_error::Error::runtime_execution_error(
+                "Invalid PureElementMode discriminant",
+            )),
         }
     }
 }
@@ -419,7 +449,7 @@ impl wrt_foundation::traits::FromBytes for PureElementInit {
                 let mut len_bytes = [0u8; 4];
                 reader.read_exact(&mut len_bytes)?;
                 let len = u32::from_le_bytes(len_bytes) as usize;
-                
+
                 let mut indices = Vec::with_capacity(len);
                 for _ in 0..len {
                     let mut index_bytes = [0u8; 4];
@@ -432,20 +462,22 @@ impl wrt_foundation::traits::FromBytes for PureElementInit {
                 let mut len_bytes = [0u8; 4];
                 reader.read_exact(&mut len_bytes)?;
                 let len = u32::from_le_bytes(len_bytes) as usize;
-                
+
                 let mut exprs = Vec::with_capacity(len);
                 for _ in 0..len {
                     let mut expr_len_bytes = [0u8; 4];
                     reader.read_exact(&mut expr_len_bytes)?;
                     let expr_len = u32::from_le_bytes(expr_len_bytes) as usize;
-                    
+
                     let mut expr = vec![0u8; expr_len];
                     reader.read_exact(&mut expr)?;
                     exprs.push(expr);
                 }
                 Ok(PureElementInit::ExpressionBytes(exprs))
             },
-            _ => Err(wrt_error::Error::runtime_execution_error("Invalid PureElementInit discriminant")),
+            _ => Err(wrt_error::Error::runtime_execution_error(
+                "Invalid PureElementInit discriminant",
+            )),
         }
     }
 }
@@ -486,21 +518,21 @@ impl wrt_foundation::traits::FromBytes for PureDataSegment {
         provider: &P,
     ) -> wrt_error::Result<Self> {
         let mode = PureDataMode::from_bytes_with_provider(reader, provider)?;
-        
+
         let mut offset_len_bytes = [0u8; 4];
         reader.read_exact(&mut offset_len_bytes)?;
         let offset_len = u32::from_le_bytes(offset_len_bytes) as usize;
-        
+
         let mut offset_expr_bytes = vec![0u8; offset_len];
         reader.read_exact(&mut offset_expr_bytes)?;
-        
+
         let mut data_len_bytes = [0u8; 4];
         reader.read_exact(&mut data_len_bytes)?;
         let data_len = u32::from_le_bytes(data_len_bytes) as usize;
-        
+
         let mut data_bytes = vec![0u8; data_len];
         reader.read_exact(&mut data_bytes)?;
-        
+
         Ok(PureDataSegment {
             mode,
             offset_expr_bytes,
@@ -522,7 +554,10 @@ impl wrt_foundation::traits::Checksummable for PureElementSegment {
 
 impl wrt_foundation::traits::ToBytes for PureElementSegment {
     fn serialized_size(&self) -> usize {
-        1 + self.mode.serialized_size() + 4 + self.offset_expr_bytes.len() + self.init_data.serialized_size()
+        1 + self.mode.serialized_size()
+            + 4
+            + self.offset_expr_bytes.len()
+            + self.init_data.serialized_size()
     }
 
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
@@ -553,20 +588,24 @@ impl wrt_foundation::traits::FromBytes for PureElementSegment {
         let element_type = match element_type_bytes[0] {
             0 => crate::types::RefType::Funcref,
             1 => crate::types::RefType::Externref,
-            _ => return Err(wrt_error::Error::runtime_execution_error("Invalid element type")),
+            _ => {
+                return Err(wrt_error::Error::runtime_execution_error(
+                    "Invalid element type",
+                ))
+            },
         };
-        
+
         let mode = PureElementMode::from_bytes_with_provider(reader, provider)?;
-        
+
         let mut offset_len_bytes = [0u8; 4];
         reader.read_exact(&mut offset_len_bytes)?;
         let offset_len = u32::from_le_bytes(offset_len_bytes) as usize;
-        
+
         let mut offset_expr_bytes = vec![0u8; offset_len];
         reader.read_exact(&mut offset_expr_bytes)?;
-        
+
         let init_data = PureElementInit::from_bytes_with_provider(reader, provider)?;
-        
+
         Ok(PureElementSegment {
             element_type,
             mode,

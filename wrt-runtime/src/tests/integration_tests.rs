@@ -1,16 +1,25 @@
 #[cfg(test)]
 mod tests {
     use wrt_error::Result;
-    use wrt_foundation::{types::FuncType, ComponentType, ExternType, Value, ValueType};
+    use wrt_foundation::{
+        types::FuncType,
+        ComponentType,
+        ExternType,
+        Value,
+        ValueType,
+    };
 
-    use crate::{ComponentRuntime, ComponentRuntimeImpl};
+    use crate::{
+        ComponentRuntime,
+        ComponentRuntimeImpl,
+    };
 
     #[test]
     fn test_basic_component_instantiation() -> Result<()> {
         // Create a simple component type with a function export
         let component_type = ComponentType {
-            imports: Vec::new(),
-            exports: vec![(
+            imports:   Vec::new(),
+            exports:   vec![(
                 "hello".to_string(),
                 ExternType::Function(FuncType::new(Vec::new(), vec![ValueType::I32])?),
             )],
@@ -53,8 +62,8 @@ mod tests {
     fn test_host_function_registration() -> Result<()> {
         // Create a component type with a function export
         let component_type = ComponentType {
-            imports: Vec::new(),
-            exports: vec![(
+            imports:   Vec::new(),
+            exports:   vec![(
                 "add".to_string(),
                 ExternType::Function(FuncType::new(
                     vec![ValueType::I32, ValueType::I32],
@@ -76,17 +85,21 @@ mod tests {
                 let a = match args[0] {
                     Value::I32(val) => val,
                     _ => {
-                        return Err(wrt_error::Error::runtime_execution_error("Runtime execution error"
-                    }
+                        return Err(wrt_error::Error::runtime_execution_error(
+                            "Runtime execution error",
+                        ));
+                    },
                 };
 
                 let b = match args[1] {
                     Value::I32(val) => val,
                     _ => {
-                        return Err(wrt_error::Error::new(wrt_error::ErrorCategory::Type,
+                        return Err(wrt_error::Error::new(
+                            wrt_error::ErrorCategory::Type,
                             0,
-                            "Invalid argument type for add function"))
-                    }
+                            "Invalid argument type for add function",
+                        ))
+                    },
                 };
 
                 // Return the sum
@@ -117,11 +130,14 @@ mod tests {
     fn test_memory_operations() -> Result<()> {
         // Create a component type with a memory export
         let component_type = ComponentType {
-            imports: Vec::new(),
-            exports: vec![(
+            imports:   Vec::new(),
+            exports:   vec![(
                 "memory".to_string(),
                 ExternType::Memory(wrt_foundation::MemoryType {
-                    limits: wrt_foundation::Limits { min: 1, max: Some(2) },
+                    limits: wrt_foundation::Limits {
+                        min: 1,
+                        max: Some(2),
+                    },
                     shared: false,
                 }),
             )],
@@ -145,7 +161,7 @@ mod tests {
         // since SafeSlice data() may return more than the requested size
         let data = read_bytes.data()?;
         let data_slice = &data[0..5]; // Get just the first 5 bytes
-        assert_eq!(data_slice, &bytes;
+        assert_eq!(data_slice, &bytes);
 
         Ok(())
     }

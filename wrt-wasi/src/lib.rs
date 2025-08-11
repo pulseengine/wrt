@@ -1,14 +1,15 @@
 //! # WRT WASI Implementation
 //!
-//! WASI (WebAssembly System Interface) Preview2 implementation for the WRT WebAssembly runtime.
-//! This crate provides WASI host functions that integrate seamlessly with the WRT component model
-//! and resource management system.
+//! WASI (WebAssembly System Interface) Preview2 implementation for the WRT
+//! WebAssembly runtime. This crate provides WASI host functions that integrate
+//! seamlessly with the WRT component model and resource management system.
 //!
 //! ## Features
 //!
 //! - **WASI Preview2**: Complete implementation of WASI Preview2 interfaces
 //! - **Component Model**: Native integration with WebAssembly Component Model
-//! - **Resource Management**: Built on WRT's proven resource management patterns
+//! - **Resource Management**: Built on WRT's proven resource management
+//!   patterns
 //! - **Memory Safety**: Uses WRT's safe memory allocation system
 //! - **Platform Abstraction**: Works across std/no_std environments
 //! - **Preview3 Preparation**: Foundation for future WASI Preview3 features
@@ -54,16 +55,32 @@
 extern crate alloc;
 
 // Re-export core WRT types for convenience
-pub use wrt_error::{Error, ErrorCategory, Result};
-pub use wrt_foundation::{resource::Resource, MemoryProvider};
-pub use wrt_host::{CallbackRegistry, HostFunctionHandler};
+pub use wrt_error::{
+    Error,
+    ErrorCategory,
+    Result,
+};
+// Safety configuration for WASI
+use wrt_foundation::safety_features::{
+    allocation::MEMORY_STRATEGY,
+    runtime,
+};
+pub use wrt_foundation::{
+    resource::Resource,
+    MemoryProvider,
+};
 // pub use wrt_component::ComponentLinker;
 
 // Re-export safety-aware allocation macros
-pub use wrt_foundation::{safety_aware_alloc, safe_managed_alloc, CrateId};
-
-// Safety configuration for WASI
-use wrt_foundation::safety_features::{allocation::MEMORY_STRATEGY, runtime};
+pub use wrt_foundation::{
+    safe_managed_alloc,
+    safety_aware_alloc,
+    CrateId,
+};
+pub use wrt_host::{
+    CallbackRegistry,
+    HostFunctionHandler,
+};
 
 /// WASI-specific crate ID for memory allocation tracking
 pub const WASI_CRATE_ID: CrateId = CrateId::Wasi;
@@ -86,30 +103,30 @@ pub mod value_compat;
 pub mod value_capability_aware;
 
 // Re-export the Value type for compatibility
-pub use value_compat::Value;
 // Re-export the capability-aware value type
 pub use value_capability_aware::CapabilityAwareValue;
+pub use value_compat::Value;
 
 // WASI Preview2 interfaces
 #[cfg(feature = "preview2")]
 pub mod preview2 {
     //! WASI Preview2 interface implementations
-    
+
     #[cfg(feature = "wasi-filesystem")]
     pub mod filesystem;
-    
+
     #[cfg(feature = "wasi-cli")]
     pub mod cli;
-    
+
     #[cfg(feature = "wasi-cli")]
     pub mod cli_capability_aware;
-    
+
     #[cfg(feature = "wasi-clocks")]
     pub mod clocks;
-    
+
     #[cfg(feature = "wasi-io")]
     pub mod io;
-    
+
     #[cfg(feature = "wasi-random")]
     pub mod random;
 }
@@ -121,19 +138,19 @@ pub mod preview3 {
     //!
     //! This module provides the foundation for future WASI Preview3 features
     //! including async/await, threading, and advanced I/O operations.
-    
+
     pub mod preparation;
 }
 
 // Host provider for component model integration
 pub mod host_provider {
     //! Host provider implementations for WASI integration
-    
+
     pub mod component_model_provider;
     pub mod resource_manager;
 }
 
-// Import ExternType for no_std  
+// Import ExternType for no_std
 #[cfg(not(feature = "std"))]
 use host_provider::component_model_provider::ExternType;
 
@@ -149,14 +166,18 @@ pub mod nn;
 pub mod wit_bindings;
 
 // Re-export main types for convenience
-pub use capabilities::{WasiCapabilities, WasiFileSystemCapabilities, WasiEnvironmentCapabilities};
-
 #[cfg(feature = "wasi-nn")]
 pub use capabilities::WasiNeuralNetworkCapabilities;
-
+pub use capabilities::{
+    WasiCapabilities,
+    WasiEnvironmentCapabilities,
+    WasiFileSystemCapabilities,
+};
 #[cfg(feature = "preview2")]
-pub use host_provider::component_model_provider::{ComponentModelProvider, WasiProviderBuilder};
-
+pub use host_provider::component_model_provider::{
+    ComponentModelProvider,
+    WasiProviderBuilder,
+};
 #[cfg(feature = "preview2")]
 pub use host_provider::resource_manager::WasiResourceManager;
 
@@ -180,10 +201,10 @@ impl Default for WasiVersion {
 pub trait WasiHostProvider {
     /// Get the number of functions provided
     fn function_count(&self) -> usize;
-    
+
     /// Get the WASI version supported by this provider
     fn version(&self) -> WasiVersion;
-    
+
     /// Get the capabilities enabled for this provider
     fn capabilities(&self) -> &WasiCapabilities;
 }
@@ -193,11 +214,11 @@ pub trait WasiHostProvider {
 pub struct HostFunction {
     /// Function name
     #[cfg(feature = "std")]
-    pub name: String,
+    pub name:        String,
     #[cfg(not(feature = "std"))]
     pub name: wrt_foundation::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Function handler
-    pub handler: HostFunctionHandler,
+    pub handler:     HostFunctionHandler,
     /// External type (for component model integration)
     #[cfg(feature = "std")]
     pub extern_type: wrt_format::component::ExternType,
@@ -218,7 +239,7 @@ impl core::fmt::Debug for HostFunction {
 /// Error types specific to WASI operations
 pub mod error {
     use wrt_error::ErrorCategory;
-    
+
     /// WASI-specific error codes
     pub mod codes {
         /// WASI permission denied
@@ -232,17 +253,17 @@ pub mod error {
         /// WASI resource limit exceeded
         pub const WASI_RESOURCE_LIMIT: u16 = 0x2005;
     }
-    
+
     /// WASI-specific error kinds
     pub mod kinds {
         /// WASI permission error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct WasiPermissionError(pub &'static str);
-        
+
         /// WASI file system error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct WasiFileSystemError(pub &'static str);
-        
+
         /// WASI resource error
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct WasiResourceError(pub &'static str);
@@ -252,49 +273,62 @@ pub mod error {
 // Prelude for common imports
 pub mod prelude {
     //! Common imports for WASI implementations
-    
-    pub use super::{
-        WasiVersion, WasiHostProvider, WasiCapabilities,
-        Error, ErrorCategory, Result,
-        Resource, MemoryProvider,
-        CallbackRegistry, HostFunctionHandler, HostFunction,
-        // ComponentLinker,
-    };
-    
-    #[cfg(feature = "preview2")]
-    pub use super::{ComponentModelProvider, WasiResourceManager};
-    
-    pub use super::error::{codes, kinds};
-    
+
     // Re-export component values
     pub use wrt_foundation::Value;
-    
     // Re-export commonly used WRT foundation types
     pub use wrt_foundation::{
-        BoundedVec, BoundedMap, BoundedString,
-        capability_context, safe_capability_alloc, CrateId,
+        capability_context,
+        safe_capability_alloc,
+        BoundedMap,
+        BoundedString,
+        BoundedVec,
+        CrateId,
     };
-    
     // Re-export platform abstractions
     pub use wrt_platform::{
         memory::MemoryProvider as PlatformMemoryProvider,
         time::PlatformTime,
+    };
+
+    pub use super::error::{
+        codes,
+        kinds,
+    };
+    pub use super::{
+        CallbackRegistry,
+        Error,
+        ErrorCategory,
+        HostFunction,
+        // ComponentLinker,
+        HostFunctionHandler,
+        MemoryProvider,
+        Resource,
+        Result,
+        WasiCapabilities,
+        WasiHostProvider,
+        WasiVersion,
+    };
+    #[cfg(feature = "preview2")]
+    pub use super::{
+        ComponentModelProvider,
+        WasiResourceManager,
     };
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_wasi_version_default() {
         assert_eq!(WasiVersion::default(), WasiVersion::Preview2);
     }
-    
+
     #[test]
     fn test_error_codes_are_unique() {
         use error::codes::*;
-        
+
         let codes = [
             WASI_PERMISSION_DENIED,
             WASI_FILE_NOT_FOUND,
@@ -302,7 +336,7 @@ mod tests {
             WASI_CAPABILITY_UNAVAILABLE,
             WASI_RESOURCE_LIMIT,
         ];
-        
+
         // Ensure all codes are unique
         for (i, &code1) in codes.iter().enumerate() {
             for &code2 in codes.iter().skip(i + 1) {

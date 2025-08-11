@@ -4,11 +4,24 @@
 //! and core modules. These types handle the actual instantiation process
 //! and runtime state management.
 
+use wrt_foundation::{
+    bounded::{
+        BoundedString,
+        BoundedVec,
+    },
+    traits::{
+        Checksummable,
+        FromBytes,
+        ReadStream,
+        ToBytes,
+        WriteStream,
+    },
+    verification::Checksum,
+    MemoryProvider,
+    WrtResult,
+};
+
 use crate::prelude::*;
-use wrt_foundation::bounded::{BoundedVec, BoundedString};
-use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, ReadStream, WriteStream};
-use wrt_foundation::verification::Checksum;
-use wrt_foundation::{WrtResult, MemoryProvider};
 
 /// Maximum instantiation arguments per component
 const MAX_INSTANTIATION_ARGS: usize = 256;
@@ -31,7 +44,7 @@ pub struct ComponentInstantiation {
 #[derive(Debug, Clone)]
 pub struct CoreModuleInstantiation {
     /// Module index to instantiate
-    pub module_idx: u32,
+    pub module_idx:    u32,
     /// Runtime instantiation arguments
     pub args: BoundedVec<RuntimeCoreInstantiateArg, MAX_INSTANTIATION_ARGS, InstantiationProvider>,
     /// Runtime state for the instantiation
@@ -42,9 +55,9 @@ pub struct CoreModuleInstantiation {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeInstantiateArg {
     /// Name of the argument
-    pub name: BoundedString<256, InstantiationProvider>,
+    pub name:         BoundedString<256, InstantiationProvider>,
     /// Runtime reference to the provided value
-    pub runtime_ref: RuntimeReference,
+    pub runtime_ref:  RuntimeReference,
     /// Validation state
     pub is_validated: bool,
 }
@@ -53,20 +66,20 @@ pub struct RuntimeInstantiateArg {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeCoreInstantiateArg {
     /// Name of the argument
-    pub name: BoundedString<256, InstantiationProvider>,
+    pub name:                 BoundedString<256, InstantiationProvider>,
     /// Runtime instance index that provides the value
     pub runtime_instance_idx: u32,
     /// Validation state
-    pub is_validated: bool,
+    pub is_validated:         bool,
 }
 
 /// Runtime reference to an instantiation argument
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeReference {
     /// Sort of the reference
-    pub sort: RuntimeSort,
+    pub sort:           RuntimeSort,
     /// Runtime index within the sort
-    pub runtime_idx: u32,
+    pub runtime_idx:    u32,
     /// Handle to the runtime object
     pub runtime_handle: u32,
 }
@@ -105,11 +118,11 @@ pub enum RuntimeSort {
 #[derive(Debug, Clone)]
 pub struct InstantiationState {
     /// Whether instantiation has started
-    pub is_started: bool,
+    pub is_started:          bool,
     /// Whether instantiation is complete
-    pub is_complete: bool,
+    pub is_complete:         bool,
     /// Runtime error if instantiation failed
-    pub error_state: Option<InstantiationError>,
+    pub error_state:         Option<InstantiationError>,
     /// Runtime resources allocated during instantiation
     pub allocated_resources: BoundedVec<u32, 64, InstantiationProvider>,
 }
@@ -118,9 +131,9 @@ pub struct InstantiationState {
 #[derive(Debug, Clone)]
 pub struct InstantiationError {
     /// Error message
-    pub message: &'static str,
+    pub message:        &'static str,
     /// Error code
-    pub code: u16,
+    pub code:           u16,
     /// Failed argument index (if applicable)
     pub failed_arg_idx: Option<u32>,
 }
@@ -134,34 +147,40 @@ impl ComponentInstantiation {
             runtime_state: InstantiationState::default(),
         }
     }
-    
+
     /// Add instantiation argument
-    pub fn add_arg(&mut self, name: BoundedString<256, InstantiationProvider>, runtime_ref: RuntimeReference) -> Result<()> {
+    pub fn add_arg(
+        &mut self,
+        name: BoundedString<256, InstantiationProvider>,
+        runtime_ref: RuntimeReference,
+    ) -> Result<()> {
         let arg = RuntimeInstantiateArg {
             name,
             runtime_ref,
             is_validated: false,
         };
-        
-        self.args.push(arg).map_err(|_| Error::runtime_execution_error("Argument capacity exceeded"))
+
+        self.args
+            .push(arg)
+            .map_err(|_| Error::runtime_execution_error("Argument capacity exceeded"))
     }
-    
+
     /// Start instantiation process
     pub fn start_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::invalid_state_error("Instantiation already started";
+            return Err(Error::invalid_state_error("Instantiation already started"));
         }
-        
+
         self.runtime_state.is_started = true;
         Ok(())
     }
-    
+
     /// Complete instantiation process
     pub fn complete_instantiation(&mut self) -> Result<()> {
         if !self.runtime_state.is_started {
-            return Err(Error::runtime_execution_error("Instantiation not started";
+            return Err(Error::runtime_execution_error("Instantiation not started"));
         }
-        
+
         self.runtime_state.is_complete = true;
         Ok(())
     }
@@ -176,40 +195,50 @@ impl CoreModuleInstantiation {
             runtime_state: InstantiationState::default(),
         }
     }
-    
+
     /// Add core instantiation argument
-    pub fn add_core_arg(&mut self, name: BoundedString<256, InstantiationProvider>, runtime_instance_idx: u32) -> Result<()> {
+    pub fn add_core_arg(
+        &mut self,
+        name: BoundedString<256, InstantiationProvider>,
+        runtime_instance_idx: u32,
+    ) -> Result<()> {
         let arg = RuntimeCoreInstantiateArg {
             name,
             runtime_instance_idx,
             is_validated: false,
         };
-        
-        self.args.push(arg).map_err(|_| Error::new(
-            ErrorCategory::Memory,
-            wrt_error::codes::CAPACITY_EXCEEDED,
-            "Argument capacity exceeded"))
+
+        self.args.push(arg).map_err(|_| {
+            Error::new(
+                ErrorCategory::Memory,
+                wrt_error::codes::CAPACITY_EXCEEDED,
+                "Argument capacity exceeded",
+            )
+        })
     }
-    
+
     /// Start core instantiation process
     pub fn start_core_instantiation(&mut self) -> Result<()> {
         if self.runtime_state.is_started {
-            return Err(Error::runtime_execution_error("Core instantiation already started";
+            return Err(Error::runtime_execution_error(
+                "Core instantiation already started",
+            ));
         }
-        
+
         self.runtime_state.is_started = true;
         Ok(())
     }
-    
+
     /// Complete core instantiation process
     pub fn complete_core_instantiation(&mut self) -> Result<()> {
         if !self.runtime_state.is_started {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::INVALID_STATE,
-                "Core instantiation not started";
+                "Core instantiation not started",
+            ));
         }
-        
+
         self.runtime_state.is_complete = true;
         Ok(())
     }
@@ -230,10 +259,11 @@ impl Default for CoreModuleInstantiation {
 impl Default for InstantiationState {
     fn default() -> Self {
         Self {
-            is_started: false,
-            is_complete: false,
-            error_state: None,
-            allocated_resources: BoundedVec::new(InstantiationProvider::default()).unwrap_or_default(),
+            is_started:          false,
+            is_complete:         false,
+            error_state:         None,
+            allocated_resources: BoundedVec::new(InstantiationProvider::default())
+                .unwrap_or_default(),
         }
     }
 }
@@ -241,9 +271,9 @@ impl Default for InstantiationState {
 // Trait implementations for RuntimeInstantiateArg
 impl Checksummable for RuntimeInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes);
-        checksum.update_slice(&self.runtime_ref.runtime_idx.to_le_bytes);
-        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }];
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes());
+        checksum.update_slice(&self.runtime_ref.runtime_idx.to_le_bytes());
+        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }]);
     }
 }
 
@@ -278,9 +308,9 @@ impl FromBytes for RuntimeInstantiateArg {
 // Trait implementations for RuntimeCoreInstantiateArg
 impl Checksummable for RuntimeCoreInstantiateArg {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes);
-        checksum.update_slice(&self.runtime_instance_idx.to_le_bytes);
-        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }];
+        checksum.update_slice(self.name.as_str().unwrap_or("").as_bytes());
+        checksum.update_slice(&self.runtime_instance_idx.to_le_bytes());
+        checksum.update_slice(&[if self.is_validated { 1 } else { 0 }]);
     }
 }
 
@@ -313,9 +343,9 @@ impl FromBytes for RuntimeCoreInstantiateArg {
 // Trait implementations for RuntimeReference
 impl Checksummable for RuntimeReference {
     fn update_checksum(&self, checksum: &mut Checksum) {
-        checksum.update_slice(&(self.sort as u32).to_le_bytes);
-        checksum.update_slice(&self.runtime_idx.to_le_bytes);
-        checksum.update_slice(&self.runtime_handle.to_le_bytes);
+        checksum.update_slice(&(self.sort as u32).to_le_bytes());
+        checksum.update_slice(&self.runtime_idx.to_le_bytes());
+        checksum.update_slice(&self.runtime_handle.to_le_bytes());
     }
 }
 

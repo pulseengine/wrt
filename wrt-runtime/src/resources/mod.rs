@@ -6,6 +6,9 @@
 pub mod handle_table;
 
 pub use handle_table::{
-    ResourceHandle, ResourceOwnership, ResourceEntry, ResourceTable,
+    ResourceEntry,
+    ResourceHandle,
+    ResourceOwnership,
+    ResourceTable,
     MAX_RESOURCES_PER_TYPE,
 };

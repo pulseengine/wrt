@@ -1,13 +1,16 @@
 //! WASI filesystem interface implementation
 //!
 //! This module is reserved for future WASI filesystem implementation.
-//! Currently, filesystem operations are handled directly in the component model provider
-//! with appropriate capability checks and safety-level awareness.
+//! Currently, filesystem operations are handled directly in the component model
+//! provider with appropriate capability checks and safety-level awareness.
 //!
-//! TODO: Implement actual filesystem operations when platform support is available.
+//! TODO: Implement actual filesystem operations when platform support is
+//! available.
 
-use crate::prelude::*;
-use crate::Value;
+use crate::{
+    prelude::*,
+    Value,
+};
 
 // Helper functions for future filesystem implementation
 
@@ -68,45 +71,42 @@ fn extract_byte_data(args: &[Value], index: usize) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_extract_file_descriptor() {
         let args = vec![Value::U32(42)];
         assert_eq!(extract_file_descriptor(&args).unwrap(), 42);
-        
+
         let invalid_args = vec![Value::String("not_a_fd".to_string())];
         assert!(extract_file_descriptor(&invalid_args).is_err());
     }
-    
+
     #[test]
     fn test_extract_length() {
         let args = vec![Value::U32(0), Value::U64(1024)];
         assert_eq!(extract_length(&args, 1).unwrap(), 1024);
-        
+
         let args_u32 = vec![Value::U32(0), Value::U32(512)];
         assert_eq!(extract_length(&args_u32, 1).unwrap(), 512);
     }
-    
+
     #[test]
     fn test_extract_byte_data() -> Result<()> {
         let data = vec![Value::U8(1), Value::U8(2), Value::U8(3)];
         let args = vec![Value::U32(42), Value::List(data)];
-        
+
         let bytes = extract_byte_data(&args, 1)?;
         assert_eq!(bytes, vec![1, 2, 3]);
-        
+
         Ok(())
     }
-    
+
     #[test]
     fn test_extract_string() -> Result<()> {
         let args = vec![Value::U32(42), Value::String("test.txt".to_string())];
         let path = extract_string(&args, 1)?;
         assert_eq!(path, "test.txt");
-        
+
         Ok(())
     }
 }
-
-
-

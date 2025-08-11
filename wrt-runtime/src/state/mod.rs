@@ -5,13 +5,16 @@
 
 pub mod serialization;
 
-pub use serialization::{
-    StateSection, StateHeader, STATE_SECTION_PREFIX,
-};
-
 // Re-export functions conditionally
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use serialization::{
-    create_state_section, extract_state_section,
-    has_state_sections, is_state_section_name,
+    create_state_section,
+    extract_state_section,
+    has_state_sections,
+    is_state_section_name,
+};
+pub use serialization::{
+    StateHeader,
+    StateSection,
+    STATE_SECTION_PREFIX,
 };

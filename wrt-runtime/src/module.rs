@@ -7,53 +7,111 @@
 #[cfg(any(feature = "std", feature = "alloc"))]
 use alloc::format;
 
-use wrt_foundation::{
-    types::{
-        CustomSection as WrtCustomSection, DataMode as WrtDataMode,
-        ElementMode as WrtElementMode,
-        ExportDesc as WrtExportDesc, FuncType as WrtFuncType,
-        GlobalType as WrtGlobalType, ImportDesc as WrtImportDesc,
-        Limits as WrtLimits, LocalEntry as WrtLocalEntry, MemoryType as WrtMemoryType,
-        RefType as WrtRefType, TableType as WrtTableType, ValueType as WrtValueType,
-        ValueType, // Also import without alias
-    },
-    values::{Value as WrtValue, Value}, // Also import without alias
-    budget_aware_provider::CrateId,
-    safe_managed_alloc,
-};
-
-// Re-export for module_builder
-pub use wrt_foundation::types::LocalEntry;
-use crate::prelude::CoreMemoryType;
 use wrt_format::{
+    module::{
+        ExportKind as FormatExportKind,
+        ImportDesc as FormatImportDesc,
+    },
     DataSegment as WrtDataSegment,
     ElementSegment as WrtElementSegment,
-    module::{ImportDesc as FormatImportDesc, ExportKind as FormatExportKind},
 };
+// Re-export for module_builder
+pub use wrt_foundation::types::LocalEntry;
+use wrt_foundation::{
+    budget_aware_provider::CrateId,
+    safe_managed_alloc,
+    types::{
+        CustomSection as WrtCustomSection,
+        DataMode as WrtDataMode,
+        ElementMode as WrtElementMode,
+        ExportDesc as WrtExportDesc,
+        FuncType as WrtFuncType,
+        GlobalType as WrtGlobalType,
+        ImportDesc as WrtImportDesc,
+        Limits as WrtLimits,
+        LocalEntry as WrtLocalEntry,
+        MemoryType as WrtMemoryType,
+        RefType as WrtRefType,
+        TableType as WrtTableType,
+        ValueType as WrtValueType,
+        ValueType, // Also import without alias
+    },
+    values::{
+        Value as WrtValue,
+        Value,
+    }, // Also import without alias
+};
+
+use crate::prelude::CoreMemoryType;
 
 // Type alias for the runtime ImportDesc
 type RuntimeImportDesc = WrtImportDesc<RuntimeProvider>;
 
-use crate::{global::Global, memory::Memory, table::Table};
-use crate::prelude::{ToString, RuntimeString};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    string::String,
+    sync::Arc,
+    vec::Vec,
+};
 // Use clean types for collections instead of provider-embedded ones
 #[cfg(feature = "std")]
-use std::{vec::Vec, collections::HashMap, string::String, sync::Arc};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{vec::Vec, string::String, sync::Arc};
+use std::{
+    collections::HashMap,
+    string::String,
+    sync::Arc,
+    vec::Vec,
+};
+
 // HashMap is not needed with clean architecture using BoundedMap
 use wrt_foundation::bounded_collections::BoundedMap;
-use wrt_foundation::traits::{BoundedCapacity, Checksummable, ToBytes, FromBytes};
+use wrt_foundation::traits::{
+    BoundedCapacity,
+    Checksummable,
+    FromBytes,
+    ToBytes,
+};
 
 // Unified memory allocation using safe_managed_alloc! - NO hardcoded providers
 // All memory allocation goes through safe_managed_alloc!(size, crate_id) as per CLAUDE.md
 
 // Use the unified RuntimeProvider from bounded_runtime_infra
-use crate::bounded_runtime_infra::{RuntimeProvider, create_runtime_provider};
-type ImportMap = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, Import, 32, RuntimeProvider>;
-type ModuleImports = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, ImportMap, 32, RuntimeProvider>;
-type CustomSections = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, wrt_foundation::bounded::BoundedVec<u8, 4096, RuntimeProvider>, 16, RuntimeProvider>;
-type ExportMap = BoundedMap<wrt_foundation::bounded::BoundedString<256, RuntimeProvider>, Export, 64, RuntimeProvider>;
+use crate::bounded_runtime_infra::{
+    create_runtime_provider,
+    RuntimeProvider,
+};
+use crate::{
+    global::Global,
+    memory::Memory,
+    prelude::{
+        RuntimeString,
+        ToString,
+    },
+    table::Table,
+};
+type ImportMap = BoundedMap<
+    wrt_foundation::bounded::BoundedString<256, RuntimeProvider>,
+    Import,
+    32,
+    RuntimeProvider,
+>;
+type ModuleImports = BoundedMap<
+    wrt_foundation::bounded::BoundedString<256, RuntimeProvider>,
+    ImportMap,
+    32,
+    RuntimeProvider,
+>;
+type CustomSections = BoundedMap<
+    wrt_foundation::bounded::BoundedString<256, RuntimeProvider>,
+    wrt_foundation::bounded::BoundedVec<u8, 4096, RuntimeProvider>,
+    16,
+    RuntimeProvider,
+>;
+type ExportMap = BoundedMap<
+    wrt_foundation::bounded::BoundedString<256, RuntimeProvider>,
+    Export,
+    64,
+    RuntimeProvider,
+>;
 
 // Additional type aliases for struct fields to use unified RuntimeProvider
 type BoundedExportName = wrt_foundation::bounded::BoundedString<128, RuntimeProvider>;
@@ -62,7 +120,8 @@ type BoundedModuleName = wrt_foundation::bounded::BoundedString<128, RuntimeProv
 type BoundedLocalsVec = wrt_foundation::bounded::BoundedVec<WrtLocalEntry, 64, RuntimeProvider>;
 type BoundedElementItems = wrt_foundation::bounded::BoundedVec<u32, 1024, RuntimeProvider>;
 type BoundedDataInit = wrt_foundation::bounded::BoundedVec<u8, 4096, RuntimeProvider>;
-type BoundedModuleTypes = wrt_foundation::bounded::BoundedVec<WrtFuncType<RuntimeProvider>, 256, RuntimeProvider>;
+type BoundedModuleTypes =
+    wrt_foundation::bounded::BoundedVec<WrtFuncType<RuntimeProvider>, 256, RuntimeProvider>;
 type BoundedFunctionVec = wrt_foundation::bounded::BoundedVec<Function, 1024, RuntimeProvider>;
 type BoundedTableVec = wrt_foundation::bounded::BoundedVec<TableWrapper, 64, RuntimeProvider>;
 type BoundedMemoryVec = wrt_foundation::bounded::BoundedVec<MemoryWrapper, 64, RuntimeProvider>;
@@ -83,7 +142,11 @@ fn to_core_memory_type(memory_type: WrtMemoryType) -> CoreMemoryType {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WrtExpr {
     /// Parsed instructions (simplified representation)
-    pub instructions: wrt_foundation::bounded::BoundedVec<wrt_foundation::types::Instruction<RuntimeProvider>, 1024, RuntimeProvider>, // Parsed instructions
+    pub instructions: wrt_foundation::bounded::BoundedVec<
+        wrt_foundation::types::Instruction<RuntimeProvider>,
+        1024,
+        RuntimeProvider,
+    >, // Parsed instructions
 }
 
 impl WrtExpr {
@@ -116,9 +179,9 @@ pub enum ExportKind {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Export {
     /// Export name
-    pub name: BoundedExportName,
+    pub name:  BoundedExportName,
     /// Export kind
-    pub kind: ExportKind,
+    pub kind:  ExportKind,
     /// Export index
     pub index: u32,
 }
@@ -127,22 +190,28 @@ impl Export {
     /// Creates a new export
     pub fn new(name: String, kind: ExportKind, index: u32) -> Result<Self> {
         let provider = create_runtime_provider()?;
-        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider)?;
-        Ok(Self { name: bounded_name, kind, index })
+        let bounded_name =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider)?;
+        Ok(Self {
+            name: bounded_name,
+            kind,
+            index,
+        })
     }
 }
 
 impl wrt_foundation::traits::Checksummable for Export {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.name.update_checksum(checksum;
-        checksum.update_slice(&(self.kind as u8).to_le_bytes);
-        checksum.update_slice(&self.index.to_le_bytes);
+        self.name.update_checksum(checksum);
+        checksum.update_slice(&(self.kind as u8).to_le_bytes());
+        checksum.update_slice(&self.index.to_le_bytes());
     }
 }
 
 impl wrt_foundation::traits::ToBytes for Export {
     fn serialized_size(&self) -> usize {
-        self.name.serialized_size() + 1 + 4 // name + kind (1 byte) + index (4 bytes)
+        self.name.serialized_size() + 1 + 4 // name + kind (1 byte) + index (4
+                                            // bytes)
     }
 
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
@@ -161,8 +230,9 @@ impl wrt_foundation::traits::FromBytes for Export {
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         provider: &P,
     ) -> wrt_foundation::Result<Self> {
-        let name = wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
-        
+        let name =
+            wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
+
         let mut kind_bytes = [0u8; 1];
         reader.read_exact(&mut kind_bytes)?;
         let kind = match kind_bytes[0] {
@@ -172,11 +242,11 @@ impl wrt_foundation::traits::FromBytes for Export {
             3 => ExportKind::Global,
             _ => ExportKind::Function, // Default fallback
         };
-        
+
         let mut index_bytes = [0u8; 4];
         reader.read_exact(&mut index_bytes)?;
-        let index = u32::from_le_bytes(index_bytes;
-        
+        let index = u32::from_le_bytes(index_bytes);
+
         Ok(Self { name, kind, index })
     }
 }
@@ -187,21 +257,33 @@ pub struct Import {
     /// Module name
     pub module: BoundedImportName,
     /// Import name
-    pub name: BoundedImportName,
+    pub name:   BoundedImportName,
     /// Import type
-    pub ty: ExternType<RuntimeProvider>,
+    pub ty:     ExternType<RuntimeProvider>,
     /// Import description
-    pub desc: RuntimeImportDesc,
+    pub desc:   RuntimeImportDesc,
 }
 
 impl Import {
     /// Creates a new import
-    pub fn new(module: String, name: String, ty: ExternType<RuntimeProvider>, desc: RuntimeImportDesc) -> Result<Self> {
+    pub fn new(
+        module: String,
+        name: String,
+        ty: ExternType<RuntimeProvider>,
+        desc: RuntimeImportDesc,
+    ) -> Result<Self> {
         let provider1 = create_runtime_provider()?;
         let provider2 = create_runtime_provider()?;
-        let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(&module, provider1)?;
-        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider2)?;
-        Ok(Self { module: bounded_module, name: bounded_name, ty, desc })
+        let bounded_module =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(&module, provider1)?;
+        let bounded_name =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(&name, provider2)?;
+        Ok(Self {
+            module: bounded_module,
+            name: bounded_name,
+            ty,
+            desc,
+        })
     }
 }
 
@@ -210,10 +292,12 @@ impl Default for Import {
         let provider1 = create_runtime_provider().unwrap();
         let provider2 = create_runtime_provider().unwrap();
         Self {
-            module: wrt_foundation::bounded::BoundedString::from_str_truncate("", provider1).unwrap(),
-            name: wrt_foundation::bounded::BoundedString::from_str_truncate("", provider2).unwrap(),
-            ty: ExternType::default(),
-            desc: RuntimeImportDesc::Function(0),
+            module: wrt_foundation::bounded::BoundedString::from_str_truncate("", provider1)
+                .unwrap(),
+            name:   wrt_foundation::bounded::BoundedString::from_str_truncate("", provider2)
+                .unwrap(),
+            ty:     ExternType::default(),
+            desc:   RuntimeImportDesc::Function(0),
         }
     }
 }
@@ -228,8 +312,8 @@ impl Eq for Import {}
 
 impl wrt_foundation::traits::Checksummable for Import {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.module.update_checksum(checksum;
-        self.name.update_checksum(checksum;
+        self.module.update_checksum(checksum);
+        self.name.update_checksum(checksum);
     }
 }
 
@@ -253,8 +337,10 @@ impl wrt_foundation::traits::FromBytes for Import {
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         provider: &P,
     ) -> wrt_foundation::Result<Self> {
-        let module = wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
-        let name = wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
+        let module =
+            wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
+        let name =
+            wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
         Ok(Self {
             module,
             name,
@@ -270,9 +356,9 @@ pub struct Function {
     /// The type index of the function (referring to Module.types)
     pub type_idx: u32,
     /// The parsed local variable declarations
-    pub locals: BoundedLocalsVec,
+    pub locals:   BoundedLocalsVec,
     /// The parsed instructions that make up the function body
-    pub body: WrtExpr,
+    pub body:     WrtExpr,
 }
 
 impl Default for Function {
@@ -280,8 +366,8 @@ impl Default for Function {
         let provider = create_runtime_provider().unwrap();
         Self {
             type_idx: 0,
-            locals: BoundedLocalsVec::new(provider).unwrap(),
-            body: WrtExpr::default(),
+            locals:   BoundedLocalsVec::new(provider).unwrap(),
+            body:     WrtExpr::default(),
         }
     }
 }
@@ -296,7 +382,7 @@ impl Eq for Function {}
 
 impl wrt_foundation::traits::Checksummable for Function {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.type_idx.to_le_bytes);
+        checksum.update_slice(&self.type_idx.to_le_bytes());
     }
 }
 
@@ -321,8 +407,10 @@ impl wrt_foundation::traits::FromBytes for Function {
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
-        let type_idx = u32::from_le_bytes(bytes;
-        let provider = create_runtime_provider().map_err(|_| wrt_error::Error::memory_error("Failed to allocate provider for function locals"))?;
+        let type_idx = u32::from_le_bytes(bytes);
+        let provider = create_runtime_provider().map_err(|_| {
+            wrt_error::Error::memory_error("Failed to allocate provider for function locals")
+        })?;
         Ok(Self {
             type_idx,
             locals: BoundedLocalsVec::new(provider).unwrap(),
@@ -348,15 +436,15 @@ pub enum ExportItem {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Element {
     /// Element segment mode (active, passive, or declarative)
-    pub mode: WrtElementMode,
+    pub mode:         WrtElementMode,
     /// Index of the target table (for active elements)
-    pub table_idx: Option<u32>,
+    pub table_idx:    Option<u32>,
     /// Offset expression for element placement
-    pub offset_expr: Option<WrtExpr>,
+    pub offset_expr:  Option<WrtExpr>,
     /// Type of elements in this segment
     pub element_type: WrtRefType,
     /// Element items (function indices or expressions)
-    pub items: BoundedElementItems,
+    pub items:        BoundedElementItems,
 }
 
 impl wrt_foundation::traits::Checksummable for Element {
@@ -366,9 +454,9 @@ impl wrt_foundation::traits::Checksummable for Element {
             WrtElementMode::Passive => 1u8,
             WrtElementMode::Declarative => 2u8,
         };
-        checksum.update_slice(&mode_byte.to_le_bytes);
+        checksum.update_slice(&mode_byte.to_le_bytes());
         if let Some(table_idx) = self.table_idx {
-            checksum.update_slice(&table_idx.to_le_bytes);
+            checksum.update_slice(&table_idx.to_le_bytes());
         }
     }
 }
@@ -401,15 +489,18 @@ impl wrt_foundation::traits::FromBytes for Element {
         let mut bytes = [0u8; 1];
         reader.read_exact(&mut bytes)?;
         let mode = match bytes[0] {
-            0 => WrtElementMode::Active { table_index: 0, offset: 0 },
+            0 => WrtElementMode::Active {
+                table_index: 0,
+                offset:      0,
+            },
             1 => WrtElementMode::Passive,
             _ => WrtElementMode::Declarative,
         };
-        
+
         let mut idx_bytes = [0u8; 4];
         reader.read_exact(&mut idx_bytes)?;
-        let table_idx = Some(u32::from_le_bytes(idx_bytes;
-        
+        let table_idx = Some(u32::from_le_bytes(idx_bytes));
+
         Ok(Self {
             mode,
             table_idx,
@@ -424,13 +515,13 @@ impl wrt_foundation::traits::FromBytes for Element {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Data {
     /// Data segment mode (active or passive)
-    pub mode: WrtDataMode,
+    pub mode:        WrtDataMode,
     /// Index of the target memory (for active data)
-    pub memory_idx: Option<u32>,
+    pub memory_idx:  Option<u32>,
     /// Offset expression for data placement
     pub offset_expr: Option<WrtExpr>,
     /// Initialization data bytes
-    pub init: BoundedDataInit,
+    pub init:        BoundedDataInit,
 }
 
 impl wrt_foundation::traits::Checksummable for Data {
@@ -439,11 +530,11 @@ impl wrt_foundation::traits::Checksummable for Data {
             WrtDataMode::Active { .. } => 0u8,
             WrtDataMode::Passive => 1u8,
         };
-        checksum.update_slice(&mode_byte.to_le_bytes);
+        checksum.update_slice(&mode_byte.to_le_bytes());
         if let Some(memory_idx) = self.memory_idx {
-            checksum.update_slice(&memory_idx.to_le_bytes);
+            checksum.update_slice(&memory_idx.to_le_bytes());
         }
-        checksum.update_slice(&(self.init.len() as u32).to_le_bytes);
+        checksum.update_slice(&(self.init.len() as u32).to_le_bytes());
     }
 }
 
@@ -475,22 +566,27 @@ impl wrt_foundation::traits::FromBytes for Data {
         let mut bytes = [0u8; 1];
         reader.read_exact(&mut bytes)?;
         let mode = match bytes[0] {
-            0 => WrtDataMode::Active { memory_index: 0, offset: 0 },
+            0 => WrtDataMode::Active {
+                memory_index: 0,
+                offset:       0,
+            },
             _ => WrtDataMode::Passive,
         };
-        
+
         let mut idx_bytes = [0u8; 4];
         reader.read_exact(&mut idx_bytes)?;
-        let memory_idx = Some(u32::from_le_bytes(idx_bytes;
-        
+        let memory_idx = Some(u32::from_le_bytes(idx_bytes));
+
         reader.read_exact(&mut idx_bytes)?;
-        let _len = u32::from_le_bytes(idx_bytes;
-        
+        let _len = u32::from_le_bytes(idx_bytes);
+
         Ok(Self {
             mode,
             memory_idx,
             offset_expr: None,
-            init: BoundedDataInit::new(create_runtime_provider().map_err(|_| wrt_error::Error::memory_error("Failed to allocate provider for data init"))?)?,
+            init: BoundedDataInit::new(create_runtime_provider().map_err(|_| {
+                wrt_error::Error::memory_error("Failed to allocate provider for data init")
+            })?)?,
         })
     }
 }
@@ -506,33 +602,33 @@ impl Data {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Module {
     /// Module types (function signatures)
-    pub types: BoundedModuleTypes,
+    pub types:           BoundedModuleTypes,
     /// Imported functions, tables, memories, and globals
-    pub imports: ModuleImports,
+    pub imports:         ModuleImports,
     /// Function definitions
-    pub functions: BoundedFunctionVec,
+    pub functions:       BoundedFunctionVec,
     /// Table instances
-    pub tables: BoundedTableVec,
+    pub tables:          BoundedTableVec,
     /// Memory instances
-    pub memories: BoundedMemoryVec,
+    pub memories:        BoundedMemoryVec,
     /// Global variable instances
-    pub globals: BoundedGlobalVec,
+    pub globals:         BoundedGlobalVec,
     /// Element segments for tables
-    pub elements: BoundedElementVec,
+    pub elements:        BoundedElementVec,
     /// Data segments for memories
-    pub data: BoundedDataVec,
+    pub data:            BoundedDataVec,
     /// Start function index
-    pub start: Option<u32>,
+    pub start:           Option<u32>,
     /// Custom sections
     pub custom_sections: CustomSections,
     /// Exports (functions, tables, memories, and globals)
-    pub exports: ExportMap,
+    pub exports:         ExportMap,
     /// Optional name for the module
-    pub name: Option<BoundedModuleName>,
+    pub name:            Option<BoundedModuleName>,
     /// Original binary (if available)
-    pub binary: Option<BoundedBinary>,
+    pub binary:          Option<BoundedBinary>,
     /// Execution validation flag
-    pub validated: bool,
+    pub validated:       bool,
 }
 
 impl Module {
@@ -542,7 +638,7 @@ impl Module {
         // Use the derived Default implementation which creates empty collections
         Self::default()
     }
-    
+
     /// Creates a new empty module
     pub fn new() -> Result<Self> {
         let provider = create_runtime_provider()?;
@@ -550,23 +646,22 @@ impl Module {
         let runtime_provider2 = create_runtime_provider()?;
         let runtime_provider3 = create_runtime_provider()?;
         Ok(Self {
-            types: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            imports: BoundedMap::new(runtime_provider1)?,
-            functions: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            memories: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            globals: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
-            start: None,
+            types:           wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            imports:         BoundedMap::new(runtime_provider1)?,
+            functions:       wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            tables:          wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            memories:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            globals:         wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            elements:        wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            data:            wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            start:           None,
             custom_sections: BoundedMap::new(runtime_provider2)?,
-            exports: BoundedMap::new(runtime_provider3)?,
-            name: None,
-            binary: None,
-            validated: false,
+            exports:         BoundedMap::new(runtime_provider3)?,
+            name:            None,
+            binary:          None,
+            validated:       false,
         })
     }
-
 
     /// Creates a runtime Module from a `wrt_format::module::Module`.
     /// This is the primary constructor after decoding.
@@ -574,46 +669,43 @@ impl Module {
     pub fn from_wrt_module(wrt_module: &wrt_format::module::Module) -> Result<Self> {
         // Ensure memory system is initialized before creating providers
         wrt_foundation::memory_init::MemoryInitializer::ensure_initialized()?;
-        
+
         // Use empty() instead of new() to avoid memory allocation during initialization
         // This prevents stack overflow when the memory system isn't fully initialized
-        let mut runtime_module = Self::empty);
-        
+        let mut runtime_module = Self::empty();
+
         // Map start function if present
         runtime_module.start = wrt_module.start;
-        
+
         // Create a single shared provider for the entire module to avoid stack overflow
         // from creating multiple providers in tight loops
         let shared_provider = create_runtime_provider()?;
-        
+
         // Convert types
         for func_type in &wrt_module.types {
             let mut params = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
             let mut results = wrt_foundation::bounded::BoundedVec::new(shared_provider.clone())?;
-            
+
             for param in &func_type.params {
                 params.push(*param)?;
             }
             for result in &func_type.results {
                 results.push(*result)?;
             }
-            
-            let wrt_func_type = WrtFuncType {
-                params,
-                results,
-            };
+
+            let wrt_func_type = WrtFuncType { params, results };
             runtime_module.types.push(wrt_func_type)?;
         }
-        
+
         // Convert functions
         for func in &wrt_module.functions {
             // Convert locals using the locals conversion function
             let locals = crate::type_conversion::convert_locals_to_bounded(&func.locals)?;
-            
+
             // Parse the function body bytecode into instructions
             let instructions = crate::instruction_parser::parse_instructions(&func.code)?;
             let body = WrtExpr { instructions };
-            
+
             let runtime_func = Function {
                 type_idx: func.type_idx,
                 locals,
@@ -621,15 +713,22 @@ impl Module {
             };
             runtime_module.functions.push(runtime_func)?;
         }
-        
+
         // Convert exports
         for export in &wrt_module.exports {
             // Create the export name with correct provider size (8192)
-            let name = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, shared_provider.clone())?;
-            
-            // Create key with correct type for ExportMap (BoundedString<256, RuntimeProvider>)
-            let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, shared_provider.clone())?;
-            
+            let name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                &export.name,
+                shared_provider.clone(),
+            )?;
+
+            // Create key with correct type for ExportMap (BoundedString<256,
+            // RuntimeProvider>)
+            let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                &export.name,
+                shared_provider.clone(),
+            )?;
+
             let kind = match export.kind {
                 FormatExportKind::Function => ExportKind::Function,
                 FormatExportKind::Table => ExportKind::Table,
@@ -638,149 +737,164 @@ impl Module {
                 FormatExportKind::Tag => {
                     // Skip Tag exports for now as they're not supported in the runtime
                     continue;
-                }
+                },
             };
-            
+
             let runtime_export = Export {
                 name,
                 kind,
                 index: export.index,
             };
-            
+
             runtime_module.exports.insert(map_key, runtime_export)?;
         }
-        
+
         Ok(runtime_module)
     }
-    
-    /// Creates a runtime Module from a `wrt_format::module::Module` in no_std environments.
-    /// This handles the generic provider type from the decoder.
+
+    /// Creates a runtime Module from a `wrt_format::module::Module` in no_std
+    /// environments. This handles the generic provider type from the
+    /// decoder.
     #[cfg(not(feature = "std"))]
-    pub fn from_wrt_module_nostd(
-        wrt_module: &wrt_format::module::Module
-    ) -> Result<Self> {
+    pub fn from_wrt_module_nostd(wrt_module: &wrt_format::module::Module) -> Result<Self> {
         // Ensure memory system is initialized before creating providers
         wrt_foundation::memory_init::MemoryInitializer::ensure_initialized()?;
-        
+
         // Use empty() instead of new() to avoid memory allocation during initialization
-        let mut runtime_module = Self::empty);
-        
+        let mut runtime_module = Self::empty();
+
         // Map start function if present
         runtime_module.start = wrt_module.start;
-        
+
         // Convert types
         for func_type in &wrt_module.types {
             let provider = create_runtime_provider()?;
             let mut params = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
             let mut results = wrt_foundation::bounded::BoundedVec::new(provider.clone())?;
-            
+
             for param in &func_type.params {
                 params.push(*param)?;
             }
             for result in &func_type.results {
                 results.push(*result)?;
             }
-            
-            let wrt_func_type = WrtFuncType {
-                params,
-                results,
-            };
+
+            let wrt_func_type = WrtFuncType { params, results };
             runtime_module.types.push(wrt_func_type)?;
         }
-        
+
         // Convert imports
         for import in &wrt_module.imports {
             let desc = match &import.desc {
-                FormatImportDesc::Function(type_idx) => {
-                    RuntimeImportDesc::Function(*type_idx)
-                }
-                FormatImportDesc::Table(tt) => {
-                    RuntimeImportDesc::Table(tt.clone())
-                }
-                FormatImportDesc::Memory(mt) => {
-                    RuntimeImportDesc::Memory(*mt)
-                }
+                FormatImportDesc::Function(type_idx) => RuntimeImportDesc::Function(*type_idx),
+                FormatImportDesc::Table(tt) => RuntimeImportDesc::Table(tt.clone()),
+                FormatImportDesc::Memory(mt) => RuntimeImportDesc::Memory(*mt),
                 FormatImportDesc::Global(gt) => {
                     RuntimeImportDesc::Global(wrt_foundation::types::GlobalType {
                         value_type: gt.value_type,
-                        mutable: gt.mutable,
+                        mutable:    gt.mutable,
                     })
-                }
+                },
                 FormatImportDesc::Tag(tag_idx) => {
                     // Handle Tag import - convert to appropriate runtime representation
-                    return Err(Error::parse_error("Tag imports not yet supported";
-                }
+                    return Err(Error::parse_error("Tag imports not yet supported"));
+                },
             };
-            
-            // Convert string to BoundedString - need different sizes for different use cases
+
+            // Convert string to BoundedString - need different sizes for different use
+            // cases
             let provider1 = create_runtime_provider()?;
             let provider2 = create_runtime_provider()?;
             let provider3 = create_runtime_provider()?;
             let provider4 = create_runtime_provider()?;
-            
+
             // 128-char strings for Import struct fields
-            let bounded_module_128 = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.module, provider1)?;
-            let bounded_name_128 = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name, provider2)?;
-            
+            let bounded_module_128 = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                &import.module,
+                provider1,
+            )?;
+            let bounded_name_128 =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name, provider2)?;
+
             // 256-char strings for map keys
-            let bounded_module_256 = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.module, provider3)?;
-            let bounded_name_256 = wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name, provider4)?;
-            
+            let bounded_module_256 = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                &import.module,
+                provider3,
+            )?;
+            let bounded_name_256 =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(&import.name, provider4)?;
+
             let import_entry = Import {
                 module: bounded_module_128,
                 name: bounded_name_128,
                 ty: ExternType::default(),
                 desc,
             };
-            
+
             // Get or create inner map for this module
             let mut inner_map = match runtime_module.imports.get(&bounded_module_256)? {
                 Some(existing) => existing,
-                None => ImportMap::new(create_runtime_provider()?)?
+                None => ImportMap::new(create_runtime_provider()?)?,
             };
-            
+
             // Insert the import into the inner map
             inner_map.insert(bounded_name_256, import_entry)?;
-            
+
             // Update the outer map
             runtime_module.imports.insert(bounded_module_256, inner_map)?;
         }
-        
+
         // Convert functions
         for function in &wrt_module.functions {
             runtime_module.functions.push(Function {
                 type_idx: function.type_idx,
-                locals: crate::type_conversion::convert_locals_to_bounded(&function.locals)?,
+                locals:   crate::type_conversion::convert_locals_to_bounded(&function.locals)?,
                 // Body conversion would happen here
-                body: WrtExpr::default(),
+                body:     WrtExpr::default(),
             })?;
         }
-        
+
         // Convert tables
         for table in &wrt_module.tables {
             runtime_module.tables.push(TableWrapper::new(Table::new(table.clone())?))?;
         }
-        
+
         // Convert memories
         for memory in &wrt_module.memories {
-            runtime_module.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(*memory))?))?;
+            runtime_module
+                .memories
+                .push(MemoryWrapper::new(Memory::new(to_core_memory_type(
+                    *memory,
+                ))?))?;
         }
-        
+
         // Convert globals
         for global in &wrt_module.globals {
             // For now, use a default initial value based on type
             let initial_value = match global.global_type.value_type {
                 wrt_foundation::types::ValueType::I32 => wrt_foundation::values::Value::I32(0),
                 wrt_foundation::types::ValueType::I64 => wrt_foundation::values::Value::I64(0),
-                wrt_foundation::types::ValueType::F32 => wrt_foundation::values::Value::F32(wrt_foundation::values::FloatBits32::from_bits(0)),
-                wrt_foundation::types::ValueType::F64 => wrt_foundation::values::Value::F64(wrt_foundation::values::FloatBits64::from_bits(0)),
-                _ => return Err(Error::not_supported_unsupported_operation("Unsupported global type")),
+                wrt_foundation::types::ValueType::F32 => wrt_foundation::values::Value::F32(
+                    wrt_foundation::values::FloatBits32::from_bits(0),
+                ),
+                wrt_foundation::types::ValueType::F64 => wrt_foundation::values::Value::F64(
+                    wrt_foundation::values::FloatBits64::from_bits(0),
+                ),
+                _ => {
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Unsupported global type",
+                    ))
+                },
             };
-            
-            let new_global = Global::new(global.global_type.value_type, global.global_type.mutable, initial_value)?;
+
+            let new_global = Global::new(
+                global.global_type.value_type,
+                global.global_type.mutable,
+                initial_value,
+            )?;
             runtime_module.globals.push(GlobalWrapper(Arc::new(new_global)))?;
         }
-        
+
         // Convert exports
         for export in &wrt_module.exports {
             let kind = match export.kind {
@@ -791,37 +905,41 @@ impl Module {
                 FormatExportKind::Tag => {
                     // Skip Tag exports for now as they're not supported in the runtime
                     continue;
-                }
+                },
             };
-            
+
             // Create the export name with runtime provider
             let provider = create_runtime_provider()?;
-            let export_name = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider)?;
-            
+            let export_name =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider)?;
+
             let export_obj = Export {
                 name: export_name.clone(),
                 kind,
                 index: export.index,
             };
-            
+
             // Insert into the exports map using the export name as key
             let provider2 = create_runtime_provider()?;
-            let map_key = wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider2)?;
+            let map_key =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(&export.name, provider2)?;
             runtime_module.exports.insert(map_key, export_obj)?;
         }
-        
+
         Ok(runtime_module)
     }
-    
+
     /// Creates a runtime Module from a `wrt_foundation::types::Module`.
     /// This is the primary constructor after decoding for no_std.
     #[cfg(not(feature = "std"))]
-    pub fn from_wrt_foundation_module(wrt_module: &wrt_foundation::types::Module<RuntimeProvider>) -> Result<Self> {
+    pub fn from_wrt_foundation_module(
+        wrt_module: &wrt_foundation::types::Module<RuntimeProvider>,
+    ) -> Result<Self> {
         let mut runtime_module = Self::new()?;
 
         // TODO: wrt_module doesn't have a name field currently
         // if let Some(name) = &wrt_module.name {
-        //     runtime_module.name = Some(name.clone();
+        //     runtime_module.name = Some(name.clone());
         // }
         // Map start function if present
         runtime_module.start = wrt_module.start_func;
@@ -837,66 +955,79 @@ impl Module {
                         .types
                         .get(*type_idx as usize)
                         .map_err(|_| {
-                            Error::validation_type_mismatch("Imported function type index out of bounds")
+                            Error::validation_type_mismatch(
+                                "Imported function type index out of bounds",
+                            )
                         })?
                         .clone();
                     ExternType::Func(ft)
-                }
-                WrtImportDesc::Table(tt) => {
-                    ExternType::Table(tt.clone())
-                }
-                WrtImportDesc::Memory(mt) => {
-                    ExternType::Memory(*mt)
-                }
+                },
+                WrtImportDesc::Table(tt) => ExternType::Table(tt.clone()),
+                WrtImportDesc::Memory(mt) => ExternType::Memory(*mt),
                 WrtImportDesc::Global(gt) => {
                     ExternType::Global(wrt_foundation::types::GlobalType {
                         value_type: gt.value_type,
-                        mutable: gt.mutable,
+                        mutable:    gt.mutable,
                     })
-                }
+                },
                 WrtImportDesc::Extern(_) => {
-                    return Err(Error::not_supported_unsupported_operation("Extern imports not supported"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Extern imports not supported",
+                    ))
+                },
                 WrtImportDesc::Resource(_) => {
-                    return Err(Error::not_supported_unsupported_operation("Resource imports not supported"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Resource imports not supported",
+                    ))
+                },
                 _ => {
-                    return Err(Error::not_supported_unsupported_operation("Unsupported import type"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Unsupported import type",
+                    ))
+                },
             };
-            // Create bounded strings for the import - avoid as_str() which is broken in no_std
-            // For now, use empty strings as placeholders since as_str() is broken
+            // Create bounded strings for the import - avoid as_str() which is broken in
+            // no_std For now, use empty strings as placeholders since as_str()
+            // is broken
             let provider = create_runtime_provider()?;
-            let module_key_256: wrt_foundation::bounded::BoundedString<256, RuntimeProvider> = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                "", // TODO: copy from import_def.module_name when as_str() is fixed
-                provider
-            )?;
+            let module_key_256: wrt_foundation::bounded::BoundedString<256, RuntimeProvider> =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    "", // TODO: copy from import_def.module_name when as_str() is fixed
+                    provider,
+                )?;
             let provider = create_runtime_provider()?;
-            let module_key_128: wrt_foundation::bounded::BoundedString<128, RuntimeProvider> = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                "", // TODO: copy from import_def.module_name when as_str() is fixed
-                provider
-            )?;
+            let module_key_128: wrt_foundation::bounded::BoundedString<128, RuntimeProvider> =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    "", // TODO: copy from import_def.module_name when as_str() is fixed
+                    provider,
+                )?;
             let provider = create_runtime_provider()?;
-            let name_key_256: wrt_foundation::bounded::BoundedString<256, RuntimeProvider> = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                "", // TODO: copy from import_def.item_name when as_str() is fixed
-                provider
-            )?;
+            let name_key_256: wrt_foundation::bounded::BoundedString<256, RuntimeProvider> =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    "", // TODO: copy from import_def.item_name when as_str() is fixed
+                    provider,
+                )?;
             let provider = create_runtime_provider()?;
-            let name_key_128: wrt_foundation::bounded::BoundedString<128, RuntimeProvider> = wrt_foundation::bounded::BoundedString::from_str_truncate(
-                "", // TODO: copy from import_def.item_name when as_str() is fixed
-                provider
-            )?;
-            
+            let name_key_128: wrt_foundation::bounded::BoundedString<128, RuntimeProvider> =
+                wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    "", // TODO: copy from import_def.item_name when as_str() is fixed
+                    provider,
+                )?;
+
             // Create import directly to avoid as_str() conversion issues
             let import = crate::module::Import {
                 module: module_key_128,
-                name: name_key_128,
-                ty: extern_ty.clone(),
-                desc: match &extern_ty {
+                name:   name_key_128,
+                ty:     extern_ty.clone(),
+                desc:   match &extern_ty {
                     ExternType::Func(_) => RuntimeImportDesc::Function(0),
                     ExternType::Table(table_type) => RuntimeImportDesc::Table(table_type.clone()),
-                    ExternType::Memory(memory_type) => RuntimeImportDesc::Memory(memory_type.clone()),
-                    ExternType::Global(global_type) => RuntimeImportDesc::Global(global_type.clone()),
+                    ExternType::Memory(memory_type) => {
+                        RuntimeImportDesc::Memory(memory_type.clone())
+                    },
+                    ExternType::Global(global_type) => {
+                        RuntimeImportDesc::Global(global_type.clone())
+                    },
                     ExternType::Tag(_) => RuntimeImportDesc::Function(0),
                     ExternType::Component(_) => RuntimeImportDesc::Function(0),
                     ExternType::Instance(_) => RuntimeImportDesc::Function(0),
@@ -906,7 +1037,7 @@ impl Module {
                 },
             };
             let provider = create_runtime_provider()?;
-        let mut inner_map = BoundedMap::new(provider)?;
+            let mut inner_map = BoundedMap::new(provider)?;
             inner_map.insert(name_key_256, import)?;
             runtime_module.imports.insert(module_key_256, inner_map)?;
         }
@@ -916,34 +1047,43 @@ impl Module {
         // Clear existing functions and prepare for new ones
         for code_entry in &wrt_module.func_bodies {
             // Find the corresponding type_idx from wrt_module.functions.
-            // This assumes wrt_module.functions has the type indices for functions defined in
-            // this module, and wrt_module.code_entries aligns with this.
+            // This assumes wrt_module.functions has the type indices for functions defined
+            // in this module, and wrt_module.code_entries aligns with this.
             // A direct link or combined struct in wrt_foundation::Module would be better.
             // For now, we assume that the i-th code_entry corresponds to the i-th func type
             // index in wrt_module.functions (after accounting for imported
             // functions). This needs clarification in wrt_foundation::Module structure.
-            // Let's assume wrt_module.functions contains type indices for *defined* functions
-            // and code_entries matches this.
+            // Let's assume wrt_module.functions contains type indices for *defined*
+            // functions and code_entries matches this.
             let func_idx_in_defined_funcs = runtime_module.functions.len(); // 0-indexed among defined functions
             if func_idx_in_defined_funcs >= wrt_module.functions.len() {
-                return Err(Error::validation_error("Mismatch between code entries and function type declarations";
+                return Err(Error::validation_error(
+                    "Mismatch between code entries and function type declarations",
+                ));
             }
-            let type_idx = wrt_module.functions.get(func_idx_in_defined_funcs).map_err(|_| Error::validation_function_not_found("Function index out of bounds"))?;
+            let type_idx = wrt_module.functions.get(func_idx_in_defined_funcs).map_err(|_| {
+                Error::validation_function_not_found("Function index out of bounds")
+            })?;
 
             // Convert locals from foundation format to runtime format
             let provider = create_runtime_provider()?;
-            let mut runtime_locals = wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, RuntimeProvider>::new(provider)?;
+            let mut runtime_locals =
+                wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, RuntimeProvider>::new(
+                    provider,
+                )?;
             for local in &code_entry.locals {
                 if runtime_locals.push(local).is_err() {
-                    return Err(Error::runtime_execution_error("Runtime execution error: locals capacity exceeded";
+                    return Err(Error::runtime_execution_error(
+                        "Runtime execution error: locals capacity exceeded",
+                    ));
                 }
             }
-            
+
             // Convert body to WrtExpr
             // For now, just use the default empty expression
             // TODO: Properly convert the instruction sequence
-            let runtime_body = WrtExpr::default());
-            
+            let runtime_body = WrtExpr::default();
+
             runtime_module.functions.push(Function {
                 type_idx,
                 locals: runtime_locals,
@@ -959,7 +1099,11 @@ impl Module {
         }
 
         for memory_def in &wrt_module.memories {
-            runtime_module.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_def))?))?;
+            runtime_module
+                .memories
+                .push(MemoryWrapper::new(Memory::new(to_core_memory_type(
+                    memory_def,
+                ))?))?;
         }
 
         for global_def in &wrt_module.globals {
@@ -973,19 +1117,27 @@ impl Module {
                 ValueType::FuncRef => Value::FuncRef(None),
                 ValueType::ExternRef => Value::ExternRef(None),
                 ValueType::V128 => {
-                    return Err(Error::not_supported_unsupported_operation("V128 globals not supported"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "V128 globals not supported",
+                    ))
+                },
                 ValueType::I16x8 => {
-                    return Err(Error::not_supported_unsupported_operation("I16x8 globals not supported"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "I16x8 globals not supported",
+                    ))
+                },
                 ValueType::StructRef(_) => {
-                    return Err(Error::not_supported_unsupported_operation("StructRef globals not supported"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "StructRef globals not supported",
+                    ))
+                },
                 _ => {
-                    return Err(Error::not_supported_unsupported_operation("Unsupported global value type"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Unsupported global value type",
+                    ))
+                },
             };
-            
+
             runtime_module.globals.push(GlobalWrapper::new(Global::new(
                 global_def.value_type,
                 global_def.mutable,
@@ -998,44 +1150,53 @@ impl Module {
                 wrt_foundation::component::ExternType::Func(_) => {
                     // For functions, we need to find the index in the function list
                     // This is a simplified approach - in practice we'd need proper index tracking
-                    (ExportKind::Function, 0) // TODO: proper function index tracking
+                    (ExportKind::Function, 0) // TODO: proper function index
+                                              // tracking
                 },
                 wrt_foundation::component::ExternType::Table(_) => {
                     (ExportKind::Table, 0) // TODO: proper table index tracking
                 },
                 wrt_foundation::component::ExternType::Memory(_) => {
-                    (ExportKind::Memory, 0) // TODO: proper memory index tracking
+                    (ExportKind::Memory, 0) // TODO: proper memory index
+                                            // tracking
                 },
                 wrt_foundation::component::ExternType::Global(_) => {
-                    (ExportKind::Global, 0) // TODO: proper global index tracking
+                    (ExportKind::Global, 0) // TODO: proper global index
+                                            // tracking
                 },
                 wrt_foundation::component::ExternType::Tag(_) => {
-                    return Err(Error::not_supported_unsupported_operation("Tag exports not supported"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Tag exports not supported",
+                    ))
+                },
                 _ => {
-                    return Err(Error::not_supported_unsupported_operation("Unsupported export type"))
-                }
+                    return Err(Error::not_supported_unsupported_operation(
+                        "Unsupported export type",
+                    ))
+                },
             };
             let provider = create_runtime_provider()?;
             let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 export_def.name.as_str()?,
-                provider
+                provider,
             )?;
             let export = crate::module::Export::new(String::from(name_key.as_str()?), kind, index)?;
             runtime_module.exports.insert(name_key, export)?;
         }
 
         // TODO: Element segments are not yet available in wrt_foundation Module
-        // This will need to be implemented once element segments are added to the Module struct
+        // This will need to be implemented once element segments are added to the
+        // Module struct
 
         // TODO: Data segments are not yet available in wrt_foundation Module
-        // This will need to be implemented once data segments are added to the Module struct
+        // This will need to be implemented once data segments are added to the Module
+        // struct
 
         for custom_def in &wrt_module.custom_sections {
             let provider = create_runtime_provider()?;
             let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 custom_def.name.as_str()?,
-                provider
+                provider,
             )?;
             runtime_module.custom_sections.insert(name_key, custom_def.data.clone())?;
         }
@@ -1045,9 +1206,11 @@ impl Module {
 
     /// Gets an export by name
     pub fn get_export(&self, name: &str) -> Option<Export> {
-        // TODO: BoundedMap doesn't support iteration, so we'll use get with a RuntimeString key
+        // TODO: BoundedMap doesn't support iteration, so we'll use get with a
+        // RuntimeString key
         let provider = create_runtime_provider().ok()?;
-        let runtime_key: wrt_foundation::bounded::BoundedString<256, RuntimeProvider> = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider).ok()?;
+        let runtime_key: wrt_foundation::bounded::BoundedString<256, RuntimeProvider> =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider).ok()?;
         self.exports.get(&runtime_key).ok().flatten()
     }
 
@@ -1069,9 +1232,9 @@ impl Module {
 
     /// Gets a global by index
     pub fn get_global(&self, idx: usize) -> Result<GlobalWrapper> {
-        self.globals.get(idx).map_err(|_| {
-            Error::runtime_execution_error("Global index out of bounds")
-        })
+        self.globals
+            .get(idx)
+            .map_err(|_| Error::runtime_execution_error("Global index out of bounds"))
     }
 
     /// Gets a memory by index
@@ -1080,15 +1243,16 @@ impl Module {
             Error::new(
                 ErrorCategory::Runtime,
                 wrt_error::codes::MEMORY_NOT_FOUND,
-                "Memory index out of bounds")
+                "Memory index out of bounds",
+            )
         })
     }
 
     /// Gets a table by index
     pub fn get_table(&self, idx: usize) -> Result<TableWrapper> {
-        self.tables.get(idx).map_err(|_| {
-            Error::runtime_execution_error("Table index out of bounds")
-        })
+        self.tables
+            .get(idx)
+            .map_err(|_| Error::runtime_execution_error("Table index out of bounds"))
     }
 
     /// Adds a function export
@@ -1098,7 +1262,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1106,7 +1270,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1120,7 +1284,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1128,7 +1292,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1142,7 +1306,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1150,7 +1314,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1164,7 +1328,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1172,7 +1336,7 @@ impl Module {
         {
             let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 name.as_str(),
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             self.exports.insert(bounded_name, export)?;
         }
@@ -1187,15 +1351,22 @@ impl Module {
             wrt_format::module::ExportKind::Memory => ExportKind::Memory,
             wrt_format::module::ExportKind::Global => ExportKind::Global,
             wrt_format::module::ExportKind::Tag => {
-                return Err(Error::not_supported_unsupported_operation("Tag exports not supported"))
-            }
+                return Err(Error::not_supported_unsupported_operation(
+                    "Tag exports not supported",
+                ))
+            },
         };
-        // Convert BoundedString to String - use default empty string if conversion fails
+        // Convert BoundedString to String - use default empty string if conversion
+        // fails
         let export_name_string = String::from("export"); // Use a placeholder name
-        let runtime_export = Export::new(export_name_string, runtime_export_kind, format_export.index)?;
+        let runtime_export =
+            Export::new(export_name_string, runtime_export_kind, format_export.index)?;
         let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            runtime_export.name.as_str().map_err(|_| Error::runtime_error("Invalid export name"))?,
-            create_runtime_provider()?
+            runtime_export
+                .name
+                .as_str()
+                .map_err(|_| Error::runtime_error("Invalid export name"))?,
+            create_runtime_provider()?,
         )?;
         self.exports.insert(name_key, runtime_export)?;
         Ok(())
@@ -1205,15 +1376,15 @@ impl Module {
     pub fn set_name(&mut self, name: String) -> Result<()> {
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             &name,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
-        self.name = Some(bounded_name;
+        self.name = Some(bounded_name);
         Ok(())
     }
 
     /// Set the start function index
     pub fn set_start(&mut self, start: u32) -> Result<()> {
-        self.start = Some(start;
+        self.start = Some(start);
         Ok(())
     }
 
@@ -1249,23 +1420,23 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
-            
+
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(create_runtime_provider()?)?
+                None => ImportMap::new(create_runtime_provider()?)?,
             };
-            
+
             // Insert the import into the inner map
             let _ = inner_map.insert(bounded_item, import_struct)?;
-            
+
             // Update the outer map
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1273,15 +1444,15 @@ impl Module {
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
-        let mut inner_map = BoundedMap::new(provider)?;
+            let mut inner_map = BoundedMap::new(provider)?;
             let _ = inner_map.insert(bounded_item, import_struct)?;
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1306,23 +1477,23 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
-            
+
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(create_runtime_provider()?)?
+                None => ImportMap::new(create_runtime_provider()?)?,
             };
-            
+
             // Insert the import into the inner map
             let _ = inner_map.insert(bounded_item, import_struct)?;
-            
+
             // Update the outer map
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1330,15 +1501,15 @@ impl Module {
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
-        let mut inner_map = BoundedMap::new(provider)?;
+            let mut inner_map = BoundedMap::new(provider)?;
             let _ = inner_map.insert(bounded_item, import_struct)?;
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1363,23 +1534,23 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
-            
+
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(create_runtime_provider()?)?
+                None => ImportMap::new(create_runtime_provider()?)?,
             };
-            
+
             // Insert the import into the inner map
             let _ = inner_map.insert(bounded_item, import_struct)?;
-            
+
             // Update the outer map
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1387,15 +1558,15 @@ impl Module {
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
-        let mut inner_map = BoundedMap::new(provider)?;
+            let mut inner_map = BoundedMap::new(provider)?;
             let _ = inner_map.insert(bounded_item, import_struct)?;
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1411,7 +1582,7 @@ impl Module {
     ) -> Result<()> {
         let component_global_type = wrt_foundation::types::GlobalType {
             value_type: format_global.global_type.value_type,
-            mutable: format_global.global_type.mutable,
+            mutable:    format_global.global_type.mutable,
         };
 
         let import = Import::new(
@@ -1423,11 +1594,11 @@ impl Module {
 
         let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
             module_name,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
         let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
             item_name,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
         let provider = create_runtime_provider()?;
         let mut inner_map = BoundedMap::new(provider)?;
@@ -1439,14 +1610,16 @@ impl Module {
     /// Add a function to the module
     pub fn add_function_type(&mut self, type_idx: u32) -> Result<()> {
         if type_idx as usize >= self.types.len() {
-            return Err(Error::validation_type_mismatch("Function type index out of bounds";
+            return Err(Error::validation_type_mismatch(
+                "Function type index out of bounds",
+            ));
         }
 
         let provider = create_runtime_provider()?;
-        let function = Function { 
-            type_idx, 
-            locals: wrt_foundation::bounded::BoundedVec::new(provider)?, 
-            body: WrtExpr::default() 
+        let function = Function {
+            type_idx,
+            locals: wrt_foundation::bounded::BoundedVec::new(provider)?,
+            body: WrtExpr::default(),
         };
 
         self.functions.push(function)?;
@@ -1461,7 +1634,9 @@ impl Module {
 
     /// Add a memory to the module
     pub fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<()> {
-        self.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_type))?))?;
+        self.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(
+            memory_type,
+        ))?))?;
         Ok(())
     }
 
@@ -1476,13 +1651,13 @@ impl Module {
     pub fn add_export_func(&mut self, name: &str, index: u32) -> Result<()> {
         if index as usize >= self.functions.len() {
             return Err(Error::validation_error(
-                "Export function index out of bounds"
-            ;
+                "Export function index out of bounds",
+            ));
         }
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
         let export = Export::new(String::from(name), ExportKind::Function, index)?;
         self.exports.insert(bounded_name, export)?;
@@ -1492,16 +1667,18 @@ impl Module {
     /// Add a table export to the module
     pub fn add_export_table(&mut self, name: &str, index: u32) -> Result<()> {
         if index as usize >= self.tables.len() {
-            return Err(Error::validation_error(
-                "Export table index out of bounds"
-            ;
+            return Err(Error::validation_error("Export table index out of bounds"));
         }
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
-        let export = Export::new(String::from(bounded_name.as_str()?), ExportKind::Table, index)?;
+        let export = Export::new(
+            String::from(bounded_name.as_str()?),
+            ExportKind::Table,
+            index,
+        )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
     }
@@ -1509,16 +1686,14 @@ impl Module {
     /// Add a memory export to the module
     pub fn add_export_memory(&mut self, name: &str, index: u32) -> Result<()> {
         if index as usize >= self.memories.len() {
-            return Err(Error::validation_error(
-                "Export memory index out of bounds"
-            ;
+            return Err(Error::validation_error("Export memory index out of bounds"));
         }
 
         let export = Export::new(String::from(name), ExportKind::Memory, index)?;
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1527,16 +1702,14 @@ impl Module {
     /// Add a global export to the module
     pub fn add_export_global(&mut self, name: &str, index: u32) -> Result<()> {
         if index as usize >= self.globals.len() {
-            return Err(Error::validation_error(
-                "Export global index out of bounds"
-            ;
+            return Err(Error::validation_error("Export global index out of bounds"));
         }
 
         let export = Export::new(String::from(name), ExportKind::Global, index)?;
 
         let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
             name,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
         self.exports.insert(bounded_name, export)?;
         Ok(())
@@ -1554,22 +1727,25 @@ impl Module {
                     bounded_items.push(*idx)?;
                 }
                 bounded_items
-            }
+            },
             wrt_format::module::ElementInit::Expressions(_expressions) => {
                 // For expressions, create empty items list for now (TODO: process expressions)
                 let provider = create_runtime_provider()?;
                 wrt_foundation::bounded::BoundedVec::new(provider)?
-            }
+            },
         };
-        
+
         // Extract table index from mode if available
         let table_idx = match &element.mode {
             wrt_format::module::ElementMode::Active { table_index, .. } => Some(*table_index),
             _ => None,
         };
-        
+
         let runtime_element = crate::module::Element {
-            mode: WrtElementMode::Active { table_index: 0, offset: 0 }, // Default mode, should be determined from element.mode
+            mode: WrtElementMode::Active {
+                table_index: 0,
+                offset:      0,
+            }, // Default mode, should be determined from element.mode
             table_idx,
             offset_expr: None, // Would need to convert from element.mode offset_expr
             element_type: element.element_type,
@@ -1590,21 +1766,32 @@ impl Module {
     ) -> Result<()> {
         if func_idx as usize > self.functions.len() {
             // Allow appending
-            return Err(Error::runtime_function_not_found("Function index out of bounds for set_function_body";
+            return Err(Error::runtime_function_not_found(
+                "Function index out of bounds for set_function_body",
+            ));
         }
-        
+
         // Convert Vec<WrtLocalEntry> to BoundedVec
         let provider = create_runtime_provider()?;
-        let mut bounded_locals = wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, RuntimeProvider>::new(provider)?;
+        let mut bounded_locals =
+            wrt_foundation::bounded::BoundedVec::<WrtLocalEntry, 64, RuntimeProvider>::new(
+                provider,
+            )?;
         for local in locals {
             bounded_locals.push(local)?;
         }
-        
-        let func_entry = Function { type_idx, locals: bounded_locals, body };
+
+        let func_entry = Function {
+            type_idx,
+            locals: bounded_locals,
+            body,
+        };
         if func_idx as usize == self.functions.len() {
             self.functions.push(func_entry)?;
         } else {
-            let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| Error::runtime_component_limit_exceeded("Failed to set function entry"))?;
+            let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| {
+                Error::runtime_component_limit_exceeded("Failed to set function entry")
+            })?;
         }
         Ok(())
     }
@@ -1614,17 +1801,20 @@ impl Module {
         // Convert format data to runtime data
         let provider = create_runtime_provider()?;
         let mut init_4096 = wrt_foundation::bounded::BoundedVec::new(provider)?;
-        
+
         // Copy data from the format's init (Vec<u8> in std mode)
         for byte in &data.init {
             init_4096.push(*byte)?;
         }
-        
+
         let runtime_data = crate::module::Data {
-            mode: WrtDataMode::Active { memory_index: 0, offset: 0 }, // Default mode
-            memory_idx: Some(0), // Default memory index - field is deprecated
-            offset_expr: None, // Would need to convert from data.offset
-            init: init_4096,
+            mode:        WrtDataMode::Active {
+                memory_index: 0,
+                offset:       0,
+            }, // Default mode
+            memory_idx:  Some(0), // Default memory index - field is deprecated
+            offset_expr: None,    // Would need to convert from data.offset
+            init:        init_4096,
         };
 
         self.data.push(runtime_data)?;
@@ -1634,9 +1824,11 @@ impl Module {
     /// Add a custom section to the module
     pub fn add_custom_section(&mut self, name: &str, data: Vec<u8>) -> Result<()> {
         let provider_key = create_runtime_provider()?;
-        let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider_key)?;
+        let name_key =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider_key)?;
         let provider_data = create_runtime_provider()?;
-        let mut bounded_data = wrt_foundation::bounded::BoundedVec::<u8, 4096, RuntimeProvider>::new(provider_data)?;
+        let mut bounded_data =
+            wrt_foundation::bounded::BoundedVec::<u8, 4096, RuntimeProvider>::new(provider_data)?;
         for byte in data {
             bounded_data.push(byte)?;
         }
@@ -1647,11 +1839,12 @@ impl Module {
     /// Set the binary representation of the module
     pub fn set_binary(&mut self, binary: Vec<u8>) -> Result<()> {
         let provider = create_runtime_provider()?;
-        let mut bounded_binary = wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
+        let mut bounded_binary =
+            wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
         for byte in binary {
             bounded_binary.push(byte)?;
         }
-        self.binary = Some(bounded_binary;
+        self.binary = Some(bounded_binary);
         Ok(())
     }
 
@@ -1675,7 +1868,7 @@ impl Module {
     ) -> Result<()> {
         let component_global_type = wrt_foundation::types::GlobalType {
             value_type: global_type.value_type,
-            mutable: global_type.mutable,
+            mutable:    global_type.mutable,
         };
         let import_struct = crate::module::Import::new(
             String::from(module_name),
@@ -1688,23 +1881,23 @@ impl Module {
             // Convert to bounded strings
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
-            
+
             // For BoundedMap, we need to handle the nested map differently
             // First check if module exists
             let mut inner_map = match self.imports.get(&bounded_module)? {
                 Some(existing) => existing,
-                None => ImportMap::new(create_runtime_provider()?)?
+                None => ImportMap::new(create_runtime_provider()?)?,
             };
-            
+
             // Insert the import into the inner map
             let _ = inner_map.insert(bounded_item, import_struct)?;
-            
+
             // Update the outer map
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1712,15 +1905,15 @@ impl Module {
         {
             let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 module_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 item_name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             // BoundedMap doesn't support get_mut, so we'll use a simpler approach
             let provider = create_runtime_provider()?;
-        let mut inner_map = BoundedMap::new(provider)?;
+            let mut inner_map = BoundedMap::new(provider)?;
             let _ = inner_map.insert(bounded_item, import_struct)?;
             let _ = self.imports.insert(bounded_module, inner_map)?;
         }
@@ -1735,8 +1928,10 @@ impl Module {
             WrtExportDesc::Mem(idx) => (ExportKind::Memory, idx),
             WrtExportDesc::Global(idx) => (ExportKind::Global, idx),
             WrtExportDesc::Tag(_) => {
-                return Err(Error::not_supported_unsupported_operation("Tag exports not supported"))
-            }
+                return Err(Error::not_supported_unsupported_operation(
+                    "Tag exports not supported",
+                ))
+            },
         };
         let runtime_export = crate::module::Export::new(name.clone(), kind, index)?;
         let provider = create_runtime_provider()?;
@@ -1758,9 +1953,9 @@ impl Module {
         // Convert element mode from PureElementMode to WrtElementMode
         let runtime_mode = match &element_segment.mode {
             wrt_format::pure_format_types::PureElementMode::Active { table_index, .. } => {
-                WrtElementMode::Active { 
-                    table_index: *table_index, 
-                    offset: 0 // Simplified - would need to evaluate offset_expr_bytes
+                WrtElementMode::Active {
+                    table_index: *table_index,
+                    offset:      0, // Simplified - would need to evaluate offset_expr_bytes
                 }
             },
             wrt_format::pure_format_types::PureElementMode::Passive => WrtElementMode::Passive,
@@ -1768,11 +1963,11 @@ impl Module {
         };
 
         self.elements.push(crate::module::Element {
-            mode: runtime_mode,
-            table_idx: None, // Simplified for now
-            offset_expr: None, // Element segment doesn't have direct offset_expr field
+            mode:         runtime_mode,
+            table_idx:    None, // Simplified for now
+            offset_expr:  None, // Element segment doesn't have direct offset_expr field
             element_type: element_segment.element_type,
-            items: items_resolved,
+            items:        items_resolved,
         })?;
         Ok(())
     }
@@ -1783,23 +1978,25 @@ impl Module {
         // Convert data mode from PureDataMode to WrtDataMode
         let (runtime_mode, memory_idx) = match &data_segment.mode {
             wrt_format::pure_format_types::PureDataMode::Active { memory_index, .. } => {
-                (WrtDataMode::Active { 
-                    memory_index: *memory_index, 
-                    offset: 0 // Simplified - would need to evaluate offset_expr_bytes
-                }, Some(*memory_index))
+                (
+                    WrtDataMode::Active {
+                        memory_index: *memory_index,
+                        offset:       0, // Simplified - would need to evaluate offset_expr_bytes
+                    },
+                    Some(*memory_index),
+                )
             },
-            wrt_format::pure_format_types::PureDataMode::Passive => {
-                (WrtDataMode::Passive, None)
-            },
+            wrt_format::pure_format_types::PureDataMode::Passive => (WrtDataMode::Passive, None),
         };
 
         // Convert data_segment.data_bytes to larger capacity
         let provider = create_runtime_provider()?;
-        let mut runtime_init = wrt_foundation::bounded::BoundedVec::<u8, 4096, RuntimeProvider>::new(provider)?;
+        let mut runtime_init =
+            wrt_foundation::bounded::BoundedVec::<u8, 4096, RuntimeProvider>::new(provider)?;
         for byte in data_segment.data_bytes.iter() {
             runtime_init.push(*byte)?;
         }
-        
+
         self.data.push(crate::module::Data {
             mode: runtime_mode,
             memory_idx,
@@ -1810,14 +2007,18 @@ impl Module {
     }
 
     /// Add a custom section to the module
-    pub fn add_custom_section_runtime(&mut self, section: WrtCustomSection<RuntimeProvider>) -> Result<()> {
+    pub fn add_custom_section_runtime(
+        &mut self,
+        section: WrtCustomSection<RuntimeProvider>,
+    ) -> Result<()> {
         let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
             section.name.as_str()?,
-            create_runtime_provider()?
+            create_runtime_provider()?,
         )?;
         // Convert section.data to the expected type
         let provider_data = create_runtime_provider()?;
-        let mut bounded_data = wrt_foundation::bounded::BoundedVec::<u8, 4096, RuntimeProvider>::new(provider_data)?;
+        let mut bounded_data =
+            wrt_foundation::bounded::BoundedVec::<u8, 4096, RuntimeProvider>::new(provider_data)?;
         for i in 0..section.data.len() {
             bounded_data.push(section.data.get(i)?)?;
         }
@@ -1828,11 +2029,12 @@ impl Module {
     /// Set the binary representation of the module (alternative method)
     pub fn set_binary_runtime(&mut self, binary: Vec<u8>) -> Result<()> {
         let provider = create_runtime_provider()?;
-        let mut bounded_binary = wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
+        let mut bounded_binary =
+            wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
         for byte in binary {
             bounded_binary.push(byte)?;
         }
-        self.binary = Some(bounded_binary;
+        self.binary = Some(bounded_binary);
         Ok(())
     }
 
@@ -1843,30 +2045,36 @@ impl Module {
     /// the entire module into intermediate data structures.
     pub fn load_from_binary(&mut self, binary: &[u8]) -> Result<Self> {
         // Use wrt-decoder's unified loader for efficient parsing
-        use wrt_decoder::{load_wasm_unified, WasmFormat};
-        
+        use wrt_decoder::{
+            load_wasm_unified,
+            WasmFormat,
+        };
+
         // Load using unified API to get both module info and cached data
         let wasm_info = load_wasm_unified(binary)?;
-        
+
         // Ensure this is a core module
         if !wasm_info.is_core_module() {
-            return Err(Error::validation_type_mismatch("Binary is not a WebAssembly core module";
+            return Err(Error::validation_type_mismatch(
+                "Binary is not a WebAssembly core module",
+            ));
         }
-        
+
         let module_info = wasm_info.require_module_info()?;
-        
+
         // Create runtime module from unified API data
         let runtime_module = Self::from_module_info(module_info, binary)?;
-        
+
         // Store the binary for later use
         // Note: This is the only place where we keep the full binary in memory
         // Consider using a streaming approach here too if binary size is a concern
         let provider = create_runtime_provider()?;
-        let mut bounded_binary = wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
+        let mut bounded_binary =
+            wrt_foundation::bounded::BoundedVec::<u8, 65536, RuntimeProvider>::new(provider)?;
         for byte in binary {
             bounded_binary.push(*byte)?;
         }
-        
+
         Ok(Self {
             binary: Some(bounded_binary),
             validated: true,
@@ -1890,18 +2098,18 @@ impl Module {
                     let func_type = WrtFuncType::new(
                         create_runtime_provider()?,
                         core::iter::empty::<WrtValueType>(), // empty params
-                        core::iter::empty::<WrtValueType>()  // empty results
+                        core::iter::empty::<WrtValueType>(), // empty results
                     )?;
                     ExternType::Func(func_type)
-                }
+                },
                 wrt_decoder::ImportType::Table => {
                     // Create default table type
                     let table_type = WrtTableType {
                         element_type: WrtRefType::Funcref,
-                        limits: WrtLimits { min: 0, max: None },
+                        limits:       WrtLimits { min: 0, max: None },
                     };
                     ExternType::Table(table_type)
-                }
+                },
                 wrt_decoder::ImportType::Memory => {
                     // Create default memory type
                     let memory_type = WrtMemoryType {
@@ -1909,15 +2117,15 @@ impl Module {
                         shared: false,
                     };
                     ExternType::Memory(memory_type)
-                }
+                },
                 wrt_decoder::ImportType::Global => {
                     // Create default global type
                     let global_type = wrt_foundation::types::GlobalType {
                         value_type: WrtValueType::I32,
-                        mutable: false,
+                        mutable:    false,
                     };
                     ExternType::Global(global_type)
-                }
+                },
             };
 
             // Create the import
@@ -1926,33 +2134,37 @@ impl Module {
                 String::from(import.name.as_str()),
                 extern_type.clone(),
                 match &extern_type {
-                    ExternType::Func(_func_type) => RuntimeImportDesc::Function(0), // TODO: proper type index lookup
+                    ExternType::Func(_func_type) => RuntimeImportDesc::Function(0), /* TODO: proper type index lookup */
                     ExternType::Table(table_type) => RuntimeImportDesc::Table(table_type.clone()),
-                    ExternType::Memory(memory_type) => RuntimeImportDesc::Memory(memory_type.clone()),
-                    ExternType::Global(global_type) => RuntimeImportDesc::Global(global_type.clone()),
-                    ExternType::Tag(_) => RuntimeImportDesc::Function(0), // Handle tag as function placeholder
-                    ExternType::Component(_) => RuntimeImportDesc::Function(0), // Component imports not supported yet
-                    ExternType::Instance(_) => RuntimeImportDesc::Function(0), // Instance imports not supported yet
-                    ExternType::CoreModule(_) => RuntimeImportDesc::Function(0), // Core module imports not supported yet
-                    ExternType::TypeDef(_) => RuntimeImportDesc::Function(0), // Type definition imports not supported yet
-                    ExternType::Resource(_) => RuntimeImportDesc::Function(0), // Resource imports not supported yet
+                    ExternType::Memory(memory_type) => {
+                        RuntimeImportDesc::Memory(memory_type.clone())
+                    },
+                    ExternType::Global(global_type) => {
+                        RuntimeImportDesc::Global(global_type.clone())
+                    },
+                    ExternType::Tag(_) => RuntimeImportDesc::Function(0), /* Handle tag as function placeholder */
+                    ExternType::Component(_) => RuntimeImportDesc::Function(0), /* Component imports not supported yet */
+                    ExternType::Instance(_) => RuntimeImportDesc::Function(0), /* Instance imports not supported yet */
+                    ExternType::CoreModule(_) => RuntimeImportDesc::Function(0), /* Core module imports not supported yet */
+                    ExternType::TypeDef(_) => RuntimeImportDesc::Function(0), /* Type definition imports not supported yet */
+                    ExternType::Resource(_) => RuntimeImportDesc::Function(0), /* Resource imports not supported yet */
                 },
             )?;
 
             // Add to imports map
             let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &import.module,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             let item_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &import.name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
 
             // Get or create inner map
             let mut inner_map = match runtime_module.imports.get(&module_key)? {
                 Some(existing) => existing,
-                None => ImportMap::new(create_runtime_provider()?)?
+                None => ImportMap::new(create_runtime_provider()?)?,
             };
 
             // Insert the import
@@ -1972,7 +2184,7 @@ impl Module {
             let runtime_export = Export::new(export.name.clone(), export_kind, export.index)?;
             let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
                 &export.name,
-                create_runtime_provider()?
+                create_runtime_provider()?,
             )?;
             runtime_module.exports.insert(name_key, runtime_export)?;
         }
@@ -1980,10 +2192,17 @@ impl Module {
         // Set memory info if present
         if let Some((min_pages, max_pages)) = module_info.memory_pages {
             let memory_type = WrtMemoryType {
-                limits: WrtLimits { min: min_pages, max: max_pages },
+                limits: WrtLimits {
+                    min: min_pages,
+                    max: max_pages,
+                },
                 shared: false,
             };
-            runtime_module.memories.push(MemoryWrapper::new(Memory::new(to_core_memory_type(memory_type))?))?;
+            runtime_module
+                .memories
+                .push(MemoryWrapper::new(Memory::new(to_core_memory_type(
+                    memory_type,
+                ))?))?;
         }
 
         // For now, we'll use the fallback decoder for full section parsing if needed
@@ -1992,14 +2211,14 @@ impl Module {
             // Fall back to full parsing for complex cases
             use wrt_decoder::decoder;
             let decoded_module = decoder::decode_module(binary)?;
-            
+
             // decoded_module is wrt_format::Module, so we need the format-compatible method
             #[cfg(feature = "std")]
             let full_runtime_module = Module::from_wrt_module(&decoded_module)?;
             #[cfg(not(feature = "std"))]
             let full_runtime_module = Module::from_wrt_module_nostd(&decoded_module)?;
-            
-            return Ok(full_runtime_module;
+
+            return Ok(full_runtime_module);
         }
 
         Ok(runtime_module)
@@ -2008,14 +2227,12 @@ impl Module {
     /// Find a function export by name
     pub fn find_function_by_name(&self, name: &str) -> Option<u32> {
         let provider = create_runtime_provider().ok()?;
-        let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
-            name, 
-            provider
-        ).ok()?;
-        
+        let bounded_name =
+            wrt_foundation::bounded::BoundedString::from_str_truncate(name, provider).ok()?;
+
         if let Ok(Some(export)) = self.exports.get(&bounded_name) {
             if export.kind == ExportKind::Function {
-                return Some(export.index;
+                return Some(export.index);
             }
         }
         None
@@ -2035,10 +2252,14 @@ impl Module {
                 if self.get_function(func_idx).is_some() {
                     Ok(func_idx)
                 } else {
-                    Err(Error::runtime_function_not_found("Function index is invalid"))
+                    Err(Error::runtime_function_not_found(
+                        "Function index is invalid",
+                    ))
                 }
-            }
-            None => Err(Error::runtime_function_not_found("Function not found in exports"))
+            },
+            None => Err(Error::runtime_function_not_found(
+                "Function not found in exports",
+            )),
         }
     }
 }
@@ -2047,9 +2268,9 @@ impl Module {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OtherExport {
     /// Export name
-    pub name: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
+    pub name:  wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
     /// Export kind
-    pub kind: ExportKind,
+    pub kind:  ExportKind,
     /// Export index
     pub index: u32,
 }
@@ -2062,36 +2283,36 @@ pub enum ImportedItem {
         /// The module name
         module: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The function name
-        name: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
+        name:   wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The function type
-        ty: WrtFuncType<RuntimeProvider>,
+        ty:     WrtFuncType<RuntimeProvider>,
     },
     /// An imported table
     Table {
         /// The module name
         module: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The table name
-        name: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
+        name:   wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The table type
-        ty: WrtTableType,
+        ty:     WrtTableType,
     },
     /// An imported memory
     Memory {
         /// The module name
         module: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The memory name
-        name: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
+        name:   wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The memory type
-        ty: WrtMemoryType,
+        ty:     WrtMemoryType,
     },
     /// An imported global
     Global {
         /// The module name
         module: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The global name
-        name: wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
+        name:   wrt_foundation::bounded::BoundedString<128, RuntimeProvider>,
         /// The global type
-        ty: WrtGlobalType,
+        ty:     WrtGlobalType,
     },
 }
 
@@ -2101,25 +2322,27 @@ impl wrt_foundation::traits::Checksummable for Module {
         // Use module name (if available) and validation status for checksum
         if let Some(ref name) = self.name {
             if let Ok(name_str) = name.as_str() {
-                checksum.update_slice(name_str.as_bytes);
+                checksum.update_slice(name_str.as_bytes());
             }
         } else {
             // Use a default identifier if no name is available
-            checksum.update_slice(b"unnamed_module";
+            checksum.update_slice(b"unnamed_module");
         }
-        checksum.update_slice(&[if self.validated { 1 } else { 0 }];
-        checksum.update_slice(&(self.types.len() as u32).to_le_bytes);
-        checksum.update_slice(&(self.functions.len() as u32).to_le_bytes);
+        checksum.update_slice(&[if self.validated { 1 } else { 0 }]);
+        checksum.update_slice(&(self.types.len() as u32).to_le_bytes());
+        checksum.update_slice(&(self.functions.len() as u32).to_le_bytes());
     }
 }
 
 impl wrt_foundation::traits::ToBytes for Module {
     fn serialized_size(&self) -> usize {
         // Simple size calculation for module metadata
-        let name_size = self.name.as_ref().map_or(0, |n| n.len();
-        8 + name_size + 1 + 4 + 4 // magic(4) + name_len(4) + name + validated(1) + types_len(4) + functions_len(4)
+        let name_size = self.name.as_ref().map_or(0, |n| n.len());
+        8 + name_size + 1 + 4 + 4 // magic(4) + name_len(4) + name +
+                                  // validated(1) + types_len(4) +
+                                  // functions_len(4)
     }
-    
+
     fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
@@ -2127,7 +2350,7 @@ impl wrt_foundation::traits::ToBytes for Module {
     ) -> wrt_foundation::WrtResult<()> {
         // Write a magic number to identify this as a module
         writer.write_all(&0x6D6F6475u32.to_le_bytes())?; // "modu" in little endian
-        
+
         // Write module name length and name
         if let Some(ref name) = self.name {
             if let Ok(name_str) = name.as_str() {
@@ -2139,14 +2362,14 @@ impl wrt_foundation::traits::ToBytes for Module {
         } else {
             writer.write_all(&0u32.to_le_bytes())?; // No name
         }
-        
+
         // Write validation status
         writer.write_all(&[if self.validated { 1 } else { 0 }])?;
-        
+
         // Write type and function counts
         writer.write_all(&(self.types.len() as u32).to_le_bytes())?;
         writer.write_all(&(self.functions.len() as u32).to_le_bytes())?;
-        
+
         Ok(())
     }
 }
@@ -2160,14 +2383,16 @@ impl wrt_foundation::traits::FromBytes for Module {
         let mut magic = [0u8; 4];
         reader.read_exact(&mut magic)?;
         if u32::from_le_bytes(magic) != 0x6D6F6475 {
-            return Err(wrt_error::Error::runtime_error("Invalid module magic number";
+            return Err(wrt_error::Error::runtime_error(
+                "Invalid module magic number",
+            ));
         }
-        
+
         // Read module name
         let mut name_len_bytes = [0u8; 4];
         reader.read_exact(&mut name_len_bytes)?;
-        let name_len = u32::from_le_bytes(name_len_bytes;
-        
+        let name_len = u32::from_le_bytes(name_len_bytes);
+
         let name = if name_len > 0 && name_len <= 128 {
             // Use a fixed-size buffer for reading the name
             let mut name_bytes = [0u8; 128];
@@ -2175,33 +2400,38 @@ impl wrt_foundation::traits::FromBytes for Module {
             let name_str = core::str::from_utf8(&name_bytes[..name_len as usize])
                 .map_err(|_| wrt_error::Error::runtime_error("Invalid module name UTF-8"))?;
             let provider = create_runtime_provider()?;
-            Some(wrt_foundation::bounded::BoundedString::from_str(name_str, provider)?)
+            Some(wrt_foundation::bounded::BoundedString::from_str(
+                name_str, provider,
+            )?)
         } else {
             None
         };
-        
+
         // Read validation status
         let mut validated_byte = [0u8; 1];
         reader.read_exact(&mut validated_byte)?;
         let validated = validated_byte[0] != 0;
-        
+
         // Read type and function counts (for validation)
         let mut counts = [0u8; 8];
         reader.read_exact(&mut counts)?;
-        
+
         // Create a new empty module with the restored name and validation status
         let mut module = Module::new()?;
         module.name = name;
         module.validated = validated;
-        
+
         Ok(module)
     }
 }
 
-
 // HashMap is already imported above, no need to re-import
 
-use wrt_error::{Error, ErrorCategory, Result};
+use wrt_error::{
+    Error,
+    ErrorCategory,
+    Result,
+};
 use wrt_foundation::component::ExternType; // For error handling
 
 // Newtype wrappers to solve orphan rules issue
@@ -2209,14 +2439,21 @@ use wrt_foundation::component::ExternType; // For error handling
 
 /// Wrapper for Arc<Table> to enable trait implementations
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TableWrapper(pub Arc<Table>;
+pub struct TableWrapper(pub Arc<Table>);
 
 impl Default for TableWrapper {
     fn default() -> Self {
-        use wrt_foundation::types::{Limits, TableType, RefType};
+        use wrt_foundation::types::{
+            Limits,
+            RefType,
+            TableType,
+        };
         let table_type = TableType {
             element_type: RefType::Funcref,
-            limits: Limits { min: 0, max: Some(1) },
+            limits:       Limits {
+                min: 0,
+                max: Some(1),
+            },
         };
         Self::new(Table::new(table_type).unwrap())
     }
@@ -2227,34 +2464,39 @@ impl TableWrapper {
     pub fn new(table: Table) -> Self {
         Self(Arc::new(table))
     }
-    
+
     /// Get a reference to the inner table
-    #[must_use] pub fn inner(&self) -> &Arc<Table> {
+    #[must_use]
+    pub fn inner(&self) -> &Arc<Table> {
         &self.0
     }
-    
+
     /// Unwrap to get the Arc<Table>
-    #[must_use] pub fn into_inner(self) -> Arc<Table> {
+    #[must_use]
+    pub fn into_inner(self) -> Arc<Table> {
         self.0
     }
-    
+
     /// Get table size
-    #[must_use] pub fn size(&self) -> u32 {
+    #[must_use]
+    pub fn size(&self) -> u32 {
         self.0.size()
     }
-    
+
     /// Get table element
     pub fn get(&self, idx: u32) -> Result<Option<WrtValue>> {
         self.0.get(idx)
     }
-    
+
     /// Set table element (requires mutable access)
     pub fn set(&self, idx: u32, value: Option<WrtValue>) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Table>
         // For now, we'll return an error
-        Err(Error::runtime_execution_error("Runtime execution error: Cannot set table value through Arc<Table>"))
+        Err(Error::runtime_execution_error(
+            "Runtime execution error: Cannot set table value through Arc<Table>",
+        ))
     }
-    
+
     /// Grow table (requires mutable access)
     pub fn grow(&self, delta: u32, init_value: WrtValue) -> Result<u32> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Table>
@@ -2262,14 +2504,17 @@ impl TableWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             wrt_error::codes::TABLE_ACCESS_DENIED,
-            "Cannot grow table through Arc<Table>"))
+            "Cannot grow table through Arc<Table>",
+        ))
     }
-    
+
     /// Initialize table (requires mutable access)
     pub fn init(&self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Table>
         // For now, we'll return an error
-        Err(Error::runtime_execution_error("Runtime execution error: Cannot initialize table through Arc<Table>"))
+        Err(Error::runtime_execution_error(
+            "Runtime execution error: Cannot initialize table through Arc<Table>",
+        ))
     }
 }
 
@@ -2285,7 +2530,7 @@ impl MemoryGuard {
     pub fn read(&self, offset: usize, buffer: &mut [u8]) -> Result<()> {
         self.memory.read(offset as u32, buffer)
     }
-    
+
     /// Write to memory (atomic operations may need this)
     pub fn write(&self, offset: usize, buffer: &[u8]) -> Result<()> {
         // For atomic operations, we need to allow writes even through Arc
@@ -2298,13 +2543,19 @@ impl MemoryGuard {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MemoryWrapper(pub Arc<Memory>;
+pub struct MemoryWrapper(pub Arc<Memory>);
 
 impl Default for MemoryWrapper {
     fn default() -> Self {
-        use wrt_foundation::types::{Limits, MemoryType};
+        use wrt_foundation::types::{
+            Limits,
+            MemoryType,
+        };
         let memory_type = MemoryType {
-            limits: Limits { min: 1, max: Some(1) },
+            limits: Limits {
+                min: 1,
+                max: Some(1),
+            },
             shared: false,
         };
         Self::new(Memory::new(to_core_memory_type(memory_type)).unwrap())
@@ -2316,42 +2567,48 @@ impl MemoryWrapper {
     pub fn new(memory: Memory) -> Self {
         Self(Arc::new(memory))
     }
-    
+
     /// Get a reference to the inner memory
-    #[must_use] pub fn inner(&self) -> &Arc<Memory> {
+    #[must_use]
+    pub fn inner(&self) -> &Arc<Memory> {
         &self.0
     }
-    
+
     /// Unwrap to get the Arc<Memory>
-    #[must_use] pub fn into_inner(self) -> Arc<Memory> {
+    #[must_use]
+    pub fn into_inner(self) -> Arc<Memory> {
         self.0
     }
-    
+
     /// Get memory size in bytes
-    #[must_use] pub fn size_in_bytes(&self) -> usize {
+    #[must_use]
+    pub fn size_in_bytes(&self) -> usize {
         self.0.size_in_bytes()
     }
-    
+
     /// Get memory size in pages
-    #[must_use] pub fn size(&self) -> u32 {
+    #[must_use]
+    pub fn size(&self) -> u32 {
         self.0.size()
     }
-    
+
     /// Get memory size in pages (alias for compatibility)
-    #[must_use] pub fn size_pages(&self) -> u32 {
+    #[must_use]
+    pub fn size_pages(&self) -> u32 {
         self.0.size()
     }
-    
+
     /// Get memory size in bytes (alias for compatibility)
-    #[must_use] pub fn size_bytes(&self) -> usize {
+    #[must_use]
+    pub fn size_bytes(&self) -> usize {
         self.0.size_in_bytes()
     }
-    
+
     /// Read from memory
     pub fn read(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
         self.0.read(offset, buffer)
     }
-    
+
     /// Write to memory (requires mutable access to Arc<Memory>)
     pub fn write(&self, offset: u32, buffer: &[u8]) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Memory>
@@ -2359,40 +2616,43 @@ impl MemoryWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             wrt_error::codes::MEMORY_ACCESS_DENIED,
-            "Cannot write to memory through Arc<Memory>"))
+            "Cannot write to memory through Arc<Memory>",
+        ))
     }
-    
+
     /// Grow memory (requires mutable access)
     pub fn grow(&self, pages: u32) -> Result<u32> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Memory>
         // For now, we'll return an error
-        Err(Error::runtime_execution_error("Runtime execution error: Cannot grow memory through Arc<Memory>"))
+        Err(Error::runtime_execution_error(
+            "Runtime execution error: Cannot grow memory through Arc<Memory>",
+        ))
     }
-    
+
     /// Write i32 to memory
     pub fn write_i32(&self, offset: u32, value: i32) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_i32(offset, value)
     }
-    
+
     /// Write i64 to memory
     pub fn write_i64(&self, offset: u32, value: i64) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_i64(offset, value)
     }
-    
+
     /// Write f32 to memory
     pub fn write_f32(&self, offset: u32, value: f32) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_f32(offset, value)
     }
-    
+
     /// Write f64 to memory
     pub fn write_f64(&self, offset: u32, value: f64) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_f64(offset, value)
     }
-    
+
     /// Fill memory (requires mutable access)
     pub fn fill(&self, offset: u32, len: u32, value: u8) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Memory>
@@ -2400,25 +2660,28 @@ impl MemoryWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             wrt_error::codes::MEMORY_ACCESS_DENIED,
-            "Cannot fill memory through Arc<Memory>"))
+            "Cannot fill memory through Arc<Memory>",
+        ))
     }
-    
+
     /// Get a memory guard for atomic operations
     pub fn lock(&self) -> MemoryGuard {
         MemoryGuard {
-            memory: self.0.clone()
+            memory: self.0.clone(),
         }
     }
 }
 
 /// Wrapper for Arc<Global> to enable trait implementations
-#[derive(Debug, Clone, PartialEq, Eq)]  
-pub struct GlobalWrapper(pub Arc<Global>;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalWrapper(pub Arc<Global>);
 
 impl Default for GlobalWrapper {
     fn default() -> Self {
-        use wrt_foundation::types::ValueType;
-        use wrt_foundation::values::Value;
+        use wrt_foundation::{
+            types::ValueType,
+            values::Value,
+        };
         Self::new(Global::new(ValueType::I32, false, Value::I32(0)).unwrap())
     }
 }
@@ -2428,34 +2691,39 @@ impl GlobalWrapper {
     pub fn new(global: Global) -> Self {
         Self(Arc::new(global))
     }
-    
+
     /// Get a reference to the inner global
-    #[must_use] pub fn inner(&self) -> &Arc<Global> {
+    #[must_use]
+    pub fn inner(&self) -> &Arc<Global> {
         &self.0
     }
-    
+
     /// Get the global value
     pub fn get(&self) -> Result<WrtValue> {
         Ok(self.0.get().clone())
     }
-    
+
     /// Set the global value
     pub fn set(&self, value: WrtValue) -> Result<()> {
         // Since Global is behind Arc, we can't mutate it directly
         // This is a design limitation - for now return an error
-        Err(crate::Error::runtime_execution_error("Runtime execution error: Cannot set global value through Arc<Global>"))
+        Err(crate::Error::runtime_execution_error(
+            "Runtime execution error: Cannot set global value through Arc<Global>",
+        ))
     }
-    
+
     /// Unwrap to get the Arc<Global>
-    #[must_use] pub fn into_inner(self) -> Arc<Global> {
+    #[must_use]
+    pub fn into_inner(self) -> Arc<Global> {
         self.0
     }
-    
+
     /// Get global value
-    #[must_use] pub fn get_value(&self) -> &WrtValue {
+    #[must_use]
+    pub fn get_value(&self) -> &WrtValue {
         self.0.get()
     }
-    
+
     /// Set global value (requires mutable access)
     pub fn set_value(&self, new_value: &WrtValue) -> Result<()> {
         // Note: This requires unsafe because we can't get mutable access to Arc<Global>
@@ -2463,30 +2731,38 @@ impl GlobalWrapper {
         Err(Error::new(
             ErrorCategory::Runtime,
             wrt_error::codes::GLOBAL_ACCESS_DENIED,
-            "Cannot set global value through Arc<Global>"))
+            "Cannot set global value through Arc<Global>",
+        ))
     }
-    
+
     /// Get global value type
-    #[must_use] pub fn value_type(&self) -> WrtValueType {
+    #[must_use]
+    pub fn value_type(&self) -> WrtValueType {
         self.0.global_type_descriptor().value_type
     }
-    
+
     /// Check if global is mutable
-    #[must_use] pub fn is_mutable(&self) -> bool {
+    #[must_use]
+    pub fn is_mutable(&self) -> bool {
         self.0.global_type_descriptor().mutable
     }
 }
 
 // Implement foundation traits for wrapper types
-use wrt_foundation::traits::{ReadStream, WriteStream};
-use wrt_foundation::verification::Checksum;
+use wrt_foundation::{
+    traits::{
+        ReadStream,
+        WriteStream,
+    },
+    verification::Checksum,
+};
 
 // TableWrapper trait implementations
 impl Checksummable for TableWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use table size and element type for checksum
-        checksum.update_slice(&self.0.size().to_le_bytes);
-        checksum.update_slice(&(self.0.ty.element_type as u8).to_le_bytes);
+        checksum.update_slice(&self.0.size().to_le_bytes());
+        checksum.update_slice(&(self.0.ty.element_type as u8).to_le_bytes());
     }
 }
 
@@ -2494,7 +2770,7 @@ impl ToBytes for TableWrapper {
     fn serialized_size(&self) -> usize {
         12 // table type (4) + size (4) + limits (4)
     }
-    
+
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut WriteStream,
@@ -2514,28 +2790,37 @@ impl FromBytes for TableWrapper {
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 12];
         reader.read_exact(&mut bytes)?;
-        
+
         // Create a default table (simplified implementation)
-        use wrt_foundation::types::{Limits, TableType, RefType};
+        use wrt_foundation::types::{
+            Limits,
+            RefType,
+            TableType,
+        };
         let table_type = TableType {
             element_type: RefType::Funcref,
-            limits: Limits { min: 0, max: Some(1) },
+            limits:       Limits {
+                min: 0,
+                max: Some(1),
+            },
         };
-        
+
         let table = Table::new(table_type).map_err(|_| {
-            wrt_error::Error::runtime_execution_error("Runtime execution error: Failed to create table from bytes")
+            wrt_error::Error::runtime_execution_error(
+                "Runtime execution error: Failed to create table from bytes",
+            )
         })?;
-        
+
         Ok(TableWrapper::new(table))
     }
 }
 
-// MemoryWrapper trait implementations  
+// MemoryWrapper trait implementations
 impl Checksummable for MemoryWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use memory size for checksum
-        checksum.update_slice(&self.0.size().to_le_bytes);
-        checksum.update_slice(&self.0.size_in_bytes().to_le_bytes);
+        checksum.update_slice(&self.0.size().to_le_bytes());
+        checksum.update_slice(&self.0.size_in_bytes().to_le_bytes());
     }
 }
 
@@ -2543,7 +2828,7 @@ impl ToBytes for MemoryWrapper {
     fn serialized_size(&self) -> usize {
         12 // size (4) + limits min (4) + limits max (4)
     }
-    
+
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut WriteStream,
@@ -2551,7 +2836,7 @@ impl ToBytes for MemoryWrapper {
     ) -> wrt_foundation::Result<()> {
         writer.write_all(&self.0.size().to_le_bytes())?;
         writer.write_all(&self.0.ty.limits.min.to_le_bytes())?;
-        let max = self.0.ty.limits.max.unwrap_or(u32::MAX;
+        let max = self.0.ty.limits.max.unwrap_or(u32::MAX);
         writer.write_all(&max.to_le_bytes())?;
         Ok(())
     }
@@ -2564,20 +2849,28 @@ impl FromBytes for MemoryWrapper {
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 12];
         reader.read_exact(&mut bytes)?;
-        
+
         // Create a default memory (simplified implementation)
-        use wrt_foundation::types::{Limits, MemoryType};
+        use wrt_foundation::types::{
+            Limits,
+            MemoryType,
+        };
         let memory_type = MemoryType {
-            limits: Limits { min: 1, max: Some(1) },
+            limits: Limits {
+                min: 1,
+                max: Some(1),
+            },
             shared: false,
         };
-        
+
         let memory = Memory::new(to_core_memory_type(memory_type)).map_err(|_| {
-            wrt_error::Error::new(wrt_error::ErrorCategory::Memory,
+            wrt_error::Error::new(
+                wrt_error::ErrorCategory::Memory,
                 wrt_error::codes::INVALID_VALUE,
-                "Failed to create memory from bytes")
+                "Failed to create memory from bytes",
+            )
         })?;
-        
+
         Ok(MemoryWrapper::new(memory))
     }
 }
@@ -2602,8 +2895,10 @@ fn value_type_to_u8(vt: WrtValueType) -> u8 {
 impl Checksummable for GlobalWrapper {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Use global value type for checksum
-        checksum.update_slice(&value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes);
-        checksum.update_slice(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes);
+        checksum.update_slice(
+            &value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes(),
+        );
+        checksum.update_slice(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes());
     }
 }
 
@@ -2611,13 +2906,15 @@ impl ToBytes for GlobalWrapper {
     fn serialized_size(&self) -> usize {
         12 // value type (4) + mutable flag (4) + value (4)
     }
-    
+
     fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut WriteStream,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes())?;
+        writer.write_all(
+            &value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes(),
+        )?;
         writer.write_all(&u8::from(self.0.global_type_descriptor().mutable).to_le_bytes())?;
         // Simplified value serialization
         writer.write_all(&0u32.to_le_bytes())?;
@@ -2632,15 +2929,17 @@ impl FromBytes for GlobalWrapper {
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 12];
         reader.read_exact(&mut bytes)?;
-        
+
         // Create a default global (simplified implementation)
-        use wrt_foundation::types::ValueType;
-        use wrt_foundation::values::Value;
-        
+        use wrt_foundation::{
+            types::ValueType,
+            values::Value,
+        };
+
         let global = Global::new(ValueType::I32, false, Value::I32(0)).map_err(|_| {
-            wrt_error::Error::runtime_execution_error("Failed to create global from bytes") 
+            wrt_error::Error::runtime_execution_error("Failed to create global from bytes")
         })?;
-        
+
         Ok(GlobalWrapper::new(global))
     }
 }
@@ -2650,18 +2949,17 @@ impl FromBytes for GlobalWrapper {
 
 // Trait implementations for Arc<Memory>
 
-// Default for Arc<Memory> removed due to orphan rules - use explicit creation instead
-/*
-*/
-
+// Default for Arc<Memory> removed due to orphan rules - use explicit creation
+// instead
+//
 
 // Arc<Memory> trait implementations removed due to orphan rule violations.
 // Use MemoryWrapper instead which implements these traits properly.
 
 // Trait implementations for Arc<Global>
 
-// Default for Arc<Global> removed due to orphan rules - use explicit creation instead
-
+// Default for Arc<Global> removed due to orphan rules - use explicit creation
+// instead
 
 // Arc<Global> trait implementations removed due to orphan rule violations.
 // Use GlobalWrapper instead which implements these traits properly.
@@ -2670,4 +2968,3 @@ impl FromBytes for GlobalWrapper {
 // Ensure local `crate::module::Export` struct is defined
 // Ensure local `crate::global::Global`, `crate::table::Table`,
 // `crate::memory::Memory` are defined and their `new` methods are compatible.
-
