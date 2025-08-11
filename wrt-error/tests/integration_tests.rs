@@ -10,7 +10,6 @@ mod tests {
     use wrt_error::{
         codes,
         Error,
-        ErrorCategory,
         Result,
     };
 
@@ -22,7 +21,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "disabled"))]
+    #[cfg(feature = "disabled")]
     fn test_error_from_kind() {
         let kind = kinds::validation_error("Validation failed");
         let error = Error::from(kind);
@@ -43,7 +42,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "disabled"))]
+    #[cfg(feature = "disabled")]
     fn test_error_source() {
         // Create an error with a source
         let stack_error = kinds::stack_underflow();
@@ -54,7 +53,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "disabled"))]
+    #[cfg(feature = "disabled")]
     fn test_error_conversion_from_structs() {
         // Test OutOfBoundsError
         let bounds_error = kinds::out_of_bounds_error("Index out of bounds");

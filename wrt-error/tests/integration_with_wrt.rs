@@ -42,7 +42,7 @@ mod tests {
         // let _ = std::format!("{}", error_result.as_ref().err().unwrap();
     }
 
-    #[cfg(all(feature = "std"))]
+    #[cfg(feature = "std")]
     mod std_alloc_tests {
         use wrt_error::{
             kinds,

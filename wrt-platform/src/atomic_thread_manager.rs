@@ -4,8 +4,10 @@
 //! the existing thread management infrastructure, enabling efficient
 //! implementation of memory.atomic.wait and memory.atomic.notify.
 
+extern crate alloc;
+
 use core::time::Duration;
-use std::{
+use alloc::{
     collections::BTreeMap,
     sync::Arc,
 };
@@ -38,6 +40,9 @@ use crate::{
         WasmThreadManager,
     },
 };
+
+/// Type alias for complex executor function type
+type ExecutorFn = Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync>;
 
 /// Atomic wait/notify coordinator that manages futex objects per memory address
 pub struct AtomicCoordinator {
@@ -99,7 +104,7 @@ impl AtomicCoordinator {
     /// Implement atomic wait operation
     pub fn atomic_wait(&self, addr: u64, expected: u32, timeout_ns: Option<u64>) -> Result<i32> {
         let futex = self.get_or_create_futex(addr, expected)?;
-        let timeout = timeout_ns.map(|ns| Duration::from_nanos(ns));
+        let timeout = timeout_ns.map(Duration::from_nanos);
 
         match futex.wait(expected, timeout) {
             Ok(()) => Ok(0),                                             // Woken by notify
@@ -132,10 +137,10 @@ impl AtomicCoordinator {
             function_id: 0xFFFF, // Special function ID for atomic operations
             args:        {
                 let mut args = Vec::new();
-                args.extend_from_slice(&addr.to_le_bytes);
-                args.extend_from_slice(&expected.to_le_bytes);
+                args.extend_from_slice(&addr.to_le_bytes());
+                args.extend_from_slice(&expected.to_le_bytes());
                 if let Some(timeout) = timeout_ns {
-                    args.extend_from_slice(&timeout.to_le_bytes);
+                    args.extend_from_slice(&timeout.to_le_bytes());
                 }
                 args
             },
@@ -143,7 +148,7 @@ impl AtomicCoordinator {
             stack_size:  Some(64 * 1024), // Small stack for atomic operations
         };
 
-        self.thread_manager.spawn_thread(request)
+        self.thread_manager.spawn_thread(&request)
     }
 
     /// Clean up unused futexes (garbage collection)
@@ -152,7 +157,7 @@ impl AtomicCoordinator {
 
         // Remove futexes that are no longer referenced
         // In a real implementation, we'd track reference counts
-        map.retain(|_addr, futex| Arc::strong_count(futex) > 1)
+        map.retain(|_addr, futex| Arc::strong_count(futex) > 1);
     }
 
     /// Get statistics about atomic operations
@@ -187,7 +192,7 @@ impl AtomicAwareThreadManager {
     pub fn new(
         config: ThreadPoolConfig,
         limits: ThreadingLimits,
-        executor: Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync>,
+        executor: ExecutorFn,
     ) -> Result<Self> {
         let base_manager = Arc::new(WasmThreadManager::new(config, limits, executor)?);
         let atomic_coordinator = AtomicCoordinator::new(Arc::clone(&base_manager))?;
@@ -214,7 +219,7 @@ impl AtomicAwareThreadManager {
     }
 
     /// Spawn a regular WebAssembly thread
-    pub fn spawn_wasm_thread(&self, request: ThreadSpawnRequest) -> Result<u64> {
+    pub fn spawn_wasm_thread(&self, request: &ThreadSpawnRequest) -> Result<u64> {
         self.base_manager.spawn_thread(request)
     }
 
@@ -261,7 +266,7 @@ mod tests {
 
     use super::*;
 
-    fn create_test_executor() -> Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync> {
+    fn create_test_executor() -> ExecutorFn {
         Arc::new(|_function_id, args| Ok(args))
     }
 

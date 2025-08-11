@@ -553,7 +553,7 @@ where
     }
 
     /// Returns an iterator over the values in the map.
-    pub fn values(&self) -> BoundedMapValues<K, V, N_ELEMENTS, P> {
+    pub fn values(&self) -> BoundedMapValues<'_, K, V, N_ELEMENTS, P> {
         BoundedMapValues {
             map:   self,
             index: 0,
@@ -561,7 +561,7 @@ where
     }
 
     /// Entry API for in-place manipulation of a map entry.
-    pub fn entry(&mut self, key: K) -> BoundedMapEntry<K, V, N_ELEMENTS, P> {
+    pub fn entry(&mut self, key: K) -> BoundedMapEntry<'_, K, V, N_ELEMENTS, P> {
         BoundedMapEntry { map: self, key }
     }
 }
@@ -2750,7 +2750,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// let indices: Vec<usize> = bitset.iter_ones().collect();
     /// assert_eq!(indices, vec![10, 20, 30]);
     /// ```
-    pub fn iter_ones(&self) -> BitSetOnesIterator<N_BITS> {
+    pub fn iter_ones(&self) -> BitSetOnesIterator<'_, N_BITS> {
         BitSetOnesIterator {
             bitset:     self,
             next_index: 0,
@@ -2771,7 +2771,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// let indices: Vec<usize> = bitset.iter_zeros().collect();
     /// assert_eq!(indices, vec![0, 2, 4]);
     /// ```
-    pub fn iter_zeros(&self) -> BitSetZerosIterator<N_BITS> {
+    pub fn iter_zeros(&self) -> BitSetZerosIterator<'_, N_BITS> {
         BitSetZerosIterator {
             bitset:     self,
             next_index: 0,

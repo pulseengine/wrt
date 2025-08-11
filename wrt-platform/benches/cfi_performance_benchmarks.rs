@@ -4,11 +4,11 @@
 //! and validate that overhead is within acceptable limits.
 
 use criterion::{
-    black_box,
     criterion_group,
     criterion_main,
     Criterion,
 };
+use std::hint::black_box;
 use wrt_platform::{
     BranchTargetIdentification,
     BtiExceptionLevel,

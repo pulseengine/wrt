@@ -8,6 +8,7 @@ mod tests {
     use wrt_error::codes;
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn test_all_error_constants_are_unique() {
         let mut seen_codes = HashSet::new();
 
@@ -37,11 +38,10 @@ mod tests {
         ];
 
         for code in &core_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 1000 && *code < 2000,
-                "Core error code {} out of range",
-                code
+                "Core error code {code} out of range"
             );
         }
 
@@ -57,11 +57,10 @@ mod tests {
         ];
 
         for code in &component_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 2000 && *code < 3000,
-                "Component error code {} out of range",
-                code
+                "Component error code {code} out of range"
             );
         }
 
@@ -78,11 +77,10 @@ mod tests {
         ];
 
         for code in &resource_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 3000 && *code < 4000,
-                "Resource error code {} out of range",
-                code
+                "Resource error code {code} out of range"
             );
         }
 
@@ -95,11 +93,10 @@ mod tests {
         ];
 
         for code in &memory_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 4000 && *code < 5000,
-                "Memory error code {} out of range",
-                code
+                "Memory error code {code} out of range"
             );
         }
 
@@ -135,11 +132,10 @@ mod tests {
         ];
 
         for code in &validation_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 5000 && *code < 6000,
-                "Validation error code {} out of range",
-                code
+                "Validation error code {code} out of range"
             );
         }
 
@@ -164,11 +160,10 @@ mod tests {
         ];
 
         for code in &type_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 6000 && *code < 7000,
-                "Type error code {} out of range",
-                code
+                "Type error code {code} out of range"
             );
         }
 
@@ -185,11 +180,10 @@ mod tests {
         ];
 
         for code in &runtime_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 7000 && *code < 8000,
-                "Runtime error code {} out of range",
-                code
+                "Runtime error code {code} out of range"
             );
         }
 
@@ -212,11 +206,10 @@ mod tests {
         ];
 
         for code in &system_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 8000 && *code < 9000,
-                "System error code {} out of range",
-                code
+                "System error code {code} out of range"
             );
         }
 
@@ -240,11 +233,10 @@ mod tests {
         ];
 
         for code in &parser_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 8100 && *code < 8200,
-                "Parser error code {} out of range",
-                code
+                "Parser error code {code} out of range"
             );
         }
 
@@ -260,11 +252,10 @@ mod tests {
         ];
 
         for code in &validation_ext_codes {
-            assert!(seen_codes.insert(*code), "Duplicate error code: {}", code);
+            assert!(seen_codes.insert(*code), "Duplicate error code: {code}");
             assert!(
                 *code >= 8200 && *code < 8300,
-                "Extended validation error code {} out of range",
-                code
+                "Extended validation error code {code} out of range"
             );
         }
 

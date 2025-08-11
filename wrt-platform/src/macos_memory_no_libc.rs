@@ -268,7 +268,7 @@ impl PageAllocator for MacOsAllocator {
         };
 
         if additional_pages == 0 {
-            return Ok();
+            return Ok(());
         }
 
         let current_bytes_from_arg = Self::pages_to_bytes(current_pages)?;

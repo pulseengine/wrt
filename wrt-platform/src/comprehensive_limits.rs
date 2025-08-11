@@ -364,10 +364,10 @@ mod tests {
     fn test_parse_meminfo() {
         let meminfo = "MemTotal:       16384000 kB\nMemFree:         8192000 kB\n";
         let value = parse_meminfo_value(meminfo, "MemTotal:");
-        assert_eq!(value, Some(16384000));
+        assert_eq!(value, Some(16_384_000));
 
         let value = parse_meminfo_value(meminfo, "MemFree:");
-        assert_eq!(value, Some(8192000));
+        assert_eq!(value, Some(8_192_000));
 
         let value = parse_meminfo_value(meminfo, "NonExistent:");
         assert_eq!(value, None);

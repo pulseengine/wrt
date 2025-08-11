@@ -5,6 +5,8 @@
 //!
 //! This module is only available when the `std` feature is enabled.
 
+extern crate alloc;
+
 use core::{
     sync::atomic::{
         AtomicBool,
@@ -13,7 +15,7 @@ use core::{
     },
     time::Duration,
 };
-use std::{
+use alloc::{
     boxed::Box,
     collections::BTreeMap,
     sync::Arc,
@@ -222,7 +224,7 @@ impl PlatformThreadPool for GenericThreadPool {
 
         // Wait for threads to complete
         let start = std::time::Instant::now();
-        while self.active_threads.read().len() > 0 && start.elapsed() < timeout {
+        while !self.active_threads.read().is_empty() && start.elapsed() < timeout {
             std::thread::sleep(Duration::from_millis(10));
         }
 

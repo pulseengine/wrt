@@ -349,10 +349,10 @@ fn test_security_level_ordering() {
     use wrt_platform::SecurityLevel;
 
     // Test that security levels are properly ordered
-    assert!(SecurityLevel::None as u8 < SecurityLevel::Low as u8);
-    assert!(SecurityLevel::Low as u8 < SecurityLevel::Medium as u8);
-    assert!(SecurityLevel::Medium as u8 < SecurityLevel::High as u8);
-    assert!(SecurityLevel::High as u8 < SecurityLevel::Maximum as u8);
+    assert!((SecurityLevel::None as u8) < (SecurityLevel::Low as u8));
+    assert!((SecurityLevel::Low as u8) < (SecurityLevel::Medium as u8));
+    assert!((SecurityLevel::Medium as u8) < (SecurityLevel::High as u8));
+    assert!((SecurityLevel::High as u8) < (SecurityLevel::Maximum as u8));
 
     // Both BTI and CFI should provide high security
     let bti = BranchTargetIdentification::new(BtiMode::CallAndJump, BtiExceptionLevel::El1);

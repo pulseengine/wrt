@@ -60,11 +60,11 @@
 //!     wrt_error::ErrorCategory::Core,
 //!     wrt_error::codes::INVALID_FUNCTION_INDEX,
 //!     "Invalid function index: 42",
-//! ;
+//! );
 //!
 //! // Using kind functions for common errors
-//! let index_error = kinds::invalid_index_error("function";
-//! let memory_error = kinds::memory_access_error("Memory access out of bounds";
+//! let index_error = kinds::invalid_index_error("function");
+//! let memory_error = kinds::memory_access_error("Memory access out of bounds");
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]

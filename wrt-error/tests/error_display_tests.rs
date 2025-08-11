@@ -160,8 +160,8 @@ mod tests {
         let display = invalid_memory_wasm30.to_string();
         assert!(!display.is_empty());
         assert!(display.contains("Invalid Wasm 3.0 memory index"));
-        assert!(display.contains("5"));
-        assert!(display.contains("3"));
+        assert!(display.contains('5'));
+        assert!(display.contains('3'));
 
         let unknown_opcode = UnknownOpcodeForVersion {
             version_major: 2,

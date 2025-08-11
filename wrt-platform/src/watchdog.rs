@@ -209,7 +209,7 @@ impl SoftwareWatchdog {
         name: impl Into<String>,
         timeout: Option<Duration>,
         action: WatchdogAction,
-    ) -> Result<WatchdogHandle> {
+    ) -> Result<WatchdogHandle<'_>> {
         let task_id = WatchedTaskId(self.next_task_id.fetch_add(1, Ordering::AcqRel));
         // Get current timestamp
         let now = std::time::SystemTime::now()
@@ -318,7 +318,7 @@ impl<'a> Drop for WatchdogHandle<'a> {
 /// Integration with WASM execution
 pub trait WatchdogIntegration {
     /// Start watching a WASM module execution
-    fn watch_wasm_execution(&self, module_name: &str, timeout: Duration) -> Result<WatchdogHandle>;
+    fn watch_wasm_execution(&self, module_name: &str, timeout: Duration) -> Result<WatchdogHandle<'_>>;
 
     /// Create a scoped watchdog for a function
     fn watch_function<F, R>(&self, name: &str, timeout: Duration, f: F) -> Result<R>
@@ -327,7 +327,7 @@ pub trait WatchdogIntegration {
 }
 
 impl WatchdogIntegration for SoftwareWatchdog {
-    fn watch_wasm_execution(&self, module_name: &str, timeout: Duration) -> Result<WatchdogHandle> {
+    fn watch_wasm_execution(&self, module_name: &str, timeout: Duration) -> Result<WatchdogHandle<'_>> {
         self.watch_task(
             format!("WASM module: {module_name}"),
             Some(timeout),

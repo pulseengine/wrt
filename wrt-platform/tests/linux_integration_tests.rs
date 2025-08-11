@@ -100,7 +100,7 @@ fn test_linux_platform_compilation() {
         use wrt_platform::*;
 
         // Basic verification that types exist
-        let _ = core::mem::size_of::<NoStdProvider<1024>>();
+        let _ = core::mem::size_of::<NoStdProvider>();
 
         // On Linux, additional types should be available
         #[cfg(target_os = "linux")]

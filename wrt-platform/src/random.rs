@@ -275,7 +275,7 @@ impl TestRandom {
     /// Generate the next pseudo-random u64
     pub fn next_u64(&mut self) -> u64 {
         // Linear congruential generator
-        self.seed = self.seed.wrapping_mul(1664525).wrapping_add(1013904223);
+        self.seed = self.seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
         self.seed
     }
 

@@ -190,7 +190,7 @@ impl ZephyrFutex {
         loop {
             // Check if value has changed
             if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {
-                return Ok();
+                return Ok(());
             }
 
             // Check timeout
@@ -322,7 +322,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
     fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<()> {
         // Check value first
         if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {
-            return Ok();
+            return Ok(());
         }
 
         // In real implementation, would use k_sem_take() with timeout
@@ -332,7 +332,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
 
         loop {
             if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {
-                return Ok();
+                return Ok(());
             }
 
             if timeout_ticks != i64::MAX {

@@ -313,25 +313,25 @@ impl DebugUtils {
 
         let mut output = String::new();
 
-        writeln!(output, "Error: {} (Code: {})", error.message, error.code).unwrap();
-        writeln!(output, "Category: {:?}", error.category).unwrap();
-        writeln!(output, "Location: {}", context.location).unwrap();
+        let _ = writeln!(output, "Error: {} (Code: {})", error.message, error.code);
+        let _ = writeln!(output, "Category: {:?}", error.category);
+        let _ = writeln!(output, "Location: {}", context.location);
 
         if !context.context.is_empty() {
             output.push_str("Context:\n");
             for (key, value) in &context.context {
-                writeln!(output, "  {key}: {value}").unwrap();
+                let _ = writeln!(output, "  {key}: {value}");
             }
         }
 
         if !context.stack_trace.is_empty() {
             output.push_str("Stack trace:\n");
             for (i, frame) in context.stack_trace.iter().enumerate() {
-                writeln!(output, "  {i}: {frame}").unwrap();
+                let _ = writeln!(output, "  {i}: {frame}");
             }
         }
 
-        writeln!(output, "Recovery strategy: {:?}", context.recovery_strategy).unwrap();
+        let _ = writeln!(output, "Recovery strategy: {:?}", context.recovery_strategy);
 
         output
     }

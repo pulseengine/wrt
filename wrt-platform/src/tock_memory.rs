@@ -231,7 +231,7 @@ impl TockAllocator {
             self.grant_regions[self.grant_regions_count] = Some(region);
             self.grant_regions_count += 1;
 
-            return Ok();
+            return Ok(());
         }
 
         // Binary std/no_std choice

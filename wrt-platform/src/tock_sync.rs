@@ -157,6 +157,26 @@ impl TockFutex {
         }
     }
 
+    /// Load the current value
+    pub fn load(&self) -> u32 {
+        self.value.load(Ordering::Acquire)
+    }
+
+    /// Perform compare-and-exchange operation
+    pub fn compare_exchange(&self, current: u32, new: u32) -> Result<u32, u32> {
+        self.value.compare_exchange(current, new, Ordering::AcqRel, Ordering::Acquire)
+    }
+
+    /// Fetch and add operation
+    pub fn fetch_add(&self, val: u32) -> u32 {
+        self.value.fetch_add(val, Ordering::AcqRel)
+    }
+
+    /// Fetch and subtract operation
+    pub fn fetch_sub(&self, val: u32) -> u32 {
+        self.value.fetch_sub(val, Ordering::AcqRel)
+    }
+
     /// Get current process ID from Tock kernel
     fn get_process_id() -> u32 {
         // In Tock, process ID would be provided by the kernel
@@ -263,7 +283,7 @@ impl FutexLike for TockFutex {
             // Check if value has changed
             let current = self.value.load(Ordering::SeqCst);
             if current != expected {
-                return Ok();
+                return Ok(());
             }
 
             // Check callback state
@@ -272,7 +292,7 @@ impl FutexLike for TockFutex {
             match state {
                 x if x == CallbackState::Fired as u32 => {
                     // Wake notification received
-                    return Ok();
+                    return Ok(());
                 },
                 x if x == CallbackState::Timeout as u32 => {
                     // Timeout occurred
@@ -319,6 +339,18 @@ impl TockSemaphoreFutex {
         }
     }
 
+    /// Load the current value
+    pub fn load(&self) -> u32 {
+        self.value.load(Ordering::Acquire)
+    }
+
+    /// Wake all waiters
+    pub fn wake_all(&self) -> Result<(), Error> {
+        // For simplicity, we'll set a large wake count
+        self.wake(u32::MAX)?;
+        Ok(())
+    }
+
     /// Get approximate cycle count for timeout calculations
     fn get_cycle_count() -> u64 {
         // In a real implementation, this would read a cycle counter
@@ -339,7 +371,7 @@ impl FutexLike for TockSemaphoreFutex {
         loop {
             let current = self.value.load(Ordering::SeqCst);
             if current != expected {
-                return Ok();
+                return Ok(());
             }
 
             // Check timeout (simplified cycle-based timeout)

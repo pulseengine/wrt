@@ -202,7 +202,7 @@ impl ZephyrAllocator {
     /// Set up memory domain isolation if enabled
     unsafe fn setup_memory_domain(&mut self, ptr: *mut u8, size: usize) -> Result<()> {
         if !self.config.use_memory_domains {
-            return Ok();
+            return Ok(());
         }
 
         // Binary std/no_std choice
@@ -259,7 +259,7 @@ impl ZephyrAllocator {
     /// Binary std/no_std choice
     unsafe fn setup_guard_regions(&self, _base_ptr: *mut u8, _total_size: usize) -> Result<()> {
         if !self.config.use_guard_regions {
-            return Ok();
+            return Ok(());
         }
 
         // In a real implementation, this would set up MPU/MMU regions
@@ -418,7 +418,7 @@ impl PageAllocator for ZephyrAllocator {
         };
 
         if additional_pages == 0 {
-            return Ok();
+            return Ok(());
         }
 
         let current_bytes_from_arg = Self::pages_to_bytes(current_pages)?;

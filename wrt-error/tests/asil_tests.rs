@@ -13,7 +13,7 @@ use wrt_error::{
 
 #[test]
 fn test_basic_error_creation() {
-    let error = Error::runtime_execution_error("Memory bounds check failed");
+    let error = Error::memory_out_of_bounds("Memory bounds check failed");
     assert_eq!(error.code, codes::MEMORY_OUT_OF_BOUNDS);
     assert_eq!(error.category, ErrorCategory::Memory);
 }
@@ -33,7 +33,7 @@ fn test_asil_level_detection() {
     assert_eq!(asil_level, "ASIL-D");
 
     // Memory errors should be ASIL-C
-    let mem_error = Error::runtime_execution_error("Memory allocation failed");
+    let mem_error = Error::memory_out_of_bounds("Memory allocation failed");
     assert_eq!(mem_error.asil_level(), "ASIL-C");
 
     // Validation errors should be ASIL-B
@@ -49,7 +49,7 @@ fn test_safe_state_requirements() {
     assert!(safety_error.requires_safe_state());
 
     // Memory errors require safe state
-    let memory_error = Error::runtime_execution_error("Memory allocation failed");
+    let memory_error = Error::memory_out_of_bounds("Memory allocation failed");
     assert!(memory_error.requires_safe_state());
 
     // Runtime trap errors require safe state
@@ -61,7 +61,7 @@ fn test_safe_state_requirements() {
     assert!(trap_error.requires_safe_state());
 
     // Component errors do not require immediate safe state
-    let comp_error = Error::runtime_execution_error("Component runtime error");
+    let comp_error = Error::new(ErrorCategory::Component, codes::COMPONENT_INSTANTIATION_ERROR, "Component runtime error");
     assert!(!comp_error.requires_safe_state());
 }
 
@@ -69,7 +69,7 @@ fn test_safe_state_requirements() {
 #[test]
 fn test_error_integrity_validation() {
     // Valid error
-    let valid_error = Error::runtime_execution_error("Valid runtime error");
+    let valid_error = Error::memory_out_of_bounds("Valid memory error");
     assert!(valid_error.validate_integrity());
 
     // Error with valid code for category
@@ -83,12 +83,12 @@ fn test_error_integrity_validation() {
 #[test]
 fn test_asil_error_context() {
     let error = Error::safety_violation("Test error");
-    let context = AsilErrorContext::new(error.clone())
-        .with_timestamp(123456789)
+    let context = AsilErrorContext::new(error)
+        .with_timestamp(123_456_789)
         .with_module_id(42);
 
     assert_eq!(context.error.code, error.code);
-    assert_eq!(context.timestamp, Some(123456789));
+    assert_eq!(context.timestamp, Some(123_456_789));
     assert_eq!(context.module_id, Some(42));
     assert!(context.requires_immediate_action());
 }
@@ -102,7 +102,7 @@ fn test_safety_monitor() {
     assert_eq!(monitor.error_count(), 0);
 
     // Record some errors
-    let error1 = Error::runtime_execution_error("Memory error");
+    let error1 = Error::memory_out_of_bounds("Memory error");
     let error2 = Error::safety_violation("Safety error");
 
     monitor.record_error(&error1);
@@ -117,8 +117,8 @@ fn test_safety_monitor() {
 
 #[test]
 fn test_error_display_format() {
-    let error = Error::runtime_execution_error("Test error");
-    let display = format!("{}", error);
+    let error = Error::memory_out_of_bounds("Test error");
+    let display = format!("{error}");
 
     #[cfg(any(feature = "asil-c", feature = "asil-d"))]
     {

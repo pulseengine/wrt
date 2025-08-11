@@ -3,14 +3,14 @@
 //! This module provides a high-level thread management system that enforces
 //! safety constraints and resource limits for WebAssembly thread execution.
 
-use core::{
-    sync::atomic::{
-        AtomicU64,
-        Ordering,
-    },
-    time::Duration,
+extern crate alloc;
+
+use core::sync::atomic::{
+    AtomicU64,
+    Ordering,
 };
-use std::{
+use core::time::Duration;
+use alloc::{
     boxed::Box,
     collections::BTreeMap,
     string::String,
@@ -42,6 +42,9 @@ use crate::threading::{
     ThreadingLimits,
     WasmTask,
 };
+
+/// Type alias for complex executor function type
+type ExecutorFn = Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync>;
 
 /// WebAssembly module information for thread tracking
 #[derive(Debug, Clone)]
@@ -120,7 +123,7 @@ impl SimpleExecutionMonitor {
 impl ExecutionMonitor for SimpleExecutionMonitor {
     fn track_thread(&self, handle: &ThreadHandle) -> Result<()> {
         if !self.enabled {
-            return Ok();
+            return Ok(());
         }
 
         let info = ThreadMonitorInfo {
@@ -189,17 +192,20 @@ pub struct WasmThreadManager {
     /// Shutdown flag
     shutdown:         WrtMutex<bool>,
     /// Task executor function
-    executor:         Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync>,
+    executor:         ExecutorFn,
 }
 
 impl core::fmt::Debug for WasmThreadManager {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("WasmThreadManager")
+            .field("pool", &"<Box<dyn PlatformThreadPool>>")
             .field("resource_tracker", &self.resource_tracker)
+            .field("monitor", &"<Arc<dyn ExecutionMonitor>>")
             .field("threads", &"<BTreeMap>")
             .field("modules", &"<BTreeMap>")
             .field("next_thread_id", &self.next_thread_id)
             .field("shutdown", &self.shutdown)
+            .field("executor", &"<ExecutorFn>")
             .finish()
     }
 }
@@ -207,11 +213,11 @@ impl core::fmt::Debug for WasmThreadManager {
 impl WasmThreadManager {
     /// Create new WebAssembly thread manager
     pub fn new(
-        config: ThreadPoolConfig,
+        _config: ThreadPoolConfig,
         limits: ThreadingLimits,
-        executor: Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync>,
+        executor: ExecutorFn,
     ) -> Result<Self> {
-        let pool = create_thread_pool(&config)?;
+        let pool = create_thread_pool(&_config)?;
         let resource_tracker = Arc::new(ResourceTracker::new(limits));
         let monitor = Arc::new(SimpleExecutionMonitor::new());
 
@@ -244,7 +250,7 @@ impl WasmThreadManager {
     }
 
     /// Spawn a WebAssembly thread with safety checks
-    pub fn spawn_thread(&self, request: ThreadSpawnRequest) -> Result<u64> {
+    pub fn spawn_thread(&self, request: &ThreadSpawnRequest) -> Result<u64> {
         // Check if shutting down
         if *self.shutdown.lock() {
             return Err(Error::runtime_execution_error(
@@ -262,7 +268,7 @@ impl WasmThreadManager {
         };
 
         // Binary std/no_std choice
-        if !self.resource_tracker.can_allocate_thread(&request)? {
+        if !self.resource_tracker.can_allocate_thread(request)? {
             return Err(Error::runtime_execution_error(
                 "Thread allocation limit exceeded",
             ));
@@ -448,10 +454,10 @@ impl WasmThreadManager {
 
     /// Shutdown the thread manager
     pub fn shutdown(&mut self, timeout: Duration) -> Result<()> {
-        *self.shutdown.lock().unwrap() = true;
+        *self.shutdown.lock() = true;
 
         // Cancel all threads
-        let thread_ids: Vec<u64> = self.threads.read().keys().cloned().collect();
+        let thread_ids: Vec<u64> = self.threads.read().keys().copied().collect();
         for thread_id in thread_ids {
             let _ = self.cancel_thread(thread_id);
         }
@@ -490,7 +496,7 @@ pub struct ThreadManagerStats {
 mod tests {
     use super::*;
 
-    fn create_test_executor() -> Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync> {
+    fn create_test_executor() -> ExecutorFn {
         Arc::new(|_function_id, args| Ok(args))
     }
 
@@ -533,7 +539,6 @@ mod tests {
 
         let manager = WasmThreadManager::new(config, limits, executor).unwrap();
 
-        let test_data = vec![1, 2, 3, 4];
 
         let data = vec![1, 2, 3, 4];
         let serialized = manager.serialize_component_values(&data).unwrap();
