@@ -2549,6 +2549,12 @@ impl Default for MemoryWrapper {
     }
 }
 
+impl AsRef<Arc<Memory>> for MemoryWrapper {
+    fn as_ref(&self) -> &Arc<Memory> {
+        &self.0
+    }
+}
+
 impl MemoryWrapper {
     /// Create a new memory wrapper
     pub fn new(memory: Memory) -> Self {

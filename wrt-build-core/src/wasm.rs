@@ -194,7 +194,7 @@ impl WasmVerifier {
     /// Print human-readable verification results
     pub fn print_results(&self, result: &WasmVerificationResult) {
         if result.valid {
-            println!("{} WebAssembly module is valid", "✅".bright_green);
+            println!("{} WebAssembly module is valid", "✅".bright_green());
         } else {
             println!("{} WebAssembly module validation failed", "❌".bright_red);
         }

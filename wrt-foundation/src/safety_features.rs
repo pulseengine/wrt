@@ -19,10 +19,7 @@
 ))]
 compile_error!("verified-static-allocation requires formal-verification-required");
 
-#[cfg(all(
-    feature = "mathematical-proofs",
-    not(feature = "static-memory-layout")
-))]
+#[cfg(all(feature = "mathematical-proofs", not(feature = "static-memory-layout")))]
 compile_error!("mathematical-proofs requires static-memory-layout");
 
 #[cfg(all(feature = "hardware-isolation", not(feature = "component-isolation")))]
@@ -191,7 +188,7 @@ pub mod standards {
             {
                 &[
                     "bounded-capacity-limits",
-                    "bounded-runtime-checks", 
+                    "bounded-runtime-checks",
                     "bounded-monitoring",
                 ]
                 // ASIL-A/B
@@ -377,10 +374,7 @@ mod tests {
     #[test]
     fn test_capability_consistency() {
         // Verify that enabled features are consistent
-        use standards::{
-            AsilLevel,
-            SafetyStandardMapping,
-        };
+        use standards::{AsilLevel, SafetyStandardMapping};
 
         assert!(
             AsilLevel::validates_current_config(),

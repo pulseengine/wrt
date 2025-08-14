@@ -82,7 +82,6 @@ extern crate wrt_panic;
 #[cfg(all(
     not(feature = "std"),
     not(test),
-    feature = "standalone-panic-handler-only",  // This feature doesn't exist, effectively disabling
     not(any(
         feature = "enable-panic-handler",
         feature = "dev-panic-handler",
@@ -90,7 +89,7 @@ extern crate wrt_panic;
         feature = "asil-d-panic-handler"
     ))
 ))]
-#[panic_handler] // Disabled to avoid conflicts
+#[panic_handler] // Simple fallback panic handler for no_std builds
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     // Simple infinite loop for minimal panic handling
     loop {
