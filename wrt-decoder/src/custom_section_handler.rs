@@ -317,7 +317,7 @@ mod tests {
         let mut section_data = Vec::with_capacity(0);
         let name = "test";
         section_data.push(name.len() as u8); // LEB128 encoding of length
-        section_data.extend_from_slice(name.as_bytes);
+        section_data.extend_from_slice(name.as_bytes());
         section_data.extend_from_slice(&[1, 2, 3, 4]); // test data
 
         let (extracted_name, data) = extract_custom_section(&section_data).unwrap();

@@ -1,9 +1,5 @@
 /// Error types for DWARF debug information parsing
-use wrt_error::{
-    codes,
-    Error,
-    ErrorCategory,
-};
+use wrt_error::Error;
 
 /// Debug-specific error type
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -16,7 +16,6 @@ use wrt_foundation::{
         Error,
         ErrorCategory,
         PartialEq,
-        Result,
     },
     safe_memory::NoStdProvider,
     traits::{
@@ -25,6 +24,7 @@ use wrt_foundation::{
         ToBytes,
     },
 };
+use wrt_error::Result;
 use wrt_instructions::Value;
 
 use crate::{
@@ -52,9 +52,9 @@ pub struct CallFrame {
 
 impl Checksummable for CallFrame {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.function_index.to_le_bytes);
+        checksum.update_slice(&self.function_index.to_le_bytes());
         checksum.update_slice(&self.instruction_pointer.to_le_bytes());
-        checksum.update_slice(&(self.locals.len() as u32).to_le_bytes);
+        checksum.update_slice(&(self.locals.len() as u32).to_le_bytes());
     }
 }
 
@@ -63,7 +63,7 @@ impl ToBytes for CallFrame {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         writer.write_all(&self.function_index.to_le_bytes())?;
         writer.write_all(&self.instruction_pointer.to_le_bytes())?;
         Ok(())
@@ -74,7 +74,7 @@ impl FromBytes for CallFrame {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> Result<Self> {
         let mut func_bytes = [0u8; 4];
         reader.read_exact(&mut func_bytes)?;
         let function_index = u32::from_le_bytes(func_bytes);
@@ -122,7 +122,7 @@ impl ToBytes for ComponentExecutionState {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         writer.write_all(&[if self.is_running { 1 } else { 0 }])?;
         writer.write_all(&self.instruction_pointer.to_le_bytes())?;
         writer.write_all(&(self.stack_depth as u32).to_le_bytes())?;
@@ -135,7 +135,7 @@ impl FromBytes for ComponentExecutionState {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> Result<Self> {
         let mut byte = [0u8; 1];
         reader.read_exact(&mut byte)?;
         let is_running = byte[0] != 0;

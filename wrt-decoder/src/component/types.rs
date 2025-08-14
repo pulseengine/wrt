@@ -56,7 +56,7 @@ mod no_std_types {
     }
 
     impl Component {
-        pub fn new() -> wrt_foundation::WrtResult<Self> {
+        pub fn new() -> wrt_error::Result<Self> {
             let exports_provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
             let imports_provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
             Ok(Self {
@@ -164,15 +164,15 @@ mod no_std_types {
     impl wrt_foundation::traits::ToBytes for Export {
         fn serialized_size(&self) -> usize {
             // ComponentString size + enum + u32
-            self.name.serialized_size() + 1 + 4
+            wrt_foundation::traits::ToBytes::serialized_size(&self.name) + 1 + 4
         }
 
         fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
             &self,
             writer: &mut wrt_foundation::traits::WriteStream,
             provider: &PStream,
-        ) -> wrt_foundation::WrtResult<()> {
-            self.name.to_bytes_with_provider(writer, provider)?;
+        ) -> wrt_error::Result<()> {
+            wrt_foundation::traits::ToBytes::to_bytes_with_provider(&self.name, writer, provider)?;
             writer.write_u8(self.kind as u8)?;
             writer.write_u32_le(self.index)?;
             Ok(())
@@ -183,7 +183,7 @@ mod no_std_types {
         fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
             reader: &mut wrt_foundation::traits::ReadStream,
             provider: &PStream,
-        ) -> wrt_foundation::WrtResult<Self> {
+        ) -> wrt_error::Result<Self> {
             let name = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
             let kind_byte = reader.read_u8()?;
             let kind = match kind_byte {
@@ -202,7 +202,7 @@ mod no_std_types {
 
     impl wrt_foundation::traits::Checksummable for Export {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            self.name.update_checksum(checksum);
+            wrt_foundation::traits::Checksummable::update_checksum(&self.name, checksum);
             checksum.update_slice(&[self.kind as u8]);
             checksum.update_slice(&self.index.to_le_bytes());
         }
@@ -212,16 +212,16 @@ mod no_std_types {
     impl wrt_foundation::traits::ToBytes for Import {
         fn serialized_size(&self) -> usize {
             // Two ComponentString sizes + enum
-            self.module.serialized_size() + self.name.serialized_size() + 1
+            wrt_foundation::traits::ToBytes::serialized_size(&self.module) + wrt_foundation::traits::ToBytes::serialized_size(&self.name) + 1
         }
 
         fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
             &self,
             writer: &mut wrt_foundation::traits::WriteStream,
             provider: &PStream,
-        ) -> wrt_foundation::WrtResult<()> {
-            self.module.to_bytes_with_provider(writer, provider)?;
-            self.name.to_bytes_with_provider(writer, provider)?;
+        ) -> wrt_error::Result<()> {
+            wrt_foundation::traits::ToBytes::to_bytes_with_provider(&self.module, writer, provider)?;
+            wrt_foundation::traits::ToBytes::to_bytes_with_provider(&self.name, writer, provider)?;
             writer.write_u8(self.kind as u8)?;
             Ok(())
         }
@@ -231,7 +231,7 @@ mod no_std_types {
         fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
             reader: &mut wrt_foundation::traits::ReadStream,
             provider: &PStream,
-        ) -> wrt_foundation::WrtResult<Self> {
+        ) -> wrt_error::Result<Self> {
             let module = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
             let name = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
             let kind_byte = reader.read_u8()?;
@@ -250,8 +250,9 @@ mod no_std_types {
 
     impl wrt_foundation::traits::Checksummable for Import {
         fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-            self.module.update_checksum(checksum);
-            self.name.update_checksum(checksum);
+            use wrt_foundation::traits::Checksummable;
+            wrt_foundation::traits::Checksummable::update_checksum(&self.module, checksum);
+            wrt_foundation::traits::Checksummable::update_checksum(&self.name, checksum);
             checksum.update_slice(&[self.kind as u8]);
         }
     }
@@ -265,7 +266,7 @@ use crate::prelude::*;
 /// Trait for component analysis capabilities
 pub trait ComponentAnalyzer {
     /// Create a summary of a component's structure
-    fn analyze(&self) -> wrt_foundation::WrtResult<crate::component::analysis::ComponentSummary>;
+    fn analyze(&self) -> wrt_error::Result<crate::component::analysis::ComponentSummary>;
 
     /// Get embedded modules from a component
     #[cfg(feature = "std")]
@@ -275,7 +276,7 @@ pub trait ComponentAnalyzer {
     #[cfg(not(feature = "std"))]
     fn get_embedded_modules(
         &self,
-    ) -> wrt_foundation::WrtResult<
+    ) -> wrt_error::Result<
         BoundedVec<
             BoundedVec<u8, 1024, wrt_foundation::safe_memory::NoStdProvider<65536>>,
             16,
@@ -294,7 +295,7 @@ pub trait ComponentAnalyzer {
     #[cfg(not(feature = "std"))]
     fn get_export_info(
         &self,
-    ) -> wrt_foundation::WrtResult<
+    ) -> wrt_error::Result<
         BoundedVec<ExportInfo, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     >;
 
@@ -306,7 +307,7 @@ pub trait ComponentAnalyzer {
     #[cfg(not(feature = "std"))]
     fn get_import_info(
         &self,
-    ) -> wrt_foundation::WrtResult<
+    ) -> wrt_error::Result<
         BoundedVec<ImportInfo, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     >;
 }
@@ -335,7 +336,7 @@ pub struct ExportInfo {
 
 impl ExportInfo {
     /// Create a new ExportInfo with managed memory allocation
-    pub fn new() -> wrt_foundation::WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         return Ok(Self {
             name:      std::string::String::new(),
@@ -410,7 +411,7 @@ pub struct ImportInfo {
 
 impl ImportInfo {
     /// Create a new ImportInfo with managed memory allocation
-    pub fn new() -> wrt_foundation::WrtResult<Self> {
+    pub fn new() -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         return Ok(Self {
             module:    std::string::String::new(),
@@ -501,7 +502,7 @@ pub struct ModuleInfo {
 /// Implementation of ComponentAnalyzer for Component
 #[cfg(feature = "std")]
 impl ComponentAnalyzer for Component {
-    fn analyze(&self) -> wrt_foundation::WrtResult<crate::component::analysis::ComponentSummary> {
+    fn analyze(&self) -> wrt_error::Result<crate::component::analysis::ComponentSummary> {
         // Create a basic summary directly from the component
         Ok(crate::component::analysis::ComponentSummary {
             name:                 String::new(), /* Keep as std String for now as this is used
@@ -542,7 +543,7 @@ impl ComponentAnalyzer for Component {
 
 #[cfg(not(feature = "std"))]
 impl ComponentAnalyzer for Component {
-    fn analyze(&self) -> wrt_foundation::WrtResult<crate::component::analysis::ComponentSummary> {
+    fn analyze(&self) -> wrt_error::Result<crate::component::analysis::ComponentSummary> {
         // Create a basic summary directly from the component (simplified for no_std)
         Ok(crate::component::analysis::ComponentSummary {
             name:                 "",
@@ -555,7 +556,7 @@ impl ComponentAnalyzer for Component {
             aliases_count:        0, // No aliases field in no_std Component
             module_info:          wrt_foundation::BoundedVec::new(
                 wrt_foundation::safe_managed_alloc!(
-                    8192,
+                    4096,
                     wrt_foundation::budget_aware_provider::CrateId::Decoder
                 )?,
             )?,
@@ -567,7 +568,7 @@ impl ComponentAnalyzer for Component {
     #[cfg(not(feature = "std"))]
     fn get_embedded_modules(
         &self,
-    ) -> wrt_foundation::WrtResult<
+    ) -> wrt_error::Result<
         BoundedVec<
             BoundedVec<u8, 1024, wrt_foundation::safe_memory::NoStdProvider<65536>>,
             16,
@@ -595,7 +596,7 @@ impl ComponentAnalyzer for Component {
     #[cfg(not(feature = "std"))]
     fn get_export_info(
         &self,
-    ) -> wrt_foundation::WrtResult<
+    ) -> wrt_error::Result<
         BoundedVec<ExportInfo, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     > {
         // This will be implemented in the analysis module
@@ -614,7 +615,7 @@ impl ComponentAnalyzer for Component {
     #[cfg(not(feature = "std"))]
     fn get_import_info(
         &self,
-    ) -> wrt_foundation::WrtResult<
+    ) -> wrt_error::Result<
         BoundedVec<ImportInfo, 64, wrt_foundation::safe_memory::NoStdProvider<8192>>,
     > {
         // This will be implemented in the analysis module
@@ -641,7 +642,7 @@ impl wrt_foundation::traits::ToBytes for ExportInfo {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         {
             writer.write_all(self.name.as_bytes())?;
@@ -672,7 +673,7 @@ impl wrt_foundation::traits::FromBytes for ExportInfo {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         {
             let mut bytes = Vec::new();
@@ -714,13 +715,13 @@ impl wrt_foundation::traits::Checksummable for ExportInfo {
         #[cfg(not(feature = "std"))]
         {
             if let Ok(s) = self.name.as_str() {
-                checksum.update_slice(s.as_bytes);
+                checksum.update_slice(s.as_bytes());
             }
             if let Ok(s) = self.kind.as_str() {
-                checksum.update_slice(s.as_bytes);
+                checksum.update_slice(s.as_bytes());
             }
             if let Ok(s) = self.type_info.as_str() {
-                checksum.update_slice(s.as_bytes);
+                checksum.update_slice(s.as_bytes());
             }
         }
     }
@@ -737,7 +738,7 @@ impl wrt_foundation::traits::ToBytes for ImportInfo {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         #[cfg(feature = "std")]
         writer.write_all(self.module.as_bytes())?;
         #[cfg(not(feature = "std"))]
@@ -777,7 +778,7 @@ impl wrt_foundation::traits::FromBytes for ImportInfo {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         {
             let mut bytes = Vec::new();
@@ -821,16 +822,16 @@ impl wrt_foundation::traits::Checksummable for ImportInfo {
         #[cfg(not(feature = "std"))]
         {
             if let Ok(s) = self.module.as_str() {
-                checksum.update_slice(s.as_bytes);
+                checksum.update_slice(s.as_bytes());
             }
             if let Ok(s) = self.name.as_str() {
-                checksum.update_slice(s.as_bytes);
+                checksum.update_slice(s.as_bytes());
             }
             if let Ok(s) = self.kind.as_str() {
-                checksum.update_slice(s.as_bytes);
+                checksum.update_slice(s.as_bytes());
             }
             if let Ok(s) = self.type_info.as_str() {
-                checksum.update_slice(s.as_bytes);
+                checksum.update_slice(s.as_bytes());
             }
         }
     }

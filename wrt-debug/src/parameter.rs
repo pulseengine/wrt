@@ -147,10 +147,10 @@ impl<'a> wrt_foundation::traits::Checksummable for Parameter<'a> {
         } else {
             checksum.update(0);
         }
-        checksum.update(self.param_type.to_u8);
-        checksum.update_slice(&self.file_index.to_le_bytes);
-        checksum.update_slice(&self.line.to_le_bytes);
-        checksum.update_slice(&self.position.to_le_bytes);
+        checksum.update(self.param_type.to_u8());
+        checksum.update_slice(&self.file_index.to_le_bytes());
+        checksum.update_slice(&self.line.to_le_bytes());
+        checksum.update_slice(&self.position.to_le_bytes());
         checksum.update(self.is_variadic as u8);
     }
 }
@@ -160,7 +160,7 @@ impl<'a> wrt_foundation::traits::ToBytes for Parameter<'a> {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'b>,
         provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         // Write name option
         match &self.name {
             Some(name) => {
@@ -184,7 +184,7 @@ impl<'a> wrt_foundation::traits::FromBytes for Parameter<'a> {
     fn from_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'b>,
         provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let has_name = reader.read_u8()? != 0;
         let name = if has_name {
             Some(DebugString::from_bytes_with_provider(reader, provider)?)
@@ -344,12 +344,12 @@ impl<'a> wrt_foundation::traits::Checksummable for InlinedFunction<'a> {
         } else {
             checksum.update(0);
         }
-        checksum.update_slice(&self.abstract_origin.to_le_bytes);
-        checksum.update_slice(&self.low_pc.to_le_bytes);
-        checksum.update_slice(&self.high_pc.to_le_bytes);
-        checksum.update_slice(&self.call_file.to_le_bytes);
-        checksum.update_slice(&self.call_line.to_le_bytes);
-        checksum.update_slice(&self.call_column.to_le_bytes);
+        checksum.update_slice(&self.abstract_origin.to_le_bytes());
+        checksum.update_slice(&self.low_pc.to_le_bytes());
+        checksum.update_slice(&self.high_pc.to_le_bytes());
+        checksum.update_slice(&self.call_file.to_le_bytes());
+        checksum.update_slice(&self.call_line.to_le_bytes());
+        checksum.update_slice(&self.call_column.to_le_bytes());
         checksum.update(self.depth);
     }
 }
@@ -359,7 +359,7 @@ impl<'a> wrt_foundation::traits::ToBytes for InlinedFunction<'a> {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'b>,
         provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         // Write name option
         match &self.name {
             Some(name) => {
@@ -385,7 +385,7 @@ impl<'a> wrt_foundation::traits::FromBytes for InlinedFunction<'a> {
     fn from_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'b>,
         provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let has_name = reader.read_u8()? != 0;
         let name = if has_name {
             Some(DebugString::from_bytes_with_provider(reader, provider)?)

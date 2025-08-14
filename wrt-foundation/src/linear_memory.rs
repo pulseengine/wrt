@@ -217,6 +217,24 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Clone for PalMemoryProvid
     }
 }
 
+impl<A: PageAllocator + Send + Sync + Clone + 'static + Default> Default for PalMemoryProvider<A> {
+    fn default() -> Self {
+        // Create with default allocator and reasonable defaults
+        Self::new(A::default(), 16, Some(256), VerificationLevel::default()).expect("Failed to create default PalMemoryProvider")
+    }
+}
+
+impl<A: PageAllocator + Send + Sync + Clone + 'static> PartialEq for PalMemoryProvider<A> {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare allocators and key properties
+        self.current_pages == other.current_pages 
+            && self.maximum_pages == other.maximum_pages
+            && self.initial_allocation_size == other.initial_allocation_size
+    }
+}
+
+impl<A: PageAllocator + Send + Sync + Clone + 'static> Eq for PalMemoryProvider<A> {}
+
 impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     /// Creates a new `PalMemoryProvider`.
     ///
@@ -324,7 +342,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     }
 }
 
-impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryProvider<A> {
+impl<A: PageAllocator + Send + Sync + Clone + 'static + Default> Provider for PalMemoryProvider<A> {
     type Allocator = PageAllocatorAdapter<A>;
 
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {

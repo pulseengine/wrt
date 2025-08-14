@@ -151,7 +151,7 @@ pub type BoundedSymbolMap<V> =
 pub type BoundedDebugString = BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>;
 
 /// Create a new bounded stack trace vector
-pub fn new_stack_trace_vec<T>() -> WrtResult<BoundedStackTraceVec<T>>
+pub fn new_stack_trace_vec<T>() -> Result<BoundedStackTraceVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -168,7 +168,7 @@ where
 }
 
 /// Create a new bounded source file vector
-pub fn new_source_file_vec<T>() -> WrtResult<BoundedSourceFileVec<T>>
+pub fn new_source_file_vec<T>() -> Result<BoundedSourceFileVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -185,7 +185,7 @@ where
 }
 
 /// Create a new bounded file path
-pub fn new_file_path() -> WrtResult<BoundedFilePath> {
+pub fn new_file_path() -> Result<BoundedFilePath> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str("", provider)
@@ -193,7 +193,7 @@ pub fn new_file_path() -> WrtResult<BoundedFilePath> {
 }
 
 /// Create a bounded file path from str
-pub fn bounded_file_path_from_str(s: &str) -> WrtResult<BoundedFilePath> {
+pub fn bounded_file_path_from_str(s: &str) -> Result<BoundedFilePath> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str(s, provider)
@@ -201,7 +201,7 @@ pub fn bounded_file_path_from_str(s: &str) -> WrtResult<BoundedFilePath> {
 }
 
 /// Create a new bounded function name
-pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
+pub fn new_function_name() -> Result<BoundedFunctionName> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str("", provider)
@@ -209,7 +209,7 @@ pub fn new_function_name() -> WrtResult<BoundedFunctionName> {
 }
 
 /// Create a bounded function name from str
-pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName> {
+pub fn bounded_function_name_from_str(s: &str) -> Result<BoundedFunctionName> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str(s, provider)
@@ -217,7 +217,7 @@ pub fn bounded_function_name_from_str(s: &str) -> WrtResult<BoundedFunctionName>
 }
 
 /// Create a new bounded breakpoint vector
-pub fn new_breakpoint_vec<T>() -> WrtResult<BoundedBreakpointVec<T>>
+pub fn new_breakpoint_vec<T>() -> Result<BoundedBreakpointVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -234,7 +234,7 @@ where
 }
 
 /// Create a new bounded watch vector
-pub fn new_watch_vec<T>() -> WrtResult<BoundedWatchVec<T>>
+pub fn new_watch_vec<T>() -> Result<BoundedWatchVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -251,7 +251,7 @@ where
 }
 
 /// Create a new bounded locals debug vector
-pub fn new_locals_debug_vec<T>() -> WrtResult<BoundedLocalsDebugVec<T>>
+pub fn new_locals_debug_vec<T>() -> Result<BoundedLocalsDebugVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -268,7 +268,7 @@ where
 }
 
 /// Create a new bounded debug type map
-pub fn new_debug_type_map<V>() -> WrtResult<BoundedDebugTypeMap<V>>
+pub fn new_debug_type_map<V>() -> Result<BoundedDebugTypeMap<V>>
 where
     V: Checksummable + ToBytes + FromBytes + Clone + Default + PartialEq + Eq,
 {
@@ -279,7 +279,7 @@ where
 }
 
 /// Create a new bounded source map
-pub fn new_source_map<V>() -> WrtResult<BoundedSourceMap<V>>
+pub fn new_source_map<V>() -> Result<BoundedSourceMap<V>>
 where
     V: Checksummable + ToBytes + FromBytes + Clone + Default + PartialEq + Eq,
 {
@@ -290,7 +290,7 @@ where
 }
 
 /// Create a new bounded diagnostic vector
-pub fn new_diagnostic_vec<T>() -> WrtResult<BoundedDiagnosticVec<T>>
+pub fn new_diagnostic_vec<T>() -> Result<BoundedDiagnosticVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -307,7 +307,7 @@ where
 }
 
 /// Create a new bounded diagnostic message
-pub fn new_diagnostic_message() -> WrtResult<BoundedDiagnosticMessage> {
+pub fn new_diagnostic_message() -> Result<BoundedDiagnosticMessage> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str("", provider)
@@ -315,7 +315,7 @@ pub fn new_diagnostic_message() -> WrtResult<BoundedDiagnosticMessage> {
 }
 
 /// Create a bounded diagnostic message from str
-pub fn bounded_diagnostic_from_str(s: &str) -> WrtResult<BoundedDiagnosticMessage> {
+pub fn bounded_diagnostic_from_str(s: &str) -> Result<BoundedDiagnosticMessage> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str(s, provider).map_err(|_e| {
@@ -324,7 +324,7 @@ pub fn bounded_diagnostic_from_str(s: &str) -> WrtResult<BoundedDiagnosticMessag
 }
 
 /// Create a new bounded symbol map
-pub fn new_symbol_map<V>() -> WrtResult<
+pub fn new_symbol_map<V>() -> Result<
     BoundedHashMap<
         BoundedString<MAX_FUNCTION_NAME_LEN, DebugProvider>,
         V,
@@ -342,7 +342,7 @@ where
 }
 
 /// Create a new bounded debug string
-pub fn new_debug_string() -> WrtResult<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
+pub fn new_debug_string() -> Result<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str("", provider)
@@ -352,7 +352,7 @@ pub fn new_debug_string() -> WrtResult<BoundedString<MAX_DEBUG_STRING_LEN, Debug
 /// Create a bounded debug string from str
 pub fn bounded_debug_string_from_str(
     s: &str,
-) -> WrtResult<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
+) -> Result<BoundedString<MAX_DEBUG_STRING_LEN, DebugProvider>> {
     let guard = safe_managed_alloc!(DEBUG_PROVIDER_SIZE, CrateId::Debug)?;
     let provider = guard.clone();
     BoundedString::from_str(s, provider)

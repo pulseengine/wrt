@@ -5,9 +5,7 @@
 //! DWARF line number program implementation
 
 use wrt_error::{
-    codes,
     Error,
-    ErrorCategory,
     Result,
 };
 

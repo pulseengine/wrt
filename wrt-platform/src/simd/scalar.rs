@@ -3278,40 +3278,40 @@ mod tests {
         ); // -1 >> 2 = -1
 
         // Test unsigned right shift by 2
-        let shr_u_result = provider.v128_i32x4_shr_u(&a, 2);
+        let shr_unsigned_result = provider.v128_i32x4_shr_u(&a, 2);
         assert_eq!(
             u32::from_le_bytes([
-                shr_u_result[0],
-                shr_u_result[1],
-                shr_u_result[2],
-                shr_u_result[3]
+                shr_unsigned_result[0],
+                shr_unsigned_result[1],
+                shr_unsigned_result[2],
+                shr_unsigned_result[3]
             ]),
             2
         ); // 8 >> 2 = 2
         assert_eq!(
             u32::from_le_bytes([
-                shr_u_result[4],
-                shr_u_result[5],
-                shr_u_result[6],
-                shr_u_result[7]
+                shr_unsigned_result[4],
+                shr_unsigned_result[5],
+                shr_unsigned_result[6],
+                shr_unsigned_result[7]
             ]),
             1_073_741_820
         ); // (u32)(-16) >> 2
         assert_eq!(
             u32::from_le_bytes([
-                shr_u_result[8],
-                shr_u_result[9],
-                shr_u_result[10],
-                shr_u_result[11]
+                shr_unsigned_result[8],
+                shr_unsigned_result[9],
+                shr_unsigned_result[10],
+                shr_unsigned_result[11]
             ]),
             0
         ); // 1 >> 2 = 0
         assert_eq!(
             u32::from_le_bytes([
-                shr_u_result[12],
-                shr_u_result[13],
-                shr_u_result[14],
-                shr_u_result[15]
+                shr_unsigned_result[12],
+                shr_unsigned_result[13],
+                shr_unsigned_result[14],
+                shr_unsigned_result[15]
             ]),
             1_073_741_823
         ); // (u32)(-1) >> 2

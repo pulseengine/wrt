@@ -33,8 +33,10 @@ pub fn add_section(
 ) {
     let _ = binary.try_push(section_id);
     let leb_bytes = write_leb128_u32(content.len() as u32);
-    for byte in leb_bytes.iter() {
-        let _ = binary.try_push(*byte);
+    if let Ok(slice) = leb_bytes.as_slice() {
+        for &byte in slice {
+            let _ = binary.try_push(byte);
+        }
     }
     for &byte in content {
         let _ = binary.try_push(byte);

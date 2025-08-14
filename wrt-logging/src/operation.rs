@@ -70,7 +70,7 @@ impl LogOperation {
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOperation<P> {
     /// Create a new log operation
-    pub fn new(level: LogLevel, message: &str, provider: P) -> wrt_foundation::Result<Self> {
+    pub fn new(level: LogLevel, message: &str, provider: P) -> wrt_error::Result<Self> {
         let bounded_message = wrt_foundation::BoundedString::from_str(message, provider)?;
         Ok(Self {
             level,
@@ -85,7 +85,7 @@ impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOp
         message: &str,
         component_id: &str,
         provider: P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let bounded_message = wrt_foundation::BoundedString::from_str(message, provider.clone())?;
         let bounded_component_id = wrt_foundation::BoundedString::from_str(component_id, provider)?;
         Ok(Self {

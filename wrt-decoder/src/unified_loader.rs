@@ -312,10 +312,11 @@ fn parse_type_section_info(data: &[u8], info: &mut ModuleInfo) -> Result<()> {
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = create_decoder_provider::<256>()?;
+            let provider = create_decoder_provider::<4096>()?;
             let func_str = DecoderString::from_str("func", provider)
                 .map_err(|_| Error::runtime_execution_error("Failed to create string"))?;
-            info.function_types.push(func_str);
+            // For now, just use a hardcoded string as we can't easily convert BoundedString to String in no_std
+            info.function_types.push(alloc::string::String::from("func"));
         }
 
         // Skip the actual type parsing for now
@@ -405,7 +406,7 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
         }
         #[cfg(not(feature = "std"))]
         {
-            let provider = create_decoder_provider::<256>()?;
+            let provider = create_decoder_provider::<4096>()?;
             let module = DecoderString::from_str(module_name, provider.clone())
                 .map_err(|_| Error::runtime_execution_error("Failed to create string"))?;
             let name = DecoderString::from_str(import_name, provider).map_err(|_| {
@@ -415,9 +416,10 @@ pub(crate) fn parse_import_section_info(data: &[u8], info: &mut ModuleInfo) -> R
                     "Import name string too long",
                 )
             })?;
+            // For now, use the original string values since BoundedString conversion is problematic in no_std
             info.imports.push(ImportInfo {
-                module,
-                name,
+                module: alloc::string::String::from(module_name),
+                name: alloc::string::String::from(import_name),
                 import_type,
             });
         }
@@ -503,11 +505,12 @@ pub(crate) fn parse_export_section_info(data: &[u8], info: &mut ModuleInfo) -> R
 
         #[cfg(not(feature = "std"))]
         {
-            let provider = create_decoder_provider::<256>()?;
+            let provider = create_decoder_provider::<4096>()?;
             let name = DecoderString::from_str(export_name, provider)
                 .map_err(|_| Error::runtime_execution_error("Failed to create string"))?;
+            // For now, use the original string value since BoundedString conversion is problematic in no_std
             info.exports.push(ExportInfo {
-                name,
+                name: alloc::string::String::from(export_name),
                 export_type,
                 index,
             });
@@ -600,12 +603,13 @@ fn extract_builtin_imports(binary: &[u8]) -> Result<Vec<String>> {
 
                     #[cfg(not(feature = "std"))]
                     {
-                        let provider = create_decoder_provider::<256>()?;
+                        let provider = create_decoder_provider::<4096>()?;
                         let import_str =
                             DecoderString::from_str(import_name, provider).map_err(|_| {
                                 Error::runtime_execution_error("Failed to create import string")
                             })?;
-                        builtin_imports.push(import_str);
+                        // For now, use the original string value since BoundedString conversion is problematic in no_std
+                        builtin_imports.push(alloc::string::String::from(import_name));
                     }
                 }
 

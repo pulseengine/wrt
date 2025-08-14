@@ -23,6 +23,7 @@ pub struct SimdOperations {
 
 impl SimdOperations {
     /// Create a new SIMD operations executor with runtime detection
+    #[must_use]
     pub fn new() -> Self {
         Self {
             runtime: SimdRuntime::new(),
@@ -30,6 +31,7 @@ impl SimdOperations {
     }
 
     /// Get the underlying SIMD runtime for direct access if needed
+    #[must_use]
     pub fn runtime(&self) -> &SimdRuntime {
         &self.runtime
     }

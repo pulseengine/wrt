@@ -796,7 +796,7 @@ mod tests {
 
     // #[cfg(target_arch = "x86_64")]
     #[test]
-    #[ignore] // Temporarily ignore - cfg attribute causing compiler issue
+    #[ignore = "Temporarily ignore - cfg attribute causing compiler issue"]
     fn test_intel_optimizations() {
         // Test CET availability detection
         let cet_available = intel::ControlFlowEnforcement::is_available();

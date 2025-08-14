@@ -6953,7 +6953,7 @@ impl StacklessFrame {
         }
 
         if n == 0 {
-            return Ok();
+            return Ok(());
         } // No-op
 
         // Assuming segment.items are Vec<u32> (function indices) or similar that can be
@@ -7018,7 +7018,7 @@ impl StacklessFrame {
         }
 
         if n == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Perform copy: if ranges overlap, copy direction matters.
@@ -7077,7 +7077,7 @@ impl StacklessFrame {
         }
 
         if n == 0 {
-            return Ok();
+            return Ok(());
         }
         // TODO: Type check val_to_fill against table.element_type()
         for i in 0..n {
@@ -7145,7 +7145,7 @@ impl StacklessFrame {
             ));
         }
         if n == 0 {
-            return Ok();
+            return Ok(());
         }
 
         let data_to_write = data_segment
@@ -7213,7 +7213,7 @@ impl StacklessFrame {
             return Err(Error::memory_error("memory.copy out of bounds"));
         }
         if n == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Wasm spec: if d_m is m and s_m is m, then the copy is performed as if the
@@ -7314,7 +7314,7 @@ impl StacklessFrame {
             return Err(Error::memory_error("memory.fill out of bounds"));
         }
         if n == 0 {
-            return Ok();
+            return Ok(());
         }
 
         memory.fill(dst_offset, n, val_to_fill_byte)

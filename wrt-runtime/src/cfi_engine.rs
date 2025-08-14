@@ -24,6 +24,8 @@
 
 #![allow(dead_code)] // Allow during development
 
+use wrt_error::Result;
+
 // CFI imports temporarily disabled since CFI module is disabled
 // use wrt_instructions::{
 //     CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext,
@@ -98,7 +100,7 @@ mod cfi_types {
             &self,
             writer: &mut wrt_foundation::traits::WriteStream<'_>,
             _provider: &P,
-        ) -> wrt_foundation::Result<()> {
+        ) -> wrt_error::Result<()> {
             writer.write_all(&self.return_address.to_le_bytes())?;
             writer.write_all(&self.stack_pointer.to_le_bytes())?;
             writer.write_all(&self.function_index.to_le_bytes())?;
@@ -110,7 +112,7 @@ mod cfi_types {
         fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
             reader: &mut wrt_foundation::traits::ReadStream<'_>,
             _provider: &P,
-        ) -> wrt_foundation::Result<Self> {
+        ) -> wrt_error::Result<Self> {
             let mut bytes = [0u8; 4];
 
             reader.read_exact(&mut bytes)?;
@@ -161,7 +163,6 @@ use crate::{
         Error,
         ErrorCategory,
         PartialEq,
-        Result,
     },
 }; // stackless::StacklessEngine temporarily disabled
 
@@ -385,7 +386,7 @@ impl wrt_foundation::traits::ToBytes for LandingPadExpectation {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.function_index.to_le_bytes())?;
         writer.write_all(&self.instruction_offset.to_le_bytes())?;
         Ok(())
@@ -396,7 +397,7 @@ impl wrt_foundation::traits::FromBytes for LandingPadExpectation {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut func_bytes = [0u8; 4];
         reader.read_exact(&mut func_bytes)?;
         let function_index = u32::from_le_bytes(func_bytes);

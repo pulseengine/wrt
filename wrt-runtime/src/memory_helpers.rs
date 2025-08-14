@@ -6,20 +6,7 @@
 // Import Arc from appropriate source based on feature flags
 // alloc is imported in lib.rs with proper feature gates
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::format;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::sync::Arc;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::vec::Vec;
-// Import format! macro for string formatting
-#[cfg(feature = "std")]
-use std::format;
-#[cfg(feature = "std")]
-use std::sync::Arc;
-// Import Vec
-#[cfg(feature = "std")]
-use std::vec::Vec;
+use crate::prelude::*;
 
 use wrt_error::{
     Error,

@@ -25,6 +25,10 @@
 
 #[cfg(not(feature = "std"))]
 use wrt_foundation::safe_memory::NoStdProvider;
+use wrt_foundation::{
+    safe_managed_alloc,
+    CrateId,
+};
 
 use crate::{
     control_ops::BranchTarget,
@@ -1937,7 +1941,7 @@ impl DefaultCfiControlFlowOps {
     }
 }
 
-#[cfg(all(test, any(feature = "std",)))]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 

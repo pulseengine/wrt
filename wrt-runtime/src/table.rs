@@ -174,10 +174,10 @@ impl wrt_foundation::traits::Checksummable for Table {
             WrtRefType::Funcref => 0u8,
             WrtRefType::Externref => 1u8,
         };
-        checksum.update_slice(&element_type_byte.to_le_bytes);
-        checksum.update_slice(&self.ty.limits.min.to_le_bytes);
+        checksum.update_slice(&element_type_byte.to_le_bytes());
+        checksum.update_slice(&self.ty.limits.min.to_le_bytes());
         if let Some(max) = self.ty.limits.max {
-            checksum.update_slice(&max.to_le_bytes);
+            checksum.update_slice(&max.to_le_bytes());
         }
     }
 }
@@ -191,7 +191,7 @@ impl wrt_foundation::traits::ToBytes for Table {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         let element_type_byte = match self.ty.element_type {
             WrtRefType::Funcref => 0u8,
             WrtRefType::Externref => 1u8,
@@ -205,7 +205,7 @@ impl wrt_foundation::traits::FromBytes for Table {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 1];
         reader.read_exact(&mut bytes)?;
         let element_type = match bytes[0] {
@@ -496,7 +496,7 @@ impl Table {
 
         // Handle the case where regions don't overlap or no elements to copy
         if len == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Create temporary stack to store elements during copy
@@ -551,7 +551,7 @@ impl Table {
 
         // Handle empty fill
         if len == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Create a new stack with the filled elements

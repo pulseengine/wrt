@@ -272,7 +272,7 @@ where
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.id.as_u32().to_le_bytes())?;
         self.component_type.to_bytes_with_provider(writer, provider)?;
         self.exports.to_bytes_with_provider(writer, provider)?;
@@ -288,7 +288,7 @@ where
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut id_bytes = [0u8; 4];
         reader.read_exact(&mut id_bytes)?;
         let id = ComponentId(u32::from_le_bytes(id_bytes));

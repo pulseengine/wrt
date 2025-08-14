@@ -662,7 +662,7 @@ impl wrt_foundation::traits::ToBytes for DataRaceReport {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.memory_address.to_le_bytes())
     }
 }
@@ -671,7 +671,7 @@ impl wrt_foundation::traits::FromBytes for DataRaceReport {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 8];
         reader.read_exact(&mut bytes)?;
         let memory_address = usize::from_le_bytes(bytes);
@@ -708,7 +708,7 @@ impl wrt_foundation::traits::ToBytes for OrderingViolationReport {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.thread_id.to_le_bytes())
     }
 }
@@ -717,7 +717,7 @@ impl wrt_foundation::traits::FromBytes for OrderingViolationReport {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
         let thread_id = u32::from_le_bytes(bytes) as ThreadId;
@@ -752,7 +752,7 @@ impl wrt_foundation::traits::ToBytes for DeadlockReport {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&[0u8; 4])
     }
 }
@@ -761,7 +761,7 @@ impl wrt_foundation::traits::FromBytes for DeadlockReport {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         _reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         Ok(Self::default())
     }
 }
@@ -790,7 +790,7 @@ impl wrt_foundation::traits::ToBytes for SyncViolationReport {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.thread_id.to_le_bytes())
     }
 }
@@ -799,7 +799,7 @@ impl wrt_foundation::traits::FromBytes for SyncViolationReport {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
         Ok(Self {

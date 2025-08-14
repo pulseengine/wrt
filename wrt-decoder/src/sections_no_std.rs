@@ -136,7 +136,7 @@ impl wrt_foundation::traits::ToBytes for Section {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         let discriminant = match self {
             Section::Type(_) => 0u8,
             Section::Import(_) => 1,
@@ -161,7 +161,7 @@ impl wrt_foundation::traits::FromBytes for Section {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         let discriminant = reader.read_u8()?;
         match discriminant {
             13 => Ok(Section::Empty),
@@ -321,7 +321,7 @@ pub mod parsers {
             // Convert to WrtFuncType - Note: This conversion needs to be implemented
             // For now, we'll create a placeholder
             // Convert to the correct BoundedVec type for FuncType
-            let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+            let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
             let mut func_type_params =
                 BoundedVec::<wrt_format::types::ValueType, 128, DecoderProvider>::new(
                     provider.clone(),
@@ -458,7 +458,7 @@ pub mod parsers {
 
             // Convert to WrtImport
             // Create bounded string from the parsed string
-            let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+            let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
             let module_str = module_string
                 .as_str()
                 .map_err(|_| Error::parse_error("Invalid module string"))?;
@@ -627,12 +627,13 @@ pub mod parsers {
     }
 
     /// Parse an element section with bounded memory
-    pub fn parse_element_section(bytes: &[u8]) -> Result<BoundedElementVec<WrtElementSegment>> {
+    pub fn parse_element_section(bytes: &[u8]) -> Result<BoundedElementVec<wrt_format::pure_format_types::PureElementSegment>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_ELEMENTS as u32, "element count")?;
 
-        let mut elements = new_element_vec()?;
+        let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
+        let mut elements = BoundedVec::<wrt_format::pure_format_types::PureElementSegment, MAX_ELEMENTS, DecoderProvider>::new(provider)?;
 
         for _ in 0..count {
             let (pure_element, new_offset) = parse_element_segment(bytes, offset)?;
@@ -675,7 +676,7 @@ pub mod parsers {
             }
 
             // Copy body data
-            let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+            let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
             let mut body = BoundedVec::new(provider)
                 .map_err(|_| Error::memory_error("Failed to allocate function body"))?;
 
@@ -693,12 +694,13 @@ pub mod parsers {
     }
 
     /// Parse a data section with bounded memory
-    pub fn parse_data_section(bytes: &[u8]) -> Result<BoundedDataVec<WrtDataSegment>> {
+    pub fn parse_data_section(bytes: &[u8]) -> Result<BoundedDataVec<wrt_format::pure_format_types::PureDataSegment>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
 
         check_bounds_u32(count, MAX_DATA_SEGMENTS as u32, "data count")?;
 
-        let mut data_segments = new_data_vec()?;
+        let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
+        let mut data_segments = BoundedVec::<wrt_format::pure_format_types::PureDataSegment, MAX_DATA_SEGMENTS, DecoderProvider>::new(provider)?;
 
         for _ in 0..count {
             let (pure_data, new_offset) = parse_data(bytes, offset)?;

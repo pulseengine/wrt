@@ -8,7 +8,7 @@ use std::{
     collections::BTreeMap,
     vec::Vec,
 };
-#[cfg(all(not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use std::{
     collections::BTreeMap,
     vec::Vec,

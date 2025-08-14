@@ -44,9 +44,9 @@ std = [
     "wrt-foundation/std",
     "wrt-foundation/platform-memory"]
 
-# Allocation support for no_std environments
+# Allocation support for no_std environments (DEPRECATED - use bounded-allocation instead)
 alloc = [
-    "wrt-foundation/alloc",
+    "wrt-foundation/bounded-allocation",
     "wrt-format/alloc",
     "wrt-host?/alloc",
     "wrt-instructions/alloc",
@@ -63,18 +63,69 @@ optimize = [
     "wrt-host?/optimize",
     "wrt-intercept/optimize"]
 
-# Safety level presets using capability-based features
-qm = ["wrt-foundation/dynamic-allocation"]
-asil-a = ["wrt-foundation/bounded-collections"]
-asil-b = ["wrt-foundation/bounded-collections"]
-asil-c = ["wrt-foundation/static-memory-safety"]
+# ============================================================================
+# Four-Layer Safety Architecture Feature Propagation
+# ============================================================================
+
+# Layer 1: Memory Management Strategy (mutually exclusive)
+static-allocation = ["wrt-foundation/static-allocation"]
+bounded-allocation = ["wrt-foundation/bounded-allocation"]
+managed-allocation = ["wrt-foundation/managed-allocation"]
+std-allocation = ["wrt-foundation/std-allocation"]
+
+# Layer 3: Safety Standards (mutually exclusive within project)
+iso-26262 = ["wrt-foundation/iso-26262"]
+do-178c = ["wrt-foundation/do-178c"]
+iec-61508 = ["wrt-foundation/iec-61508"]
+iec-62304 = ["wrt-foundation/iec-62304"]
+en-50128 = ["wrt-foundation/en-50128"]
+iso-25119 = ["wrt-foundation/iso-25119"]
+
+# Layer 4: Safety Integrity Levels (dependent on standard)
+# ISO 26262 - Automotive
+qm = ["wrt-foundation/qm"]
+asil-a = ["wrt-foundation/asil-a"]
+asil-b = ["wrt-foundation/asil-b"]
+asil-c = ["wrt-foundation/asil-c"]
 asil-d = ["wrt-foundation/asil-d"]
 
-# Legacy compatibility features
-safe-memory = ["asil-b"]
-safety-asil-b = ["asil-b"]
-safety-asil-c = ["asil-c"]
-safety-asil-d = ["asil-d"]
+# DO-178C - Aerospace
+dal-e = ["wrt-foundation/dal-e"]
+dal-d = ["wrt-foundation/dal-d"]
+dal-c = ["wrt-foundation/dal-c"]
+dal-b = ["wrt-foundation/dal-b"]
+dal-a = ["wrt-foundation/dal-a"]
+
+# IEC 61508 - Industrial
+sil-1 = ["wrt-foundation/sil-1"]
+sil-2 = ["wrt-foundation/sil-2"]
+sil-3 = ["wrt-foundation/sil-3"]
+sil-4 = ["wrt-foundation/sil-4"]
+
+# IEC 62304 - Medical
+class-a = ["wrt-foundation/class-a"]
+class-b = ["wrt-foundation/class-b"]
+class-c = ["wrt-foundation/class-c"]
+
+# EN 50128 - Railway
+railway-sil-0 = ["wrt-foundation/railway-sil-0"]
+railway-sil-1 = ["wrt-foundation/railway-sil-1"]
+railway-sil-2 = ["wrt-foundation/railway-sil-2"]
+railway-sil-3 = ["wrt-foundation/railway-sil-3"]
+railway-sil-4 = ["wrt-foundation/railway-sil-4"]
+
+# ISO 25119 - Agricultural
+agpl-a = ["wrt-foundation/agpl-a"]
+agpl-b = ["wrt-foundation/agpl-b"]
+agpl-c = ["wrt-foundation/agpl-c"]
+agpl-d = ["wrt-foundation/agpl-d"]
+agpl-e = ["wrt-foundation/agpl-e"]
+
+# Legacy compatibility features (DEPRECATED - use four-layer architecture above)
+safe-memory = ["iso-26262", "asil-b"]
+safety-asil-b = ["iso-26262", "asil-b"]
+safety-asil-c = ["iso-26262", "asil-c"]
+safety-asil-d = ["iso-26262", "asil-d"]
 
 # Platform features - properly abstracted for ASIL compliance
 # Platform sync enables native platform synchronization primitives

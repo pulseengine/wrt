@@ -565,7 +565,7 @@ pub fn validate_module_no_alloc(bytes: &[u8], validator: ValidatorType) -> Resul
 
     // For Basic validation, we just check the header and section structure
     if validator == ValidatorType::Basic {
-        return Ok();
+        return Ok(());
     }
 
     // For Standard validation, check each section based on the WebAssembly

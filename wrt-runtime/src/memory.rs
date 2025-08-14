@@ -358,7 +358,7 @@ impl Clone for Memory {
         // Create new SafeMemoryHandler
         let new_data = {
             let new_provider = LargeMemoryProvider::default();
-            let mut new_handler = SafeMemoryHandler::new(new_provider)?;
+            let mut new_handler = SafeMemoryHandler::new(new_provider);
 
             // Copy the data into the new handler
             if !current_bytes.is_empty() {
@@ -484,7 +484,7 @@ impl wrt_foundation::traits::ToBytes for Memory {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.ty.limits.min.to_le_bytes())?;
         writer.write_all(&self.ty.limits.max.unwrap_or(0).to_le_bytes())?;
         Ok(())
@@ -495,7 +495,7 @@ impl wrt_foundation::traits::FromBytes for Memory {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut min_bytes = [0u8; 4];
         reader.read_exact(&mut min_bytes)?;
         let min = u32::from_le_bytes(min_bytes);
@@ -558,13 +558,13 @@ impl Memory {
         #[cfg(feature = "std")]
         let data_handler = {
             let provider = LargeMemoryProvider::default();
-            SafeMemoryHandler::new(provider)?
+            SafeMemoryHandler::new(provider)
         };
 
         #[cfg(not(feature = "std"))]
         let data_handler = {
             let provider = LargeMemoryProvider::default();
-            SafeMemoryHandler::new(provider)?
+            SafeMemoryHandler::new(provider)
         };
 
         // Binary std/no_std choice
@@ -955,7 +955,7 @@ impl Memory {
     pub fn read(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
         // Empty read is always successful
         if buffer.is_empty() {
-            return Ok();
+            return Ok(());
         }
 
         // Calculate total size and verify bounds
@@ -991,7 +991,7 @@ impl Memory {
     pub fn write(&mut self, offset: u32, buffer: &[u8]) -> Result<()> {
         // Empty write is always successful
         if buffer.is_empty() {
-            return Ok();
+            return Ok(());
         }
 
         // Calculate total size and verify bounds
@@ -1039,7 +1039,7 @@ impl Memory {
     pub fn write_shared(&self, offset: u32, buffer: &[u8]) -> Result<()> {
         // Empty write is always successful
         if buffer.is_empty() {
-            return Ok();
+            return Ok(());
         }
 
         // NOTE: This method has an API mismatch - SafeMemoryHandler::write_data
@@ -1382,7 +1382,7 @@ impl Memory {
     pub fn fill(&mut self, dst: usize, val: u8, size: usize) -> Result<()> {
         // Handle empty fill
         if size == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // Verify destination is within bounds
@@ -1477,7 +1477,7 @@ impl Memory {
 
         // Handle zero-size initialization
         if size == 0 {
-            return Ok();
+            return Ok(());
         }
 
         // For small copies, we can use set_byte directly - this provides maximum safety
@@ -1498,7 +1498,7 @@ impl Memory {
 
             // Update metrics to reflect the entire operation rather than just the last byte
             self.update_access_metrics(dst, size);
-            return Ok();
+            return Ok(());
         }
 
         // For larger copies, use chunked processing to maintain memory safety
@@ -2198,7 +2198,7 @@ impl MemoryProvider for Memory {
         self.data.provider()
     }
 
-    fn new_handler(&self) -> wrt_foundation::WrtResult<SafeMemoryHandler<Self>>
+    fn new_handler(&self) -> Result<SafeMemoryHandler<Self>>
     where
         Self: Clone,
     {
@@ -2316,7 +2316,7 @@ impl MemoryOperations for Memory {
         // For same-memory copy, we can use a simplified version of
         // copy_within_or_between
         if size == 0 {
-            return Ok();
+            return Ok(());
         }
 
         let dest_usize = wasm_offset_to_usize(dest)?;

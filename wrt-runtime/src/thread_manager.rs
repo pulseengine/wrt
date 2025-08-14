@@ -255,7 +255,7 @@ impl ThreadExecutionContext {
     pub fn update_state(&mut self, new_state: ThreadState) {
         self.info.state = new_state;
         if new_state.is_completed() {
-            self.info.completed_at = Some(wrt_platform::time::current_time_ns);
+            self.info.completed_at = Some(wrt_platform::time::current_time_ns());
         }
     }
 

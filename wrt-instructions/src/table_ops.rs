@@ -825,7 +825,7 @@ impl Validate for TableOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std",)))]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     // Import Vec based on feature flags
     use std::{

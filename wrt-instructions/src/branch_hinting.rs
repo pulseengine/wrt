@@ -211,7 +211,7 @@ impl Validate for BranchHintOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std",)))]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use wrt_foundation::values::{
         ExternRef,

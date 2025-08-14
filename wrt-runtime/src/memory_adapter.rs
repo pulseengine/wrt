@@ -118,7 +118,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         &self,
         _offset: usize,
         _len: usize,
-    ) -> wrt_foundation::WrtResult<wrt_foundation::safe_memory::Slice<'_>> {
+    ) -> Result<wrt_foundation::safe_memory::Slice<'_>> {
         // StdMemoryProvider doesn't manage its own memory buffer
         // It's used as a provider for BoundedVec operations
         // Return an error indicating this operation is not supported
@@ -127,12 +127,12 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         ))
     }
 
-    fn write_data(&mut self, _offset: usize, _data: &[u8]) -> wrt_foundation::WrtResult<()> {
+    fn write_data(&mut self, _offset: usize, _data: &[u8]) -> Result<()> {
         // For StdMemoryProvider, this is a placeholder
         Ok(())
     }
 
-    fn verify_access(&self, _offset: usize, _len: usize) -> wrt_foundation::WrtResult<()> {
+    fn verify_access(&self, _offset: usize, _len: usize) -> Result<()> {
         // For StdMemoryProvider, this is a placeholder
         Ok(())
     }
@@ -146,7 +146,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         1024 * 1024 // 1MB
     }
 
-    fn verify_integrity(&self) -> wrt_foundation::WrtResult<()> {
+    fn verify_integrity(&self) -> Result<()> {
         Ok(())
     }
 
@@ -166,7 +166,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         &mut self,
         _offset: usize,
         _len: usize,
-    ) -> wrt_foundation::WrtResult<wrt_foundation::safe_memory::SliceMut<'_>> {
+    ) -> Result<wrt_foundation::safe_memory::SliceMut<'_>> {
         Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Memory,
             wrt_error::codes::NOT_IMPLEMENTED,
@@ -179,15 +179,15 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         _src: usize,
         _dst: usize,
         _len: usize,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         Ok(())
     }
 
-    fn ensure_used_up_to(&mut self, _offset: usize) -> wrt_foundation::WrtResult<()> {
+    fn ensure_used_up_to(&mut self, _offset: usize) -> Result<()> {
         Ok(())
     }
 
-    fn acquire_memory(&self, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<*mut u8> {
+    fn acquire_memory(&self, _layout: core::alloc::Layout) -> Result<*mut u8> {
         Err(wrt_error::Error::runtime_execution_error(
             "Memory acquisition unsupported ",
         ))
@@ -197,7 +197,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
         &self,
         _ptr: *mut u8,
         _layout: core::alloc::Layout,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -207,7 +207,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
 
     fn new_handler(
         &self,
-    ) -> wrt_foundation::WrtResult<wrt_foundation::safe_memory::SafeMemoryHandler<Self>>
+    ) -> Result<wrt_foundation::safe_memory::SafeMemoryHandler<Self>>
     where
         Self: Clone,
     {
@@ -218,7 +218,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
 }
 
 impl wrt_foundation::safe_memory::Allocator for StdMemoryProvider {
-    fn allocate(&self, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<*mut u8> {
+    fn allocate(&self, _layout: core::alloc::Layout) -> Result<*mut u8> {
         Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Memory,
             wrt_error::codes::NOT_IMPLEMENTED,
@@ -230,7 +230,7 @@ impl wrt_foundation::safe_memory::Allocator for StdMemoryProvider {
         &self,
         _ptr: *mut u8,
         _layout: core::alloc::Layout,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         Ok(())
     }
 }

@@ -138,7 +138,7 @@ impl wrt_foundation::traits::ToBytes for Global {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&value_type_to_u8(&self.ty.value_type).to_le_bytes())?;
         writer.write_all(&[u8::from(self.ty.mutable)])
     }
@@ -148,7 +148,7 @@ impl wrt_foundation::traits::FromBytes for Global {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 1];
         reader.read_exact(&mut bytes)?;
         let value_type = match bytes[0] {

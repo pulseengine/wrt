@@ -79,6 +79,13 @@ impl HeapProvider {
     }
 }
 
+impl Default for HeapProvider {
+    fn default() -> Self {
+        // Use a reasonable default capacity of 4KB
+        Self::new(4096).expect("Failed to create default HeapProvider")
+    }
+}
+
 impl Provider for HeapProvider {
     type Allocator = Self;
 

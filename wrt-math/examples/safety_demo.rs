@@ -79,7 +79,7 @@ fn demo_float_safety() {
     println!("Floating-Point Safety:");
     println!("----------------------");
 
-    let a = 3.14f32;
+    let a = core::f32::consts::PI;
     let b = 2.71f32;
 
     match a.safe_float_op(b, |x, y| x + y) {

@@ -28,9 +28,7 @@ use std::{
 };
 
 use wrt_error::{
-    codes,
     Error,
-    ErrorCategory,
     Result,
 };
 use wrt_foundation::budget_aware_provider::CrateId;
@@ -149,7 +147,7 @@ impl RealtimeMonitor {
 
     /// Start monitoring in background thread (std only)
     #[cfg(feature = "std")]
-    pub fn start(&self) -> WrtResult<()> {
+    pub fn start(&self) -> Result<()> {
         if self
             .active
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
@@ -236,7 +234,7 @@ impl RealtimeMonitor {
     }
 
     /// Collect a single memory sample
-    fn collect_sample(timestamp: u64) -> WrtResult<MemorySample> {
+    fn collect_sample(timestamp: u64) -> Result<MemorySample> {
         // TODO: Update to use capability-based memory monitoring
         // This requires injecting a MemoryCapabilityContext that can provide
         // aggregated statistics across all capabilities
@@ -382,7 +380,7 @@ impl RealtimeMonitor {
 
     /// Auto-generate visualization reports
     #[cfg(feature = "std")]
-    fn auto_generate_reports(config: &MonitorConfig) -> WrtResult<()> {
+    fn auto_generate_reports(config: &MonitorConfig) -> Result<()> {
         use std::fs;
 
         // Ensure output directory exists
@@ -414,7 +412,7 @@ impl RealtimeMonitor {
     }
 
     /// Get current memory sample
-    pub fn current_sample(&self) -> WrtResult<MemorySample> {
+    pub fn current_sample(&self) -> Result<MemorySample> {
         let timestamp = self.sample_counter.load(Ordering::Acquire) as u64;
         Self::collect_sample(timestamp)
     }
@@ -441,7 +439,7 @@ impl RealtimeMonitor {
 
     /// Export monitoring data to CSV
     #[cfg(feature = "std")]
-    pub fn export_to_csv(&self, filename: &str) -> WrtResult<()> {
+    pub fn export_to_csv(&self, filename: &str) -> Result<()> {
         use std::{
             fs::File,
             io::Write,
@@ -484,7 +482,7 @@ impl RealtimeMonitor {
 // Users should create their own RealtimeMonitor instances
 
 /// Initialize global realtime monitor (placeholder - not supported in no_std)
-pub fn init_global_monitor(_config: MonitorConfig) -> WrtResult<()> {
+pub fn init_global_monitor(_config: MonitorConfig) -> Result<()> {
     Err(Error::runtime_error(
         "Global monitor not supported in no_std mode - create RealtimeMonitor instances directly",
     ))
@@ -492,7 +490,7 @@ pub fn init_global_monitor(_config: MonitorConfig) -> WrtResult<()> {
 
 /// Start global monitoring (placeholder - not supported in no_std)
 #[cfg(feature = "std")]
-pub fn start_global_monitoring() -> WrtResult<()> {
+pub fn start_global_monitoring() -> Result<()> {
     Err(Error::runtime_error(
         "Global monitor not supported in no_std mode - create RealtimeMonitor instances directly",
     ))
@@ -505,7 +503,7 @@ pub fn stop_global_monitoring() {
 
 /// Get current memory sample from global monitor (placeholder - not supported
 /// in no_std)
-pub fn get_current_sample() -> WrtResult<MemorySample> {
+pub fn get_current_sample() -> Result<MemorySample> {
     Err(Error::runtime_error(
         "Global monitor not supported in no_std mode - create RealtimeMonitor instances directly",
     ))

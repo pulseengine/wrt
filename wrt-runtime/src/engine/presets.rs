@@ -11,8 +11,8 @@ use wrt_foundation::{
         MemoryCapabilityContext,
     },
     verification::VerificationLevel,
-    Result,
 };
+use wrt_error::Result;
 
 /// Budget allocations for QM mode (bytes)
 const QM_BUDGETS: &[(CrateId, usize)] = &[

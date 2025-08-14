@@ -154,7 +154,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read instance index
                     let (instance_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -181,7 +181,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read kind byte
                     if offset >= bytes.len() {
@@ -345,12 +345,12 @@ mod std_parsing {
                     // Read module name
                     let (module_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let module_name = bytes_to_string(module_name_bytes)?;
+                    let module_name = bytes_to_string(module_name_bytes);
 
                     // Read field name
                     let (field_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let field_name = bytes_to_string(field_name_bytes)?;
+                    let field_name = bytes_to_string(field_name_bytes);
 
                     // Read import type
                     let (import_type, bytes_read) = parse_core_extern_type(&bytes[offset..])?;
@@ -368,7 +368,7 @@ mod std_parsing {
                     // Read export name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read export type
                     let (export_type, bytes_read) = parse_core_extern_type(&bytes[offset..])?;
@@ -654,7 +654,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read sort byte
                     if offset >= bytes.len() {
@@ -693,7 +693,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read sort byte
                     if offset >= bytes.len() {
@@ -1065,12 +1065,12 @@ mod std_parsing {
                     // Read namespace
                     let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let namespace = bytes_to_string(namespace_bytes)?;
+                    let namespace = bytes_to_string(namespace_bytes);
 
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
@@ -1088,7 +1088,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
@@ -1114,7 +1114,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
@@ -1270,7 +1270,7 @@ mod std_parsing {
                         },
                     };
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     fields.push(name);
                 }
@@ -1483,7 +1483,7 @@ mod std_parsing {
                     // Read export name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read export type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
@@ -1509,12 +1509,12 @@ mod std_parsing {
                     // Read namespace
                     let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let namespace = bytes_to_string(namespace_bytes)?;
+                    let namespace = bytes_to_string(namespace_bytes);
 
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
@@ -1532,7 +1532,7 @@ mod std_parsing {
                     // Read name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read type
                     let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
@@ -1592,7 +1592,7 @@ mod std_parsing {
                     // Read field name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read field type
                     let (field_type, bytes_read) = parse_val_type(&bytes[offset..])?;
@@ -1613,7 +1613,7 @@ mod std_parsing {
                     // Read case name
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
 
                     // Read case type flag
                     let has_type = bytes[offset] != 0;
@@ -1677,7 +1677,7 @@ mod std_parsing {
                 for _ in 0..flag_count {
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
                     flags.push(name);
                 }
 
@@ -1692,7 +1692,7 @@ mod std_parsing {
                 for _ in 0..variant_count {
                     let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let name = bytes_to_string(name_bytes)?;
+                    let name = bytes_to_string(name_bytes);
                     variants.push(name);
                 }
 
@@ -1812,11 +1812,11 @@ mod std_parsing {
             // Read import name
             let (namespace_bytes, bytes_read) = binary::read_string(bytes, offset)?;
             offset += bytes_read;
-            let namespace = bytes_to_string(namespace_bytes)?;
+            let namespace = bytes_to_string(namespace_bytes);
 
             let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
             offset += bytes_read;
-            let name = bytes_to_string(name_bytes)?;
+            let name = bytes_to_string(name_bytes);
 
             // Check if there are nested namespaces or package information
             let provider = crate::prelude::create_decoder_provider::<1024>()?;
@@ -1837,7 +1837,7 @@ mod std_parsing {
                     for _ in 0..nested_count {
                         let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                         offset += bytes_read;
-                        let nested_name = bytes_to_string(nested_name_bytes)?;
+                        let nested_name = bytes_to_string(nested_name_bytes);
                         nested.push(nested_name);
                     }
                 }
@@ -1851,7 +1851,7 @@ mod std_parsing {
                         // Read package name
                         let (package_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                         offset += bytes_read;
-                        let package_name = bytes_to_string(package_name_bytes)?;
+                        let package_name = bytes_to_string(package_name_bytes);
 
                         // Read version flag
                         let has_version = bytes[offset] != 0;
@@ -1861,7 +1861,7 @@ mod std_parsing {
                         if has_version {
                             let (ver_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                             offset += bytes_read;
-                            let ver = bytes_to_string(ver_bytes)?;
+                            let ver = bytes_to_string(ver_bytes);
                             version = Some(ver);
                         }
 
@@ -1873,7 +1873,7 @@ mod std_parsing {
                         if has_hash {
                             let (h_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                             offset += bytes_read;
-                            let h = bytes_to_string(h_bytes)?;
+                            let h = bytes_to_string(h_bytes);
                             hash = Some(h);
                         }
 
@@ -1915,7 +1915,7 @@ mod std_parsing {
             // Read export name
             let (basic_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
             offset += bytes_read;
-            let basic_name = bytes_to_string(basic_name_bytes)?;
+            let basic_name = bytes_to_string(basic_name_bytes);
 
             // Read flags
             if offset >= bytes.len() {
@@ -1936,7 +1936,7 @@ mod std_parsing {
             let semver = if has_semver {
                 let (ver_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let ver = bytes_to_string(ver_bytes)?;
+                let ver = bytes_to_string(ver_bytes);
                 Some(ver)
             } else {
                 None
@@ -1946,7 +1946,7 @@ mod std_parsing {
             let integrity = if has_integrity {
                 let (hash_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let hash = bytes_to_string(hash_bytes)?;
+                let hash = bytes_to_string(hash_bytes);
                 Some(hash)
             } else {
                 None
@@ -1962,7 +1962,7 @@ mod std_parsing {
                 for _ in 0..nested_count {
                     let (nested_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let nested_name = bytes_to_string(nested_name_bytes)?;
+                    let nested_name = bytes_to_string(nested_name_bytes);
                     nested_names.push(nested_name);
                 }
                 nested_names
@@ -2073,7 +2073,7 @@ mod std_parsing {
                 if has_name {
                     let (value_name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                     offset += bytes_read;
-                    let value_name = bytes_to_string(value_name_bytes)?;
+                    let value_name = bytes_to_string(value_name_bytes);
                     name = Some(value_name);
                 }
             }
@@ -2318,7 +2318,7 @@ mod std_parsing {
                 // String value
                 let (value_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let value = bytes_to_string(value_bytes)?;
+                let value = bytes_to_string(value_bytes);
                 Ok((wrt_format::component::ConstValue::String(value), offset))
             },
             0x0D => {
@@ -2370,7 +2370,7 @@ mod std_parsing {
                 // Read export name
                 let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let name = bytes_to_string(name_bytes)?;
+                let name = bytes_to_string(name_bytes);
 
                 // Read kind byte
                 if offset >= bytes.len() {
@@ -2416,7 +2416,7 @@ mod std_parsing {
                 // Read export name
                 let (name_bytes, bytes_read) = binary::read_string(bytes, offset)?;
                 offset += bytes_read;
-                let name = bytes_to_string(name_bytes)?;
+                let name = bytes_to_string(name_bytes);
 
                 // Read kind byte
                 if offset >= bytes.len() {
@@ -2645,14 +2645,14 @@ mod no_std_parsing {
                         &self,
                         _writer: &mut wrt_foundation::traits::WriteStream<'a>,
                         _provider: &PStream,
-                    ) -> wrt_foundation::WrtResult<()> { Ok(()) }
+                    ) -> wrt_error::Result<()> { Ok(()) }
                 }
 
                 impl wrt_foundation::traits::FromBytes for $type {
                     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
                         _reader: &mut wrt_foundation::traits::ReadStream<'a>,
                         _provider: &PStream,
-                    ) -> wrt_foundation::WrtResult<Self> { Ok(Self::default()) }
+                    ) -> wrt_error::Result<Self> { Ok(Self::default()) }
                 }
 
                 impl wrt_foundation::traits::Checksummable for $type {

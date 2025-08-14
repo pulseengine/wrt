@@ -2959,7 +2959,7 @@ impl StacklessEngine {
                     if label.kind == LabelKind::If {
                         // Convert if to else
                         label.kind = LabelKind::Block; // Treat else as a block
-                        return Ok();
+                        return Ok(());
                     }
                 },
                 None => return Err(Error::runtime_execution_error("Label access error")),
@@ -4331,13 +4331,13 @@ impl StacklessEngine {
                     },
                     wrt_foundation::types::Instruction::Else if depth == 1 => {
                         self.exec_stack.pc = pc;
-                        return Ok();
+                        return Ok(());
                     },
                     wrt_foundation::types::Instruction::End => {
                         depth -= 1;
                         if depth == 0 {
                             self.exec_stack.pc = pc;
-                            return Ok();
+                            return Ok(());
                         }
                     },
                     _ => {},
@@ -4368,7 +4368,7 @@ impl StacklessEngine {
                         depth -= 1;
                         if depth == 0 {
                             self.exec_stack.pc = pc;
-                            return Ok();
+                            return Ok(());
                         }
                     },
                     _ => {},
@@ -4981,7 +4981,7 @@ impl wrt_foundation::traits::ToBytes for Label {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         writer.write_u32_le(self.arity)?;
         writer.write_u32_le(self.pc as u32)?;
         let kind_byte = match self.kind {
@@ -4999,7 +4999,7 @@ impl wrt_foundation::traits::FromBytes for Label {
     fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &P,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> Result<Self> {
         let arity = reader.read_u32_le()?;
         let pc = reader.read_u32_le()? as usize;
         let kind_byte = reader.read_u8()?;

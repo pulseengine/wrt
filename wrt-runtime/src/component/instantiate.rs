@@ -77,7 +77,7 @@ impl wrt_foundation::traits::ToBytes for InstantiationResult {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_u32_le(self.handle)?;
         self.exports.to_bytes_with_provider(writer, provider)?;
         Ok(())
@@ -88,7 +88,7 @@ impl wrt_foundation::traits::FromBytes for InstantiationResult {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let handle = reader.read_u32_le()?;
         let exports = HashMap::from_bytes_with_provider(reader, provider)?;
         Ok(Self { handle, exports })
@@ -129,7 +129,7 @@ impl wrt_foundation::traits::ToBytes for ExportedItem {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         // Write discriminant
         let discriminant = match self {
             ExportedItem::CoreFunction(_) => 0u8,
@@ -162,7 +162,7 @@ impl wrt_foundation::traits::FromBytes for ExportedItem {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let discriminant = reader.read_u8()?;
         let value = reader.read_u32_le()?;
 
@@ -258,7 +258,7 @@ impl wrt_foundation::traits::ToBytes for CoreModuleInstance {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_u32_le(self.module_idx)?;
         self.imports.to_bytes_with_provider(writer, provider)?;
         self.exports.to_bytes_with_provider(writer, provider)?;
@@ -270,7 +270,7 @@ impl wrt_foundation::traits::FromBytes for CoreModuleInstance {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let module_idx = reader.read_u32_le()?;
         let imports = HashMap::from_bytes_with_provider(reader, provider)?;
         let exports = HashMap::from_bytes_with_provider(reader, provider)?;

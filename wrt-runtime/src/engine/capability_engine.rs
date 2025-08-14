@@ -80,7 +80,7 @@ impl wrt_foundation::traits::ToBytes for ModuleHandle {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         writer.write_u32_le(self.0)
     }
 }
@@ -89,7 +89,7 @@ impl wrt_foundation::traits::FromBytes for ModuleHandle {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> Result<Self> {
         let value = reader.read_u32_le()?;
         Ok(Self(value))
     }
@@ -128,7 +128,7 @@ impl wrt_foundation::traits::ToBytes for InstanceHandle {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         writer.write_u32_le(self.0)
     }
 }
@@ -137,7 +137,7 @@ impl wrt_foundation::traits::FromBytes for InstanceHandle {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> Result<Self> {
         let value = reader.read_u32_le()?;
         Ok(Self(value))
     }
@@ -264,10 +264,10 @@ impl CapabilityAwareEngine {
     fn preset_to_asil_mode(&self) -> ASILExecutionMode {
         match self.preset {
             EnginePreset::QM => ASILExecutionMode::QM,
-            EnginePreset::AsilA => ASILExecutionMode::ASIL_A,
-            EnginePreset::AsilB => ASILExecutionMode::ASIL_B,
-            EnginePreset::AsilC => ASILExecutionMode::ASIL_C,
-            EnginePreset::AsilD => ASILExecutionMode::ASIL_D,
+            EnginePreset::AsilA => ASILExecutionMode::AsilA,
+            EnginePreset::AsilB => ASILExecutionMode::AsilB,
+            EnginePreset::AsilC => ASILExecutionMode::AsilC,
+            EnginePreset::AsilD => ASILExecutionMode::AsilD,
         }
     }
 

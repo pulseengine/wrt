@@ -130,7 +130,7 @@ impl RuntimeMemoryConfig {
 
 /// Global runtime memory configuration instance
 static RUNTIME_CONFIG: core::sync::atomic::AtomicPtr<RuntimeMemoryConfig> =
-    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut);
+    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
 
 /// Initialize runtime memory configuration
 pub fn initialize_runtime_memory_config() -> Result<()> {

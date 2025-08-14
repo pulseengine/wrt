@@ -44,7 +44,6 @@ use wrt_foundation::{
     Checksum,
     CrateId,
     NoStdProvider,
-    WrtResult,
 };
 
 /// Standard custom section name for resource limits
@@ -191,7 +190,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         // Write max_handles
         if let Some(handles) = self.max_handles {
             writer.write_u8(1)?; // Present
@@ -228,7 +227,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq>
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         // Read max_handles
         let max_handles = if reader.read_u8()? == 1 { Some(reader.read_u32_le()?) } else { None };
 
@@ -1204,7 +1203,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_asil_d_config_creation() -> wrt_foundation::WrtResult<()> {
+    fn test_asil_d_config_creation() -> wrt_error::Result<()> {
         let provider = wrt_foundation::safe_managed_alloc!(
             4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1226,7 +1225,7 @@ mod tests {
     }
 
     #[test]
-    fn test_asil_d_bounds_validation() -> wrt_foundation::WrtResult<()> {
+    fn test_asil_d_bounds_validation() -> wrt_error::Result<()> {
         let provider = wrt_foundation::safe_managed_alloc!(
             4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1258,7 +1257,7 @@ mod tests {
     }
 
     #[test]
-    fn test_asil_d_size_limits() -> wrt_foundation::WrtResult<()> {
+    fn test_asil_d_size_limits() -> wrt_error::Result<()> {
         let provider = wrt_foundation::safe_managed_alloc!(
             4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1278,7 +1277,7 @@ mod tests {
     }
 
     #[test]
-    fn test_qualification_info() -> wrt_foundation::WrtResult<()> {
+    fn test_qualification_info() -> wrt_error::Result<()> {
         let provider = wrt_foundation::safe_managed_alloc!(
             4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1301,7 +1300,7 @@ mod tests {
     }
 
     #[test]
-    fn test_encode_decode_roundtrip() -> wrt_foundation::WrtResult<()> {
+    fn test_encode_decode_roundtrip() -> wrt_error::Result<()> {
         let provider = wrt_foundation::safe_managed_alloc!(
             4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
@@ -1317,7 +1316,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lower_asil_levels() -> wrt_foundation::WrtResult<()> {
+    fn test_lower_asil_levels() -> wrt_error::Result<()> {
         let provider = wrt_foundation::safe_managed_alloc!(
             4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder

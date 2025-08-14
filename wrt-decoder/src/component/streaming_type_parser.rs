@@ -77,6 +77,7 @@ mod placeholder_types {
         ErrorCategory,
         Result,
     };
+    use wrt_foundation::traits::BoundedCapacity;
 
     use crate::prelude::DecoderVec;
 
@@ -233,7 +234,7 @@ mod placeholder_types {
             &self,
             _writer: &mut wrt_foundation::traits::WriteStream<'_>,
             _provider: &P,
-        ) -> wrt_foundation::Result<()> {
+        ) -> wrt_error::Result<()> {
             Ok(()) // Placeholder implementation
         }
     }
@@ -242,7 +243,7 @@ mod placeholder_types {
         fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
             _reader: &mut wrt_foundation::traits::ReadStream<'_>,
             _provider: &P,
-        ) -> wrt_foundation::Result<Self> {
+        ) -> wrt_error::Result<Self> {
             Ok(Self::default()) // Placeholder implementation
         }
     }
@@ -263,7 +264,7 @@ mod placeholder_types {
             &self,
             _writer: &mut wrt_foundation::traits::WriteStream<'_>,
             _provider: &P,
-        ) -> wrt_foundation::Result<()> {
+        ) -> wrt_error::Result<()> {
             Ok(()) // Placeholder implementation
         }
     }
@@ -272,7 +273,7 @@ mod placeholder_types {
         fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
             _reader: &mut wrt_foundation::traits::ReadStream<'_>,
             _provider: &P,
-        ) -> wrt_foundation::Result<Self> {
+        ) -> wrt_error::Result<Self> {
             Ok(Self::default()) // Placeholder implementation
         }
     }
@@ -297,7 +298,7 @@ mod placeholder_types {
             &self,
             writer: &mut wrt_foundation::traits::WriteStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<()> {
+        ) -> wrt_error::Result<()> {
             self.namespace.to_bytes_with_provider(writer, provider)?;
             self.name.to_bytes_with_provider(writer, provider)?;
             self.extern_type.to_bytes_with_provider(writer, provider)?;
@@ -309,7 +310,7 @@ mod placeholder_types {
         fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
             reader: &mut wrt_foundation::traits::ReadStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<Self> {
+        ) -> wrt_error::Result<Self> {
             Ok(Self {
                 namespace:   {
                     let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
@@ -341,7 +342,7 @@ mod placeholder_types {
             &self,
             writer: &mut wrt_foundation::traits::WriteStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<()> {
+        ) -> wrt_error::Result<()> {
             self.name.to_bytes_with_provider(writer, provider)?;
             self.extern_type.to_bytes_with_provider(writer, provider)?;
             Ok(())
@@ -352,7 +353,7 @@ mod placeholder_types {
         fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
             reader: &mut wrt_foundation::traits::ReadStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<Self> {
+        ) -> wrt_error::Result<Self> {
             Ok(Self {
                 name:        {
                     let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
@@ -380,7 +381,7 @@ mod placeholder_types {
             &self,
             writer: &mut wrt_foundation::traits::WriteStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<()> {
+        ) -> wrt_error::Result<()> {
             self.name.to_bytes_with_provider(writer, provider)?;
             self.val_type.to_bytes_with_provider(writer, provider)?;
             Ok(())
@@ -391,7 +392,7 @@ mod placeholder_types {
         fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
             reader: &mut wrt_foundation::traits::ReadStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<Self> {
+        ) -> wrt_error::Result<Self> {
             Ok(Self {
                 name:     {
                     let s = <crate::prelude::DecoderString as crate::prelude::DecoderStringExt>::from_bytes_with_provider(reader, provider)?;
@@ -422,7 +423,7 @@ mod placeholder_types {
                 },
                 ExternType::Type(idx) => {
                     checksum.update(2u8); // Tag for Type
-                    checksum.update_slice(&idx.to_le_bytes);
+                    checksum.update_slice(&idx.to_le_bytes());
                 },
                 ExternType::Instance { exports } => {
                     checksum.update(3u8); // Tag for Instance
@@ -448,13 +449,13 @@ mod placeholder_types {
             1 + match self {
                 // 1 byte for tag
                 ExternType::Function { params, results } => {
-                    params.len() * 4 + results.len() * 4 // Approximate size
+                    crate::prelude::decoder_len(params) * 4 + crate::prelude::decoder_len(results) * 4 // Approximate size
                 },
                 ExternType::Value(val_type) => val_type.serialized_size(),
                 ExternType::Type(_) => 4, // u32
-                ExternType::Instance { exports } => exports.len() * 8, // Approximate size
+                ExternType::Instance { exports } => crate::prelude::decoder_len(exports) * 8, // Approximate size
                 ExternType::Component { imports, exports } => {
-                    imports.len() * 8 + exports.len() * 8 // Approximate size
+                    crate::prelude::decoder_len(imports) * 8 + crate::prelude::decoder_len(exports) * 8 // Approximate size
                 },
             }
         }
@@ -463,7 +464,7 @@ mod placeholder_types {
             &self,
             writer: &mut wrt_foundation::traits::WriteStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<()> {
+        ) -> wrt_error::Result<()> {
             match self {
                 ExternType::Function { params, results } => {
                     writer.write_u8(0)?; // Tag
@@ -507,7 +508,7 @@ mod placeholder_types {
         fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
             reader: &mut wrt_foundation::traits::ReadStream<'a>,
             provider: &P,
-        ) -> wrt_foundation::Result<Self> {
+        ) -> wrt_error::Result<Self> {
             let tag = reader.read_u8()?;
             match tag {
                 0 => Ok(ExternType::Function {
@@ -609,7 +610,7 @@ const MAX_TYPES_PER_COMPONENT: usize = 1024;
 
 #[cfg(feature = "std")]
 fn create_decoder_provider<const N: usize>(
-) -> wrt_foundation::WrtResult<wrt_foundation::NoStdProvider<N>> {
+) -> wrt_error::Result<wrt_foundation::NoStdProvider<N>> {
     Ok(wrt_foundation::NoStdProvider::default())
 }
 
@@ -734,7 +735,7 @@ impl<'a> StreamingTypeParser<'a> {
         // For no_std mode, use BoundedVec
         #[cfg(not(feature = "std"))]
         {
-            let provider = create_decoder_provider::<65536>()?;
+            let provider = create_decoder_provider::<4096>()?;
             Ok(BoundedVec::new(provider)?)
         }
     }
@@ -1264,7 +1265,7 @@ impl ComponentTypeSection {
     pub fn get_type(&self, index: usize) -> wrt_error::Result<ComponentType> {
         self.types
             .get(index)
-            .cloned()
+            .map(|t| t.clone())
             .ok_or_else(|| wrt_error::Error::parse_error("Component type index out of bounds"))
     }
 
@@ -1281,7 +1282,8 @@ impl ComponentTypeSection {
 
     /// Check if the section is empty
     pub fn is_empty(&self) -> bool {
-        self.types.is_empty()
+        use wrt_foundation::traits::BoundedCapacity;
+        self.types.len() == 0
     }
 }
 

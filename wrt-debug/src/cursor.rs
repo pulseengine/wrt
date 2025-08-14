@@ -5,9 +5,7 @@
 //! DWARF data cursor for zero-copy parsing
 
 use wrt_error::{
-    codes,
     Error,
-    ErrorCategory,
     Result,
 };
 use wrt_format::binary::{

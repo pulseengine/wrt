@@ -121,7 +121,7 @@ impl wrt_foundation::traits::ToBytes for NameMapEntry {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u32_le(self.index)?;
         #[cfg(feature = "std")]
         writer.write_all(self.name.as_bytes())?;
@@ -135,7 +135,7 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let index = reader.read_u32_le()?;
         #[cfg(feature = "std")]
         let mut bytes = std::vec::Vec::new();
@@ -177,11 +177,11 @@ impl wrt_foundation::traits::FromBytes for NameMapEntry {
 
 impl wrt_foundation::traits::Checksummable for NameMapEntry {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&self.index.to_le_bytes);
+        checksum.update_slice(&self.index.to_le_bytes());
         #[cfg(feature = "std")]
-        checksum.update_slice(self.name.as_bytes);
+        checksum.update_slice(self.name.as_bytes());
         #[cfg(not(feature = "std"))]
-        checksum.update_slice(self.name.as_bytes);
+        checksum.update_slice(self.name.as_bytes());
     }
 }
 
@@ -195,7 +195,7 @@ impl wrt_foundation::traits::ToBytes for SortIdentifier {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u8(*self as u8)?;
         Ok(())
     }
@@ -205,7 +205,7 @@ impl wrt_foundation::traits::FromBytes for SortIdentifier {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let value = reader.read_u8()?;
         match value {
             0 => Ok(SortIdentifier::Module),
@@ -311,7 +311,7 @@ impl wrt_foundation::traits::ToBytes for NameMap {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u32_le(self.entries.len() as u32)?;
         for entry in &self.entries {
             entry.to_bytes_with_provider(writer, provider)?;
@@ -324,7 +324,7 @@ impl wrt_foundation::traits::FromBytes for NameMap {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let count = reader.read_u32_le()?;
         #[cfg(feature = "std")]
         let mut entries = std::vec::Vec::new();
@@ -356,7 +356,7 @@ impl wrt_foundation::traits::FromBytes for NameMap {
 
 impl wrt_foundation::traits::Checksummable for NameMap {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&(self.entries.len() as u32).to_le_bytes);
+        checksum.update_slice(&(self.entries.len() as u32).to_le_bytes());
         for entry in &self.entries {
             entry.update_checksum(checksum);
         }
@@ -579,7 +579,7 @@ pub fn generate_component_name_section(
 
         #[cfg(feature = "std")]
         {
-            let name_bytes = write_string(name)?;
+            let name_bytes = write_string(name.as_str());
             subsection_data.extend_from_slice(&name_bytes);
         }
         #[cfg(not(feature = "std"))]
@@ -596,7 +596,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            let leb_bytes = write_leb128_u32(subsection_data.len() as u32);
+            data.extend_from_slice(&leb_bytes);
             data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
@@ -668,7 +669,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            let leb_bytes = write_leb128_u32(subsection_data.len() as u32);
+            data.extend_from_slice(&leb_bytes);
             data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
@@ -704,7 +706,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            let leb_bytes = write_leb128_u32(subsection_data.len() as u32);
+            data.extend_from_slice(&leb_bytes);
             data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
@@ -740,7 +743,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            let leb_bytes = write_leb128_u32(subsection_data.len() as u32);
+            data.extend_from_slice(&leb_bytes);
             data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
@@ -776,7 +780,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            let leb_bytes = write_leb128_u32(subsection_data.len() as u32);
+            data.extend_from_slice(&leb_bytes);
             data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
@@ -812,7 +817,8 @@ pub fn generate_component_name_section(
         // Add subsection size and data
         #[cfg(feature = "std")]
         {
-            data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32)?);
+            let leb_bytes = write_leb128_u32(subsection_data.len() as u32);
+            data.extend_from_slice(&leb_bytes);
             data.extend_from_slice(&subsection_data);
         }
         #[cfg(not(feature = "std"))]
@@ -890,15 +896,15 @@ fn generate_name_map(names: &NameMap) -> Result<std::vec::Vec<u8>> {
     let mut data = std::vec::Vec::new();
 
     // Number of entries
-    data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32)?);
+    data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32));
 
     // Each entry
     for entry in &names.entries {
         // Index
-        data.extend_from_slice(&write_leb128_u32(entry.index)?);
+        data.extend_from_slice(&write_leb128_u32(entry.index));
 
         // Name
-        data.extend_from_slice(&write_string(&entry.name)?);
+        data.extend_from_slice(&write_string(&entry.name));
     }
 
     Ok(data)

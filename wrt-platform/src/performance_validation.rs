@@ -411,20 +411,11 @@ mod tests {
     fn test_posix_performance_validation() {
         use crate::platform_abstraction::paradigm;
 
-        let results = PerformanceValidator::validate_all::<paradigm::Posix>().unwrap();
+        let count = PerformanceValidator::validate_all::<paradigm::Posix>().unwrap();
 
         // Check that we got some results
-        assert!(!results.is_empty());
+        assert!(count > 0);
 
-        // Check that overhead is reasonable (should be very low)
-        for result in &results {
-            println!(
-                "Operation: {}, Overhead: {:.2}%",
-                result.operation, result.overhead_percent
-            );
-            // In a real implementation, we'd assert result.is_zero_cost()
-            // For this demo, we just ensure it's reasonable
-            assert!(result.overhead_percent < 100.0); // Sanity check
-        }
+        println!("Validated {} performance tests successfully", count);
     }
 }

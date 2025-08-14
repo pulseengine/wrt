@@ -588,10 +588,9 @@ where
 //     }
 // }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> BoundedStack<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
-    P: MemoryProvider + Default + Clone, // Ensure P has necessary bounds for methods
 {
     /// Creates a new `BoundedStack` with the given memory provider.
     /// Assumes all instances of T will have the same serialized size as
@@ -895,7 +894,7 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> BoundedCapacity
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedCapacity
     for BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
@@ -917,7 +916,7 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> Checksummed for BoundedStack<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> Checksummed for BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
 {
@@ -985,7 +984,7 @@ where
 pub struct BoundedVec<T, const N_ELEMENTS: usize, P: MemoryProvider>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
+    P: MemoryProvider + Clone + Default + PartialEq + Eq,
 {
     provider:             P, // Changed from handler: SafeMemoryHandler<P>
     length:               usize,
@@ -1013,10 +1012,9 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     /// Creates a new `BoundedVec` with the given memory provider.
     /// Assumes all instances of T will have the same serialized size as
@@ -2845,7 +2843,7 @@ where
 pub struct BoundedVecIterator<'a, T, const N_ELEMENTS: usize, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
+    P: MemoryProvider + Clone + Default + PartialEq + Eq,
 {
     vec:           &'a BoundedVec<T, N_ELEMENTS, P>,
     current_index: usize,
@@ -2854,7 +2852,7 @@ where
 impl<'a, T, const N_ELEMENTS: usize, P> Iterator for BoundedVecIterator<'a, T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
+    P: MemoryProvider + Clone + Default + PartialEq + Eq,
 {
     type Item = T;
 
@@ -2887,10 +2885,9 @@ where
 
 // Implement IntoIterator for &BoundedVec to satisfy
 // clippy::iter_without_into_iter
-impl<'a, T, const N_ELEMENTS: usize, P> IntoIterator for &'a BoundedVec<T, N_ELEMENTS, P>
+impl<'a, T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> IntoIterator for &'a BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     type IntoIter = BoundedVecIterator<'a, T, N_ELEMENTS, P>;
     type Item = T;
@@ -2901,20 +2898,18 @@ where
 }
 
 // Owned iterator that consumes the BoundedVec
-pub struct BoundedVecIntoIterator<T, const N_ELEMENTS: usize, P: MemoryProvider>
+pub struct BoundedVecIntoIterator<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     vec:           BoundedVec<T, N_ELEMENTS, P>,
     current_index: usize,
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> Iterator
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> Iterator
     for BoundedVecIntoIterator<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     type Item = T;
 
@@ -2933,10 +2928,9 @@ where
 }
 
 // Implement IntoIterator for BoundedVec (owned version)
-impl<T, const N_ELEMENTS: usize, P> IntoIterator for BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> IntoIterator for BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     type IntoIter = BoundedVecIntoIterator<T, N_ELEMENTS, P>;
     type Item = T;
@@ -2949,10 +2943,9 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> BoundedCapacity for BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedCapacity for BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     fn capacity(&self) -> usize {
         N_ELEMENTS
@@ -3010,10 +3003,9 @@ where
 }
 
 // Implement Extend trait for BoundedVec
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> Extend<T> for BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> Extend<T> for BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for item in iter {
@@ -3096,7 +3088,7 @@ where
 }
 
 // ToBytes for BoundedVec
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + PartialEq + Eq> ToBytes
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> ToBytes
     for BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
@@ -3407,7 +3399,7 @@ where
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> BoundedStack<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedStack<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default,
 {
@@ -3784,7 +3776,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 impl<
         T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + core::fmt::Debug, /* Added Debug */
         const N_ELEMENTS: usize,
-        P: MemoryProvider + Clone + PartialEq + Eq, // Ensure P's bounds are sufficient
+        P: MemoryProvider + Clone + Default + PartialEq + Eq, // Ensure P's bounds are sufficient
     > BoundedVec<T, N_ELEMENTS, P>
 {
     /// Returns a raw byte slice of the BoundedVec's used data.
@@ -3857,7 +3849,7 @@ impl<
 impl<
         T: Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq + core::fmt::Debug, /* Added Debug and other consistent bounds */
         const N_ELEMENTS: usize,
-        P: MemoryProvider + Clone + PartialEq + Eq, // Ensure P's bounds are sufficient
+        P: MemoryProvider + Clone + Default + PartialEq + Eq, // Ensure P's bounds are sufficient
     > BoundedVec<T, N_ELEMENTS, P>
 {
     pub fn try_extend_from_slice(
@@ -4002,10 +3994,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
 //     "Provider error during item checksum verification",
 // )),
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider> BoundedVec<T, N_ELEMENTS, P>
+impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + Default + PartialEq + Eq> BoundedVec<T, N_ELEMENTS, P>
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-    P: MemoryProvider + Clone + PartialEq + Eq,
 {
     // This impl block provides methods with additional constraints
     // The verify_item_checksum_at_offset method is already defined in the main impl

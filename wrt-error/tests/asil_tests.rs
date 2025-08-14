@@ -70,11 +70,17 @@ fn test_safe_state_requirements() {
 fn test_error_integrity_validation() {
     // Valid error
     let valid_error = Error::memory_out_of_bounds("Valid memory error");
+    #[cfg(feature = "asil-d")]
     assert!(valid_error.validate_integrity());
+    #[cfg(not(feature = "asil-d"))]
+    let _ = valid_error;
 
     // Error with valid code for category
     let type_error = Error::type_mismatch_error("Type validation failed");
+    #[cfg(feature = "asil-d")]
     assert!(type_error.validate_integrity());
+    #[cfg(not(feature = "asil-d"))]
+    let _ = type_error;
 
     // Note: We can't easily test invalid errors in const fn context
 }

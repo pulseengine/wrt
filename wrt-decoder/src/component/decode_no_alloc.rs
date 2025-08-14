@@ -51,14 +51,12 @@ use wrt_foundation::{
 };
 
 // Type aliases for cleaner signatures
-type DecoderProvider = DecoderProvider;
+type DecoderProvider = NoStdProvider<65536>;
 
 // Helper functions to create properly sized providers
 fn create_provider_1024() -> Result<DecoderProvider> {
-    let context: wrt_foundation::WrtResult<_> =
-        capability_context!(dynamic(CrateId::Decoder, 1024));
-    let context = context?;
-    safe_capability_alloc!(context, CrateId::Decoder, 1024)
+    // For this no_std focused module, use the direct provider creation
+    Ok(DecoderProvider::default())
 }
 
 /// Read a name from binary data (no_std version)
@@ -262,9 +260,8 @@ impl ComponentHeader {
     /// Creates a new ComponentHeader with default values
     pub fn new(verification_level: VerificationLevel) -> Self {
         let provider = create_provider_1024().unwrap_or_else(|_| {
-            // Create capability-aware provider as fallback using default
-            use wrt_foundation::capabilities::CapabilityAwareProvider;
-            CapabilityAwareProvider::default()
+            // Create default provider as fallback with same type
+            DecoderProvider::default()
         });
         Self {
             size: 0,
@@ -502,7 +499,7 @@ fn scan_component_imports(
     >,
 ) -> Result<()> {
     if section_data.is_empty() {
-        return Ok();
+        return Ok(());
     }
 
     // Read the number of imports
@@ -568,7 +565,7 @@ fn scan_component_exports(
     >,
 ) -> Result<()> {
     if section_data.is_empty() {
-        return Ok();
+        return Ok(());
     }
 
     // Read the number of exports
@@ -631,7 +628,7 @@ fn scan_component_types(
     types: &mut BoundedVec<ComponentType, MAX_COMPONENT_TYPES, DecoderProvider>,
 ) -> Result<()> {
     if section_data.is_empty() {
-        return Ok();
+        return Ok(());
     }
 
     // Read the number of types
@@ -779,7 +776,7 @@ pub fn validate_component_no_alloc(bytes: &[u8], validator: ComponentValidatorTy
     // For Basic validation, just checking the header and section structure is
     // enough
     if validator == ComponentValidatorType::Basic {
-        return Ok();
+        return Ok(());
     }
 
     // For Standard validation, check section order and basic structure
@@ -909,7 +906,7 @@ fn validate_component_imports_exports(header: &ComponentHeader, bytes: &[u8]) ->
 fn validate_component_resources(header: &ComponentHeader, bytes: &[u8]) -> Result<()> {
     // Only perform this validation if the component uses resources
     if !header.uses_resources {
-        return Ok();
+        return Ok(());
     }
 
     // Find the component type section and validate resource type usage

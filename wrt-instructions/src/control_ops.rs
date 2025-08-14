@@ -62,10 +62,14 @@ use crate::prelude::{
     Debug,
     Error,
     PartialEq,
-    PureInstruction,
-    Result,
+};
+use crate::PureInstruction;
+use wrt_foundation::{
+    BoundedVec,
+    BoundedCapacity,
     Value,
 };
+use wrt_error::Result;
 // use crate::validation::{Validate, ValidationContext}; // Currently unused
 
 /// Branch target information

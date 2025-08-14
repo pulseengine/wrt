@@ -565,7 +565,7 @@ impl ToBytes for ModuleInstance {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         // Write instance ID
         writer.write_all(&self.instance_id.to_le_bytes())?;
 
@@ -612,7 +612,7 @@ impl FromBytes for ModuleInstance {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> Result<Self> {
         // Read instance ID
         let mut instance_id_bytes = [0u8; 8];
         reader.read_exact(&mut instance_id_bytes)?;

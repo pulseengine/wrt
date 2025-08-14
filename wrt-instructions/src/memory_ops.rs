@@ -1389,7 +1389,7 @@ impl Validate for MemoryOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std",)))]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     // Import Vec and vec! based on feature flags
     #[cfg(feature = "std")]

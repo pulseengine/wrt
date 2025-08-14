@@ -225,7 +225,7 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
     let component = {
         // For no_std, create a minimal component structure
         let provider = wrt_foundation::safe_managed_alloc!(
-            8192,
+            4096,
             wrt_foundation::budget_aware_provider::CrateId::Decoder
         )?;
         ComponentSummary {
@@ -241,16 +241,9 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
         }
     };
 
+    #[cfg(feature = "std")]
     {
-        let name = if cfg!(feature = "std") {
-            "".to_string()
-        } else {
-            let provider = wrt_foundation::safe_managed_alloc!(
-                4096,
-                wrt_foundation::budget_aware_provider::CrateId::Decoder
-            )?;
-            AnalysisString::from_str("", provider)?
-        };
+        let name = "";
 
         let module_info = {
             #[cfg(feature = "std")]
@@ -274,11 +267,7 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
             }
             #[cfg(not(feature = "std"))]
             {
-                let provider = wrt_foundation::safe_managed_alloc!(
-                    4096,
-                    wrt_foundation::budget_aware_provider::CrateId::Decoder
-                )?;
-                AnalysisVec::new(provider)?
+                ()
             }
         };
 
@@ -289,16 +278,12 @@ pub fn analyze_component(bytes: &[u8]) -> Result<ComponentSummary> {
             }
             #[cfg(not(feature = "std"))]
             {
-                let provider = wrt_foundation::safe_managed_alloc!(
-                    4096,
-                    wrt_foundation::budget_aware_provider::CrateId::Decoder
-                )?;
-                AnalysisVec::new(provider)?
+                ()
             }
         };
 
         Ok(ComponentSummary {
-            name,
+            name: name.to_string(),
             core_modules_count: component.modules.len() as u32,
             core_instances_count: component.core_instances.len() as u32,
             imports_count: component.imports.len() as u32,
@@ -507,7 +492,7 @@ pub struct ComponentSummary {
     pub module_info: wrt_foundation::BoundedVec<
         CoreModuleInfo,
         64,
-        wrt_foundation::safe_memory::NoStdProvider<8192>,
+        wrt_foundation::safe_memory::NoStdProvider<4096>,
     >,
     /// Extended information disabled in no_std mode
     pub export_info:          (),
@@ -525,7 +510,7 @@ impl wrt_foundation::traits::ToBytes for CoreModuleInfo {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u32_le(self.idx)?;
         writer.write_u64_le(self.size as u64)?;
         Ok(())
@@ -537,7 +522,7 @@ impl wrt_foundation::traits::FromBytes for CoreModuleInfo {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         stream: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let idx = stream.read_u32_le()?;
         let size = stream.read_u64_le()? as usize;
         Ok(CoreModuleInfo { idx, size })
@@ -562,7 +547,7 @@ impl wrt_foundation::traits::ToBytes for ExtendedImportInfo {
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         stream.write_u8(self.namespace.len() as u8)?;
         stream.write_all(self.namespace.as_bytes())?;
         stream.write_u8(self.name.len() as u8)?;
@@ -578,7 +563,7 @@ impl wrt_foundation::traits::FromBytes for ExtendedImportInfo {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         stream: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let namespace_len = stream.read_u8()? as usize;
         let mut namespace_bytes = vec![0u8; namespace_len];
         stream.read_exact(&mut namespace_bytes)?;
@@ -625,7 +610,7 @@ impl wrt_foundation::traits::ToBytes for ExtendedExportInfo {
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         stream.write_u8(self.name.len() as u8)?;
         stream.write_all(self.name.as_bytes())?;
         stream.write_u8(self.kind.len() as u8)?;
@@ -640,7 +625,7 @@ impl wrt_foundation::traits::FromBytes for ExtendedExportInfo {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         stream: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let name_len = stream.read_u8()? as usize;
         #[cfg(feature = "std")]
         let mut name_bytes = vec![0u8; name_len];
@@ -711,7 +696,7 @@ impl wrt_foundation::traits::ToBytes for ModuleImportInfo {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_all(self.module.as_bytes())?;
         writer.write_u8(0)?; // separator
         writer.write_all(self.name.as_bytes())?;
@@ -729,7 +714,7 @@ impl wrt_foundation::traits::FromBytes for ModuleImportInfo {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         stream: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         let mut bytes = Vec::new();
         #[cfg(not(feature = "std"))]
@@ -798,7 +783,7 @@ impl wrt_foundation::traits::ToBytes for ModuleExportInfo {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_all(self.name.as_bytes())?;
         writer.write_u8(0)?; // separator
         writer.write_all(self.kind.as_bytes())?;
@@ -814,7 +799,7 @@ impl wrt_foundation::traits::FromBytes for ModuleExportInfo {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         stream: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         #[cfg(feature = "std")]
         let mut bytes = Vec::new();
         #[cfg(not(feature = "std"))]

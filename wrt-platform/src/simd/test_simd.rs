@@ -55,7 +55,7 @@ mod simd_tests {
         // Provider level should match capabilities
         assert_eq!(
             runtime.provider().simd_level(),
-            runtime.capabilities().level()
+            runtime.capabilities().level
         );
 
         // Test that hardware acceleration detection works

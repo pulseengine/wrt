@@ -49,7 +49,6 @@ use wrt_foundation::traits::{
 // NoStdProvider import removed - not used
 use wrt_foundation::{
     verification::Checksum,
-    WrtResult,
 };
 
 // Internal modules
@@ -114,7 +113,7 @@ impl ToBytes for BranchHintValue {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         writer.write_u8(self.to_byte())
     }
 
@@ -127,7 +126,7 @@ impl FromBytes for BranchHintValue {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let byte = reader.read_u8()?;
         Self::from_byte(byte).map_err(|_e| {
             wrt_error::Error::new(

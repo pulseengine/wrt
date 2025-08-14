@@ -11,8 +11,8 @@ use wrt_foundation::{
         ASILExecutionConfig,
         ASILExecutionMode,
     },
-    Result,
 };
+use wrt_error::Result;
 
 use crate::engine::{
     CapabilityAwareEngine,
@@ -99,10 +99,10 @@ impl EngineBuilder {
         // Try to extract resource limits from the binary
         // Start with ASIL-D for maximum compatibility, then work down
         for asil_mode in &[
-            ASILExecutionMode::ASIL_D,
-            ASILExecutionMode::ASIL_C,
-            ASILExecutionMode::ASIL_B,
-            ASILExecutionMode::ASIL_A,
+            ASILExecutionMode::AsilD,
+            ASILExecutionMode::AsilC,
+            ASILExecutionMode::AsilB,
+            ASILExecutionMode::AsilA,
             ASILExecutionMode::QM,
         ] {
             if let Ok(Some(config)) = extract_resource_limits_from_binary(binary, *asil_mode) {
@@ -130,10 +130,10 @@ impl EngineBuilder {
         if let Some(asil_level) = self.asil_level {
             let preset = match asil_level {
                 ASILExecutionMode::QM => EnginePreset::QM,
-                ASILExecutionMode::ASIL_A => EnginePreset::AsilA,
-                ASILExecutionMode::ASIL_B => EnginePreset::AsilB,
-                ASILExecutionMode::ASIL_C => EnginePreset::AsilC,
-                ASILExecutionMode::ASIL_D => EnginePreset::AsilD,
+                ASILExecutionMode::AsilA => EnginePreset::AsilA,
+                ASILExecutionMode::AsilB => EnginePreset::AsilB,
+                ASILExecutionMode::AsilC => EnginePreset::AsilC,
+                ASILExecutionMode::AsilD => EnginePreset::AsilD,
             };
             return CapabilityAwareEngine::with_preset(preset);
         }
@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn test_builder_with_asil_level() {
         let engine =
-            EngineBuilder::new().with_asil_level(ASILExecutionMode::ASIL_B).build().unwrap();
+            EngineBuilder::new().with_asil_level(ASILExecutionMode::AsilB).build().unwrap();
 
         // Test that engine was created successfully
         assert!(engine

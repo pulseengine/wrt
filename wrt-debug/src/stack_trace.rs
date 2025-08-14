@@ -41,7 +41,7 @@ impl<'a> StackTrace<'a> {
     /// Add a frame to the stack trace
     pub fn push_frame(&mut self, frame: StackFrame<'a>) -> Result<(), ()> {
         if self.frame_count >= MAX_STACK_FRAMES {
-            return Err();
+            return Err(());
         }
         self.frames[self.frame_count] = Some(frame);
         self.frame_count += 1;

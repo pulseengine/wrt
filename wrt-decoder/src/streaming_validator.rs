@@ -19,7 +19,6 @@ use wrt_foundation::{
     },
     verification::Checksum,
     NoStdProvider,
-    WrtResult,
 };
 
 #[cfg(feature = "std")]
@@ -181,7 +180,7 @@ impl ToBytes for Section {
         &self,
         writer: &mut WriteStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<()> {
+    ) -> wrt_error::Result<()> {
         // Write section discriminant
         let discriminant = match self {
             Section::Custom => 0u8,
@@ -222,7 +221,7 @@ impl FromBytes for Section {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'a>,
         _provider: &PStream,
-    ) -> WrtResult<Self> {
+    ) -> wrt_error::Result<Self> {
         let discriminant = reader.read_u8()?;
         Ok(match discriminant {
             0 => Section::Custom,

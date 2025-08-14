@@ -555,7 +555,7 @@ impl Validate for MultiMemoryGrow {
     }
 }
 
-#[cfg(all(test, any(feature = "std",)))]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use crate::memory_ops::MemoryOperations;

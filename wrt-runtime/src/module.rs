@@ -47,20 +47,7 @@ use crate::prelude::CoreMemoryType;
 // Type alias for the runtime ImportDesc
 type RuntimeImportDesc = WrtImportDesc<RuntimeProvider>;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{
-    string::String,
-    sync::Arc,
-    vec::Vec,
-};
-// Use clean types for collections instead of provider-embedded ones
-#[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
-    string::String,
-    sync::Arc,
-    vec::Vec,
-};
+use crate::prelude::*;
 
 // HashMap is not needed with clean architecture using BoundedMap
 use wrt_foundation::bounded_collections::BoundedMap;
@@ -218,7 +205,7 @@ impl wrt_foundation::traits::ToBytes for Export {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         self.name.to_bytes_with_provider(writer, provider)?;
         writer.write_all(&(self.kind as u8).to_le_bytes())?;
         writer.write_all(&self.index.to_le_bytes())
@@ -229,7 +216,7 @@ impl wrt_foundation::traits::FromBytes for Export {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let name =
             wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
 
@@ -326,7 +313,7 @@ impl wrt_foundation::traits::ToBytes for Import {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         self.module.to_bytes_with_provider(writer, provider)?;
         self.name.to_bytes_with_provider(writer, provider)
     }
@@ -336,7 +323,7 @@ impl wrt_foundation::traits::FromBytes for Import {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let module =
             wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
         let name =
@@ -395,7 +382,7 @@ impl wrt_foundation::traits::ToBytes for Function {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.type_idx.to_le_bytes())
     }
 }
@@ -404,7 +391,7 @@ impl wrt_foundation::traits::FromBytes for Function {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
         let type_idx = u32::from_le_bytes(bytes);
@@ -470,7 +457,7 @@ impl wrt_foundation::traits::ToBytes for Element {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         let mode_byte = match &self.mode {
             WrtElementMode::Active { .. } => 0u8,
             WrtElementMode::Passive => 1u8,
@@ -485,7 +472,7 @@ impl wrt_foundation::traits::FromBytes for Element {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 1];
         reader.read_exact(&mut bytes)?;
         let mode = match bytes[0] {
@@ -547,7 +534,7 @@ impl wrt_foundation::traits::ToBytes for Data {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         let mode_byte = match &self.mode {
             WrtDataMode::Active { .. } => 0u8,
             WrtDataMode::Passive => 1u8,
@@ -562,7 +549,7 @@ impl wrt_foundation::traits::FromBytes for Data {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 1];
         reader.read_exact(&mut bytes)?;
         let mode = match bytes[0] {
@@ -2347,7 +2334,7 @@ impl wrt_foundation::traits::ToBytes for Module {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<()> {
+    ) -> Result<()> {
         // Write a magic number to identify this as a module
         writer.write_all(&0x6D6F6475u32.to_le_bytes())?; // "modu" in little endian
 
@@ -2378,7 +2365,7 @@ impl wrt_foundation::traits::FromBytes for Module {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::WrtResult<Self> {
+    ) -> Result<Self> {
         // Read and verify magic number
         let mut magic = [0u8; 4];
         reader.read_exact(&mut magic)?;
@@ -2630,24 +2617,28 @@ impl MemoryWrapper {
     }
 
     /// Write i32 to memory
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_i32(&self, offset: u32, value: i32) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_i32(offset, value)
     }
 
     /// Write i64 to memory
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_i64(&self, offset: u32, value: i64) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_i64(offset, value)
     }
 
     /// Write f32 to memory
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_f32(&self, offset: u32, value: f32) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_f32(offset, value)
     }
 
     /// Write f64 to memory
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn write_f64(&self, offset: u32, value: f64) -> Result<()> {
         use crate::memory_helpers::ArcMemoryExt;
         self.0.write_f64(offset, value)
@@ -2775,7 +2766,7 @@ impl ToBytes for TableWrapper {
         &self,
         writer: &mut WriteStream,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.0.size().to_le_bytes())?;
         writer.write_all(&(self.0.ty.element_type as u8).to_le_bytes())?;
         writer.write_all(&self.0.ty.limits.min.to_le_bytes())?;
@@ -2787,7 +2778,7 @@ impl FromBytes for TableWrapper {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 12];
         reader.read_exact(&mut bytes)?;
 
@@ -2833,7 +2824,7 @@ impl ToBytes for MemoryWrapper {
         &self,
         writer: &mut WriteStream,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.0.size().to_le_bytes())?;
         writer.write_all(&self.0.ty.limits.min.to_le_bytes())?;
         let max = self.0.ty.limits.max.unwrap_or(u32::MAX);
@@ -2846,7 +2837,7 @@ impl FromBytes for MemoryWrapper {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 12];
         reader.read_exact(&mut bytes)?;
 
@@ -2911,7 +2902,7 @@ impl ToBytes for GlobalWrapper {
         &self,
         writer: &mut WriteStream,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(
             &value_type_to_u8(self.0.global_type_descriptor().value_type).to_le_bytes(),
         )?;
@@ -2926,7 +2917,7 @@ impl FromBytes for GlobalWrapper {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut bytes = [0u8; 12];
         reader.read_exact(&mut bytes)?;
 

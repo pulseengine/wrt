@@ -202,6 +202,7 @@ fn demonstrate_asil_d_features() {
 
 // Helper function to demonstrate error propagation
 #[allow(dead_code)]
+#[allow(clippy::unnecessary_wraps)]
 fn process_with_asil_checks() -> Result<(), Error> {
     // This would use the asil_assert! macro in real code
     #[cfg(feature = "asil-b")]

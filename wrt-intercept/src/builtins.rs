@@ -6,7 +6,7 @@
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
-// use wrt_error::Error; // Unused import
+use wrt_error::Error;
 #[cfg(feature = "std")]
 use wrt_foundation::component_value::{
     ComponentValue,

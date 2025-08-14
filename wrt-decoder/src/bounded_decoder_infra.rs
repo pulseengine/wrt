@@ -13,7 +13,6 @@ use wrt_foundation::{
     no_std_hashmap::BoundedHashMap,
     safe_managed_alloc,
     safe_memory::NoStdProvider,
-    WrtResult,
 };
 
 /// Instead of a type alias, we'll use concrete allocation in factory functions
@@ -117,7 +116,7 @@ pub type BoundedNameMap<V> =
 pub type BoundedCustomData = BoundedVec<u8, MAX_CUSTOM_SECTION_SIZE, DecoderProvider>;
 
 /// Create a new bounded section vector using capability-based allocation
-pub fn new_section_vec<T>() -> WrtResult<BoundedVec<T, MAX_SECTIONS, NoStdProvider<4096>>>
+pub fn new_section_vec<T>() -> wrt_error::Result<BoundedVec<T, MAX_SECTIONS, NoStdProvider<4096>>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -132,7 +131,7 @@ where
 }
 
 /// Create a new bounded type vector using capability-based allocation
-pub fn new_type_vec() -> WrtResult<BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>>>
+pub fn new_type_vec() -> wrt_error::Result<BoundedTypeVec<wrt_foundation::types::FuncType<DecoderProvider>>>
 {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
@@ -140,7 +139,7 @@ pub fn new_type_vec() -> WrtResult<BoundedTypeVec<wrt_foundation::types::FuncTyp
 
 /// Create a new bounded type vector (generic version) using capability-based
 /// allocation
-pub fn new_type_vec_generic<T>() -> WrtResult<BoundedTypeVec<T>>
+pub fn new_type_vec_generic<T>() -> wrt_error::Result<BoundedTypeVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -150,20 +149,20 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded import vector using capability-based allocation
 pub fn new_import_vec(
-) -> WrtResult<BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>>> {
+) -> wrt_error::Result<BoundedImportVec<wrt_foundation::types::Import<DecoderProvider>>> {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded import vector (generic version) using capability-based
 /// allocation
-pub fn new_import_vec_generic<T>() -> WrtResult<BoundedImportVec<T>>
+pub fn new_import_vec_generic<T>() -> wrt_error::Result<BoundedImportVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -173,19 +172,19 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded export vector using capability-based allocation
-pub fn new_export_vec() -> WrtResult<BoundedExportVec<wrt_format::module::Export>> {
+pub fn new_export_vec() -> wrt_error::Result<BoundedExportVec<wrt_format::module::Export>> {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded export vector (generic version) using capability-based
 /// allocation
-pub fn new_export_vec_generic<T>() -> WrtResult<BoundedExportVec<T>>
+pub fn new_export_vec_generic<T>() -> wrt_error::Result<BoundedExportVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -195,19 +194,19 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded function vector using capability-based allocation
-pub fn new_function_vec() -> WrtResult<BoundedFunctionVec<u32>> {
-    let provider = safe_managed_alloc!(16384, CrateId::Decoder)?;
+pub fn new_function_vec() -> wrt_error::Result<BoundedFunctionVec<u32>> {
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded function vector (generic version) using
 /// capability-based allocation
-pub fn new_function_vec_generic<T>() -> WrtResult<BoundedFunctionVec<T>>
+pub fn new_function_vec_generic<T>() -> wrt_error::Result<BoundedFunctionVec<T>>
 where
     T: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -217,26 +216,26 @@ where
         + PartialEq
         + Eq,
 {
-    let provider = safe_managed_alloc!(16384, CrateId::Decoder)?;
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded name string using capability-based allocation
-pub fn new_name_string() -> WrtResult<BoundedNameString> {
+pub fn new_name_string() -> wrt_error::Result<BoundedNameString> {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedString::from_str("", provider)
         .map_err(|_| wrt_error::Error::memory_error("Failed to create empty bounded string"))
 }
 
 /// Create a bounded name string from a str using capability-based allocation
-pub fn bounded_name_from_str(s: &str) -> WrtResult<BoundedNameString> {
-    let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
+pub fn bounded_name_from_str(s: &str) -> wrt_error::Result<BoundedNameString> {
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedString::from_str(s, provider)
         .map_err(|_| wrt_error::Error::validation_error("String too long for bounded name"))
 }
 
 /// Create a new bounded name map using capability-based allocation
-pub fn new_name_map<V>() -> WrtResult<BoundedNameMap<V>>
+pub fn new_name_map<V>() -> wrt_error::Result<BoundedNameMap<V>>
 where
     V: wrt_foundation::traits::Checksummable
         + wrt_foundation::traits::ToBytes
@@ -254,52 +253,52 @@ where
 
 /// Create a new bounded params vector (for function parameters)
 pub fn new_params_vec(
-) -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, NoStdProvider<2048>>> {
+) -> wrt_error::Result<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_PARAMS, NoStdProvider<2048>>> {
     let provider = safe_managed_alloc!(2048, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded results vector (for function results)
 pub fn new_results_vec(
-) -> WrtResult<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, NoStdProvider<1024>>>
+) -> wrt_error::Result<BoundedVec<wrt_format::types::ValueType, MAX_FUNCTION_RESULTS, NoStdProvider<1024>>>
 {
     let provider = safe_managed_alloc!(1024, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded table vector
-pub fn new_table_vec() -> WrtResult<BoundedTableVec<wrt_foundation::types::TableType>> {
+pub fn new_table_vec() -> wrt_error::Result<BoundedTableVec<wrt_foundation::types::TableType>> {
     let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded memory vector
-pub fn new_memory_vec() -> WrtResult<BoundedMemoryVec<wrt_foundation::types::MemoryType>> {
-    let provider = safe_managed_alloc!(2048, CrateId::Decoder)?;
+pub fn new_memory_vec() -> wrt_error::Result<BoundedMemoryVec<wrt_foundation::types::MemoryType>> {
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded global vector
-pub fn new_global_vec() -> WrtResult<BoundedGlobalVec<wrt_foundation::types::GlobalType>> {
-    let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+pub fn new_global_vec() -> wrt_error::Result<BoundedGlobalVec<wrt_foundation::types::GlobalType>> {
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded element vector
-pub fn new_element_vec() -> WrtResult<BoundedElementVec<wrt_format::module::Element>> {
-    let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+pub fn new_element_vec() -> wrt_error::Result<BoundedElementVec<wrt_format::module::Element>> {
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded data vector
-pub fn new_data_vec() -> WrtResult<BoundedDataVec<wrt_format::module::Data>> {
-    let provider = safe_managed_alloc!(8192, CrateId::Decoder)?;
+pub fn new_data_vec() -> wrt_error::Result<BoundedDataVec<wrt_format::module::Data>> {
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
 /// Create a new bounded code bodies vector
-pub fn new_code_bodies_vec() -> WrtResult<BoundedFunctionVec<BoundedCustomData>> {
-    let provider = safe_managed_alloc!(16384, CrateId::Decoder)?;
+pub fn new_code_bodies_vec() -> wrt_error::Result<BoundedFunctionVec<BoundedCustomData>> {
+    let provider = safe_managed_alloc!(4096, CrateId::Decoder)?;
     BoundedVec::new(provider)
 }
 
@@ -321,6 +320,6 @@ pub const MAX_ALIASES_PER_COMPONENT: usize = 256;
 // aliases
 
 /// Create a decoder provider with the specified size  
-pub fn create_decoder_provider<const N: usize>() -> WrtResult<NoStdProvider<N>> {
+pub fn create_decoder_provider<const N: usize>() -> wrt_error::Result<NoStdProvider<N>> {
     safe_managed_alloc!(N, CrateId::Decoder)
 }

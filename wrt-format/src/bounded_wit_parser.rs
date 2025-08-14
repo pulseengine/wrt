@@ -26,6 +26,7 @@ impl SimpleBoundedString {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         if s.len() > 64 {
             return None;

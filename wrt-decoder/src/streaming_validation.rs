@@ -238,7 +238,7 @@ impl StreamingValidator {
                 .with_context("expected_size", "8")
                 .with_context("actual_size", data.len().to_string()),
             )?;
-            return Ok();
+            return Ok(());
         }
 
         // Check magic number

@@ -821,18 +821,18 @@ mod no_std_encoding {
     ) -> Result<BoundedVec<u8, 1024, NoStdProvider<2048>>> {
         let provider = wrt_foundation::safe_managed_alloc!(2048, wrt_foundation::CrateId::Decoder)?;
         let mut binary = BoundedVec::new(provider)
-            .map_err(|_| Error::memory_allocation_failed("Failed to create encoding buffer"))?;
+            .map_err(|_| Error::memory_error("Failed to create encoding buffer"))?;
 
         // Write magic and version - these are fixed size and safe
         for &byte in &component.magic {
             binary.push(byte).map_err(|_| {
-                Error::memory_allocation_failed("Component encoding buffer overflow")
+                Error::memory_error("Component encoding buffer overflow")
             })?;
         }
 
         for &byte in &component.version {
             binary.push(byte).map_err(|_| {
-                Error::memory_allocation_failed("Component encoding buffer overflow")
+                Error::memory_error("Component encoding buffer overflow")
             })?;
         }
 

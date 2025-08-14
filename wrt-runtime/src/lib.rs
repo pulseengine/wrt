@@ -64,6 +64,7 @@ pub mod capability_integration;
 pub mod component_unified;
 pub mod memory_adapter;
 pub mod memory_config_adapter;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod memory_helpers;
 /// WebAssembly module representation and management
 pub mod module;
@@ -91,6 +92,7 @@ pub mod runtime_provider;
 pub mod engine;
 
 // Engine factory pattern for architecture refactoring
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod engine_factory;
 
 // Comprehensive testing infrastructure
@@ -155,6 +157,7 @@ pub use memory_adapter::{
     SafeMemoryAdapter,
     StdMemoryProvider,
 };
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use memory_helpers::ArcMemoryExt;
 pub use prelude::FuncType;
 // pub use module::{

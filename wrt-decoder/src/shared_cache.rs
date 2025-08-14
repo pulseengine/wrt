@@ -297,7 +297,7 @@ impl CacheManager {
             let key = key;
             if let Some(cache) = self.caches.remove(&key) {
                 self.current_cache_size =
-                    self.current_cache_size.saturating_sub(cache.cache_size_estimate);
+                    self.current_cache_size.saturating_sub(cache.cache_size_estimate());
             }
         }
     }

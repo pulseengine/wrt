@@ -48,7 +48,7 @@ pub trait LoggingExt {
         P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
 
     /// Handle a log operation
-    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_foundation::Result<()>
+    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_error::Result<()>
     where
         P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
 
@@ -91,7 +91,7 @@ impl LoggingExt for CallbackRegistry {
                          // complex design
     }
 
-    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_foundation::Result<()>
+    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_error::Result<()>
     where
         P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
     {

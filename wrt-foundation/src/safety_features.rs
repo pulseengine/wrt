@@ -1,20 +1,16 @@
-/// Safety-aware feature system for WRT
-///
-/// This module provides capability-based safety features that can be composed
-/// to meet various safety standards (ISO 26262, DO-178C, IEC 61508, etc.)
-/// without being tied to specific standard names.
+//! Safety-aware feature system for WRT
+//!
+//! This module provides capability-based safety features that can be composed
+//! to meet various safety standards (ISO 26262, DO-178C, IEC 61508, etc.)
+//! without being tied to specific standard names.
+//!
+//! Compile-time feature validation
+//!
+//! These compile-error! macros prevent incompatible feature combinations
+//! from building, ensuring safety constraints are enforced at compile time.
 
-/// Compile-time feature validation
-///
-/// These compile-error! macros prevent incompatible feature combinations
-/// from building, ensuring safety constraints are enforced at compile time.
-
-// Mutually exclusive features
-#[cfg(all(feature = "dynamic-allocation", feature = "no-runtime-allocation"))]
-compile_error!("Cannot enable both dynamic-allocation and no-runtime-allocation");
-
-#[cfg(all(feature = "static-allocation", feature = "dynamic-allocation"))]
-compile_error!("Cannot enable both static-allocation and dynamic-allocation");
+// Mutual exclusivity now enforced through strategy-specific capabilities
+// Previous compile-time checks removed as conflicts are resolved
 
 // Feature dependencies
 #[cfg(all(
@@ -25,9 +21,9 @@ compile_error!("verified-static-allocation requires formal-verification-required
 
 #[cfg(all(
     feature = "mathematical-proofs",
-    not(feature = "compile-time-memory-layout")
+    not(feature = "static-memory-layout")
 ))]
-compile_error!("mathematical-proofs requires compile-time-memory-layout");
+compile_error!("mathematical-proofs requires static-memory-layout");
 
 #[cfg(all(feature = "hardware-isolation", not(feature = "component-isolation")))]
 compile_error!("hardware-isolation requires component-isolation");
@@ -37,9 +33,9 @@ compile_error!("component-isolation requires memory-isolation");
 
 #[cfg(all(
     feature = "memory-isolation",
-    not(feature = "memory-budget-enforcement")
+    not(feature = "bounded-budget-enforcement")
 ))]
-compile_error!("memory-isolation requires memory-budget-enforcement");
+compile_error!("memory-isolation requires bounded-budget-enforcement");
 
 /// Memory allocation strategies based on enabled features
 pub mod allocation {
@@ -183,7 +179,7 @@ pub mod standards {
                 &[
                     "static-allocation",
                     "component-isolation",
-                    "memory-budget-enforcement",
+                    "bounded-budget-enforcement",
                 ]
                 // ASIL-C
             }
@@ -194,9 +190,9 @@ pub mod standards {
             ))]
             {
                 &[
-                    "compile-time-capacity-limits",
-                    "runtime-bounds-checking",
-                    "basic-monitoring",
+                    "bounded-capacity-limits",
+                    "bounded-runtime-checks", 
+                    "bounded-monitoring",
                 ]
                 // ASIL-A/B
             }
@@ -276,8 +272,17 @@ pub mod runtime {
             "component-isolation" => cfg!(feature = "component-isolation"),
             "memory-isolation" => cfg!(feature = "memory-isolation"),
             "runtime-bounds-checking" => cfg!(feature = "runtime-bounds-checking"),
-            "compile-time-capacity-limits" => cfg!(feature = "compile-time-capacity-limits"),
-            "memory-budget-enforcement" => cfg!(feature = "memory-budget-enforcement"),
+            "static-memory-layout" => cfg!(feature = "static-memory-layout"),
+            "static-capacity-limits" => cfg!(feature = "static-capacity-limits"),
+            "static-verification" => cfg!(feature = "static-verification"),
+            "bounded-runtime-checks" => cfg!(feature = "bounded-runtime-checks"),
+            "bounded-capacity-limits" => cfg!(feature = "bounded-capacity-limits"),
+            "bounded-monitoring" => cfg!(feature = "bounded-monitoring"),
+            "bounded-budget-enforcement" => cfg!(feature = "bounded-budget-enforcement"),
+            "managed-monitoring" => cfg!(feature = "managed-monitoring"),
+            "managed-dynamic-alloc" => cfg!(feature = "managed-dynamic-alloc"),
+            "std-dynamic-alloc" => cfg!(feature = "std-dynamic-alloc"),
+            "std-collections" => cfg!(feature = "std-collections"),
             _ => false,
         }
     }

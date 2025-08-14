@@ -64,7 +64,7 @@ impl<'a> wrt_foundation::traits::ToBytes for FileEntry<'a> {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'b>,
         provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> wrt_error::Result<()> {
         self.path.to_bytes_with_provider(writer, provider)?;
         writer.write_u32_le(self.dir_index)?;
         writer.write_u64_le(self.mod_time)?;
@@ -77,7 +77,7 @@ impl<'a> wrt_foundation::traits::FromBytes for FileEntry<'a> {
     fn from_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'b>,
         provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> wrt_error::Result<Self> {
         Ok(Self {
             path:      DebugString::from_bytes_with_provider(reader, provider)?,
             dir_index: reader.read_u32_le()?,

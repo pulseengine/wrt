@@ -786,7 +786,7 @@ mod tests {
         let ptr1 = allocator.allocate().unwrap();
         let ptr2 = allocator.allocate().unwrap();
 
-        assert_ne!(ptr1.as_ptr(), ptr2.as_ptr);
+        assert_ne!(ptr1.as_ptr(), ptr2.as_ptr());
 
         // Binary std/no_std choice
         unsafe {

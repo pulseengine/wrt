@@ -384,7 +384,7 @@ impl wrt_foundation::traits::ToBytes for Memory {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         writer.write_all(&self.ty.limits.min.to_le_bytes())?;
         writer.write_all(&self.ty.limits.max.unwrap_or(0).to_le_bytes())?;
         Ok(())
@@ -395,7 +395,7 @@ impl wrt_foundation::traits::FromBytes for Memory {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut min_bytes = [0u8; 4];
         reader.read_exact(&mut min_bytes)?;
         let min = u32::from_le_bytes(min_bytes;

@@ -536,7 +536,7 @@ impl fmt::Debug for SliceMut<'_> {
 /// Binary std/no_std choice
 /// allowing both std and `no_std` environments to share the same interface.
 /// It combines raw access, safety features, and informational methods.
-pub trait Provider: Send + Sync + fmt::Debug {
+pub trait Provider: Send + Sync + fmt::Debug + Clone + Default + PartialEq + Eq {
     /// Binary std/no_std choice
     type Allocator: Allocator + Clone + Send + Sync + 'static; // Added Clone, Send, Sync, 'static
 

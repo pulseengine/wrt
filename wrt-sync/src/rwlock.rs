@@ -851,7 +851,10 @@ mod tests {
             assert_eq!(*r_guard, 5);
             assert!(lock.try_write().is_none());
         } else {
-            panic!("try_read failed when it should succeed");
+            #[allow(clippy::assertions_on_constants)]
+            {
+                assert!(false, "try_read failed when it should succeed");
+            }
         }
 
         if let Some(mut w_guard) = lock.try_write() {
@@ -859,7 +862,10 @@ mod tests {
             assert!(lock.try_read().is_none());
             assert!(lock.try_write().is_none());
         } else {
-            panic!("try_write failed when it should succeed");
+            #[allow(clippy::assertions_on_constants)]
+            {
+                assert!(false, "try_write failed when it should succeed");
+            }
         }
         assert_eq!(*lock.read(), 10);
 

@@ -11,6 +11,7 @@
 use wrt_error::{
     Error,
     ErrorCategory,
+    Result,
 };
 use wrt_foundation::{
     bounded::BoundedVec,
@@ -53,7 +54,7 @@ impl wrt_foundation::traits::ToBytes for ResourceOwnership {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         match self {
             ResourceOwnership::Owned => writer.write_u8(0),
             ResourceOwnership::Borrowed => writer.write_u8(1),
@@ -65,7 +66,7 @@ impl wrt_foundation::traits::FromBytes for ResourceOwnership {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         _provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         match reader.read_u8()? {
             0 => Ok(ResourceOwnership::Owned),
             1 => Ok(ResourceOwnership::Borrowed),
@@ -115,7 +116,7 @@ where
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         self.resource.to_bytes_with_provider(writer, provider)?;
         self.ownership.to_bytes_with_provider(writer, provider)?;
         self.ref_count.to_bytes_with_provider(writer, provider)?;
@@ -130,7 +131,7 @@ where
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &PStream,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let resource = T::from_bytes_with_provider(reader, provider)?;
         let ownership = ResourceOwnership::from_bytes_with_provider(reader, provider)?;
         let ref_count = u32::from_bytes_with_provider(reader, provider)?;
@@ -168,7 +169,7 @@ where
         + wrt_foundation::traits::FromBytes,
 {
     /// Create a new resource table
-    pub fn new(provider: P) -> Result<Self, Error> {
+    pub fn new(provider: P) -> Result<Self> {
         let mut entries = BoundedVec::new(provider)?;
 
         // Initialize with None values
@@ -185,7 +186,7 @@ where
     }
 
     /// Allocate a new owned resource
-    pub fn new_own(&mut self, resource: T) -> Result<ResourceHandle, Error> {
+    pub fn new_own(&mut self, resource: T) -> Result<ResourceHandle> {
         let handle = self.allocate_handle()?;
         let entry = ResourceEntry {
             resource,
@@ -210,7 +211,7 @@ where
     }
 
     /// Create a borrowed handle from an owned handle
-    pub fn new_borrow(&mut self, owned: ResourceHandle) -> Result<ResourceHandle, Error> {
+    pub fn new_borrow(&mut self, owned: ResourceHandle) -> Result<ResourceHandle> {
         let current_entry = self
             .entries
             .get(owned.0 as usize)
@@ -253,7 +254,7 @@ where
     }
 
     /// Drop a resource handle
-    pub fn drop_handle(&mut self, handle: ResourceHandle) -> Result<Option<T>, Error> {
+    pub fn drop_handle(&mut self, handle: ResourceHandle) -> Result<Option<T>> {
         let entry = self
             .entries
             .get(handle.0 as usize)
@@ -296,7 +297,7 @@ where
     }
 
     /// Allocate a new handle
-    fn allocate_handle(&mut self) -> Result<ResourceHandle, Error> {
+    fn allocate_handle(&mut self) -> Result<ResourceHandle> {
         // Simple linear search for now
         let start = self.next_handle as usize;
         for i in 0..MAX_RESOURCES_PER_TYPE {

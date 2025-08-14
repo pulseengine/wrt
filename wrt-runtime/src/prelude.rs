@@ -528,7 +528,7 @@ impl wrt_foundation::traits::ToBytes for Instruction {
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<()> {
+    ) -> Result<()> {
         match self {
             Instruction::Nop => writer.write_all(&[0u8])?,
             Instruction::Arithmetic(_) => writer.write_all(&[1u8])?,
@@ -546,7 +546,7 @@ impl wrt_foundation::traits::FromBytes for Instruction {
     fn from_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'_>,
         _provider: &P,
-    ) -> wrt_foundation::Result<Self> {
+    ) -> Result<Self> {
         let mut discriminant = [0u8; 1];
         reader.read_exact(&mut discriminant)?;
         match discriminant[0] {

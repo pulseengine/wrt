@@ -194,9 +194,7 @@ pub use wit_source_map::{
     WitTypeKind,
 };
 use wrt_error::{
-    codes,
     Error,
-    ErrorCategory,
     Result,
 };
 use wrt_foundation::prelude::*;
